@@ -18,8 +18,8 @@ import {
   CountRoll,
   FilterCardMark,
   FilterCardTail,
-  SIDEBAR_COUNT_CLASS,
   SIDEBAR_LABEL_CLASS,
+  countClass,
   filterCardVariants,
 } from "@/components/filters/filter-card";
 import {
@@ -544,7 +544,7 @@ export function AgeGrowthControl({
                             </span>
                             <CountRoll
                               value={count}
-                              className={SIDEBAR_COUNT_CLASS}
+                              className={countClass(layout, checked)}
                             />
                           </>
                         )}

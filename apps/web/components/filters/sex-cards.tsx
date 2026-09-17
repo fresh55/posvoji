@@ -8,6 +8,7 @@ import {
   FilterCardMark,
   FilterCardTail,
   FilterSelectionMark,
+  countClass,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -243,9 +244,13 @@ export function SexCards({
                   <span className={cn("text-xs", checked && "font-medium")}>
                     {label}
                   </span>
+                  {/* The shared voice, not a hand-spelled one. This tile drew
+                      its count at 11px where every section that goes through
+                      FilterCardTail draws the sheet's 12px, and it kept the
+                      resting ink on the green fill when chosen. */}
                   <CountRoll
                     value={count}
-                    className="text-2xs tabular-nums text-muted-foreground"
+                    className={countClass(layout, checked)}
                   />
                 </>
               ) : (

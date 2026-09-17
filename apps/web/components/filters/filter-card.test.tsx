@@ -7,6 +7,7 @@ import { groupOptions } from "@/lib/filters";
 import {
   SHEET_COUNT_CLASS,
   SIDEBAR_COUNT_CLASS,
+  countClass,
   filterCardLayoutClass,
   filterCardVariants,
 } from "./filter-card";
@@ -98,6 +99,29 @@ describe("the filter card's two surfaces", () => {
     expect(SHEET_COUNT_CLASS).toContain("text-xs");
     expect(SHEET_COUNT_CLASS).not.toContain("text-2xs");
     expect(SIDEBAR_COUNT_CLASS).toContain("text-2xs");
+  });
+
+  // The count was the one thing on a card that got less legible for being
+  // chosen: the resting muted token on the brand fill measures 4.45:1 in light
+  // mode, under the 4.5:1 an 11-12px number is held to.
+  it("takes the count off the resting ink on a chosen card", () => {
+    for (const layout of ["sidebar", "sheet"] as const) {
+      const chosen = countClass(layout, true);
+
+      expect(chosen).toContain("text-brand-foreground/");
+      expect(chosen).not.toContain("text-muted-foreground");
+      expect(countClass(layout, false)).toContain("text-muted-foreground");
+    }
+  });
+
+  // Both sizes stay with the layout, so a chosen card is recoloured and not
+  // resized: the sheet's tile printed 11px for a release because the class was
+  // hand-copied there.
+  it("keeps each layout's count size in both states", () => {
+    expect(countClass("sheet", true)).toContain("text-xs");
+    expect(countClass("sheet", false)).toContain("text-xs");
+    expect(countClass("sidebar", true)).toContain("text-2xs");
+    expect(countClass("sidebar", false)).toContain("text-2xs");
   });
 
   // The sidebar is lg-only and mouse-driven, and the panel had two sections

@@ -9,6 +9,7 @@ import {
   FilterCardIconWell,
   FilterCardMark,
   FilterCardTail,
+  countClass,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -586,7 +587,11 @@ export function SizePawCards({
                   <span className={cn("text-xs", checked && "font-medium")}>
                     {label}
                   </span>
-                  {joltedCount("text-2xs tabular-nums text-muted-foreground")}
+                  {/* The shared voice, not a hand-spelled one. This tile drew
+                      its count at 11px where every section that goes through
+                      FilterCardTail draws the sheet's 12px, and it kept the
+                      resting ink on the green fill when chosen. */}
+                  {joltedCount(countClass(layout, checked))}
                 </>
               ) : (
                 <FilterCardTail

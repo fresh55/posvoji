@@ -447,6 +447,10 @@ export function FilterCardHoverLift({
  * line and the age row is a three-column grid, so it draws its own label and
  * count and borrows the sizes from here. Hand-copied they drifted, and Starost
  * printed 11px over 10px while every other section printed 12 over 11.
+ *
+ * The ink here is the resting one. A chosen card stands on the brand fill and
+ * takes its count's colour from countClass below, because text-muted-foreground
+ * on that fill measures 4.45:1 at 11-12px.
  */
 export const SIDEBAR_LABEL_CLASS = "truncate text-xs";
 export const SIDEBAR_COUNT_CLASS =
@@ -464,13 +468,38 @@ export const SIDEBAR_COUNT_CLASS =
  * Exported because the sections that draw their own tile instead of going
  * through FilterCardTail (sex-cards.tsx, size-paw-cards.tsx) need the same
  * voice, and hand-copied it drifts: Starost printed 11 over 10 for a release
- * for exactly that reason.
+ * for exactly that reason, and the same two files printed the sheet's count at
+ * 11px against the 12px the constant above states.
  */
 export const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
 
-// Only a flex item can be squeezed by a long label, so shrink-0 rides with the
-// line below rather than with the voice the age grid shares.
-const SIDEBAR_COUNT_FLEX_CLASS = cn(SIDEBAR_COUNT_CLASS, "shrink-0");
+/**
+ * The count, in the voice its layout and its state ask for.
+ *
+ * The count was the one thing on a card that got less legible for being
+ * chosen: both constants above are state-blind, so #6f6762 stood on the green
+ * #d0eed6 fill at 4.45:1 in light mode at 11-12px, under the 4.5:1 that size
+ * of text is held to. Dark passed at 6.14:1 and is not what this is for.
+ *
+ * A chosen count takes the fill's own ink at reduced strength: /75 in the
+ * sidebar is 5.06:1 light and 6.93:1 dark, /80 in the sheet is 5.80:1. The
+ * label beside it stays the full token at 9.91:1, so the count is still the
+ * quieter of the two and the row still reads label first.
+ *
+ * One function, because three files draw this number: FilterCardTail for every
+ * section that goes through it, and sex-cards.tsx, size-paw-cards.tsx and
+ * age-growth-control.tsx for the ones that draw their own label and count.
+ * Hand-copied, the sizes had already drifted twice.
+ */
+export function countClass(layout: FilterCardLayout, checked: boolean): string {
+  return cn(
+    layout === "sheet" ? SHEET_COUNT_CLASS : SIDEBAR_COUNT_CLASS,
+    checked &&
+      (layout === "sheet"
+        ? "text-brand-foreground/80"
+        : "text-brand-foreground/75"),
+  );
+}
 
 // The label and count after the icon. The count is a render prop because a
 // section may animate it, and its class comes from the layout either way.
@@ -499,7 +528,7 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {renderCount(SHEET_COUNT_CLASS)}
+        {renderCount(countClass(layout, checked))}
       </>
     );
   }
@@ -509,7 +538,9 @@ export function FilterCardTail({
       <span className={cn(SIDEBAR_LABEL_CLASS, checked && "font-medium")}>
         {label}
       </span>
-      {renderCount(SIDEBAR_COUNT_FLEX_CLASS)}
+      {/* Only a flex item can be squeezed by a long label, so shrink-0 rides
+          with this line rather than with the voice the age grid shares. */}
+      {renderCount(cn(countClass(layout, checked), "shrink-0"))}
     </span>
   );
 }

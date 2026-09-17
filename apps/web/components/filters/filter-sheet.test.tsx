@@ -132,9 +132,10 @@ describe("FilterSheet sort caption", () => {
 
     const caption = within(dialog).getByText(sl.sortCaption);
     expect(caption.textContent).toBe(sl.sortCaption);
-    // And it leaves at exactly the width the row leaves at, so no label is
-    // left standing over a control the toolbar has taken over.
-    expect(caption.className.split(" ")).toContain("md:hidden");
+    // And it leaves on exactly the query the row leaves on, so no label is
+    // left standing over a control the toolbar has taken over, and neither
+    // leaves on a landscape phone, where that toolbar scrolls away.
+    expect(caption.className.split(" ")).toContain("md:not-short:hidden");
   });
 
   it("names the control with the caption and the current order", async () => {

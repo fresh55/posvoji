@@ -62,14 +62,26 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
-/** The width from which the toolbar carries the order and the sort row in
- *  this sheet stands down (animal-filters.tsx draws the toolbar's copy on the
- *  complementary `max-md:hidden`). Exported because the dock's trigger has to
- *  disappear at exactly the width this row does: a sheet the `order` reason
- *  alone holds open has nothing left in it from here, and the two answering
- *  the same question with two literals is how they drift apart. The same
- *  bargain `DESKTOP_QUERY` strikes in use-desktop-breakpoint-close.ts. */
-export const SORT_ROW_HIDDEN = "md:hidden";
+/** Where the toolbar carries the order and the sort row in this sheet stands
+ *  down (animal-filters.tsx draws the toolbar's copy on the complementary
+ *  `max-md:hidden`). Exported because the dock's trigger has to disappear
+ *  exactly where this row does: a sheet the `order` reason alone holds open
+ *  has nothing left in it there, and the two answering the same question with
+ *  two literals is how they drift apart. The same bargain `DESKTOP_QUERY`
+ *  strikes in use-desktop-breakpoint-close.ts.
+ *
+ *  A width and a height, and it was the width alone. The hand-off only works
+ *  while the toolbar the order moves to is on screen, and that toolbar gives
+ *  up its pin under 32rem of viewport height (`short:static` in
+ *  animal-filters.tsx), because on a phone held sideways the chrome was half
+ *  the screen. A landscape phone is 844x390 or 932x430: wide enough for the
+ *  toolbar's copy and short enough that it scrolls away with the page, so the
+ *  order was measured at y = -1256 two rows into the grid while the sheet
+ *  opened on a header reading "Filtri" and nothing else. Those viewports keep
+ *  the row in here, which costs 78px of sheet body in that band and nothing
+ *  at any other size. `not-short` is the exact complement of the variant the
+ *  toolbar pins on (globals.css), so the two cannot half-exist. */
+export const SORT_ROW_HIDDEN = "md:not-short:hidden";
 
 /** The caption over the sort row, and the row itself, each resolved once:
  *  every half is a constant, so there is one answer and no reason to ask cn
@@ -79,8 +91,8 @@ export const SORT_ROW_HIDDEN = "md:hidden";
  *  in the panel uses, so the one row that is not a filter section still reads
  *  as one. FilterSectionHeader itself is not used: it carries a reset link and
  *  a disclosure trigger, and this row wants neither. The caption wears
- *  SORT_ROW_HIDDEN too, so the label and the control it labels leave at the
- *  same width.
+ *  SORT_ROW_HIDDEN too, so the label and the control it labels leave on the
+ *  same query.
  *
  *  mt-3 moved up to the caption and the row kept mt-1.5, which is the gap that
  *  makes the two read as one labelled control rather than as a heading and a
@@ -97,23 +109,23 @@ const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
  *  from. Three things can be inside, so there are three named answers and a
  *  section added below has one place to be counted.
  *
- *  Sorting is the reason the last two exist. Below md the sheet is where the
+ *  Sorting is the reason the last two exist. On a phone the sheet is where the
  *  order is changed, so a result set that no facet can narrow still has
  *  something to do in here, and so does a filtered-to-nothing one, which is
  *  where a visitor most needs the way back out.
  *
- *  A reason and not a yes, because one of the three is drawn at one width and
- *  not another: from md the toolbar carries the order itself and the sort row
- *  below stands down (SORT_ROW_HIDDEN), so a sheet held open by `order` alone
- *  opens there on a title, a footer, and a body holding the Kje row or
- *  nothing at all, depending on whether the dataset has shelters to choose
- *  between. The caller stands the trigger down at that width instead, in CSS
- *  (animal-filters.tsx).
+ *  A reason and not a yes, because one of the three is drawn at some sizes and
+ *  not others: on a screen that is both wide and tall the toolbar carries the
+ *  order itself and the sort row below stands down (SORT_ROW_HIDDEN), so a
+ *  sheet held open by `order` alone opens there on a title, a footer, and a
+ *  body holding the Kje row or nothing at all, depending on whether the
+ *  dataset has shelters to choose between. The caller stands the trigger down
+ *  on the same query instead, in CSS (animal-filters.tsx).
  *
  *  `order` is tried last, and the order of the returns below is the contract
  *  rather than a style: a sheet with anything else in it keeps its trigger at
- *  every width, so only the answer that runs out at md may be the one given.
- *  A clause inserted above it changes which states lose their button. */
+ *  every size, so only the answer that runs out may be the one given. A clause
+ *  inserted above it changes which states lose their button. */
 type FilterSheetReason = "sections" | "undo" | "order";
 
 export function filterSheetReason({
@@ -183,13 +195,13 @@ export function FilterSheet({
    *  trigger no longer promises a section the sheet does not have. */
   activeCount: number;
   resultCount: number;
-  /** Sorting is offered here on a phone, and below md it is offered nowhere
+  /** Sorting is offered here on a phone, and on a phone it is offered nowhere
    *  else. It is not a filter and does not join `Filters` (lib/sort.ts keeps
    *  the two apart on purpose, since one orders the list the other has
    *  already matched); what it shares with them is the sheet, because on a
    *  phone the sheet is the one surface a visitor can always reach to change
-   *  what the grid shows. From md the toolbar has the room for the control
-   *  and the row below stands down. */
+   *  what the grid shows. On a screen wide and tall enough for the toolbar to
+   *  pin the control, the row below stands down (SORT_ROW_HIDDEN). */
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   /** The way from the species pill back to every species. The pill is the
@@ -200,7 +212,7 @@ export function FilterSheet({
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
   /** Merged onto the trigger, which is all this component draws until it is
-   *  opened. The dock passes the width at which the sheet has nothing left in
+   *  opened. The dock passes the query on which the sheet has nothing left in
    *  it (animal-filters.tsx); the content is portalled to <body> and takes
    *  none of it. */
   className?: string;
@@ -343,7 +355,10 @@ export function FilterSheet({
               copy in here would be the same control twice on one screen. The
               header's own pb-3 is what sits under the title once the pair is
               gone. The sheet is only reachable below lg, so this is the
-              md-to-lg band and nothing else.
+              md-to-lg band, less the landscape phones in it: under 32rem of
+              height that toolbar stops pinning and scrolls away with the page
+              (SORT_ROW_HIDDEN says what that measured), so 844x390 and
+              932x430 keep the pair in here.
 
               It shared the title's row for one pass and could not: the close
               button is absolutely positioned in that corner at 44px, and the

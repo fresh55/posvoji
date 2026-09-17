@@ -559,12 +559,19 @@ export function AnimalCard({
           </span>
           {/* The chevron appears when a pointer or the keyboard is already
               on the card. At rest the muted line is enough on its own, now
-              that the house that used to sit beside it is gone, and on
-              touch, where hover never fires, the whole row is the
-              affordance. */}
+              that the house that used to sit beside it is gone.
+
+              Except on a coarse pointer, where it is drawn the whole time.
+              The row is the target, but hover never fires on a thumb, so
+              everything that answered for this line on a desktop answered for
+              nothing on a phone: 12px of muted text 6px under the meta line,
+              with no mark on the card saying that this one line leaves for
+              another page while everything above it opens the animal. The
+              same 60% the hover draws, so it is one mark in two places rather
+              than a phone treatment of its own. */}
           <ChevronRight
             aria-hidden
-            className="ml-auto mt-0.5 size-3 shrink-0 opacity-0 transition-opacity group-hover/card:opacity-60 group-focus-within/card:opacity-60"
+            className="ml-auto mt-0.5 size-3 shrink-0 opacity-0 transition-opacity pointer-coarse:opacity-60 group-hover/card:opacity-60 group-focus-within/card:opacity-60"
           />
         </a>
       ) : (

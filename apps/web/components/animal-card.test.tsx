@@ -408,6 +408,32 @@ describe("AnimalCard shelter line", () => {
     expect(opened).toEqual([]);
   });
 
+  it("marks the direction on a coarse pointer, where hover never fires", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    // jsdom resolves no media query, so this reads the class list: what is
+    // asserted is that the card renders the rule. On a phone the chevron was
+    // the only thing saying that this line leaves the page, and it was gated
+    // on a hover that a thumb never fires.
+    const chevron = screen
+      .getByRole("link", { name: "Test" })
+      .querySelector("svg");
+    expect(chevron?.getAttribute("class")).toContain("pointer-coarse:opacity-60");
+    // The same 60% the hover draws, not a treatment of its own.
+    expect(chevron?.getAttribute("class")).toContain(
+      "group-hover/card:opacity-60",
+    );
+  });
+
   it("keeps the link inside the English tree of pages", () => {
     render(
       <I18nProvider locale="en">

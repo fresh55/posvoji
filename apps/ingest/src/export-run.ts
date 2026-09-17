@@ -351,7 +351,7 @@ export async function runExport(
     // One line for every provider the schedule held back with a check still
     // inside its interval. A skip that is not backed by such a check is in
     // failed instead and has already warned for itself.
-    const notDue = scheduleSkips.filter((skip) => !skip.stale);
+    const notDue = scheduleSkips.filter((skip) => skip.reason === null);
     if (notDue.length > 0) {
       logger.log(
         `schedule: ${notDue.length} provider(s) not due: ` +

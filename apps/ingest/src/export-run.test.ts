@@ -328,15 +328,12 @@ describe("the export command's production pipeline", () => {
       .map(([line]) => String(line))
       .filter((line) => line.startsWith("schedule:"));
     expect(notDue).toHaveLength(1);
-    expect(notDue[0]).toContain("test-shelter");
-    expect(notDue[0]).toContain("not due");
-    expect(notDue[0]).toMatch(/next \d{4}-\d{2}-\d{2}T[\d:.]+Z/);
+    expect(notDue[0]).toMatch(
+      /^schedule: 1 provider\(s\) not due: test-shelter \(next \d{4}-\d{2}-\d{2}T[\d:.]+Z\)$/,
+    );
     expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
       expect.stringContaining("schedule:"),
     );
-    expect(
-      log.mock.calls.filter(([line]) => String(line).includes("not due until")),
-    ).toEqual([]);
   });
 
   it("carries a provider held off by a recorded attempt alone forward as degraded", async () => {
@@ -394,9 +391,8 @@ describe("the export command's production pipeline", () => {
     );
 
     // A minute past it the provider is due again. Stamping the attempt at the
-    // end of the crawl would hold it off until 23:30 instead and report the
-    // skip as stale, because the check it is measured against is 12h old by
-    // then.
+    // end of the crawl would hold it off until 23:30 instead, and the skip
+    // would then be the attempt's doing rather than the check's.
     clock = checkedAt + interval + 60000;
     const due = await runExport({}, h.services);
     expect(due.exitCode).toBe(0);
@@ -408,8 +404,8 @@ describe("the export command's production pipeline", () => {
 
   // A failed attempt is only ever recorded for a provider the schedule
   // admitted, so its last successful check is already at least an interval old
-  // when it is written. Every skip a failed attempt causes is therefore stale,
-  // and this is what that looks like.
+  // when it is written. Every skip a failed attempt causes therefore degrades
+  // the run, and this is what that looks like.
   it("is degraded when a failed attempt holds off a provider whose check has aged out", async () => {
     const h = harness();
     await runExport({}, h.services);

@@ -14,13 +14,18 @@ it("persists recorded attempts, including failures, and admits at the exact inte
   const root = directory();
   let at = Date.parse("2026-09-01T06:00:00Z");
   const now = () => new Date(at);
-  expect(new CrawlSchedule(root, now).admit(policy)).toBe(true);
+  expect(new CrawlSchedule(root, now).check(policy)).toEqual({ admit: true });
   // What a failed crawl leaves behind: an attempt and no observation.
-  new CrawlSchedule(root, now).record(policy);
+  new CrawlSchedule(root, now).begin(policy)();
   at += 47 * 3600000;
-  expect(new CrawlSchedule(root, now).admit(policy)).toBe(false);
+  expect(new CrawlSchedule(root, now).check(policy)).toEqual({
+    admit: false,
+    // Only a recorded attempt can hold off a provider we hold no check for.
+    heldBy: "attempt",
+    nextAllowedAt: Date.parse("2026-09-03T06:00:00Z"),
+  });
   at += 3600000;
-  expect(new CrawlSchedule(root, now).admit(policy)).toBe(true);
+  expect(new CrawlSchedule(root, now).check(policy)).toEqual({ admit: true });
 });
 
 // The 2026-09-03 crash: the run died after the schedule had admitted the
@@ -29,20 +34,29 @@ it("persists recorded attempts, including failures, and admits at the exact inte
 it("records nothing for a run that dies between the check and the crawl", () => {
   const root = directory();
   const at = Date.parse("2026-09-01T06:00:00Z");
-  expect(new CrawlSchedule(root, () => new Date(at)).admit(policy)).toBe(true);
+  expect(new CrawlSchedule(root, () => new Date(at)).check(policy).admit).toBe(true);
   expect(existsSync(join(root, "crawl-schedule.json"))).toBe(false);
   const hourLater = new CrawlSchedule(root, () => new Date(at + 3600000));
-  expect(hourLater.admit(policy)).toBe(true);
-  hourLater.record(policy);
+  expect(hourLater.check(policy).admit).toBe(true);
+  // Beginning the crawl writes nothing. Only the recorder does.
+  const attempt = hourLater.begin(policy);
+  expect(existsSync(join(root, "crawl-schedule.json"))).toBe(false);
+  attempt();
   expect(existsSync(join(root, "crawl-schedule.json"))).toBe(true);
-  expect(new CrawlSchedule(root, () => new Date(at + 2 * 3600000)).admit(policy)).toBe(false);
+  expect(new CrawlSchedule(root, () => new Date(at + 2 * 3600000)).check(policy).admit).toBe(false);
 });
 
 it("uses saved observations on upgrade and respects a widened policy interval", () => {
   const at = "2026-09-03T06:00:00Z";
   const schedule = new CrawlSchedule(directory(), () => new Date(at));
-  expect(schedule.admit(policy, "2026-09-02T06:00:00Z")).toBe(false);
-  expect(schedule.admit({ ...policy, crawl: { ...policy.crawl, intervalHours: 12 } }, "2026-09-02T06:00:00Z")).toBe(true);
+  expect(schedule.check(policy, "2026-09-02T06:00:00Z")).toEqual({
+    admit: false,
+    // The check is what is holding it off, so the skip is the interval doing
+    // its job.
+    heldBy: "check",
+    nextAllowedAt: Date.parse("2026-09-04T06:00:00Z"),
+  });
+  expect(schedule.check({ ...policy, crawl: { ...policy.crawl, intervalHours: 12 } }, "2026-09-02T06:00:00Z").admit).toBe(true);
 });
 
 it("rejects corrupt scheduling state instead of resetting permission limits", () => {

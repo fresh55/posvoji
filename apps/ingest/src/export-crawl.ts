@@ -22,27 +22,32 @@ import {
 /** A provider its schedule held back this run. */
 export interface SkippedProvider {
   providerId: string;
-  // The last successful check we hold for it, null when we hold none.
-  checkedAt: string | null;
   nextAllowedAt: string;
-  // True when the skip is not backed by a check inside the provider's own
-  // interval, which means a recorded attempt alone is holding it off.
-  stale: boolean;
-  // The instant `stale` was decided on. Reporting reads the age of the check
-  // from here rather than from a later clock, so the age it prints is the one
-  // the decision was made on.
-  decidedAt: number;
+  // Null when the interval is doing its job and the run stays clean. Otherwise
+  // the whole sentence to warn with, built where the skip was decided so that
+  // the age it quotes is the one the decision was made on.
+  reason: string | null;
 }
 
-/** How old the last successful check of a skipped provider is, in words. */
-function lastCheck(skip: SkippedProvider, intervalHours: number): string {
-  if (!skip.checkedAt) return "no successful check of it was ever recorded";
-  const hours = Math.round(
-    (skip.decidedAt - Date.parse(skip.checkedAt)) / 3600000,
-  );
+/**
+ * Why a provider held off by a recorded attempt alone leaves the run degraded,
+ * as one sentence. `decidedAt` is the instant the skip was decided on.
+ */
+function heldOffByAttempt(
+  policy: ProviderPolicy,
+  nextAllowedAt: string,
+  checkedAt: string | null,
+  decidedAt: number,
+): string {
+  const lastCheck = checkedAt
+    ? `its last successful check was ${checkedAt}, ` +
+      `${Math.round((decidedAt - Date.parse(checkedAt)) / 3600000)}h ago, ` +
+      `longer than its ${policy.crawl.intervalHours}h interval`
+    : "no successful check of it was ever recorded";
   return (
-    `its last successful check was ${skip.checkedAt}, ${hours}h ago, ` +
-    `longer than its ${intervalHours}h interval`
+    `schedule: ${policy.providerId} is held off until ${nextAllowedAt} by a ` +
+    `recorded attempt, but ${lastCheck}. Its previous records were carried ` +
+    `forward and this run is not a clean one.`
   );
 }
 
@@ -119,27 +124,22 @@ export async function crawlProviders({
       return resumed;
     }
     const checkedAt = snapshotReferences[policy.providerId]?.checkedAt;
-    if (!schedule.admit(policy, checkedAt)) {
-      const interval = policy.crawl.intervalHours * 3600000;
-      const observed = checkedAt ? Date.parse(checkedAt) : null;
-      const decidedAt = services.now().getTime();
-      // No tolerance is needed, because the two tests agree by arithmetic.
-      // Being here means `now < max(attempted, observed) + interval`, and an
-      // attempt is stamped with the start of its crawl, so a crawl that
-      // observed the source has `attempted <= observed` and the skip means
-      // `now - observed < interval`. What is left over is a skip whose
-      // attempt outruns its observation, which is a crawl that failed or
-      // never ran, and that is what `stale` is here to name.
-      const stale = observed === null || decidedAt - observed > interval;
+    const verdict = schedule.check(policy, checkedAt);
+    if (!verdict.admit) {
+      const nextAllowedAt = new Date(verdict.nextAllowedAt).toISOString();
       return {
         skipped: {
           providerId: policy.providerId,
-          checkedAt: checkedAt ?? null,
-          nextAllowedAt: new Date(
-            schedule.nextAllowedAt(policy, checkedAt),
-          ).toISOString(),
-          stale,
-          decidedAt,
+          nextAllowedAt,
+          reason:
+            verdict.heldBy === "check"
+              ? null
+              : heldOffByAttempt(
+                  policy,
+                  nextAllowedAt,
+                  checkedAt ?? null,
+                  services.now().getTime(),
+                ),
         },
       };
     }
@@ -149,15 +149,9 @@ export async function crawlProviders({
     //
     // The attempt is recorded after the fetch settles, not before it, and a
     // throw records it too. The mass-removal guard below runs after the fetch
-    // as well, so its throw also counts as an attempt.
-    //
-    // It is stamped with the start of the crawl, not with the moment it
-    // settled. The listing check is taken right after discovery, so an attempt
-    // stamped at the end would postdate the check by the whole detail phase.
-    // The next run would then hold the provider off past its own interval,
-    // read that skip as stale, and walk the provider's crawl time forward by a
-    // detail phase every interval.
-    const startedAt = services.now().getTime();
+    // as well, so its throw also counts as an attempt. The schedule stamps it
+    // with this moment, the start of the crawl, and explains why there.
+    const attempt = schedule.begin(policy);
     let result: ProviderCrawlResult;
     try {
       result = await crawlProviderIncrementally(provider, ctx, {
@@ -166,7 +160,7 @@ export async function crawlProviders({
         now: services.now,
       });
     } finally {
-      schedule.record(policy, startedAt);
+      attempt();
     }
     const policyMap = new Map([[policy.providerId, policy]]);
     result.animals = applyAllowedFields(
@@ -197,8 +191,8 @@ export async function crawlProviders({
     // previous dataset.
     crawled: Set<string>;
     failed: string[];
-    // Providers the schedule held back, fresh and stale alike. A stale one is
-    // in failed as well.
+    // Providers the schedule held back. One whose skip carries a reason is in
+    // failed as well.
     skipped: SkippedProvider[];
     // Animals a finished provider could not refresh. Their previous record was
     // carried forward where we held one; where we did not, the listing was
@@ -256,15 +250,9 @@ export async function crawlProviders({
           // clean. One held off by a recorded attempt alone is shipping
           // records nobody has checked since before its interval, which is the
           // same outcome as a failed crawl and takes the same path.
-          if (skip.stale) {
+          if (skip.reason !== null) {
             failed.push(providerId);
-            logger.warn(
-              `schedule: ${providerId} is held off until ${skip.nextAllowedAt} by a ` +
-                `recorded attempt, but ` +
-                `${lastCheck(skip, policy.crawl.intervalHours)}. ` +
-                `Its previous records were carried forward and this run is not a ` +
-                `clean one.`,
-            );
+            logger.warn(skip.reason);
           }
           continue;
         }

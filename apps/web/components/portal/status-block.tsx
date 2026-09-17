@@ -6,7 +6,7 @@ import { statusOf } from "@/components/portal/animal-meta";
 import { RevertButton } from "@/components/portal/override-mark";
 import { portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import type {
   PortalAnimal,
   PortalAnimalPatch,

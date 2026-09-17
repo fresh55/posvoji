@@ -355,11 +355,10 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          {/* The complement of SORT_ROW_HIDDEN, and written out rather than
-              derived from it: Tailwind reads class names out of the source as
-              literals, so a string built from another one is a class it never
-              generates. On the control itself, the way the sheet's copy
-              wears md:hidden, rather than a box around it. The trigger's own
+          {/* From md there is room for sorting beside the species strip.
+              The sheet also keeps a copy on short landscape screens, because
+              this toolbar scrolls away there. On the control itself rather
+              than a box around it: the trigger's own
               base is flex (ui/select.tsx), so a wrapper turning it back on at
               md with md:block would have flattened its icon, label and
               chevron into a stack. shrink-0 because the strip beside it is
@@ -527,6 +526,7 @@ export function AnimalFilters({
               onToggleProperty={onToggleProperty}
               onToggleManyProperties={onToggleManyProperties}
               onClearAll={onClearAll}
+              undo={undo}
             />
           )}
           {shelters && (

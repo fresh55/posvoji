@@ -35,6 +35,7 @@ const SHELTER = {
   website: "https://www.zavetisce-malahisa.si/",
   email: "info@zavetisce-malahisa.si",
   phone: "031 732 700",
+  hours: "Pon–pet 8.30–12.30",
 };
 
 // The other end of the register: an entry with no animals on the site and no
@@ -116,6 +117,13 @@ function hero(container: HTMLElement) {
 // (shelter-card.tsx), and a reader who scanned the card and then opened the
 // page meets the same three in the same order, named the same way.
 describe("the shelter page's contacts", () => {
+  it.each(["sl", "en"] as const)("prints recorded hours, in their source language, for %s", (locale) => {
+    const { container } = render(<ShelterDetailPage locale={locale} slug={SHELTER.id} />);
+    const hours = container.querySelector("[data-shelter-hours]");
+    expect(hours?.textContent).toContain(getMessages(locale).muniHours);
+    expect(hours?.querySelector('[lang="sl"]')?.textContent).toBe(SHELTER.hours);
+  });
+
   it("puts the channel in front of each value and the site last", () => {
     const { container } = render(
       <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
@@ -163,6 +171,7 @@ describe("the shelter page's contacts", () => {
     // Not merely empty: an empty flex row still takes a gap out of the stack
     // above it, which prints as a hole under the name.
     expect(container.querySelectorAll("a[data-contact]")).toHaveLength(0);
+    expect(container.querySelector("[data-shelter-hours]")).toBeNull();
     expect(container.querySelector("h1")?.textContent).toBe(BARE.name);
   });
 });

@@ -20,7 +20,7 @@ import { m, useReducedMotion } from "motion/react";
 import dynamic from "next/dynamic";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { fill, portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {

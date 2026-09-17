@@ -48,6 +48,7 @@ import {
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
 import { SOURCE_LINK } from "@/lib/link-styles";
+import { sheltersIndexPath } from "@/lib/shelter-path";
 
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
@@ -188,7 +189,7 @@ export function MunicipalityFinder({
   entries: LookupEntry[];
   onAnswer: (answer: FinderAnswer | null) => void;
 }) {
-  const { messages, t } = useI18n();
+  const { locale, messages, t } = useI18n();
   // What the box holds and which občina is settled, as one value: they change
   // together every time. Typing is a new question and drops the pick, and a
   // pick keeps the text that produced it, so two useStates only ever risked
@@ -758,6 +759,15 @@ export function MunicipalityFinder({
             </span>
           ) : null}
         </p>
+
+        {noMatch && (
+          <a
+            href={sheltersIndexPath(locale)}
+            className="inline-flex min-h-11 items-center self-start text-sm underline underline-offset-4 hover:text-muted-foreground"
+          >
+            {messages.shelters}
+          </a>
+        )}
 
         {state.status === "error" && (
           <div className="space-y-2">

@@ -31,7 +31,10 @@ export function PortalShell({
         {/* The same shape as site-shell.tsx: a full-width column, a header
             band whose rule runs edge to edge, the page frame around the main,
             and the footer band under it. */}
-        <div className="flex min-h-dvh flex-col">
+        <div
+          data-portal-shell
+          className="flex min-h-dvh flex-col has-[[data-save-bar]]:max-lg:pb-[var(--portal-save-bar-height,calc(4.5rem+env(safe-area-inset-bottom,0px)))]"
+        >
           <header className="border-b">
           <div className="relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-3 px-gutter py-4">
             {/* The public header's bypass, spelled again here because this

@@ -332,10 +332,8 @@ export function LocationScopeRow({
                 {t("originFrom", { place: origin.place })}
               </span>
             )}
-            {/* Not a chevron: nothing folds open here, a full-screen map does.
-                The pin is the mark every picked shelter already wears on its
-                chip, and the word beside it says where the press goes, which a
-                bare expand glyph left to be guessed. */}
+            {/* The picker opens its list first on a phone and its map on a
+                wide screen. Name the choice instead of promising one view. */}
             <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden />
               {messages.mapCaption}

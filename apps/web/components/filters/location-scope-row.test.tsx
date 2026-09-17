@@ -385,7 +385,7 @@ describe("Kje row invitation", () => {
     render(sidebarElement([]));
     const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
 
-    expect(trigger.textContent).toContain("Izberi zavetišča na zemljevidu");
+    expect(trigger.textContent).toContain("Izberi zavetišča");
   });
 
   it("drops the invitation once a shelter is picked", () => {
@@ -399,11 +399,11 @@ describe("Kje row invitation", () => {
     render(sidebarElement([]));
     const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
 
-    const caption = within(trigger).getByText("Zemljevid");
+    const caption = within(trigger).getByText("Izberi");
     expect(caption.querySelector("svg")).not.toBeNull();
     // The aria contract is the button's own label; the caption and its glyph
     // are decoration inside it.
-    expect(trigger.getAttribute("aria-label")).toContain("Odpri zemljevid");
+    expect(trigger.getAttribute("aria-label")).toContain("Izberi zavetišča");
   });
 });
 
@@ -498,17 +498,17 @@ describe("Kje row folded onto one line in the sheet", () => {
     const row = await sheetRow();
 
     expect(row.textContent).toContain("Vsa zavetišča");
-    expect(within(row).getByText("Zemljevid")).toBeTruthy();
+    expect(within(row).getByText("Izberi")).toBeTruthy();
     // The only line the row gives up. It does not fit beside the caption
     // either, so the pin and the word are what ask for the map here.
-    expect(row.textContent).not.toContain("Izberi zavetišča na zemljevidu");
+    expect(row.textContent).not.toContain("Izberi zavetišča");
   });
 
   it("keeps everything the press promises", async () => {
     const row = await sheetRow();
 
     expect(row.getAttribute("aria-haspopup")).toBe("dialog");
-    expect(row.getAttribute("aria-label")).toContain("Odpri zemljevid");
+    expect(row.getAttribute("aria-label")).toContain("Izberi zavetišča");
     // The sheet's row hands the press to the dock's picker, so it is still
     // not the trigger the browser tests locate.
     expect(row.hasAttribute("data-picker-trigger")).toBe(false);

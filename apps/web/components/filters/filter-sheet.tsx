@@ -1,6 +1,6 @@
 "use client";
 
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, Undo2, X } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
@@ -62,14 +62,11 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
-/** The width from which the toolbar carries the order and the sort row in
- *  this sheet stands down (animal-filters.tsx draws the toolbar's copy on the
- *  complementary `max-md:hidden`). Exported because the dock's trigger has to
- *  disappear at exactly the width this row does: a sheet the `order` reason
- *  alone holds open has nothing left in it from here, and the two answering
- *  the same question with two literals is how they drift apart. The same
- *  bargain `DESKTOP_QUERY` strikes in use-desktop-breakpoint-close.ts. */
-export const SORT_ROW_HIDDEN = "md:hidden";
+/** From md the toolbar carries the order, except on short landscape screens
+ *  where that toolbar scrolls away. The sheet keeps sorting reachable there.
+ *  Its order-only trigger uses the same condition so the dock cannot hide the
+ *  only remaining way to change the order. */
+export const SORT_ROW_HIDDEN = "md:not-short:hidden";
 
 /** The caption over the sort row, and the row itself, each resolved once:
  *  every half is a constant, so there is one answer and no reason to ask cn
@@ -167,6 +164,7 @@ export function FilterSheet({
   onToggleProperty,
   onToggleManyProperties,
   onClearAll,
+  undo,
   className,
 }: {
   filters: Filters;
@@ -189,7 +187,8 @@ export function FilterSheet({
    *  already matched); what it shares with them is the sheet, because on a
    *  phone the sheet is the one surface a visitor can always reach to change
    *  what the grid shows. From md the toolbar has the room for the control
-   *  and the row below stands down. */
+   *  and the row below stands down unless the short viewport lets that toolbar
+   *  scroll away. */
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   /** The way from the species pill back to every species. The pill is the
@@ -199,6 +198,8 @@ export function FilterSheet({
    *  open (use-animal-filters.ts). */
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
+  /** The same timed offer as the page row, reachable while this sheet covers it. */
+  undo?: () => void;
   /** Merged onto the trigger, which is all this component draws until it is
    *  opened. The dock passes the width at which the sheet has nothing left in
    *  it (animal-filters.tsx); the content is portalled to <body> and takes
@@ -325,7 +326,8 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
-          {/* Sort on its own full-width row under the title, below md only,
+          {/* Sort on its own full-width row under the title, below md and on
+              short landscape screens,
               and inside the header block rather than the scrolling body, so
               it stays put while the filter list moves under it.
 
@@ -340,7 +342,9 @@ export function FilterSheet({
               From md the toolbar behind this sheet carries the order itself:
               that row is 720px wide at 768 with the tabs ending at 384, so the
               control is on screen and one tap away instead of three, and a
-              copy in here would be the same control twice on one screen. The
+              copy in here would be the same control twice on one screen. On
+              short landscape screens that toolbar scrolls away, so this row
+              remains available through the fixed dock. The
               header's own pb-3 is what sits under the title once the pair is
               gone. The sheet is only reachable below lg, so this is the
               md-to-lg band and nothing else.
@@ -460,6 +464,7 @@ export function FilterSheet({
             onToggleProperty={onToggleProperty}
             onToggleManyProperties={onToggleManyProperties}
             layout="sheet"
+            collapsible
           />
         </div>
 
@@ -467,14 +472,20 @@ export function FilterSheet({
           <Button
             variant="ghost"
             className="h-11"
-            disabled={activeCount === 0}
-            onClick={onClearAll}
+            disabled={activeCount === 0 && !undo}
+            onClick={activeCount === 0 && undo ? undo : onClearAll}
+            aria-label={activeCount === 0 && undo ? messages.undoClearFilters : undefined}
           >
             {/* "Počisti filtre" and not "Počisti vse": the species pill on the
                 title line survives this press, and a button that says
                 everything while a dark pill beside it stays put is a button
                 that lies. */}
-            {messages.clearFilters}
+            {activeCount === 0 && undo ? (
+              <>
+                <Undo2 className="size-4" aria-hidden />
+                {messages.undoClear}
+              </>
+            ) : messages.clearFilters}
           </Button>
           <DrawerClose asChild>
             <Button className="h-11 flex-1">

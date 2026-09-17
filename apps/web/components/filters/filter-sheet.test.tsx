@@ -96,7 +96,7 @@ describe("FilterSheet sort caption", () => {
     expect(caption.textContent).toBe(sl.sortCaption);
     // And it leaves at exactly the width the row leaves at, so no label is
     // left standing over a control the toolbar has taken over.
-    expect(caption.className.split(" ")).toContain("md:hidden");
+    expect(caption.className.split(" ")).toContain("md:not-short:hidden");
   });
 
   it("names the control with the caption and the current order", async () => {

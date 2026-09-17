@@ -153,6 +153,32 @@ describe("copying the link", () => {
 });
 
 describe("on a phone", () => {
+  it("offers the existing copy popover after a genuine native-share failure", async () => {
+    phone = true;
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: vi.fn().mockRejectedValue(new DOMException("unavailable", "NotAllowedError")),
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const button = renderButton(2);
+    fireEvent.click(button);
+    const copy = await screen.findByRole("button", { name: "Kopiraj povezavo" });
+    expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo");
+    await act(async () => fireEvent.click(copy));
+    expect(writeText).toHaveBeenCalledWith(`${PAGE}?foto=3`);
+  });
+
+  it("keeps a cancelled native share quiet", async () => {
+    phone = true;
+    const share = vi.fn().mockRejectedValue(new DOMException("cancelled", "AbortError"));
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    const button = renderButton();
+    await act(async () => fireEvent.click(button));
+    expect(share).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Deli to žival")).toBeNull();
+  });
+
   // The platform's sheet lists every app the visitor has, and copying is one
   // of its rows: a popover of our own in front of it was one tap more for
   // less. So the button is the share.

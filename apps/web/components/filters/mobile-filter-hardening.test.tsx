@@ -16,6 +16,7 @@ import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
 import { LocationPicker } from "./location-picker";
 import { SpeciesTabs } from "./species-tabs";
+import { resetFilterSectionsStore } from "./use-filter-sections";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -192,7 +193,7 @@ describe("mobile filter hardening", () => {
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
 
-  it("takes the trigger and the plate away at md, where the order is all the sheet holds", () => {
+  it("hides the order-only trigger at md only while the toolbar stays pinned", () => {
     // The state above, asked the other question. The order is the sheet's one
     // reason to exist here and the toolbar draws the order itself from md, so
     // the trigger stands down at that width rather than opening on a title, a
@@ -202,10 +203,10 @@ describe("mobile filter hardening", () => {
     renderFilters({ ...ORDER_ONLY, ...NO_SHELTERS });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className.split(" ")).toContain("md:hidden");
+    expect(dock?.className.split(" ")).toContain("md:not-short:hidden");
     expect(
       screen.getByRole("button", { name: "Filters" }).className.split(" "),
-    ).toContain("md:hidden");
+    ).toContain("md:not-short:hidden");
   });
 
   it("leaves the picker the whole plate where the order-only sheet stands down at md", () => {
@@ -216,10 +217,10 @@ describe("mobile filter hardening", () => {
     renderFilters(ORDER_ONLY);
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className.split(" ")).not.toContain("md:hidden");
+    expect(dock?.className.split(" ")).not.toContain("md:not-short:hidden");
     expect(
       screen.getByRole("button", { name: "Filters" }).className.split(" "),
-    ).toContain("md:hidden");
+    ).toContain("md:not-short:hidden");
   });
 
   it("keeps the trigger at every width once a filter is on, order or no order", () => {
@@ -235,12 +236,12 @@ describe("mobile filter hardening", () => {
     });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className.split(" ")).not.toContain("md:hidden");
+    expect(dock?.className.split(" ")).not.toContain("md:not-short:hidden");
     expect(
       screen
         .getByRole("button", { name: "Filters, 1 active" })
         .className.split(" "),
-    ).not.toContain("md:hidden");
+    ).not.toContain("md:not-short:hidden");
   });
 
   it("keeps the sheet mounted at zero results while a filter is on", async () => {
@@ -463,6 +464,28 @@ describe("mobile filter hardening", () => {
     ).toBe(false);
   });
 
+  it("folds secondary sheet sections while keeping their selected values in the heading", async () => {
+    window.localStorage.clear();
+    resetFilterSectionsStore();
+    renderSheet({
+      filters: { ...EMPTY_FILTERS, size: ["small"] },
+      groups: [{ group: "size", options: [{ value: "small", label: "Small" }] }],
+      counts: { ...emptyCounts, size: new Map([["small", 3]]) },
+      activeCount: 1,
+      resultCount: 3,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+    const dialog = await screen.findByRole("dialog");
+    const section = within(dialog).getByRole("button", { name: /^Size/ });
+    expect(section.getAttribute("aria-expanded")).toBe("false");
+    expect(section.textContent).toContain("Small");
+    expect(within(dialog).queryByRole("button", { name: /^Small/ })).toBeNull();
+
+    fireEvent.click(section);
+    expect(section.getAttribute("aria-expanded")).toBe("true");
+    expect(within(dialog).getByRole("button", { name: /^Small/ })).toBeTruthy();
+  });
+
   it("keeps the header outside the scrolling body", async () => {
     renderSheet();
 
@@ -476,7 +499,7 @@ describe("mobile filter hardening", () => {
     expect(scrollBody?.contains(header as Node)).toBe(false);
   });
 
-  it("stands the sheet's sort row down from md, where the toolbar carries it", async () => {
+  it("keeps the sheet's sort row on short landscape screens where the toolbar scrolls away", async () => {
     // Below md this row is the only way to change the order; from md the
     // toolbar behind the sheet has 336px spare and carries the same control,
     // and two triggers for one setting on one screen is one too many. jsdom
@@ -487,7 +510,7 @@ describe("mobile filter hardening", () => {
 
     const dialog = await screen.findByRole("dialog");
     const sort = within(dialog).getByRole("combobox");
-    expect(sort.className.split(" ")).toContain("md:hidden");
+    expect(sort.className.split(" ")).toContain("md:not-short:hidden");
   });
 
   it("does not repeat the species tabs inside the sheet", async () => {

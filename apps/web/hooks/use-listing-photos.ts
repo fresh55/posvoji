@@ -4,50 +4,56 @@ import {
 } from "@/components/portal/listing-photo-rules";
 
 import { fill, portalText } from "@/components/portal/portal-text";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import type { PortalListingActions } from "./use-portal-listings";
+import {
+  clearPhotoDraft,
+  movePhotoDraft,
+  nextPhotoDraftKey,
+  readPhotoDraft,
+  readPhotoUpload,
+  setPhotoUpload,
+  subscribePhotoDrafts,
+  updatePhotoDraft,
+  type PhotoDraftScope,
+} from "./portal-photo-drafts";
 
 /** The same cap as PORTAL_MAX_UPLOAD_BYTES in apps/portal. */
 const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 
 /** Owns pending files, retries and the lifetime of every preview URL. */
 export function useListingPhotos({
+  scope,
   listingId,
   actions,
   startSave,
 }: {
+  scope: PhotoDraftScope;
   listingId: string | undefined;
   actions: Pick<PortalListingActions, "uploadPhoto" | "deletePhoto">;
   startSave: () => void;
 }) {
-  const [pending, setPending] = useState<PendingPhoto[]>([]);
-  const [uploading, setUploading] = useState<{
-    index: number;
-    total: number;
-  } | null>(null);
+  const scopeRef = useRef(scope);
+  const snapshot = useCallback(() => readPhotoDraft(scopeRef.current), []);
+  const pending = useSyncExternalStore(subscribePhotoDrafts, snapshot, snapshot);
+  const setPending = (update: (files: PendingPhoto[]) => PendingPhoto[]) =>
+    updatePhotoDraft(scopeRef.current, update);
+  const uploadSnapshot = useCallback(() => readPhotoUpload(scopeRef.current), []);
+  const uploading = useSyncExternalStore(subscribePhotoDrafts, uploadSnapshot, uploadSnapshot);
   /** The sentence beside the photos: a refused file, a failed remove. */
   const [photoError, setPhotoError] = useState<string | null>(null);
   /** The stored photo whose Odstrani is waiting for its second tap. */
   const [removing, setRemoving] = useState<number | null>(null);
-  // Every preview URL still outstanding. Object URLs are not garbage
-  // collected, so each is revoked when its file is stored or dropped, and
-  // whatever is left when the page unmounts.
-  const previews = useRef(new Set<string>());
-  const nextKey = useRef(0);
+  // The queue owns object URLs until save, explicit discard or sign-out.
+  // Unmounting during Back is not a discard.
+  function discardPending() {
+    clearPhotoDraft(scopeRef.current);
+  }
 
-  // Handed back outside React, because that is how they were handed over.
-  useEffect(() => {
-    const held = previews.current;
-    return () => {
-      for (const url of held) URL.revokeObjectURL(url);
-      held.clear();
-    };
-  }, []);
-
-  /** Takes the preview of a file that is stored or dropped back from the browser. */
-  function releasePreview(item: PendingPhoto) {
-    URL.revokeObjectURL(item.previewUrl);
-    previews.current.delete(item.previewUrl);
+  function transferPending(id: string) {
+    const previous = scopeRef.current;
+    scopeRef.current = { ...previous, id };
+    movePhotoDraft(previous, id);
   }
 
   /**
@@ -64,10 +70,15 @@ export function useListingPhotos({
     startSave();
     let failed = false;
     for (const [index, item] of items.entries()) {
-      setUploading({ index: index + 1, total: items.length });
+      // A sign-out or explicit discard may happen during the previous
+      // request. Do not start another upload for work that was given up.
+      if (!readPhotoDraft(scopeRef.current).some((file) => file.key === item.key)) {
+        failed = true;
+        continue;
+      }
+      setPhotoUpload(scopeRef.current, { index: index + 1, total: items.length });
       const photo = await actions.uploadPhoto(listingId, item.file);
       if (photo) {
-        releasePreview(item);
         setPending((current) =>
           current.filter((candidate) => candidate.key !== item.key),
         );
@@ -82,7 +93,7 @@ export function useListingPhotos({
         );
       }
     }
-    setUploading(null);
+    setPhotoUpload(scopeRef.current, null);
     return failed;
   }
 
@@ -104,9 +115,8 @@ export function useListingPhotos({
         rejected ??= fill(portalText.photoTooLarge, { name: file.name });
         continue;
       }
-      const key = nextKey.current++;
+      const key = nextPhotoDraftKey();
       const previewUrl = URL.createObjectURL(file);
-      previews.current.add(previewUrl);
       accepted.push({ key, file, previewUrl, failed: false });
     }
     if (rejected) setPhotoError(rejected);
@@ -130,7 +140,6 @@ export function useListingPhotos({
   }
 
   function dropPending(item: PendingPhoto) {
-    releasePreview(item);
     setPending((current) =>
       current.filter((candidate) => candidate.key !== item.key),
     );
@@ -160,5 +169,7 @@ export function useListingPhotos({
     retry,
     dropPending,
     removePhoto,
+    discardPending,
+    transferPending,
   };
 }

@@ -312,10 +312,10 @@ const sl = {
   // its own says what is in scope but not that the row answers to a press.
   // Gone the moment a shelter is picked: by then the row has been used once and
   // the sentence above carries the state.
-  whereMapInvite: "Izberi zavetišča na zemljevidu",
+  whereMapInvite: "Izberi zavetišča",
   // The word beside the pin at the end of the scope row, naming what the press
   // opens.
-  mapCaption: "Zemljevid",
+  mapCaption: "Izberi",
   close: "Zapri",
   locationOutsideMap:
     "Tvoja lokacija je zunaj zemljevida. Seznam je vseeno razvrščen po bližini.",
@@ -343,7 +343,7 @@ const sl = {
   // two controls one word apart, both on screen at once when a search finds
   // nothing, would be two names for what a screen reader hears as one thing.
   clearField: "Počisti vnos",
-  shelterPickerLabel: "Zavetišče: {label}. Odpri zemljevid.",
+  shelterPickerLabel: "Zavetišče: {label}. Izberi zavetišča.",
   whereSearching: "Kje iščeš?",
   // The chip over the map says the one thing the map alone has to say, and
   // stops. Naming the list as a third way in was a third line of copy about
@@ -762,8 +762,8 @@ const en: Messages = {
   removeFilter: "Remove filter {label}",
   health: "Health",
   where: "Where",
-  whereMapInvite: "Pick shelters on the map",
-  mapCaption: "Map",
+  whereMapInvite: "Pick shelters",
+  mapCaption: "Choose",
   close: "Close",
   locationOutsideMap:
     "Your location is outside the map. The list is still sorted by distance.",
@@ -772,7 +772,7 @@ const en: Messages = {
   placeOrShelter: "Town, postcode or shelter",
   postcodeNotFound: "No such postcode. Check the number.",
   clearField: "Clear input",
-  shelterPickerLabel: "Shelter: {label}. Open map.",
+  shelterPickerLabel: "Shelter: {label}. Pick shelters.",
   whereSearching: "Where are you looking?",
   mapInstructionsDesktop: "Click a region or a shelter",
   mapInstructionsMobile: "Pick a region on the map",

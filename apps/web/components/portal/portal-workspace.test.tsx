@@ -31,6 +31,7 @@ import {
   type PortalShelter,
 } from "@/lib/portal-api";
 import { writeDraft } from "@/lib/portal-drafts";
+import { clearAccountPhotoDrafts, photoDraftIds, updatePhotoDraft } from "@/hooks/portal-photo-drafts";
 
 // Only the calls the workspace makes are stubbed; PortalError and
 // isUnauthorized stay the real ones, because the hooks branch on them.
@@ -68,6 +69,8 @@ beforeEach(() => {
   // A draft outlives the page it was typed on, so every test starts in a tab
   // that has never been used.
   window.sessionStorage.clear();
+  URL.revokeObjectURL = vi.fn();
+  clearAccountPhotoDrafts("info@zavetisce.si");
   vi.mocked(fetchSession).mockReset();
   vi.mocked(fetchAnimals).mockReset();
   vi.mocked(fetchListings).mockReset();
@@ -413,6 +416,23 @@ describe("a shelter that writes its own listings", () => {
       expect(screen.getByRole("heading", { name: "Luna" })).toBeTruthy();
     });
     expect(screen.getByText(portalText.draftBadge)).toBeTruthy();
+  });
+
+  it("offers the new-listing route when only queued photos remain, and clears them on logout", async () => {
+    signIn(MANUAL);
+    vi.mocked(fetchListings).mockResolvedValue([]);
+    updatePhotoDraft(
+      { account: SESSION.email, shelter: MANUAL.slug, id: "nova" },
+      () => [{ key: 1, file: new File(["photo"], "fixture.jpg"), previewUrl: "blob:fixture", failed: false }],
+    );
+    renderWorkspace();
+    const resume = await screen.findByRole("link", { name: portalText.listingResume });
+    expect(resume.getAttribute("href")).toBe("/portal/zival?zavetisce=johanca&nova=1");
+    captureNavigation();
+    fireEvent.click(screen.getByRole("button", { name: portalText.logout }));
+    await waitFor(() => expect(logout).toHaveBeenCalled());
+    expect(photoDraftIds(SESSION.email, MANUAL.slug)).toEqual([]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:fixture");
   });
 
   it("filters the listing cards by name", async () => {

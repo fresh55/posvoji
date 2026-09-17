@@ -1,4 +1,5 @@
 import {
+  Clock,
   ExternalLink,
   Globe,
   Info,
@@ -323,6 +324,16 @@ export function ShelterDetailPage({
                     {messages.contactWebsite}
                   </ContactButton>
                 )}
+              </div>
+            )}
+
+            {shelter.hours && (
+              <div className="flex items-start gap-2 text-sm leading-relaxed" data-shelter-hours>
+                <Clock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <div className="min-w-0">
+                  <p className="font-medium">{messages.muniHours}</p>
+                  <p className="break-words text-muted-foreground" lang="sl">{shelter.hours}</p>
+                </div>
               </div>
             )}
 

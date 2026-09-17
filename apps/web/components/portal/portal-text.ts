@@ -313,6 +313,8 @@ export const portalText = {
   photoAdd: "Dodaj fotografijo",
   photoLimits: "JPG, PNG ali WebP, do 15 MB.",
   photoPending: "Čaka na nalaganje",
+  listingResume: "Nadaljuj novo objavo",
+  photoUnsavedHint: "Te fotografije še niso shranjene. Preden zaprete ali osvežite stran, jih naložite ali odstranite.",
   photoRemove: "Odstrani",
   // The second tap is the confirm. A photo is one file and gets a question on
   // the button itself, not a dialog over the form the shelter is filling in.

@@ -13,7 +13,7 @@ import { ExternalLink, LogOut } from "lucide-react";
 import type { PortalListFilter } from "@/components/portal/list-tools";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import type { PortalListState, PortalSaveState } from "@/hooks/portal-list";
 import {
   usePortalAnimals,
@@ -30,6 +30,7 @@ import {
   type PortalSessionState,
 } from "@/hooks/use-portal-session";
 import { clearAccountDrafts } from "@/lib/portal-drafts";
+import { clearAccountPhotoDrafts } from "@/hooks/portal-photo-drafts";
 import {
   isManualShelter,
   type PortalAnimal,
@@ -279,7 +280,10 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     // The drafts are this account's unsaved work and nobody else's. The next
     // account signed in to this tab must not inherit them, and the shelter
     // asked to leave, so they go before the request that ends the session.
-    if (account) clearAccountDrafts(account);
+    if (account) {
+      clearAccountDrafts(account);
+      clearAccountPhotoDrafts(account);
+    }
     void signOut();
   }, [account, signOut]);
 

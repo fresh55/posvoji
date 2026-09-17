@@ -802,6 +802,28 @@ describe("how much of the grid is drawn", () => {
 });
 
 describe("the chips row inside the grid", () => {
+  it("offers and restores cleared filters inside the still-open mobile sheet", async () => {
+    window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+    renderGrid(ANIMALS);
+    fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Počisti filtre" }));
+    expect(query()).toBe("");
+    const undo = within(dialog).getByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    });
+    expect(undo.hasAttribute("disabled")).toBe(false);
+    expect(undo.closest(".overflow-y-auto")).toBeNull();
+
+    fireEvent.click(undo);
+    expect(query()).toBe("?zavetisce=muri,druga");
+    expect(dialog.getAttribute("data-state")).toBe("open");
+    expect(within(dialog).queryByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    })).toBeNull();
+  });
+
   it("takes a cleared filter state back, and drops the offer once something else is picked", () => {
     vi.useFakeTimers();
     try {

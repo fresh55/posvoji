@@ -20,7 +20,7 @@ const label = {
 export function PrintButton() {
   const { locale } = useI18n();
   return (
-    <Button type="button" size="sm" onClick={() => window.print()}>
+    <Button type="button" size="sm" className="pointer-coarse:min-h-11" onClick={() => window.print()}>
       <Printer aria-hidden />
       {label[locale]}
     </Button>

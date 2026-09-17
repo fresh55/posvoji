@@ -1699,6 +1699,31 @@ describe("animal dialog", () => {
     ).toHaveLength(7);
   });
 
+  it("keeps photo selection focus inside the lightbox and blocks animal page keys until it closes", async () => {
+    window.history.replaceState(null, "", "/?zival=pika");
+    renderGrid([{ ...MANY, intakeDate: "2020-01-01" }, MURI]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(region(dialog, "photo-spread").getByText("1 / 7"));
+    const lightbox = slot(document.body, "photo-lightbox");
+    const tile = within(lightbox).getByRole("button", { name: "Pokaži fotografijo 2" });
+    tile.focus();
+    fireEvent.click(tile);
+    await waitFor(() => expect(document.activeElement).toBe(lightbox));
+    const before = window.location.pathname;
+    fireEvent.keyDown(document.activeElement!, { key: "PageDown" });
+    // Also protect against a focus regression sending the key to the outer layer.
+    fireEvent.keyDown(dialog, { key: "PageDown" });
+    expect(window.location.pathname).toBe(before);
+    expect(lightbox.isConnected).toBe(true);
+    fireEvent.keyDown(lightbox, { key: "ArrowRight" });
+    expect(within(lightbox).getByText("3 / 7")).toBeTruthy();
+    fireEvent.click(within(lightbox).getByRole("button", { name: "Zapri" }));
+    await waitFor(() => expect(lightbox.isConnected).toBe(false));
+    await waitFor(() => expect(window.history.state?.locationPicker).toBeUndefined());
+    fireEvent.keyDown(dialog, { key: "PageDown" });
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(MURI, "sl")));
+  });
+
   // The count used to be a Badge inside the front print's own button, with a
   // click handler on it: a control nested in a control, hidden from assistive
   // technology, and the only way to the contact sheet that a keyboard could

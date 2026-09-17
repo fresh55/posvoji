@@ -66,7 +66,7 @@ export function StatusMenu({
         <button
           type="button"
           className={cn(
-            "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50",
+            "inline-flex h-8 pointer-coarse:min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50",
             status !== null && !inherited
               ? STATUS_META[status].badge
               : // A value the crawl read is not an answer the shelter gave, so

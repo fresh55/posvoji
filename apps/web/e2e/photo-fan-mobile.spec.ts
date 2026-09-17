@@ -1,11 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
+  countControl,
   dialog,
   edgePoint,
   expectPhoto,
   frontPrint,
   KLOPKA,
   KLOPKA_PHOTOS,
+  lightbox,
   openFan,
   otherFan,
   print,
@@ -31,6 +33,62 @@ test("draws the phone fan and not the desktop one", async ({ page }) => {
   // so a phone never carries the desktop stage's prints, images and motion
   // values for nothing.
   await expect(otherFan(page, "phone")).toHaveCount(0);
+});
+
+test("keeps contact-sheet focus and animal navigation inside the lightbox", async ({
+  page,
+}) => {
+  const fan = await openFan(page, KLOPKA, { layout: "phone" });
+  const animalPath = new URL(page.url()).pathname;
+  await countControl(fan).tap();
+  await lightbox(page).getByRole("button", { name: "Pokaži fotografijo 2", exact: true }).tap();
+
+  await expect(lightbox(page)).toBeFocused();
+  await page.keyboard.press("PageDown");
+  await page.keyboard.press("PageUp");
+  await expect(lightbox(page)).toBeVisible();
+  await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`2 / ${KLOPKA_PHOTOS}`);
+  expect(new URL(page.url()).pathname).toBe(animalPath);
+  await page.keyboard.press("ArrowRight");
+  await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+});
+
+test("enlarges the standalone photo and shares its current selection after native failure", async ({
+  page,
+}) => {
+  // A rejected native sheet must reveal the ordinary sharing controls. A
+  // real sheet would leave the browser process and cannot be driven here.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async () => {
+        throw new DOMException("The share target is unavailable", "NotAllowedError");
+      },
+    });
+  });
+  await openFan(page, KLOPKA, { layout: "phone" });
+  const path = new URL(page.url()).pathname;
+  await page.goto(`${path}?foto=2`);
+  await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`2 / ${KLOPKA_PHOTOS}`);
+  await expect(page.locator('[data-slot="photo-fan"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "Odpri fotografijo 2 čez cel zaslon" }).tap();
+  await expect(lightbox(page)).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+  await page.keyboard.press("Escape");
+  await expect(lightbox(page)).toBeHidden();
+  await expect(page.getByRole("button", { name: "Odpri fotografijo 3 čez cel zaslon" })).toBeFocused();
+  await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+  await page.getByRole("button", { name: "Deli", exact: true }).tap();
+  await expect(page.getByRole("textbox", { name: "Povezava" })).toHaveValue(/\?foto=3$/);
+  await expect(page.getByRole("status").filter({ hasText: "Deljenje ni uspelo" })).toBeVisible();
+  const copy = page.getByRole("button", { name: "Kopiraj povezavo" });
+  // The popover scales in; measure its settled touch target.
+  await expect.poll(async () => (await copy.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(44);
+  await expect.poll(async () => (await copy.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  // Gallery changes remain local; sharing selects the current photograph
+  // without adding a history entry for each swipe.
+  await expect(page).toHaveURL(new RegExp(`${path}\\?foto=2$`));
 });
 
 test("turns one photo on a touch swipe", async ({ page }) => {
@@ -173,6 +231,39 @@ test.describe("under real touch points", () => {
     ({ browserName }) => browserName !== "chromium",
     "the touch points are dispatched over a CDP session, which is Chromium only",
   );
+
+  test("steps the standalone gallery with reduced motion without opening the viewer", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openFan(page, KLOPKA, { layout: "phone" });
+    const path = new URL(page.url()).pathname;
+    await page.goto(`${path}?foto=2`);
+    const frame = page.locator('[data-slot="photo-frame"]');
+    await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`2 / ${KLOPKA_PHOTOS}`);
+    const box = await frame.boundingBox();
+    if (!box) throw new Error("the standalone photograph has no touch surface");
+    const cdp = await page.context().newCDPSession(page);
+    await dragTouch(
+      page,
+      cdp,
+      { x: box.x + box.width * 0.75, y: box.y + box.height / 2 },
+      { x: box.x + box.width * 0.25, y: box.y + box.height / 2 },
+    );
+    await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+    await expect(lightbox(page)).toBeHidden();
+  });
+
+  test("steps the fan with reduced motion through the same touch gesture", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const fan = await openFan(page, KLOPKA, { layout: "phone" });
+    const path = await swipePath(fan);
+    const cdp = await page.context().newCDPSession(page);
+    await dragTouch(page, cdp, { x: path.from, y: path.y }, { x: path.to, y: path.y });
+    await expectPhoto(fan, 2, KLOPKA_PHOTOS);
+  });
 
   test("turns one photo on a one-finger swipe", async ({ page }) => {
     const fan = await openFan(page, KLOPKA, { layout: "phone" });

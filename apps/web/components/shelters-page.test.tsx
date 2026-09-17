@@ -50,6 +50,9 @@ describe("shelter directory context", () => {
     const census = screen.getByRole("list", { name: label });
     expect(within(census).getAllByRole("listitem").map(item => item.textContent)).toEqual(counts);
     expect(screen.getByRole("link", { name: lookup }).getAttribute("href")).toBe(href);
+    const main = within(screen.getByRole("main"));
+    expect(main.getByRole("link", { name: "info@posvoji.si" }).getAttribute("href")).toBe("mailto:info@posvoji.si");
+    expect(main.queryByRole("link", { name: /GitHub/ })).toBeNull();
   });
 
   it.each([null, { animals: [] }])("keeps the directory when no animal listings are available: %s", dataset => {

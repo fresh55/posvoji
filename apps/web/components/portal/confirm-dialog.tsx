@@ -58,8 +58,8 @@ export function ConfirmDialog({
         {/* Reversed, so the safe answer is both the rightmost button and the
             one the dialog opens focused on. */}
         <div className="flex flex-row-reverse gap-2">
-          <AlertDialogCancel variant="default">{keepLabel}</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+          <AlertDialogCancel variant="default" className="pointer-coarse:min-h-11">{keepLabel}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm} className="pointer-coarse:min-h-11">
             {confirmLabel}
           </AlertDialogAction>
         </div>

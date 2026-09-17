@@ -43,6 +43,7 @@ const shareText = {
     copied: "Kopirano",
     email: "E-pošta",
     more: "Več",
+    failed: "Deljenje ni uspelo. Povezavo lahko kopirate.",
     invite: (name: string) => `${name} išče dom`,
   },
   en: {
@@ -52,6 +53,7 @@ const shareText = {
     copied: "Copied",
     email: "Email",
     more: "More",
+    failed: "Sharing failed. You can copy the link instead.",
     invite: (name: string) => `${name} is looking for a home`,
   },
 } satisfies Record<Locale, Record<string, unknown>>;
@@ -156,6 +158,8 @@ export function ShareButton({
   const { locale, messages } = useI18n();
   const text = shareText[locale];
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [nativeFailed, setNativeFailed] = useState(false);
   const linkField = useRef<HTMLInputElement>(null);
   // Whether the platform has a share sheet never changes while the page is
   // open, but the prerendered HTML cannot know it. Read as a client snapshot
@@ -211,8 +215,18 @@ export function ShareButton({
       // nothing about the animal it opens. The web share endpoints in the
       // popover already carry the same sentence.
       await navigator.share?.({ title: invite, text: invite, url });
-    } catch {
-      // A cancelled share sheet is not a failure worth reporting.
+    } catch (error) {
+      // DOMException is not an Error in every browser realm.
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "name" in error &&
+        error.name === "AbortError"
+      ) {
+        return;
+      }
+      setNativeFailed(true);
+      setOpen(true);
     }
   }
 
@@ -231,16 +245,16 @@ export function ShareButton({
       size="icon-sm"
       aria-label={messages.share}
       className={cn("size-11 sm:size-8 pointer-coarse:size-11", className)}
-      onClick={phone && canShare ? shareNatively : undefined}
+      onClick={phone && canShare && !nativeFailed ? shareNatively : undefined}
     >
       <Share2 aria-hidden />
     </Button>
   );
 
-  if (phone && canShare) return trigger;
+  if (phone && canShare && !nativeFailed) return trigger;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
         <p className="text-sm font-medium">{text.heading}</p>
@@ -264,7 +278,7 @@ export function ShareButton({
           >
             <Mail className="size-4" aria-hidden />
           </Target>
-          {canShare && (
+          {canShare && !nativeFailed && (
             <Target label={text.more} onClick={shareNatively}>
               <MoreHorizontal className="size-4" aria-hidden />
             </Target>
@@ -287,6 +301,7 @@ export function ShareButton({
             onClick={copy}
             aria-label={copied ? text.copied : text.copy}
             className={cn(
+              "pointer-coarse:size-11",
               copied &&
                 "border-brand-border bg-brand text-brand-foreground",
             )}
@@ -306,7 +321,7 @@ export function ShareButton({
           aria-atomic="true"
           className="min-h-4 text-center text-xs text-brand-strong"
         >
-          {copied ? messages.linkCopied : null}
+          {copied ? messages.linkCopied : nativeFailed ? text.failed : null}
         </p>
       </PopoverContent>
     </Popover>

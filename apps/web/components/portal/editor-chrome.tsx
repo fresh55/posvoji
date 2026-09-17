@@ -1,10 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { ChevronRight, LoaderCircle, RotateCcw, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
 
 // The frame both editor pages draw around their form. A crawled animal and a
@@ -107,8 +107,31 @@ export function EditorSaveBar({
   error?: ReactNode;
   onCancel: () => void;
 }) {
+  const barRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const shell = bar?.closest<HTMLElement>("[data-portal-shell]");
+    if (!bar || !shell) return;
+    // The clearance belongs after the footer, and includes a wrapped error
+    // message and the phone's safe area, not just the buttons' normal height.
+    const measure = () => {
+      const height = bar.getBoundingClientRect().height;
+      if (height > 0) shell.style.setProperty("--portal-save-bar-height", `${height}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(bar);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      shell.style.removeProperty("--portal-save-bar-height");
+    };
+  }, []);
+
   return (
     <div
+      ref={barRef}
       data-save-bar
       className="space-y-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2"
     >

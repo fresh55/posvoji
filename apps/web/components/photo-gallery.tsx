@@ -305,6 +305,9 @@ type PhotoGalleryProps = {
   onIndexChange?: (index: number) => void;
   /** Activate the position live region when a parent changes a controlled index. */
   announceChanges?: boolean;
+  /** The standalone page can enlarge the current photo without opening an animal. */
+  onOpenPhoto?: (origin: DOMRect) => void;
+  showCount?: boolean;
   /** Above-the-fold cards, so the largest image on screen is not lazy. */
   eager?: boolean;
   /** Serve the AVIF sibling of the photo where ingest derived one. See
@@ -332,6 +335,8 @@ export function PhotoGallery({
   index,
   onIndexChange,
   announceChanges = false,
+  onOpenPhoto,
+  showCount = false,
   eager = false,
   avif = false,
 }: PhotoGalleryProps) {
@@ -451,7 +456,7 @@ export function PhotoGallery({
 
   // Home and End as well as the arrows: the longest gallery in the register
   // runs to fourteen photos, which is a long walk one key at a time.
-  function stepPhoto(event: KeyboardEvent<HTMLDivElement>) {
+  function stepPhoto(event: KeyboardEvent<HTMLElement>) {
     if (!keyboardGallery) return;
     if (event.key === "ArrowLeft") changeImage(-1);
     else if (event.key === "ArrowRight") changeImage(1);
@@ -499,7 +504,7 @@ export function PhotoGallery({
 
   function moveSwipe(event: PointerEvent<HTMLElement>) {
     const start = swipeStart.current;
-    if (!start || shouldReduceMotion) return;
+    if (!start) return;
     if (event.pointerId !== activePointer.current) return;
 
     const distanceX = event.clientX - start.x;
@@ -514,7 +519,7 @@ export function PhotoGallery({
       // fetching. This is the first moment anything says so.
       if (axis.current === "x") preloadAdjacent(imageIndex);
     }
-    if (axis.current !== "x") return;
+    if (axis.current !== "x" || shouldReduceMotion) return;
 
     const clamped = Math.max(-start.width, Math.min(start.width, distanceX));
     setDragOffset(clamped);
@@ -550,6 +555,12 @@ export function PhotoGallery({
   function handleSwipeCancel() {
     suppressImageLink.current = false;
     endGesture();
+  }
+
+  function handleLostPointerCapture(event: PointerEvent<HTMLElement>) {
+    // The browser implicitly releases capture after pointerup. That is not
+    // a cancellation: keep the completed swipe's compatibility click blocked.
+    if (activePointer.current === event.pointerId) handleSwipeCancel();
   }
 
   function handlePointerEnter(event: PointerEvent<HTMLElement>) {
@@ -622,7 +633,7 @@ export function PhotoGallery({
     onPointerLeave: handlePointerLeave,
     onPointerUp: finishSwipe,
     onPointerCancel: handleSwipeCancel,
-    onLostPointerCapture: handleSwipeCancel,
+    onLostPointerCapture: handleLostPointerCapture,
     className: surfaceClassName,
     style: {
       transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
@@ -771,6 +782,29 @@ export function PhotoGallery({
         >
           {imageContent}
         </a>
+      ) : onOpenPhoto && image ? (
+        <button
+          type="button"
+          aria-label={translate(locale, "viewPhotoLarge", { n: imageIndex + 1 })}
+          onKeyDown={stepPhoto}
+          {...surface}
+          className={cn(
+            surfaceClassName,
+            "outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring",
+          )}
+          onClick={(event) => {
+            if (suppressImageLink.current) {
+              suppressImageLink.current = false;
+              return;
+            }
+            // Safari taps can focus the surrounding main instead of a button.
+            // Give the viewer the actual photo trigger to return focus to.
+            event.currentTarget.focus({ preventScroll: true });
+            onOpenPhoto(event.currentTarget.getBoundingClientRect());
+          }}
+        >
+          {imageContent}
+        </button>
       ) : keyboardGallery ? (
         // A group, not a listbox or a tablist: nothing here is chosen or
         // selected, the visitor is walking one picture at a time. The label
@@ -863,10 +897,8 @@ export function PhotoGallery({
           >
             <ChevronRight className={chevron.icon} aria-hidden />
           </Button>
-          {/* Dots, not a fraction. "1 / 13" is bookkeeping; a row of dots says
-              "there are more photos" and which one this is in a glance, and it
-              is the shape every photo carousel has trained a thumb to expect.
-              Capped at five with a sliding window, so a 14-photo gallery does
+          {/* The default marker uses dots capped at five with a sliding window,
+              so a 14-photo gallery does
               not draw a ruler across the picture; the ends of a long gallery
               show as the window not moving any further.
 
@@ -874,8 +906,8 @@ export function PhotoGallery({
               photo's link, the way the fraction badge was. The sr-only line
               below still speaks the exact count.
 
-              Always here on the animal page and in the dialog, and on a
-              screen that cannot hover. Inside a card, on a pointer that can,
+              Plain galleries can request the visible count below instead.
+              Inside a card, on a pointer that can hover,
               they wait for it: see CARD_DOTS_CLASS for why the grid is the one
               place a resting row is worth hiding, and why the condition is the
               card's rather than this photo's.
@@ -885,26 +917,28 @@ export function PhotoGallery({
               where the dots are drawn, inside hasGallery: a single-photo card
               has no row to carry and a pill with nothing in it is a mark on
               the photograph for no reason. */}
-          <div
-            data-slot="photo-dots"
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute z-10 flex gap-1",
-              dotPaint.container,
-            )}
-          >
-            {Array.from({ length: dots.count }, (_, dot) => (
-              <span
-                key={dot}
-                className={cn(
-                  dotPaint.dot,
-                  dots.start + dot === imageIndex
-                    ? dotPaint.current
-                    : dotPaint.rest,
-                )}
-              />
-            ))}
-          </div>
+          {!showCount && (
+            <div
+              data-slot="photo-dots"
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute z-10 flex gap-1",
+                dotPaint.container,
+              )}
+            >
+              {Array.from({ length: dots.count }, (_, dot) => (
+                <span
+                  key={dot}
+                  className={cn(
+                    dotPaint.dot,
+                    dots.start + dot === imageIndex
+                      ? dotPaint.current
+                      : dotPaint.rest,
+                  )}
+                />
+              ))}
+            </div>
+          )}
           <span
             // Named, because it is what says where the gallery is now that the
             // visible marker is dots with no text: the tests read this line,
@@ -925,6 +959,15 @@ export function PhotoGallery({
             })}
           </span>
         </>
+      )}
+      {showCount && images.length > 0 && (
+        <span
+          data-slot="photo-count"
+          aria-hidden
+          className="pointer-events-none absolute right-2 bottom-2 rounded-ui bg-foreground/90 px-2 py-1 text-xs text-background tabular-nums"
+        >
+          {imageIndex + 1} / {images.length}
+        </span>
       )}
     </div>
   );

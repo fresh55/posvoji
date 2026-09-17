@@ -94,6 +94,13 @@ export type SmallTarget = { name: string; width: number; height: number };
  * transparent or aria-hidden control, and an sr-only one, which is a clipped
  * box no thumb is meant to find. They would otherwise report a covered centre
  * and be filed as zero-sized targets.
+ *
+ * The aria-hidden half of that has to earn itself, and for most of this
+ * file's life it did not: any descendant of an aria-hidden subtree was
+ * exempt, which is the exact shape of the bug this harness exists to catch.
+ * A control an aria-hidden subtree still hands to the tab order is not
+ * unoffered, it is offered by one route and named by neither, so it stays in
+ * the sweep and hiddenFocusables below fails it by name.
  */
 export async function undersizedTargets(
   page: Page,
@@ -118,7 +125,15 @@ export async function undersizedTargets(
 
       const style = getComputedStyle(element);
       if (Number.parseFloat(style.opacity) === 0) continue;
-      if (element.closest("[aria-hidden='true']")) continue;
+      // aria-hidden exempts a control only while it is out of the tab order
+      // too. inert is checked rather than trusted from the tag, because inert
+      // does not change an element's tabIndex property: an inert button still
+      // reports 0 and would otherwise be measured as a live target.
+      const offered =
+        element instanceof HTMLElement &&
+        element.tabIndex >= 0 &&
+        !element.closest("[inert]");
+      if (element.closest("[aria-hidden='true']") && !offered) continue;
       // sr-only, read off the clip rather than off the box: a skip link that
       // also carries padding for its focused state measures 24 by 16, which
       // no size check would recognise as hidden. Tailwind v4 spells it
@@ -157,4 +172,106 @@ export async function undersizedTargets(
 
     return { failures, measured };
   }, min);
+}
+
+/** One control the keyboard still reaches inside a subtree the accessibility
+ *  tree no longer has: its accessible-ish name, and the route down to it so a
+ *  failure names something findable rather than "a button somewhere". */
+export type HiddenFocusable = { name: string; path: string };
+
+/**
+ * Every tab stop that lands inside an aria-hidden subtree, shadow roots
+ * included.
+ *
+ * WCAG 4.1.2 in the one shape this site keeps producing: aria-hidden prunes a
+ * subtree from the accessibility tree and does nothing to the tab order, so a
+ * control inside one is still a stop, and what a screen reader announces when
+ * it arrives is nothing at all. The site had six of these hand-maintained
+ * before this function existed, each pairing aria-hidden with its own
+ * tabIndex={-1}, and the pair is only correct while both halves agree.
+ *
+ * The walk descends into open shadow roots because the failure that prompted
+ * it was not in this document's markup: the about page appends <model-viewer>
+ * into a host, and the focusable poster button it keeps is in its shadow
+ * root. document.querySelectorAll never sees that button, so a sweep built
+ * out of selectors reports the page clean while a real Tab stops on it. That
+ * stop is permanent wherever the .glb never arrives.
+ *
+ * inert is what clears a finding, not tabIndex={-1}, and it is tracked down
+ * the walk rather than read off the element: inert is inherited, crosses into
+ * a shadow root with the host, and leaves the tabIndex property alone, so an
+ * inert button still reports tabIndex 0 and only the ancestor chain knows.
+ *
+ * Not a tab walk. Pressing Tab through a page answers the same question and
+ * costs a round trip per stop, needs a starting point, and stops telling the
+ * truth as soon as something traps focus. This reads the two facts a tab stop
+ * is made of instead, in one pass in the page.
+ */
+export async function hiddenFocusables(page: Page): Promise<HiddenFocusable[]> {
+  return page.evaluate(() => {
+    const found: { name: string; path: string }[] = [];
+
+    const describe = (element: Element) => {
+      const slot = element.getAttribute("data-slot");
+      const label = element.id ? `#${element.id}` : slot ? `[${slot}]` : "";
+      return `${element.tagName.toLowerCase()}${label}`;
+    };
+    const named = (element: Element) =>
+      (element.getAttribute("aria-label") || element.textContent || "")
+        .trim()
+        .slice(0, 40) || describe(element);
+
+    // A stop, not merely focusable. tabIndex is the browser's own answer and
+    // covers every element that earns one from its tag, so nothing here has
+    // to keep a list of which tags those are. Everything after it is a reason
+    // the browser skips the element anyway.
+    const isStop = (element: Element) => {
+      if (!(element instanceof HTMLElement || element instanceof SVGElement)) {
+        return false;
+      }
+      if (element.tabIndex < 0) return false;
+      if ("disabled" in element && element.disabled === true) return false;
+      const style = getComputedStyle(element);
+      if (style.visibility === "hidden") return false;
+      // display:none and a detached subtree both come back with no boxes,
+      // which is the same fact stated in the one place that knows it.
+      return element.getClientRects().length > 0;
+    };
+
+    const walk = (
+      root: ParentNode,
+      hidden: boolean,
+      inert: boolean,
+      path: string,
+    ) => {
+      for (const element of root.children) {
+        // What a modal hid for the life of the modal, marked by the
+        // aria-hidden package Radix hides the rest of the page with. Skipped
+        // whole, subtree included: the same library's focus scope owns the
+        // tab order while that attribute is on, and its own focus guards are
+        // aria-hidden tab stops on purpose. This sweep is about the pairs
+        // this site writes by hand, and the page behind an open dialog is not
+        // one of them. The dialog's own content carries no such marker and
+        // stays in the walk, which is the reason to sweep that route at all.
+        if (element.hasAttribute("data-aria-hidden")) continue;
+        const nowHidden =
+          hidden || element.getAttribute("aria-hidden") === "true";
+        const nowInert = inert || element.hasAttribute("inert");
+        const here = path ? `${path} > ${describe(element)}` : describe(element);
+        if (nowHidden && !nowInert && isStop(element)) {
+          found.push({ name: named(element), path: here });
+        }
+        // The host's own state carries into its shadow root: both aria-hidden
+        // and inert apply to what is rendered there, and neither is written
+        // on the shadow content, which the page does not own.
+        if (element.shadowRoot) {
+          walk(element.shadowRoot, nowHidden, nowInert, `${here} > #shadow`);
+        }
+        walk(element, nowHidden, nowInert, here);
+      }
+    };
+
+    walk(document.body, false, false, "");
+    return found;
+  });
 }

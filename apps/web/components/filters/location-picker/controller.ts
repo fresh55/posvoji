@@ -476,8 +476,12 @@ export function useLocationPickerController({
   // Choosing the place result restores the whole list in distance order.
   // Recognition alone keeps the matching shelter rows visible alongside the
   // place suggestion, so the visitor can choose which result they meant.
+  //
+  // The needle is folded once and not per row: both lists below run the
+  // predicate over every shelter in the roster, on every keystroke.
+  const needle = fold(query.trim());
   const matchesQuery = (row: ShelterRow) =>
-    fold(`${row.label} ${row.city ?? ""}`).includes(fold(query.trim()));
+    fold(`${row.label} ${row.city ?? ""}`).includes(needle);
   const nameMatches = searching ? rows.filter(matchesQuery) : rows;
   const offNameMatches = searching ? offRows.filter(matchesQuery) : offRows;
 

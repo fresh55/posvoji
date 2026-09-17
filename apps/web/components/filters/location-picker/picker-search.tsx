@@ -54,7 +54,17 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
           placeholder={messages.placeOrShelter}
           aria-label={messages.placeOrShelter}
           aria-describedby={statusId}
-          className="h-11 bg-background pl-9 pr-11 text-base shadow-none lg:text-sm"
+          className={cn(
+            "h-11 bg-background pl-9 pr-11 text-base shadow-none lg:text-sm",
+            // The frame is the whole of this control: one field in a dialog
+            // with no label beside it and nothing else drawn around it.
+            // ui/input.tsx ships border-input, which measures 1.26:1 on the
+            // page, against the 3.66:1 --control-border carries. Spelled here
+            // rather than on the primitive, which every portal form shares. No
+            // dark: half, because ui/input.tsx spells no dark border of its
+            // own (see CONTROL_FRAME in lib/link-styles.ts).
+            "border-control-border",
+          )}
         />
         {query !== "" && (
           <Button

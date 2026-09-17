@@ -7,11 +7,11 @@ import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
 
 export function PickerShelterList({ controller }: { controller: LocationPickerController }) {
-  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, placeMode, placeOnly } = controller;
-  // The heading answers a name being typed. An empty field has nothing to
-  // head, a confirmed place leaves the list whole, and a place query that
-  // matched no name is answered by the row above the list.
-  const showHeading = query.trim() !== "" && !placeMode && !placeOnly;
+  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, searching, placeOnly } = controller;
+  // The heading answers a name being typed, which is what `searching` is: a
+  // query in the field that is not a confirmed place (controller.ts). A place
+  // query that matched no name is answered by the row above the list instead.
+  const showHeading = searching && !placeOnly;
   const offGroupList = (
     <ShelterRows
       rows={visibleOffRows.map((row) => ({

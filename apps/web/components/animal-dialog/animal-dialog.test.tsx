@@ -676,14 +676,19 @@ describe("animal dialog", () => {
     expect(within(dialog).getByText("Brez FeLV")).toBeTruthy();
   });
 
-  it("keeps a shorter stay as a caption without the callout", async () => {
+  it("keeps a shorter stay as a quiet line in the shelter box", async () => {
     // Rex came in 19 months before the reference date, well under the
-    // three-year line.
+    // three-year line. The line stands in the shelter box, where the plea
+    // stands for a longer wait, so the fact is in one place for every animal.
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/V zavetišču: 1 leto/)).toBeTruthy();
+    const quiet = region(dialog, "shelter-block").getByText(
+      /V zavetišču: 1 leto/,
+    );
+    expect(quiet.parentElement?.className).toContain("text-muted-foreground");
+    expect(quiet.className).not.toContain("font-medium");
     expect(within(dialog).queryByText(/čaka že/)).toBeNull();
     expect(within(dialog).queryByText("Kamnik")).toBeNull();
   });
@@ -694,9 +699,13 @@ describe("animal dialog", () => {
     renderGrid([longtimer]);
 
     const dialog = await screen.findByRole("dialog");
-    expect(
-      within(dialog).getByText("Cufi v zavetišču čaka že 4 leta."),
-    ).toBeTruthy();
+    const plea = region(dialog, "shelter-block").getByText(
+      "Cufi v zavetišču čaka že 4 leta.",
+    );
+    expect(plea.className).toContain("font-medium");
+    expect(plea.parentElement?.className).not.toContain(
+      "text-muted-foreground",
+    );
     expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
   });
 
@@ -710,8 +719,10 @@ describe("animal dialog", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByText(/čaka že/)).toBeNull();
-    // The stay is still a fact, so the caption keeps it.
-    expect(within(dialog).getByText(/V zavetišču: 6 let/)).toBeTruthy();
+    // The stay is still a fact, so the quiet line keeps it, in the same box.
+    expect(
+      region(dialog, "shelter-block").getByText(/V zavetišču: 6 let/),
+    ).toBeTruthy();
   });
 
   it("says nothing about the stay of an animal that has left", async () => {

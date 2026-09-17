@@ -1,6 +1,12 @@
 "use client";
 
-import { ExternalLink, Heart, Hourglass, Phone } from "lucide-react";
+import {
+  CalendarClock,
+  ExternalLink,
+  Heart,
+  Hourglass,
+  Phone,
+} from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
@@ -9,7 +15,7 @@ import { ageInMonths } from "@/lib/filters";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import type { ShelterPhones } from "@/lib/shelters";
 import { shelterPath } from "@/lib/shelter-path";
-import { ageLabel, longStayMonths } from "@/lib/labels";
+import { ageLabel, longStayMonths, monthsInShelter } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SourceFreshness } from "@/components/source-freshness";
@@ -45,11 +51,26 @@ export function ShelterBlock({
   const { locale, messages, t } = useI18n();
   const { shelter } = animal;
 
-  // The long wait lives here, in the same box as the one button that can
-  // answer it, so the plea and the action read as one thought instead of two
-  // stacked crates. Who counts as waiting long is labels.ts's decision, the
-  // same one the card's mark reads, so the two surfaces cannot drift apart.
-  const stayMonths = longStayMonths(animal, reference);
+  // The wait lives here, in the same box as the one button that can answer
+  // it, and it lives here for every animal still in the shelter. It used to
+  // stand under the description as a quiet aside and jump into this box only
+  // once it turned into the plea, so a reader who learned where the number
+  // was on one animal did not find it there on the next. Now the place is
+  // fixed and the ink says how long is long: muted under three years, full
+  // ink with the animal's name in front from three years on. Who counts as
+  // waiting long is labels.ts's decision, the same one the card's mark reads,
+  // so the two surfaces cannot drift apart.
+  const longMonths = longStayMonths(animal, reference);
+  const long = longMonths !== undefined;
+  // An adopted animal has left, so its stay is history and says nothing. A
+  // reserved or held one is not waiting for this visitor's decision, so it
+  // never gets the plea, but its wait is still a fact and keeps the quiet
+  // line.
+  const stayMonths =
+    longMonths ??
+    (animal.status !== "adopted" && animal.intakeDate
+      ? monthsInShelter(animal.intakeDate, reference)
+      : undefined);
   const stay =
     stayMonths === undefined ? undefined : ageLabel(stayMonths, locale);
 
@@ -68,11 +89,11 @@ export function ShelterBlock({
   // birth date rather than an approximate age it parses a Date, and four in
   // five animals never reach this sentence at all.
   const ageMonths =
-    stayMonths === undefined ? undefined : ageInMonths(animal, reference);
+    longMonths === undefined ? undefined : ageInMonths(animal, reference);
   const wholeLife =
-    stayMonths !== undefined &&
+    longMonths !== undefined &&
     ageMonths !== undefined &&
-    ageMonths - stayMonths < 12;
+    ageMonths - longMonths < 12;
   const stayKey = animal.name
     ? wholeLife
       ? "longStayWholeLife"
@@ -84,15 +105,36 @@ export function ShelterBlock({
   return (
     <div data-slot="shelter-block" className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
+        {/* One slot, two tones. The quiet line is a label in the box's
+            muted ink, the same size as the plea so the slot does not shrink
+            and grow between animals; the plea is full ink and medium weight,
+            and the warn-coloured hourglass is the card's mark again. Text,
+            not a pill, so "2 leti" here cannot be confused with the age pill
+            above. */}
         {stay && (
-          <div className="flex w-full items-start gap-2 text-sm">
-            <Hourglass
-              className="mt-0.5 size-4 shrink-0 text-warn-mark"
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <p className="font-medium">
-              {t(stayKey, { name: animal.name ?? "", duration: stay })}
+          <div
+            className={cn(
+              "flex w-full items-start gap-2 text-sm",
+              !long && "text-muted-foreground",
+            )}
+          >
+            {long ? (
+              <Hourglass
+                className="mt-0.5 size-4 shrink-0 text-warn-mark"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            ) : (
+              <CalendarClock
+                className="mt-0.5 size-4 shrink-0 opacity-70"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            )}
+            <p className={long ? "font-medium" : undefined}>
+              {long
+                ? t(stayKey, { name: animal.name ?? "", duration: stay })
+                : `${messages.factTimeInShelter}: ${stay}`}
             </p>
           </div>
         )}

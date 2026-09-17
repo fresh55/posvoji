@@ -352,6 +352,22 @@ describe("the shelter box", () => {
     expect(screen.getByText("Cufi v zavetišču čaka že 4 leta.")).toBeTruthy();
   });
 
+  // Under three years the same slot holds the plain fact, so the wait is in
+  // one place whichever animal is open.
+  it("prints a shorter stay as a quiet line in the same slot", () => {
+    block({ intakeDate: "2025-02-01" });
+
+    const quiet = screen.getByText("V zavetišču: 1 leto");
+    expect(quiet.parentElement?.className).toContain("text-muted-foreground");
+    expect(screen.queryByText(/čaka že/)).toBeNull();
+  });
+
+  it("says nothing about the stay of an animal that has left", () => {
+    block({ status: "adopted", intakeDate: "2022-06-15" });
+
+    expect(screen.queryByText(/V zavetišču: |čaka že/)).toBeNull();
+  });
+
   // Adoption goes through the shelter, and the box's own button leaves for a
   // listing that may be out of date. The number is the way to ask.
   it("dials the register's number in international form", () => {

@@ -269,13 +269,26 @@ export function FilterSectionHeader({
       // filter row 8px below and an overlay overhangs 10, so it would reach
       // into the row under it. Growing the box moves the rows down instead,
       // and only where there is a finger.
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
+      //
+      // hover:text-foreground beside the ground. Every row in the sections
+      // below answers a pointer in both, and this heading answered in the
+      // ground alone, which made the one control in the column that opens
+      // something the quietest thing in it under the cursor. The two marks
+      // beside the caption keep their own ink: they say what they say whether
+      // the pointer is here or not.
+      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
     >
       <span className="truncate">{label}</span>
       {hint ? (
+        // /80 and not the /60 this was, which measured 2.47:1 in light mode.
+        // On a mouse the hint sentence is never drawn, so this glyph is the
+        // only sign that a section has an explanation at all, including the
+        // one saying that animals with no shelter answer are left out of DOMA
+        // IMAM. /80 measures 3.62:1 light and 5.20:1 dark, which is the 3:1 an
+        // icon carrying meaning is held to.
         <Info
           aria-hidden
-          className="size-3.5 shrink-0 text-muted-foreground/60"
+          className="size-3.5 shrink-0 text-muted-foreground/80"
           strokeWidth={1.8}
         />
       ) : null}
@@ -287,10 +300,13 @@ export function FilterSectionHeader({
           {collapse.summary}
         </span>
       ) : null}
+      {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
+          3.62:1 in light, 5.20:1 in dark. This is the one thing that says the
+          heading is a disclosure and not a label. */}
       <ChevronDown
         aria-hidden
         className={cn(
-          "ml-auto size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-200",
+          "ml-auto size-3.5 shrink-0 text-muted-foreground/80 transition-transform duration-200",
           !collapse.open && "-rotate-90",
         )}
       />

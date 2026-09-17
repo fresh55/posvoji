@@ -3,7 +3,7 @@ import { ChangeSet, Dataset } from "@posvoji/schema";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { holdArtifactLock } from "./artifact-lock";
+import { holdArtifactLock, releaseOrWarn } from "./artifact-lock";
 import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { loadSubjectDetector } from "./subject-detector";
 import { cacheLogos, logoTargets } from "./cache-logos";
@@ -782,26 +782,6 @@ export async function runExport(
     });
     return { exitCode, dataset, generationId };
   } finally {
-    // On the path that reaches here after a finished run the dataset is
-    // written and sealed, and a release that fails on a rename it could not
-    // perform would replace that result with exit 1 and abort a deploy the run
-    // earned. The next run recovers a lock whose owner is gone.
-    //
-    // An ownership refusal is the other thing entirely: the lock we hold is
-    // held by somebody else now, so another process has been free to write
-    // data/dist alongside us and what we just sealed is not known to be ours.
-    // That one stays fatal.
-    try {
-      release();
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        (error as { code?: unknown }).code === "ARTIFACT_LOCK_OWNERSHIP"
-      ) {
-        throw error;
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      logger.warn(`artifact lock: release failed, the next run recovers it: ${message}`);
-    }
+    releaseOrWarn(release, (message) => logger.warn(message));
   }
 }

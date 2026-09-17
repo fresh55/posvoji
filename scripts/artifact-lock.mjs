@@ -372,6 +372,8 @@ function prepareOwnedDirectory(path, owner) {
   }
 }
 
+const OWNERSHIP_CODE = "ARTIFACT_LOCK_OWNERSHIP";
+
 /**
  * A refusal that means the lock is no longer ours: somebody else holds it and
  * may be writing the artifacts beside us. Callers that log a failed release
@@ -382,8 +384,22 @@ function prepareOwnedDirectory(path, owner) {
  */
 function ownershipError(message) {
   return Object.assign(new Error(message), {
-    code: "ARTIFACT_LOCK_OWNERSHIP",
+    code: OWNERSHIP_CODE,
   });
+}
+
+/**
+ * Whether a thrown value is that refusal. Callers that treat an ordinary
+ * release failure as a warning ask this rather than matching a message or
+ * reaching for the code themselves.
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export function isArtifactLockOwnershipError(error) {
+  return (
+    error instanceof Error &&
+    /** @type {{code?: unknown}} */ (error).code === OWNERSHIP_CODE
+  );
 }
 
 /**

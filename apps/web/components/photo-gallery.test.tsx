@@ -688,14 +688,18 @@ describe("photo gallery controls", () => {
     // photo and under 3:1 on 48 of 59 lead photos, so the state is carried by
     // the disc's size: 6px against 4px is 2.25x the area, and no photograph can
     // take that away. The alphas stay as a second, weaker signal.
+    // Read as whole class names. A substring test cannot tell size-1 from
+    // size-1.5, and the old pair leaned on a trailing space to do it, which is
+    // the class's position in the list rather than the class.
     const dots = document.querySelector('[data-slot="photo-dots"]');
     const [current, rest] = Array.from(dots?.children ?? []);
-    expect(current?.className).toContain("size-1.5");
-    expect(current?.className).not.toContain("size-1 ");
-    expect(rest?.className).toContain("size-1");
+    const classes = (element?: Element) => element?.className.split(" ") ?? [];
+    expect(classes(current)).toContain("size-1.5");
+    expect(classes(current)).not.toContain("size-1");
+    expect(classes(rest)).toContain("size-1");
     // And the hoisted 6px is gone from it rather than sitting beside the 4px:
     // the two land in one class list and it is cn that has to settle them.
-    expect(rest?.className).not.toContain("size-1.5");
+    expect(classes(rest)).not.toContain("size-1.5");
     // Two sizes in one row: without items-center the small discs are laid at
     // the top of a 6px line instead of on the current dot's centre line.
     expect(dots?.className).toContain("items-center");

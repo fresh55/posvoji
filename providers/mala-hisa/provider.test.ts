@@ -210,13 +210,13 @@ describe("provider", () => {
     expect(refs).toHaveLength(2);
   });
 
-  it("rejects a detail ref whose URL falls outside the two adoption paths", async () => {
+  it.each(["privat_oddaja", "privat_oddajo"])("rejects a detail ref under %s outside the two adoption paths", async (path) => {
     await expect(
       provider.fetch(
         { client: { get: vi.fn() } as never, policy },
         {
           sourceAnimalId: "1",
-          sourceUrl: "https://zavetisce-malahisa.si/privat_oddaja/zasebni-pes/",
+          sourceUrl: `https://zavetisce-malahisa.si/${path}/zasebni-pes/`,
         },
       ),
     ).rejects.toThrow(/refused non-adoption detail URL/);

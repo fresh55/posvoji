@@ -40,7 +40,11 @@ The PR remains open, so its scheduling changes are not installed on the host.
 - Carried records have no maximum age. Retention checks current publication
   permission, provider enablement and path restrictions, but not age.
   `lastSeenAt` is read by the sitemap, so “nothing reads it” is too broad; no
-  retention decision uses it. The current host's oldest published observation
+  retention decision uses it. Detection already exists: `release-status.mjs`
+  fails health checks when a provider's discovery or oldest detail check exceeds
+  its own interval plus six hours. This is a product decision about communicating
+  verification age, not a monitoring hole or a reason for automatic removal.
+  The current host's oldest published observation
   was 08:16:14 UTC that morning, so this audit did not find a currently ancient
   animal. A future fix should distinguish unknown freshness from adoption and
   define a retention policy explicitly.
@@ -78,6 +82,15 @@ adoption path. This proves a missing guard, not an observed private-data leak.
 Source navigation and sitemap metadata were read through the provider SDK's
 polite client. The policy repair is prepared in this branch; it is not yet
 installed on the host.
+
+Review follow-up: the policy now supports optional `crawl.allowPaths`, applied
+to direct requests, redirects, discovered references and carried publication.
+Mala hiša declares both catalogue routes and both adoption-detail routes. The
+unknown synthetic `privat_oddajo` path remains tested alongside the denylisted
+`privat_oddaja` spelling. This removes dependence on enumerating private-path
+spellings. Other providers retain their current behavior until individually
+migrated. The live sitemap identifies a post type; synthetic fixture paths are
+defence tests, not evidence of live private listing URLs.
 
 The repair passed `pnpm typecheck`, `pnpm lint`, `pnpm test`, and
 `pnpm validate:policies`. Lint retained the existing unused `CARDS_PER_CLICK`

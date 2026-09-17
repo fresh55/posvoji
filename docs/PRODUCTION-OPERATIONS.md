@@ -88,6 +88,15 @@ it from the host and stopping the host publisher first.
 
 ## Promoting installed code
 
+For each production-bound merge, finish the rollout in the same work session:
+verify CI for the exact merged main SHA, promote that SHA, supervise one crawl
+and publication, then verify the served code SHA, source freshness and host job
+status. Record the installed and published SHAs. A green merge is not a finished
+deployment; if promotion must wait for an active job or a failed check, report
+that explicitly rather than describing the fix as live. Batch related fixes
+into one tested main promotion when practical. Timers continue using the pinned
+commit and do not auto-update code.
+
 Run `sudo posvoji-promote FULL_MAIN_COMMIT_SHA` after checks and merge. The
 installer places this command outside the checkout so a checkout cannot replace
 a running script. It fetches `origin/main`, rejects a dirty checkout or a target

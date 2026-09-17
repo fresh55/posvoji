@@ -40,7 +40,17 @@ Start by copying `providers/_template`.
    schema rejects unknown fields on purpose.
 6. **Respect the policy.** Without granted permission, `images` must be
    `none` and `descriptions` must be `facts-only`; the schema enforces this.
-   Exclude private-listing paths via `crawl.excludePaths`.
+   Declare the known catalogue and detail paths in optional `crawl.allowPaths`.
+   Each entry permits that exact path (with or without its trailing slash) and
+   descendants, not similarly named siblings. An explicit empty list denies
+   all paths; omission preserves the existing origin/exclusion-only behavior.
+   The guard checks direct requests and every content redirect, including
+   `getBytes`, and publication checks carried records too. Unknown paths fail
+   closed. The SDK still handles robots.txt separately; these catalogue paths
+   do not grant access to private media or change robots rules. Migrate existing
+   providers one at a time after verifying their discovery and detail routes.
+   Keep private-listing paths in `crawl.excludePaths` as defence in depth;
+   exclusions win even inside an allowed path.
 
 ## Wiring it up
 

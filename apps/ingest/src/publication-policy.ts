@@ -4,7 +4,7 @@ import {
   CACHE_DERIVED_IMAGE_FIELDS,
   stripCacheDerivedFields,
 } from "./cache-images";
-import { excludedPathFor } from "./crawl-guard";
+import { excludedPathFor, isAllowedPath } from "./crawl-guard";
 import type { DroppedAnimals } from "./run-guards";
 
 // What a shelter granted is re-read from its policy.yaml on every run and
@@ -164,6 +164,11 @@ export function applyPublicationPolicy(
         providerId,
         `under "${excluded}", which policy.yaml excludes from the crawl`,
       );
+      continue;
+    }
+
+    if (!isAllowedPath(animal.source.sourceUrl, policy.crawl.allowPaths)) {
+      countDrop(providerId, "outside crawl.allowPaths");
       continue;
     }
 

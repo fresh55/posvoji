@@ -47,6 +47,11 @@ attribution: "Vir: Zavetišče Mala hiša"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /psi-za-oddajo/
+    - /muce-za-oddajo/
+    - /psi_za_oddajo/
+    - /muce_za_oddajo/
   excludePaths:
     - /privat-oddaja/
     # The archive uses hyphens; the separate WordPress post type uses underscores.

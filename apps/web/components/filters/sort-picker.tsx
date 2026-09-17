@@ -291,7 +291,18 @@ export function SortPicker({
                 // sheet keeps for a thumb. The floor lifts on a coarse
                 // pointer, which is the question being asked; a width gate
                 // gave a touch tablet the mouse's height.
-                className="pointer-coarse:min-h-11"
+                //
+                // The ring is what says where the keyboard is. --accent alone
+                // is a 1.09:1 ground change, so walking this menu with the
+                // arrow keys moved a highlight nobody can see, which is the
+                // one thing a keyboard visitor has. The ring measures 5.22:1
+                // on the menu's ground, drawn inset because an item runs the
+                // full width of the content box and a ring outside it would
+                // be clipped. The accent stays: the two together are the same
+                // pairing every other focus state on the site uses, and it is
+                // on the item and not on ui/select.tsx because this is the
+                // one menu measured.
+                className="focus:ring-2 focus:ring-inset focus:ring-ring pointer-coarse:min-h-11"
               >
                 <Icon
                   className="size-4 shrink-0 text-muted-foreground"

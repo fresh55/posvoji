@@ -4,6 +4,12 @@ Ta dokument je zaveza projekta zavetiščem, posvojiteljem in prispevkarjem.
 Strojno berljiva različica teh pravil živi v `providers/*/policy.yaml` in jo
 preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
 
+Različica za zavetišča, brez sheme in imen datotek, je na strani
+[Vsebine in dovoljenja](https://posvoji.si/o-nas/vsebine)
+([English](https://posvoji.si/en/about/content)). Stran izriše
+`apps/web/components/data-policy-page.tsx` iz lastnega besedila, zato
+spremenjeno načelo tukaj pomeni spremembo tudi tam.
+
 ## Načela
 
 1. **Dovoljenje pred zajemom.** Provider se vklopi šele, ko zavetišče pisno
@@ -36,12 +42,17 @@ preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
    odstranitev obravnavamo prednostno.
 
 7. **Neposredna objava.** Zavetišče, ki nima lastnega seznama živali, lahko
-   svoje živali objavi neposredno prek portala. Taka objava je izjava
-   zavetišča samega in velja kot dovoljenje za prikaz podatkov, opisov in
-   fotografij, ki jih vnese. Izvirna objava take živali je njena objava na
-   Posvoji.si, zato je pri njej kot vir navedena stran zavetišča na portalu.
-   Zavetišče objavo kadarkoli umakne samo. Tehnični opis je v
+   svoje živali objavi neposredno prek portala. Objavimo to, kar zavetišče
+   vnese. Izvorna objava take živali je njena objava na Posvoji.si, zato je
+   pri njej kot vir navedena javna stran zavetišča na Posvoji.si, torej
+   `/zavetisca/<slug>`; vir zapiše `listingSourceUrl` v
+   `apps/ingest/src/portal-listings.ts`. Portal je za prijavljene in ni vir.
+   Umik objave je v rokah zavetišča. Tehnični opis je v
    [MANUAL-LISTINGS.md](MANUAL-LISTINGS.md).
+
+   Portal zavetišču nikjer ne pove, da je vnos hkrati dovoljenje za prikaz
+   vnesenega. Dokler tega ne pove, tega ne trdimo ne tukaj ne na strani za
+   zavetišča.
 
 ## Kaj dovoljenje zavetišča ureja
 
@@ -56,7 +67,7 @@ preverja CI. Provider, ki pravil ne izpolnjuje, se tehnično ne more vklopiti.
 - frekvenco osveževanja in morebitne izključene poti,
 - način navedbe vira.
 
-Avtorske pravice ostajajo v celoti zavetišču oziroma izvirnim imetnikom.
+Avtorske pravice ostajajo v celoti zavetišču oziroma izvornim imetnikom.
 Vsebine zavetišč niso del odprtokodne licence repozitorija in niso odprt
 dataset.
 
@@ -73,10 +84,11 @@ rather than one of its animal photographs, so it carries its own dated grant
 (`logo.use`) and is not covered by the photo permission. Every animal links back to its
 source. No personal data
 of private individuals is ever collected, private-owner listings are excluded,
-and the crawler is conservative: identified bot, robots.txt, backoff, one
-request at a time. A shelter with no catalogue of its own can list animals
-directly through the portal; such a listing is the shelter's own statement and
-stands as permission for what it enters, its original listing is the one on
-Posvoji.si, and the shelter withdraws it itself. Shelters can change or revoke
-their participation at any time; shelter content is not covered by the
-repository's open-source license.
+and the crawler is conservative: identified bot, robots.txt, one request at a
+time to any one server, and it gives up rather than retrying when a server
+errors. A shelter with no catalogue of its own can list animals directly
+through the portal; we publish what it enters, its original listing is the one
+on Posvoji.si, and the source credited is that shelter's own public page here.
+The shelter withdraws a listing itself. Shelters can change or revoke their
+participation at any time; shelter content is not covered by the repository's
+open-source licence.

@@ -19,20 +19,18 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { mailtoHref } from "@/lib/contact-links";
-import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { COARSE_ACTION, MUTED_LINK, PAGE_TITLE } from "@/lib/link-styles";
-import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
-import { ABOUT_PATHS } from "@/lib/site-links";
+import { COARSE_ACTION, PAGE_TITLE, QUIET_DOC_LINK } from "@/lib/link-styles";
+import { CONTACT_EMAIL } from "@/lib/site";
+import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
 type PageText = {
   lead: string;
   maintainer: string;
   points: { key: PointKey; title: string; body: string; link?: { label: string; href: string } }[];
-  /** The closing line. The address and the repository follow it as buttons
-   *  and are not translated. */
+  /** The closing line. The address follows it as a button and is not
+   *  translated. */
   report: string;
-  code: string;
 };
 
 // One glyph per fact, keyed rather than stored in each locale so the two
@@ -73,12 +71,11 @@ const pageText: Record<Locale, PageText> = {
         key: "shelterData",
         title: "Vsebine z dovoljenjem",
         body: "Podatke, fotografije in opise objavljamo z dovoljenjem zavetišč in navedemo njihov vir.",
-        link: { label: "O vsebinah in dovoljenjih", href: `${REPO_URL}/blob/main/docs/DATA-POLICY.md` },
+        link: { label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl },
       },
     ],
     report:
       "Ste zavetišče ali imate predlog? Pišite nam. Za popravek ali umik dodajte povezavo do objave.",
-    code: "Koda na GitHubu",
   },
   en: {
     lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",
@@ -98,24 +95,13 @@ const pageText: Record<Locale, PageText> = {
         key: "shelterData",
         title: "Content with permission",
         body: "We publish data, photos and descriptions with the shelters’ permission and credit their source.",
-        link: { label: "Content and permissions", href: `${REPO_URL}/blob/main/docs/DATA-POLICY.md#english-summary` },
+        link: { label: "Content and permissions", href: DATA_POLICY_PATHS.en },
       },
     ],
     report:
       "Run a shelter or have a suggestion? Email us. For corrections or removal, include the listing link.",
-    code: "Code on GitHub",
   },
 };
-
-// The footer draws the same mark at 14px inside a text link, this page at
-// 16px inside a button. The geometry is shared, the drawing is not.
-function GithubMark() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden data-icon="inline-start" className="size-4 fill-current">
-      <path d={GITHUB_MARK} />
-    </svg>
-  );
-}
 
 // Small buttons grown to 44px on a coarse pointer, the same spelling the
 // shelters page gives its lookup button and for the reason argued there: a
@@ -123,6 +109,9 @@ function GithubMark() {
 // stretched pill. On the pointer and not on the width, because a 1180px
 // tablet is a thumb and a 1024px laptop window is not.
 const THUMB_BUTTON = `${COARSE_ACTION} pointer-coarse:gap-1.5`;
+
+/** w-fit because this one sits in a flex column; the rest is the shared rule. */
+const POLICY_LINK = `${QUIET_DOC_LINK} w-fit`;
 
 /**
  * The site's introduction remains readable while the cat loads independently.
@@ -168,9 +157,13 @@ export function AboutPage({ locale }: { locale: Locale }) {
           the row layout: the glyph names it at a glance, and only the
           padding is this page's, so the rules run edge to edge.
 
-          mt-px on the media, measured: the title is text-base under
-          leading-snug, a 22px line box, and the glyph is 20px, so one
-          pixel centres it on the first line. */}
+          mt-px on the media. The number is right and the reason recorded
+          for it was not: text-base carries its own 24px line-height and beats
+          ItemTitle's leading-snug, so the line box is 24px against a 20px
+          glyph and the true centre is 2px. Measured at -1.00px on every row
+          on this page and on /o-nas/vsebine, and -1.50px at a 24px OS font.
+          A pixel high reads better than a glyph on the baseline, so the value
+          stays; the comment no longer claims a line box nothing draws. */}
       <div className="divide-y border-y lg:col-start-1 lg:row-start-2">
         {text.points.map((point) => {
           const Icon = pointIcons[point.key];
@@ -195,18 +188,16 @@ export function AboutPage({ locale }: { locale: Locale }) {
                   {point.body}
                 </ItemDescription>
                 {point.link && (
-                  // The policy lives in the repository, so this leaves the
-                  // site. target="_blank" announces nothing on its own, which
-                  // is why the accessible name carries the sentence, the way
-                  // the footer and the shelter cards do.
+                  // A page of this site now, and it used to be a markdown file
+                  // on github.com. This is the one link on the page a shelter
+                  // has a reason to open, and it landed them in a code
+                  // repository. Nothing here says "new window" any more,
+                  // because nothing here opens one.
                   <a
                     href={point.link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={`${MUTED_LINK} w-fit rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4`}
+                    className={POLICY_LINK}
                   >
                     {point.link.label}
-                    <span className="sr-only"> {messages.newWindow}</span>
                   </a>
                 )}
               </ItemContent>
@@ -215,14 +206,22 @@ export function AboutPage({ locale }: { locale: Locale }) {
         })}
       </div>
 
-      {/* The sentence stays beside the buttons rather than inside them:
-          it says what to write about, and a button label that is a full
-          sentence stops reading as a control. */}
+      {/* The sentence stays beside the button rather than inside it: it says
+          what to write about, and a button label that is a full sentence stops
+          reading as a control.
+
+          One button, where there used to be a second one saying "Koda na
+          GitHubu" at the same size and weight beside it. The sentence above is
+          addressed to shelters, and a repository is not an answer to it: the
+          reader it was for is a developer, and the footer of this very page
+          already invites them, in the small print where that belongs. */}
       <div className="space-y-3 lg:col-start-1 lg:row-start-3">
         <p className="text-sm leading-relaxed text-muted-foreground">
           {text.report}
         </p>
-        <div className="flex flex-wrap gap-2">
+        {/* One child now, so no wrap and no gap; the box stays because it is
+            what keeps the button shrink-to-fit rather than inline. */}
+        <div className="flex">
           <Button
             asChild
             variant="outline"
@@ -232,19 +231,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
             <a href={mailtoHref(CONTACT_EMAIL)}>
               <Mail aria-hidden data-icon="inline-start" />
               {CONTACT_EMAIL}
-            </a>
-          </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className={THUMB_BUTTON}
-          >
-            <a href={REPO_URL} target="_blank" rel="noreferrer">
-              <GithubMark />
-              {text.code}
-              {/* The page's other way out of the site, said the same way. */}
-              <span className="sr-only"> {messages.newWindow}</span>
             </a>
           </Button>
         </div>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
+import { QUIET_UNDERLINE } from "@/lib/link-styles";
 import { verificationTime } from "@/lib/source-freshness";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
@@ -45,8 +46,7 @@ const FOOTER_LINK =
  * with neither carrying a z-index, taking the presses meant for the repository
  * link.
  */
-const FOOTER_ACTION =
-  "inline-flex items-center gap-1.5 text-foreground underline decoration-border hover:decoration-foreground max-lg:min-h-11";
+const FOOTER_ACTION = `inline-flex items-center gap-1.5 ${QUIET_UNDERLINE} max-lg:min-h-11`;
 
 /** The two above, resolved once. Both halves are constants, so there is one
  *  answer and no reason to ask cn for it on every one of the roughly four

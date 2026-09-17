@@ -29,6 +29,61 @@ export const SOURCE_LINK =
   "inline-block font-medium underline-offset-4 hover:underline pointer-coarse:tap-target";
 
 /**
+ * The ink half of a quiet link: foreground text under a standing underline that
+ * the border colour keeps quiet until it is hovered.
+ *
+ * Three places wrote this out by hand before it had a name, each with its own
+ * paragraph re-deriving the same measured fact: FOOTER_ACTION in
+ * site-footer.tsx, the lookup link in found-animal-button.tsx, and
+ * MUTED_SENTENCE_LINK below. The fact is that a muted hover-underline link goes
+ * unread on a phone, where there is no hover, among text that is already muted.
+ *
+ * Only the four classes all three agreed on live here. What they genuinely
+ * disagree about is the touch box, and that stays with each caller: the footer
+ * draws one because its links are crowded, the other two take the overlay. The
+ * underline offset stays with the caller too, because the footer sets none and
+ * the other two want 4.
+ */
+export const QUIET_UNDERLINE =
+  "text-foreground underline decoration-border hover:decoration-foreground";
+
+/**
+ * SOURCE_LINK's sibling for a link spliced into a muted running sentence,
+ * where that rule stops working.
+ *
+ * SOURCE_LINK carries no colour of its own and no standing underline: it reads
+ * as a link because the prose around it is foreground ink and the link is
+ * heavier. Drop it into a `text-muted-foreground` paragraph and both halves of
+ * that signal are gone. Measured on /o-nas/vsebine: the address inside the exit
+ * rule computed to the same colour as the sentence carrying it in both themes,
+ * leaving weight 500 against 400 as the only cue.
+ *
+ * That page's address is how a shelter asks to be taken off the site, so it is
+ * the last link on the site that should read as small print.
+ */
+export const MUTED_SENTENCE_LINK = `font-medium ${QUIET_UNDERLINE} underline-offset-4 pointer-coarse:tap-target`;
+
+/**
+ * The quiet link that a content page hangs under a paragraph: the about page's
+ * policy link, the new page's technical footnote, Srečko's own link.
+ *
+ * Written out by hand in about-page.tsx and srecko-link.tsx before this, each
+ * spelling the ring and the underline again, and both now call this. PAGE_TITLE
+ * above records what happens without a home: a string drifts, and five pages
+ * were printing the wrong heading size by the time anyone measured it.
+ *
+ * Not every muted underlined link is one of these. demo-gate-page.tsx and
+ * shelters-atlas.tsx spell MUTED_LINK plus `underline` without the ring, and
+ * srecko-page.tsx adds a shape and a height; converting those would change what
+ * they draw, so they were left alone rather than swept in.
+ *
+ * MUTED_LINK carries the colour, the size and the coarse-pointer box; this adds
+ * the standing underline and the ring, and nothing else. `w-fit` stays with the
+ * caller, because only a link inside a flex column needs it.
+ */
+export const QUIET_DOC_LINK = `${MUTED_LINK} rounded-sm underline focus-visible:outline-2 focus-visible:outline-offset-4`;
+
+/**
  * A control that reads as a link or a quiet button in a page's own flow, and
  * that a thumb has to be able to hit: the empty state's actions, the grid's
  * "show more", the about page's contact buttons. The height floor and the

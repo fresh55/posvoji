@@ -1,6 +1,61 @@
 # The cat
 
-`cat.glb` is revision 26: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2. `poster-home.webp` is the same frame at the home page's closer framing (`HOME_CAT_FRAMING` in `components/home-cat.tsx`), captured from the loaded model on that page at device pixel ratio 2; re-render it whenever the model, the lighting or that framing changes, and bump the `?v=` on its path in that file, or returning visitors keep the old still.
+`cat.glb` is revision 27: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2, with a transparent background (`VP8X` with alpha, `?v=20`). It was a plain `VP8 ` WebP until then, which baked the white capture background into the pixels and drew the figure inside a bright slab on the dark theme, permanently wherever WebGL never came up. Re-render it against a transparent background, the way `poster-home.webp` already was: real Chrome at device pixel ratio 2, `Emulation.setDefaultBackgroundColorOverride` with alpha 0, the `<picture>` under the stage hidden, and the clip taken from the `model-viewer` box once `loaded` is true. Encode at `{ quality: 85, alphaQuality: 100, effort: 6 }`: measured against its own capture that is 49.4 dB with a mean channel delta of 0.25/255, where q90 costs 4,120 more bytes for 2 dB nobody can see. The result is 20,028 bytes, smaller than the 21,078-byte opaque file it replaces, with the alpha kept. The contact shadow survives as alpha; composited back onto white the still matches the previous one to a mean channel delta of 1.84/255. `poster-home.webp` is the same frame at the home page's closer framing (`HOME_CAT_FRAMING` in `components/home-cat.tsx`), captured from the loaded model on that page at device pixel ratio 2; re-render it whenever the model, the lighting or that framing changes, and bump the `?v=` on its path in that file, or returning visitors keep the old still.
+
+## Compressed web export, revision 27
+
+Revision 27 re-encodes revision 26's numbers. Geometry, rig, clip structure,
+materials, names, extras and the embedded credit are untouched; the asset is
+1,500,464 bytes, down from 2,134,152. Over the wire it is 631,887 bytes
+gzipped and 550,478 with Brotli, down from 1,241,284 and 1,137,222, about half
+the previous download.
+
+- Normals are octahedral 8-bit, `int8` normalized at stride 4. The largest
+  angle error is 1.19 degrees.
+- Skin weights are `uint8` normalized at stride 4, renormalised so each
+  vertex still sums to exactly one. The largest weight error is 0.0028, which
+  moves a bind-pose vertex by 0.00003 mm.
+- Positions are carried over bit for bit. Quantising them to 14 bits saved
+  another 22,605 bytes gzipped and moved a vertex by up to 0.057 mm, which is
+  invisible, but it was enough to reshuffle the picking simplifier and drop
+  the proxy's agreement with the full mesh to 97.9%. Not worth it.
+- Texture coordinates keep `uint16` normalized, quantised to 12 bits. The
+  largest error is 0.00023 UV, a quarter of a pixel on the 1024 coat.
+- Animation rotations are the meshopt quaternion filter at 16 bits, `int16`
+  normalized. The largest rotation error is 0.0051 degrees. That filter also
+  canonicalises the quaternion sign, so some samples are negated: the
+  rotation is the same, but raw sample values no longer match the
+  uncompressed constant tracks.
+- Translation and scale samples stay `float32` behind the meshopt exponential
+  filter at 16 bits. The largest error is 0.00012 in bone units, 0.003 mm at
+  the cat's scale. Of the 2,406 sample channels in that view, 57 carry real
+  motion and each keeps its amplitude to within 0.17%; the 210 channels whose
+  amplitude was float rounding noise below 5e-7 become exactly constant, so
+  `optimize-cat-animation.mjs` now finds another 79 channels to drop. That
+  cleanup is left unrun: this revision changes no clip structure.
+- The coat texture is 1024 x 1024 WebP q90 (79,300 bytes, from 2048 x 2048
+  and 326,836), the occlusion map 512 x 512 q85 (13,716, from 1024 x 1024 and
+  44,254) and the eye 512 x 512 q85 (15,528, from 27,808). Measured at 900 px
+  the coat is 42.95 dB PSNR, the eye 42.45 dB and the occlusion map 29.76 dB;
+  the occlusion difference is the halved resolution, not the codec. The stage
+  draws him at 448 x 496 CSS px at most, so 2048 buys nothing.
+
+The new meshopt streams use vertex codec version 1, so the served
+`meshopt-decoder.js` must stay at meshoptimizer 1.2 or newer. glTF validation
+reports zero errors and zero warnings, the same 295 unused-object infos as
+revision 26, and the same 54,236 triangles and 198,675 vertices. The
+regenerated picking proxy is 8,824 triangles and agrees with the full mesh on
+98.3% of sampled anatomical hits, 469 of 477, with the same eight
+disagreements and the same 109 of 112 leg hits as revision 26.
+
+From a revision 26 export:
+
+```sh
+node apps/web/scripts/optimize-cat-web-asset.mjs
+node apps/web/scripts/prepare-cat-play.mjs
+```
+
+The export runs once: an octahedral normal view tells it the work is done.
 
 ## Single nose tap, revision 26
 
@@ -353,11 +408,11 @@ There are no visible controls, captions or sounds. While the model loads, the po
 
 ## Web preparation and verification
 
-- Twenty full-body animation clips plus eight isolated attention layers; 54,236 visible triangles; 1,903,036 bytes (about 1.90 MB). Picking uses a separate 8,372-triangle CPU proxy. No visible triangles or textures were added.
-- WebP textures, 16-bit skin weights, resampled animation and Meshopt compression. No artificial 1 MB limit was applied.
+- Twenty-five full-body animation clips plus eight isolated attention layers; 54,236 visible triangles; 1,500,464 bytes (about 1.50 MB), 631,887 gzipped. Picking uses a separate 8,824-triangle CPU proxy. No visible triangles or textures were added.
+- WebP textures, 8-bit skin weights, octahedral normals, 12-bit texture coordinates, filtered animation samples and Meshopt compression. Positions keep their full 16 bits. No artificial 1 MB limit was applied.
 - The detailed Blender project retains fine fur. The web version uses the coat texture, sheen, sparse ear tufts and soft tapered whisker ribbons.
 - Local occlusion has strength 0.16. Neutral browser lighting and tone mapping use exposure 0.9. The eye retains revision 9's restrained reflection.
-- The decoded and compressed assets have zero Khronos validation errors and warnings. Looping clips have matching endpoints; Drowse/Sleep/Wake share their transition poses. Twenty-nine pose comparisons measure compression displacement below 0.016 mm. The iris texture is unchanged.
+- The decoded and compressed assets have zero Khronos validation errors and warnings. Looping clips have matching endpoints; Drowse/Sleep/Wake share their transition poses. Revision 27's re-encoding moves a bind-pose vertex by at most 0.00003 mm, a normal by at most 1.19 degrees and a rotation by at most 0.0051 degrees. The iris texture keeps its 512 x 512 size and is re-encoded at q85.
 - Live browser checks cover successive tap responses, keyboard response after focusing the cat, gesture continuity and drag rotation without a reaction.
 - Automated interaction checks cover shuffled variety, direction-aware reaches, rapid taps, pending clip changes, stale completion events, hover visits, gesture rejection, reduced motion, visibility and cleanup.
 

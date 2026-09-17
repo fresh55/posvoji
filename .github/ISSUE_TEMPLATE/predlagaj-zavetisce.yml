@@ -40,5 +40,6 @@ body:
       options:
         - label: >-
             Razumem, da se provider vklopi šele, ko zavetišče pisno dovoli
-            uporabo podatkov (glej docs/DATA-POLICY.md).
+            uporabo podatkov ([Vsebine in
+            dovoljenja](https://posvoji.si/o-nas/vsebine)).
           required: true

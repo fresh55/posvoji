@@ -367,8 +367,8 @@ export function animalMetaParts(
 // Whole months since intake, same arithmetic as ageInMonths in filters.ts but
 // for a raw ISO date string rather than an Animal. Both sides are read in UTC,
 // because a date-only string parses as UTC midnight and reading it locally
-// moves it into the previous month west of Greenwich. A negative span (future
-// date) or an unparsable one means we can't say, not "0".
+// moves it into the previous month west of Greenwich. An unparsable date, or
+// one after the reference, means we can't say, not "0".
 export function monthsInShelter(
   intakeDate: string,
   now: Date,
@@ -378,22 +378,13 @@ export function monthsInShelter(
   // A date after the reference is a typo in a listing, not a stay. The month
   // arithmetic below rounds a date later this month down to zero and would
   // print "manj kot mesec" for an animal that by the record has not arrived.
+  // This also subsumes a negative span: once the instant is not in the future,
+  // the UTC year-and-month ordering cannot run backwards either.
   if (intake.getTime() > now.getTime()) return undefined;
-  const months =
+  return (
     (now.getUTCFullYear() - intake.getUTCFullYear()) * 12 +
-    (now.getUTCMonth() - intake.getUTCMonth());
-  if (months < 0) return undefined;
-  return months;
-}
-
-export function timeInShelter(
-  intakeDate: string,
-  locale: Locale,
-  now: Date,
-): string | undefined {
-  const months = monthsInShelter(intakeDate, now);
-  if (months === undefined) return undefined;
-  return ageLabel(months, locale);
+    (now.getUTCMonth() - intake.getUTCMonth())
+  );
 }
 
 // Long stays are the norm in Slovenian shelters: at twelve months the mark
@@ -402,21 +393,75 @@ export function timeInShelter(
 // so they cannot disagree about who counts as waiting long.
 export const LONG_STAY_MONTHS = 36;
 
+// An allowlist and not a denylist of the other three. A fifth status added to
+// the schema would silently inherit the plea under a denylist, and the plea is
+// about an animal a visitor can still act on: available, or an unknown that
+// the shelter's own listing still carries. Reserved and held animals are not
+// waiting for this visitor's decision.
+function awaitingAVisitor(status: AdoptionStatus): boolean {
+  return status === "available" || status === "unknown";
+}
+
 // The wait in months of an animal that has waited long and is actually up
-// for adoption, or undefined. Reserved and held animals are not waiting for
-// the visitor's decision, and an adopted one's stay is history.
+// for adoption, or undefined.
 export function longStayMonths(animal: AnimalFields, now: Date): number | undefined {
-  if (!animal.intakeDate) return undefined;
-  // An allowlist and not a denylist of the other three. A fifth status added
-  // to the schema would silently inherit the mark under a denylist, and this
-  // is a plea about an animal a visitor can still act on: available, or an
-  // unknown that the shelter's own listing still carries.
-  if (animal.status !== "available" && animal.status !== "unknown") {
-    return undefined;
-  }
+  if (!animal.intakeDate || !awaitingAVisitor(animal.status)) return undefined;
   const months = monthsInShelter(animal.intakeDate, now);
   if (months === undefined || months < LONG_STAY_MONTHS) return undefined;
   return months;
+}
+
+/** How loudly a surface states the wait: a plain fact, or the plea. */
+export type StayTone = "quiet" | "plea";
+
+/**
+ * What this animal's wait says and how loudly, or nothing at all.
+ *
+ * One owner for a decision three surfaces used to make for themselves: the
+ * dialog's shelter box, the poster's tile and the poster's plea line each
+ * re-derived which statuses have a stay to state, where the three-year line
+ * falls and which of the four plea sentences to use. They had already drifted
+ * apart once, so the rule lives here and a surface only dresses the answer.
+ *
+ * The date is parsed once, which is why this does not call longStayMonths.
+ */
+export function stayStatement(
+  animal: AnimalFields,
+  locale: Locale,
+  now: Date,
+): { tone: StayTone; text: string } | undefined {
+  // An adopted animal has left, so its stay is history and says nothing.
+  if (!animal.intakeDate || animal.status === "adopted") return undefined;
+  const months = monthsInShelter(animal.intakeDate, now);
+  if (months === undefined) return undefined;
+  const duration = ageLabel(months, locale);
+
+  if (months < LONG_STAY_MONTHS || !awaitingAVisitor(animal.status)) {
+    return { tone: "quiet", text: translate(locale, "factStayValue", { duration }) };
+  }
+
+  // An animal that came in before its first birthday prints the same number
+  // twice: the age fact says "Starost: 4 leta" and the plea says it waited 4
+  // leta. That is 56 of the 96 long-stay animals whose age we know. Both
+  // numbers now name themselves, so the repeat no longer reads as a bug; the
+  // tail stays because it says something true about a life that the two
+  // numbers only imply. The gate is the arrival age, not a birth in the
+  // shelter, which is why the sentence says "skoraj". Without a known age
+  // there is no repeated number to explain and the plainer sentence is the
+  // honest one.
+  const ageMonths = ageInMonths(animal, now);
+  const wholeLife = ageMonths !== undefined && ageMonths - months < 12;
+  const key = animal.name
+    ? wholeLife
+      ? "longStayWholeLife"
+      : "longStay"
+    : wholeLife
+      ? "longStayWholeLifeUnnamed"
+      : "longStayUnnamed";
+  return {
+    tone: "plea",
+    text: translate(locale, key, { name: animal.name ?? "", duration }),
+  };
 }
 
 const STATUS_KEYS: Record<

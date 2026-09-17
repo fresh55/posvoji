@@ -185,6 +185,21 @@ describe("what the sheet says about the animal", () => {
     expect(long.querySelector(".poster-tile--wait")).toBeNull();
   });
 
+  // The sheet prints an age tile beside the plea, so a whole-life animal put
+  // the same number on the paper twice with nothing to say why. The dialog
+  // had the explaining tail and the sheet did not, because each worded the
+  // plea for itself; both read stayStatement now.
+  it("explains a repeated number on the plea, as the dialog does", () => {
+    const { container } = poster({
+      animal: animal({ intakeDate: "2020-01-10", approximateAgeMonths: 80 }),
+    });
+
+    expect(tiles(container)).toContain("Starost: 6 let");
+    expect(container.querySelector(".poster-plea")?.textContent).toBe(
+      "Nina v zavetišču čaka že 6 let, skoraj vse svoje življenje.",
+    );
+  });
+
   it("says nothing about a wait it cannot measure", () => {
     const { container } = poster();
     expect(container.querySelector(".poster-tile--wait")).toBeNull();

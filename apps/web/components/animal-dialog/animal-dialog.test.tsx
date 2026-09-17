@@ -687,8 +687,9 @@ describe("animal dialog", () => {
     const quiet = region(dialog, "shelter-block").getByText(
       /V zavetišču: 1 leto/,
     );
-    expect(quiet.parentElement?.className).toContain("text-muted-foreground");
-    expect(quiet.className).not.toContain("font-medium");
+    expect(quiet.closest("[data-tone]")?.getAttribute("data-tone")).toBe(
+      "quiet",
+    );
     // The age pill names itself for everyone, not only for a screen reader,
     // so the two spans of time on this card cannot be taken for each other.
     const age = within(dialog).getByText("Starost:", { exact: false });
@@ -707,10 +708,7 @@ describe("animal dialog", () => {
     const plea = region(dialog, "shelter-block").getByText(
       "Cufi v zavetišču čaka že 4 leta.",
     );
-    expect(plea.className).toContain("font-medium");
-    expect(plea.parentElement?.className).not.toContain(
-      "text-muted-foreground",
-    );
+    expect(plea.closest("[data-tone]")?.getAttribute("data-tone")).toBe("plea");
     expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
   });
 

@@ -126,6 +126,11 @@ const sl = {
   factBreed: "Pasma",
   factSize: "Velikost",
   factTimeInShelter: "V zavetišču",
+  // The label and its value as one string, so the punctuation between them is
+  // something a translator can see and change. A bare "2 leti" beside a box
+  // whose first line is a wait was read as the wait.
+  factAgeValue: "Starost: {age}",
+  factStayValue: "V zavetišču: {duration}",
   // The name in front turns a statistic into one animal's wait. "Čaka" is
   // third person singular and carries no gender, so it fits any name without
   // the sentence having to know the animal's sex.
@@ -133,10 +138,12 @@ const sl = {
   // "Brez imena v zavetišču čaka" reads as a phrase, not as a subject, so an
   // animal the shelter left unnamed keeps the sentence it had.
   longStayUnnamed: "V zavetišču čaka že {duration}.",
-  // For an animal that came in before its first birthday, the age pill and
-  // the plea print the same number, and a reader who notices reads it as a
-  // bug rather than as a life. The tail says which it is. "Skoraj", because
-  // the gate is an arrival age under a year, not a birth in the shelter.
+  // For an animal that came in before its first birthday, the age fact and
+  // the plea print the same number. Both name themselves now, so the repeat
+  // no longer reads as a bug; the tail says the thing the two numbers only
+  // imply. "Skoraj", because the gate is an arrival age under a year, not a
+  // birth in the shelter. stayStatement in lib/labels.ts picks between these
+  // four.
   longStayWholeLife:
     "{name} v zavetišču čaka že {duration}, skoraj vse svoje življenje.",
   longStayWholeLifeUnnamed:
@@ -664,6 +671,8 @@ const en: Messages = {
   factBreed: "Breed",
   factSize: "Size",
   factTimeInShelter: "In the shelter",
+  factAgeValue: "Age: {age}",
+  factStayValue: "In the shelter: {duration}",
   longStay: "{name} has been waiting in the shelter for {duration}.",
   longStayUnnamed: "At the shelter for {duration} now.",
   longStayWholeLife:

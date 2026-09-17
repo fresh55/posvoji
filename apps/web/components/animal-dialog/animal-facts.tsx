@@ -410,21 +410,12 @@ function Fact({
   icon: Icon,
   iconNode,
   prefix,
-  named = false,
   className,
   children,
 }: {
   icon?: LucideIcon;
   iconNode?: ReactNode;
   prefix?: string;
-  /**
-   * Print the prefix for everyone, not only for a screen reader. "Samica"
-   * and "Velika" name themselves; "2 leti" does not, and a bare span of time
-   * a few lines above a box whose first line is a wait read as the wait to
-   * some visitors. One span carries the prefix either way, so a screen
-   * reader never hears it twice.
-   */
-  named?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -445,14 +436,8 @@ function Fact({
       ) : (
         iconNode
       )}
-      {/* A named prefix shares the value's span. As its own flex item it
-          stood a gap-1.5 away from the number, and "Starost:  1 leto" read
-          as double-spaced. */}
-      {prefix && !named && <span className="sr-only">{prefix}: </span>}
-      <span>
-        {named && prefix ? `${prefix}: ` : null}
-        {children}
-      </span>
+      {prefix && <span className="sr-only">{prefix}: </span>}
+      <span>{children}</span>
     </li>
   );
 }
@@ -575,10 +560,8 @@ export function AnimalFacts({
                       className="size-3.5 opacity-70"
                     />
                   }
-                  prefix={messages.factAge}
-                  named
                 >
-                  {ageLabel(months, locale)}
+                  {t("factAgeValue", { age: ageLabel(months, locale) })}
                 </Fact>
               )}
               {animal.size && (
@@ -794,12 +777,9 @@ export function AnimalFacts({
 
       {/* The requirements and the patience flag used to stand here, as 12px
           muted asides under the description. They say what the home has to be,
-          which is not context, so they moved into the badge group above.
-
-          The time in the shelter stood here too, as a quiet aside that gave
-          way to the plea once the wait passed three years, so the same fact
-          sat in two places depending on the animal. Both now render in the
-          shelter block, in one slot; see shelter-block.tsx. */}
+          which is not context, so they moved into the badge group above. The
+          time in the shelter left for the shelter block; see
+          stayStatement in lib/labels.ts. */}
     </div>
   );
 }

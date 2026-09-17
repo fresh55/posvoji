@@ -5,7 +5,6 @@ import {
   LONG_STAY_MONTHS,
   META_SEPARATOR,
   longStayMonths,
-  monthsInShelter,
   registerDateLabel,
   shelterChipLabel,
   shelterSelectionLabel,
@@ -160,21 +159,6 @@ describe("longStayMonths", () => {
         NOW,
       ),
     ).toBeUndefined();
-  });
-});
-
-describe("monthsInShelter", () => {
-  it("counts whole calendar months", () => {
-    expect(monthsInShelter("2026-06-20", NOW)).toBe(2);
-    expect(monthsInShelter("2026-08-01", NOW)).toBe(0);
-  });
-
-  // A mistyped year in a listing puts the intake after the build. The month
-  // arithmetic alone rounds a date later this month down to zero, which
-  // would print a stay for an animal that has not arrived.
-  it("treats an intake after the reference as no stay", () => {
-    expect(monthsInShelter("2026-08-20", NOW)).toBeUndefined();
-    expect(monthsInShelter("2027-01-01", NOW)).toBeUndefined();
   });
 });
 

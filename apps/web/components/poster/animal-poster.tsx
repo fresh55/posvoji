@@ -7,12 +7,11 @@ import type { AnimalFields } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { posterPhoto } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { getMessages, translate, type Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import {
-  ageLabel,
-  longStayMonths,
   registerDateLabel,
   statusLabel,
+  stayStatement,
 } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import type { ShelterPhones } from "@/lib/shelters";
@@ -77,21 +76,17 @@ export function headlineStep(name: string): "l" | "m" | "s" | "xs" {
 }
 
 /** The plea, or nothing. Past LONG_STAY_MONTHS the site stops stating the
- *  wait and asks about it instead, in the animal's own name; the sheet
- *  follows that one decision rather than making its own. The shorter wait is
- *  a tile like the rest (see stayTile in poster-facts.tsx). */
+ *  wait and asks about it instead, in the animal's own name; the sheet reads
+ *  stayStatement rather than making its own call, so the sentence it prints is
+ *  the one the dialog prints, tail and all. The shorter wait is a tile like
+ *  the rest (see stayTile in poster-facts.tsx). */
 function pleaLine(
   animal: AnimalFields,
   locale: Locale,
   reference: Date,
-  name: string,
 ): string | undefined {
-  const months = longStayMonths(animal, reference);
-  if (months === undefined) return undefined;
-  const duration = ageLabel(months, locale);
-  return animal.name
-    ? translate(locale, "longStay", { name, duration })
-    : translate(locale, "longStayUnnamed", { duration });
+  const stay = stayStatement(animal, locale, reference);
+  return stay?.tone === "plea" ? stay.text : undefined;
 }
 
 export function AnimalPoster({
@@ -121,7 +116,7 @@ export function AnimalPoster({
   const SpeciesMark = SPECIES_ICONS[animal.species];
 
   const tiles = posterTiles(animal, locale, reference);
-  const plea = pleaLine(animal, locale, reference, name);
+  const plea = pleaLine(animal, locale, reference);
   // Reserved and held are the two states worth a word beside the name: the
   // animal is on the shelter's list and is not waiting for this reader's
   // decision. Available says nothing, the way the site's own badge says

@@ -12,7 +12,7 @@ import {
   sheltersMissingFromMap,
   speciesLabel,
   statusLabel,
-  timeInShelter,
+  stayStatement,
 } from "./labels";
 
 // The card renders these parts separately so it can dim the separators; joined
@@ -121,33 +121,44 @@ describe("localized labels", () => {
     ).toEqual(["Calm", "Balanced", "Lively"]);
   });
 
+  // The quiet line is where the site states a wait in words, so it is where
+  // ageLabel's Slovenian duals are checked.
+  const stayLine = (intakeDate: string, locale: "sl" | "en", now: Date) =>
+    stayStatement(
+      { species: "cat", status: "available", intakeDate } as Animal,
+      locale,
+      now,
+    )?.text;
+
   it("formats time in shelter with Slovenian duals", () => {
     const now = new Date("2026-08-18T00:00:00Z");
 
-    expect(timeInShelter("2026-07-15", "sl", now)).toBe("1 mesec");
-    expect(timeInShelter("2026-06-15", "sl", now)).toBe("2 meseca");
-    expect(timeInShelter("2026-05-15", "sl", now)).toBe("3 meseci");
-    expect(timeInShelter("2026-04-15", "sl", now)).toBe("4 meseci");
-    expect(timeInShelter("2026-03-15", "sl", now)).toBe("5 mesecev");
-    expect(timeInShelter("2024-08-15", "sl", now)).toBe("2 leti");
+    expect(stayLine("2026-07-15", "sl", now)).toBe("V zavetišču: 1 mesec");
+    expect(stayLine("2026-06-15", "sl", now)).toBe("V zavetišču: 2 meseca");
+    expect(stayLine("2026-05-15", "sl", now)).toBe("V zavetišču: 3 meseci");
+    expect(stayLine("2026-04-15", "sl", now)).toBe("V zavetišču: 4 meseci");
+    expect(stayLine("2026-03-15", "sl", now)).toBe("V zavetišču: 5 mesecev");
+    expect(stayLine("2024-08-15", "sl", now)).toBe("V zavetišču: 2 leti");
   });
 
   it("formats time in shelter in English", () => {
     const now = new Date("2026-08-18T00:00:00Z");
 
-    expect(timeInShelter("2026-02-15", "en", now)).toBe("6 months");
+    expect(stayLine("2026-02-15", "en", now)).toBe("In the shelter: 6 months");
   });
 
   it("falls back to 'less than a month' just under the boundary", () => {
     const now = new Date("2026-08-18T00:00:00Z");
 
-    expect(timeInShelter("2026-08-01", "sl", now)).toBe("manj kot mesec");
+    expect(stayLine("2026-08-01", "sl", now)).toBe(
+      "V zavetišču: manj kot mesec",
+    );
   });
 
-  it("returns undefined for a future intake date", () => {
+  it("says nothing for a future intake date", () => {
     const now = new Date("2026-08-18T00:00:00Z");
 
-    expect(timeInShelter("2026-09-01", "sl", now)).toBeUndefined();
+    expect(stayLine("2026-09-01", "sl", now)).toBeUndefined();
   });
 
   it("counts whole months in the shelter for the long-stay line", () => {
@@ -156,6 +167,10 @@ describe("localized labels", () => {
     expect(monthsInShelter("2026-08-01", now)).toBe(0);
     expect(monthsInShelter("2025-08-18", now)).toBe(12);
     expect(monthsInShelter("kmalu", now)).toBeUndefined();
+    // A mistyped year puts the intake after the build. The month arithmetic
+    // alone rounds a date later this month down to zero, which would state a
+    // stay for an animal that by the record has not arrived.
+    expect(monthsInShelter("2026-08-25", now)).toBeUndefined();
   });
 
   it("names the species on its own", () => {

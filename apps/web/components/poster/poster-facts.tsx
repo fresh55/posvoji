@@ -18,14 +18,18 @@ import {
   TOGGLES,
   toggleLabel,
 } from "@/lib/filters";
-import { getMessages, type Locale, type TranslationKey } from "@/lib/i18n";
+import {
+  getMessages,
+  translate,
+  type Locale,
+  type TranslationKey,
+} from "@/lib/i18n";
 import {
   ageLabel,
-  longStayMonths,
-  monthsInShelter,
   sexLabel,
   sizeLabel,
   speciesLabel,
+  stayStatement,
 } from "@/lib/labels";
 
 /**
@@ -121,10 +125,10 @@ export function posterTiles(
   if (months !== undefined) {
     tiles.push({
       key: "age",
-      // Named, as the dialog's pill is: "2 leti" beside a "V zavetišču: 2
+      // Named, as the dialog's age fact is: "2 leti" beside a "V zavetišču: 2
       // meseca" tile is two spans of time told apart by a 5mm glyph, read
       // across a room on paper.
-      label: `${messages.factAge}: ${ageLabel(months, locale)}`,
+      label: translate(locale, "factAgeValue", { age: ageLabel(months, locale) }),
       tone: "identity",
       // The same sprout, shrub or tree the age filter buckets by.
       glyph: { kind: "age", stage: ageGroup(months) },
@@ -195,15 +199,11 @@ function stayTile(
   locale: Locale,
   reference: Date,
 ): PosterTile | undefined {
-  if (longStayMonths(animal, reference) !== undefined) return undefined;
-  // An adopted animal has left, so its stay is history. It has no business on
-  // a poster at all, but a dataset can be a day behind a shelter's listing.
-  if (!animal.intakeDate || animal.status === "adopted") return undefined;
-  const months = monthsInShelter(animal.intakeDate, reference);
-  if (months === undefined) return undefined;
+  const stay = stayStatement(animal, locale, reference);
+  if (stay?.tone !== "quiet") return undefined;
   return {
     key: "stay",
-    label: `${getMessages(locale).factTimeInShelter}: ${ageLabel(months, locale)}`,
+    label: stay.text,
     tone: "wait",
     glyph: { kind: "lucide", Icon: CalendarClock },
   };

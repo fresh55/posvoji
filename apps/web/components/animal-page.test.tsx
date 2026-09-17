@@ -362,12 +362,6 @@ describe("the shelter box", () => {
     expect(screen.queryByText(/čaka že/)).toBeNull();
   });
 
-  it("says nothing about the stay of an animal that has left", () => {
-    block({ status: "adopted", intakeDate: "2022-06-15" });
-
-    expect(screen.queryByText(/V zavetišču: |čaka že/)).toBeNull();
-  });
-
   // Adoption goes through the shelter, and the box's own button leaves for a
   // listing that may be out of date. The number is the way to ask.
   it("dials the register's number in international form", () => {

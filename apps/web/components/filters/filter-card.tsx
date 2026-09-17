@@ -121,6 +121,31 @@ export function isDeadOption(count: number, checked: boolean): boolean {
 }
 
 /**
+ * The dress a dead option wears, which is the filters' decision and not the
+ * card's.
+ *
+ * The base cva carries disabled:opacity-50, and that is right where it came
+ * from: the portal's choice cards are disabled while a save is in flight, and
+ * half opacity is what a control being waited on looks like. Here disabled
+ * means something else, and at half opacity the label measured 2.08:1, which
+ * reads as a tile that failed to paint rather than as an answer the current
+ * narrowing has none of. Under /?vrsta=pes four such rows were 160 of the
+ * 243px the sidebar overflowed at 1280x720.
+ *
+ * So the label keeps the full muted ink it has at rest, 5.54:1, and the two
+ * things that are actually true of a dead option are what say so: the count
+ * reads 0, and the box there would be nothing to tick in is not drawn
+ * (group-disabled:hidden on FilterSelectionMark). In the sidebar the row is
+ * not drawn at all; see drawnOptions in filter-groups.tsx.
+ *
+ * It rides here rather than on the cva because the cva's default layout is the
+ * tile and the portal calls it without one, so a variant or a compound would
+ * have taken the portal's busy cards with it. This helper has no caller
+ * outside the filters.
+ */
+export const DEAD_OPTION_CLASS = "disabled:opacity-100";
+
+/**
  * Why the sidebar draws rows.
  *
  * The sheet draws tiles and the sidebar draws rows, and both wore the same
@@ -142,11 +167,21 @@ export function isDeadOption(count: number, checked: boolean): boolean {
  * mouse-driven, the sheet is what a phone gets, and the panel had more to
  * show than it could: at 1440x900 its content ran 972px in an 876px box, so
  * two whole sections sat below its own fold.
+ *
+ * Two answers, so they are two strings and not a cn() call per option. There
+ * are about 28 options in the list and every one of them asks; below lg the
+ * sidebar is mounted beside the sheet, so both lists ask on the same render.
+ * DEAD_OPTION_CLASS rides in the literal rather than being merged in, which
+ * keeps the dress a dead option wears in one place while the answer stays a
+ * constant.
  */
+const LAYOUT_CLASS: Readonly<Record<FilterCardLayout, string>> = Object.freeze({
+  sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center`,
+  sidebar: `${DEAD_OPTION_CLASS} h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
+});
+
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
-  return layout === "sheet"
-    ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-    : "h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left";
+  return LAYOUT_CLASS[layout];
 }
 
 function markClass(layout: FilterCardLayout): string {
@@ -223,14 +258,32 @@ export function FilterSelectionMark({
       <span
         aria-hidden
         className={cn(
-          "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150",
+          // group-disabled:hidden, because a dead option has nothing to tick.
+          // The card is the group, and a disabled card in the filters is one
+          // the current narrowing has no animals for; see DEAD_OPTION_CLASS
+          // for why the rest of that dress is not in the cva.
+          "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150 group-disabled:hidden",
           checked
             ? // The ink is a token and not text-white, because this is the one
               // place the strong accent is a ground and that ground is light in
               // dark mode: a white tick on it measured 2.39:1. See
               // --brand-strong-foreground in globals.css.
               "border-brand-strong bg-brand-strong text-brand-strong-foreground"
-            : "border-muted-foreground/40 bg-background text-transparent",
+            : // The control tier, by name. This is the boundary of a control,
+              // which is what --control-border is for, and it was spelled as
+              // muted-foreground/80 ten lines from a token that says the same
+              // thing: one tier, two spellings. It started at /40, where the
+              // resting box measured 1.77:1 light and 2.11:1 dark against the
+              // surface it stands on, which is a box nobody can see, and /80
+              // took it to 3.65:1 and 5.20:1.
+              //
+              // border-control-border measures 3.66:1 and 3.77:1. Light is
+              // unchanged and dark gives up 5.20:1 for 3.77:1, still over the
+              // 3:1 SC 1.4.11 asks of a control's own boundary. No dark: half:
+              // this span spells no dark border of its own, so the token's own
+              // dark value stands (see CONTROL_FRAME in lib/link-styles.ts).
+              // The checked box is not affected; its tick is 7.37:1.
+              "border-control-border bg-background text-transparent",
           className,
         )}
       >
@@ -441,7 +494,7 @@ export function FilterCardHoverLift({
 }
 
 /**
- * The voice a sidebar row sets its label and its count in.
+ * The voice a sidebar row sets its label in.
  *
  * Exported because the age rows cannot use FilterCardTail: that tail is a flex
  * line and the age row is a three-column grid, so it draws its own label and
@@ -449,28 +502,64 @@ export function FilterCardHoverLift({
  * printed 11px over 10px while every other section printed 12 over 11.
  */
 export const SIDEBAR_LABEL_CLASS = "truncate text-xs";
-export const SIDEBAR_COUNT_CLASS =
-  "w-8 text-right text-2xs tabular-nums text-muted-foreground";
 
 /**
- * The same number in the sheet, one step larger.
+ * The resting voice of the count, per layout. Not exported: everything that
+ * draws this number asks countClass below, which is what carries the chosen
+ * state with it, and a caller reaching past that would print a number the
+ * brand fill measures 4.45:1 against at 11-12px.
  *
  * 11px is a narrow column's size. The sidebar is 224px wide beside a grid and
  * can spend the step; the sheet is a phone held at arm's length, and 11px
  * there was the smallest type on the page under a 12px label it belongs to.
- * The label was already text-xs in both layouts, so this only stops the count
- * from sitting a step below the word it counts.
- *
- * Exported because the sections that draw their own tile instead of going
- * through FilterCardTail (sex-cards.tsx, size-paw-cards.tsx) need the same
- * voice, and hand-copied it drifts: Starost printed 11 over 10 for a release
- * for exactly that reason.
+ * The label is text-xs in both layouts, so the sheet's step only stops the
+ * count from sitting below the word it counts.
  */
-export const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
+const SIDEBAR_COUNT_CLASS =
+  "w-8 text-right text-2xs tabular-nums text-muted-foreground";
 
-// Only a flex item can be squeezed by a long label, so shrink-0 rides with the
-// line below rather than with the voice the age grid shares.
-const SIDEBAR_COUNT_FLEX_CLASS = cn(SIDEBAR_COUNT_CLASS, "shrink-0");
+const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
+
+/**
+ * The count, in the voice its layout and its state ask for.
+ *
+ * The count was the one thing on a card that got less legible for being
+ * chosen: both constants above are state-blind, so #6f6762 stood on the green
+ * #d0eed6 fill at 4.45:1 in light mode at 11-12px, under the 4.5:1 that size
+ * of text is held to. Dark passed at 6.14:1 and is not what this is for.
+ *
+ * A chosen count takes the fill's own ink at reduced strength: /80, which
+ * measures 5.80:1 in light mode and clears AA at both sizes. One value covers
+ * both surfaces. The sidebar wore /75 for a pass and it measured 5.06:1 light
+ * and 6.93:1 dark, which is also clear, so the split was buying nothing but a
+ * second number to keep. The label beside it stays the full token at 9.91:1,
+ * so the count is still the quieter of the two and the row still reads label
+ * first.
+ *
+ * One function, because three files draw this number: FilterCardTail for every
+ * section that goes through it, and sex-cards.tsx, size-paw-cards.tsx and
+ * age-growth-control.tsx for the ones that draw their own label and count.
+ * Hand-copied, the sizes had already drifted twice.
+ *
+ * Four answers, resolved once at module scope rather than merged per option
+ * per render, for the reason filterCardLayoutClass above states.
+ */
+const COUNT_CLASS: Readonly<
+  Record<FilterCardLayout, Readonly<{ rest: string; chosen: string }>>
+> = Object.freeze({
+  sheet: Object.freeze({
+    rest: SHEET_COUNT_CLASS,
+    chosen: cn(SHEET_COUNT_CLASS, "text-brand-foreground/80"),
+  }),
+  sidebar: Object.freeze({
+    rest: SIDEBAR_COUNT_CLASS,
+    chosen: cn(SIDEBAR_COUNT_CLASS, "text-brand-foreground/80"),
+  }),
+});
+
+export function countClass(layout: FilterCardLayout, checked: boolean): string {
+  return COUNT_CLASS[layout][checked ? "chosen" : "rest"];
+}
 
 // The label and count after the icon. The count is a render prop because a
 // section may animate it, and its class comes from the layout either way.
@@ -499,7 +588,7 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {renderCount(SHEET_COUNT_CLASS)}
+        {renderCount(countClass(layout, checked))}
       </>
     );
   }
@@ -509,7 +598,9 @@ export function FilterCardTail({
       <span className={cn(SIDEBAR_LABEL_CLASS, checked && "font-medium")}>
         {label}
       </span>
-      {renderCount(SIDEBAR_COUNT_FLEX_CLASS)}
+      {/* Only a flex item can be squeezed by a long label, so shrink-0 rides
+          with this line rather than with the voice the age grid shares. */}
+      {renderCount(cn(countClass(layout, checked), "shrink-0"))}
     </span>
   );
 }

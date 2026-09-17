@@ -119,7 +119,12 @@ const NAVIGATION_KEYS = ["ArrowDown", "ArrowUp", "Home", "End"];
 
 function moveSectionFocus(event: KeyboardEvent<HTMLButtonElement>) {
   if (!NAVIGATION_KEYS.includes(event.key)) return;
-  const container = event.currentTarget.closest("aside");
+  // The aside on desktop, the drawer's content on a phone: the sheet folds
+  // its sections too now, and inside the drawer there is no aside to find,
+  // so the walk used to end silently on the first arrow press there.
+  const container = event.currentTarget.closest(
+    'aside, [data-slot="drawer-content"]',
+  );
   if (!container) return;
   const triggers = [
     ...container.querySelectorAll<HTMLButtonElement>("h3 button[aria-expanded]"),
@@ -195,19 +200,45 @@ export function FilterSectionHeader({
       className={cn(
         // text-xs below lg and text-2xs from it, the same one decision the
         // hint above states: 11px is a 224px column's size, not a phone's.
-        "h-auto p-0 text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
+        "h-auto text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
-        // shapes, because the two placements differ. In the sheet this sits in
-        // the header's flex row and takes the overlay. A folding section's
+        // shapes, because the two placements differ. In the sheet's Kje row,
+        // the one caller with no collapse contract (location-scope-row.tsx),
+        // this sits in the header's flex row and takes the overlay; the
+        // sheet's filter sections fold now and take the absolute branch below
+        // with its 44px coarse floor. A folding section's
         // header is a positioned row and the button is absolute inside it, and
         // `tap-target` sets position: relative, which would fight that; there
         // the drawn box is grown instead, which costs the row nothing because
         // the button is out of flow and the header beside it is 44px on the
         // same pointer.
+        //
+        // On a mouse that box was the drawn 17.5px and nothing else, and the
+        // fold trigger runs the full width of the row underneath it, so a
+        // 10px miss above or below this link collapsed the section instead of
+        // clearing it. px-1 py-1 grows the box to 25.5px and takes 54x25px of
+        // the trigger's own dead space; the padding is spelled here rather
+        // than in the shared string above, so p-0 is not left in the class
+        // list for the stylesheet's emit order to settle against px-1.
+        //
+        // No -my-1 with it. The row places this button at top-1/2 and pulls it
+        // back by half its own height, so a taller box re-centres itself and
+        // the ink does not move; a negative block margin would shift the ink
+        // up by 4px. -mx-1 is needed, because right-6 pins the right margin
+        // edge and without it the words would move 4px left.
         collapse
-          ? "absolute right-6 top-1/2 -translate-y-1/2 pointer-coarse:min-h-11"
-          : "pointer-coarse:tap-target",
+          ? "absolute right-6 top-1/2 -mx-1 -translate-y-1/2 px-1 py-1 pointer-coarse:min-h-11"
+          : // 39.5px on a coarse pointer, not the 44 the utility's name
+            // suggests: the overlay reaches 44px in both axes from the
+            // control's centre, and this control sits in a flex row whose
+            // own height the 19px line box sets, so what it can claim
+            // downwards stops where the first filter row begins, 17px under
+            // that centre. Left at 39.5. The 4px per section that an mb-3
+            // here would buy back is 36px of sheet body across nine
+            // sections, and the sheet's own headers are the ones moving to
+            // the folding shape above, where the coarse floor is a real 44.
+            "p-0 pointer-coarse:tap-target",
       )}
     >
       {messages.resetFilters}
@@ -269,13 +300,26 @@ export function FilterSectionHeader({
       // filter row 8px below and an overlay overhangs 10, so it would reach
       // into the row under it. Growing the box moves the rows down instead,
       // and only where there is a finger.
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
+      //
+      // hover:text-foreground beside the ground. Every row in the sections
+      // below answers a pointer in both, and this heading answered in the
+      // ground alone, which made the one control in the column that opens
+      // something the quietest thing in it under the cursor. The two marks
+      // beside the caption keep their own ink: they say what they say whether
+      // the pointer is here or not.
+      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
     >
       <span className="truncate">{label}</span>
       {hint ? (
+        // /80 and not the /60 this was, which measured 2.47:1 in light mode.
+        // On a mouse the hint sentence is never drawn, so this glyph is the
+        // only sign that a section has an explanation at all, including the
+        // one saying that animals with no shelter answer are left out of DOMA
+        // IMAM. /80 measures 3.62:1 light and 5.20:1 dark, which is the 3:1 an
+        // icon carrying meaning is held to.
         <Info
           aria-hidden
-          className="size-3.5 shrink-0 text-muted-foreground/60"
+          className="size-3.5 shrink-0 text-muted-foreground/80"
           strokeWidth={1.8}
         />
       ) : null}
@@ -287,10 +331,13 @@ export function FilterSectionHeader({
           {collapse.summary}
         </span>
       ) : null}
+      {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
+          3.62:1 in light, 5.20:1 in dark. This is the one thing that says the
+          heading is a disclosure and not a label. */}
       <ChevronDown
         aria-hidden
         className={cn(
-          "ml-auto size-3.5 shrink-0 text-muted-foreground/70 transition-transform duration-200",
+          "ml-auto size-3.5 shrink-0 text-muted-foreground/80 transition-transform duration-200",
           !collapse.open && "-rotate-90",
         )}
       />

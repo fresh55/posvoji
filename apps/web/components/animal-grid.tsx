@@ -21,6 +21,8 @@ import {
   CARD_PHOTO_ASPECT,
   CARD_PHOTO_RADIUS,
   RESULTS_COLUMNS,
+  RESULTS_GRID_TRACK,
+  RESULTS_RAIL_TRACK,
 } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -130,7 +132,8 @@ function shelterAbsenceKey(count: number): TranslationKey {
   return "noResultsShelterPlural";
 }
 
-/** The touch line the empty state's buttons keep on a coarse pointer.
+/** What the empty state's buttons wear: a touch line on a coarse pointer, and
+ *  a frame that can be seen.
  *
  *  They are `size="sm"`, which is a mouse's height, and on a phone this state
  *  holds the only controls on screen. Grown rather than overlaid, and padded
@@ -138,8 +141,13 @@ function shelterAbsenceKey(count: number): TranslationKey {
  *  gate asks the pointer rather than the width, which is what the rest of the
  *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
  *  mouse.
+ *
+ *  CONTROL_FRAME is the same argument in the other dimension: these are
+ *  outline buttons with no fill on an empty page, so their edge is the whole
+ *  of what says they are controls. Why that is a token and not --border is
+ *  written where the constant is (lib/link-styles.ts).
  */
-const EMPTY_STATE_ACTION = COARSE_ACTION;
+const EMPTY_STATE_ACTION = `${COARSE_ACTION} ${CONTROL_FRAME}`;
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
@@ -149,31 +157,48 @@ const EMPTY_STATE_ACTION = COARSE_ACTION;
 // said as much.
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    // The floor is about the filter dock, not about the drawing. Below lg the
-    // dock is on screen (animal-filters.tsx, lg:hidden) and it floats over the
-    // page end; a filter that matches nothing leaves a block short enough that
-    // the footer's nav row lands inside the dock's band, and a tap where
-    // "Zavetišča" is drawn opens the filter sheet instead. Three fifths of the
-    // viewport put the whole footer under the fold at scroll 0 on every phone
-    // size measured, landscape included, so the band has nothing of it to
-    // cover; half was not enough, it left the footer starting at 808 against a
-    // band that ends at 828. Reaching the footer then means scrolling to the
-    // page end, which is the case the footer's own docked padding is for, and
-    // nothing here adds a second clearance.
+    // The floor and both of the insets below lg are about the filter dock,
+    // not about the drawing. The dock is on screen there (animal-filters.tsx,
+    // lg:hidden) and it floats over the page end, and this is the shortest
+    // page the site draws, so everything in it comes to rest in the dock's
+    // band unless it is told not to.
     //
-    // The floor is height and not spacing, though, and centring in it put the
-    // message in the middle of that height. Measured at 375px with two lines
-    // of pills above the grid, "Ni zadetkov" started 260px under the row that
-    // names the filter to drop (animal-filters.tsx), and the advice under it
-    // 284px. Advice reads against the thing it is advice about, so below lg
-    // the block starts at the top of the floor instead: 84px, which is the
-    // grid's gap, this box's own top padding, the paw and the gap under it.
-    // The floor is untouched and still holds the footer off the dock. From lg
-    // it lifts with the dock and the box is its content again, so the
-    // centring left standing there has no spare height to spend.
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh] max-lg:justify-start max-lg:pt-6">
+    // The floor is the footer's half of that. A filter matching nothing left a
+    // block short enough that the footer's nav row was drawn inside the band,
+    // and a tap where "Zavetisca" is drawn opened the filter sheet instead.
+    // Three fifths of the viewport put the whole footer under the fold at
+    // scroll 0 on every phone size measured, landscape included, so the band
+    // has nothing of it to cover; half was not enough, it left the footer
+    // starting at 808 against a band that ends at 828. Reaching the footer
+    // then means scrolling to the page end, which is the case the footer's own
+    // docked padding is for, and nothing here adds a second clearance.
+    //
+    // The floor is height and not spacing, though, and two separate
+    // measurements asked for the same answer to that. Centring in it put the
+    // message in the middle of the height: at 375px with two lines of pills
+    // above the grid, "Ni zadetkov" started 260px under the row that names the
+    // filter to drop (animal-filters.tsx), and the advice under it 284px, when
+    // advice reads against the thing it is advice about. Centring also put the
+    // block's buttons at the bottom of a screenful, where the dock is: at
+    // 375x667 "Pocisti filtre" sat 44px under it, entirely hidden, at 320x568
+    // the primary button was fully covered, and at 844x390 all three actions
+    // were below the fold.
+    //
+    // So below lg the block starts at the top of its floor and keeps the
+    // dock's own clearance free at the bottom. That distance is
+    // --back-to-top-bottom, the same token the button in the corner and the
+    // footer's run-off are measured with, because it is the same dock being
+    // cleared and a literal here would be a third copy of it (globals.css).
+    // From lg the floor lifts with the dock and the box is its content again,
+    // so the centring left standing there has no spare height to spend.
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh] max-lg:justify-start max-lg:pt-6 max-lg:pb-(--back-to-top-bottom)">
+      {/* Decoration, and the first thing to go where the room is needed: it
+          is aria-hidden, it says nothing the sentence under it does not, and
+          the 32px plus the gap it takes is what put the actions inside the
+          dock's band at 320 and 360. Drawn from lg, where the state has a
+          screen to itself and the dock is gone. */}
       <PawPrint
-        className="size-8 text-muted-foreground/50"
+        className="size-8 text-muted-foreground/50 max-lg:hidden"
         strokeWidth={1.5}
         aria-hidden
       />
@@ -230,8 +255,11 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
       {/* The cards go in the second track and the rail's is left empty: what is
           promised here is where the animals will be, and an empty 224px is a
           truer promise than a grey panel about to become a list of controls.
-          col-start rather than an empty element to hold the column open. */}
-      <div className={cn("flex flex-col gap-4", hasSidebar && "lg:col-start-2")}>
+          The track rather than an empty element to hold the column open, and
+          the same constant the block itself wears (lib/card-grid.ts). */}
+      <div
+        className={cn("flex flex-col gap-4", hasSidebar && RESULTS_GRID_TRACK)}
+      >
         {/* The toolbar the hidden block also covers: the species tabs, the
             result count and the sort control are as unanswered as the cards.
             In the band the real bar draws, rule and all, and at the height its
@@ -499,7 +527,7 @@ export function AnimalGrid({
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
         // The rail and the grid beside it, from lib/card-grid.ts, which owns
-        // the 14rem the photo bands are derived from and the minmax(0,...)
+        // the 224px the photo bands are derived from and the minmax(0,...)
         // floor that keeps the column shrinkable. The stand-in above wears the
         // same string; what happens when the two disagree is written there.
         className={cn(hasSidebar && RESULTS_COLUMNS)}
@@ -518,57 +546,15 @@ export function AnimalGrid({
         >
           {messages.skipResults}
         </a>
-        {hasSidebar && (
-          <FilterSidebar
-            onClearAll={handleClearAll}
-            onSpeciesChange={setSpecies}
-            // lg:bg-background is load-bearing, not decoration. lg:sticky
-            // puts the sidebar on its own compositing layer, and Chrome
-            // keeps subpixel text antialiasing on such a layer only while
-            // it has a fully opaque background colour. Transparent, every
-            // label in here renders greyscale while the rest of the page
-            // does not, which reads as blur at the same size.
-            //
-            // lg:top-0 with a padding of its own and not an inset: the toolbar
-            // across the gutter pins at top-0 and holds its species tabs down
-            // inside its own padding (animal-filters.tsx). Pinning the aside to
-            // the same edge and carrying the same amount inside it is what puts
-            // the panel head on the tabs' line in both states. An inset moved
-            // the head 12px below the tabs once the two stuck. The padding is
-            // inside the scroll box, so it scrolls away with the head and the
-            // fade mask still starts at the aside's own top edge.
-            //
-            // Both read --rail-pad, which is where that amount is written and
-            // why the two cannot drift apart again (globals.css). The height
-            // spends it twice, so the rail leaves the same gap at the bottom of
-            // the viewport that it takes at the top.
-            className="hidden lg:sticky lg:top-0 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad"
-            filters={filters}
-            groups={groups}
-            counts={counts}
-            toggles={toggles}
-            toggleTally={toggleTally}
-            goodWith={goodWith}
-            home={home}
-            care={care}
-            scope={
-              shelters && {
-                options: shelters,
-                counts: counts.shelter,
-                municipalities,
-                offSite: offSiteShelters,
-                summaries: shelterSummaries,
-                resultCount: visible.length,
-              }
-            }
-            onToggle={toggle}
-            onToggleMany={toggleMany}
-            onToggleProperty={toggleProperty}
-            onToggleManyProperties={toggleManyProperties}
-          />
-        )}
-
-        <div className="flex flex-col gap-4">
+        {/* The results, ahead of the rail in the document and put back beside
+            it by the tracks both of them name (lib/card-grid.ts). What is at
+            stake is the order a keyboard and a screen reader meet this page
+            in: the toolbar above the cards holds the species tabs and the sort
+            control, and with the panel rendered first they were the 26th tab
+            stop, behind 14 to 32 stops of filters, with the skip link aiming
+            past the grid rather than at them. Below lg the rail is
+            display:none and there is one column, so nothing there changes. */}
+        <div className={cn("flex flex-col gap-4", hasSidebar && RESULTS_GRID_TRACK)}>
           <AnimalFilters
             isEmpty={isEmpty}
             hasSidebar={hasSidebar}
@@ -768,11 +754,81 @@ export function AnimalGrid({
               </p>
             </noscript>
           )}
-          {/* Where the skip link lands: the end of the grid, whatever the grid
-              currently holds. tabIndex so focus actually moves here rather than
-              only scrolling the page. */}
-          <div id="za-rezultati" tabIndex={-1} />
         </div>
+
+        {hasSidebar && (
+          <FilterSidebar
+            onClearAll={handleClearAll}
+            onSpeciesChange={setSpecies}
+            // lg:bg-background is load-bearing, not decoration. lg:sticky
+            // puts the sidebar on its own compositing layer, and Chrome
+            // keeps subpixel text antialiasing on such a layer only while
+            // it has a fully opaque background colour. Transparent, every
+            // label in here renders greyscale while the rest of the page
+            // does not, which reads as blur at the same size.
+            //
+            // lg:top-0 with a padding of its own and not an inset: the toolbar
+            // across the gutter pins at top-0 and holds its species tabs down
+            // inside its own padding (animal-filters.tsx). Pinning the aside to
+            // the same edge and carrying the same amount inside it is what puts
+            // the panel head on the tabs' line in both states. An inset moved
+            // the head 12px below the tabs once the two stuck. The padding is
+            // inside the scroll box, so it scrolls away with the head and the
+            // fade mask still starts at the aside's own top edge.
+            //
+            // Both read --rail-pad, which is where that amount is written and
+            // why the two cannot drift apart again (globals.css). The height
+            // spends it twice, so the rail leaves the same gap at the bottom of
+            // the viewport that it takes at the top.
+            //
+            // That pairing survives the panel being second in the document:
+            // each of the two pins against the page's own scrolling and not
+            // against the other, so which one the browser lays out first
+            // decides nothing about where either comes to rest. The track is
+            // what puts the panel back in the left column (lib/card-grid.ts).
+            className={cn(
+              RESULTS_RAIL_TRACK,
+              "hidden lg:sticky lg:top-0 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad",
+            )}
+            filters={filters}
+            groups={groups}
+            counts={counts}
+            toggles={toggles}
+            toggleTally={toggleTally}
+            goodWith={goodWith}
+            home={home}
+            care={care}
+            scope={
+              shelters && {
+                options: shelters,
+                counts: counts.shelter,
+                municipalities,
+                offSite: offSiteShelters,
+                summaries: shelterSummaries,
+                resultCount: visible.length,
+              }
+            }
+            onToggle={toggle}
+            onToggleMany={toggleMany}
+            onToggleProperty={toggleProperty}
+            onToggleManyProperties={toggleManyProperties}
+          />
+        )}
+
+        {/* Where the skip link lands, and it has to be past the rail as well
+            as past the cards. It used to be the last child of the grid column,
+            which was the end of the document until the results moved ahead of
+            the panel: from then on skipping the list left the visitor at the
+            top of fourteen to thirty-two filter stops, which is further from
+            the footer than the grid was. A row of its own under both columns,
+            so it is last whichever track it is read from, and zero-height, so
+            it costs the layout nothing. tabIndex so focus actually moves here
+            rather than only scrolling the page. */}
+        <div
+          id="za-rezultati"
+          tabIndex={-1}
+          className={cn(hasSidebar && "lg:col-span-2 lg:row-start-2")}
+        />
 
         {dialogMounted && (
           <AnimalDialog
@@ -796,4 +852,4 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
-import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
+import { COARSE_ACTION, CONTROL_FRAME, SOURCE_LINK } from "@/lib/link-styles";

@@ -1,15 +1,19 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
 import { EnergyCards } from "./energy-cards";
+import {
+  installFilterFoldSeams,
+  openFilterSection,
+} from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
-afterEach(() => cleanup());
+installFilterFoldSeams();
 
 const options = groupOptions("energy", [], "sl");
 const counts = new Map(options.map(({ value }) => [value, 3]));
@@ -249,6 +253,7 @@ describe("FilterGroupList energy group", () => {
     renderList([]);
 
     expect(screen.getByRole("heading", { name: "Energija" })).toBeTruthy();
+    openFilterSection("Energija");
     expect(screen.queryByRole("heading", { name: "Velikost" })).toBeNull();
     expect(document.querySelector("svg.lucide-paw-print")).toBeNull();
     // The levels draw their own two-layer glyphs rather than rendering lucide.
@@ -264,6 +269,7 @@ describe("FilterGroupList energy group", () => {
   it("clears the section from the reset the list wired up", () => {
     const { onToggleMany } = renderList(["calm"]);
 
+    openFilterSection("Energija");
     fireEvent.click(
       screen.getByRole("button", { name: "Ponastavi filter energije" }),
     );

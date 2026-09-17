@@ -454,7 +454,7 @@ function EnergyGlyph({
   );
 }
 
-// The sidebar column is 14rem, and "Uravnotežen" does not fit a third of it at
+// The sidebar column is 224px, and "Uravnotežen" does not fit a third of it at
 // text-xs, so only the sheet gets three columns.
 export function EnergyCards({
   options,

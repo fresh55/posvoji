@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -29,11 +29,16 @@ import {
 } from "@/lib/filters";
 import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
 import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
+import {
+  installFilterFoldSeams,
+  openAllFilterSections,
+} from "@/test/filter-folds";
 import { FilterChips, type Chip } from "./filter-chips";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
+installFilterFoldSeams();
+
 afterEach(() => {
-  cleanup();
   window.history.replaceState(null, "", "/");
 });
 
@@ -251,7 +256,11 @@ function FilterFlowHarness() {
 }
 
 function renderFilters() {
-  return render(<FilterFlowHarness />);
+  const result = render(<FilterFlowHarness />);
+  // Every section but Spol and Starost folds closed (use-filter-sections.ts),
+  // and these tests press the options inside them.
+  openAllFilterSections();
+  return result;
 }
 
 function query() {

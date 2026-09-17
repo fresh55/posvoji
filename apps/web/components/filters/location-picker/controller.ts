@@ -203,6 +203,9 @@ export function useLocationPickerController({
   // both hand this id to the rows underneath so the group is labelled whether
   // it can be folded or not.
   const offGroupId = useId();
+  // Names the roster rows a search narrowed, for the "Zavetišča" heading the
+  // list draws over them while the field holds a name.
+  const shelterGroupId = useId();
   const {
     state,
     toggle: toggleNearby,
@@ -473,10 +476,14 @@ export function useLocationPickerController({
   // Choosing the place result restores the whole list in distance order.
   // Recognition alone keeps the matching shelter rows visible alongside the
   // place suggestion, so the visitor can choose which result they meant.
+  //
+  // The needle is folded once and not per row: both lists below run the
+  // predicate over every shelter in the roster, on every keystroke.
+  const needle = fold(query.trim());
   const matchesQuery = (row: ShelterRow) =>
-    fold(`${row.label} ${row.city ?? ""}`).includes(fold(query.trim()));
-  const visibleRows = searching ? rows.filter(matchesQuery) : rows;
-  const visibleOffRows = searching ? offRows.filter(matchesQuery) : offRows;
+    fold(`${row.label} ${row.city ?? ""}`).includes(needle);
+  const nameMatches = searching ? rows.filter(matchesQuery) : rows;
+  const offNameMatches = searching ? offRows.filter(matchesQuery) : offRows;
 
   // What typing just did to the list. Refiltering was silent: the count is
   // only readable off the rows themselves, and the "no matches" state is drawn
@@ -494,15 +501,28 @@ export function useLocationPickerController({
   // is said by the status line under the field, which names the town it
   // resolved to; a "Zadetki: 17 zavetišč" beside it would be a count of the
   // roster dressed up as a search result.
-  const matched = visibleRows.length + visibleOffRows.length;
+  const matched = nameMatches.length + offNameMatches.length;
   // What 3000 used to get: a place row reading "V bližini Celje" and, right
   // under it, "Ni zadetkov za »3000«" over a Počisti iskanje button. The
   // postcode is not a shelter's name and was never going to match one, so the
   // empty list is not news about the query; it reads as "no such place" about
   // a place the dialog has just found, and offers to clear the one input that
-  // worked. Where the place row is the answer, it is the only answer drawn,
-  // and the live region says the same thing the row does.
+  // worked. The live region says what the row says, and the empty block is not
+  // drawn (picker-shelter-list.tsx).
   const placeOnly = searching && matched === 0 && placeOffered;
+  // And the roster stays on screen while it is the place row's answer. Not
+  // drawing the empty block was half the fix: the list itself still went, so
+  // "Kranj" or "3000" left the place row standing over 336px of nothing on a
+  // phone and 457px on the desktop panel, and pressing "V bližini Kranj"
+  // re-sorted a list the visitor had never seen. Whole, in the order it was
+  // already in, the press does what it says: the rows reorder by distance
+  // under the suggestion that offered it.
+  //
+  // Only where the place row is the answer. A word the postal table does not
+  // know is a shelter being searched for, and there the narrowed list, empty
+  // or not, is the answer to it.
+  const visibleRows = placeOnly ? rows : nameMatches;
+  const visibleOffRows = placeOnly ? offRows : offNameMatches;
   const searchNews = searching
     ? matched === 0
       ? placeOnly
@@ -637,6 +657,7 @@ export function useLocationPickerController({
     searching,
     statusId,
     offGroupId,
+    shelterGroupId,
     state,
     toggleNearby,
     dismissError,

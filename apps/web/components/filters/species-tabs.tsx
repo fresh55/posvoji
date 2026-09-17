@@ -25,6 +25,7 @@ import {
   SPECIES_GLYPHS,
   SpeciesGlyphIcon,
 } from "@/components/filters/species-glyph";
+import { TOOLBAR_HOVER_WASH } from "@/components/filters/toolbar-trigger";
 import { useOneShotCelebration } from "@/components/filters/use-filter-motion";
 import { cn } from "@/lib/utils";
 
@@ -548,6 +549,15 @@ export function SpeciesTabs({
               // boxes measured from these buttons, and a count arriving on
               // press changes every width while the fill is sliding between
               // them.
+              //
+              // The 2026-09-17 home audit came at 375 from the other side and
+              // it is left as it is: the small step leaves 19% of that row
+              // empty, and forcing the large step back onto it overflows 11px
+              // into the mask fade. An empty fifth of a row is slack a phone
+              // can carry. A count under the fade is what a visitor reported
+              // not being able to read, and the fade is also the only thing
+              // saying the strip scrolls, so spending it costs more than the
+              // gap does.
               "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-[384px]:gap-0.5 max-[384px]:px-1 max-[384px]:text-xs pointer-coarse:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
@@ -577,12 +587,21 @@ export function SpeciesTabs({
                   // there is still nothing drawn under a tab until the pointer
                   // is on it.
                   //
+                  // TOOLBAR_HOVER_WASH and not a copy of it. Written out here,
+                  // it had lost its dark half, so the sentence above was true
+                  // in light mode and false in dark: the tabs washed to the
+                  // full --muted while the sort trigger beside them washed to
+                  // half of it.
+                  //
                   // It cannot fight the sliding fill. The fill travels on boxes
                   // measured from the buttons (fillX/fillWidth above) and a
                   // background changes no box, and the tab it is travelling to
                   // is the pressed one, which takes the branch above and has no
                   // hover ground to put over it while it arrives.
-                  "text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground",
+                  cn(
+                    "text-muted-foreground transition-colors duration-100 hover:text-foreground",
+                    TOOLBAR_HOVER_WASH,
+                  ),
             )}
           >
             {tab !== "all" && (

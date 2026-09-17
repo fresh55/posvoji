@@ -7,7 +7,7 @@ import { SiteShell } from "@/components/site-shell";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
-import { verificationTime } from "@/lib/source-freshness";
+import { verificationDate } from "@/lib/source-freshness";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
@@ -54,7 +54,12 @@ export function SitePage({ locale }: { locale: Locale }) {
       // The freshness line as well as the hero's, and the two are not a
       // duplication in any way a reader can see: the hero is at the top of a
       // document that runs about 67,000px, and this is at the end of it. Both
-      // read the same timestamp through the same formatter.
+      // read the same timestamp, and this is the one that spends the words on
+      // it: the footer prints the minute and the timezone (verificationTime),
+      // the hero the date alone (verificationDate). The provenance with the
+      // hour in it belongs at the end of the document, where somebody is
+      // asking how the list is made; at the top the question is only whether
+      // it is current.
       footer={
         <SiteFooter
           locale={locale}
@@ -87,7 +92,15 @@ export function SitePage({ locale }: { locale: Locale }) {
             six, and beside the cat it still did on the narrower ones. The
             same string without this last utility is on found-animal-page.tsx;
             the two are no longer meant to match, because that page has no
-            dock under it and no drawing beside the title. */}
+            dock under it and no drawing beside the title.
+
+            One step under PAGE_TITLE at every width, on purpose. This is the
+            one title with a drawing beside it, and the rule that seats him
+            (home-cat.tsx) is that the hero stays a heading and one line. At
+            the site's own size, measured 2026-09-17, the English title took
+            two lines at 1024 beside the cat and three at 320, and the
+            Slovenian one two at 834. The entry page is the quietest title on
+            the site because it is the one the photographs have to outrank. */}
         <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl short:text-xl">
           {messages.heroTitle}
         </h1>
@@ -116,10 +129,17 @@ export function SitePage({ locale }: { locale: Locale }) {
             used to sit here and dangled at the wrap. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
           {dataset && shelters > 0 && (
+            // The date and not the minute. The hour and the timezone are the
+            // list's provenance and they are printed once, at the end of the
+            // document, by the footer that reads the same timestamp through
+            // verificationTime; up here the question is whether the list is
+            // current, which a date answers and ", 21:45 (Ljubljana)" only
+            // lengthens. Measured: the line went from 404px to 288px, so it
+            // fits one line from 360 up where it wrapped to two on every
+            // phone, which is 20px of the page above the fold.
             <p>
               {shelterCount(shelters, locale)} · {messages.listPublished}{" "}
-
-              {verificationTime(dataset.generatedAt, locale)}
+              {verificationDate(dataset.generatedAt, locale)}
             </p>
           )}
           {/* One link in this row, and it is the one addressed to somebody

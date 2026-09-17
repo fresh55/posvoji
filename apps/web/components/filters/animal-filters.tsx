@@ -78,8 +78,19 @@ import type { AnimalSort } from "@/lib/sort";
 // moves. Only the horizontal edges move: the bottom keeps the safe-area inset
 // the footer's docked padding is measured against, and BackToTop is positioned
 // on its own and stays at the viewport's right edge.
+//
+// z-30, under the sticky toolbar band (z-40) and above the page. The two only
+// ever meet at 200% text, where the band lands at y 687-792 on a 390x844
+// phone and this plate covers 698-812. Something is covered at landing either
+// way, so this is a choice about which: with the plate on top the species tabs
+// were unreachable, and with the band on top about 38px of this plate is,
+// leaving its lower edge and both labels. The tabs win because the band is the
+// only place they live, while everything in this plate opens a sheet that
+// carries its own way back to every species; and one scroll frees whichever is
+// covered, since the plate is fixed and the band pins. Nothing above it below
+// lg but BackToTop (z-40), which stands 5.5rem up and never overlaps it.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
 
 /** The band the toolbar draws itself in: full width below lg, the frame's own
  *  column from lg, with the rule under it that the grid starts below.
@@ -207,11 +218,13 @@ export function AnimalFilters({
   // nothing for an order to apply to.
   const canSort = !isEmpty && resultCount > 0;
   // The class the sheet's trigger wears, or nothing. `order` is the one reason
-  // that runs out at a width: from md the toolbar draws the order itself and
-  // the sheet's own sort row stands down with it, so a sheet the order alone
-  // holds open has nothing left behind its button there and the button goes
-  // too. The width is the sheet's to name, so it comes from there
-  // (SORT_ROW_HIDDEN) rather than being written out again here.
+  // that runs out: where the toolbar draws the order itself the sheet's own
+  // sort row stands down with it, so a sheet the order alone holds open has
+  // nothing left behind its button there and the button goes too. Which
+  // screens those are is the sheet's to name, so the query comes from there
+  // (SORT_ROW_HIDDEN) rather than being written out again here: it is a width
+  // and a height, since the toolbar that takes the order over gives up its
+  // pin on a short screen.
   //
   // In CSS and not from a width read in JS: this page is statically exported,
   // and a button deciding whether to exist after hydration flickers on every
@@ -256,10 +269,19 @@ export function AnimalFilters({
   return (
     <>
       {/* Pinned, except where pinning costs more than it pays. A phone held
-          sideways is 390px tall: this bar is 141 of them and the dock below
-          takes 58 more, so half the screen was chrome and 191px was animals.
-          Under 32rem of height it scrolls away with the page and comes back
-          when the visitor scrolls back up.
+          sideways is 390px tall, and this bar and the dock below it were
+          half of that. Under 32rem of height the bar scrolls away with the
+          page and comes back when the visitor scrolls back up.
+
+          The 141px this comment used to claim for the bar is stale: the chips
+          row and the count line both left it, and the band measures 69px
+          today against the dock's 58. That is not an argument for pinning it
+          again. What the bar carries in that band is the species strip, the
+          grid behind it is two cards tall, and a pinned 69px is a fifth of
+          the screen that never shows an animal. What the unpinning does cost
+          is the sort control: it rides this row from md, so the sheet keeps
+          its own sort row wherever this bar is unpinned (SORT_ROW_HIDDEN in
+          filter-sheet.tsx).
 
           Pinned at lg too, now. A 503-animal grid puts the visitor far from
           the tabs within two scrolls, and switching species meant riding all
@@ -276,7 +298,16 @@ export function AnimalFilters({
           gutter pins to the same edge and carries the same amount as top
           padding, so the two columns start their content on one line. The
           number is written once, in globals.css. */}
-      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-20 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
+      {/* z-40, above the dock, and it was z-20 under it. At 200% text on a
+          390x844 phone this band lands at y 687-792 and the fixed dock covers
+          698-812, so at landing the species tabs were entirely behind the
+          dock's plate and the one species control on the page could not be
+          pressed until the visitor scrolled. The band wins that overlap now:
+          it is the tabs' only home and it pins to the top of the viewport,
+          while the dock is fixed to the bottom and comes clear of it the
+          moment the page moves at all. Nothing changes at 100% text, where
+          the two never meet. */}
+      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-40 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
         {/* --toolbar-row states the row's height rather than leaving it to
             whichever control happens to be tallest: the sort trigger stands
             down at zero results, and the row would otherwise fall to the tabs'
@@ -288,7 +319,17 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          <div className="flex shrink-0 items-center gap-2">
+          {/* min-w-0 shrink, and it was shrink-0. At 200% text this cluster
+              asks for 496px inside the 384px the 1024 layout leaves it, and
+              refusing to shrink it pushed the document 80px wider than the
+              window: the page scrolled sideways, which is the one thing a
+              text-size setting must not cost. Shrinking, the sort trigger's
+              value truncates instead (it is line-clamped already,
+              sort-picker.tsx) and the strip beside it keeps scrolling; the
+              species strip is min-w-0 too, so neither of the two is the one
+              that always gives way. Nothing moves at 100% text, where the
+              cluster asks for less than its track. */}
+          <div className="flex min-w-0 shrink items-center gap-2">
             {/* sr-only here for the same reason as the phone's status line
                 below: the species tabs at the other end of this row carry
                 every count now, including Vse's, so a drawn copy here would
@@ -355,11 +396,23 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          {/* The complement of SORT_ROW_HIDDEN, and written out rather than
-              derived from it: Tailwind reads class names out of the source as
-              literals, so a string built from another one is a class it never
-              generates. On the control itself, the way the sheet's copy
-              wears md:hidden, rather than a box around it. The trigger's own
+          {/* Drawn from md, which is not quite the complement of
+              SORT_ROW_HIDDEN any more, and written out rather than derived
+              from it either way: Tailwind reads class names out of the source
+              as literals, so a string built from another one is a class it
+              never generates.
+
+              The two overlap on a landscape phone on purpose. This copy is
+              here from md and the sheet's own row now stays under 32rem of
+              height, so at 844x390 both exist -- but this one is unpinned
+              there (`short:static` above) and gone two rows into the grid,
+              and the sheet is the surface a visitor can always reach. They
+              are never both on screen: the sheet opens over this row. What
+              the old rule got wrong was reading "the toolbar carries it from
+              md" off the width alone.
+
+              On the control itself, the way the sheet's copy wears the
+              complementary class, rather than a box around it. The trigger's own
               base is flex (ui/select.tsx), so a wrapper turning it back on at
               md with md:block would have flattened its icon, label and
               chevron into a stack. shrink-0 because the strip beside it is
@@ -429,9 +482,9 @@ export function AnimalFilters({
           filtering, so it has to stay reachable while the list is scrolled.
           The dock is the only thing on this page that is always reachable,
           and the sheet behind it is where the visitor already goes to change
-          what the grid shows. From md the toolbar row above carries it
-          instead, on the 336px the tabs leave, and the sheet's copy stands
-          down. */}
+          what the grid shows. From md, on a screen tall enough for the row
+          above to stay pinned, that row carries it instead, on the 336px the
+          tabs leave, and the sheet's copy stands down. */}
       {!isEmpty && (
         <span className="sr-only lg:hidden">
           <ResultCount count={resultCount} locale={locale} />

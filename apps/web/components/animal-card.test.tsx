@@ -340,10 +340,57 @@ describe("AnimalCard element placement", () => {
     const badges = screen.getAllByText("rezervirano");
     expect(badges).toHaveLength(1);
     expect(badges[0].closest('[data-slot="photo-frame"]')).toBeNull();
-    expect(badges[0].parentElement?.querySelector("[data-slot=\"photo-frame\"]")).toBeTruthy();
+    // Positioned against the article, which is the element that holds both the
+    // frame and the text: the pill is laid on the photo without being inside
+    // the photo's own box.
+    const article = badges[0].closest("article");
+    expect(article?.querySelector('[data-slot="photo-frame"]')).toBeTruthy();
+    expect(article?.className).toContain("relative");
+    expect(badges[0].className).toContain("absolute");
     // And it is not inside the card's link, competing with the name.
     expect(badges[0].closest("a")).toBeNull();
   });
+
+  // A screen reader walks the card in DOM order, and with the two marks in the
+  // photo's wrapper it heard "Čaka 8 let. Fotografija 1 od 6." before it heard
+  // whose card this was. They are drawn last now and positioned against the
+  // article, which puts them on the same pixels.
+  //
+  // One render each, because the two marks can never share a card: the wait is
+  // only drawn for an animal still waiting, and a status badge is only drawn
+  // for one that is not.
+  for (const [what, rest, mark] of [
+    ["the status", { status: "reserved" as const }, "rezervirano"],
+    [
+      "the wait",
+      { intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS) },
+      /Čaka/,
+    ],
+  ] as const) {
+    it(`names the animal before ${what} laid on its photo`, () => {
+      render(
+        <I18nProvider locale="sl">
+          <AnimalCard
+            animal={animal(rest)}
+            reference={NOW}
+            showShelter
+            onOpen={() => undefined}
+          />
+        </I18nProvider>,
+      );
+
+      const drawn = screen.getByText(mark);
+      for (const earlier of [
+        screen.getByText("Rex"),
+        screen.getByRole("link", { name: "Test" }),
+      ]) {
+        expect(
+          earlier.compareDocumentPosition(drawn) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    });
+  }
 
   it("puts the wait on the photo, not in the name's row", () => {
     render(
@@ -408,6 +455,32 @@ describe("AnimalCard shelter line", () => {
     expect(opened).toEqual([]);
   });
 
+  it("marks the direction on a coarse pointer, where hover never fires", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    // jsdom resolves no media query, so this reads the class list: what is
+    // asserted is that the card renders the rule. On a phone the chevron was
+    // the only thing saying that this line leaves the page, and it was gated
+    // on a hover that a thumb never fires.
+    const chevron = screen
+      .getByRole("link", { name: "Test" })
+      .querySelector("svg");
+    expect(chevron?.getAttribute("class")).toContain("pointer-coarse:opacity-60");
+    // The same 60% the hover draws, not a treatment of its own.
+    expect(chevron?.getAttribute("class")).toContain(
+      "group-hover/card:opacity-60",
+    );
+  });
+
   it("keeps the link inside the English tree of pages", () => {
     render(
       <I18nProvider locale="en">
@@ -459,6 +532,47 @@ describe("AnimalCard hover", () => {
     expect(card.className).not.toContain("[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline hover:");
     // The offset keeps the rule off the descenders of a name like "Srečko".
     expect(screen.getByRole("heading").className).toContain("underline-offset-4");
+  });
+});
+
+describe("AnimalCard focus ring", () => {
+  // The class list again, for the reason the hover block above gives: jsdom
+  // resolves no :focus-visible on an ancestor and paints nothing, so what can
+  // be pinned is the shape of the rule. The e2e spec reads the computed shadow.
+  it("gives the ring a dark inner edge in both themes", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard animal={animal()} reference={NOW} onOpen={() => undefined} />
+      </I18nProvider>,
+    );
+
+    const frame = document.querySelector('[data-slot="photo-frame"]');
+    // Still three pixels of the ring token, drawn inside the picture.
+    expect(frame?.className).toContain(
+      "group-has-[a:focus-visible]/card:after:ring-3",
+    );
+    expect(frame?.className).toContain(
+      "group-has-[a:focus-visible]/card:after:ring-inset",
+    );
+    // And under it 4px of black at 45%, so the ring's inner boundary is not a
+    // light green edge on a white studio photo: that boundary measured under
+    // 3:1 on 54 of 59 lead photos, and 3.4:1 with this layer.
+    expect(frame?.className).toContain(
+      "group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]",
+    );
+    // The hairline is still there at rest, which is what closes a white photo
+    // against the white page.
+    expect(frame?.className).toContain(
+      "after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]",
+    );
+    // One string each and no dark twin. The hairline is the only thing the
+    // theme changes about this frame and --card-photo-edge (globals.css) is
+    // where it changes now, so a dark: shadow here would be the old pair
+    // coming back.
+    expect(frame?.className).not.toContain("dark:after:shadow-");
+    expect(frame?.className).not.toContain(
+      "dark:group-has-[a:focus-visible]/card:after:shadow-",
+    );
   });
 });
 

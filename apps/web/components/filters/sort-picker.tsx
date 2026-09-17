@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TOOLBAR_HOVER_WASH } from "@/components/filters/toolbar-trigger";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import { ANIMAL_SORTS, effectiveSort, type AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,13 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  says the thing can be pressed at all: Baymard's list testing asks for a
  *  label beside the control with the chosen order visible, and it is the
  *  primary way a visitor re-orders 486 animals.
+ *
+ *  A frame doing that job has a number to hit, and the stock one did not: the
+ *  --input token this wore measured 1.26:1 against the page in light mode,
+ *  where SC 1.4.11 asks 3:1 of a boundary that identifies a control.
+ *  border-control-border measures 3.66:1 light and 3.77:1 dark. The token is
+ *  for exactly this and not for dividers, which is why --border and --input
+ *  stay where they are (globals.css).
  *
  *  The species tabs across the row keep no frame and need none: which one is
  *  chosen is a filled pill, and a strip of text with one pill in it is not
@@ -182,6 +190,34 @@ export function SortPicker({
           // width gate had it the other way round: measured at 1180x820 with a
           // coarse pointer this trigger was 32px.
           "text-sm pointer-coarse:min-h-11",
+          // The frame this control is named for, at the strength the job
+          // asks: the primitive's border-input is 1.26:1 on the page in light
+          // mode and 1.47:1 in dark, and --control-border is 3.66:1 and
+          // 3.77:1. No dark: half is needed, because the token carries its own
+          // dark value and ui/select.tsx spells no dark border of its own.
+          //
+          // The wash with it. Under the pointer this trigger changed 0 of its
+          // 42,840 pixels in light mode, while the species tabs across the row
+          // from it change 74% of theirs; the ground is the ghost button's,
+          // which is what the tabs and the shelter trigger answer with, and
+          // its dark half replaces the primitive's own 1.17:1
+          // dark:hover:bg-input/50. One name for it, in toolbar-trigger.ts,
+          // because the row had it spelled three times.
+          // background-color joins the primitive's own transition list, which
+          // is colour and box-shadow: without it the new wash arrives in one
+          // frame while every other control in the row eases into its own.
+          "border-control-border transition-[color,background-color,box-shadow]",
+          TOOLBAR_HOVER_WASH,
+          // min-w-0, so the trigger can be narrower than its own words. The
+          // primitive is w-fit, and a flex item's minimum width is its
+          // content unless it is told otherwise: at 200% browser text this
+          // trigger measured 496px, the cluster around it was already allowed
+          // to shrink, and the document still scrolled sideways by 197px at
+          // 1024 and 28px at 1440 because the button itself would not give.
+          // With the floor lifted the value's own truncate takes over;
+          // measured after the change, 0px of overflow at 1024, 1100, 1280
+          // and 1440, and "Najdlje v zavetišču" still whole at 1024.
+          "min-w-0 max-w-full",
           // The label takes the room between the two icons instead of
           // floating in the middle of it. The trigger is justify-between and
           // the value is the middle of its three children, so a trigger given
@@ -268,7 +304,25 @@ export function SortPicker({
                 // sheet keeps for a thumb. The floor lifts on a coarse
                 // pointer, which is the question being asked; a width gate
                 // gave a touch tablet the mouse's height.
-                className="pointer-coarse:min-h-11"
+                //
+                // The ring is what says where the keyboard is. --accent alone
+                // is a 1.09:1 ground change, so walking this menu with the
+                // arrow keys moved a highlight nobody can see, which is the
+                // one thing a keyboard visitor has. The ring measures 5.22:1
+                // on the menu's ground, drawn inset because an item runs the
+                // full width of the content box and a ring outside it would
+                // be clipped. The accent stays: the two together are the same
+                // pairing every other focus state on the site uses, and it is
+                // on the item and not on ui/select.tsx because this is the
+                // one menu measured.
+                //
+                // focus-visible and not focus, which is the difference between
+                // a keyboard ring and a hover ring here: Radix moves DOM focus
+                // to whichever item the pointer is over, which is exactly why
+                // the primitive's own accent wash is written as focus:. On
+                // focus: this ring drew around every option a mouse passed
+                // over and said nothing about the keyboard at all.
+                className="focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
               >
                 <Icon
                   className="size-4 shrink-0 text-muted-foreground"

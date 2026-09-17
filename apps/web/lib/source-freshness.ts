@@ -10,10 +10,11 @@ export function verificationTime(value: string, locale: Locale): string {
   return Number.isFinite(date.getTime()) ? `${formats[locale].format(date)} (Ljubljana)` : "—";
 }
 
-// The date alone, for the animal's footnote. The minute and the timezone are
-// the list's provenance, and the footer and the index header still print them
+// The date alone, for the animal's footnote and the home hero. The minute and
+// the timezone are the list's provenance, and the footer still prints them
 // with verificationTime above; on one animal the question is whether the
-// listing was seen today, which a date answers and an hour only lengthens.
+// listing was seen today, which a date answers and an hour only lengthens,
+// and in the hero the hour cost a second line on every phone (site-page.tsx).
 //
 // Numeric in Slovenian for the reason lib/date-label.ts gives: Intl has no
 // genitive month, so a named month in a Slovenian sentence comes out in the

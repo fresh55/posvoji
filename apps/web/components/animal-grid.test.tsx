@@ -23,7 +23,11 @@ import {
 import { I18nProvider } from "@/components/i18n-provider";
 import { chipRows, phoneRow, stickyRow } from "@/test/filter-rows";
 import { animalsForClient } from "@/lib/dataset";
-import { RESULTS_COLUMNS } from "@/lib/card-grid";
+import {
+  RESULTS_COLUMNS,
+  RESULTS_GRID_TRACK,
+  RESULTS_RAIL_TRACK,
+} from "@/lib/card-grid";
 import {
   columnTracks,
   restoreGridColumns,
@@ -180,6 +184,30 @@ describe("animal grid empty state", () => {
     const block = screen.getByText("Ni zadetkov.").closest("div.py-16");
     expect(block!.className).toContain("max-lg:min-h-[60dvh]");
     expect(block!.className).toContain("justify-center");
+  });
+
+  it("keeps its own actions out of the dock's band below lg", () => {
+    // The floor above put the block's contents in the middle of a screenful,
+    // which is the bottom of the screen: at 375x667 the clear was 44px under
+    // the dock and entirely hidden, at 320x568 the primary button was fully
+    // covered. Below lg the block starts at the top of its floor and reserves
+    // the dock's own clearance underneath, read from the token the button in
+    // the corner and the footer's run-off already share. jsdom runs no media
+    // query, so what is pinned is the pair of insets and the paw leaving.
+    window.history.replaceState(null, "", "/?vrsta=ostalo");
+    const { container } = renderGrid(
+      ANIMALS.filter((a) => a.species !== "rabbit"),
+    );
+
+    const block = screen.getByText("Ni zadetkov.").closest("div.py-16")!;
+    expect(block.className).toContain("max-lg:justify-start");
+    // pt-6, not the pt-8 this reserved on its own: the phone chip row landed
+    // in the same release and measured the same top inset from the other
+    // side, against the pills the advice is advice about. The smaller one only
+    // moves the actions further from the dock.
+    expect(block.className).toContain("max-lg:pt-6");
+    expect(block.className).toContain("max-lg:pb-(--back-to-top-bottom)");
+    expect(container.querySelector("svg.max-lg\\:hidden")).toBeTruthy();
   });
 
   it("keeps the generic empty state when no shelter is selected", () => {
@@ -447,7 +475,27 @@ describe("the pre-hydration mark", () => {
     expect(results.className).toContain(RESULTS_COLUMNS);
     expect(pending.className).toContain(RESULTS_COLUMNS);
     expect(pending.children).toHaveLength(1);
-    expect(pending.children[0].className).toContain("lg:col-start-2");
+    expect(pending.children[0].className).toContain(RESULTS_GRID_TRACK);
+  });
+
+  it("reads in the order the page is used in, and draws in the other one", () => {
+    // The toolbar over the cards holds the species tabs and the sort control,
+    // and with the panel rendered first they were the 26th tab stop of the
+    // page, behind 14 to 32 stops of filters. The results come first in the
+    // document now and the two tracks put the drawing back, so what is pinned
+    // here is both halves: the reading order, and that neither element is
+    // left to auto-placement.
+    const { container } = renderGrid(ANIMALS);
+
+    const results = container.querySelector('[data-slot="results"]')!;
+    const rail = results.querySelector("aside")!;
+    const column = results.querySelector(`[class*="${RESULTS_GRID_TRACK}"]`)!;
+
+    expect(rail.className).toContain(RESULTS_RAIL_TRACK);
+    expect(column.querySelector("[data-card-grid]")).toBeTruthy();
+    expect(
+      column.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("holds a screenful so the footer stays under the fold", () => {

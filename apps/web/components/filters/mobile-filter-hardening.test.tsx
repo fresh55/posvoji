@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import { type ComponentProps } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { phoneRow, stickyRow } from "@/test/filter-rows";
 import {
@@ -15,6 +15,7 @@ import { AnimalFilters } from "./animal-filters";
 import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
 import { LocationPicker } from "./location-picker";
+import { installFilterFoldSeams } from "@/test/filter-folds";
 import { SpeciesTabs } from "./species-tabs";
 
 Object.defineProperty(window, "matchMedia", {
@@ -27,7 +28,8 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-afterEach(() => cleanup());
+// The fold's jsdom seams, and the stored folds dropped around every test.
+installFilterFoldSeams();
 
 const emptyCounts = Object.fromEntries(
   GROUPS.map((group) => [group, new Map()]),
@@ -114,7 +116,8 @@ function renderFilters(overrides: FiltersProps = {}) {
 /** Three animals no facet can tell apart: every group and toggle list is
  *  empty, which is what a shelter's single-species roster produces. The sheet
  *  behind the dock has nothing in it but the order at this state, which is
- *  the one reason it holds that runs out at md (filter-sheet.tsx). The tests
+ *  the one reason it holds that runs out where the toolbar pins and stays
+ *  pinned (SORT_ROW_HIDDEN in filter-sheet.tsx). The tests
  *  below start here and each varies one thing from it. */
 const ORDER_ONLY: FiltersProps = {
   speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },
@@ -176,6 +179,22 @@ describe("mobile filter hardening", () => {
     );
   });
 
+  it("puts the sticky toolbar band over the dock", () => {
+    // At 200% text on a 390x844 phone the band lands at y 687-792 and this
+    // plate covers 698-812, so with the dock on top the species tabs were
+    // behind it at landing and the page's one species control could not be
+    // pressed until the visitor scrolled. The band is where the tabs live and
+    // the dock is fixed, so the dock is the one that gives way.
+    const { container } = renderFilters();
+
+    const band = container
+      .querySelector('[data-slot="mobile-toolbar"]')
+      ?.parentElement;
+    const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
+    expect(band?.className.split(" ")).toContain("z-40");
+    expect(dock?.className.split(" ")).toContain("z-30");
+  });
+
   it("keeps the sheet mounted for a homogeneous multi-result set, so the sort control stays reachable", async () => {
     // Three results, no facet with more than one value between them: every
     // group and toggle list is empty, exactly what a shelter's single-species
@@ -192,42 +211,47 @@ describe("mobile filter hardening", () => {
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
 
-  it("takes the trigger and the plate away at md, where the order is all the sheet holds", () => {
+  it("takes the trigger and the plate away where the order is all the sheet holds", () => {
     // The state above, asked the other question. The order is the sheet's one
     // reason to exist here and the toolbar draws the order itself from md, so
-    // the trigger stands down at that width rather than opening on a title, a
-    // footer and nothing between them. With no picker to keep it company the
-    // plate goes with it. Classes and not measurements, because jsdom
-    // resolves no breakpoint and these are the whole of the rule.
+    // the trigger stands down there rather than opening on a title, a footer
+    // and nothing between them. With no picker to keep it company the plate
+    // goes with it. Classes and not measurements, because jsdom resolves no
+    // breakpoint and these are the whole of the rule.
+    //
+    // Width and height both: a landscape phone is wide enough for the
+    // toolbar's copy of the sort control and short enough that the toolbar
+    // unpins and scrolls away with the page, so the sheet keeps its own sort
+    // row there and the trigger that opens it has to stay (filter-sheet.tsx).
     renderFilters({ ...ORDER_ONLY, ...NO_SHELTERS });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className.split(" ")).toContain("md:hidden");
+    expect(dock?.className.split(" ")).toContain("md:not-short:hidden");
     expect(
       screen.getByRole("button", { name: "Filters" }).className.split(" "),
-    ).toContain("md:hidden");
+    ).toContain("md:not-short:hidden");
   });
 
-  it("leaves the picker the whole plate where the order-only sheet stands down at md", () => {
+  it("leaves the picker the whole plate where the order-only sheet stands down", () => {
     // The same order-only state with a shelter left to pick. The trigger goes
-    // at md and the picker stays, so the plate stays with it and needs no
-    // second rule to fill: a flex item that is not drawn is not an item, and
-    // the picker's flex-1 takes the row on its own (animal-filters.tsx).
+    // and the picker stays, so the plate stays with it and needs no second
+    // rule to fill: a flex item that is not drawn is not an item, and the
+    // picker's flex-1 takes the row on its own (animal-filters.tsx).
     renderFilters(ORDER_ONLY);
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className.split(" ")).not.toContain("md:hidden");
+    expect(dock?.className.split(" ")).not.toContain("md:not-short:hidden");
     expect(
       screen.getByRole("button", { name: "Filters" }).className.split(" "),
-    ).toContain("md:hidden");
+    ).toContain("md:not-short:hidden");
   });
 
-  it("keeps the trigger at every width once a filter is on, order or no order", () => {
+  it("keeps the trigger at every size once a filter is on, order or no order", () => {
     // Three results and a shelter picked, so the order and the way back out
-    // are both reasons to open. The order is the only one that runs out at
-    // md, so it is the last answer the sheet tries: a picked shelter has the
-    // Kje row and the footer's clear, drawn at every width below lg, and the
-    // trigger has to be there at every one of them.
+    // are both reasons to open. The order is the only one that runs out, so
+    // it is the last answer the sheet tries: a picked shelter has the Kje row
+    // and the footer's clear, drawn at every size below lg, and the trigger
+    // has to be there at every one of them.
     renderFilters({
       ...ORDER_ONLY,
       filters: { ...EMPTY_FILTERS, shelter: ["test"] },
@@ -235,12 +259,12 @@ describe("mobile filter hardening", () => {
     });
 
     const dock = document.querySelector('[data-slot="mobile-filter-dock"]');
-    expect(dock?.className.split(" ")).not.toContain("md:hidden");
+    expect(dock?.className.split(" ")).not.toContain("md:not-short:hidden");
     expect(
       screen
         .getByRole("button", { name: "Filters, 1 active" })
         .className.split(" "),
-    ).not.toContain("md:hidden");
+    ).not.toContain("md:not-short:hidden");
   });
 
   it("keeps the sheet mounted at zero results while a filter is on", async () => {
@@ -476,18 +500,20 @@ describe("mobile filter hardening", () => {
     expect(scrollBody?.contains(header as Node)).toBe(false);
   });
 
-  it("stands the sheet's sort row down from md, where the toolbar carries it", async () => {
-    // Below md this row is the only way to change the order; from md the
-    // toolbar behind the sheet has 336px spare and carries the same control,
-    // and two triggers for one setting on one screen is one too many. jsdom
-    // resolves no breakpoint, so the band is asserted on the class.
+  it("stands the sheet's sort row down where the toolbar carries it, and keeps it on a landscape phone", async () => {
+    // On a phone this row is the only way to change the order; from md the
+    // toolbar behind the sheet has 336px spare and carries the same control.
+    // Not on a short screen, though: there the toolbar unpins and is gone two
+    // rows into the grid (measured at y = -1256 on 844x390), so the row stays
+    // in the sheet, which is the one surface that is always reachable. jsdom
+    // resolves no breakpoint, so the query is asserted on the class.
     renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     const dialog = await screen.findByRole("dialog");
     const sort = within(dialog).getByRole("combobox");
-    expect(sort.className.split(" ")).toContain("md:hidden");
+    expect(sort.className.split(" ")).toContain("md:not-short:hidden");
   });
 
   it("does not repeat the species tabs inside the sheet", async () => {
@@ -751,6 +777,11 @@ describe("the sheet's surfaces", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     const dialog = await screen.findByRole("dialog");
+
+    // Size folds by default in here now, the way it does in the panel
+    // (use-filter-sections.ts), so its tiles are asked for before they are
+    // read. Sex is open already.
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Size/ }));
 
     for (const name of [/^Male, /, /^Small, /]) {
       const option = within(dialog).getByRole("button", { name });

@@ -45,8 +45,20 @@ import { cn } from "@/lib/utils";
 // meant to be seen. The dialog opens with its front print focused, and a
 // plain focus-within had the chevrons standing on the photograph of every
 // dialog a mouse opened, until the pointer left the fan.
+//
+// The plate is stated twice, once plain and once for dark, and every
+// translucent disc on this site that rides the outline variant has to do the
+// same. The variant carries dark:bg-input/30 and dark:hover:bg-input/50
+// (ui/button.tsx), the dark variant resolves to :is(:root:not(.light) *), and
+// that selector outranks an unprefixed bg-background/NN from a caller whatever
+// tailwind-merge does with the two. Without the dark halves these discs lose
+// their ground in the dark theme and stand on the photograph as white at 4.5%
+// alpha, which is no plate at all: measured on back-to-top, the glyph came to
+// 1.24:1 over a light photo (2026-09-17 audit). The same pair is on
+// OWN_BUTTON_CLASS and CARD_CHEVRON below, on the lightbox's discs
+// (photo-lightbox.tsx) and on the dialog's phone arrows.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/90 dark:hover:bg-background group-hover:opacity-100 group-hover:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:pointer-events-auto";
 
 // This component's own chevrons, which differ from the constant above in
 // three ways.
@@ -67,8 +79,11 @@ export const GALLERY_BUTTON_CLASS =
 // happens to carry `group`. Only the grid card ever had one, which left these
 // permanently invisible on the animal page and in the dialog's phone hero -
 // invisible and, until this change, still tappable.
+//
+// The dark half of the plate is there for the reason GALLERY_BUTTON_CLASS
+// above gives.
 const OWN_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/80 dark:hover:bg-background group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
 // What a grid card adds to the chevrons above. OWN_BUTTON_CLASS serves all
 // three surfaces this component is mounted on, and only the card's photo is
@@ -97,12 +112,17 @@ const OWN_BUTTON_CLASS =
 // rule in ui/button.tsx sizes a bare icon at 16px, which is what the plain
 // surface wants, and icon-xs takes it to 12px, which is a step small for a
 // chevron a thumb is aiming at.
+//
+// The step from 80% to 85% is restated for dark alongside the plain one, for
+// the reason GALLERY_BUTTON_CLASS above gives. The pair sorts the same way in
+// both themes, because Tailwind orders the two dark: rules against each other
+// exactly as it orders their unprefixed halves.
 const CARD_CHEVRON = {
   size: "icon-xs",
   icon: "size-3.5",
   previous: "left-2",
   next: "right-2",
-  className: `${OWN_BUTTON_CLASS} bg-background/85 shadow-none ring-1 ring-black/10`,
+  className: `${OWN_BUTTON_CLASS} bg-background/85 dark:bg-background/85 shadow-none ring-1 ring-black/10`,
 } as const;
 
 const PLAIN_CHEVRON = {
@@ -166,7 +186,9 @@ const DEFAULT_WRAPPER_CLASS =
 // two paint objects below would otherwise spell the size and the corner out
 // twice: DOT_EDGE used to be what they shared, and the pill made the edge
 // redundant. The pill's own padding is measured against this size (CARD_DOTS),
-// so a change here has to reach both.
+// so a change here has to reach both. It is the card's current dot as well;
+// the card's other dots step down from it, and only that step is spelled out
+// there.
 const DOT_SHAPE = "size-1.5 rounded-full transition-colors";
 
 const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]`;
@@ -182,8 +204,8 @@ const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgb
 // So the card puts the ground under the row once, as a pill on the row's own
 // element, and the dots on top of it are plain discs. The pill is sized to the
 // dots: 6px of air at the ends, 4px above and below, so a five-dot row is a
-// 58 by 14 shape at the bottom of the picture and nothing else on the picture
-// changes.
+// 50 by 14 shape at the bottom of the picture and nothing else on the picture
+// changes. It was 58 wide while every dot was 6px.
 //
 // It used to be a 48px gradient across the whole width of the frame, black/30
 // at the bottom edge fading to nothing. On a mid-tone photo that read as the
@@ -193,14 +215,23 @@ const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgb
 // card, which is 86% of them, so a phone saw the band sixty times down the
 // page. The pill covers only what the dots need covered.
 //
-// black/35 and not lighter. The pill has two jobs: say there are more photos,
-// and say which one this is. The second needs the current dot and the rest to
-// come apart, and over a white photo a lighter pill leaves white/50 sitting
-// on near white. At 35% the ground under the dots is about rgb(166) on a
-// white photo, which puts the current dot at 2.4:1 against it and the rest a
-// clear step under the current one; on a dark photo the pill is near black and
-// the dots need no help. No 1px edge on the dots any more: the ground is now
-// always dark enough to draw them, which was the only thing the edge was for.
+// The row has two jobs: say there are more photos, and say which one this is.
+// The first it has always done (median 7.3:1 for a dot against its ground
+// across 59 cards). The second was left to the alpha between a white dot and a
+// white/50 one, and measured over the 59 lead photos that pair comes to 1.50:1
+// on a white studio shot, 2.30:1 at the median, and under 3:1 on 48 of them.
+// Alpha cannot carry it either: taking the pill to black/45 only moves that
+// pair to 1.82:1, because both dots darken with the ground under them.
+//
+// So the current dot is carried by size instead. 6px against 4px is 2.25x the
+// area, which is unmistakable at a glance on a white photo where the two
+// alphas were not, and it is a difference alpha cannot take away. The pill
+// goes to black/45 so the current dot itself clears 3:1 against its own
+// ground on all 59 photos (3.36:1 in the worst case, 2.4:1 at black/35). On a
+// dark photo the pill is near black and the dots need no help either way.
+//
+// No 1px edge on the dots: the ground is always dark enough to draw them,
+// which was the only thing the edge was for.
 //
 // Centred with a transform rather than stretched across the frame. The row's
 // shape is the pill, so the element has to be the width of its dots; inset-x-0
@@ -217,18 +248,21 @@ const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgb
 // chevrons bring a near-solid ground and a hairline ring (CARD_CHEVRON above).
 // Both of those carry text or an icon a visitor has to read against an
 // arbitrary backdrop, and neither may lose to a white studio shot. These dots
-// carry no glyph and say one thing, which of five, so what they need is that
-// the current dot and the rest come apart. A 35% wash does that on every
-// photo in the register while staying a shape on the picture rather than a
-// label over it, and the badge sits on the same frame at the same time.
+// carry no glyph and say one thing, which of five, and the size step above is
+// what says it, so a 45% wash is enough: the row stays a shape on the picture
+// rather than a label over it, and the badge sits on the same frame at the
+// same time.
 //
 // The dots stay white for the same reason the ground is dark, so the pair is
 // read as one decision.
 const CARD_DOTS = {
-  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/35 px-1.5 py-1`,
+  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/45 px-1.5 py-1`,
   dot: DOT_SHAPE,
   current: "bg-white",
-  rest: "bg-white/50",
+  // The step down, in size and in alpha both. size-1 lands after DOT_SHAPE's
+  // size-1.5 in the same class list and cn merges the pair, so this is the one
+  // place the 4px dot is stated.
+  rest: "size-1 bg-white/55",
 } as const;
 
 const PLAIN_DOTS = {
@@ -727,11 +761,18 @@ export function PhotoGallery({
       // saturation and this brightness are two nested filters rather than two
       // utilities competing on one element.
       className={cn(
-        // Both properties named in one utility, because that is what a
-        // transition is: one property on the element. AnimalPhoto fades a
-        // photo in when it lands after hydration, and transition-transform on
-        // its own merged that fade away (see the class list there).
-        "object-cover motion-safe:transition-[transform,opacity] motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
+        // scale, not transform. scale-[1.03] below writes the CSS `scale`
+        // property and not a transform function, so a transition that named
+        // transform had nothing to animate and the zoom arrived in a single
+        // frame: measured on the grid, 306.67px to 315.87px with no
+        // intermediate width at any sample between 30 and 700ms. Named as
+        // `scale` it eases over the 300ms below.
+        //
+        // opacity rides along because AnimalPhoto fades a photo in when it
+        // lands after hydration, and cn merges two transition utilities on one
+        // element into one value: this list is the one that survives, so a
+        // property it leaves out stops transitioning altogether.
+        "object-cover motion-safe:transition-[scale,opacity] motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
         cardSurface && "dark:brightness-90",
       )}
     />
@@ -742,8 +783,9 @@ export function PhotoGallery({
   return (
     // data-slot, because the card hands the dialog this box to grow its zoom
     // out of and used to find it by walking to the article's firstElementChild.
-    // That is the wrapper div, not this one, and it only returned the right
-    // rectangle because the wrapper happens to have exactly one in-flow child.
+    // That walk landed on a wrapper div around this element and only returned
+    // the right rectangle because the wrapper held exactly one in-flow child.
+    // The wrapper is gone and the name is what finds this box.
     <div
       data-slot="photo-frame"
       className={cn("group/photo", className ?? DEFAULT_WRAPPER_CLASS)}
@@ -884,12 +926,28 @@ export function PhotoGallery({
               is why the ground and the reveal are one class list. Drawn only
               where the dots are drawn, inside hasGallery: a single-photo card
               has no row to carry and a pill with nothing in it is a mark on
-              the photograph for no reason. */}
+              the photograph for no reason.
+
+              And off entirely while the photo standing here is one that did
+              not arrive. AnimalPhoto marks that image data-broken and hides
+              it, so what fills the frame is the fallback: the species mark and
+              "Fotografija na strani zavetišča". A row of dots over that says
+              "1 of 6" about a picture nobody can see, and at 320 the pill
+              overlapped the caption by 4.7px. The chevrons stay, because the
+              other five photos may be fine and stepping to one is the way out.
+
+              :has() on the frame's own group rather than state, so nothing
+              re-renders: the attribute is written to the element by a ref and
+              by the error handler, both of which can run before hydration. */}
           <div
             data-slot="photo-dots"
             aria-hidden
             className={cn(
-              "pointer-events-none absolute z-10 flex gap-1",
+              // items-center because the card's dots are two sizes: a 4px disc
+              // in a row whose line is 6px tall is laid at the line's top edge
+              // under the default stretch, which puts the small dots 1px above
+              // the current one instead of on its centre line.
+              "pointer-events-none absolute z-10 flex items-center gap-1 group-has-[img[data-broken]]/photo:hidden",
               dotPaint.container,
             )}
           >

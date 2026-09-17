@@ -183,12 +183,17 @@ describe("photo gallery candidates", () => {
     // Two transition utilities on one element are one property, and cn merges
     // them: transition-transform alone swallowed the fade AnimalPhoto writes,
     // and the photo went back to cutting in the moment the file landed.
+    //
+    // scale and not transform, because scale-[1.03] writes the CSS `scale`
+    // property: a list naming transform left the zoom to arrive in one frame.
     const photo = document.querySelector('[data-slot="photo-frame"] img');
-    expect(photo?.className).toContain(
-      "motion-safe:transition-[transform,opacity]",
-    );
+    expect(photo?.className).toContain("motion-safe:transition-[scale,opacity]");
     expect(photo?.className).toContain("motion-safe:data-[arriving]:opacity-0");
     expect(photo?.className).not.toContain("motion-safe:transition-transform");
+    // The property the zoom actually moves has to be in that list, whatever it
+    // is named: the zoom is a scale utility, so a list without `scale` in it is
+    // a transition on nothing.
+    expect(photo?.className).toContain("motion-safe:group-hover/card:scale-");
   });
 
   it("preloads the rung the layout would pick, not the largest file", () => {
@@ -653,7 +658,7 @@ describe("photo gallery controls", () => {
     // resolved either.
     const dots = document.querySelector('[data-slot="photo-dots"]');
     expect(dots?.className).toContain("rounded-full");
-    expect(dots?.className).toContain("bg-black/35");
+    expect(dots?.className).toContain("bg-black/45");
     // The width of its dots and centred, not stretched across the frame: the
     // pill is the row's shape, and a full-width element would draw it as a
     // bar. It used to be exactly that, a 48px gradient the width of the
@@ -673,7 +678,31 @@ describe("photo gallery controls", () => {
     // White in both themes: the pill is dark whatever the theme is, so a dot
     // following bg-background would be stone-950 on near-black in the dark one.
     expect(dots?.children[0]?.className).toContain("bg-white");
-    expect(dots?.children[1]?.className).toContain("bg-white/50");
+    expect(dots?.children[1]?.className).toContain("bg-white/55");
+  });
+
+  it("marks the card's current photo by size and not by alpha alone", () => {
+    setup();
+
+    // White against white/50 on the pill measured 1.50:1 on a white studio
+    // photo and under 3:1 on 48 of 59 lead photos, so the state is carried by
+    // the disc's size: 6px against 4px is 2.25x the area, and no photograph can
+    // take that away. The alphas stay as a second, weaker signal.
+    // Read as whole class names. A substring test cannot tell size-1 from
+    // size-1.5, and the old pair leaned on a trailing space to do it, which is
+    // the class's position in the list rather than the class.
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    const [current, rest] = Array.from(dots?.children ?? []);
+    const classes = (element?: Element) => element?.className.split(" ") ?? [];
+    expect(classes(current)).toContain("size-1.5");
+    expect(classes(current)).not.toContain("size-1");
+    expect(classes(rest)).toContain("size-1");
+    // And the hoisted 6px is gone from it rather than sitting beside the 4px:
+    // the two land in one class list and it is cn that has to settle them.
+    expect(classes(rest)).not.toContain("size-1.5");
+    // Two sizes in one row: without items-center the small discs are laid at
+    // the top of a 6px line instead of on the current dot's centre line.
+    expect(dots?.className).toContain("items-center");
   });
 
   it("keeps the pill on the dots' own element so the two move together", () => {
@@ -687,7 +716,7 @@ describe("photo gallery controls", () => {
     // repeats the gating test above and still passes with the pill moved onto
     // a wrapper of its own, which is the arrangement this is here to refuse.
     const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("bg-black/35");
+    expect(dots?.className).toContain("bg-black/45");
     expect(dots?.className).toContain("can-hover:opacity-0");
     expect(dots?.className).toContain("group-hover/card:opacity-100");
   });
@@ -759,7 +788,7 @@ describe("photo gallery controls", () => {
     // And no pill: here the row stands on one large photograph the visitor
     // asked for, so every dot keeps carrying its own ground, and the row is
     // laid across the frame the way it always was.
-    expect(dots?.className).not.toContain("bg-black/35");
+    expect(dots?.className).not.toContain("bg-black/45");
     expect(dots?.className).toContain("inset-x-0");
     expect(dots?.children[0]?.className).toContain(
       "shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]",
@@ -865,6 +894,31 @@ describe("photo gallery with nothing to draw", () => {
     expect(
       document.querySelector('[data-slot="photo-frame"] .bg-muted')?.className,
     ).toContain("absolute inset-0");
+  });
+
+  it("takes the dots off a photo that never arrived", () => {
+    setup({ images: CACHED });
+
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    const dots = () => document.querySelector('[data-slot="photo-dots"]');
+    // The rule is a :has() on the frame's group and jsdom resolves none, so
+    // this asserts the two halves match: the attribute the failure writes, and
+    // the selector the row hides itself with. At 320 the pill overlapped the
+    // caption by 4.7px and said "1 of 6" about a picture nobody can see.
+    expect(dots()?.className).toContain(
+      "group-has-[img[data-broken]]/photo:hidden",
+    );
+    expect(photo?.getAttribute("data-broken")).toBeNull();
+
+    fireEvent.error(photo!);
+    expect(photo?.getAttribute("data-broken")).toBe("true");
+    // The way out stays: the other photos in the set may be fine, so the
+    // chevrons are still there to step to one.
+    expect(screen.getByLabelText("Naslednja fotografija")).toBeTruthy();
+    // And a photo that arrives late takes the flag off again, which puts the
+    // row back.
+    fireEvent.load(photo!);
+    expect(photo?.getAttribute("data-broken")).toBeNull();
   });
 
   it("says nothing about a failed photo where no mark is handed in", () => {

@@ -126,7 +126,23 @@ export function BackToTop() {
       }}
       className={cn(
         PLACEMENT,
-        "size-11 rounded-full bg-background/90 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-background",
+        // The plate and its edge, both stated twice because the outline
+        // variant states them for dark itself and tailwind-merge keeps a
+        // dark: class beside an unprefixed one: the variant carries
+        // dark:bg-input/30 and dark:hover:bg-input/50, and the dark variant
+        // resolves to :is(:root:not(.light) *), so its specificity wins
+        // whatever the merge does with the plain class. Without the two dark
+        // halves below this disc was white at 4.5% alpha in dark mode, which
+        // over a photo is not a plate at all: the arrow measured 1.24:1 over a
+        // light photo at 1280 and 2.00:1 at 390, against 8.9:1 on the page
+        // ground (2026-09-17 audit). From 1024 to 1279 the button overlaps the
+        // last card column by 36px, which is how it comes to stand on photos.
+        //
+        // The border is the other half of the same problem and the reason the
+        // control border token exists: the frame is what says this disc is a
+        // control, and --border measured 1.11:1 over a photo at worst and
+        // 1.31:1 at best. --control-border is 3.66:1 light and 3.77:1 dark.
+        "size-11 rounded-full border-control-border bg-background/90 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-background dark:border-control-border dark:bg-background/90 dark:hover:bg-background",
         shown ? "opacity-100" : "pointer-events-none opacity-0",
       )}
     >

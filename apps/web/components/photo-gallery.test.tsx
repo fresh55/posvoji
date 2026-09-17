@@ -183,12 +183,17 @@ describe("photo gallery candidates", () => {
     // Two transition utilities on one element are one property, and cn merges
     // them: transition-transform alone swallowed the fade AnimalPhoto writes,
     // and the photo went back to cutting in the moment the file landed.
+    //
+    // scale and not transform, because scale-[1.03] writes the CSS `scale`
+    // property: a list naming transform left the zoom to arrive in one frame.
     const photo = document.querySelector('[data-slot="photo-frame"] img');
-    expect(photo?.className).toContain(
-      "motion-safe:transition-[transform,opacity]",
-    );
+    expect(photo?.className).toContain("motion-safe:transition-[scale,opacity]");
     expect(photo?.className).toContain("motion-safe:data-[arriving]:opacity-0");
     expect(photo?.className).not.toContain("motion-safe:transition-transform");
+    // The property the zoom actually moves has to be in that list, whatever it
+    // is named: the zoom is a scale utility, so a list without `scale` in it is
+    // a transition on nothing.
+    expect(photo?.className).toContain("motion-safe:group-hover/card:scale-");
   });
 
   it("preloads the rung the layout would pick, not the largest file", () => {

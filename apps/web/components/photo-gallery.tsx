@@ -727,11 +727,18 @@ export function PhotoGallery({
       // saturation and this brightness are two nested filters rather than two
       // utilities competing on one element.
       className={cn(
-        // Both properties named in one utility, because that is what a
-        // transition is: one property on the element. AnimalPhoto fades a
-        // photo in when it lands after hydration, and transition-transform on
-        // its own merged that fade away (see the class list there).
-        "object-cover motion-safe:transition-[transform,opacity] motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
+        // scale, not transform. scale-[1.03] below writes the CSS `scale`
+        // property and not a transform function, so a transition that named
+        // transform had nothing to animate and the zoom arrived in a single
+        // frame: measured on the grid, 306.67px to 315.87px with no
+        // intermediate width at any sample between 30 and 700ms. Named as
+        // `scale` it eases over the 300ms below.
+        //
+        // opacity rides along because AnimalPhoto fades a photo in when it
+        // lands after hydration, and cn merges two transition utilities on one
+        // element into one value: this list is the one that survives, so a
+        // property it leaves out stops transitioning altogether.
+        "object-cover motion-safe:transition-[scale,opacity] motion-safe:duration-300 motion-safe:group-hover/card:scale-[1.03]",
         cardSurface && "dark:brightness-90",
       )}
     />

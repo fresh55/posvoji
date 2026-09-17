@@ -215,9 +215,9 @@ export function AnimalPhoto({
       // merges the two, and two transition utilities on one element are one
       // property, not two. The grid card animates the hover zoom on this same
       // image, so it names both properties at once
-      // (motion-safe:transition-[transform,opacity] in photo-gallery.tsx); a
-      // caller that names transform alone would take the fade off without
-      // saying so.
+      // (motion-safe:transition-[scale,opacity] in photo-gallery.tsx); a
+      // caller that names only the property its own animation moves would take
+      // the fade off without saying so.
       //
       // motion-safe on the mark as well as on the transition, so a visitor who
       // asked for less motion gets the photo at once rather than an untransitioned

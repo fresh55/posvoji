@@ -5,7 +5,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CatModel } from "./cat-model";
 import { renderToStaticMarkup } from "react-dom/server";
 
-vi.mock("@/lib/cat-viewer-runtime", () => ({ createViewerCatPicker: vi.fn() }));
+// The picking chunk, and when the stage asks for it. The export is read once
+// per import, at the moment the chunk has landed, so counting the reads dates
+// the arrival of 157KB that must not compete with the model.
+const runtime = vi.hoisted(() => ({
+  reads: 0,
+  picker: { pick: vi.fn(() => null), dispose: vi.fn() },
+}));
+vi.mock("@/lib/cat-viewer-runtime", () => ({
+  get createViewerCatPicker() {
+    runtime.reads += 1;
+    return () => runtime.picker;
+  },
+}));
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
@@ -40,6 +52,7 @@ let disconnect: ReturnType<typeof vi.fn>;
 let media: EventTarget & { matches: boolean };
 
 beforeEach(() => {
+  runtime.reads = 0;
   media = Object.assign(new EventTarget(), { matches: false });
   vi.stubGlobal("matchMedia", vi.fn(() => media));
   disconnect = vi.fn();
@@ -74,10 +87,71 @@ async function loadViewer(before?: (viewer: Viewer) => void) {
 // The stage's label, and the two ways a visitor reaches for the poster. The
 // assertions stay in each test; only the reaching is shared.
 const shown = () => screen.getByRole("status").className.includes("opacity-100");
+// What the stage has asked the browser to download, in the order it asked.
+const hints = () => [...document.head.querySelectorAll('link[rel="preload"]')]
+  .map(link => link.getAttribute("href"));
 const reachFor = () => fireEvent.pointerEnter(screen.getByRole("img"));
 const touchPoster = () => fireEvent.pointerDown(screen.getByRole("img"));
 
 describe("the cat model", () => {
+  it("asks for the model and the decoder as it starts, not before", async () => {
+    render(<CatModel sizes="100vw" locale="en" startOnReach />);
+    await act(async () => intersect(true));
+    // On screen and waiting for a reach, so it has asked for nothing: a hint
+    // here is 1.2MB on a page whose first seconds belong to something else.
+    expect(hints()).toEqual([]);
+
+    reachFor();
+    // In the same tick as the chunk import, rather than after the chunk has
+    // evaluated and the element exists, which is when the viewer would ask.
+    expect(hints()).toEqual([
+      expect.stringContaining("cat.glb"),
+      expect.stringContaining("meshopt-decoder.js"),
+    ]);
+    const model = document.head.querySelector('link[href*="cat.glb"]')!;
+    // The viewer loads the model through three's FileLoader, a fetch in cors
+    // mode with same-origin credentials. Without the matching credentials the
+    // browser keeps the preload and downloads the model a second time.
+    expect(model.getAttribute("as")).toBe("fetch");
+    expect(model.getAttribute("crossorigin")).toBe("anonymous");
+    // The decoder arrives on a plain async script, which has no credentials.
+    const decoder = document.head.querySelector('link[href*="meshopt-decoder"]')!;
+    expect(decoder.getAttribute("as")).toBe("script");
+    expect(decoder.getAttribute("crossorigin")).toBeNull();
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+  });
+
+  it("asks for nothing while the tab is hidden", async () => {
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => intersect(true));
+    expect(hints()).toEqual([]);
+    hidden.mockReturnValue(false);
+    fireEvent(document, new Event("visibilitychange"));
+    expect(hints()).toHaveLength(2);
+  });
+
+  it("takes its preloads with it when the stage leaves the page", async () => {
+    const { unmount } = render(<CatModel sizes="100vw" locale="en" />);
+    await loadViewer();
+    expect(hints()).toHaveLength(2);
+    unmount();
+    expect(hints()).toEqual([]);
+  });
+
+  it("leaves the picking chunk until the cat has loaded", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    act(() => intersect(true));
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    // While the model is on the wire the chunk is 157KB taken from it, and
+    // there is nothing to pick on a cat that has not arrived. The controller
+    // picks through the viewer's own API until it lands.
+    expect(runtime.reads).toBe(0);
+    const viewer = document.querySelector("model-viewer") as unknown as Viewer;
+    fireEvent(viewer, new Event("load"));
+    await waitFor(() => expect(runtime.reads).toBe(1));
+  });
+
   it("defers 3D setup in a hidden tab until the visible page needs it", async () => {
     const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
     render(<CatModel sizes="100vw" locale="en" />);

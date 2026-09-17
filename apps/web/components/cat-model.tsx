@@ -11,12 +11,28 @@ import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
 // No head preload, although React would hoist one from the tree below.
-// Measured on the gate over throttled 4G it started the 1.1MB download at
-// 60ms instead of 1.5s and still finished only 0.3s sooner (0.8s on slow 4G):
-// the link is bandwidth-bound either way, so it only took bandwidth from the
-// hydration chunks. A smaller asset would shorten the wait, an earlier start
-// does not.
-const MODEL = "/models/our-cat/cat.glb?v=26";
+// Measured on the gate over throttled 4G a link in the head started the 1.1MB
+// download at 60ms instead of 1.5s and still finished only 0.3s sooner (0.8s
+// on slow 4G): from there it is bandwidth-bound against the hydration chunks,
+// on every visit to a page that may never show him. The link start() inserts
+// is a different thing. It begins the same download at the moment the stage
+// has already decided to fetch him, so the only chunk it competes with is the
+// renderer it is waiting for, and it never runs where he is not wanted.
+const MODEL = "/models/our-cat/cat.glb?v=27";
+
+// What the viewer asks for once its chunk has evaluated, asked for at the same
+// moment as the chunk instead of after it: the model, which used to wait for
+// the element to exist, and the meshopt decoder it cannot read the model
+// without. Each link has to describe the request the viewer will make, or the
+// browser keeps the preload and fetches the file a second time. The model goes
+// through three's FileLoader, a fetch in cors mode with same-origin
+// credentials, which is what crossorigin says here; the decoder arrives on a
+// plain async <script>, which is as="script" and no crossorigin. Traced on the
+// built page: one request each, and the model's is the link's.
+const HINTS = [
+  { href: MODEL, as: "fetch", crossOrigin: "anonymous" },
+  { href: "/models/our-cat/meshopt-decoder.js", as: "script" },
+];
 
 /** A camera and the still rendered from it: the poster is the model's own
  *  first frame at that framing, so he does not jump when WebGL takes over. */
@@ -198,6 +214,8 @@ export const CatModel = memo(function CatModel({
     let interaction: ReturnType<typeof createCatInteraction> | undefined;
     let makePicker: typeof createViewerCatPicker | undefined;
     let picker: ReturnType<typeof createViewerCatPicker> | undefined;
+    let pickerAsked = false;
+    let hints: HTMLLinkElement[] = [];
     let disposed = false;
     let started = false;
     let visible = false;
@@ -212,12 +230,31 @@ export const CatModel = memo(function CatModel({
       if (!viewer || !ready || disposed) return;
       interaction?.syncPlayback();
     };
+    // The precomputed picking regions, and the one thing here that waits for
+    // the load event rather than racing it. Its chunk is 157KB, nearly all of
+    // it picking.json, and nothing can be picked before there is a cat: until
+    // it arrives the controller picks through the viewer's own public API (the
+    // fallback in start()), which is coarser but answers the same question.
+    // Asked for on load rather than on the first reach after it, because the
+    // main thread is free at that moment and a reach is not a spare one: the
+    // visitor who reaches is the one whose first touch would then wait for it.
+    const takePicker = async () => {
+      if (!pickerAsked) {
+        pickerAsked = true;
+        try { makePicker = (await import("@/lib/cat-viewer-runtime")).createViewerCatPicker; }
+        catch { return; }
+      }
+      if (disposed || !ready || !viewer || !makePicker) return;
+      picker?.dispose();
+      try { picker = makePicker(viewer); }
+      catch { picker = undefined; }
+    };
     const onLoad = () => {
       // Apply the seated first frame even when reduced motion starts paused.
       if (viewer) viewer.currentTime = 0;
+      // Whatever the old picker held is a scene that has just been replaced.
       picker?.dispose();
-      try { if (viewer) picker = makePicker?.(viewer); }
-      catch { picker = undefined; }
+      picker = undefined;
       ready = true;
       setStatus("ready");
       syncPlayback();
@@ -229,6 +266,7 @@ export const CatModel = memo(function CatModel({
         touched.current = false;
         controller?.react("Notice");
       }
+      void takePicker();
     };
     const onError = () => {
       ready = false;
@@ -238,20 +276,46 @@ export const CatModel = memo(function CatModel({
       setStatus("failed");
     };
 
+    // The two requests the viewer will make, asked for in the same tick as its
+    // chunk. Called from start() and nowhere else, so start()'s gate is the
+    // whole gate: a route that never shows him, a stage still waiting for a
+    // reach and a hidden tab ask for nothing.
+    const askForHim = () => {
+      if (hints.length) return;
+      hints = HINTS.map(({ href, as, crossOrigin }) => {
+        const link = document.createElement("link");
+        link.setAttribute("rel", "preload");
+        link.setAttribute("as", as);
+        if (crossOrigin) link.setAttribute("crossorigin", crossOrigin);
+        // Last, so the request goes out with the rest already on the element.
+        link.setAttribute("href", href);
+        document.head.append(link);
+        return link;
+      });
+    };
+
     // Importing the custom element on the server would access browser globals.
     // The model and renderer also stay out of other routes and offscreen loads.
+    //
+    // The model's download used to begin only after the chunk had arrived and
+    // evaluated and the element had been created, which on a throttled phone
+    // (1.6Mbps, 150ms RTT, 4x CPU) put its first byte 2.4s after the stage
+    // came into view. The links above start it with the chunk instead, so the
+    // three share the wire rather than queue behind one another: five paired
+    // runs of the built page moved the model's last byte from 11.1s to 10.2s
+    // and the load event from 12.4s to 11.7s. The element appears about a
+    // second later for it, because the chunk now waits on the model for
+    // bandwidth, and nothing is drawn before the model in any case.
     const start = async () => {
       if (!wanted || started || disposed || !visible || document.hidden) return;
       started = true;
+      askForHim();
       try {
-        const [{ ModelViewerElement: Viewer }, runtime] = await Promise.all([
-          import("@google/model-viewer"), import("@/lib/cat-viewer-runtime"),
-        ]);
-        makePicker = runtime.createViewerCatPicker;
+        const { ModelViewerElement: Viewer } = await import("@google/model-viewer");
         if (disposed) return;
         // The visitor may have scrolled away or hidden the tab during the
-        // wait. Keep the module cached, but postpone model download and
-        // WebGL setup.
+        // wait. Keep the chunk and whatever the links have already pulled
+        // down, but postpone WebGL setup.
         if (!visible || document.hidden) { started = false; return; }
         Viewer.meshoptDecoderLocation = "/models/our-cat/meshopt-decoder.js";
         viewer = document.createElement("model-viewer") as ModelViewerElement;
@@ -316,6 +380,9 @@ export const CatModel = memo(function CatModel({
         viewer.addEventListener("load", onLoad);
         viewer.addEventListener("error", onError);
         const element = viewer;
+        // The picker, once it has landed, and the viewer's own picking until
+        // then. The controller asks this on every touch, so it reads the
+        // current answer rather than the one that held when it was built.
         interaction = createCatInteraction(viewer, canAnimate, (x, y) => {
           if (picker) return picker.pick(x, y);
           const material = element.materialFromPoint(x, y)?.name;
@@ -374,6 +441,8 @@ export const CatModel = memo(function CatModel({
       handOver.current?.(null);
       interaction?.dispose();
       picker?.dispose();
+      for (const link of hints) link.remove();
+      hints = [];
       viewer?.removeEventListener("load", onLoad);
       viewer?.removeEventListener("error", onError);
       viewer?.pause();

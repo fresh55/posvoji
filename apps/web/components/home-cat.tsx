@@ -110,9 +110,9 @@ export const HOME_CAT_POSTER_MEDIA =
  * reason the hero kept a 224px right padding there, which wrapped the title
  * and the meta line and pushed the tabs under the fixed dock
  * (site-page.tsx). Measured at 844x390 before the gate, that phone fetched
- * the 1.14MB model and the viewer chunk for him.
+ * the 1.14MB model of the time and the viewer chunk for him.
  *
- * startOnReach, because this is the site's entry page and the model is 2.1MB
+ * startOnReach, because this is the site's entry page and the model is 1.5MB
  * plus 1.3MB of renderer: on the about page he is below the fold and often
  * never fetched, here he is on screen at once, and without a wait every
  * desktop visit would fetch him alongside the first card photos.

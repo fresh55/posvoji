@@ -162,13 +162,13 @@ removed on every normal exit path, failures included. If a Windows junction
 cannot be detached, cleanup preserves the whole temp directory and fails
 loudly so no recursive delete can traverse into its sibling media snapshot.
 
-**Artifact.** A gzipped tar of `apps/web/out`, excluding `./media` and any
-`*.br`/`*.gz`. The media exclude is the whole point of the shared directory:
-the export copies `public/media` into `out/`, and that copy must not travel
-inside a release. The `.br`/`.gz` exclude is a guard only. `next build` emits
-no precompressed siblings, so the ones in an older hand-made release came from
-that deploy, not from the build, and the Caddyfile has no `precompressed`
-directive to read them with anyway.
+**Artifact.** A gzipped tar of `apps/web/out`, excluding `./media`. The media
+exclude is the whole point of the shared directory: the export copies
+`public/media` into `out/`, and that copy must not travel inside a release.
+Precompressed siblings are not excluded but checked: the build writes exactly
+two, `cat.glb.br` and `cat.glb.gz`, for the one large asset a host cannot
+compress on the fly (DEPLOY-HEADERS.md, "The 3D model"), and the script fails
+before upload if the listing carries any other `.br`/`.gz`/`.zst` file.
 
 **Deploy**, in this order:
 

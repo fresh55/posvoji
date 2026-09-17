@@ -8,6 +8,7 @@ from django.test import Client
 from sesame.utils import get_token
 
 from core.api.auth import ADDRESS_THROTTLED, DELIVERY_FAILED
+from core.models import ShelterMembership
 from core.security import address_send_limit, request_link_throttle
 
 REQUEST_LINK = "/api/auth/request-link"
@@ -432,6 +433,71 @@ def test_verify_rejects_a_user_without_membership(client, outsider):
     response = post(client, VERIFY, {"token": get_token(outsider)})
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_two_addresses_can_independently_log_in_to_the_same_shelter(
+    member, second_member, shelter, other_shelter
+):
+    clients = []
+    tokens = []
+    for user in (member, second_member):
+        browser = Client(enforce_csrf_checks=True)
+        response = post(browser, REQUEST_LINK, {"email": user.email})
+        assert response.status_code == 204
+        assert mail.outbox[-1].to == [user.email]
+        clients.append(browser)
+        tokens.append(link_query(mail.outbox[-1])["token"][0])
+
+    # Signing in with one address must not consume the other address's link.
+    for browser, token, user in zip(
+        clients, tokens, (member, second_member), strict=True
+    ):
+        assert post(browser, VERIFY, {"token": token}).status_code == 200
+        session = browser.get(ME).json()
+        assert session["email"] == user.email
+        assert [row["slug"] for row in session["shelters"]] == [shelter.slug]
+        assert browser.get(f"/api/shelters/{shelter.slug}/animals").status_code == 200
+        assert (
+            browser.get(f"/api/shelters/{other_shelter.slug}/animals").status_code
+            == 403
+        )
+
+
+@pytest.mark.django_db
+def test_removing_one_address_revokes_its_access_but_keeps_the_other(
+    member, second_member, shelter
+):
+    old_browser = Client(enforce_csrf_checks=True)
+    assert post(old_browser, VERIFY, {"token": get_token(member)}).status_code == 200
+    member.refresh_from_db()
+    outstanding_token = get_token(member)
+
+    ShelterMembership.objects.filter(user=member, shelter=shelter).delete()
+
+    assert old_browser.get(ME).json()["shelters"] == []
+    assert old_browser.get(f"/api/shelters/{shelter.slug}/animals").status_code == 403
+    fresh_browser = Client(enforce_csrf_checks=True)
+    assert post(fresh_browser, REQUEST_LINK, {"email": member.email}).status_code == 204
+    assert mail.outbox == []
+    assert post(fresh_browser, VERIFY, {"token": outstanding_token}).status_code == 401
+    assert (
+        post(fresh_browser, VERIFY, {"token": get_token(second_member)}).status_code
+        == 200
+    )
+
+
+@pytest.mark.django_db
+def test_changing_email_invalidates_a_link_sent_to_the_old_address(client, member):
+    old_token = get_token(member)
+    member.email = "pisarna@example.si"
+    member.save(update_fields=["email"])
+
+    assert post(client, VERIFY, {"token": old_token}).status_code == 401
+    assert client.get(ME).status_code == 401
+    assert post(client, REQUEST_LINK, {"email": member.email}).status_code == 204
+    new_token = link_query(mail.outbox[-1])["token"][0]
+    assert post(client, VERIFY, {"token": new_token}).status_code == 200
 
 
 @pytest.mark.django_db

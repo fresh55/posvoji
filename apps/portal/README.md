@@ -130,6 +130,38 @@ responses; it does not stop a request from reaching the server. Before a
 it. Django rotates the CSRF secret when a login succeeds, so the frontend gets
 a fresh token after login.
 
+### Additional or replacement login addresses
+
+A shelter can have several approved institutional email addresses. Each address
+has its own user and `ShelterMembership`; each receives its own magic link and
+has the same editing access to that shelter. There are no shelter-side invitation
+or member-management routes. Requests currently go to `info@posvoji.si` and an
+operator provisions access in the Django admin.
+
+1. Confirm the additional address with an already verified shelter contact. Use
+   institutional mailboxes, not private individuals' personal addresses.
+2. In `/admin/`, reuse the existing user for that email, matching without regard
+   to case, or create an active user with that email and password-based
+   authentication disabled. Leave staff and superuser permissions off.
+3. Add a shelter membership for that user with source `admin`. This survives
+   `seed_shelters`, including changes to the public registry email. Do not change
+   the public contact email just to grant another login.
+4. The shelter requests its own link on `/portal/prijava`. Adding a membership
+   does not send an invitation automatically.
+
+For a replacement address, create/reuse its own user and membership, then remove
+the old membership. This immediately removes that shelter from the old user's
+existing sessions and prevents unused links from restoring access to it. If the
+old membership has source `registry`, update/remove its address in the registry
+as well, or the next seed will restore it. Removing one shelter membership does
+not remove that user's access to any other shelter.
+
+Changing a user's email directly invalidates outstanding magic links but does
+not end existing sessions. It also changes the login for every shelter attached
+to that user. Use separate users and remove the old membership when transferring
+access between mailboxes. Do not create duplicate users for one email: login
+currently selects the first active matching user with a membership.
+
 ### Mail
 
 The link is the login, so a portal that cannot send mail lets nobody in, and

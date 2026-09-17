@@ -7,6 +7,7 @@ import { SiteShell } from "@/components/site-shell";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { shelterCount } from "@/lib/labels";
+import { PAGE_TITLE } from "@/lib/link-styles";
 import { verificationDate } from "@/lib/source-freshness";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -80,20 +81,30 @@ export function SitePage({ locale }: { locale: Locale }) {
           which wrapped the heading and the meta line and pushed the species
           tabs down into the fixed dock. */}
       <div className={`relative space-y-1.5 md:pr-(--cat-corner) ${CAT_CORNER}`}>
-        {/* 600, which is the weight of the card names in the grid under it
-            and the weight every page title on the site now carries. At 500
-            the title was the lighter of the two, so the page was headed by
-            something quieter than the rows it introduces.
+        {/* PAGE_TITLE, which is the one decision about how large a page's own
+            title is (lib/link-styles.ts): 24px, 30 from sm, 36 from md. This
+            page was spelling a ladder one step under it, 20/24/30, so the
+            entry to the site was headed more quietly than /o-nas or the
+            register it links to, which is the wrong way round. The weight
+            comes with it and is the same 600 the card names in the grid carry;
+            at 500 the title was the lighter of the two, so the page was headed
+            by something quieter than the rows it introduces.
 
-            short:text-xl puts the phone's own title size back on a screen 360
-            to 430 pixels tall. The step the widths buy is width, not height,
-            and a phone held sideways has the first and none of the second: at
-            30px this sentence took two lines of a screen with room for about
-            six, and beside the cat it still did on the narrower ones. The
-            same string without this last utility is on found-animal-page.tsx;
-            the two are no longer meant to match, because that page has no
-            dock under it and no drawing beside the title. */}
-        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl short:text-xl">
+            short:text-xl stays, and is why this is PAGE_TITLE plus two
+            utilities rather than PAGE_TITLE. The step the widths buy is width,
+            not height, and a phone held sideways has the first and none of the
+            second: at 30px this sentence took two lines of a screen with room
+            for about six, and beside the cat it still did on the narrower
+            ones. 20px there, whatever the ladder says.
+
+            What the ladder costs, measured on the export at every band: 8px
+            on a portrait phone and at 768, 4px from 1024 up, nothing on the
+            landscape phone, and no horizontal overflow anywhere. Three bands
+            gain a line rather than a few pixels: English at 320 goes to
+            three lines (+40px), Slovenian at 834 and English at 1024 to two
+            (+44px). That is the price of the title being the size every other
+            page's is. */}
+        <h1 className={`${PAGE_TITLE} text-balance short:text-xl`}>
           {messages.heroTitle}
         </h1>
         {/* One wrapping line at every width, where this used to be a text

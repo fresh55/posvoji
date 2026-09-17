@@ -20,6 +20,8 @@ export const PORTAL_ANIMAL_PATH = "/portal/zival";
 export const PORTAL_ERROR_PARAM = "napaka";
 export const PORTAL_ERROR_NO_SESSION = "seja";
 export const PORTAL_LOGIN_NO_SESSION_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR_PARAM}=${PORTAL_ERROR_NO_SESSION}`;
+export const PORTAL_ERROR_LOGOUT = "odjava";
+export const PORTAL_LOGOUT_FAILED_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR_PARAM}=${PORTAL_ERROR_LOGOUT}`;
 
 /**
  * One sessionStorage entry, with the guard every use of it needs: a browser
@@ -296,15 +298,16 @@ export function usePortalSession(): {
     setAttempt((count) => count + 1);
   }, []);
 
-  // A failed logout still has to send the shelter away from the workspace:
-  // whatever the server said, the visitor asked to leave. replace(), so the
-  // back button cannot return to a workspace with no session behind it.
+  // Leave the workspace as requested, but explain a failure at the destination:
+  // redirecting alone does not end the server session on a shared device.
   const signOut = useCallback(async () => {
+    let target = PORTAL_LOGIN_PATH;
     try {
       await logout();
-    } finally {
-      window.location.replace(PORTAL_LOGIN_PATH);
+    } catch (error) {
+      if (!isUnauthorized(error)) target = PORTAL_LOGOUT_FAILED_PATH;
     }
+    window.location.replace(target);
   }, []);
 
   return { state, reload, signOut };

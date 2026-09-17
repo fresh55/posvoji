@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   PORTAL_ERROR_NO_SESSION,
+  PORTAL_ERROR_LOGOUT,
   PORTAL_ERROR_PARAM,
   landAfterLogin,
   peekPortalReturn,
@@ -38,6 +39,7 @@ import {
 import {
   PortalError,
   isUnauthorized,
+  logout,
   requestLoginLink,
   verifyToken,
 } from "@/lib/portal-api";
@@ -64,6 +66,7 @@ type LoginState =
   | { step: "sending" }
   | { step: "sent"; email: string }
   | { step: "verifying" }
+  | { step: "logoutFailed"; retrying: boolean }
   | { step: "expired" };
 
 /**
@@ -96,6 +99,21 @@ function errorMessage(error: unknown): string {
 // not a word: shelter staff read this on a phone, where an address that is
 // only text has to be copied out by hand.
 const [HELP_BEFORE, HELP_AFTER] = portalText.helpLine.split("{email}");
+
+function LoginHelp() {
+  return (
+    <p className="text-sm leading-relaxed text-muted-foreground">
+      {HELP_BEFORE}
+      <a
+        href={mailtoHref(portalText.contactEmail)}
+        className="inline-flex pointer-coarse:tap-target underline underline-offset-4 hover:text-foreground"
+      >
+        {portalText.contactEmail}
+      </a>
+      {HELP_AFTER}
+    </p>
+  );
+}
 
 // The character class is copied from lib/shelters.ts, which is the rule the
 // register is validated against: no character that turns one recipient into a
@@ -187,6 +205,7 @@ export function PortalLogin() {
       // verification that worked left no session cookie behind.
       noSession:
         params.get(PORTAL_ERROR_PARAM) === PORTAL_ERROR_NO_SESSION,
+      logoutFailed: params.get(PORTAL_ERROR_PARAM) === PORTAL_ERROR_LOGOUT,
     };
   }, [search]);
 
@@ -215,6 +234,10 @@ export function PortalLogin() {
       step: "form",
       error: { text: portalText.sessionNotStored, onField: false },
     });
+  }
+  if (link.logoutFailed && !link.token && !bounced) {
+    setBounced(true);
+    setState({ step: "logoutFailed", retrying: false });
   }
 
   // Keyed on the captured token, not on the one still in the URL: the effect
@@ -258,9 +281,9 @@ export function PortalLogin() {
   // bar: a reload or a shared link would otherwise carry the same notice to a
   // page that is only asking for an address.
   useEffect(() => {
-    if (!bounced) return;
+    if (!bounced || !link.noSession) return;
     commitSearch("", "replace");
-  }, [bounced]);
+  }, [bounced, link.noSession]);
 
   // Every step but the form replaces the card's whole content, so the reader
   // is moved to the new heading rather than left on a button that is gone.
@@ -270,6 +293,20 @@ export function PortalLogin() {
   }, [state.step]);
 
   function backToForm() {
+    setState({ step: "form" });
+  }
+
+  async function retryLogout() {
+    setState({ step: "logoutFailed", retrying: true });
+    try {
+      await logout();
+    } catch (error) {
+      if (!isUnauthorized(error)) {
+        setState({ step: "logoutFailed", retrying: false });
+        return;
+      }
+    }
+    commitSearch("", "replace");
     setState({ step: "form" });
   }
 
@@ -348,6 +385,25 @@ export function PortalLogin() {
             <Button onClick={backToForm} className="w-full pointer-coarse:h-11">
               {portalText.requestNewLink}
             </Button>
+            <LoginHelp />
+          </div>
+        )}
+
+        {state.step === "logoutFailed" && (
+          <div className="space-y-4" aria-live="polite">
+            <Mark icon={TriangleAlert} tone="warn" />
+            <StepHeading ref={headingRef}>{portalText.logoutFailedTitle}</StepHeading>
+            <p role="alert" className="text-sm leading-relaxed text-muted-foreground">
+              {portalText.logoutFailedLead}
+            </p>
+            <Button
+              onClick={retryLogout}
+              disabled={state.retrying}
+              className="w-full pointer-coarse:h-11"
+            >
+              {state.retrying ? portalText.loggingOut : portalText.retryLogout}
+            </Button>
+            <LoginHelp />
           </div>
         )}
 
@@ -372,6 +428,7 @@ export function PortalLogin() {
             >
               {portalText.sendAgain}
             </Button>
+            <LoginHelp />
           </div>
         )}
 
@@ -447,24 +504,7 @@ export function PortalLogin() {
               </Button>
             </form>
 
-            {/* Under the form, where a shelter that cannot get past it is
-                already looking. The address is a link and not text: on a
-                phone it has to open the mail app rather than be copied out
-                by hand. */}
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {HELP_BEFORE}
-              <a
-                href={mailtoHref(portalText.contactEmail)}
-                // inline-flex with the overlay, the spelling MUTED_LINK uses:
-                // a wrapped inline link has one box across two lines and the
-                // 44px layer would sit between them rather than on either.
-                // 17px drawn, and it is what a shelter locked out reaches for.
-                className="inline-flex pointer-coarse:tap-target underline underline-offset-4 hover:text-foreground"
-              >
-                {portalText.contactEmail}
-              </a>
-              {HELP_AFTER}
-            </p>
+            <LoginHelp />
           </>
         )}
       </m.section>

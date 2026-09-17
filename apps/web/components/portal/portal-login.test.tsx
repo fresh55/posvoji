@@ -17,7 +17,7 @@ import {
   PORTAL_VERIFIED_KEY,
   rememberPortalReturn,
 } from "@/hooks/use-portal-session";
-import { PortalError, requestLoginLink, verifyToken } from "@/lib/portal-api";
+import { PortalError, logout, requestLoginLink, verifyToken } from "@/lib/portal-api";
 
 // Only the two calls the login page makes are stubbed; PortalError and
 // isUnauthorized stay the real ones, because the page branches on them.
@@ -25,6 +25,7 @@ vi.mock("@/lib/portal-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/portal-api")>()),
   requestLoginLink: vi.fn(),
   verifyToken: vi.fn(),
+  logout: vi.fn(),
 }));
 
 // The dev picker fetches on mount and is never in a production build.
@@ -46,6 +47,7 @@ afterEach(() => {
   cleanup();
   vi.mocked(requestLoginLink).mockReset();
   vi.mocked(verifyToken).mockReset();
+  vi.mocked(logout).mockReset();
   window.sessionStorage.clear();
   restoreNavigation();
   window.history.replaceState(null, "", "/portal");
@@ -285,7 +287,7 @@ describe("the way out for a shelter the form cannot help", () => {
     );
   });
 
-  it("is not on the cards that have said their piece", async () => {
+  it("keeps access help on the confirmation card", async () => {
     vi.mocked(requestLoginLink).mockResolvedValue(undefined);
     render(<PortalLogin />);
 
@@ -294,8 +296,46 @@ describe("the way out for a shelter the form cannot help", () => {
 
     await screen.findByText(portalText.sentTitle);
     expect(
-      screen.queryByRole("link", { name: portalText.contactEmail }),
-    ).toBeNull();
+      screen.getByRole("link", { name: portalText.contactEmail }).getAttribute("href"),
+    ).toBe(`mailto:${portalText.contactEmail}`);
+  });
+
+  it("keeps access help on the invalid-link card", async () => {
+    vi.mocked(verifyToken).mockRejectedValue(new PortalError(401));
+    window.history.replaceState(null, "", "/portal/prijava?token=invalid");
+    render(<PortalLogin />);
+    await screen.findByText(portalText.expiredTitle);
+    expect(screen.getByRole("link", { name: portalText.contactEmail })).toBeTruthy();
+  });
+});
+
+describe("a logout that failed", () => {
+  it("keeps the failure visible across reload and retries without requesting mail", async () => {
+    window.history.replaceState(null, "", "/portal/prijava?napaka=odjava");
+    vi.mocked(logout).mockRejectedValueOnce(new PortalError(0));
+    const first = render(<PortalLogin />);
+    expect(screen.getByRole("alert").textContent).toContain(portalText.logoutFailedLead);
+    expect(window.location.search).toBe("?napaka=odjava");
+    first.unmount();
+    render(<PortalLogin />);
+    fireEvent.click(screen.getByRole("button", { name: portalText.retryLogout }));
+    await waitFor(() => expect(screen.getByRole("button", { name: portalText.retryLogout }).hasAttribute("disabled")).toBe(false));
+    expect(screen.getByRole("heading", { name: portalText.logoutFailedTitle })).toBeTruthy();
+    expect(window.location.search).toBe("?napaka=odjava");
+    vi.mocked(logout).mockResolvedValue(undefined);
+    fireEvent.click(screen.getByRole("button", { name: portalText.retryLogout }));
+    await screen.findByRole("heading", { name: portalText.loginTitle });
+    expect(window.location.search).toBe("");
+    expect(requestLoginLink).not.toHaveBeenCalled();
+  });
+
+  it("accepts a retry response that confirms there is no session", async () => {
+    window.history.replaceState(null, "", "/portal/prijava?napaka=odjava");
+    vi.mocked(logout).mockRejectedValue(new PortalError(401));
+    render(<PortalLogin />);
+    fireEvent.click(screen.getByRole("button", { name: portalText.retryLogout }));
+    await screen.findByRole("heading", { name: portalText.loginTitle });
+    expect(window.location.search).toBe("");
   });
 });
 

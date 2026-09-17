@@ -1,8 +1,10 @@
 from django.contrib import admin
+from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.urls import path
 from django.utils import timezone
 
+from .admin_accounts import PortalUserAdmin
 from .admin_animals import all_animals
 from .conflicts import CAUGHT_UP, MOVED, Conflict, conflicts_for
 from .dataset import animal_index, crawled_values
@@ -15,6 +17,9 @@ from .models import (
     Shelter,
     ShelterMembership,
 )
+
+admin.site.unregister(get_user_model())
+admin.site.register(get_user_model(), PortalUserAdmin)
 
 # The state of one override against the current crawl. Only the first three
 # need a human to look at them.

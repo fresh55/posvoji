@@ -3,10 +3,14 @@ from io import StringIO
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import Client
+from sesame.utils import get_token
 
 from core.models import MembershipSource, Shelter, ShelterMembership
 
 from .conftest import FIXTURES
+from .test_auth import post
 
 REGISTRY = FIXTURES / "shelters.yaml"
 # The same three shelters, once with another address on testno and once with
@@ -15,10 +19,10 @@ CHANGED_EMAIL = FIXTURES / "shelters-changed-email.yaml"
 NO_EMAIL = FIXTURES / "shelters-no-email.yaml"
 
 
-def seed(path=REGISTRY) -> str:
+def seed(path=REGISTRY, **options) -> str:
     """Runs the command and returns everything it printed."""
     out = StringIO()
-    call_command("seed_shelters", "--path", str(path), stdout=out)
+    call_command("seed_shelters", "--path", str(path), stdout=out, **options)
     return out.getvalue()
 
 
@@ -34,6 +38,16 @@ def write_policy(providers, slug: str, body: str) -> None:
     directory = providers / slug
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "policy.yaml").write_text(body, encoding="utf-8")
+
+
+@pytest.fixture(autouse=True)
+def enabled_policies(providers_dir):
+    for slug in ("testno", "drugo", "brez-poste", "prvo"):
+        write_policy(
+            providers_dir,
+            slug,
+            "ingestion: scrape\nenabled: true\npermission:\n  status: granted\n",
+        )
 
 
 @pytest.mark.django_db
@@ -226,3 +240,97 @@ def test_seed_removes_nothing_when_the_registry_has_not_changed():
     assert ShelterMembership.objects.count() == 2
     assert "stale registry login removed" not in output
     assert "0 stale registry memberships removed" in output
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("policy", [None, "enabled: false", "enabled: true"])
+def test_ineligible_provider_revokes_only_registry_access(providers_dir, policy):
+    seed()
+    shelter = Shelter.objects.get(slug="testno")
+    registry_user = get_user_model().objects.get(email="info@example.si")
+    admin_membership = add_by_hand(shelter, "office@example.si")
+    browser = Client(enforce_csrf_checks=True)
+    assert (
+        post(
+            browser, "/api/auth/verify", {"token": get_token(registry_user)}
+        ).status_code
+        == 200
+    )
+    registry_user.refresh_from_db()
+    token = get_token(registry_user)
+    path = providers_dir / "testno" / "policy.yaml"
+    if policy is None:
+        path.unlink()
+    else:
+        # Manual but disabled, or enabled without recorded permission.
+        path.write_text(f"ingestion: manual\n{policy}\n", encoding="utf-8")
+
+    output = seed()
+
+    assert "no enabled permitted provider, no registry login: testno" in output
+    assert not registry_user.shelter_memberships.exists()
+    assert ShelterMembership.objects.filter(pk=admin_membership.pk).exists()
+    assert browser.get("/api/shelters/testno/animals").status_code == 403
+    assert (
+        post(
+            Client(enforce_csrf_checks=True), "/api/auth/verify", {"token": token}
+        ).status_code
+        == 401
+    )
+    seed()
+    assert not registry_user.shelter_memberships.exists()
+
+
+@pytest.mark.django_db
+def test_disabled_manual_shelter_never_gets_a_registry_user(providers_dir):
+    write_policy(providers_dir, "testno", "ingestion: manual\nenabled: false\n")
+    seed()
+    assert Shelter.objects.get(slug="testno").is_manual
+    assert not get_user_model().objects.filter(email="info@example.si").exists()
+
+
+@pytest.mark.django_db
+def test_absent_shelter_requires_prune_and_preserves_admin_access(tmp_path):
+    seed()
+    shelter = Shelter.objects.get(slug="testno")
+    registry_user = get_user_model().objects.get(email="info@example.si")
+    by_hand = add_by_hand(shelter, "office@example.si")
+    browser = Client(enforce_csrf_checks=True)
+    assert (
+        post(
+            browser, "/api/auth/verify", {"token": get_token(registry_user)}
+        ).status_code
+        == 200
+    )
+    registry_user.refresh_from_db()
+    token = get_token(registry_user)
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("shelters: []\n", encoding="utf-8")
+
+    assert "review and use --prune" in seed(empty)
+    assert registry_user.shelter_memberships.exists()
+    assert "removed absent registry memberships" in seed(empty, prune=True)
+    assert not registry_user.shelter_memberships.exists()
+    assert ShelterMembership.objects.filter(pk=by_hand.pk).exists()
+    assert Shelter.objects.filter(pk=shelter.pk).exists()
+    assert browser.get("/api/shelters/testno/animals").status_code == 403
+    assert (
+        post(
+            Client(enforce_csrf_checks=True), "/api/auth/verify", {"token": token}
+        ).status_code
+        == 401
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "rows", ["- bad-row", "- name: Missing id", "- id: testno\n- id: testno"]
+)
+def test_prune_rejects_malformed_registry_without_revoking_anyone(tmp_path, rows):
+    seed()
+    before = set(ShelterMembership.objects.values_list("pk", flat=True))
+    malformed = tmp_path / "malformed.yaml"
+    malformed.write_text(f"shelters:\n{rows}\n", encoding="utf-8")
+    with pytest.raises(CommandError):
+        seed(malformed, prune=True)
+    assert set(ShelterMembership.objects.values_list("pk", flat=True)) == before

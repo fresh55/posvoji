@@ -6,6 +6,27 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    // eslint-config-next registers eslint-plugin-jsx-a11y and turns on six of
+    // its rules. This is not one of them, and it is the one that names the
+    // fault the about page shipped: aria-hidden prunes a subtree from the
+    // accessibility tree and leaves the tab order alone, so a control inside
+    // one is a stop that announces nothing. WCAG 4.1.2.
+    //
+    // It currently flags nothing, and it is honest about what it can flag.
+    // The rule reads one JSX element's own attributes, so it sees neither of
+    // the two shapes this site actually produced: the cat's focusable element
+    // arrives imperatively into a shadow root, and the photo surface pairs
+    // aria-hidden with tabIndex={-1}, which the rule counts as not focusable
+    // and is right to. e2e/reach.ts is where both are caught, by reading a
+    // real browser. This is here for the plain case, the one nobody has
+    // written yet.
+    files: ["**/*.tsx"],
+    rules: {
+      "jsx-a11y/no-aria-hidden-on-focusable": "error",
+    },
+  },
+
+  {
     // @posvoji/schema is zod, and its every export comes through one barrel
     // (packages/schema/src/index.ts), so naming a schema value in client code
     // pulls the whole zod runtime in with it: 287KB before hydration on nearly

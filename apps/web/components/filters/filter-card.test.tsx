@@ -6,8 +6,6 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 import {
-  SHEET_COUNT_CLASS,
-  SIDEBAR_COUNT_CLASS,
   countClass,
   filterCardLayoutClass,
   filterCardVariants,
@@ -93,15 +91,6 @@ describe("the filter card's two surfaces", () => {
     }
   });
 
-  // 11px is a 224px column's size, not a phone's: in the sheet the count sat
-  // a step under the 12px label it belongs to and was the smallest type on the
-  // page. The sidebar keeps the smaller step because the column is narrow.
-  it("prints the sheet's count a step above the sidebar's", () => {
-    expect(SHEET_COUNT_CLASS).toContain("text-xs");
-    expect(SHEET_COUNT_CLASS).not.toContain("text-2xs");
-    expect(SIDEBAR_COUNT_CLASS).toContain("text-2xs");
-  });
-
   // The count was the one thing on a card that got less legible for being
   // chosen: the resting muted token on the brand fill measures 4.45:1 in light
   // mode, under the 4.5:1 an 11-12px number is held to.
@@ -115,14 +104,18 @@ describe("the filter card's two surfaces", () => {
     }
   });
 
-  // Both sizes stay with the layout, so a chosen card is recoloured and not
-  // resized: the sheet's tile printed 11px for a release because the class was
-  // hand-copied there.
+  // Two facts about the size, in one place because they are one decision: the
+  // sheet prints a step above the sidebar, and each layout keeps its own size
+  // whether the card is chosen or not. 11px is a 224px column's size and not a
+  // phone's, where the count sat under the 12px label it belongs to; and a
+  // chosen card is recoloured, not resized, which the sheet's tile got wrong
+  // for a release because the class was hand-copied there.
   it("keeps each layout's count size in both states", () => {
-    expect(countClass("sheet", true)).toContain("text-xs");
-    expect(countClass("sheet", false)).toContain("text-xs");
-    expect(countClass("sidebar", true)).toContain("text-2xs");
-    expect(countClass("sidebar", false)).toContain("text-2xs");
+    for (const checked of [true, false]) {
+      expect(countClass("sheet", checked)).toContain("text-xs");
+      expect(countClass("sheet", checked)).not.toContain("text-2xs");
+      expect(countClass("sidebar", checked)).toContain("text-2xs");
+    }
   });
 
   // disabled:opacity-50 took the label to 2.08:1, which reads as a tile that

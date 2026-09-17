@@ -204,10 +204,16 @@ describe("FilterGroupList", () => {
 
     expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
     openFilterSection("Posebna skrb");
-    // One facet has a count, so the sidebar draws that option alone; the
-    // section itself appearing is what this test is about.
-    expect(
-      screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
-    ).toHaveLength(1);
+    // Only "patient" has a count, so the sidebar draws that option and leaves
+    // the rest out. Named rather than counted: one surviving option is also
+    // what drawnOptions' keep-the-first fallback leaves behind when every
+    // option is dead, and the two say different things about the data.
+    const drawn = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("aria-pressed"));
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].getAttribute("aria-label")).toMatch(
+      new RegExp(`^${options.find(({ key }) => key === "patient")!.label}, `),
+    );
   });
 });

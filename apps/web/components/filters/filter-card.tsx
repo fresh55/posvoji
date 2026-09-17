@@ -494,37 +494,31 @@ export function FilterCardHoverLift({
 }
 
 /**
- * The voice a sidebar row sets its label and its count in.
+ * The voice a sidebar row sets its label in.
  *
  * Exported because the age rows cannot use FilterCardTail: that tail is a flex
  * line and the age row is a three-column grid, so it draws its own label and
  * count and borrows the sizes from here. Hand-copied they drifted, and Starost
  * printed 11px over 10px while every other section printed 12 over 11.
- *
- * The ink here is the resting one. A chosen card stands on the brand fill and
- * takes its count's colour from countClass below, because text-muted-foreground
- * on that fill measures 4.45:1 at 11-12px.
  */
 export const SIDEBAR_LABEL_CLASS = "truncate text-xs";
-export const SIDEBAR_COUNT_CLASS =
-  "w-8 text-right text-2xs tabular-nums text-muted-foreground";
 
 /**
- * The same number in the sheet, one step larger.
+ * The resting voice of the count, per layout. Not exported: everything that
+ * draws this number asks countClass below, which is what carries the chosen
+ * state with it, and a caller reaching past that would print a number the
+ * brand fill measures 4.45:1 against at 11-12px.
  *
  * 11px is a narrow column's size. The sidebar is 224px wide beside a grid and
  * can spend the step; the sheet is a phone held at arm's length, and 11px
  * there was the smallest type on the page under a 12px label it belongs to.
- * The label was already text-xs in both layouts, so this only stops the count
- * from sitting a step below the word it counts.
- *
- * Exported because the sections that draw their own tile instead of going
- * through FilterCardTail (sex-cards.tsx, size-paw-cards.tsx) need the same
- * voice, and hand-copied it drifts: Starost printed 11 over 10 for a release
- * for exactly that reason, and the same two files printed the sheet's count at
- * 11px against the 12px the constant above states.
+ * The label is text-xs in both layouts, so the sheet's step only stops the
+ * count from sitting below the word it counts.
  */
-export const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
+const SIDEBAR_COUNT_CLASS =
+  "w-8 text-right text-2xs tabular-nums text-muted-foreground";
+
+const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
 
 /**
  * The count, in the voice its layout and its state ask for.

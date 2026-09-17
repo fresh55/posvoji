@@ -3,19 +3,18 @@
 import { type ComponentProps } from "react";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
 import { getMessages } from "@/lib/i18n";
+import { installFilterFoldSeams } from "@/test/filter-folds";
 import { FilterSheet } from "./filter-sheet";
-import { resetFilterSectionsStore } from "./use-filter-sections";
 
 // vaul asks the viewport about itself; jsdom answers nothing, which is the
 // phone case this sheet is drawn for.
@@ -29,25 +28,8 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-// jsdom lays nothing out and ships no scrollIntoView, so the pull into view a
-// freshly opened section runs would throw from a timeout after the test that
-// opened it. The fold also measures its own height, and motion restores the
-// scroll position around the measurement.
-Element.prototype.scrollIntoView = vi.fn();
-window.scrollTo = vi.fn();
-
-// The folds outlive a render, so a test that opened one would hand its state
-// to the next.
-beforeEach(() => {
-  window.localStorage.clear();
-  resetFilterSectionsStore();
-});
-
-afterEach(() => {
-  cleanup();
-  window.localStorage.clear();
-  resetFilterSectionsStore();
-});
+// The fold's jsdom seams, and the stored folds dropped around every test.
+installFilterFoldSeams();
 
 const sl = getMessages("sl");
 

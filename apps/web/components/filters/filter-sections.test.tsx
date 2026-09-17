@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
@@ -20,6 +20,7 @@ import {
   visibleToggles,
   type Filters,
 } from "@/lib/filters";
+import { installFilterFoldSeams } from "@/test/filter-folds";
 import type { CardGroup } from "./filter-groups";
 import { FilterSidebar } from "./filter-sidebar";
 import { resetFilterSectionsStore } from "./use-filter-sections";
@@ -27,15 +28,10 @@ import { resetFilterSectionsStore } from "./use-filter-sections";
 const STORAGE_KEY = "posvoji:filter-sections";
 const NOW = new Date("2026-01-01T00:00:00.000Z");
 
-// jsdom lays nothing out and has no scrollIntoView, so the reveal a freshly
-// opened section runs would throw from a timeout after the test that made it.
-const scrollIntoView = vi.fn();
-Element.prototype.scrollIntoView = scrollIntoView;
-// The fold measures its own height, and motion restores the scroll position
-// around the measurement.
-window.scrollTo = vi.fn();
 // A header tooltip opens on focus, and Radix positions it with an observer
-// jsdom does not ship.
+// jsdom does not ship. The fold's own seams, and the stored folds dropped
+// around every test, come from the shared helper; the spy it hands back is
+// what the reveal is measured on below.
 class NoopResizeObserver {
   observe() {}
   unobserve() {}
@@ -44,16 +40,9 @@ class NoopResizeObserver {
 globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
 
-beforeEach(() => {
-  window.localStorage.clear();
-  resetFilterSectionsStore();
-  scrollIntoView.mockClear();
-});
+const scrollIntoView = installFilterFoldSeams();
 
 afterEach(() => {
-  cleanup();
-  window.localStorage.clear();
-  resetFilterSectionsStore();
   window.history.replaceState(null, "", "/");
 });
 

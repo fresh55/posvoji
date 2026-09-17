@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 
 import { type ComponentProps } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
 import { AnimalFilters } from "./animal-filters";
 import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
 import { LocationPicker } from "./location-picker";
+import { installFilterFoldSeams } from "@/test/filter-folds";
 import { SpeciesTabs } from "./species-tabs";
-import { resetFilterSectionsStore } from "./use-filter-sections";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -22,23 +22,8 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-// The sheet's sections fold, and the fold pulls an opened section into view
-// through a timeout jsdom has no scrollIntoView for; the fold also measures
-// its own height, around which motion restores the scroll position.
-Element.prototype.scrollIntoView = vi.fn();
-window.scrollTo = vi.fn();
-
-// Folds are stored, so a test that opened one would hand it to the next.
-beforeEach(() => {
-  window.localStorage.clear();
-  resetFilterSectionsStore();
-});
-
-afterEach(() => {
-  cleanup();
-  window.localStorage.clear();
-  resetFilterSectionsStore();
-});
+// The fold's jsdom seams, and the stored folds dropped around every test.
+installFilterFoldSeams();
 
 const emptyCounts = Object.fromEntries(
   GROUPS.map((group) => [group, new Map()]),
@@ -125,7 +110,8 @@ function renderFilters(overrides: FiltersProps = {}) {
 /** Three animals no facet can tell apart: every group and toggle list is
  *  empty, which is what a shelter's single-species roster produces. The sheet
  *  behind the dock has nothing in it but the order at this state, which is
- *  the one reason it holds that runs out at md (filter-sheet.tsx). The tests
+ *  the one reason it holds that runs out where the toolbar pins and stays
+ *  pinned (SORT_ROW_HIDDEN in filter-sheet.tsx). The tests
  *  below start here and each varies one thing from it. */
 const ORDER_ONLY: FiltersProps = {
   speciesTally: { all: 3, dog: 3, cat: 0, other: 0 },

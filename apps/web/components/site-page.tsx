@@ -92,7 +92,15 @@ export function SitePage({ locale }: { locale: Locale }) {
             six, and beside the cat it still did on the narrower ones. The
             same string without this last utility is on found-animal-page.tsx;
             the two are no longer meant to match, because that page has no
-            dock under it and no drawing beside the title. */}
+            dock under it and no drawing beside the title.
+
+            One step under PAGE_TITLE at every width, on purpose. This is the
+            one title with a drawing beside it, and the rule that seats him
+            (home-cat.tsx) is that the hero stays a heading and one line. At
+            the site's own size, measured 2026-09-17, the English title took
+            two lines at 1024 beside the cat and three at 320, and the
+            Slovenian one two at 834. The entry page is the quietest title on
+            the site because it is the one the photographs have to outrank. */}
         <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl short:text-xl">
           {messages.heroTitle}
         </h1>

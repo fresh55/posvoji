@@ -25,6 +25,7 @@ import {
   SPECIES_GLYPHS,
   SpeciesGlyphIcon,
 } from "@/components/filters/species-glyph";
+import { TOOLBAR_HOVER_WASH } from "@/components/filters/toolbar-trigger";
 import { useOneShotCelebration } from "@/components/filters/use-filter-motion";
 import { cn } from "@/lib/utils";
 
@@ -586,12 +587,21 @@ export function SpeciesTabs({
                   // there is still nothing drawn under a tab until the pointer
                   // is on it.
                   //
+                  // TOOLBAR_HOVER_WASH and not a copy of it. Written out here,
+                  // it had lost its dark half, so the sentence above was true
+                  // in light mode and false in dark: the tabs washed to the
+                  // full --muted while the sort trigger beside them washed to
+                  // half of it.
+                  //
                   // It cannot fight the sliding fill. The fill travels on boxes
                   // measured from the buttons (fillX/fillWidth above) and a
                   // background changes no box, and the tab it is travelling to
                   // is the pressed one, which takes the branch above and has no
                   // hover ground to put over it while it arrives.
-                  "text-muted-foreground transition-colors duration-100 hover:bg-muted hover:text-foreground",
+                  cn(
+                    "text-muted-foreground transition-colors duration-100 hover:text-foreground",
+                    TOOLBAR_HOVER_WASH,
+                  ),
             )}
           >
             {tab !== "all" && (

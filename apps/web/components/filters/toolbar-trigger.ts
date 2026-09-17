@@ -26,3 +26,21 @@
  *  differently: aria-expanded on the button, data-[state=open] on the select. */
 export const QUIET_TRIGGER_CLASS =
   "border-transparent bg-transparent shadow-none hover:border-border dark:border-transparent dark:bg-transparent dark:hover:bg-muted/50";
+
+/** The ground a control in this row washes to under a pointer.
+ *
+ *  Spelled three times in one row before it had a name, and already drifted by
+ *  then: the sort trigger wrote both halves, the species tabs wrote the light
+ *  one alone, so in dark mode the tabs washed to the full --muted while the
+ *  trigger beside them washed to half of it, and the tabs' own comment argues
+ *  that the two have to answer a pointer the same way.
+ *
+ *  The dark half is not decoration, for the reason above: both ui/button.tsx
+ *  and ui/select.tsx ship a dark ground of their own, and twMerge keys a
+ *  `dark:` class apart from an unprefixed one, so the wash has to be answered
+ *  in the same selector to replace it.
+ *
+ *  The ink stays with the caller. A tab darkens its label along with the
+ *  ground because it is muted at rest; the sort trigger's value is already
+ *  foreground and has nothing to darken. */
+export const TOOLBAR_HOVER_WASH = "hover:bg-muted dark:hover:bg-muted/50";

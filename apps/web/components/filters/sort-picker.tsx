@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TOOLBAR_HOVER_WASH } from "@/components/filters/toolbar-trigger";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import { ANIMAL_SORTS, effectiveSort, type AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
@@ -195,16 +196,18 @@ export function SortPicker({
           // 3.77:1. No dark: half is needed, because the token carries its own
           // dark value and ui/select.tsx spells no dark border of its own.
           //
-          // hover:bg-muted with it. Under the pointer this trigger changed 0
-          // of its 42,840 pixels in light mode, while the species tabs across
-          // the row from it change 74% of theirs; the wash is the ghost
-          // button's, which is what the tabs and the shelter trigger answer
-          // with, and the dark half replaces the primitive's own 1.17:1
-          // dark:hover:bg-input/50.
+          // The wash with it. Under the pointer this trigger changed 0 of its
+          // 42,840 pixels in light mode, while the species tabs across the row
+          // from it change 74% of theirs; the ground is the ghost button's,
+          // which is what the tabs and the shelter trigger answer with, and
+          // its dark half replaces the primitive's own 1.17:1
+          // dark:hover:bg-input/50. One name for it, in toolbar-trigger.ts,
+          // because the row had it spelled three times.
           // background-color joins the primitive's own transition list, which
           // is colour and box-shadow: without it the new wash arrives in one
           // frame while every other control in the row eases into its own.
-          "border-control-border transition-[color,background-color,box-shadow] hover:bg-muted dark:hover:bg-muted/50",
+          "border-control-border transition-[color,background-color,box-shadow]",
+          TOOLBAR_HOVER_WASH,
           // min-w-0, so the trigger can be narrower than its own words. The
           // primitive is w-fit, and a flex item's minimum width is its
           // content unless it is told otherwise: at 200% browser text this
@@ -312,7 +315,14 @@ export function SortPicker({
                 // pairing every other focus state on the site uses, and it is
                 // on the item and not on ui/select.tsx because this is the
                 // one menu measured.
-                className="focus:ring-2 focus:ring-inset focus:ring-ring pointer-coarse:min-h-11"
+                //
+                // focus-visible and not focus, which is the difference between
+                // a keyboard ring and a hover ring here: Radix moves DOM focus
+                // to whichever item the pointer is over, which is exactly why
+                // the primitive's own accent wash is written as focus:. On
+                // focus: this ring drew around every option a mouse passed
+                // over and said nothing about the keyboard at all.
+                className="focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
               >
                 <Icon
                   className="size-4 shrink-0 text-muted-foreground"

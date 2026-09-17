@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -64,6 +65,29 @@ describe("provider checkpoints", () => {
     expect(files).toHaveLength(5); // three recent objects, sealed object, pointer
     expect(files).toContain(`${refs[0]!.snapshotId}.json`);
     expect(store.read(policy, sha)?.snapshotId).toBe(refs[7]!.snapshotId);
+  });
+  it("clears a dead run's staging file without changing what it keeps", () => {
+    const store = new ProviderSnapshots(root);
+    const dir = join(root, "provider-snapshots/fixture");
+    const refs = Array.from({ length: 6 }, (_, i) => {
+      const ref = store.save(policy, sha, { ...result, checkedAt: `2026-09-05T0${i}:00:00Z` });
+      utimesSync(join(dir, `${ref.snapshotId}.json`), i + 1, i + 1);
+      return ref;
+    });
+    // The name writeFileAtomic stages beside the pointer it rewrites.
+    writeFileSync(join(dir, `latest.json.${process.pid}-${randomUUID()}.tmp`), "half written");
+    store.prune([policy], { fixture: refs[0]! });
+    const files = readdirSync(dir);
+    expect(files).toHaveLength(5); // three recent objects, sealed object, pointer
+    expect(files).toContain(`${refs[0]!.snapshotId}.json`);
+    expect(files.some((name) => name.endsWith(".tmp"))).toBe(false);
+    expect(store.read(policy, sha)?.snapshotId).toBe(refs[5]!.snapshotId);
+  });
+  it("still refuses an entry that is not a snapshot", () => {
+    const store = new ProviderSnapshots(root);
+    const ref = store.save(policy, sha, result);
+    writeFileSync(join(root, "provider-snapshots/fixture/notes.txt"), "hand written");
+    expect(() => store.prune([policy], { fixture: ref })).toThrow(/unexpected entry/);
   });
   it("removes withdrawn checkpoints even when the old receipt still refers to them", () => {
     const store = new ProviderSnapshots(root);

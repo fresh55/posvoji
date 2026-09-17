@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Animal } from "@posvoji/schema";
 import type { ProviderPolicy } from "@posvoji/schema";
 import type { ProviderCrawlResult } from "./incremental-crawl";
-import { writeFileAtomic } from "./write-atomic";
+import { sweepStagingFiles, writeFileAtomic } from "./write-atomic";
 
 const HASH = /^[a-f0-9]{64}$/;
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
@@ -80,10 +80,18 @@ export class ProviderSnapshots {
     const base = join(this.root, "provider-snapshots");
     if (!existsSync(base)) return;
     if (lstatSync(base).isSymbolicLink()) throw new Error("snapshot directory must not be a link");
+    // Only the provider directories are written to, but a stray here would be
+    // read as a provider id and refused on every run, same as below.
+    sweepStagingFiles(base);
     const granted = new Set(policies.filter((p) => p.permission.status === "granted").map((p) => p.providerId));
     for (const providerId of readdirSync(base)) {
       const dir = this.directory(providerId);
       if (!lstatSync(dir).isDirectory() || lstatSync(dir).isSymbolicLink()) throw new Error("invalid snapshot provider directory");
+      // A run killed between the write and the rename leaves a staging file
+      // here. It is not snapshot state, and the check below would refuse it on
+      // every later run until an operator deleted it. prune runs under the
+      // artifact lock, so nothing in here is mid-write.
+      sweepStagingFiles(dir);
       const names = readdirSync(dir);
       for (const name of names) {
         if ((name !== "latest.json" && !/^[a-f0-9]{64}\.json$/.test(name)) ||

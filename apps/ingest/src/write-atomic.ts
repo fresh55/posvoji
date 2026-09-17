@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  lstatSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 
 // A half-written manifest or image is worse than a stale one: the next run
 // can sweep files it should have kept, and the web server can publish corrupt
@@ -30,4 +37,36 @@ export function writeFileAtomic(
     }
     throw error;
   }
+}
+
+// The staging name in one place, so a directory that checks its own contents
+// by name can recognise a sibling of a write in progress instead of
+// re-deriving the convention and drifting from it.
+const STAGING =
+  /^.+\.\d+-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/;
+
+// True for exactly the file names `writeFileAtomic` stages beside its target.
+export function isStagingFile(name: string): boolean {
+  return STAGING.test(name);
+}
+
+// Removes the staging files left in `dir` by runs that died between the write
+// and the rename, and returns how many it removed.
+//
+// Deleting them is safe where the caller holds the artifact lock: no sibling
+// export can be mid-write in these directories, so a name matching the staging
+// pattern belongs to a process that is already gone. Without the lock a live
+// writer's sibling could be taken out from under it, so do not sweep there.
+export function sweepStagingFiles(dir: string): number {
+  let removed = 0;
+  for (const name of readdirSync(dir)) {
+    if (!isStagingFile(name)) continue;
+    const path = join(dir, name);
+    // A directory or a link wearing the name is not ours to delete. Leave it
+    // for the caller's own checks to refuse.
+    if (!lstatSync(path).isFile() || lstatSync(path).isSymbolicLink()) continue;
+    rmSync(path);
+    removed++;
+  }
+  return removed;
 }

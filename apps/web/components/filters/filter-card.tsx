@@ -167,14 +167,21 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  * mouse-driven, the sheet is what a phone gets, and the panel had more to
  * show than it could: at 1440x900 its content ran 972px in an 876px box, so
  * two whole sections sat below its own fold.
+ *
+ * Two answers, so they are two strings and not a cn() call per option. There
+ * are about 28 options in the list and every one of them asks; below lg the
+ * sidebar is mounted beside the sheet, so both lists ask on the same render.
+ * DEAD_OPTION_CLASS rides in the literal rather than being merged in, which
+ * keeps the dress a dead option wears in one place while the answer stays a
+ * constant.
  */
+const LAYOUT_CLASS: Readonly<Record<FilterCardLayout, string>> = Object.freeze({
+  sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center`,
+  sidebar: `${DEAD_OPTION_CLASS} h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
+});
+
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
-  return cn(
-    DEAD_OPTION_CLASS,
-    layout === "sheet"
-      ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-      : "h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
-  );
+  return LAYOUT_CLASS[layout];
 }
 
 function markClass(layout: FilterCardLayout): string {
@@ -520,24 +527,37 @@ export const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
  * #d0eed6 fill at 4.45:1 in light mode at 11-12px, under the 4.5:1 that size
  * of text is held to. Dark passed at 6.14:1 and is not what this is for.
  *
- * A chosen count takes the fill's own ink at reduced strength: /75 in the
- * sidebar is 5.06:1 light and 6.93:1 dark, /80 in the sheet is 5.80:1. The
- * label beside it stays the full token at 9.91:1, so the count is still the
- * quieter of the two and the row still reads label first.
+ * A chosen count takes the fill's own ink at reduced strength: /80, which
+ * measures 5.80:1 in light mode and clears AA at both sizes. One value covers
+ * both surfaces. The sidebar wore /75 for a pass and it measured 5.06:1 light
+ * and 6.93:1 dark, which is also clear, so the split was buying nothing but a
+ * second number to keep. The label beside it stays the full token at 9.91:1,
+ * so the count is still the quieter of the two and the row still reads label
+ * first.
  *
  * One function, because three files draw this number: FilterCardTail for every
  * section that goes through it, and sex-cards.tsx, size-paw-cards.tsx and
  * age-growth-control.tsx for the ones that draw their own label and count.
  * Hand-copied, the sizes had already drifted twice.
+ *
+ * Four answers, resolved once at module scope rather than merged per option
+ * per render, for the reason filterCardLayoutClass above states.
  */
+const COUNT_CLASS: Readonly<
+  Record<FilterCardLayout, Readonly<{ rest: string; chosen: string }>>
+> = Object.freeze({
+  sheet: Object.freeze({
+    rest: SHEET_COUNT_CLASS,
+    chosen: cn(SHEET_COUNT_CLASS, "text-brand-foreground/80"),
+  }),
+  sidebar: Object.freeze({
+    rest: SIDEBAR_COUNT_CLASS,
+    chosen: cn(SIDEBAR_COUNT_CLASS, "text-brand-foreground/80"),
+  }),
+});
+
 export function countClass(layout: FilterCardLayout, checked: boolean): string {
-  return cn(
-    layout === "sheet" ? SHEET_COUNT_CLASS : SIDEBAR_COUNT_CLASS,
-    checked &&
-      (layout === "sheet"
-        ? "text-brand-foreground/80"
-        : "text-brand-foreground/75"),
-  );
+  return COUNT_CLASS[layout][checked ? "chosen" : "rest"];
 }
 
 // The label and count after the icon. The count is a render prop because a

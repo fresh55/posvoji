@@ -149,7 +149,7 @@ describe("ShelterRows selection and counts", () => {
     );
 
     const dead = rowTag(html, "Sia in Lu");
-    expect(dead).toContain("opacity-40");
+    expect(dead).toContain("opacity-60");
     expect(dead).toContain("cursor-not-allowed");
     expect(dead).not.toContain("hover:bg-muted/50");
     expect(dead).toContain("disabled=");

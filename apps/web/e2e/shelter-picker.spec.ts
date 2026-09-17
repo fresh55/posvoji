@@ -108,7 +108,7 @@ test.describe("desktop", () => {
     await search.fill("Ljubljana");
     const suggestion = dialog.getByRole("button", { name: /^V bližini Ljubljana/ });
     await expect(suggestion).toBeVisible();
-    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toHaveCount(0);
     const matches = rows(dialog);
     expect(await matches.count()).toBeGreaterThan(0);
     for (const row of await matches.all()) await expect(row).toContainText(/Ljubljana/i);
@@ -118,14 +118,14 @@ test.describe("desktop", () => {
     await expect(pickerTrigger(page)).toHaveAttribute("aria-label", before!);
 
     await suggestion.click();
-    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toBeVisible();
     await expect(search).toHaveValue("Ljubljana");
     expect(await matches.count()).toBeGreaterThan(1);
     await expect(dialog.getByText("Približna zračna razdalja med kraji.")).toBeVisible();
     await search.fill("");
-    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toBeVisible();
-    await dialog.getByRole("button", { name: "Odstrani izhodišče" }).click();
-    await expect(dialog.getByRole("button", { name: "Odstrani izhodišče" })).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toBeVisible();
+    await dialog.getByRole("button", { name: /Odstrani izhodišče/ }).click();
+    await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toHaveCount(0);
   });
 
   test("lets shelter content scroll without obscuring its text", async ({ page }) => {

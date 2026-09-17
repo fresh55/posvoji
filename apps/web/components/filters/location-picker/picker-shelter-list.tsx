@@ -26,6 +26,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
       onHoverRow={setHoveredRowValue}
       lessThanOneKm={messages.lessThanOneKm}
       labelledBy={offGroupId}
+      refs={rowRefs}
       className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
     />
   );
@@ -33,7 +34,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                 <div
                   ref={listRef}
                   data-picker-list-scroll
-                  className="mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 scrollbar-thin"
+                  className="mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 short:min-h-11 scrollbar-thin"
                 >
                   {/* placeOnly: the query resolved to a place the postal
                       table knows and matched no shelter's name, so the row
@@ -47,7 +48,8 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                       was found about a place the dialog has just found. Drawn
                       either way, the block reads as "no such place" and
                       offers to clear the one input that worked. */}
-                  {visibleRows.length === 0 &&
+                  {searching &&
+                  visibleRows.length === 0 &&
                   visibleOffRows.length === 0 &&
                   !placeOnly ? (
                     <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">

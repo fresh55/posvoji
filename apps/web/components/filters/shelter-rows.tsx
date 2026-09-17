@@ -348,7 +348,10 @@ export function ShelterRows({
               >
                 <span className="size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="text-sm leading-snug font-medium text-foreground max-lg:line-clamp-2 lg:block lg:truncate">
+                  <span
+                    title={label}
+                    className="text-sm leading-snug font-medium text-foreground max-lg:line-clamp-2 lg:block lg:truncate"
+                  >
                     {label}
                   </span>
                   {sublabel && (
@@ -357,7 +360,10 @@ export function ShelterRows({
                     </span>
                   )}
                 </span>
-                <span className="inline-flex size-11 shrink-0 items-center justify-center" aria-hidden>
+                {/* h-8, not size-11: the 44px target is the whole <a>, and a
+                    44px box inside its own py-2 made every off-site row 60px
+                    beside a 53px toggle row. The 44px column width stays. */}
+                <span className="inline-flex h-8 w-11 shrink-0 items-center justify-center" aria-hidden>
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </span>
               </a>
@@ -434,8 +440,12 @@ export function ShelterRows({
                   // leaves no room outside it; animal-card.tsx already uses an
                   // inset outline for the same reason.
                   "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-ui py-2 pl-2 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] disabled:cursor-not-allowed",
-                  // Keep the details control readable and available at zero.
-                  disabled && "opacity-40",
+                  // Muted ink rather than opacity-40. The row is inactive
+                  // either way, but at 40% the town line measured 1.77:1 on
+                  // the light panel and could not be read at all; the shelter's
+                  // name and town are information, not chrome. The checkbox and
+                  // the pill take the fading instead, below.
+                  disabled && "text-muted-foreground",
                 )}
               >
                 {/* The empty box makes selection visible before the first pick;
@@ -446,14 +456,24 @@ export function ShelterRows({
                     "inline-flex size-4 shrink-0 items-center justify-center rounded-[4px] border",
                     checked
                       ? "border-brand-strong bg-brand text-brand-strong"
-                      : "border-muted-foreground/70",
+                      // /80, not /70: the empty box is the boundary of a
+                      // control that carries state, and /70 measured 2.99:1
+                      // over the light panel, a hair under SC 1.4.11's 3:1.
+                      : "border-muted-foreground/80",
+                    disabled && "opacity-60",
                   )}
                   aria-hidden
                 >
                   {checked && <Check className="size-3" strokeWidth={2.5} />}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="min-w-0 text-sm leading-snug font-medium text-foreground max-lg:line-clamp-2 lg:block lg:truncate">
+                  <span
+                    title={label}
+                    className={cn(
+                      "min-w-0 text-sm leading-snug font-medium max-lg:line-clamp-2 lg:block lg:truncate",
+                      disabled ? "text-inherit" : "text-foreground",
+                    )}
+                  >
                     {label}
                   </span>
                   <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
@@ -490,8 +510,15 @@ export function ShelterRows({
                   pill corners: an 8px override here was the one squared
                   badge on the site. */}
                 <Badge
-                  variant="secondary"
-                  className="h-6 min-w-8 shrink-0 px-1.5 text-xs font-medium tabular-nums"
+                  // accent is the badge's own brand green, the same three
+                  // tokens the footer's selection chip takes, so the picked
+                  // pill and the picked chip match. It is the third of the
+                  // three signals the picker states for a picked row.
+                  variant={checked ? "accent" : "secondary"}
+                  className={cn(
+                    "h-6 min-w-8 shrink-0 px-1.5 text-xs font-medium tabular-nums",
+                    disabled && "opacity-60",
+                  )}
                 >
                   {countLabel ? (
                     <>

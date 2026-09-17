@@ -132,7 +132,7 @@ describe("responsive picker session", () => {
         .value,
     ).toBe("1000");
     expect(
-      screen.getByRole("button", { name: "Odstrani izhodišče" }).textContent,
+      screen.getByRole("button", { name: /^Odstrani izhodišče/ }).textContent,
     ).toContain("Ljubljana");
   });
   it("shares a confirmed place across breakpoints and clears it from either picker", async () => {
@@ -158,7 +158,7 @@ describe("responsive picker session", () => {
         .value,
     ).toBe("1000");
     fireEvent.click(
-      screen.getByRole("button", { name: "Odstrani izhodišče" }),
+      screen.getByRole("button", { name: /^Odstrani izhodišče/ }),
     );
     expect(screen.getByTestId("origin").textContent).toBe("none");
 
@@ -166,7 +166,7 @@ describe("responsive picker session", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
     expect(
-      screen.queryByRole("button", { name: "Odstrani izhodišče" }),
+      screen.queryByRole("button", { name: /^Odstrani izhodišče/ }),
     ).toBeNull();
     expect(
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)

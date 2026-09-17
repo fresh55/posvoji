@@ -252,7 +252,7 @@ describe("LocationPicker typed location", () => {
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
-      screen.getByText("Izhodišče: Ajdovščina. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ajdovščina" }),
     ).toBeTruthy();
   });
 
@@ -347,7 +347,9 @@ describe("LocationPicker typed location", () => {
     type(input, "");
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
-    expect(screen.getByText(/Izhodišče: Ljubljana/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
   });
 
   it("removes a chosen origin explicitly and restores the unsorted list", async () => {
@@ -356,7 +358,7 @@ describe("LocationPicker typed location", () => {
     choosePlace();
     expect(rowOrder()).toEqual(["jug", "sever"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Odstrani izhodišče" }));
+    fireEvent.click(screen.getByRole("button", { name: /Odstrani izhodišče/ }));
 
     expect(rowOrder()).toEqual(["sever", "jug"]);
     expect((input as HTMLInputElement).value).toBe("");
@@ -390,7 +392,7 @@ describe("LocationPicker typed location", () => {
 
     expect(screen.queryByText("Brskalnik ne pozna lokacije.")).toBeNull();
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
   });
 
@@ -448,7 +450,7 @@ describe("LocationPicker most recent act", () => {
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
   });
@@ -467,7 +469,7 @@ describe("LocationPicker most recent act", () => {
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
   });
@@ -636,7 +638,7 @@ describe("LocationPicker merged field", () => {
     expect(rowOrder()).toEqual(["sever", "jug"]);
     expect(mode()).toBe("place");
     expect(
-      screen.getByText("Izhodišče: Maribor. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Maribor" }),
     ).toBeTruthy();
   });
 
@@ -661,14 +663,16 @@ describe("LocationPicker merged field", () => {
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(mode()).toBe("place");
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
 
     // Editing searches within the chosen origin instead of dropping it.
     type(input, "Lju");
     expect(rowOrder()).toEqual(["jug"]);
     expect(mode()).toBe("name");
-    expect(screen.getByText(/Izhodišče: Ljubljana/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
   });
 
   it("focuses the top name match on Enter without selecting it", async () => {
@@ -2602,7 +2606,7 @@ describe("LocationPicker persistent footer", () => {
 
   it("widens shelter selection at zero when other shelters have matching animals", async () => {
     await openPicker({ selected: ["sever"], counts: new Map([["jug", 7]]), resultCount: 0 });
-    fireEvent.click(screen.getByRole("button", { name: "Vsa zavetišča" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pokaži vsa zavetišča" }));
     expect(screen.queryByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeNull();
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
@@ -3226,5 +3230,78 @@ describe("LocationPicker audit regressions", () => {
     fireEvent.click(fold);
     expect(document.activeElement).toBe(fold);
     expect(fold.getAttribute("aria-expanded")).toBe("false");
+  });
+  it("heads the narrowed list with its caption, and heads nothing with a postcode", async () => {
+    const input = await openPicker({ offSite });
+    expect(screen.queryByText("Zavetišča")).toBeNull();
+
+    // A postcode names a place and matches no shelter name, so the list under
+    // the caption would be empty and the caption would read as "no such
+    // place" about the place just found.
+    type(input, "1000");
+    expect(screen.queryByText("Zavetišča")).toBeNull();
+
+    type(input, "Sever");
+    expect(screen.getByText("Zavetišča")).toBeTruthy();
+
+    // An off-site match is still something for the caption to name.
+    type(input, "Vzhod");
+    expect(screen.getByText("Zavetišča")).toBeTruthy();
+  });
+  it("hands focus to the search field before the clear-selection button unmounts", async () => {
+    const input = await openPicker({ selected: ["jug"] });
+    const clear = screen.getByRole("button", { name: /Počisti izbor/ });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(screen.queryByRole("button", { name: /Počisti izbor/ })).toBeNull();
+    expect(document.activeElement).toBe(input);
+  });
+  it("reaches an off-site row from the search when only that row matches", async () => {
+    const input = await openPicker({ offSite });
+    type(input, "Vzhod");
+    expect(rowOrder()).toEqual([]);
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(document.activeElement?.textContent).toContain("Zavetišče Vzhod");
+  });
+  it("leaves Enter to the browser when the search has nothing to move to", async () => {
+    const input = await openPicker();
+    type(input, "zzz");
+    input.focus();
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    fireEvent(input, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
+  it("names the place the origin chip shows in the chip's accessible name", async () => {
+    const input = await openPicker();
+    type(input, "1000");
+    choosePlace();
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
+  });
+  it("offers the selection popover from one shelter and lists it alphabetically", async () => {
+    await openPicker({ selected: ["sever", "jug"] });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pokaži izbrana zavetišča (2)" }),
+    );
+    const rows = within(screen.getByLabelText("Izbrano: 2"))
+      .getAllByRole("button", { name: /^Odstrani zavetišče: / })
+      .map((button) => button.getAttribute("aria-label"));
+    expect(rows).toEqual([
+      "Odstrani zavetišče: Zavetišče Jug",
+      "Odstrani zavetišče: Zavetišče Sever",
+    ]);
+    cleanup();
+
+    await openPicker({ selected: ["jug"] });
+    expect(
+      screen.getByRole("button", { name: "Pokaži izbrana zavetišča (1)" }),
+    ).toBeTruthy();
+  });
+  it("says nothing about matches when the roster is empty and nothing is typed", async () => {
+    await openPicker({ options: [], counts: new Map(), offSite: [] });
+    expect(screen.queryByText(/Ni zadetkov za/)).toBeNull();
   });
 });

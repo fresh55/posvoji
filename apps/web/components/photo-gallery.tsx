@@ -905,7 +905,19 @@ export function PhotoGallery({
               is why the ground and the reveal are one class list. Drawn only
               where the dots are drawn, inside hasGallery: a single-photo card
               has no row to carry and a pill with nothing in it is a mark on
-              the photograph for no reason. */}
+              the photograph for no reason.
+
+              And off entirely while the photo standing here is one that did
+              not arrive. AnimalPhoto marks that image data-broken and hides
+              it, so what fills the frame is the fallback: the species mark and
+              "Fotografija na strani zavetišča". A row of dots over that says
+              "1 of 6" about a picture nobody can see, and at 320 the pill
+              overlapped the caption by 4.7px. The chevrons stay, because the
+              other five photos may be fine and stepping to one is the way out.
+
+              :has() on the frame's own group rather than state, so nothing
+              re-renders: the attribute is written to the element by a ref and
+              by the error handler, both of which can run before hydration. */}
           <div
             data-slot="photo-dots"
             aria-hidden
@@ -914,7 +926,7 @@ export function PhotoGallery({
               // in a row whose line is 6px tall is laid at the line's top edge
               // under the default stretch, which puts the small dots 1px above
               // the current one instead of on its centre line.
-              "pointer-events-none absolute z-10 flex items-center gap-1",
+              "pointer-events-none absolute z-10 flex items-center gap-1 group-has-[img[data-broken]]/photo:hidden",
               dotPaint.container,
             )}
           >

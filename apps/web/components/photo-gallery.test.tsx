@@ -892,6 +892,31 @@ describe("photo gallery with nothing to draw", () => {
     ).toContain("absolute inset-0");
   });
 
+  it("takes the dots off a photo that never arrived", () => {
+    setup({ images: CACHED });
+
+    const photo = document.querySelector('[data-slot="photo-frame"] img');
+    const dots = () => document.querySelector('[data-slot="photo-dots"]');
+    // The rule is a :has() on the frame's group and jsdom resolves none, so
+    // this asserts the two halves match: the attribute the failure writes, and
+    // the selector the row hides itself with. At 320 the pill overlapped the
+    // caption by 4.7px and said "1 of 6" about a picture nobody can see.
+    expect(dots()?.className).toContain(
+      "group-has-[img[data-broken]]/photo:hidden",
+    );
+    expect(photo?.getAttribute("data-broken")).toBeNull();
+
+    fireEvent.error(photo!);
+    expect(photo?.getAttribute("data-broken")).toBe("true");
+    // The way out stays: the other photos in the set may be fine, so the
+    // chevrons are still there to step to one.
+    expect(screen.getByLabelText("Naslednja fotografija")).toBeTruthy();
+    // And a photo that arrives late takes the flag off again, which puts the
+    // row back.
+    fireEvent.load(photo!);
+    expect(photo?.getAttribute("data-broken")).toBeNull();
+  });
+
   it("says nothing about a failed photo where no mark is handed in", () => {
     // The animal page and the dialog keep the ground they had: the sentence
     // belongs to the card's frame, where sixty boxes have to be told apart.

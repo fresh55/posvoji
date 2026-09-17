@@ -419,7 +419,6 @@ export function FilterSheet({
           <SortPicker
             value={sort}
             onChange={onSortChange}
-            quiet={false}
             labelledBy={sortCaptionId}
             className={SORT_ROW_CLASS}
           />

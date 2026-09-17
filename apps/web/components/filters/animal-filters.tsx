@@ -98,15 +98,15 @@ export const TOOLBAR_BAND = "bleed border-b py-rail-pad lg:mx-0 lg:px-0";
  *  Three numbers because the row states three: the species strip alone comes to
  *  28px below md (its tap overlays live in padding this row's margins collapse
  *  through), the sort trigger beside it sets 44 from md, and the desktop row
- *  states 32 for itself so the filter panel's head lines up with it across the
- *  gutter. Beside the rows that state them rather than in the file that copies
- *  them, so a retune there is made in sight of this. */
-export const TOOLBAR_ROW_HEIGHT = "h-7 md:h-11 lg:h-8";
+ *  takes the trigger's own height so the filter panel's head lines up with it
+ *  across the gutter. That last one is --toolbar-row (globals.css), read here
+ *  rather than copied, because a skeleton that stands in for a row it has
+ *  drifted from is a visible jump at the moment the real row arrives. */
+export const TOOLBAR_ROW_HEIGHT = "h-7 md:h-11 lg:h-toolbar-row";
 
-// Desktop has enough room for one quiet toolbar. Below lg the species tabs
-// hold the sticky rail on their own, joined from md by the same quiet sort
-// control, while the two primary discovery actions share a bottom dock that
-// spans the viewport.
+// Desktop has enough room for one toolbar. Below lg the species tabs hold the
+// sticky rail on their own, joined from md by the same sort control, while the
+// two primary discovery actions share a bottom dock that spans the viewport.
 export function AnimalFilters({
   isEmpty,
   hasSidebar = false,
@@ -264,14 +264,14 @@ export function AnimalFilters({
           padding, so the two columns start their content on one line. The
           number is written once, in globals.css. */}
       <div className={cn(TOOLBAR_BAND, "sticky top-0 z-20 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
-        {/* min-h-8 states the row's height rather than leaving it to whichever
-            control happens to be tallest. It was the sort trigger's 32px
-            (size="sm"), and that control stands down at zero results, so the
-            row fell to the tabs' own 28px in the one state where nothing else
-            filled it and the panel head across the gutter drifted 4px off. */}
+        {/* --toolbar-row states the row's height rather than leaving it to
+            whichever control happens to be tallest: the sort trigger stands
+            down at zero results, and the row would otherwise fall to the tabs'
+            own 28px in the one state where nothing else filled it, taking the
+            panel head across the gutter out of line with it. */}
         <div
           data-slot="desktop-toolbar"
-          className="hidden min-h-8 items-center justify-between gap-4 lg:flex"
+          className="hidden min-h-toolbar-row items-center justify-between gap-4 lg:flex"
         >
           {speciesStrip}
 
@@ -323,8 +323,8 @@ export function AnimalFilters({
             From md that argument runs out. Measured at 768x1024 this row is
             720px wide and the tabs end at x=384, so 336px of it were empty
             while the tablet had no sort control anywhere on screen: the
-            order was three taps away inside the filter sheet. The same quiet
-            trigger measures 186px on the desktop row, so from md it takes
+            order was three taps away inside the filter sheet. The same
+            trigger measures 253px on the desktop row, so from md it takes
             the right end of this one and the tabs keep the rest, in a
             min-w-0 box so the strip still scrolls and still fades its own
             edges (species-tabs.tsx).

@@ -278,9 +278,11 @@ const sl = {
   undoClear: "Razveljavi",
   undoClearFilters: "Razveljavi čiščenje filtrov",
   sortBy: "Razvrsti živali",
-  // The caption over the sheet's sort row. Short because the control right
-  // under it names the order in full, and because it sits in the header block
-  // with the sheet's own title.
+  // The word that says what the sort control is, in both places one is
+  // needed: over the sheet's sort row, and inside the toolbar's own trigger,
+  // where it is drawn with a colon before the order. Short because the order
+  // it stands in front of is named in full either way, and because in the
+  // sheet it sits in the header block with the sheet's own title.
   sortCaption: "Razvrsti",
   sortLongestInShelter: "Najdlje v zavetišču",
   sortNewestArrivals: "Najnovejši sprejemi",

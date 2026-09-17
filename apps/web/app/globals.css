@@ -97,6 +97,16 @@
      viewport that it leaves at the top.
      No breakpoint of its own: the bar wears it at every width. */
   --rail-pad: 0.75rem;
+  /* The height of the row inside that band, which is the height of the sort
+     trigger (size="default" in ui/select.tsx): the row is built around the
+     tallest thing in it, and that is the one control the visitor re-orders the
+     grid with. Three places need it in three spellings -- the band as a floor,
+     the filter panel's head as an exact height so the two columns start their
+     first line together, and the loading skeleton as its lg step
+     (TOOLBAR_ROW_HEIGHT in animal-filters.tsx) -- which is exactly the shape
+     of drift --rail-pad above exists to prevent, so the number is written here
+     and read there. */
+  --toolbar-row: 2.25rem;
   /* Where the back-to-top control sits, and the one place that distance is
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
@@ -199,6 +209,7 @@
   --spacing-section-gap: var(--section-gap);
   --spacing-column-gap: var(--column-gap);
   --spacing-rail-pad: var(--rail-pad);
+  --spacing-toolbar-row: var(--toolbar-row);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);

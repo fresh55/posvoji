@@ -11,7 +11,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
-import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import {
   Select,
   SelectContent,
@@ -54,26 +53,51 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  always reachable is the sheet behind the dock, so that is where sorting
  *  went, and a sheet has room for the same Select the desktop toolbar uses.
  *  From md the sticky toolbar has the room too (animal-filters.tsx), so the
- *  quiet trigger goes back on the row there and the sheet's copy stands down.
- *  Three placements, two dresses, one control, and a hand-rolled listbox
- *  less.
+ *  trigger goes back on the row there and the sheet's copy stands down.
+ *  Three placements, one dress, one control, and a hand-rolled listbox less.
  *
- *  `quiet` is the toolbar's dress: borderless until hovered, so a desktop row
- *  has one anchor instead of four framed boxes. Inside the sheet it is off,
- *  because there the Select is a control on its own and needs to look like
- *  one. */
+ *  The phone keeps it in the sheet, and that is a decision rather than a gap.
+ *  Of twelve listing pages measured in September 2026, the four that sort on a
+ *  phone at all -- Dogs Trust, Etsy, Zalando, IKEA -- fold the order into the
+ *  filter sheet as its first section, which is this, and only Petfinder keeps
+ *  a sort control of its own at every width. Both ways of putting one on the
+ *  phone page charge the fold: a line under the species tabs moves the first
+ *  card from y=334 to about y=390 on a 390x844 screen, and a third dock button
+ *  has to take its width from the shelter trigger, which answers the question
+ *  a phone visitor asks first. What a phone visitor is owed instead is the
+ *  waiting time on the cards, where it already is.
+ *
+ *  That one dress is a framed control that says "Razvrsti:" before the order.
+ *  It wore the toolbar's quiet dress until a visitor was confused by it: quiet
+ *  draws no border until hover, so on the home page it was a bare phrase
+ *  between two small glyphs, standing 12px under Srečko's caption and in
+ *  louder ink than it, and it was read as a fact about the cat rather than as
+ *  the order of the grid (home-cat.tsx). Both halves of that are fixed here.
+ *  The word is what stops the phrase being a caption, and the frame is what
+ *  says the thing can be pressed at all: Baymard's list testing asks for a
+ *  label beside the control with the chosen order visible, and it is the
+ *  primary way a visitor re-orders 486 animals.
+ *
+ *  The species tabs across the row keep no frame and need none: which one is
+ *  chosen is a filled pill, and a strip of text with one pill in it is not
+ *  mistakable for a sentence. The shelter trigger shows a value the same way
+ *  this one does, and it keeps the quiet dress (toolbar-trigger.ts) because of
+ *  where it is drawn rather than because the rule stops at this control: in
+ *  the filter panel it is a row under the panel's own Kje heading, in the dock
+ *  it is a framed button already, and the one layout that puts it in this row
+ *  is an lg page with no panel beside the grid. That row, where a framed sort
+ *  control would stand next to a quiet shelter one, is the place to settle
+ *  whether the quiet dress survives at all. It is not settled here. */
 export function SortPicker({
   value,
   onChange,
   disabled = false,
-  quiet = true,
   labelledBy,
   className,
 }: {
   value: AnimalSort;
   onChange: (sort: AnimalSort) => void;
   disabled?: boolean;
-  quiet?: boolean;
   /** The id of a caption already saying what this control does, which the
    *  sheet draws above the row (filter-sheet.tsx). With one the trigger takes
    *  its name from that caption plus the order it shows, so the visible label
@@ -126,22 +150,32 @@ export function SortPicker({
       onValueChange={(sort) => onChange(sort as AnimalSort)}
     >
       <SelectTrigger
-        size="sm"
-        // The name carries the active sort as well as the visible label does,
-        // because this control is worth finding by either. Where a caption
-        // says the first half out loud the name is built from it instead, so
-        // the sheet does not announce "Razvrsti" twice.
+        // 36px, the size ui/select.tsx calls default, where this was the 32px
+        // "sm" one. 32 is a dense-table height; this is the control a visitor
+        // re-orders the whole grid with, and Apple and Material both put a
+        // pressable thing at 44 and 48. The coarse-pointer floor below already
+        // holds 44 for a thumb, so what this settles is the mouse: 36 is what
+        // the row can carry without the species tabs beside it looking small,
+        // and the band and the filter panel's head state the same height so
+        // the two columns still start their first line together
+        // (animal-filters.tsx, filter-sidebar.tsx).
+        size="default"
+        // The same words as the trigger draws, in the same order. A combobox
+        // takes no name from its contents (the accname spec allows that for
+        // neither of this control's roles), so the name has to be written;
+        // what it must not be is a second wording. It read "Razvrsti živali:
+        // Najdlje v zavetišču" while the screen said "Razvrsti: Najdlje v
+        // zavetišču", which is a visible label the spoken name does not
+        // contain, and speech input is driven by the visible one.
         aria-label={
-          labelledBy ? undefined : `${messages.sortBy}: ${labels[shown]}`
+          labelledBy ? undefined : `${messages.sortCaption}: ${labels[shown]}`
         }
         aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
         className={cn(
           // text-sm, the size the species tabs across the row from it are
           // set at. At text-xs this was the smallest type on the page and the
           // only control in the toolbar drawn below the row's own size, which
-          // read as a caption rather than as the other half of the bar. The
-          // trigger keeps its size="sm" height, so the row's geometry is
-          // unchanged; only the label grows the 2px.
+          // read as a caption rather than as the other half of the bar.
           //
           // The 44px floor asks the pointer rather than the width. A 1024px
           // laptop window is a mouse and a 1180px tablet is a thumb, and the
@@ -165,7 +199,6 @@ export function SortPicker({
           // justify-* here, since the value's own flex row already starts at
           // the start.
           "*:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:text-left",
-          quiet && cn(QUIET_TRIGGER_CLASS, "data-[state=open]:border-border"),
           className,
         )}
       >
@@ -173,6 +206,32 @@ export function SortPicker({
           className="size-3.5 shrink-0 text-muted-foreground pointer-coarse:size-4"
           aria-hidden
         />
+        {/* The word that makes this a control rather than a caption. Quiet in
+            the toolbar, the trigger drew a bare order between a 14px arrow and
+            a chevron, and on the home page that phrase comes to rest 12px
+            under Srečko's own caption, on his centre line and in louder ink
+            than it (home-cat.tsx). A visitor read the two as one block and
+            took the order for a fact about the cat: that he is the animal who
+            has waited longest. A phrase under a picture is a caption, so the
+            phrase stops being a bare one.
+
+            Only where nothing above the control already says it. The filter
+            sheet's header says the same word over its own sort row
+            (filter-sheet.tsx), and this would be a second copy of it 6px
+            below the first.
+
+            Measured on the built page: the trigger grows from 186 to 253px
+            and no width from 768 to 1440 gains a pixel of horizontal scroll.
+            From lg it is the whole of the toolbar's right cluster, since the
+            location picker stands down beside the filter panel; below lg the
+            species strip it shares the row with is min-w-0 and gives way by
+            scrolling, which is what it does already. shrink-0 so the order
+            beside it is what gives way inside the trigger. */}
+        {!labelledBy && (
+          <span className="shrink-0 text-muted-foreground">
+            {messages.sortCaption}:
+          </span>
+        )}
         {/* The label used to go at max-sm, so a phone got an arrow and a
             chevron in a box and nothing saying what either did. That was to
             leave the species tabs beside it room to breathe; the tabs have

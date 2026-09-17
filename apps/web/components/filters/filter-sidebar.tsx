@@ -115,8 +115,8 @@ export function FilterSidebar({
         className,
       )}
     >
-      {/* h-8 to match the results row across the gutter, which states the same
-          height for itself (min-h-8 in animal-filters.tsx). The toolbar that
+      {/* --toolbar-row to match the results row across the gutter, which is
+          built to the same token (globals.css, the sort trigger's own height). The toolbar that
           carries it pins at top-0 and pads itself with --rail-pad, and the
           aside answers with lg:top-0 and the same padding (animal-grid.tsx),
           so the two columns start their content on one line both at rest and
@@ -132,7 +132,7 @@ export function FilterSidebar({
           this head is: every active value draws a pill there except the
           species tab, which undoes itself in a press of its own. Each section
           keeps its Ponastavi for the one facet it holds. */}
-      <h2 className="flex h-8 items-center gap-2 text-sm font-medium">
+      <h2 className="flex h-toolbar-row items-center gap-2 text-sm font-medium">
         {messages.filters}
         {activeValues > 0 && (
           // Same badge the mobile sheet already shows next to "Filtri". Its

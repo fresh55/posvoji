@@ -12,12 +12,22 @@ beforeAll(async () => {
 // which leave a value within max|component| / 2**15 of the authored one, and
 // canonicalise a quaternion's sign so that q arrives as -q. Both mean the same
 // pose, so compare a whole key at a time and let it choose the sign.
-const tolerance = 5e-4;
+//
+// That quantum is what each tolerance is derived from, so they differ by what
+// the components hold. A quaternion component is at most 1, so 1 / 2**15 is
+// about 3.05e-5 and 5e-5 is it plus headroom; the worst rotation sample in
+// these two clips is 2.1e-5. A position is in bone units and reaches about 4,
+// so the same quantum is 1.22e-4 there, which is the worst position sample
+// exactly; scale samples are carried over unchanged. Both were 5e-4 before,
+// an order of magnitude of slack neither needs.
+const tolerance = { rotation: 5e-5, translation: 2e-4 };
 const samePose = (track, offset, other, otherOffset) => {
   const size = track.getValueSize();
-  const signs = track.name.endsWith(".quaternion") ? [1, -1] : [1];
+  const rotation = track.name.endsWith(".quaternion");
+  const limit = rotation ? tolerance.rotation : tolerance.translation;
+  const signs = rotation ? [1, -1] : [1];
   return signs.some(sign => Array.from({ length: size }, (_, i) =>
-    Math.abs(track.values[offset + i] - sign * other[otherOffset + i])).every(delta => delta <= tolerance));
+    Math.abs(track.values[offset + i] - sign * other[otherOffset + i])).every(delta => delta <= limit));
 };
 const angle = (clip, bone, time) => {
   const track = clip.tracks.find(track => track.name === `${bone}.quaternion`);

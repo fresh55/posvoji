@@ -7,17 +7,29 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 // The picking chunk, and when the stage asks for it. The export is read once
 // per import, at the moment the chunk has landed, so counting the reads dates
-// the arrival of 157KB that must not compete with the model.
+// the arrival of 153,890 bytes, about 51KB gzipped, that must not compete with
+// the model. The builds are counted apart from them: the chunk lands while the
+// model is still on the wire, and a picker can only be built once there is a
+// cat to pick.
 const runtime = vi.hoisted(() => ({
   reads: 0,
+  builds: 0,
   picker: { pick: vi.fn(() => null), dispose: vi.fn() },
 }));
 vi.mock("@/lib/cat-viewer-runtime", () => ({
   get createViewerCatPicker() {
     runtime.reads += 1;
-    return () => runtime.picker;
+    return () => {
+      runtime.builds += 1;
+      return runtime.picker;
+    };
   },
 }));
+
+// Whether the renderer's chunk arrives at all. Reading the export is what
+// start() does, so a getter that throws is a chunk that evaluated and gave the
+// stage nothing, which is the failure the visitor sees as a still picture.
+const viewerModule = vi.hoisted(() => ({ fails: false }));
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
@@ -38,7 +50,12 @@ vi.mock("@google/model-viewer", () => {
   if (!customElements.get("model-viewer")) {
     customElements.define("model-viewer", MockViewer);
   }
-  return { ModelViewerElement: MockViewer };
+  return {
+    get ModelViewerElement() {
+      if (viewerModule.fails) throw new Error("the renderer's chunk is unusable");
+      return MockViewer;
+    },
+  };
 });
 
 type Viewer = HTMLElement & {
@@ -53,6 +70,8 @@ let media: EventTarget & { matches: boolean };
 
 beforeEach(() => {
   runtime.reads = 0;
+  runtime.builds = 0;
+  viewerModule.fails = false;
   media = Object.assign(new EventTarget(), { matches: false });
   vi.stubGlobal("matchMedia", vi.fn(() => media));
   disconnect = vi.fn();
@@ -98,8 +117,10 @@ describe("the cat model", () => {
     render(<CatModel sizes="100vw" locale="en" startOnReach />);
     await act(async () => intersect(true));
     // On screen and waiting for a reach, so it has asked for nothing: a hint
-    // here is 1.2MB on a page whose first seconds belong to something else.
+    // here is 632KB on a page whose first seconds belong to something else,
+    // and the picking chunk is another 51KB behind it.
     expect(hints()).toEqual([]);
+    expect(runtime.reads).toBe(0);
 
     reachFor();
     // In the same tick as the chunk import, rather than after the chunk has
@@ -114,6 +135,9 @@ describe("the cat model", () => {
     // browser keeps the preload and downloads the model a second time.
     expect(model.getAttribute("as")).toBe("fetch");
     expect(model.getAttribute("crossorigin")).toBe("anonymous");
+    // Behind the poster, which is what a visitor sees first on every page
+    // that shows him and is the largest paint on the gate.
+    expect(model.getAttribute("fetchpriority")).toBe("low");
     // The decoder arrives on a plain async script, which has no credentials.
     const decoder = document.head.querySelector('link[href*="meshopt-decoder"]')!;
     expect(decoder.getAttribute("as")).toBe("script");
@@ -126,6 +150,7 @@ describe("the cat model", () => {
     render(<CatModel sizes="100vw" locale="en" />);
     await act(async () => intersect(true));
     expect(hints()).toEqual([]);
+    expect(runtime.reads).toBe(0);
     hidden.mockReturnValue(false);
     fireEvent(document, new Event("visibilitychange"));
     expect(hints()).toHaveLength(2);
@@ -139,17 +164,50 @@ describe("the cat model", () => {
     expect(hints()).toEqual([]);
   });
 
-  it("leaves the picking chunk until the cat has loaded", async () => {
+  it("asks for the picking chunk once the renderer's has landed, and builds on the cat", async () => {
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
-    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
-    // While the model is on the wire the chunk is 157KB taken from it, and
-    // there is nothing to pick on a cat that has not arrived. The controller
-    // picks through the viewer's own API until it lands.
+    // Not alongside the model and the renderer: those two go out in this tick
+    // and this chunk would be taking bandwidth from the model's start.
+    expect(hints()).toHaveLength(2);
     expect(runtime.reads).toBe(0);
+
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    // The renderer's chunk has evaluated, so this one rides the tail of the
+    // model's download. Nothing is built from it yet: there is nothing to
+    // pick on a cat who has not arrived, and until he has the controller
+    // picks through the viewer's own API.
+    await waitFor(() => expect(runtime.reads).toBe(1));
+    expect(runtime.builds).toBe(0);
+
     const viewer = document.querySelector("model-viewer") as unknown as Viewer;
     fireEvent(viewer, new Event("load"));
-    await waitFor(() => expect(runtime.reads).toBe(1));
+    await waitFor(() => expect(runtime.builds).toBe(1));
+  });
+
+  it("builds no picker for a stage that left while the chunks were in flight", async () => {
+    const { unmount } = render(<CatModel sizes="100vw" locale="en" />);
+    act(() => intersect(true));
+    unmount();
+    await act(async () => {});
+    // The renderer's chunk resolved onto a disposed stage, so neither the
+    // element nor the picking chunk behind it is anything this stage can
+    // still use, and a picker built on it would outlive the viewer it holds.
+    expect(document.querySelector("model-viewer")).toBeNull();
+    expect(runtime.reads).toBe(0);
+    expect(runtime.builds).toBe(0);
+  });
+
+  it("stops downloading him when the renderer's chunk cannot be used", async () => {
+    viewerModule.fails = true;
+    render(<CatModel sizes="100vw" locale="en" />);
+    act(() => intersect(true));
+    expect(hints()).toHaveLength(2);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("unavailable"));
+    // Half a megabyte nothing is left to read: the links download the model
+    // on their own, so a stage that has already failed takes them back.
+    expect(hints()).toEqual([]);
+    expect(document.querySelector("model-viewer")).toBeNull();
   });
 
   it("defers 3D setup in a hidden tab until the visible page needs it", async () => {
@@ -328,10 +386,13 @@ describe("the cat model", () => {
   it("releases the observer and viewer when leaving the page", async () => {
     const { unmount } = render(<CatModel sizes="100vw" locale="en" />);
     const viewer = await loadViewer();
+    await waitFor(() => expect(runtime.builds).toBe(1));
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();
     expect(viewer.isConnected).toBe(false);
     expect(viewer.paused).toBe(true);
+    // The picker holds the scene the viewer held.
+    expect(runtime.picker.dispose).toHaveBeenCalled();
   });
 
   it("keeps the loading label off screen until someone reaches for him", async () => {

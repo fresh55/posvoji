@@ -6,9 +6,14 @@
 
 Revision 27 re-encodes revision 26's numbers. Geometry, rig, clip structure,
 materials, names, extras and the embedded credit are untouched; the asset is
-1,500,464 bytes, down from 2,134,152. Over the wire it is 631,887 bytes
-gzipped and 550,478 with Brotli, down from 1,241,284 and 1,137,222, about half
-the previous download.
+1,500,464 bytes, down from 2,134,152. Over the wire it is 624,978 bytes gzipped
+at level 9, what `scripts/precompress-out.mjs` writes, and 550,478 with Brotli
+at quality 11, down from 1,233,819 and 1,137,222, about half the previous
+download.
+
+The poster stills are not touched by the re-encode. The visual baselines pass
+unchanged, so `poster.webp` and `poster-home.webp` keep their files and their
+`?v=` versions.
 
 - Normals are octahedral 8-bit, `int8` normalized at stride 4. The largest
   angle error is 1.19 degrees.
@@ -408,7 +413,7 @@ There are no visible controls, captions or sounds. While the model loads, the po
 
 ## Web preparation and verification
 
-- Twenty-five full-body animation clips plus eight isolated attention layers; 54,236 visible triangles; 1,500,464 bytes (about 1.50 MB), 631,887 gzipped. Picking uses a separate 8,824-triangle CPU proxy. No visible triangles or textures were added.
+- Twenty-five full-body animation clips plus eight isolated attention layers; 54,236 visible triangles; 1,500,464 bytes (about 1.50 MB), 624,978 gzipped. Picking uses a separate 8,824-triangle CPU proxy. No visible triangles or textures were added.
 - WebP textures, 8-bit skin weights, octahedral normals, 12-bit texture coordinates, filtered animation samples and Meshopt compression. Positions keep their full 16 bits. No artificial 1 MB limit was applied.
 - The detailed Blender project retains fine fur. The web version uses the coat texture, sheen, sparse ear tufts and soft tapered whisker ribbons.
 - Local occlusion has strength 0.16. Neutral browser lighting and tone mapping use exposure 0.9. The eye retains revision 9's restrained reflection.

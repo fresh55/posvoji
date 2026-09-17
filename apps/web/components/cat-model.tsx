@@ -11,27 +11,32 @@ import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
 // No head preload, although React would hoist one from the tree below.
-// Measured on the gate over throttled 4G a link in the head started the 1.1MB
+// Measured on the gate over throttled 4G a link in the head started the
 // download at 60ms instead of 1.5s and still finished only 0.3s sooner (0.8s
 // on slow 4G): from there it is bandwidth-bound against the hydration chunks,
-// on every visit to a page that may never show him. The link start() inserts
-// is a different thing. It begins the same download at the moment the stage
-// has already decided to fetch him, so the only chunk it competes with is the
-// renderer it is waiting for, and it never runs where he is not wanted.
+// on every visit to a page that may never show him. That was revision 26, at
+// 1.1MB on the wire; revision 27 is 632KB of the same shape. The link start()
+// inserts is a different thing. It begins the same download at the moment the
+// stage has already decided to fetch him, so the only chunk it competes with
+// is the renderer it is waiting for, and it never runs where he is not wanted.
 const MODEL = "/models/our-cat/cat.glb?v=27";
+
+// The meshopt decoder, in one place: the viewer is pointed at it in start()
+// and the hint below has to name the same path, or the browser keeps the
+// preload and fetches the file a second time.
+const DECODER = "/models/our-cat/meshopt-decoder.js";
 
 // What the viewer asks for once its chunk has evaluated, asked for at the same
 // moment as the chunk instead of after it: the model, which used to wait for
-// the element to exist, and the meshopt decoder it cannot read the model
-// without. Each link has to describe the request the viewer will make, or the
-// browser keeps the preload and fetches the file a second time. The model goes
-// through three's FileLoader, a fetch in cors mode with same-origin
-// credentials, which is what crossorigin says here; the decoder arrives on a
-// plain async <script>, which is as="script" and no crossorigin. Traced on the
-// built page: one request each, and the model's is the link's.
+// the element to exist, and the decoder it cannot read the model without. Each
+// link has to describe the request the viewer will make, for the same reason.
+// The model goes through three's FileLoader, a fetch in cors mode with
+// same-origin credentials, which is what crossorigin says here; the decoder
+// arrives on a plain async <script>, which is as="script" and no crossorigin.
+// Traced on the built page: one request each, and the model's is the link's.
 const HINTS = [
   { href: MODEL, as: "fetch", crossOrigin: "anonymous" },
-  { href: "/models/our-cat/meshopt-decoder.js", as: "script" },
+  { href: DECODER, as: "script" },
 ];
 
 /** A camera and the still rendered from it: the poster is the model's own
@@ -91,10 +96,12 @@ export type CatModelHandle = {
  * height from className.
  *
  * Nothing tells a visitor that the cat they are touching is a picture: the
- * wait measured 1.3s on a fast desktop, 4.7s on a phone over 4G, over 10s on
- * slow 4G. Only the visitor who reaches for him is told. Most never touch
- * him, on the gate they came to type a password, and a picture that quietly
- * comes alive is a better moment than one a spinner announces.
+ * wait measured 1.3s on a fast desktop and about 5.6s from the stage coming
+ * into view on a throttled phone (1.6Mbps, 150ms RTT, 4x CPU), where before
+ * this branch it was 10.5s. Only the visitor who reaches for him is told.
+ * Most never touch him, on the gate they came to type a password, and a
+ * picture that quietly comes alive is a better moment than one a spinner
+ * announces.
  *
  * memo, because the gate re-renders on every keystroke and this subtree
  * holds a live WebGL canvas.
@@ -116,7 +123,8 @@ export const CatModel = memo(function CatModel({
   /**
    * Whether the poster is the page's largest paint. It is on the gate, where
    * the cat is the first thing above the fold and the only thing that paints
-   * while ~2MB of WebGL arrives; it is not on the about page, where he sits
+   * while the model arrives (632KB gzipped, 550KB with brotli, and the
+   * renderer chunk behind it); it is not on the about page, where he sits
    * below the fold and is often never fetched at all.
    */
   posterPriority?: boolean;
@@ -230,24 +238,40 @@ export const CatModel = memo(function CatModel({
       if (!viewer || !ready || disposed) return;
       interaction?.syncPlayback();
     };
-    // The precomputed picking regions, and the one thing here that waits for
-    // the load event rather than racing it. Its chunk is 157KB, nearly all of
-    // it picking.json, and nothing can be picked before there is a cat: until
-    // it arrives the controller picks through the viewer's own public API (the
-    // fallback in start()), which is coarser but answers the same question.
-    // Asked for on load rather than on the first reach after it, because the
-    // main thread is free at that moment and a reach is not a spare one: the
-    // visitor who reaches is the one whose first touch would then wait for it.
-    const takePicker = async () => {
-      if (!pickerAsked) {
-        pickerAsked = true;
-        try { makePicker = (await import("@/lib/cat-viewer-runtime")).createViewerCatPicker; }
-        catch { return; }
-      }
+    // The precomputed picking regions. Nothing can be picked before there is
+    // a cat, so the picker itself is built on the load event; the chunk that
+    // builds it is asked for earlier, as soon as the viewer's own chunk has
+    // evaluated.
+    //
+    // It has to be here by the time he is. The chunk is 153,890 bytes raw,
+    // about 32KB brotli or 51KB gzip on the wire, and without it the
+    // controller cannot tell a nose tap or a paw from the rest of him: CatPick
+    // carries `leg` and `nose` (lib/cat-picking.ts) that the public-API
+    // fallback in start() never fills, and cat-interaction.ts gates "Nose
+    // sniff" and the four "Paw withdraw" reactions on them. Asking for it when
+    // the viewer's chunk lands lets it ride the tail of the model's download
+    // rather than delay its start, and it is not awaited on the way to the
+    // element. In the window before it arrives a nose or paw tap falls through
+    // to the generic body answer, which is the coarser thing the fallback
+    // still answers.
+    const buildPicker = () => {
       if (disposed || !ready || !viewer || !makePicker) return;
       picker?.dispose();
       try { picker = makePicker(viewer); }
       catch { picker = undefined; }
+    };
+    const askForPicker = () => {
+      if (pickerAsked) return;
+      pickerAsked = true;
+      void import("@/lib/cat-viewer-runtime").then(
+        (module) => {
+          if (disposed) return;
+          makePicker = module.createViewerCatPicker;
+          // The cat can be here already: this is the later of the two chunks.
+          if (ready) buildPicker();
+        },
+        () => {},
+      );
     };
     const onLoad = () => {
       // Apply the seated first frame even when reduced motion starts paused.
@@ -266,7 +290,7 @@ export const CatModel = memo(function CatModel({
         touched.current = false;
         controller?.react("Notice");
       }
-      void takePicker();
+      buildPicker();
     };
     const onError = () => {
       ready = false;
@@ -286,6 +310,20 @@ export const CatModel = memo(function CatModel({
         const link = document.createElement("link");
         link.setAttribute("rel", "preload");
         link.setAttribute("as", as);
+        // Low, on both. On the gate this stage is above the fold and its
+        // poster is the page's largest paint; on no page does anything the
+        // model could draw paint before that poster, so the model is the one
+        // of the two that can wait.
+        //
+        // It costs nothing to say so and it is not worth much either.
+        // Measured on the built gate page at 390x844 over 1.6Mbps with 150ms
+        // RTT, six paired runs with the arms alternating: LCP 630ms against
+        // 646ms at the default priority, the model's last byte 7.46s against
+        // 7.47s. Both differences sit inside the run-to-run spread, because
+        // the download only starts once the page has hydrated, about 1.6s
+        // after the poster has already painted. Neither number is worse, and
+        // low is what the hint honestly means.
+        link.setAttribute("fetchpriority", "low");
         if (crossOrigin) link.setAttribute("crossorigin", crossOrigin);
         // Last, so the request goes out with the rest already on the element.
         link.setAttribute("href", href);
@@ -301,11 +339,14 @@ export const CatModel = memo(function CatModel({
     // evaluated and the element had been created, which on a throttled phone
     // (1.6Mbps, 150ms RTT, 4x CPU) put its first byte 2.4s after the stage
     // came into view. The links above start it with the chunk instead, so the
-    // three share the wire rather than queue behind one another: five paired
-    // runs of the built page moved the model's last byte from 11.1s to 10.2s
-    // and the load event from 12.4s to 11.7s. The element appears about a
-    // second later for it, because the chunk now waits on the model for
-    // bandwidth, and nothing is drawn before the model in any case.
+    // three share the wire rather than queue behind one another.
+    //
+    // Measured on the merged build of this branch, which also carries the
+    // re-encoded model and the precompressed siblings the host serves: on that
+    // phone profile the stage goes from coming into view to the load event in
+    // 5.6s, against 10.5s before, with 632KB of model on the wire. The element
+    // appears later than it used to for it, because the chunk now waits on the
+    // model for bandwidth, and nothing is drawn before the model in any case.
     const start = async () => {
       if (!wanted || started || disposed || !visible || document.hidden) return;
       started = true;
@@ -317,7 +358,8 @@ export const CatModel = memo(function CatModel({
         // wait. Keep the chunk and whatever the links have already pulled
         // down, but postpone WebGL setup.
         if (!visible || document.hidden) { started = false; return; }
-        Viewer.meshoptDecoderLocation = "/models/our-cat/meshopt-decoder.js";
+        askForPicker();
+        Viewer.meshoptDecoderLocation = DECODER;
         viewer = document.createElement("model-viewer") as ModelViewerElement;
         const attributes = {
           src: MODEL,
@@ -392,6 +434,11 @@ export const CatModel = memo(function CatModel({
         });
         container.append(viewer);
       } catch {
+        // Nothing will read the model now, and the links go on downloading it
+        // whether or not anything does: half a megabyte on a stage that has
+        // already failed. Taken back before the stage says so.
+        for (const link of hints) link.remove();
+        hints = [];
         if (!disposed) onError();
       }
     };

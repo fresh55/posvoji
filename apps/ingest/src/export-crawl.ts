@@ -19,6 +19,31 @@ import {
   guardUniqueAnimalIds,
 } from "./run-guards";
 
+/** A provider its schedule held back this run. */
+export interface SkippedProvider {
+  providerId: string;
+  // The last successful check we hold for it, null when we hold none.
+  checkedAt: string | null;
+  nextAllowedAt: string;
+  // True when the skip is not backed by a check inside the provider's own
+  // interval, which means a recorded attempt alone is holding it off.
+  stale: boolean;
+}
+
+/** How old the last successful check of a skipped provider is, in words. */
+function lastCheck(
+  skip: SkippedProvider,
+  now: number,
+  intervalHours: number,
+): string {
+  if (!skip.checkedAt) return "no successful check of it was ever recorded";
+  const hours = Math.round((now - Date.parse(skip.checkedAt)) / 3600000);
+  return (
+    `its last successful check was ${skip.checkedAt}, ${hours}h ago, ` +
+    `longer than its ${intervalHours}h interval`
+  );
+}
+
 /** Crawl independent providers, retaining completed checkpoints for recovery. */
 export async function crawlProviders({
   client,
@@ -62,7 +87,7 @@ export async function crawlProviders({
     policy: LoadedPolicy["policy"],
     previousAnimals: readonly Animal[],
     state: CrawlState,
-  ): Promise<ProviderCrawlResult | null> {
+  ): Promise<ProviderCrawlResult | { skipped: SkippedProvider }> {
     const provider = providers.find((p) => p.id === policy.providerId);
     if (!provider) {
       throw new Error(
@@ -93,17 +118,42 @@ export async function crawlProviders({
     }
     const checkedAt = snapshotReferences[policy.providerId]?.checkedAt;
     if (!schedule.admit(policy, checkedAt)) {
-      logger.log(`${policy.providerId}: not due until ${new Date(schedule.nextAllowedAt(policy, checkedAt)).toISOString()}`);
-      return null;
+      const interval = policy.crawl.intervalHours * 3600000;
+      const observed = checkedAt ? Date.parse(checkedAt) : null;
+      // The same arithmetic admit() uses, so no tolerance is needed: a
+      // provider whose check is exactly one interval old is admitted rather
+      // than skipped, and every skip we reach here with a successful check
+      // inside the interval is strictly younger than it.
+      const stale =
+        observed === null || services.now().getTime() - observed > interval;
+      return {
+        skipped: {
+          providerId: policy.providerId,
+          checkedAt: checkedAt ?? null,
+          nextAllowedAt: new Date(
+            schedule.nextAllowedAt(policy, checkedAt),
+          ).toISOString(),
+          stale,
+        },
+      };
     }
     // Discovery alone cannot see a reservation edited into a still-listed
     // detail page. Every admitted crawl verifies all details; the provider
     // interval, rather than a per-animal three-day rotation, limits traffic.
-    const result = await crawlProviderIncrementally(provider, ctx, {
-      previous: previousAnimals,
-      forcedBecause: forceFullRefresh(state, policy, refreshAll) ?? "availability verification",
-      now: services.now,
-    });
+    //
+    // The attempt is recorded after the fetch settles, not before it, and a
+    // throw records it too. The mass-removal guard below runs after the fetch
+    // as well, so its throw also counts as an attempt.
+    let result: ProviderCrawlResult;
+    try {
+      result = await crawlProviderIncrementally(provider, ctx, {
+        previous: previousAnimals,
+        forcedBecause: forceFullRefresh(state, policy, refreshAll) ?? "availability verification",
+        now: services.now,
+      });
+    } finally {
+      schedule.record(policy);
+    }
     const policyMap = new Map([[policy.providerId, policy]]);
     result.animals = applyAllowedFields(
       applyPublicationPolicy(
@@ -133,6 +183,9 @@ export async function crawlProviders({
     // previous dataset.
     crawled: Set<string>;
     failed: string[];
+    // Providers the schedule held back, fresh and stale alike. A stale one is
+    // in failed as well.
+    skipped: SkippedProvider[];
     // Animals a finished provider could not refresh. Their previous record was
     // carried forward where we held one; where we did not, the listing was
     // skipped this run.
@@ -172,6 +225,7 @@ export async function crawlProviders({
     const animals: Animal[] = [];
     const crawled = new Set<string>();
     const failed: string[] = [];
+    const skipped: SkippedProvider[] = [];
     const failedAnimals: { providerId: string; sourceUrl: string }[] = [];
     const fullyRefreshed: ProviderPolicy[] = [];
     let fetched = 0;
@@ -180,7 +234,26 @@ export async function crawlProviders({
       const policy = enabled[index]!.policy;
       const providerId = policy.providerId;
       if (result.status === "fulfilled") {
-        if (result.value === null) continue;
+        if ("skipped" in result.value) {
+          const skip = result.value.skipped;
+          skipped.push(skip);
+          // A provider whose last successful check is inside its interval was
+          // skipped for the reason the interval exists, and the run stays
+          // clean. One held off by a recorded attempt alone is shipping
+          // records nobody has checked since before its interval, which is the
+          // same outcome as a failed crawl and takes the same path.
+          if (skip.stale) {
+            failed.push(providerId);
+            logger.warn(
+              `schedule: ${providerId} is held off until ${skip.nextAllowedAt} by a ` +
+                `recorded attempt, but ` +
+                `${lastCheck(skip, services.now().getTime(), policy.crawl.intervalHours)}. ` +
+                `Its previous records were carried forward and this run is not a ` +
+                `clean one.`,
+            );
+          }
+          continue;
+        }
         crawled.add(providerId);
         animals.push(...result.value.animals);
         fetched += result.value.fetched;
@@ -202,6 +275,7 @@ export async function crawlProviders({
       animals,
       crawled,
       failed,
+      skipped,
       failedAnimals,
       fullyRefreshed,
       fetched,

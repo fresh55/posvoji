@@ -293,6 +293,80 @@ describe("the export command's production pipeline", () => {
     expect(h.discover).not.toHaveBeenCalled();
   });
 
+  it("reports a provider checked inside its interval as clean and names it once", async () => {
+    const h = harness();
+    const log = h.services.logger!.log as ReturnType<typeof vi.fn>;
+    await runExport({}, h.services);
+    expect(
+      log.mock.calls.filter(([line]) => String(line).startsWith("schedule:")),
+    ).toEqual([]);
+    log.mockClear();
+    h.services.now = () => new Date(Date.parse(NOW) + 3600000);
+    const second = await runExport({}, h.services);
+    expect(second.exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(
+      log.mock.calls.filter(([line]) => String(line).startsWith("schedule:")),
+    ).toEqual([
+      [
+        "schedule: 1 provider(s) not due: test-shelter (next 2026-09-08T22:00:00.000Z)",
+      ],
+    ]);
+    expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("schedule:"),
+    );
+    expect(
+      log.mock.calls.filter(([line]) => String(line).includes("not due until")),
+    ).toEqual([]);
+  });
+
+  it("carries a provider held off by a recorded attempt alone forward as degraded", async () => {
+    const h = harness([animal()]);
+    h.discover.mockRejectedValueOnce(new Error("fixture outage"));
+    const first = await runExport({}, h.services);
+    expect(first.exitCode).toBe(2);
+    // An hour later the provider is still inside its 12-hour interval although
+    // no successful check of it was ever recorded, so the skip is the failed
+    // attempt's doing and the run must not report it as clean.
+    h.services.now = () => new Date(Date.parse(NOW) + 3600000);
+    const second = await runExport({}, h.services);
+    expect(second.exitCode).toBe(2);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(second.dataset.animals.map((a) => a.id)).toEqual([animal().id]);
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "schedule: test-shelter is held off until 2026-09-08T22:00:00.000Z by a recorded attempt",
+      ),
+    );
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining("no successful check of it was ever recorded"),
+    );
+    const log = h.services.logger!.log as ReturnType<typeof vi.fn>;
+    expect(
+      log.mock.calls.filter(([line]) => String(line).startsWith("schedule:")),
+    ).toEqual([]);
+  });
+
+  it("is degraded when a failed attempt holds off a provider whose check has aged out", async () => {
+    const h = harness();
+    await runExport({}, h.services);
+    h.services.now = () => new Date(Date.parse(NOW) + 13 * 3600000);
+    h.discover.mockRejectedValueOnce(new Error("fixture outage"));
+    expect((await runExport({}, h.services)).exitCode).toBe(2);
+    // The failed attempt pushes the next crawl to 25 hours after the last
+    // successful check, which is past the 12-hour interval the policy asks for.
+    h.services.now = () => new Date(Date.parse(NOW) + 14 * 3600000);
+    const third = await runExport({}, h.services);
+    expect(third.exitCode).toBe(2);
+    expect(h.discover).toHaveBeenCalledTimes(2);
+    expect(third.dataset.animals.map((a) => a.id)).toEqual([animal().id]);
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `its last successful check was ${NOW}, 14h ago, longer than its 12h interval`,
+      ),
+    );
+  });
+
   it("rejects incompatible options without acquiring a lock", async () => {
     const h = harness();
     await expect(

@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -10,15 +10,32 @@ afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: 
 function directory() { const root = mkdtempSync(join(tmpdir(), "crawl-schedule-")); roots.push(root); return root; }
 const policy = ProviderPolicy.parse({ providerId: "fixture", source: "https://shelter.example", enabled: true, ingestion: "scrape", images: "none", descriptions: "facts-only", permission: { status: "granted", date: "2026-09-01" }, attribution: "Fixture", crawl: { intervalHours: 48 } });
 
-it("persists attempts before work, including failures, and admits at the exact interval", () => {
+it("persists recorded attempts, including failures, and admits at the exact interval", () => {
   const root = directory();
   let at = Date.parse("2026-09-01T06:00:00Z");
   const now = () => new Date(at);
   expect(new CrawlSchedule(root, now).admit(policy)).toBe(true);
+  // What a failed crawl leaves behind: an attempt and no observation.
+  new CrawlSchedule(root, now).record(policy);
   at += 47 * 3600000;
   expect(new CrawlSchedule(root, now).admit(policy)).toBe(false);
   at += 3600000;
   expect(new CrawlSchedule(root, now).admit(policy)).toBe(true);
+});
+
+// The 2026-09-03 crash: the run died after the schedule had admitted the
+// provider and before it fetched anything, and the attempt written up front
+// held the provider off for a whole interval for no work at all.
+it("records nothing for a run that dies between the check and the crawl", () => {
+  const root = directory();
+  const at = Date.parse("2026-09-01T06:00:00Z");
+  expect(new CrawlSchedule(root, () => new Date(at)).admit(policy)).toBe(true);
+  expect(existsSync(join(root, "crawl-schedule.json"))).toBe(false);
+  const hourLater = new CrawlSchedule(root, () => new Date(at + 3600000));
+  expect(hourLater.admit(policy)).toBe(true);
+  hourLater.record(policy);
+  expect(existsSync(join(root, "crawl-schedule.json"))).toBe(true);
+  expect(new CrawlSchedule(root, () => new Date(at + 2 * 3600000)).admit(policy)).toBe(false);
 });
 
 it("uses saved observations on upgrade and respects a widened policy interval", () => {

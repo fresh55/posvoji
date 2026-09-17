@@ -46,12 +46,23 @@ export class CrawlSchedule {
     return last === 0 ? 0 : last + policy.crawl.intervalHours * 3600000;
   }
 
+  // A pure check. Admitting a provider used to record the attempt as well, so
+  // a run killed mid-crawl held the provider off for a whole interval although
+  // it had done no work. The caller records the attempt once the crawl has
+  // settled instead.
   admit(policy: ProviderPolicy, checkedAt?: string | null): boolean {
-    const at = this.now().getTime();
-    if (at < this.nextAllowedAt(policy, checkedAt)) return false;
-    // Record before discovery: a failed or interrupted attempt still counts.
+    return this.now().getTime() >= this.nextAllowedAt(policy, checkedAt);
+  }
+
+  // Called after the crawl settles, on success and on a thrown failure alike: a
+  // shelter whose site is down must not be fetched again every hour. A process
+  // that dies before this runs records nothing, so the next run retries the
+  // provider instead of skipping it and reporting the run as clean.
+  record(policy: ProviderPolicy, at: number = this.now().getTime()): void {
+    if (!Number.isSafeInteger(at) || at < 0) {
+      throw new Error("invalid crawl attempt time");
+    }
     this.attempts[policy.providerId] = at;
     writeFileAtomic(this.path, JSON.stringify(this.attempts));
-    return true;
   }
 }

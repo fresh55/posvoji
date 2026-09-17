@@ -3,10 +3,17 @@
 // The scheduled crawl gates a deploy on this, so the codes have to say more
 // than "worked" and "did not". They mean:
 //
-//   0  Clean. Every enabled provider crawled, the dataset was written.
+//   0  Clean. Every enabled provider crawled, the dataset was written. A
+//      provider its schedule held back is clean too when we hold a successful
+//      check of it no older than its own crawl interval: not crawling it again
+//      is what the interval is for.
 //   2  Degraded. Something could not be refreshed and the dataset was still
 //      written and is safe to deploy. Either one or more providers failed and
-//      their previous records were carried forward, or one or more animals
+//      their previous records were carried forward, or a provider was held
+//      back by its schedule although its last successful check is older than
+//      its interval, or we hold no successful check of it at all, so a
+//      recorded attempt alone is keeping it from being crawled and its
+//      previous records were carried forward, or one or more animals
 //      could not be refreshed inside a provider that otherwise finished, and
 //      their previous records were carried forward (or, for an animal we have
 //      never held, the listing was skipped). The site goes slightly stale

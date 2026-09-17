@@ -43,11 +43,16 @@ export function pickerRecoveryActions(
   };
 }
 
+// Search text with its accents taken off, so a keyboard without them finds
+// every name. NFD splits č ć š ž into a letter and a combining mark and the
+// mark is dropped; đ is its own letter with no decomposition, so it is named
+// here. Same alphabet as lib/geo.ts cityKey, which the town table folds with.
 export function fold(text: string): string {
   return text
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/đ/g, "d");
 }
 
 export function visibleTrigger(): HTMLElement | null {
@@ -101,19 +106,19 @@ export const pickerText = {
     selected: "Izbrano",
     removeSelection: "Odstrani zavetišče",
     places: "Kraji",
-    shelters: "Zavetišča",
     near: "V bližini",
     removeOrigin: "Odstrani izhodišče",
     distance: "Približna zračna razdalja med kraji.",
     countsMatch: "Število živali upošteva izbrane filtre.",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
-    allShelters: "Vsa zavetišča",
-    clearFilters: "Počisti filtre",
-    allSpecies: "Pokaži vse živali",
+    // The footer's way out of an empty result, beside "Počisti filtre" and
+    // "Pokaži vse živali". A verb like them, and not the bare two words the
+    // panel head uses for the state of having nothing picked (lib/labels.ts
+    // allShelters), which read as a label rather than a button.
+    allShelters: "Pokaži vsa zavetišča",
     backToResults: "Nazaj k rezultatom",
     chooseShelters: "Izberi zavetišča",
     chooseSheltersHint: "Izberi eno ali več zavetišč.",
-    showList: "Pokaži seznam",
     showMap: "Pokaži zemljevid",
   },
   en: {
@@ -124,19 +129,15 @@ export const pickerText = {
     selected: "Selected",
     removeSelection: "Remove shelter",
     places: "Places",
-    shelters: "Shelters",
     near: "Near",
     removeOrigin: "Remove starting point",
     distance: "Approximate straight-line distance between towns.",
     countsMatch: "Animal counts reflect your current filters.",
     zeroMatches: "No published animals match your selection.",
-    allShelters: "All shelters",
-    clearFilters: "Clear filters",
-    allSpecies: "Show all animals",
+    allShelters: "Show all shelters",
     backToResults: "Back to results",
     chooseShelters: "Choose shelters",
     chooseSheltersHint: "Select one or more shelters.",
-    showList: "Show list",
     showMap: "Show map",
   },
 } satisfies Record<Locale, Record<string, string>>;
@@ -156,7 +157,7 @@ export function locateAndSort(
     };
   });
   if (!origin) return located;
-  return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+  return located.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
 }
 
 export function toPins(

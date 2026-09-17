@@ -38,6 +38,7 @@ import {
   fold,
   locateAndSort,
   pickerText,
+  sameValues,
   toPins,
   type LocatedRow,
 } from "./model";
@@ -129,11 +130,9 @@ export function useLocationPickerController({
     after: string[];
   } | null>(null);
   // Retire the note permanently, even if a later selection has the same ids.
-  if (
-    dropNote &&
-    (dropNote.after.length !== selected.length ||
-      !dropNote.after.every((value) => selected.includes(value)))
-  ) {
+  // The same test view.tsx uses to decide whether to announce it, so the two
+  // sides of this state cannot drift apart.
+  if (dropNote && !sameValues(dropNote.after, selected)) {
     setDropNote(null);
   }
   // The shelter an animal card asked the map to point at. One at a time, like
@@ -149,6 +148,28 @@ export function useLocationPickerController({
     revealSelection,
     resetDocks,
   } = useLocationPickerMotion(open);
+  // Read here rather than beside the origin it feeds, because the close
+  // cleanup below dismisses its error and a dependency cannot be named before
+  // it exists.
+  const {
+    state,
+    toggle: toggleNearby,
+    dismissError,
+    turnOff: turnOffNearby,
+  } = useNearby();
+  // Two independent hover states for the two directions: a row lights up its
+  // marker and region, a marker lights up its row(s). Keeping them as separate
+  // pieces of state means neither can feed back into the other.
+  const [hoveredRowValue, setHoveredRowValue] = useState<string | null>(null);
+  const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
+    string[] | null
+  >(null);
+  // Hovering a legend density square lights up that step on the map, so the
+  // strip becomes a way to ask "where are the busy ones" instead of a static
+  // key. Pointer-only: touch devices never fire it, and that is fine.
+  const [highlightedDensity, setHighlightedDensity] = useState<number | null>(
+    null,
+  );
   useEffect(() => {
     closeCleanup.current = () => {
       // Every dismissal, including Back and a breakpoint change, ends the
@@ -158,9 +179,21 @@ export function useLocationPickerController({
       setSpotlitShelterId(null);
       setOffGroupOpen(false);
       setDropNote(null);
+      // The three hover states, which nothing else can end on a close: the
+      // dialog unmounts its content, so the pointer resting on a marker, a
+      // row or a density square never gets its leave event. Left standing,
+      // they opened the next visit tinted and scrolled to a shelter nobody
+      // was pointing at.
+      setHoveredRowValue(null);
+      setHoveredMarkerValues(null);
+      setHighlightedDensity(null);
+      // The geolocation error only, never turnOff: a fix that worked is a
+      // page-session fact the grid's sort reads (usePublishNearbyOrigin
+      // below), and only the failure belongs to the visit that caused it.
+      dismissError();
       resetDocks();
     };
-  }, [chosenPlace, resetDocks, setQuery]);
+  }, [chosenPlace, dismissError, resetDocks, setQuery]);
 
 
   // An animal card asking for its shelter on the map. Guarded by breakpoint
@@ -206,12 +239,6 @@ export function useLocationPickerController({
   // Names the roster rows a search narrowed, for the "Zavetišča" heading the
   // list draws over them while the field holds a name.
   const shelterGroupId = useId();
-  const {
-    state,
-    toggle: toggleNearby,
-    dismissError,
-    turnOff: turnOffNearby,
-  } = useNearby();
   const geolocated = state.status === "on" ? state.at : undefined;
   // The point the list sorts from, and where it came from. Memoized because
   // the row sort below takes it as a dependency, and a fresh object every
@@ -256,20 +283,7 @@ export function useLocationPickerController({
   // anywhere near any of them in the tree; see hooks/use-nearby-origin.ts for
   // how the instances that were never touched are kept from clearing it.
   usePublishNearbyOrigin(resolved);
-  const rowRefs = useRef(new Map<string, HTMLButtonElement>());
-  // Two independent hover states for the two directions: a row lights up its
-  // marker and region, a marker lights up its row(s). Keeping them as separate
-  // pieces of state means neither can feed back into the other.
-  const [hoveredRowValue, setHoveredRowValue] = useState<string | null>(null);
-  const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
-    string[] | null
-  >(null);
-  // Hovering a legend density square lights up that step on the map, so the
-  // strip becomes a way to ask "where are the busy ones" instead of a static
-  // key. Pointer-only: touch devices never fire it, and that is fine.
-  const [highlightedDensity, setHighlightedDensity] = useState<number | null>(
-    null,
-  );
+  const rowRefs = useRef(new Map<string, HTMLButtonElement | HTMLAnchorElement>());
 
   const rows: LocatedRow[] = useMemo(
     () => locateAndSort(options, origin),
@@ -295,12 +309,13 @@ export function useLocationPickerController({
   // True to start with, which is what ShelterMap starts at too, so the two are
   // one answer from the first render rather than converging on the second.
   const [markersVisible, setMarkersVisible] = useState(true);
-  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty }, setMapFacts] =
+  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty, densitySteps }, setMapFacts] =
     useState<MapFacts>({
       hasSelected: false,
       hasMixed: false,
       hasEmpty: false,
       hasFilteredEmpty: false,
+      densitySteps: 0,
     });
 
   const pins: ShelterPin[] = useMemo(
@@ -388,19 +403,6 @@ export function useLocationPickerController({
     [locale, onToggleMany, options, revealSelection, searching, selected, setQuery],
   );
 
-  // Which row a marker hover brings into view, and whether it brings one at
-  // all. Open details are an answer someone asked for, and asking outranks a
-  // pointer passing over the map: the hover still tints its row, but it stops
-  // scrolling the list, which used to carry the answer off the top of it.
-  // Worst on the shelters with nothing listed, whose rows sit at the very
-  // bottom under their own heading, so grazing one of those hollow circles
-  // threw the list all the way down to a row that cannot even be picked.
-  //
-  // Computed here rather than handed to the lists as a flag they each have to
-  // remember: both take this one value, and neither can forget a rule it is
-  // not carrying.
-  const hoverScrollTo = expandedShelter ? undefined : hoveredMarkerValues?.[0];
-
   // Opening one shelter closes whichever was open, and pressing the control of
   // the shelter that is already open closes it. The rows report which one is
   // open and ask for a change; the rule about the list as a whole is kept
@@ -477,13 +479,47 @@ export function useLocationPickerController({
   // Recognition alone keeps the matching shelter rows visible alongside the
   // place suggestion, so the visitor can choose which result they meant.
   //
-  // The needle is folded once and not per row: both lists below run the
-  // predicate over every shelter in the roster, on every keystroke.
-  const needle = fold(query.trim());
-  const matchesQuery = (row: ShelterRow) =>
-    fold(`${row.label} ${row.city ?? ""}`).includes(needle);
+  // Every word has to be somewhere in the name and the town, in any order:
+  // one raw substring over "name town" could not find "maribor snaga",
+  // because the label is "Zavetišče Maribor (Snaga)" and the bracket sits
+  // between the two words the visitor typed. Same for "ljubljana zavetisce",
+  // which is only the words of one row in the other order. A single word is
+  // the old test, so nothing a substring used to find is hidden now.
+  //
+  // Folded once and not per row: both lists below run the predicate over every
+  // shelter in the roster, on every keystroke.
+  const needles = searching
+    ? fold(query.trim()).split(/\s+/).filter(Boolean)
+    : [];
+  const matchesQuery = (row: ShelterRow) => {
+    const hay = fold(`${row.label} ${row.city ?? ""}`);
+    return needles.every((needle) => hay.includes(needle));
+  };
   const nameMatches = searching ? rows.filter(matchesQuery) : rows;
   const offNameMatches = searching ? offRows.filter(matchesQuery) : offRows;
+
+  // The hover the map is told about, and the row a marker hover brings into
+  // view. Both are gated on the row still being in the list: a query typed
+  // without moving the pointer unmounts the row under it, and no leave event
+  // fires, so an unfiltered value kept a marker and its region lit for a
+  // shelter the list no longer holds.
+  const onScreen = (value: string) =>
+    visibleRows.some((row) => row.value === value) ||
+    visibleOffRows.some((row) => row.value === value);
+  const hoveredRow =
+    hoveredRowValue && onScreen(hoveredRowValue) ? hoveredRowValue : null;
+  // Open details are an answer someone asked for, and asking outranks a
+  // pointer passing over the map: the hover still tints its row, but it stops
+  // scrolling the list, which used to carry the answer off the top of it.
+  // Worst on the shelters with nothing listed, whose rows sit at the very
+  // bottom under their own heading, so grazing one of those hollow circles
+  // threw the list all the way down to a row that cannot even be picked.
+  //
+  // Computed here rather than handed to the lists as a flag they each have to
+  // remember: both take this one value, and neither can forget a rule it is
+  // not carrying.
+  const hoveredMarkerRow = hoveredMarkerValues?.find(onScreen);
+  const hoverScrollTo = expandedShelter ? undefined : hoveredMarkerRow;
 
   // What typing just did to the list. Refiltering was silent: the count is
   // only readable off the rows themselves, and the "no matches" state is drawn
@@ -542,15 +578,16 @@ export function useLocationPickerController({
   // until the user types, which dismisses it in favor of the input's own
   // feedback.
   //
-  // The plain geolocation case says nothing at all now. It used to draw
-  // sortedByDistance, "Seznam je razvrščen po bližini.", which was the third
-  // statement of one fact: the Najbližje prvo toggle eight pixels below it
-  // reports aria-pressed and goes font-medium while it is on, and every row in
-  // the list carries its own "· 23 km". The two branches either side of it
-  // stay, because neither is a restatement of anything: locationOutsideMap is
-  // news about the origin landing off the map, and sortedByDistanceFrom names
-  // a typed place the toggle does not mention. i18n's sortedByDistance is kept
-  // as well, since locationOutsideMap composes its second sentence.
+  // Neither the plain geolocation case nor the typed one says anything at
+  // all now. Both used to, and both were the same fact said a second time:
+  // the Najbližje prvo toggle eight pixels below reports aria-pressed and
+  // goes font-medium while it is on, every row in the list carries its own
+  // "· 23 km", and a typed place is named by the origin chip directly above
+  // this line, with the note about straight-line distance under it. What is
+  // left is only news: locationOutsideMap, the origin landing off the map.
+  // i18n's sortedByDistance is kept, since locationOutsideMap composes its
+  // second sentence. sortedByDistanceFrom went with this branch; the
+  // sidebar's own chip says it with originFrom.
   //
   // The "no such place" branch is gone from this ladder, and the merged field
   // is why. A word the postal table does not know used to be a mistake worth
@@ -572,9 +609,7 @@ export function useLocationPickerController({
           : undefined
         : typed.status === "unknown" && looksLikePostcode(query)
           ? messages.postcodeNotFound
-          : resolved.source === "typed"
-            ? t("sortedByDistanceFrom", { label: resolved.label ?? "" })
-            : undefined;
+          : undefined;
   const missing =
     unplaced > 0 ? sheltersMissingFromMap(unplaced, locale) : undefined;
 
@@ -590,8 +625,15 @@ export function useLocationPickerController({
   });
   // Selection names belong in the trigger and footer; full registry totals
   // and animal counts answer different questions and stay out of this label.
-  const selectedRows = selected.map((value) =>
-    [...options, ...(offSite ?? [])].find((row) => row.value === value) ?? { value, label: value },
+  //
+  // The roster is built once, not once per selected shelter: this controller
+  // re-renders on every hover anywhere on the map, and the lookup used to
+  // allocate a fresh copy of the whole list inside the map callback.
+  const roster = new Map(
+    [...options, ...(offSite ?? [])].map((row) => [row.value, row]),
+  );
+  const selectedRows = selected.map(
+    (value) => roster.get(value) ?? { value, label: value },
   );
   const label = shelterSelectionLabel(selectedRows, locale);
 
@@ -665,7 +707,7 @@ export function useLocationPickerController({
     resolved,
     origin,
     rowRefs,
-    hoveredRowValue,
+    hoveredRow,
     setHoveredRowValue,
     hoveredMarkerValues,
     setHoveredMarkerValues,
@@ -685,6 +727,7 @@ export function useLocationPickerController({
     hasMixed,
     hasEmpty,
     hasFilteredEmpty,
+    densitySteps,
     nearbyOn,
     status,
     missing,

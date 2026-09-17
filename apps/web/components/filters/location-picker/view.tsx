@@ -85,7 +85,13 @@ export function LocationPickerView({
       )}
       <DialogContent
         className={cn(
-          "flex w-(--picker-w) flex-col [--picker-w:min(94vw,84rem)] max-w-none gap-0 overflow-hidden p-0 shadow-xl",
+          // 94vw counts the notch: a phone held sideways reserves 44px on
+          // one edge, and the dialog's border and the first of the header's
+          // padding sat under it. The insets come off the viewport share
+          // before it is capped, and they are 0 everywhere else, so nothing
+          // on a desktop or an emulator moves. The footer already does the
+          // bottom one.
+          "flex w-(--picker-w) flex-col [--picker-w:min(calc(94vw_-_env(safe-area-inset-left,0px)_-_env(safe-area-inset-right,0px)),84rem)] max-w-none gap-0 overflow-hidden p-0 shadow-xl",
           // Top-aligned below lg, where the height is no longer the same in
           // both views. Centred, a dialog that shrinks re-centres, and the
           // view switch the visitor just pressed would slide down the screen
@@ -101,7 +107,6 @@ export function LocationPickerView({
             : "h-[min(94dvh,52rem)] max-h-none",
         )}
         showCloseButton={false}
-        closeLabel={messages.close}
         onEscapeKeyDown={(event) => {
           const target = event.target;
           if (target === searchRef.current && query !== "") {
@@ -128,19 +133,29 @@ export function LocationPickerView({
           trigger.focus({ preventScroll: true });
         }}
       >
+        {/* One region, one span per fact. As a single text node every
+            keystroke replaced the whole string, so a search re-announced the
+            selection and the running total with it; a screen reader reads the
+            child that changed once the region has more than one. The spaces
+            between them are written out, so the region's text still reads as
+            separate facts however many of them there are. */}
         <p aria-live="polite" className="sr-only">
-          {[
-            dropNote && sameValues(dropNote.after, selected)
-              ? dropNote.text
-              : undefined,
-            label,
-            `${pickerText[locale].showing}: ${animalCount(resultCount, locale)}`,
-            searchNews,
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          {dropNote && sameValues(dropNote.after, selected) ? (
+            <span>{dropNote.text}</span>
+          ) : null}{" "}
+          <span>{label}</span>{" "}
+          <span>{`${pickerText[locale].showing}: ${animalCount(resultCount, locale)}`}</span>{" "}
+          {searchNews ? <span>{searchNews}</span> : null}
         </p>
-        <div data-picker-header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b bg-background px-4 py-3 sm:px-6">
+        {/* short:py-2 because on a screen with no height to spare this header
+            is 133px of a 414px dialog, and the map under it is the part that
+            pays: the 8px buys the landscape plate the width it needs to name
+            its regions (292 to 300, against the 300 threshold in
+            map-region-names.tsx). Every other block in the picker has a short:
+            rule; this one had none. Only the padding: the close button is
+            44px tall and sets the row's height by itself, so hiding the hint
+            beside it was measured at 0.6px and would have cost a sentence. */}
+        <div data-picker-header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b bg-background px-4 py-3 short:py-2 sm:px-6">
           <DialogHeader className="min-w-0 flex-1 gap-1 text-left">
             <DialogTitle className="text-lg font-semibold leading-tight sm:text-xl">
               {pickerText[locale].chooseShelters}
@@ -156,9 +171,15 @@ export function LocationPickerView({
             onValueChange={(value) => { if (value) setSheetOpen(value === "list"); }}
             aria-label={locale === "sl" ? "Pogled zavetišč" : "Shelter view"}
             spacing={1}
+            // w-full and not a capped width: the cap is what keeps the switch
+            // on a row of its own. A max-width clamps the hypothetical size
+            // the flex line is measured with, and the title beside it is
+            // flex-1, which contributes nothing to that measurement, so at 639
+            // a 384px switch packs onto the title's row and the title breaks
+            // into two lines with the close button between them (measured).
             className="order-last w-full rounded-ui bg-muted p-1 sm:order-none sm:w-auto lg:hidden"
           >
-            <ToggleGroupItem value="list" data-picker-show-list aria-label={pickerText[locale].showList} className="h-11 min-w-0 flex-1 gap-2 text-sm data-[state=on]:border-border data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-background data-[state=on]:hover:text-foreground sm:min-w-28 sm:flex-none">
+            <ToggleGroupItem value="list" data-picker-show-list aria-label={messages.expandPanel} className="h-11 min-w-0 flex-1 gap-2 text-sm data-[state=on]:border-border data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-background data-[state=on]:hover:text-foreground sm:min-w-28 sm:flex-none">
               <List className="size-4" aria-hidden />
               {locale === "sl" ? "Seznam" : "List"}
             </ToggleGroupItem>

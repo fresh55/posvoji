@@ -676,14 +676,25 @@ describe("animal dialog", () => {
     expect(within(dialog).getByText("Brez FeLV")).toBeTruthy();
   });
 
-  it("keeps a shorter stay as a caption without the callout", async () => {
+  it("keeps a shorter stay as a quiet line in the shelter box", async () => {
     // Rex came in 19 months before the reference date, well under the
-    // three-year line.
+    // three-year line. The line stands in the shelter box, where the plea
+    // stands for a longer wait, so the fact is in one place for every animal.
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/V zavetišču: 1 leto/)).toBeTruthy();
+    const quiet = region(dialog, "shelter-block").getByText(
+      /V zavetišču: 1 leto/,
+    );
+    expect(quiet.closest("[data-tone]")?.getAttribute("data-tone")).toBe(
+      "quiet",
+    );
+    // The age pill names itself for everyone, not only for a screen reader,
+    // so the two spans of time on this card cannot be taken for each other.
+    const age = within(dialog).getByText("Starost:", { exact: false });
+    expect(age.className).not.toContain("sr-only");
+    expect(age.closest("li")?.textContent).toBe("Starost: 2 leti");
     expect(within(dialog).queryByText(/čaka že/)).toBeNull();
     expect(within(dialog).queryByText("Kamnik")).toBeNull();
   });
@@ -694,9 +705,10 @@ describe("animal dialog", () => {
     renderGrid([longtimer]);
 
     const dialog = await screen.findByRole("dialog");
-    expect(
-      within(dialog).getByText("Cufi v zavetišču čaka že 4 leta."),
-    ).toBeTruthy();
+    const plea = region(dialog, "shelter-block").getByText(
+      "Cufi v zavetišču čaka že 4 leta.",
+    );
+    expect(plea.closest("[data-tone]")?.getAttribute("data-tone")).toBe("plea");
     expect(within(dialog).queryByText(/V zavetišču: /)).toBeNull();
   });
 
@@ -710,8 +722,10 @@ describe("animal dialog", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByText(/čaka že/)).toBeNull();
-    // The stay is still a fact, so the caption keeps it.
-    expect(within(dialog).getByText(/V zavetišču: 6 let/)).toBeTruthy();
+    // The stay is still a fact, so the quiet line keeps it, in the same box.
+    expect(
+      region(dialog, "shelter-block").getByText(/V zavetišču: 6 let/),
+    ).toBeTruthy();
   });
 
   it("says nothing about the stay of an animal that has left", async () => {

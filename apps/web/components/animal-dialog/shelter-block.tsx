@@ -1,15 +1,20 @@
 "use client";
 
-import { ExternalLink, Heart, Hourglass, Phone } from "lucide-react";
+import {
+  CalendarClock,
+  ExternalLink,
+  Heart,
+  Hourglass,
+  Phone,
+} from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
 import { telHref } from "@/lib/contact-links";
-import { ageInMonths } from "@/lib/filters";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import type { ShelterPhones } from "@/lib/shelters";
 import { shelterPath } from "@/lib/shelter-path";
-import { ageLabel, longStayMonths } from "@/lib/labels";
+import { stayStatement } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SourceFreshness } from "@/components/source-freshness";
@@ -42,58 +47,50 @@ export function ShelterBlock({
    */
   ctaMirrored?: boolean;
 }) {
-  const { locale, messages, t } = useI18n();
+  const { locale, messages } = useI18n();
   const { shelter } = animal;
 
-  // The long wait lives here, in the same box as the one button that can
-  // answer it, so the plea and the action read as one thought instead of two
-  // stacked crates. Who counts as waiting long is labels.ts's decision, the
-  // same one the card's mark reads, so the two surfaces cannot drift apart.
-  const stayMonths = longStayMonths(animal, reference);
-  const stay =
-    stayMonths === undefined ? undefined : ageLabel(stayMonths, locale);
-
-  // An animal that came in before its first birthday prints the same number
-  // twice: the age pill says "4 leta" and the plea says it waited 4 leta. That
-  // is 56 of the 96 long-stay animals whose age we know, and a reader who
-  // notices takes the repeated number for a bug rather than for a life. The
-  // tail says which it is. The gate is the arrival age, not a birth in the
-  // shelter, which is why the sentence says "skoraj".
-  //
-  // Only where the age is known: without it there is no repeated number to
-  // explain, and the plainer sentence is the honest one. The poster keeps the
-  // plain keys, because it prints no age pill beside them.
-  //
-  // ageInMonths only where there is a plea to gate: for an animal carrying a
-  // birth date rather than an approximate age it parses a Date, and four in
-  // five animals never reach this sentence at all.
-  const ageMonths =
-    stayMonths === undefined ? undefined : ageInMonths(animal, reference);
-  const wholeLife =
-    stayMonths !== undefined &&
-    ageMonths !== undefined &&
-    ageMonths - stayMonths < 12;
-  const stayKey = animal.name
-    ? wholeLife
-      ? "longStayWholeLife"
-      : "longStay"
-    : wholeLife
-      ? "longStayWholeLifeUnnamed"
-      : "longStayUnnamed";
+  // The wait lives here, in the same box as the one button that can answer
+  // it, and it lives here for every animal still in the shelter. It used to
+  // stand under the description as a quiet aside and jump into this box only
+  // once it turned into the plea, so a reader who learned where the number
+  // was on one animal did not find it there on the next. Now the place is
+  // fixed and the ink says how long is long. What it says and how loudly is
+  // stayStatement's decision in labels.ts, which the poster reads too, so no
+  // two surfaces can drift apart; this box only dresses the answer.
+  const stay = stayStatement(animal, locale, reference);
+  const plea = stay?.tone === "plea";
+  const StayMark = plea ? Hourglass : CalendarClock;
 
   return (
     <div data-slot="shelter-block" className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 rounded-ui border bg-muted/40 p-4">
+        {/* One slot, two tones. The quiet line is a label in the box's muted
+            ink, the same size as the plea so the slot does not shrink and grow
+            between animals; the plea is full ink and medium weight, and the
+            warn-coloured hourglass is the card's mark again. Text, not a pill,
+            so "2 leti" here cannot be confused with the age fact above.
+
+            data-tone is what the tests read. A tone is the thing being
+            promised, and asserting the Tailwind classes instead pinned this
+            slot's dress to every future design pass. */}
         {stay && (
-          <div className="flex w-full items-start gap-2 text-sm">
-            <Hourglass
-              className="mt-0.5 size-4 shrink-0 text-warn-mark"
+          <div
+            data-tone={stay.tone}
+            className={cn(
+              "flex w-full items-start gap-2 text-sm",
+              plea ? "font-medium" : "text-muted-foreground",
+            )}
+          >
+            <StayMark
+              className={cn(
+                "mt-0.5 size-4 shrink-0",
+                plea ? "text-warn-mark" : "opacity-70",
+              )}
               strokeWidth={1.75}
               aria-hidden
             />
-            <p className="font-medium">
-              {t(stayKey, { name: animal.name ?? "", duration: stay })}
-            </p>
+            <p>{stay.text}</p>
           </div>
         )}
         <ShelterAvatar name={shelter.name} logo={logos[shelter.id]} />

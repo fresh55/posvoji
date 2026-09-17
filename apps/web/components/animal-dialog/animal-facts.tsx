@@ -3,7 +3,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   Building2,
-  CalendarClock,
   ChevronDown,
   ClipboardCheck,
   HeartHandshake,
@@ -34,13 +33,7 @@ import {
 } from "@/lib/filters";
 import { quotedLang, type TranslationKey } from "@/lib/i18n";
 import { ADOPTION_REQUIREMENT_LABELS } from "@/lib/filters/metadata";
-import {
-  ageLabel,
-  longStayMonths,
-  monthsInShelter,
-  sexLabel,
-  sizeLabel,
-} from "@/lib/labels";
+import { ageLabel, sexLabel, sizeLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 const SEX_ICONS: Record<Exclude<Sex, "unknown">, LucideIcon> = {
@@ -449,27 +442,6 @@ function Fact({
   );
 }
 
-// A quiet fact that reads as context rather than identity: where the animal
-// was found, how long it has been waiting. Text, not a pill, so it cannot be
-// confused with the age badge above it.
-function Aside({
-  icon: Icon,
-  prefix,
-  children,
-}: {
-  icon: LucideIcon;
-  prefix?: string;
-  children: ReactNode;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <Icon className="size-3.5 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
-      {prefix && <span className="sr-only">{prefix}: </span>}
-      {children}
-    </span>
-  );
-}
-
 export function AnimalFacts({
   animal,
   reference,
@@ -499,18 +471,6 @@ export function AnimalFacts({
     healthRow.current?.querySelector("button")?.focus();
   }, [showHealthDetails]);
   const months = ageInMonths(animal, reference);
-  const stayMonths = animal.intakeDate
-    ? monthsInShelter(animal.intakeDate, reference)
-    : undefined;
-  const stay =
-    stayMonths !== undefined ? ageLabel(stayMonths, locale) : undefined;
-  // An adopted animal has left, so its stay is history and stays quiet.
-  const inShelter = animal.status !== "adopted";
-  // Whether the shelter block below is about to make the long-stay plea, in
-  // which case this quiet aside yields to it rather than saying the same
-  // number twice. Read from labels.ts so the two cannot disagree about who
-  // counts as waiting long; see shelter-block.tsx.
-  const longStay = longStayMonths(animal, reference) !== undefined;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
   // "Complete" is measured against what the species can answer: FIV and FeLV
   // are cat questions, so a dog is not two answers short for never having been
@@ -600,9 +560,8 @@ export function AnimalFacts({
                       className="size-3.5 opacity-70"
                     />
                   }
-                  prefix={messages.factAge}
                 >
-                  {ageLabel(months, locale)}
+                  {t("factAgeValue", { age: ageLabel(months, locale) })}
                 </Fact>
               )}
               {animal.size && (
@@ -816,23 +775,11 @@ export function AnimalFacts({
         </div>
       )}
 
-      {inShelter && stay && !longStay && (
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <Aside icon={CalendarClock}>
-            {messages.factTimeInShelter}: {stay}
-          </Aside>
-        </p>
-      )}
-
       {/* The requirements and the patience flag used to stand here, as 12px
           muted asides under the description. They say what the home has to be,
-          which is not context, so they moved into the badge group above. */}
-
-      {/* The long wait itself renders inside the shelter block now, where the
-          sentence sits beside the one button that can answer it. Standing
-          alone here it either floated unanchored or stacked a second box on
-          the shelter's; see shelter-block.tsx. This component still computes
-          longStay, because the quiet time-in-shelter aside above yields to it. */}
+          which is not context, so they moved into the badge group above. The
+          time in the shelter left for the shelter block; see
+          stayStatement in lib/labels.ts. */}
     </div>
   );
 }

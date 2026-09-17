@@ -5,13 +5,48 @@
 which a static export never does. Any headers this site needs have to come
 from whatever serves the exported files, not from Next.js.
 
-At minimum, set these two on every response:
+At minimum, set these three on every response:
 
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `X-Content-Type-Options: nosniff`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
 
 Compression, a cache policy for `/_next/static` and the branded 404 have to
 come from the same place, for the same reason.
+
+## HSTS
+
+Without `Strict-Transport-Security`, a navigation that starts from a typed
+hostname, an old bookmark or a plain link goes to `http://posvoji.si` first and
+waits for the `308`. That first request is unencrypted, and Chrome labels the
+tab "Ni varno" until the redirect lands. The header makes the browser rewrite
+the scheme itself, so the insecure request is never sent.
+
+Measured 16 September 2026 against the live site, signed in past the gate: the
+homepage returns `200` carrying `Referrer-Policy`, `X-Content-Type-Options`,
+`X-Frame-Options` and `Permissions-Policy`, and no `Strict-Transport-Security`.
+
+The header counts only on an HTTPS response. A browser ignores one received
+over plain HTTP, so the redirect does not need it.
+
+Raise `max-age` in stages, and confirm the site still serves between each step.
+A browser that has cached the policy refuses plain HTTP for the whole duration
+and offers no click-through past a certificate error:
+
+1. `max-age=300`
+2. `max-age=86400`
+3. `max-age=31536000; includeSubDomains`
+
+`includeSubDomains` reaches `mail.posvoji.si`, which is Neoserv's host rather
+than ours. On 16 September 2026 it answered `200` over HTTPS with a valid
+`*.posvoji.si` certificate, so the policy costs it nothing today. It also binds
+every subdomain added later, including one stood up on HTTP for a few minutes.
+IMAP and SMTP are unaffected; the policy is a browser rule.
+
+Leave `preload` off. It submits the domain to a list compiled into browsers,
+and removal takes months to reach users. It is worth doing once the site is
+public and the year-long `max-age` has held; it is not worth doing during a
+closed preview.
 
 ## Compression
 
@@ -263,6 +298,7 @@ gzip_types text/css application/javascript application/json image/svg+xml applic
 location / {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     error_page 404 /404.html;
     try_files $uri.html $uri $uri/ =404;
@@ -272,6 +308,7 @@ location = /404.html {
     internal;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 }
 ```
 
@@ -285,7 +322,7 @@ is deliberately absent from the list: nginx compresses it whenever `gzip` is
 on, and naming it again warns about a duplicate MIME type.
 
 `error_page` sends a path with no file to the exported 404 page. The `internal`
-location serves it and cannot be requested directly, and it repeats the two
+location serves it and cannot be requested directly, and it repeats the
 security headers because a location that defines any `add_header` of its own
 stops inheriting them.
 
@@ -316,6 +353,7 @@ posvoji.si {
     header {
         Referrer-Policy "strict-origin-when-cross-origin"
         X-Content-Type-Options "nosniff"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
 }
 ```
@@ -367,12 +405,14 @@ and short enough to correct.
 location /_next/static/ {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header Cache-Control "public, max-age=31536000, immutable";
 }
 
 location ~ ^/(?:icon\.svg|favicon\.ico|apple-icon\.png)$ {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header Cache-Control "public, max-age=86400";
 }
 ```
@@ -470,22 +510,26 @@ location /media/ {
     alias /srv/posvoji/media/;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Content-Type-Options "nosniff" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
     location /media/animals/ {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header X-Content-Type-Options "nosniff" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
     location /media/shelter-logos/ {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header X-Content-Type-Options "nosniff" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
     location /media/share/ {
         add_header Referrer-Policy "strict-origin-when-cross-origin" always;
         add_header X-Content-Type-Options "nosniff" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         add_header Cache-Control "public, max-age=3600";
     }
 }
@@ -542,6 +586,7 @@ posvoji.si {
     header {
         Referrer-Policy "strict-origin-when-cross-origin"
         X-Content-Type-Options "nosniff"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
     }
 }
 ```

@@ -27,11 +27,12 @@ the concurrent-token race is a smaller, inexpensive hardening fix.
 | P3 | 7: duplicate email hygiene | Admin creation and editing reject case-insensitive duplicate nonempty emails. An existing user can retain its own email. This is form validation, not a database uniqueness migration or a cleanup of existing duplicates. |
 | Onboarding | 4: Mala hiša | Still needs a verified institutional address. Do not guess one. |
 
-All changes above are prepared in the access-readiness branch, not deployed.
+The readiness changes are prepared in [PR #250](https://github.com/fresh55/posvoji/pull/250)
+and have not been deployed by this task.
 The email-change revocation fix is isolated in
 [PR #248](https://github.com/fresh55/posvoji/pull/248), commit `c6f1e98`, with its
-tests and operator documentation. It is separate from unrelated working-tree
-changes. The readiness branch builds on it.
+tests and operator documentation. It has been merged as `ed5cca8`, separately
+from unrelated working-tree changes. The readiness PR now targets `main`.
 
 ## Production observations from the earlier login audit
 

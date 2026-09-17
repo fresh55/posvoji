@@ -31,4 +31,8 @@ attribution: "Vir: Zavetišče Zonzani"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /psi/
+    - /macke/
+    - /zivali/
   excludePaths: []

@@ -3,9 +3,6 @@ import robotsParser from "robots-parser";
 
 const BACKOFF_BASE_MS = 2_000;
 const BACKOFF_CAP_MS = 60_000;
-// Operator policy: bound server retry deferrals to one day, without sleeping
-// through a whole crawl. Ordinary server delays below this ceiling are honored.
-export const MAX_RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
 export const ROBOTS_FAILURE_TTL_MS = 5 * 60 * 1000;
 // Longer waits defer the host instead of blocking this process.
 const MAX_INLINE_WAIT_MS = 60_000;
@@ -91,7 +88,8 @@ export function parseRetryAfter(
   const value = header.replace(/^[ \t]+|[ \t]+$/g, "");
   if (/^\d+$/.test(value)) {
     const ms = Number(value) * 1_000;
-    return Number.isSafeInteger(ms) ? Math.min(ms, MAX_RETRY_AFTER_MS) : undefined;
+    return Number.isSafeInteger(ms) && Number.isFinite(new Date(now + ms).getTime())
+      ? ms : undefined;
   }
   // RFC 9110 HTTP-date accepts IMF-fixdate and the two legacy forms. Do not
   // feed arbitrary strings ("-1", "1.5", ISO dates) to Date.parse.
@@ -113,15 +111,15 @@ export function parseRetryAfter(
   }
   const date = Date.parse(canonical);
   if (!Number.isFinite(date) || new Date(date).toUTCString() !== canonical) return undefined;
-  return Math.min(MAX_RETRY_AFTER_MS, Math.max(0, date - now));
+  return Math.max(0, date - now);
 }
 
 export function computeBackoffMs(
   attempt: number,
   retryAfterMs?: number,
 ): number {
-  if (retryAfterMs !== undefined && Number.isFinite(retryAfterMs) && retryAfterMs >= 0) {
-    return Math.min(retryAfterMs, MAX_RETRY_AFTER_MS);
+  if (retryAfterMs !== undefined && Number.isSafeInteger(retryAfterMs) && retryAfterMs >= 0) {
+    return retryAfterMs;
   }
   return Math.min(BACKOFF_BASE_MS * 2 ** attempt, BACKOFF_CAP_MS);
 }
@@ -416,9 +414,13 @@ export class PoliteClient {
   }
 
   private deferHost(host: string, wait: number): void {
+    const until = Date.now() + wait;
+    if (!Number.isSafeInteger(until) || !Number.isFinite(new Date(until).getTime())) {
+      throw new Error(`host ${host} requested an unrepresentable cooldown`);
+    }
     this.cooldowns.set(host, Math.max(
       this.cooldowns.get(host) ?? 0,
-      Math.min(Number.MAX_SAFE_INTEGER, Date.now() + wait),
+      until,
     ));
   }
 

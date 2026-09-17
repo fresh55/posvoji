@@ -42,6 +42,10 @@ attribution: "Vir: Zavetišče Horjul"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /iscejo-dom/
+  # Root-level animal slugs: fetch only the exact current discovery ref.
+  discoveredUrls: exact
   excludePaths:
     - /privat-oddaja/
     - /oddajo-lastniki/

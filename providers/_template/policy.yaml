@@ -26,5 +26,7 @@ attribution: "Vir: Example zavetišče"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /zivali
   excludePaths:
     - /privat-oddaja

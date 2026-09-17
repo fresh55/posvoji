@@ -8,7 +8,6 @@ import {
   ResponseBodyTooLargeError,
   computeBackoffMs,
   parseRetryAfter,
-  MAX_RETRY_AFTER_MS,
   ROBOTS_FAILURE_TTL_MS,
 } from "./polite-client";
 
@@ -36,10 +35,12 @@ describe("parseRetryAfter", () => {
   it.each(["-1", "1.5", "+12", "Infinity", "9".repeat(400), "2026-08-15", "Sun, 31 Feb 2026 08:49:37 GMT"])("rejects malformed or overflowing %s", (value) => {
     expect(parseRetryAfter(value)).toBeUndefined();
   });
-  it("bounds numeric and date deferrals without shortening ordinary waits", () => {
+  it("preserves valid numeric and date deferrals longer than a day", () => {
     const now = Date.parse("2026-08-15T12:00:00Z");
-    expect(parseRetryAfter("3153600000", now)).toBe(MAX_RETRY_AFTER_MS);
-    expect(parseRetryAfter(new Date(now + 7 * MAX_RETRY_AFTER_MS).toUTCString(), now)).toBe(MAX_RETRY_AFTER_MS);
+    expect(parseRetryAfter("172800", now)).toBe(48 * 3600000);
+    expect(parseRetryAfter("3153600000", now)).toBe(3153600000000);
+    expect(parseRetryAfter(new Date(now + 48 * 3600000).toUTCString(), now)).toBe(48 * 3600000);
+    expect(parseRetryAfter("9007199254740", now)).toBeUndefined();
     expect(parseRetryAfter(" 3600\t", now)).toBe(3600000);
   });
   it("accepts both legacy HTTP dates in UTC", () => {
@@ -65,7 +66,7 @@ describe("computeBackoffMs", () => {
   });
 
   it("does not shorten the server's Retry-After", () => {
-    expect(computeBackoffMs(0, 3_600_000)).toBe(3_600_000);
+    expect(computeBackoffMs(0, 48 * 3600000)).toBe(48 * 3600000);
   });
 });
 
@@ -412,13 +413,13 @@ describe("PoliteClient", () => {
       agent.assertNoPendingInterceptors();
     });
 
-    it("preserves a long robots cooldown across client instances and never fetches content", async () => {
+    it("preserves a 48-hour robots cooldown across client instances and never fetches content", async () => {
       const pool = agent.get(ORIGIN);
-      pool.intercept({ path: "/robots.txt" }).reply(429, "", { headers: { "retry-after": "3600" } });
+      pool.intercept({ path: "/robots.txt" }).reply(429, "", { headers: { "retry-after": "172800" } });
       const cooldowns = new Map<string, number>();
       const started = Date.now();
       await expect(client({ cooldowns }).get(`${ORIGIN}/cat`)).rejects.toThrow(/unreachable/);
-      expect(cooldowns.get(new URL(ORIGIN).host)).toBeGreaterThanOrEqual(started + 3600000);
+      expect(cooldowns.get(new URL(ORIGIN).host)).toBeGreaterThanOrEqual(started + 48 * 3600000);
       await expect(client({ cooldowns }).get(`${ORIGIN}/dog`)).rejects.toThrow(/unreachable/);
       agent.assertNoPendingInterceptors();
     });

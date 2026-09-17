@@ -10,22 +10,17 @@ import type {
 } from "@posvoji/provider-sdk";
 import {
   CRAWL_GENERATION,
-  REFRESH_WINDOW_DAYS,
   advanceCrawlState,
   crawlProviderIncrementally,
-  decideRefresh,
   forceFullRefresh,
   indexPrevious,
   policyFingerprint,
   readCrawlState,
-  refreshOffsetMs,
   reuseAnimal,
   type CrawlState,
 } from "./incremental-crawl";
 
 const PROVIDER_ID = "macja-hisa";
-const DAY_MS = 24 * 60 * 60_000;
-const WINDOW_MS = REFRESH_WINDOW_DAYS * DAY_MS;
 // The last full crawl, and the clock for a run 12 hours later.
 const CRAWLED_AT = "2026-08-27T06:00:00.000Z";
 const RUN_AT = "2026-08-27T18:00:00.000Z";
@@ -47,22 +42,6 @@ function policy(overrides: Record<string, unknown> = {}): ProviderPolicy {
 
 function ref(id: string): SourceAnimalRef {
   return { sourceAnimalId: id, sourceUrl: `https://example.si/${id}` };
-}
-
-// The start of the window this animal is in at `at`, which is where its
-// fetchedAt sits right after the run that read it. Every animal has its own
-// offset, so a test that needs one to be freshly read (or freshly due) has to
-// ask for its slot rather than pick a date and hope.
-function windowStart(id: string, at: number): number {
-  const offset = refreshOffsetMs(id, WINDOW_MS);
-  return Math.floor((at - offset) / WINDOW_MS) * WINDOW_MS + offset;
-}
-
-// A fetchedAt that the run at RUN_AT will call fresh, whatever slot the id got.
-function readThisWindow(id: string): string {
-  return new Date(
-    windowStart(`${PROVIDER_ID}:${id}`, Date.parse(RUN_AT)),
-  ).toISOString();
 }
 
 // source is composed rather than replaced, so a test can override one
@@ -163,180 +142,6 @@ function context(overrides: Record<string, unknown> = {}): ProviderContext {
 
 const now = (): Date => new Date(RUN_AT);
 
-describe("decideRefresh", () => {
-  it("fetches an animal we have never held", () => {
-    expect(
-      decideRefresh({ previous: undefined, now: Date.parse(RUN_AT) }),
-    ).toEqual({ fetch: true, reason: "new" });
-  });
-
-  it("reuses one whose detail page was read inside its window", () => {
-    const held = animal("1", { source: { fetchedAt: readThisWindow("1") } });
-    expect(decideRefresh({ previous: held, now: Date.parse(RUN_AT) })).toEqual({
-      fetch: false,
-      reason: "fresh",
-    });
-  });
-
-  it("fetches one whose window has elapsed", () => {
-    // Two windows past the last read: every offset has been crossed.
-    const later = Date.parse(CRAWLED_AT) + 2 * WINDOW_MS;
-    expect(decideRefresh({ previous: animal("1"), now: later })).toEqual({
-      fetch: true,
-      reason: "stale",
-    });
-  });
-
-  it("fetches every animal when the run forces it", () => {
-    expect(
-      decideRefresh({
-        previous: animal("1"),
-        now: Date.parse(RUN_AT),
-        forceAll: true,
-      }),
-    ).toEqual({ fetch: true, reason: "forced" });
-  });
-
-  it("fetches an animal that is not available whatever its window says", () => {
-    for (const status of ["reserved", "hold", "unknown", "adopted"] as const) {
-      expect(
-        decideRefresh({
-          previous: animal("1", { status }),
-          now: Date.parse(RUN_AT),
-        }),
-      ).toEqual({ fetch: true, reason: "status" });
-    }
-  });
-
-  it("fetches one whose fetchedAt cannot be read", () => {
-    // Not something Animal.parse would accept, and not something to reason
-    // about a window from either.
-    const broken: Animal = {
-      ...animal("1"),
-      source: { ...animal("1").source, fetchedAt: "not a date" },
-    };
-    expect(
-      decideRefresh({ previous: broken, now: Date.parse(RUN_AT) }),
-    ).toEqual({ fetch: true, reason: "stale" });
-  });
-
-  it("fetches one whose fetchedAt is in the future", () => {
-    // A host with a bad clock. Reading the page writes a usable date.
-    const future = animal("1", {
-      source: { fetchedAt: "2027-01-01T00:00:00.000Z" },
-    });
-    expect(
-      decideRefresh({ previous: future, now: Date.parse(RUN_AT) }),
-    ).toEqual({ fetch: true, reason: "stale" });
-  });
-
-  it("measures staleness from fetchedAt, not from lastSeenAt", () => {
-    // What a reused animal looks like on the next run: seen just now, read
-    // three days ago. The window has to notice the read, not the sighting.
-    const stale = animal("1", {
-      source: { fetchedAt: "2026-08-20T06:00:00.000Z", lastSeenAt: RUN_AT },
-    });
-    expect(
-      decideRefresh({ previous: stale, now: Date.parse(RUN_AT) }),
-    ).toEqual({ fetch: true, reason: "stale" });
-  });
-});
-
-describe("refreshOffsetMs", () => {
-  it("is deterministic and inside the window", () => {
-    const first = refreshOffsetMs("macja-hisa:3187", WINDOW_MS);
-    expect(refreshOffsetMs("macja-hisa:3187", WINDOW_MS)).toBe(first);
-    expect(first).toBeGreaterThanOrEqual(0);
-    expect(first).toBeLessThan(WINDOW_MS);
-  });
-
-  it("gives different animals different slots", () => {
-    const offsets = new Set(
-      Array.from({ length: 190 }, (_, i) =>
-        refreshOffsetMs(`macja-hisa:${i}`, WINDOW_MS),
-      ),
-    );
-    expect(offsets.size).toBe(190);
-  });
-});
-
-describe("the refresh schedule over time", () => {
-  // The bunching this exists to prevent: after one full crawl every animal
-  // carries the same fetchedAt, so a plain "older than three days" rule would
-  // hold everything back for six runs and then fetch all 190 in one.
-  it("spreads a provider's animals evenly across the window", () => {
-    const size = 190;
-    const runs = (REFRESH_WINDOW_DAYS * DAY_MS) / (12 * 60 * 60_000);
-    const fetchedAt = new Map<string, number>(
-      Array.from({ length: size }, (_, i) => [
-        `${PROVIDER_ID}:${i}`,
-        Date.parse(CRAWLED_AT),
-      ]),
-    );
-
-    const perRun: number[] = [];
-    for (let run = 1; run <= runs; run++) {
-      const at = Date.parse(CRAWLED_AT) + run * 12 * 60 * 60_000;
-      let fetched = 0;
-      for (const [id, last] of fetchedAt) {
-        const previous = animal(id.split(":")[1]!, {
-          source: { fetchedAt: new Date(last).toISOString() },
-        });
-        if (decideRefresh({ previous, now: at }).fetch) {
-          fetchedAt.set(id, at);
-          fetched++;
-        }
-      }
-      perRun.push(fetched);
-    }
-
-    // Six runs cover one window, so every animal comes due exactly once.
-    expect(perRun).toHaveLength(6);
-    expect(perRun.reduce((a, b) => a + b, 0)).toBe(size);
-    // An even spread is ~32 per run. Nothing like the 190-in-one-run the
-    // stagger exists to prevent, and no run left idle.
-    const even = size / runs;
-    for (const fetched of perRun) {
-      expect(fetched).toBeGreaterThan(even * 0.4);
-      expect(fetched).toBeLessThan(even * 1.6);
-    }
-  });
-
-  it("keeps the steady state at one read per animal per window", () => {
-    // Ten windows on from the spread above, the per-run count must not drift
-    // back into a bunch.
-    const size = 190;
-    const fetchedAt = new Map<string, number>(
-      Array.from({ length: size }, (_, i) => [
-        `${PROVIDER_ID}:${i}`,
-        // Already spread: each animal was last read at the start of its own
-        // window, which is where the run that read it left its fetchedAt.
-        windowStart(`${PROVIDER_ID}:${i}`, Date.parse(CRAWLED_AT)),
-      ]),
-    );
-
-    const perRun: number[] = [];
-    for (let run = 1; run <= 60; run++) {
-      const at = Date.parse(CRAWLED_AT) + run * 12 * 60 * 60_000;
-      let fetched = 0;
-      for (const [id, last] of fetchedAt) {
-        const previous = animal(id.split(":")[1]!, {
-          source: { fetchedAt: new Date(last).toISOString() },
-        });
-        if (decideRefresh({ previous, now: at }).fetch) {
-          fetchedAt.set(id, at);
-          fetched++;
-        }
-      }
-      perRun.push(fetched);
-    }
-
-    // 60 runs is 10 windows, so 10 reads per animal.
-    expect(perRun.reduce((a, b) => a + b, 0)).toBe(size * 10);
-    expect(Math.max(...perRun)).toBeLessThan((size / 6) * 1.6);
-  });
-});
-
 describe("reuseAnimal", () => {
   it("keeps firstSeenAt and fetchedAt, and moves lastSeenAt on", () => {
     const previous = animal("1");
@@ -396,6 +201,28 @@ describe("indexPrevious", () => {
 });
 
 describe("crawlProviderIncrementally", () => {
+  it("scopes root-level detail access to current discovery, never to held records", async () => {
+    const current = ref("1");
+    const ctx = context({ source: "https://example.si/adopt/", crawl: { intervalHours: 12, allowPaths: ["/adopt/"], discoveredUrls: "exact" } });
+    const calls: string[] = [];
+    ctx.client = {
+      async get(url: string) { calls.push(url); return { status: 200, body: "fixture", notModified: false, headers: {} }; },
+    } as ProviderContext["client"];
+    const { provider } = stubProvider([current]);
+    provider.discover = async (discoveryCtx) => {
+      await expect(discoveryCtx.client.get(current.sourceUrl)).rejects.toThrow(/outside/);
+      await discoveryCtx.client.get("/adopt/");
+      return [current];
+    };
+    provider.fetch = async (detailCtx, target) => {
+      await detailCtx.client.get(target.sourceUrl);
+      await expect(detailCtx.client.get(ref("2").sourceUrl)).rejects.toThrow(/outside/);
+      return { ref: target, fetchedAt: RUN_AT, data: null };
+    };
+    const result = await crawlProviderIncrementally(provider, ctx, { previous: [animal("1"), animal("2")], now });
+    expect(result).toMatchObject({ fetched: 1, reused: 0, fullRefresh: true });
+    expect(calls).toEqual(["https://example.si/adopt/", current.sourceUrl]);
+  });
   beforeEach(() => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -406,29 +233,28 @@ describe("crawlProviderIncrementally", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches what is new and reuses what is fresh", async () => {
-    const held = animal("1", { source: { fetchedAt: readThisWindow("1") } });
+  it("verifies both new and recently checked animals without a force flag", async () => {
+    const held = animal("1", { source: { fetchedAt: CRAWLED_AT } });
     const { provider, fetched } = stubProvider([ref("1"), ref("2")]);
     const result = await crawlProviderIncrementally(provider, context(), {
       previous: [held],
       now,
     });
 
-    expect(fetched).toEqual(["2"]);
+    expect(fetched).toEqual(["1", "2"]);
     expect(result).toMatchObject({
       listed: 2,
-      fetched: 1,
-      reused: 1,
-      fullRefresh: false,
+      fetched: 2,
+      reused: 0,
+      fullRefresh: true,
     });
-    // Both are present, and the reused one kept its own record.
+    // Both records come from their detail pages, including the recent one.
     expect(result.animals.map((a) => a.id)).toEqual([
       `${PROVIDER_ID}:1`,
       `${PROVIDER_ID}:2`,
     ]);
-    expect(result.animals[0]!.name).toBe("Luna");
-    expect(result.animals[0]!.source.fetchedAt).toBe(held.source.fetchedAt);
-    expect(result.animals[0]!.source.firstSeenAt).toBe(held.source.firstSeenAt);
+    expect(result.animals[0]!.name).toBe("Luna (fetched)");
+    expect(result.animals[0]!.source.fetchedAt).toBe(RUN_AT);
     expect(result.animals[0]!.source.lastSeenAt).toBe(RUN_AT);
     expect(result.animals[1]!.name).toBe("Luna (fetched)");
   });
@@ -445,25 +271,25 @@ describe("crawlProviderIncrementally", () => {
     expect(result).toMatchObject({ fetched: 3, reused: 0, fullRefresh: true });
   });
 
-  it("fetches a stale animal and reuses a fresh one in the same run", async () => {
+  it("verifies old and recent details in the same run", async () => {
     const stale = animal("1", {
       source: { fetchedAt: "2026-08-01T06:00:00.000Z" },
     });
-    const fresh = animal("2", { source: { fetchedAt: readThisWindow("2") } });
+    const fresh = animal("2", { source: { fetchedAt: CRAWLED_AT } });
     const { provider, fetched } = stubProvider([ref("1"), ref("2")]);
     await crawlProviderIncrementally(provider, context(), {
       previous: [stale, fresh],
       now,
     });
 
-    expect(fetched).toEqual(["1"]);
+    expect(fetched).toEqual(["1", "2"]);
   });
 
   it("does not reuse a record under a path the policy now excludes", async () => {
     const excluded = animal("1", {
       source: {
         sourceUrl: "https://example.si/privat-oddaja/1",
-        fetchedAt: readThisWindow("1"),
+        fetchedAt: CRAWLED_AT,
       },
     });
     const { provider } = stubProvider([
@@ -613,18 +439,18 @@ describe("crawlProviderIncrementally", () => {
     ]);
   });
 
-  it("does not read a listing it reused in full as a failed provider", async () => {
+  it("refreshes a previously complete listing without reporting failures", async () => {
     const { provider, fetched } = stubProvider([ref("1"), ref("2")]);
     const result = await crawlProviderIncrementally(provider, context(), {
       previous: [
-        animal("1", { source: { fetchedAt: readThisWindow("1") } }),
-        animal("2", { source: { fetchedAt: readThisWindow("2") } }),
+        animal("1", { source: { fetchedAt: CRAWLED_AT } }),
+        animal("2", { source: { fetchedAt: CRAWLED_AT } }),
       ],
       now,
     });
 
-    expect(fetched).toEqual([]);
-    expect(result).toMatchObject({ fetched: 0, reused: 2, fullRefresh: false });
+    expect(fetched).toEqual(["1", "2"]);
+    expect(result).toMatchObject({ fetched: 2, reused: 0, fullRefresh: true });
     expect(result.failedRefs).toEqual([]);
   });
 

@@ -15,6 +15,16 @@ export interface PolicyError {
   message: string;
 }
 
+// Enforce crawler coverage here without narrowing the shared policy schema.
+export function validateCrawlAllowlists(policies: readonly LoadedPolicy[]): PolicyError[] {
+  return crawlablePolicies(policies).flatMap(({ dir, policy }) => {
+    const paths = policy.crawl.allowPaths;
+    return paths === undefined || paths.length === 0 || paths.includes("/")
+      ? [{ dir, message: `provider "${policy.providerId}" needs nonempty crawl.allowPaths without a whole-site / grant` }]
+      : [];
+  });
+}
+
 // A manual provider is crawled by our own portal rather than by an adapter:
 // it has no entry in registry.ts, no crawl state and no detail pages, and its
 // animals arrive on the listings feed. Several loops in the pipeline turn on

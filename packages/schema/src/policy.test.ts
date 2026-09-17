@@ -14,6 +14,12 @@ const basePolicy = {
 };
 
 describe("ProviderPolicy", () => {
+  it("requires explicit request paths for discovered permalink exceptions", () => {
+    expect(ProviderPolicy.safeParse({ ...basePolicy, crawl: { intervalHours: 12, discoveredUrls: "exact" } }).success).toBe(false);
+    expect(ProviderPolicy.safeParse({ ...basePolicy, crawl: { intervalHours: 12, allowPaths: ["/adopt/"], discoveredUrls: "exact" } }).success).toBe(true);
+    expect(ProviderPolicy.safeParse({ ...basePolicy, crawl: { intervalHours: 12, allowPaths: ["/api/"], discoveredUrls: "publish-only" } }).success).toBe(false);
+    expect(ProviderPolicy.safeParse({ ...basePolicy, ingestion: "api", crawl: { intervalHours: 12, allowPaths: ["/api/"], discoveredUrls: "publish-only" } }).success).toBe(true);
+  });
   it("accepts a disabled provider without permission", () => {
     expect(ProviderPolicy.safeParse(basePolicy).success).toBe(true);
   });

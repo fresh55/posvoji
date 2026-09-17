@@ -43,6 +43,9 @@ attribution: "Vir: Zavetišče Maribor (Snaga)"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /posvoji-me/
+    - /zival/
   excludePaths:
     - /wp-admin/
     - /najdeni-pogresani/

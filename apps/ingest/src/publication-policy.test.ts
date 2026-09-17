@@ -8,6 +8,16 @@ import {
 } from "./publication-policy";
 
 const PROVIDER = "macja-hisa";
+it("retains discovered permalink records on failure but still applies origin and exclusions", () => {
+  const held = animal();
+  const rules = policies({ crawl: { intervalHours: 12, allowPaths: ["/adopt/"], discoveredUrls: "exact", excludePaths: ["/private/"] } });
+  const outside = animal({ source: { ...held.source, sourceUrl: "https://unrelated.example/animal/" } });
+  const excluded = animal({ source: { ...held.source, sourceUrl: "https://example.si/private/animal/" } });
+  const result = applyPublicationPolicy([held, outside, excluded], rules);
+  expect(result.animals).toEqual([held]);
+  expect(result.animals[0]!.source.fetchedAt).toBe(held.source.fetchedAt);
+  expect(result.dropped.reduce((sum, item) => sum + item.count, 0)).toBe(2);
+});
 it("drops carried records outside a newly declared allowlist without requiring an exclusion", () => {
   const result = applyPublicationPolicy([animal()], policies({ crawl: { intervalHours: 12, allowPaths: ["/dogs/"] } }));
   expect(result.animals).toEqual([]);

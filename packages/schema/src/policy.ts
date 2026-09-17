@@ -124,6 +124,10 @@ const ProviderPolicyShape = z.strictObject({
     excludePaths: z.array(CrawlExcludePath).default([]),
     // Omitted preserves the existing policy. An explicit empty list denies all.
     allowPaths: z.array(CrawlAllowPath).optional(),
+    // For catalogues whose animal permalinks have no dedicated path prefix.
+    // exact: only the current discovered ref may be fetched, never its siblings.
+    // publish-only: the API supplies records; public permalinks grant no requests.
+    discoveredUrls: z.enum(["exact", "publish-only"]).optional(),
   }),
 });
 
@@ -133,6 +137,21 @@ const ProviderPolicyShape = z.strictObject({
 // permission to ingest the shelter's catalogue.
 export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
   const granted = p.permission.status === "granted";
+
+  if (p.crawl.discoveredUrls && p.crawl.allowPaths === undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["crawl", "allowPaths"],
+      message: "discoveredUrls requires an explicit discovery/API allowlist",
+    });
+  }
+  if (p.crawl.discoveredUrls === "publish-only" && p.ingestion !== "api") {
+    ctx.addIssue({
+      code: "custom",
+      path: ["crawl", "discoveredUrls"],
+      message: "publish-only discovered URLs require API ingestion",
+    });
+  }
 
   if (p.enabled && !granted) {
     ctx.addIssue({

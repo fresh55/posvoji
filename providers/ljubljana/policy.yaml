@@ -43,6 +43,9 @@ attribution: "Vir: Zavetišče Ljubljana"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /posvoji-zival/v-zavetiscu
+    - /zivali/
   excludePaths:
     - /posvoji-zival/oddajo-lastniki
     - /posvoji-zival/postopek-posvojitve-od-lastnika

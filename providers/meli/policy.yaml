@@ -35,6 +35,9 @@ attribution: "Vir: Meli Center Repče"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /iscejo-dom/
+    - /portfolio/
   excludePaths:
     - /wp-admin/
     - /privat-oddaja/

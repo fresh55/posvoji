@@ -40,17 +40,17 @@ Start by copying `providers/_template`.
    schema rejects unknown fields on purpose.
 6. **Respect the policy.** Without granted permission, `images` must be
    `none` and `descriptions` must be `facts-only`; the schema enforces this.
-   Declare the known catalogue and detail paths in optional `crawl.allowPaths`.
-   Each entry permits that exact path (with or without its trailing slash) and
-   descendants, not similarly named siblings. An explicit empty list denies
-   all paths; omission preserves the existing origin/exclusion-only behavior.
-   The guard checks direct requests and every content redirect, including
-   `getBytes`, and publication checks carried records too. Unknown paths fail
-   closed. The SDK still handles robots.txt separately; these catalogue paths
-   do not grant access to private media or change robots rules. Migrate existing
-   providers one at a time after verifying their discovery and detail routes.
-   Keep private-listing paths in `crawl.excludePaths` as defence in depth;
-   exclusions win even inside an allowed path.
+   Enabled crawlers need `crawl.allowPaths`; missing, empty or `/` lists fail
+   validation. Manual providers are exempt. Each entry allows a path, with or
+   without its trailing slash, and its descendants. `excludePaths` wins.
+   These rules cover requests, redirects and retained records. Robots rules
+   still apply.
+
+   For animal pages outside a shared path, `discoveredUrls: exact` allows only
+   the current adoption listing's exact URL during its detail fetch. API providers
+   can use `publish-only` to publish links without granting request access.
+   Retained records grant no request access. Test discovery, pagination, API
+   fallback and blocked redirects with fixtures.
 
 ## Wiring it up
 

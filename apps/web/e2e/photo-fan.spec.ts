@@ -492,10 +492,10 @@ test("opens the contact sheet from the count, which is a control of its own", as
   // opens is said in a span inside it now, so the name cannot drift from the
   // mark it follows.
   await expect(count).toHaveAccessibleName(
-    `1 / ${KLOPKA_PHOTOS} Vse fotografije`,
+    `Foto 1 / ${KLOPKA_PHOTOS} Vse fotografije`,
   );
-  await expect(count).toHaveText(new RegExp(`^1 / ${KLOPKA_PHOTOS}\\b`));
-  await expect(badge(fan)).toHaveText(new RegExp(`^1 / ${KLOPKA_PHOTOS}\\b`));
+  await expect(count).toHaveText(new RegExp(`^Foto 1 / ${KLOPKA_PHOTOS}\\b`));
+  await expect(badge(fan)).toHaveText(new RegExp(`^Foto 1 / ${KLOPKA_PHOTOS}\\b`));
 
   // The mark stays 20px and its hit area is drawn past it, which a class alone
   // cannot prove: the badge clips its own children, and the pseudo-element was

@@ -1,7 +1,7 @@
 "use client";
 
-import { SlidersHorizontal, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { SlidersHorizontal, Undo2, X } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
@@ -62,26 +62,12 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
-/** Where the toolbar carries the order and the sort row in this sheet stands
- *  down (animal-filters.tsx draws the toolbar's copy on the complementary
- *  `max-md:hidden`). Exported because the dock's trigger has to disappear
- *  exactly where this row does: a sheet the `order` reason alone holds open
- *  has nothing left in it there, and the two answering the same question with
- *  two literals is how they drift apart. The same bargain `DESKTOP_QUERY`
- *  strikes in use-desktop-breakpoint-close.ts.
- *
- *  A width and a height, and it was the width alone. The hand-off only works
- *  while the toolbar the order moves to is on screen, and that toolbar gives
- *  up its pin under 32rem of viewport height (`short:static` in
- *  animal-filters.tsx), because on a phone held sideways the chrome was half
- *  the screen. A landscape phone is 844x390 or 932x430: wide enough for the
- *  toolbar's copy and short enough that it scrolls away with the page, so the
- *  order was measured at y = -1256 two rows into the grid while the sheet
- *  opened on a header reading "Filtri" and nothing else. Those viewports keep
- *  the row in here, which costs 78px of sheet body in that band and nothing
- *  at any other size. `not-short` is the exact complement of the variant the
- *  toolbar pins on (globals.css), so the two cannot half-exist. */
+/** Below lg exactly one placement offers sorting: the sheet below md or in a
+ *  short viewport, the sticky toolbar otherwise. Keep these complementary;
+ *  a short viewport lets the toolbar scroll away. The order-only trigger uses
+ *  the sheet's condition so the dock keeps the remaining way to sort. */
 export const SORT_ROW_HIDDEN = "md:not-short:hidden";
+export const SORT_TOOLBAR_HIDDEN = "max-md:hidden short:hidden";
 
 /** The caption over the sort row, and the row itself, each resolved once:
  *  every half is a constant, so there is one answer and no reason to ask cn
@@ -213,6 +199,8 @@ export function FilterSheet({
   onToggleProperty,
   onToggleManyProperties,
   onClearAll,
+  undo,
+  onOpenChange,
   className,
 }: {
   filters: Filters;
@@ -245,6 +233,10 @@ export function FilterSheet({
    *  open (use-animal-filters.ts). */
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
+  /** The same timed offer as the page row, reachable while this sheet covers it. */
+  undo?: () => void;
+  /** Keeps the page's Undo clock paused while the sheet owns that control. */
+  onOpenChange?: (open: boolean) => void;
   /** Merged onto the trigger, which is all this component draws until it is
    *  opened. The dock passes the query on which the sheet has nothing left in
    *  it (animal-filters.tsx); the content is portalled to <body> and takes
@@ -254,6 +246,12 @@ export function FilterSheet({
   const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // Release the page's paused clock if this instance unmounts, and report the
+  // current state if its observer changes while it is already open.
+  useEffect(() => {
+    onOpenChange?.(open);
+    return () => onOpenChange?.(false);
+  }, [open, onOpenChange]);
   // The caption's id, which the sort trigger takes half of its accessible name
   // from. Generated rather than written out: nothing stops a page from
   // mounting two of these, and a duplicate id points aria-labelledby at
@@ -273,6 +271,7 @@ export function FilterSheet({
   // paints the stale divider before the effect clears it.
   const close = () => {
     setOpen(false);
+    onOpenChange?.(false);
     setScrolled(false);
   };
 
@@ -305,7 +304,12 @@ export function FilterSheet({
   return (
     <Drawer
       open={open}
-      onOpenChange={(next) => (next ? setOpen(true) : close())}
+      onOpenChange={(next) => {
+        if (next) {
+          setOpen(true);
+          onOpenChange?.(true);
+        } else close();
+      }}
     >
       <DrawerTrigger asChild>
         <Button
@@ -345,9 +349,9 @@ export function FilterSheet({
         closeLabel={messages.close}
         // 72dvh, down from a full 85dvh takeover: the sheet used to open the
         // visitor onto a blind list with the count in the footer as the only
-        // feedback on what narrowed. The lower cap leaves the top card row
-        // showing behind the sheet, so a choice still reads against the grid
-        // it changed. Vaul snap points were tried instead and dropped: they
+        // feedback on what narrowed. The lower cap leaves part of the page
+        // visible behind the sheet; whether cards are in that strip depends
+        // on the page's scroll position. Vaul snap points were dropped: they
         // translate the full-height content down, and the pinned footer with
         // the primary action goes below the fold at the lower snap.
         //
@@ -385,10 +389,11 @@ export function FilterSheet({
               no toolbar around it to imply the rest. The word alone is enough
               here because the control under it names the order in full.
 
-              From md the toolbar behind this sheet carries the order itself:
-              that row is 720px wide at 768 with the tabs ending at 384, so the
-              control is on screen and one tap away instead of three, and a
-              copy in here would be the same control twice on one screen. The
+              From md in a taller viewport the toolbar carries the order.
+              On short landscape screens that toolbar scrolls away, so it
+              gives the order back to this row through the fixed dock.
+              SORT_TOOLBAR_HIDDEN and SORT_ROW_HIDDEN are complements: the
+              control has one placement below lg, including at scroll zero. The
               header's own pb-3 is what sits under the title once the pair is
               gone. The sheet is only reachable below lg, so this is the
               md-to-lg band, less the landscape phones in it: under 32rem of
@@ -534,7 +539,9 @@ export function FilterSheet({
               The folds are stored per section and the two surfaces share the
               store, which is right: a visitor who folded Velikost has said
               which sections they care about, and that answer is theirs on
-              both surfaces rather than per surface. */}
+              both surfaces. Initially active sections are revealed when this
+              sheet opens so a filtered link shows its selected options; a
+              manual fold still wins for the rest of that opening. */}
           <FilterGroupList
             filters={filters}
             groups={groups}
@@ -561,14 +568,20 @@ export function FilterSheet({
             <Button
               variant="ghost"
               className="h-11"
-              disabled={activeCount === 0}
-              onClick={onClearAll}
+              disabled={activeCount === 0 && !undo}
+              onClick={activeCount === 0 && undo ? undo : onClearAll}
+              aria-label={activeCount === 0 && undo ? messages.undoClearFilters : undefined}
             >
               {/* "Počisti filtre" and not "Počisti vse": the species pill on the
                   title line survives this press, and a button that says
                   everything while a dark pill beside it stays put is a button
                   that lies. */}
-              {messages.clearFilters}
+              {activeCount === 0 && undo ? (
+                <>
+                  <Undo2 className="size-4" aria-hidden />
+                  {messages.undoClear}
+                </>
+              ) : messages.clearFilters}
             </Button>
             <DrawerClose asChild>
               <Button className="h-11 flex-1">

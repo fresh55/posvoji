@@ -896,8 +896,21 @@ describe("photo gallery with nothing to draw", () => {
     ).toContain("absolute inset-0");
   });
 
-  it("takes the dots off a photo that never arrived", () => {
-    setup({ images: CACHED });
+  it.each(["card", "page"])("takes the %s gallery markers off a photo that never arrived", (surface) => {
+    if (surface === "card") setup({ images: CACHED });
+    else {
+      render(
+        <I18nProvider locale="sl">
+          <PhotoGallery
+            images={animal({ images: CACHED }).images}
+            name="Rex"
+            sizes="100vw"
+            onOpenPhoto={vi.fn()}
+            showCount
+          />
+        </I18nProvider>,
+      );
+    }
 
     const photo = document.querySelector('[data-slot="photo-frame"] img');
     const dots = () => document.querySelector('[data-slot="photo-dots"]');
@@ -908,6 +921,12 @@ describe("photo gallery with nothing to draw", () => {
     expect(dots()?.className).toContain(
       "group-has-[img[data-broken]]/photo:hidden",
     );
+    if (surface === "page") {
+      // The added exact count follows the merged dots' failure treatment.
+      expect(document.querySelector('[data-slot="photo-count"]')?.className).toContain(
+        "group-has-[img[data-broken]]/photo:hidden",
+      );
+    }
     expect(photo?.getAttribute("data-broken")).toBeNull();
 
     fireEvent.error(photo!);

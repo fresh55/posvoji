@@ -66,6 +66,13 @@ export const portalText = {
   loading: "Nalagam …",
   redirecting: "Preusmerjam na prijavo …",
   logout: "Odjava",
+  // Signing out discards this account's work across all shelters in the tab.
+  // The same question covers text drafts and files that are not uploaded yet.
+  logoutDraftsTitle: "Odjava z neshranjenim delom",
+  logoutDraftsLead:
+    "Ob odjavi se izbrišejo vsi neshranjeni popravki in nenaložene fotografije vašega računa v tem zavihku. Shranjeni podatki ostanejo.",
+  logoutKeep: "Ostani v portalu",
+  logoutDiscard: "Zavrzi in odjavi",
   publicPage: "Javna stran zavetišča",
   chooseShelter: "Izberite zavetišče",
   noSheltersTitle: "Račun še ni povezan z zavetiščem",
@@ -227,6 +234,11 @@ export const portalText = {
   // this animal has been kept anywhere.
   leaveNewLead:
     "Če zdaj odprete seznam, se vpisano izgubi in žival ne bo objavljena.",
+  // Explicit discard also revokes queued files; Back alone keeps their queue.
+  leavePhotosLead:
+    "Če zdaj odprete seznam, se vpisano in fotografije, ki še niso naložene, izgubijo. Že shranjeni podatki in fotografije ostanejo.",
+  leaveNewPhotosLead:
+    "Če zdaj odprete seznam, se vpisano in fotografije, ki še niso naložene, izgubijo. Žival ne bo objavljena.",
   // The nav above the form. "Kje ste" rather than "Drobtinice": the portal
   // says things in words a shelter uses.
   breadcrumbLabel: "Kje ste",
@@ -292,6 +304,8 @@ export const portalText = {
   // crawl as the thing to explain is the delay, because Posvoji.si is the
   // only place the animal appears at all.
   listingAdd: "Dodaj žival",
+  // The same action resumes an unfinished animal instead of starting over.
+  listingResume: "Nadaljuj dodajanje živali",
   listingsEmptyLead:
     "Vaše zavetišče živali objavlja tukaj. Dodajte prvo in v nekaj urah bo na Posvoji.si.",
   listingNewTitle: "Nova žival",
@@ -313,6 +327,8 @@ export const portalText = {
   photoAdd: "Dodaj fotografijo",
   photoLimits: "JPG, PNG ali WebP, do 15 MB.",
   photoPending: "Čaka na nalaganje",
+  // Files survive client navigation but cannot be restored after a reload.
+  photoUnsavedHint: "Te fotografije še niso shranjene. Preden zaprete ali osvežite stran, jih naložite ali odstranite.",
   photoRemove: "Odstrani",
   // The second tap is the confirm. A photo is one file and gets a question on
   // the button itself, not a dialog over the form the shelter is filling in.

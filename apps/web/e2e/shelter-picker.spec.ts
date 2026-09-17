@@ -89,7 +89,7 @@ test.describe("desktop", () => {
     await expect(chip).toHaveCount(1);
     const selectedName = await chip.getAttribute("title");
     expect(selectedName).toBeTruthy();
-    await expect(pickerTrigger(page)).toHaveAccessibleName(`Zavetišče: ${selectedName}. Odpri zemljevid.`);
+    await expect(pickerTrigger(page)).toHaveAccessibleName(`Zavetišče: ${selectedName}. Izberi zavetišča.`);
     await dialog.getByRole("button", { name: "Skrij seznam", exact: true }).click();
     await expect(dialog.locator("[data-picker-panel]")).toHaveAttribute("data-picker-panel", "collapsed");
     expect(await isReachable(donePill(page))).toBe(true);
@@ -97,7 +97,7 @@ test.describe("desktop", () => {
 
     await chip.click();
     await expect(chip).toHaveCount(0);
-    await expect(pickerTrigger(page)).toHaveAccessibleName("Zavetišče: Vsa zavetišča. Odpri zemljevid.");
+    await expect(pickerTrigger(page)).toHaveAccessibleName("Zavetišče: Vsa zavetišča. Izberi zavetišča.");
     await donePill(page).click();
     await expect(dialog).toBeHidden();
   });

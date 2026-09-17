@@ -40,7 +40,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { StatusBlock } from "@/components/portal/status-block";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
 import {
   firstDateFault,
@@ -507,9 +507,8 @@ function AnimalEditor({
                 where the summary is sticky and it rides along; pinned to the
                 bottom of the window below that, where the summary is at the
                 top of a page the shelter has scrolled away from.
-                The bottom padding carries the phone's home indicator, and the
-                page's own max-lg:pb-28 keeps the last row's tap-target
-                overlay clear of the bar. */}
+                The bar measures its height so PortalShell reserves room
+                after the footer, including the phone's home indicator. */}
             <EditorSaveBar
               saving={saving}
               cancelDisabled={saving}
@@ -525,7 +524,7 @@ function AnimalEditor({
             />
           </aside>
 
-          <div className="min-w-0 space-y-6 max-lg:pb-28">
+          <div className="min-w-0 space-y-6">
             {/* Above the rows it is about, and quiet: the shelter came back
                 to a form that is not the animal's saved state, and nothing
                 else on the page would say why. */}

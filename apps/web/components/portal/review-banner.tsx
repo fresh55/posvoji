@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Glyph } from "@/components/portal/glyph";
 import { fill, portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import type { PortalBulkState } from "@/hooks/use-portal-animals";
 import { cn } from "@/lib/utils";
 

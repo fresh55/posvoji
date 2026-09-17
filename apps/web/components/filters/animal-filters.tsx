@@ -25,6 +25,7 @@ import {
   FilterSheet,
   filterSheetReason,
   SORT_ROW_HIDDEN,
+  SORT_TOOLBAR_HIDDEN,
 } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
@@ -137,6 +138,7 @@ export function AnimalFilters({
   shelterSummaries,
   chips,
   undo,
+  onSheetOpenChange,
   resultCount,
   sort,
   onSpeciesChange,
@@ -178,6 +180,7 @@ export function AnimalFilters({
   chips: Chip[];
   /** Present only during the few seconds a clear can still be taken back. */
   undo?: () => void;
+  onSheetOpenChange?: (open: boolean) => void;
   resultCount: number;
   sort: AnimalSort;
   onSpeciesChange: (species: SpeciesFilter) => void;
@@ -193,15 +196,16 @@ export function AnimalFilters({
   // Asked of the sheet rather than worked out here: what is inside it is its
   // own business, and this file only needs to know whether to hang a button
   // on the dock for it (filter-sheet.tsx).
-  const sheetReason = filterSheetReason({
-    groups,
-    toggles,
-    goodWith,
-    home,
-    care,
-    resultCount,
-    activeCount,
-  });
+  const sheetReason =
+    filterSheetReason({
+      groups,
+      toggles,
+      goodWith,
+      home,
+      care,
+      resultCount,
+      activeCount,
+    }) ?? (undo ? "undo" : undefined);
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker
@@ -278,9 +282,9 @@ export function AnimalFilters({
           today against the dock's 58. That is not an argument for pinning it
           again. What the bar carries in that band is the species strip, the
           grid behind it is two cards tall, and a pinned 69px is a fifth of
-          the screen that never shows an animal. What the unpinning does cost
-          is the sort control: it rides this row from md, so the sheet keeps
-          its own sort row wherever this bar is unpinned (SORT_ROW_HIDDEN in
+          the screen that never shows an animal. Sorting stays in the sheet
+          wherever this bar is unpinned; the toolbar takes it over only when
+          it can remain reachable (SORT_ROW_HIDDEN and SORT_TOOLBAR_HIDDEN in
           filter-sheet.tsx).
 
           Pinned at lg too, now. A 503-animal grid puts the visitor far from
@@ -396,23 +400,11 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          {/* Drawn from md, which is not quite the complement of
-              SORT_ROW_HIDDEN any more, and written out rather than derived
-              from it either way: Tailwind reads class names out of the source
-              as literals, so a string built from another one is a class it
-              never generates.
-
-              The two overlap on a landscape phone on purpose. This copy is
-              here from md and the sheet's own row now stays under 32rem of
-              height, so at 844x390 both exist -- but this one is unpinned
-              there (`short:static` above) and gone two rows into the grid,
-              and the sheet is the surface a visitor can always reach. They
-              are never both on screen: the sheet opens over this row. What
-              the old rule got wrong was reading "the toolbar carries it from
-              md" off the width alone.
-
-              On the control itself, the way the sheet's copy wears the
-              complementary class, rather than a box around it. The trigger's own
+          {/* From md there is room for sorting beside the species strip,
+              except in a short viewport where this toolbar scrolls away.
+              SORT_TOOLBAR_HIDDEN complements the sheet's SORT_ROW_HIDDEN:
+              exactly one placement offers the order below lg. On the control
+              itself rather than a box around it: the trigger's own
               base is flex (ui/select.tsx), so a wrapper turning it back on at
               md with md:block would have flattened its icon, label and
               chevron into a stack. shrink-0 because the strip beside it is
@@ -421,7 +413,7 @@ export function AnimalFilters({
             <SortPicker
               value={sort}
               onChange={onSortChange}
-              className="shrink-0 max-md:hidden"
+              className={cn("shrink-0", SORT_TOOLBAR_HIDDEN)}
             />
           )}
         </div>
@@ -580,6 +572,8 @@ export function AnimalFilters({
               onToggleProperty={onToggleProperty}
               onToggleManyProperties={onToggleManyProperties}
               onClearAll={onClearAll}
+              undo={undo}
+              onOpenChange={onSheetOpenChange}
             />
           )}
           {shelters && (

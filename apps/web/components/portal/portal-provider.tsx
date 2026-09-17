@@ -10,10 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { ExternalLink, LogOut } from "lucide-react";
+import { ConfirmDialog } from "@/components/portal/confirm-dialog";
 import type { PortalListFilter } from "@/components/portal/list-tools";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import type { PortalListState, PortalSaveState } from "@/hooks/portal-list";
 import {
   usePortalAnimals,
@@ -29,7 +30,9 @@ import {
   usePortalSession,
   type PortalSessionState,
 } from "@/hooks/use-portal-session";
-import { clearAccountDrafts } from "@/lib/portal-drafts";
+import { clearAccountDrafts, hasAccountDrafts } from "@/lib/portal-drafts";
+import { clearAccountPhotoDrafts, hasAccountPhotoDrafts } from "@/hooks/portal-photo-drafts";
+import { useReturnFocus } from "@/hooks/use-return-focus";
 import {
   isManualShelter,
   type PortalAnimal,
@@ -54,7 +57,7 @@ export type PortalContextValue = {
   reloadSession: () => void;
   /** The signed-in address, which the stored drafts are filed under. */
   account: string | null;
-  /** True from the moment the shelter asks to leave until the page is gone. */
+  /** True once sign-out is confirmed, until the page is gone. */
   leaving: boolean;
   signOut: () => void;
   shelters: PortalShelter[];
@@ -140,7 +143,12 @@ function HeaderActions() {
           </a>
         </Button>
       )}
-      <Button variant="ghost" size="sm" disabled={leaving} onClick={signOut}>
+      <Button variant="ghost" size="sm" disabled={leaving} onClick={(event) => {
+        // Touch Safari need not focus a tapped button. Give a canceled
+        // confirmation a concrete place to return the focus.
+        event.currentTarget.focus();
+        signOut();
+      }}>
         <LogOut aria-hidden />
         {portalText.logout}
       </Button>
@@ -165,6 +173,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const { state: session, reload: reloadSession, signOut } = usePortalSession();
   const [chosen, setChosen] = useState<string | null>(linkedShelter);
   const [leaving, setLeaving] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
+  const logoutFocus = useReturnFocus();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PortalListFilter | null>(null);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -276,12 +286,24 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
   const leave = useCallback(() => {
     setLeaving(true);
+    setConfirmingLogout(false);
     // The drafts are this account's unsaved work and nobody else's. The next
     // account signed in to this tab must not inherit them, and the shelter
-    // asked to leave, so they go before the request that ends the session.
-    if (account) clearAccountDrafts(account);
+    // confirmed their removal, so they go before the session-ending request.
+    if (account) {
+      clearAccountDrafts(account);
+      clearAccountPhotoDrafts(account);
+    }
     void signOut();
   }, [account, signOut]);
+
+  function requestSignOut() {
+    if (account && (hasAccountDrafts(account) || hasAccountPhotoDrafts(account))) {
+      setConfirmingLogout(true);
+    } else {
+      leave();
+    }
+  }
 
   // Not memoised on purpose. This provider re-renders only when its own
   // state or one of its two list hooks changes, which is exactly when a
@@ -293,7 +315,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     reloadSession,
     account,
     leaving,
-    signOut: leave,
+    signOut: requestSignOut,
     shelters,
     active,
     activeShelter,
@@ -325,6 +347,19 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   return (
     <PortalContext value={value}>
       <PortalShell actions={<HeaderActions />}>{children}</PortalShell>
+      <ConfirmDialog
+        open={confirmingLogout}
+        onOpenChange={setConfirmingLogout}
+        title={portalText.logoutDraftsTitle}
+        lead={portalText.logoutDraftsLead}
+        keepLabel={portalText.logoutKeep}
+        confirmLabel={portalText.logoutDiscard}
+        onConfirm={() => {
+          logoutFocus.release();
+          leave();
+        }}
+        {...logoutFocus.props}
+      />
     </PortalContext>
   );
 }

@@ -57,3 +57,133 @@ test.describe("breakpoint survival", () => {
     await expect(content).toBeHidden();
   });
 });
+
+test.describe("approved mobile filter regressions", () => {
+  test.use({ viewport: { width: 320, height: 740 } });
+
+  test("keeps Undo visible and usable in the open sheet", async ({ page }) => {
+    await page.goto("/?velikost=majhna");
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    await page.clock.install();
+    await content.getByRole("button", { name: "Počisti filtre" }).click();
+
+    const undo = content.getByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    });
+    await expect(undo).toBeInViewport();
+    await undo.focus();
+    await page.clock.fastForward(8_000);
+    await expect(undo).toBeEnabled();
+    await expect(undo).toBeFocused();
+
+    // Closing starts the page's window. Reopening pauses that existing offer
+    // too, instead of letting its old deadline disable the footer button.
+    await content.getByRole("button", { name: "Zapri", exact: true }).click();
+    await expect(content).toBeHidden();
+    await page.clock.fastForward(2_000);
+    await expect(page.locator('[data-slot="mobile-filter-row"]').getByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    })).toBeVisible();
+    await filtriTrigger(page).click();
+    await expect(content).toBeVisible();
+    await expect(undo).toBeEnabled();
+    await undo.focus();
+    await page.clock.fastForward(8_000);
+    await expect(undo).toBeEnabled();
+    await undo.click();
+    await expect(page).toHaveURL(/velikost=majhna/);
+    await expect(content).toBeVisible();
+  });
+
+  test("opens the section selected by a filtered link and keeps manual folding available", async ({ page }) => {
+    await page.goto("/?velikost=majhna");
+    await page.evaluate(() => localStorage.setItem("posvoji:filter-sections", JSON.stringify({ size: false })));
+    await page.reload();
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    const size = content.getByRole("button", { name: /^Velikost/ });
+    await expect(size).toHaveAttribute("aria-expanded", "true");
+    await expect(content.getByRole("button", { name: /^Majhna, / })).toBeVisible();
+    await size.click();
+    await expect(size).toHaveAttribute("aria-expanded", "false");
+    await expect(size).toContainText("Majhna");
+  });
+
+  test("offers sorting in exactly one placement across the phone and tablet boundaries", async ({ page }) => {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 767, height: 513 },
+      { width: 768, height: 513 },
+      { width: 768, height: 512 },
+      { width: 844, height: 390 },
+      { width: 820, height: 1180 },
+      { width: 1024, height: 512 },
+      { width: 1180, height: 820 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+      const sheetSort = viewport.width < 768 || viewport.height <= 512;
+      if (viewport.width < 1024) {
+        const toolbarSort = page.locator('[data-slot="mobile-toolbar"] [role="combobox"]');
+        await expect(toolbarSort).toBeVisible({ visible: !sheetSort });
+        await filtriTrigger(page).click();
+        await expect(drawerContent(page).locator('[role="combobox"]')).toBeVisible({ visible: sheetSort });
+        await drawerContent(page).getByRole("button", { name: "Zapri", exact: true }).click();
+        await expect(drawerContent(page)).toBeHidden();
+      } else {
+        await expect(filtriTrigger(page)).toBeHidden();
+        await expect(page.getByRole("combobox")).toHaveCount(1);
+        await expect(page.getByRole("combobox")).toBeVisible();
+      }
+    }
+  });
+
+  test("wraps active filters in flow without a second horizontal scroller", async ({ page }) => {
+    await page.goto("/?spol=samec&starost=odrasel&velikost=majhna&lastnosti=sterilizacija");
+    const row = page.locator('[data-slot="mobile-filter-row"]');
+    await expect(row).toBeVisible();
+    await expect(row.getByRole("button", { name: /^Odstrani filter/ })).toHaveCount(4);
+    const layout = await row.evaluate((element) => {
+      const stops = [...element.querySelectorAll<HTMLElement>("[data-chip-stop]")];
+      const bounds = element.getBoundingClientRect();
+      return {
+        position: getComputedStyle(element).position,
+        markedStrips: element.querySelectorAll("[data-scroll-strip]").length,
+        overflow: element.scrollWidth > element.clientWidth,
+        wraps: new Set(stops.map((stop) => Math.round(stop.getBoundingClientRect().top))).size > 1,
+        fits: stops.every((stop) => stop.getBoundingClientRect().right <= bounds.right),
+      };
+    });
+    expect(layout).toEqual({ position: "static", markedStrips: 0, overflow: false, wraps: true, fits: true });
+    await row.getByRole("button", { name: "Odstrani filter Samec" }).click();
+    await expect(page).not.toHaveURL(/spol=/);
+  });
+
+  test("folds secondary sections and describes the shelter chooser accurately", async ({ page }) => {
+    await page.goto("/");
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    const size = content.getByRole("button", { name: /^Velikost/ });
+    await expect(size).toHaveAttribute("aria-expanded", "false");
+    await size.click();
+    await expect(size).toHaveAttribute("aria-expanded", "true");
+    const scope = content.locator('[data-slot="location-scope-row"]');
+    await expect(scope.getByRole("button", { name: /^Zavetišče:/ })).toHaveAccessibleName(/Izberi zavetišča/);
+    await expect(scope.getByText("Izberi", { exact: true })).toBeVisible();
+  });
+
+  test("keeps sorting reachable after the landscape toolbar scrolls away", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.goto("/");
+    await page.evaluate(() => window.scrollTo(0, 900));
+    const toolbar = page.locator('[data-slot="mobile-toolbar"]');
+    await expect(toolbar).not.toBeInViewport();
+    await filtriTrigger(page).click();
+    const sort = drawerContent(page).getByRole("combobox");
+    await expect(sort).toBeInViewport();
+    await sort.click();
+    await page.getByRole("option", { name: "Ime A–Ž" }).click();
+    await expect(sort).toContainText("Ime A–Ž");
+  });
+});

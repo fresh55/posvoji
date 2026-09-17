@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { PORTAL_LOGIN_PATH, PORTAL_PATH } from "@/hooks/use-portal-session";
 import { cn } from "@/lib/utils";
 

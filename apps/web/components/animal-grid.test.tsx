@@ -850,6 +850,66 @@ describe("how much of the grid is drawn", () => {
 });
 
 describe("the chips row inside the grid", () => {
+  it("offers and restores cleared filters inside the still-open mobile sheet", async () => {
+    window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+    renderGrid(ANIMALS);
+    fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Počisti filtre" }));
+    expect(query()).toBe("");
+    const undo = within(dialog).getByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    });
+    expect(undo.hasAttribute("disabled")).toBe(false);
+    expect(undo.closest(".overflow-y-auto")).toBeNull();
+
+    // The open sheet owns this button for as long as the visitor needs it.
+    // Expiring the page's window must not disable a focused footer control.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      undo.focus();
+      act(() => vi.advanceTimersByTime(UNDO_WINDOW_MS + 1000));
+      expect(undo.hasAttribute("disabled")).toBe(false);
+      expect(document.activeElement).toBe(undo);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    fireEvent.click(undo);
+    expect(query()).toBe("?zavetisce=muri,druga");
+    expect(dialog.getAttribute("data-state")).toBe("open");
+    expect(within(dialog).queryByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    })).toBeNull();
+  });
+
+  it("starts a fresh Undo window after the sheet closes", async () => {
+    window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+    renderGrid(ANIMALS);
+    fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
+    const dialog = await screen.findByRole("dialog");
+    const undoName = "Razveljavi čiščenje filtrov";
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Počisti filtre" }));
+      act(() => vi.advanceTimersByTime(UNDO_WINDOW_MS * 2));
+      fireEvent.click(within(dialog).getByRole("button", { name: "Zapri" }));
+      act(() => vi.advanceTimersByTime(UNDO_WINDOW_MS - 1));
+      expect(within(phoneRow()).getByRole("button", {
+        name: undoName,
+        hidden: true,
+      })).toBeTruthy();
+      act(() => vi.advanceTimersByTime(1));
+    } finally {
+      vi.useRealTimers();
+    }
+    await waitFor(() => expect(screen.queryAllByRole("button", {
+      name: undoName,
+    })).toHaveLength(0));
+  });
+
   it("takes a cleared filter state back, and drops the offer once something else is picked", () => {
     vi.useFakeTimers();
     try {

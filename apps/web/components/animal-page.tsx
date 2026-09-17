@@ -1,7 +1,10 @@
 import { ArrowRight, Printer } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
-import { ShareButton } from "@/components/animal-dialog/share-button";
+import {
+  AnimalPagePhotoProvider,
+  AnimalPageShareButton,
+} from "@/components/animal-page-photo-state";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { AnimalPageGallery } from "@/components/animal-page-gallery";
@@ -18,22 +21,11 @@ import { homePath, shelterPath } from "@/lib/shelter-path";
 import { animalSubtitle } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-/** The label names the destination, not the mechanism.
- *
- *  "Odpri med vsemi živalmi" described what the link does to the index (it
- *  opens this animal there) rather than where the visitor arrives, and read as
- *  a second call to action beside the shelter's. What the link is for is the
- *  way on from a shared link: someone who followed this page from a post has
- *  seen one animal and has no idea 502 others are behind it. Naming the list
- *  and counting it says that in the words the visitor would use, and it stops
- *  competing with "Odpri objavo pri zavetišču", which is the page's one real
- *  call to action.
- *
- *  A count and not a bare "back": there is nothing to go back to on a first
- *  visit from Facebook, and the number is the whole invitation. */
+/** The alias opens this animal inside the finder, so the label must say so.
+ *  The count still introduces the wider list to someone following a shared link. */
 const pageText = {
   sl: {
-    openInFinder: (count: number) => `Poglej vse živali (${count})`,
+    openInFinder: (count: number) => `Odpri v iskalniku živali (${count})`,
     /** The A4 sheet, for a notice board or a vet's waiting room. Drawn like
      *  the link above it and placed beside it, because it is the same kind of
      *  quiet way on: something a visitor may want after reading the page, not
@@ -41,7 +33,7 @@ const pageText = {
     printPoster: "Natisni plakat",
   },
   en: {
-    openInFinder: (count: number) => `See all animals (${count})`,
+    openInFinder: (count: number) => `Open in animal finder (${count})`,
     printPoster: "Print poster",
   },
 } satisfies Record<Locale, Record<string, string | ((count: number) => string)>>;
@@ -61,7 +53,8 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
   const text = pageText[locale];
   const reference = new Date(dataset.generatedAt);
   const indexHref = homePath(locale);
-  const hasPhoto = animal.images.length > 0;
+  const images = permittedPhotos(animal.images);
+  const hasPhoto = images.length > 0;
   // What crosses into the two client components below, which read no photo of
   // it. Handed the whole animal they serialized every image, its source URL,
   // its rights and its placeholder into this page's flight payload. See
@@ -127,72 +120,76 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             longest word in the description. At a 150% root font that put the
             document at 401px inside a 390px viewport, at 200% at 533px, and
             the whole page scrolled sideways. */}
-        <div className={cn("grid gap-8", hasPhoto && "sm:grid-cols-2 sm:items-start")}>
-        {hasPhoto && (
-          <AnimalPageGallery
-            // Resolved here rather than by the grid's client projection:
-            // this page carries one animal, and its gallery blurs whichever
-            // photo the visitor steps to, so every placeholder stays.
-            images={permittedPhotos(animal.images)}
-            name={animal.name}
-            // The hero is half of a two-column grid inside max-w-5xl, so
-            // it settles at 31rem once the page stops growing; between sm
-            // and there it is a little under half the viewport, and below
-            // sm it is the whole column.
-            sizes="(min-width: 1024px) 31rem, (min-width: 640px) 47vw, 100vw"
-            // rounded-xl and no border, which is the grid card's photo
-            // frame (PHOTO_FRAME in animal-card.tsx): a visitor arrives
-            // here from that photo, and the same picture should not change
-            // shape or grow an edge of its own on the way. bg-muted stays,
-            // as the ground the photo loads onto.
-            className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl bg-muted"
-          />
-        )}
+        <AnimalPagePhotoProvider count={images.length}>
+          <div
+            className={cn("grid gap-8", hasPhoto && "sm:grid-cols-2 sm:items-start")}
+          >
+            {hasPhoto && (
+              <AnimalPageGallery
+                // Resolved here rather than by the grid's client projection:
+                // this page carries one animal, and its gallery blurs whichever
+                // photo the visitor steps to, so every placeholder stays.
+                images={images}
+                name={animal.name}
+                // The hero is half of a two-column grid inside max-w-5xl, so
+                // it settles at 31rem once the page stops growing; between sm
+                // and there it is a little under half the viewport, and below
+                // sm it is the whole column.
+                sizes="(min-width: 1024px) 31rem, (min-width: 640px) 47vw, 100vw"
+                // rounded-xl and no border, which is the grid card's photo
+                // frame (PHOTO_FRAME in animal-card.tsx): a visitor arrives
+                // here from that photo, and the same picture should not change
+                // shape or grow an edge of its own on the way. bg-muted stays,
+                // as the ground the photo loads onto.
+                className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl bg-muted"
+              />
+            )}
 
-        <div className="min-w-0 space-y-5">
-          <div className="space-y-1">
-            <div className="flex items-start justify-between gap-3">
-              {/* The status beside the name, the way the dialog sets it: a
-                  reserved or adopted animal is a fact about the whole page
-                  and belongs on the line that names it. */}
-              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                  {animal.name ?? messages.unnamed}
-                </h1>
-                <StatusBadge status={animal.status} locale={locale} />
+            <div className="min-w-0 space-y-5">
+              <div className="space-y-1">
+                <div className="flex items-start justify-between gap-3">
+                  {/* The status beside the name, the way the dialog sets it: a
+                      reserved or adopted animal is a fact about the whole page
+                      and belongs on the line that names it. */}
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                    <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                      {animal.name ?? messages.unnamed}
+                    </h1>
+                    <StatusBadge status={animal.status} locale={locale} />
+                  </div>
+                  {/* A visitor who arrived by a shared link is the one most
+                      likely to pass it on again. */}
+                  <AnimalPageShareButton
+                    path={animalPath(animal, locale)}
+                    name={animal.name ?? messages.unnamed}
+                  />
+                </div>
+                {/* The species and the breed as one muted line, which is how the
+                    dialog prints them. This page drew the species as a filled
+                    pill on a line of its own above the outlined fact badges, so
+                    one fact wore a third badge style the dialog never used. */}
+                <p className="text-sm text-muted-foreground">
+                  {animalSubtitle(animal, locale)}
+                </p>
               </div>
-              {/* A visitor who arrived by a shared link is the one most
-                  likely to pass it on again. */}
-              <ShareButton
-                path={animalPath(animal, locale)}
-                name={animal.name ?? messages.unnamed}
+
+              <AnimalFacts animal={fields} reference={reference} />
+
+              {/* The shelter and the one call to action, in the column beside
+                  the photo rather than in a band under both. At 1440 the facts
+                  ended a third of the way down the photo and the box then ran
+                  the full width below it, so the page's one button sat under an
+                  empty half-column. Beside the photo the column reads as the
+                  dialog's card does: name, facts, then who to write to. Below
+                  sm there is one column and nothing moves. */}
+              <ShelterBlock
+                animal={fields}
+                logos={getShelterLogos()}
+                reference={reference}
               />
             </div>
-            {/* The species and the breed as one muted line, which is how the
-                dialog prints them. This page drew the species as a filled
-                pill on a line of its own above the outlined fact badges, so
-                one fact wore a third badge style the dialog never used. */}
-            <p className="text-sm text-muted-foreground">
-              {animalSubtitle(animal, locale)}
-            </p>
           </div>
-
-          <AnimalFacts animal={fields} reference={reference} />
-
-          {/* The shelter and the one call to action, in the column beside
-              the photo rather than in a band under both. At 1440 the facts
-              ended a third of the way down the photo and the box then ran
-              the full width below it, so the page's one button sat under an
-              empty half-column. Beside the photo the column reads as the
-              dialog's card does: name, facts, then who to write to. Below
-              sm there is one column and nothing moves. */}
-          <ShelterBlock
-            animal={fields}
-            logos={getShelterLogos()}
-            reference={reference}
-          />
-        </div>
-        </div>
+        </AnimalPagePhotoProvider>
       </div>
 
       {/* ?zival= is how a page outside the list asks the list to open

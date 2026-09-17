@@ -104,6 +104,7 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
   usePickerHistory(open, () => props.onOpenChange(false));
   // The photo that was clicked is where focus belongs on the way out.
   const returnFocus = useRef<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   // An animal with no permitted photo at all. The index is clamped above, so
   // this is the empty set and nothing else: there is no photograph to open a
   // full-screen view of, and no caller that asks for one.
@@ -123,6 +124,7 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
           <m.div style={{ opacity: scrimOpacity }} />
         </DialogOverlay>
         <DialogPrimitive.Content
+          ref={contentRef}
           data-slot="photo-lightbox"
           className="fixed inset-0 z-60 flex items-center justify-center p-4 outline-none sm:p-10"
           // React bubbles a portal's events up the component tree, not the
@@ -150,7 +152,12 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
             // marks those copies with, so one of them is no more restorable
             // than a detached node, and the fallback is the print standing in
             // front now, which is where the walk left the gallery.
-            const target = isStandingPrint(saved)
+            // Safari does not focus a button when it is tapped. In that case
+            // the saved body is connected, but cannot restore the photo's focus.
+            const target =
+              saved !== document.body &&
+              saved !== document.documentElement &&
+              isStandingPrint(saved)
               ? saved
               : returnFocusFallback?.();
             if (!target) return;
@@ -243,7 +250,12 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
                     <button
                       key={`${position}-${photo.src}`}
                       type="button"
-                      onClick={() => showPhoto(position)}
+                      onClick={() => {
+                        // Keep focus in this layer before its focused tile unmounts.
+                        // Otherwise the outer dialog's removal recovery can claim it.
+                        contentRef.current?.focus({ preventScroll: true });
+                        showPhoto(position);
+                      }}
                       aria-label={t("showPhoto", { n: position + 1 })}
                       // The tile the sheet was opened from. aria-current says
                       // it in the tree, the ring says it on the screen, and

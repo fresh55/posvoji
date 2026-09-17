@@ -14,6 +14,7 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { JsonLd } from "@/components/json-ld";
 import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
 import { ShelterAvatar } from "@/components/shelter-avatar";
+import { ShelterHours } from "@/components/shelter-hours";
 import { ShelterLocationMap } from "@/components/shelter-location-map";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
@@ -26,7 +27,7 @@ import {
 } from "@/lib/contact-links";
 import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
-import { getMessages, type Locale } from "@/lib/i18n";
+import { getMessages, translate, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
 import { MUTED_LINK } from "@/lib/link-styles";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
@@ -86,7 +87,7 @@ function ContactButton({
   external = false,
   children,
 }: {
-  channel: "phone" | "email" | "website";
+  channel: "phone" | "on-call" | "email" | "website";
   href: string;
   icon: LucideIcon;
   /** The finished accessible name, channel included. */
@@ -146,7 +147,7 @@ export function ShelterDetailPage({
   // hole under the name: an empty flex box still takes its gap out of the
   // stack above it.
   const hasContacts = Boolean(
-    shelter.phone || shelter.email || shelter.website,
+    shelter.phone || shelter.onCallPhone || shelter.email || shelter.website,
   );
 
   return (
@@ -294,6 +295,16 @@ export function ShelterDetailPage({
                     {shelter.phone}
                   </ContactButton>
                 )}
+                {shelter.onCallPhone && (
+                  <ContactButton
+                    channel="on-call"
+                    href={telHref(shelter.onCallPhone)}
+                    icon={Phone}
+                    label={translate(locale, "muniCallOnCall", { phone: shelter.onCallPhone })}
+                  >
+                    {translate(locale, "muniCallOnCall", { phone: shelter.onCallPhone })}
+                  </ContactButton>
+                )}
                 {shelter.email && (
                   <ContactButton
                     channel="email"
@@ -324,6 +335,12 @@ export function ShelterDetailPage({
                   </ContactButton>
                 )}
               </div>
+            )}
+
+            {shelter.hours && (
+              <ul>
+                <ShelterHours hours={shelter.hours} label={messages.muniHours} />
+              </ul>
             )}
 
             {/* Only once there is a point to explain. A shelter that shares

@@ -358,6 +358,10 @@ export function AnimalDialog({
   // none. What the visitor left behind is the card they clicked, kept for the
   // close that finds no card to go back to (see onCloseAutoFocus).
   const returnFocus = useRef<HTMLElement | null>(null);
+  const lightboxOpen = useRef(false);
+  const trackLightbox = useCallback((open: boolean) => {
+    lightboxOpen.current = open;
+  }, []);
   // The closing animation still needs something to draw, and by then the
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
@@ -499,6 +503,7 @@ export function AnimalDialog({
   // page key in the share sheet's link field stepped to the next animal and
   // took the sheet down with it.
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (lightboxOpen.current) return;
     if (event.key !== "PageUp" && event.key !== "PageDown") return;
     if (!event.currentTarget.contains(event.target as Node)) return;
     const target = event.key === "PageUp" ? previousId : nextId;
@@ -703,6 +708,7 @@ export function AnimalDialog({
                   initialIndex={askedPhoto}
                   onIndexChange={reportPhoto}
                   holdFrontPrint={holdFront}
+                  onLightboxOpenChange={trackLightbox}
                 />
               </m.div>
 

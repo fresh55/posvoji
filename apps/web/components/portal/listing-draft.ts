@@ -31,6 +31,9 @@ import {
   type ChoiceKey as CommonChoiceKey,
 } from "./draft-fields";
 
+/** One new animal per account and shelter; saved listing IDs are UUIDs. */
+export const NEW_DRAFT_ID = "nova";
+
 export type Draft = AnimalDraftFields & {
   species: PortalSpecies | null;
   status: PortalStatus;

@@ -16,6 +16,7 @@ const MOBILE_SPECS = [
   // that arrives as a tap; a desktop browser at a phone's width has neither.
   "shelter-picker-touch.spec.ts",
   "filter-drawer-mobile.spec.ts",
+  "portal-mobile.spec.ts",
   "deep-link-filters.spec.ts",
   "incremental-grid.spec.ts",
   // The phone fan is the layout below sm, and its swipe arrives as a touch

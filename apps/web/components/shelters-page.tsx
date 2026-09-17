@@ -20,13 +20,16 @@ import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
-import { PAGE_TITLE } from "@/lib/link-styles";
+import { PAGE_TITLE, MUTED_LINK } from "@/lib/link-styles";
+import { CONTACT_EMAIL } from "@/lib/site";
+import { mailtoHref } from "@/lib/contact-links";
 
 const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
     lead: "Kontakti slovenskih zavetišč na enem mestu.",
     permissionNote: "Objave živali dodamo z dovoljenjem zavetišč.",
+    join: "Ste zavetišče in se želite vključiti? Pišite na",
     lookupLink: "Najdena žival? Poišči pomoč po občini",
     censusLabel: "Pregled zavetišč",
     inRegistry: "v registru",
@@ -43,6 +46,7 @@ const pageText = {
     title: "Shelters across Slovenia",
     lead: "Contact details for Slovenian animal shelters in one place.",
     permissionNote: "Animal listings are published with each shelter’s permission.",
+    join: "Would your shelter like to join? Email",
     lookupLink: "Found an animal? Find help by municipality",
     censusLabel: "Shelter overview",
     inRegistry: "in the registry",
@@ -284,6 +288,12 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 </li>
               ))}
           </ul>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {text.join}{" "}
+            <a href={mailtoHref(CONTACT_EMAIL)} className={MUTED_LINK}>
+              {CONTACT_EMAIL}
+            </a>.
+          </p>
         </div>
       </div>
 

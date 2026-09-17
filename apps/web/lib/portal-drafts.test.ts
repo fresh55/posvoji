@@ -9,6 +9,7 @@ import {
   draftIds,
   draftKey,
   draftValueDiffers,
+  hasAccountDrafts,
   readDraft,
   resumeDraft,
   subscribeDrafts,
@@ -140,6 +141,24 @@ describe("draftIds", () => {
       throw new Error("SecurityError");
     });
     expect(draftIds("bruno@example.com", "ljubljana")).toEqual(new Set());
+  });
+});
+
+describe("hasAccountDrafts", () => {
+  it("finds an account's work across shelters without including other accounts or malformed keys", () => {
+    writeDraft("other-fixture", "shelter", "one", { name: "Other" });
+    window.sessionStorage.setItem(`${PORTAL_DRAFT_PREFIX}fixture/broken`, "{}");
+    expect(hasAccountDrafts("fixture")).toBe(false);
+    writeDraft("fixture", "former-shelter", "one", { name: "Draft" });
+    expect(hasAccountDrafts("fixture")).toBe(true);
+    clearAccountDrafts("fixture");
+    expect(hasAccountDrafts("fixture")).toBe(false);
+  });
+
+  it("does not throw when session storage is unavailable", () => {
+    vi.spyOn(Storage.prototype, "key").mockImplementation(() => { throw new Error("blocked"); });
+    writeDraft("fixture", "shelter", "one", { name: "Draft" });
+    expect(hasAccountDrafts("fixture")).toBe(false);
   });
 });
 

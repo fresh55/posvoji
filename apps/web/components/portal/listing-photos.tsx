@@ -1,7 +1,7 @@
 import { FieldError } from "@/components/portal/notice";
 import { choiceCard, hintId } from "@/components/portal/portal-fields";
 import { fill, portalText } from "@/components/portal/portal-text";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { type PortalListingPhoto } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
 import { ImagePlus, LoaderCircle, RefreshCw } from "lucide-react";
@@ -53,7 +53,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
           {panel.stored.map((photo, index) => {
             const confirm = panel.removing === photo.id;
             return (
-              <figure key={photo.id} className="space-y-1">
+              <figure key={photo.id} className="min-w-0 space-y-1">
                 {/* The API host is not one next/image knows, and the stored
                     copy is already capped at 2048px. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -80,7 +80,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                   }
                   onClick={() => panel.onRemove(photo.id)}
                   className={cn(
-                    "w-full font-normal text-muted-foreground hover:text-foreground",
+                    "h-auto w-full whitespace-normal py-1 font-normal text-muted-foreground hover:text-foreground",
                     confirm && "text-destructive hover:text-destructive",
                   )}
                 >
@@ -93,7 +93,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
           })}
 
           {panel.pending.map((item) => (
-            <figure key={item.key} className="space-y-1">
+            <figure key={item.key} className="min-w-0 space-y-1">
               {/* A local object URL; nothing to optimise. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -108,20 +108,20 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                 <div className="space-y-1">
                   <p
                     role="alert"
-                    className="text-2xs leading-tight text-destructive"
+                    className="break-words text-xs leading-snug text-destructive [overflow-wrap:anywhere]"
                   >
                     {fill(portalText.photoUploadFailed, {
                       name: item.file.name,
                     })}
                   </p>
-                  <div className="flex gap-1">
+                  <div className="flex flex-col gap-1">
                     <Button
                       type="button"
                       variant="outline"
                       size="xs"
                       disabled={panel.busy || !panel.storable}
                       onClick={() => panel.onRetry(item)}
-                      className="flex-1"
+                      className="h-auto w-full whitespace-normal py-1"
                     >
                       <RefreshCw aria-hidden />
                       {portalText.photoRetry}
@@ -132,7 +132,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                       size="xs"
                       disabled={panel.busy}
                       onClick={() => panel.onDrop(item)}
-                      className="font-normal text-muted-foreground hover:text-foreground"
+                      className="w-full font-normal text-muted-foreground hover:text-foreground"
                     >
                       {portalText.photoRemove}
                     </Button>
@@ -191,6 +191,11 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
           >
             <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
             {fill(portalText.photoUploading, panel.uploading)}
+          </p>
+        )}
+        {panel.pending.length > 0 && (
+          <p role="status" className="mt-2 text-sm text-muted-foreground">
+            {portalText.photoUnsavedHint}
           </p>
         )}
       </div>

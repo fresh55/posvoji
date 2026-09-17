@@ -30,7 +30,8 @@ import {
   type PortalListing,
   type PortalShelter,
 } from "@/lib/portal-api";
-import { writeDraft } from "@/lib/portal-drafts";
+import { hasAccountDrafts, readDraft, writeDraft } from "@/lib/portal-drafts";
+import { clearAccountPhotoDrafts, photoDraftIds, updatePhotoDraft } from "@/hooks/portal-photo-drafts";
 
 // Only the calls the workspace makes are stubbed; PortalError and
 // isUnauthorized stay the real ones, because the hooks branch on them.
@@ -62,12 +63,16 @@ Element.prototype.scrollIntoView = vi.fn();
 afterEach(() => {
   cleanup();
   restoreNavigation();
+  clearAccountPhotoDrafts(SESSION.email);
+  clearAccountPhotoDrafts("another-fixture-account");
 });
 
 beforeEach(() => {
   // A draft outlives the page it was typed on, so every test starts in a tab
   // that has never been used.
   window.sessionStorage.clear();
+  URL.revokeObjectURL = vi.fn();
+  clearAccountPhotoDrafts("info@zavetisce.si");
   vi.mocked(fetchSession).mockReset();
   vi.mocked(fetchAnimals).mockReset();
   vi.mocked(fetchListings).mockReset();
@@ -415,6 +420,36 @@ describe("a shelter that writes its own listings", () => {
     expect(screen.getByText(portalText.draftBadge)).toBeTruthy();
   });
 
+  it("keeps a photo-only draft when sign-out is canceled and clears it only after confirmation", async () => {
+    signIn(MANUAL);
+    vi.mocked(fetchListings).mockResolvedValue([]);
+    updatePhotoDraft(
+      { account: SESSION.email, shelter: MANUAL.slug, id: "nova" },
+      () => [{ key: 1, file: new File(["photo"], "fixture.jpg"), previewUrl: "blob:fixture", failed: false }],
+    );
+    renderWorkspace();
+    const resume = await screen.findByRole("link", { name: portalText.listingResume });
+    expect(resume.getAttribute("href")).toBe("/portal/zival?zavetisce=johanca&nova=1");
+    captureNavigation();
+    fireEvent.click(screen.getByRole("button", { name: portalText.logout }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(dialog.textContent).toContain(portalText.logoutDraftsLead);
+    expect(logout).not.toHaveBeenCalled();
+    expect(photoDraftIds(SESSION.email, MANUAL.slug)).toEqual(["nova"]);
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: portalText.logoutKeep }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(photoDraftIds(SESSION.email, MANUAL.slug)).toEqual(["nova"]);
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: portalText.logout }));
+    fireEvent.click(screen.getByRole("button", { name: portalText.logoutDiscard }));
+    await waitFor(() => expect(logout).toHaveBeenCalled());
+    expect(photoDraftIds(SESSION.email, MANUAL.slug)).toEqual([]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:fixture");
+  });
+
   it("filters the listing cards by name", async () => {
     signIn(MANUAL);
     vi.mocked(fetchListings).mockResolvedValue([
@@ -578,12 +613,68 @@ describe("work left unsaved on an animal's own page", () => {
     const replace = captureNavigation();
     fireEvent.click(screen.getByRole("button", { name: portalText.logout }));
 
+    expect(logout).not.toHaveBeenCalled();
+    expect(hasAccountDrafts(ACCOUNT)).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: portalText.logoutDiscard }));
+
     // The next account to sign in to this tab must not inherit a stranger's
     // half-written edits.
     expect(window.sessionStorage.length).toBe(0);
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith(PORTAL_LOGIN_PATH);
     });
+  });
+});
+
+describe("sign-out across draft scopes", () => {
+  it("confirms work outside the current shelter and clears only the signed-in account", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([]);
+    writeDraft(SESSION.email, "former-shelter", "one", { name: "Unfinished" });
+    writeDraft(SESSION.email, "another-shelter", "two", { name: "Still unfinished" });
+    writeDraft("another-fixture-account", "former-shelter", "one", { name: "Other account" });
+    for (const [account, key] of [[SESSION.email, 10], ["another-fixture-account", 11]] as const) {
+      updatePhotoDraft({ account, shelter: "former-shelter", id: "one" }, () => [{
+        key, file: new File(["photo"], "fixture.jpg"), previewUrl: `blob:scope-${key}`, failed: true,
+      }]);
+    }
+    renderWorkspace();
+    const signOut = await screen.findByRole("button", { name: portalText.logout });
+    signOut.focus();
+    fireEvent.click(signOut);
+    expect(logout).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: portalText.logoutKeep }));
+    await waitFor(() => expect(document.activeElement).toBe(signOut));
+    expect(hasAccountDrafts(SESSION.email)).toBe(true);
+    expect(photoDraftIds(SESSION.email, "former-shelter")).toEqual(["one"]);
+
+    captureNavigation();
+    fireEvent.click(signOut);
+    fireEvent.click(screen.getByRole("button", { name: portalText.logoutDiscard }));
+    await waitFor(() => expect(logout).toHaveBeenCalledOnce());
+    expect(hasAccountDrafts(SESSION.email)).toBe(false);
+    expect(photoDraftIds(SESSION.email, "former-shelter")).toEqual([]);
+    expect(readDraft("another-fixture-account", "former-shelter", "one")).toEqual({ name: "Other account" });
+    expect(photoDraftIds("another-fixture-account", "former-shelter")).toEqual(["one"]);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:scope-10");
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith("blob:scope-11");
+  });
+
+  it("signs out directly when only another account has drafts", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([]);
+    writeDraft("another-fixture-account", "former-shelter", "one", { name: "Other account" });
+    updatePhotoDraft({ account: "another-fixture-account", shelter: "former-shelter", id: "one" }, () => [{
+      key: 20, file: new File(["photo"], "fixture.jpg"), previewUrl: "blob:other", failed: false,
+    }]);
+    renderWorkspace();
+    const signOut = await screen.findByRole("button", { name: portalText.logout });
+    captureNavigation();
+    fireEvent.click(signOut);
+    await waitFor(() => expect(logout).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(hasAccountDrafts("another-fixture-account")).toBe(true);
+    expect(photoDraftIds("another-fixture-account", "former-shelter")).toEqual(["one"]);
   });
 });
 

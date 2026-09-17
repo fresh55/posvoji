@@ -12,6 +12,7 @@ import {
 } from "@/components/portal/editor-chrome";
 import { Glyph } from "@/components/portal/glyph";
 import {
+  NEW_DRAFT_ID,
   birthDateFault,
   draftFrom,
   inputOf,
@@ -44,7 +45,7 @@ import { fill, portalText } from "@/components/portal/portal-text";
 import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
 import { ListingStatusBlock } from "@/components/portal/status-block";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
 import { useListingPhotos } from "@/hooks/use-listing-photos";
 import {
@@ -69,13 +70,6 @@ import type {
 import { ExternalLink } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
-
-/**
- * Where a new listing's typed work is filed. A listing id is a uuid, so
- * nothing that exists can collide with it, and the shelter can only be writing
- * one new animal at a time per shelter.
- */
-const NEW_DRAFT_ID = "nova";
 
 /**
  * One manual listing, edited on the same page frame a crawled animal is.
@@ -159,7 +153,7 @@ export function ListingEditorPage() {
       // A different listing is a different form with a different draft. The
       // one that is being written keeps its key across the POST, so replacing
       // the address with the created id does not remount the form.
-      key={writing || !listingId ? NEW_DRAFT_ID : listingId}
+      key={`${account}/${activeShelter.slug}/${writing || !listingId ? NEW_DRAFT_ID : listingId}`}
       listing={listing}
       account={account}
       shelter={activeShelter}
@@ -258,7 +252,10 @@ function ListingEditor({
     retry,
     dropPending,
     removePhoto,
+    discardPending,
+    transferPending,
   } = useListingPhotos({
+    scope: { account, shelter: shelter.slug, id: draftId },
     listingId: listing?.id,
     actions,
     startSave: () => slot.startSave("photo"),
@@ -309,16 +306,18 @@ function ListingEditor({
   // Pending files are work too: a failed upload is a photo the shelter still
   // means to add, and a new listing's files have nowhere to be yet.
   //
-  // They are also the one kind of work this page cannot keep. A File is not
-  // JSON and an object URL dies with the document, so a reload or a Back drops
-  // whatever has not been stored. That is why leaving with one pending asks
-  // first, and why the typed half below is mirrored to storage on every change.
+  // Their tab-local queue survives client-side Back. Leaving the document
+  // with files pending also triggers the browser's unsaved-work warning.
   const unsaved = typedWork || unreadableWork || pending.length > 0;
   // An unusable box is not a change, but Shrani has to be pressable for the
   // form to point at it and say what is wrong.
   const canSave = listing ? typedWork || unreadableWork : missing === null;
-  const busy = submitting || uploading !== null;
   const saving = saveState.status === "saving";
+  // The provider's slot survives Back and a remount while a POST/PUT is in
+  // flight. The local submitting flag alone would let that second editor
+  // submit the same new listing or change the queued files mid-create.
+  const busy = submitting || saving || uploading !== null;
+  const formSaving = submitting || (!listing && saving);
   const name = listing?.name ?? portalText.listingNewTitle;
   const status =
     listing && isPortalStatus(listing.status) ? listing.status : null;
@@ -404,6 +403,7 @@ function ListingEditor({
     // The control the focus would go back to is about to leave with the page.
     confirmFocus.release();
     setConfirming(false);
+    discardPending();
     clearOwnDraft();
     onDone();
   }
@@ -425,6 +425,7 @@ function ListingEditor({
     setSubmitting(true);
     try {
       if (await actions.archive(listing.id)) {
+        discardPending();
         clearOwnDraft();
         onDone();
       }
@@ -463,6 +464,7 @@ function ListingEditor({
       const saved = await actions.create(input);
       if (!saved) return;
       clearOwnDraft();
+      transferPending(saved.id);
       onCreated(saved);
       // The listing exists now whatever happens to its photos, so from here
       // the page is editing it. A failed file stays on screen with its retry
@@ -609,10 +611,10 @@ function ListingEditor({
                 the summary is sticky and it rides along; pinned to the bottom
                 of the window below that, where the summary is at the top of a
                 page the shelter has scrolled away from.
-                The bottom padding carries the phone's home indicator, and the
-                page's own max-lg:pb-28 keeps the last row clear of the bar. */}
+                The bar measures its height so PortalShell reserves room
+                after the footer, including the phone's home indicator. */}
             <EditorSaveBar
-              saving={submitting}
+              saving={formSaving}
               cancelDisabled={busy}
               saveDisabled={busy || !canSave}
               error={
@@ -649,7 +651,7 @@ function ListingEditor({
             )}
           </aside>
 
-          <div className="min-w-0 space-y-6 max-lg:pb-28">
+          <div className="min-w-0 space-y-6">
             {/* Above the rows it is about, and quiet: the shelter came back to
                 a form that is not the listing's saved state, and nothing else
                 on the page would say why. */}
@@ -667,7 +669,7 @@ function ListingEditor({
               markBox={boxes.mark}
               refused={refused}
               refusedErrorId={refusedErrorId}
-              disabled={submitting}
+              disabled={formSaving}
               photos={{
                 stored: listing?.photos ?? [],
                 pending,
@@ -691,9 +693,11 @@ function ListingEditor({
         open={confirming}
         onOpenChange={setConfirming}
         title={portalText.leaveTitle}
-        // A listing that has never been saved has no status behind it, so the
-        // sentence that says the status was kept would not be true of it.
-        lead={listing ? portalText.leaveLead : portalText.leaveNewLead}
+        // Name the files that discard revokes as well as the typed fields.
+        // A new listing has no saved record to keep.
+        lead={pending.length > 0
+          ? (listing ? portalText.leavePhotosLead : portalText.leaveNewPhotosLead)
+          : (listing ? portalText.leaveLead : portalText.leaveNewLead)}
         keepLabel={portalText.keepEditing}
         confirmLabel={portalText.discardChanges}
         onConfirm={discard}

@@ -1,11 +1,15 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
+  badge,
+  countControl,
   dialog,
   edgePoint,
   expectPhoto,
   frontPrint,
   KLOPKA,
   KLOPKA_PHOTOS,
+  lightbox,
+  MIRNA,
   openFan,
   otherFan,
   print,
@@ -31,6 +35,121 @@ test("draws the phone fan and not the desktop one", async ({ page }) => {
   // so a phone never carries the desktop stage's prints, images and motion
   // values for nothing.
   await expect(otherFan(page, "phone")).toHaveCount(0);
+});
+
+test("fits the photo wording on both forms of count at 320px", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  for (const [locale, label, id, total, actionable] of [
+    ["sl", "Foto", MIRNA, 2, false],
+    ["sl", "Foto", KLOPKA, KLOPKA_PHOTOS, true],
+    ["en", "Photos", MIRNA, 2, false],
+    ["en", "Photos", KLOPKA, KLOPKA_PHOTOS, true],
+  ] as const) {
+    await page.goto(`${locale === "en" ? "/en" : "/"}?zival=${encodeURIComponent(id)}`);
+    const fan = page.locator('[data-slot="photo-fan"]');
+    await expect(fan).toBeVisible();
+    const mark = badge(fan);
+    await expect(mark).toHaveText(new RegExp(`^${label} 1 / ${total}`));
+    const layout = await mark.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      // The actionable form deliberately overflows with its ::after hit
+      // target. Measure the visible text, not scrollWidth including that area.
+      const textBoxes = Array.from(element.childNodes)
+        .filter((node) => !(node instanceof Element && node.classList.contains("sr-only")))
+        .flatMap((node) => {
+          const range = document.createRange();
+          range.selectNode(node);
+          return Array.from(range.getClientRects());
+        });
+      return {
+        fits: textBoxes.every((box) => box.left >= rect.left && box.right <= rect.right),
+        left: rect.left,
+        right: rect.right,
+        tag: element.tagName,
+        height: rect.height,
+        viewport: window.innerWidth,
+      };
+    });
+    expect(layout.fits).toBe(true);
+    expect(layout.left).toBeGreaterThanOrEqual(0);
+    expect(layout.right).toBeLessThanOrEqual(layout.viewport);
+    expect(layout.height).toBe(20);
+    expect(layout.tag).toBe(actionable ? "BUTTON" : "SPAN");
+    if (actionable) {
+      await mark.tap();
+      await expect(lightbox(page)).toBeVisible();
+    } else {
+      await expect(mark).toHaveAttribute("aria-hidden", "true");
+    }
+  }
+});
+
+test("keeps contact-sheet focus and animal navigation inside the lightbox", async ({
+  page,
+}) => {
+  const fan = await openFan(page, KLOPKA, { layout: "phone" });
+  const animalPath = new URL(page.url()).pathname;
+  await countControl(fan).tap();
+  await lightbox(page).getByRole("button", { name: "Pokaži fotografijo 2", exact: true }).tap();
+
+  await expect(lightbox(page)).toBeFocused();
+  await page.keyboard.press("PageDown");
+  await page.keyboard.press("PageUp");
+  await expect(lightbox(page)).toBeVisible();
+  await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`2 / ${KLOPKA_PHOTOS}`);
+  expect(new URL(page.url()).pathname).toBe(animalPath);
+  await page.keyboard.press("ArrowRight");
+  await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+});
+
+test("enlarges the standalone photo and shares its current selection after native failure", async ({
+  page,
+}) => {
+  // A rejected native sheet must reveal the ordinary sharing controls. A
+  // real sheet would leave the browser process and cannot be driven here.
+  await page.addInitScript(() => {
+    let calls = 0;
+    Object.defineProperty(window, "shareCalls", { get: () => calls });
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw new DOMException("The share target is unavailable", "NotAllowedError");
+        }
+      },
+    });
+  });
+  await openFan(page, KLOPKA, { layout: "phone" });
+  const path = new URL(page.url()).pathname;
+  await page.goto(`${path}?foto=2`);
+  await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`2 / ${KLOPKA_PHOTOS}`);
+  await expect(page.locator('[data-slot="photo-dots"]')).toBeVisible();
+  await expect(page.getByRole("group", { name: "Fotografije: Klopka" })).toBeVisible();
+  await expect(page.locator('[data-slot="photo-fan"]')).toHaveCount(0);
+  await page.getByRole("button", { name: "Odpri fotografijo 2 čez cel zaslon" }).tap();
+  await expect(lightbox(page)).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+  await page.keyboard.press("Escape");
+  await expect(lightbox(page)).toBeHidden();
+  await expect(page.getByRole("button", { name: "Odpri fotografijo 3 čez cel zaslon" })).toBeFocused();
+  await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+  await page.getByRole("button", { name: "Deli", exact: true }).tap();
+  await expect(page.getByRole("textbox", { name: "Povezava" })).toHaveValue(/\?foto=3$/);
+  await expect(page.getByRole("status").filter({ hasText: "Deljenje ni uspelo" })).toBeVisible();
+  const copy = page.getByRole("button", { name: "Kopiraj povezavo" });
+  // The popover scales in; measure its settled touch target.
+  await expect.poll(async () => (await copy.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(44);
+  await expect.poll(async () => (await copy.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  // Gallery changes remain local; sharing selects the current photograph
+  // without adding a history entry for each swipe.
+  await expect(page).toHaveURL(new RegExp(`${path}\\?foto=2$`));
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("textbox", { name: "Povezava" })).toBeHidden();
+  await page.getByRole("button", { name: "Deli", exact: true }).tap();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { shareCalls: number }).shareCalls)).toBe(2);
+  await expect(page.getByRole("textbox", { name: "Povezava" })).toBeHidden();
 });
 
 test("turns one photo on a touch swipe", async ({ page }) => {
@@ -173,6 +292,67 @@ test.describe("under real touch points", () => {
     ({ browserName }) => browserName !== "chromium",
     "the touch points are dispatched over a CDP session, which is Chromium only",
   );
+
+  test("steps the standalone gallery with reduced motion and opens on the first Enter", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await openFan(page, KLOPKA, { layout: "phone" });
+    const path = new URL(page.url()).pathname;
+    await page.goto(`${path}?foto=2`);
+    const frame = page.locator('[data-slot="photo-frame"]');
+    await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`2 / ${KLOPKA_PHOTOS}`);
+    const box = await frame.boundingBox();
+    if (!box) throw new Error("the standalone photograph has no touch surface");
+    const cdp = await page.context().newCDPSession(page);
+    await dragTouch(
+      page,
+      cdp,
+      { x: box.x + box.width * 0.75, y: box.y + box.height / 2 },
+      { x: box.x + box.width * 0.25, y: box.y + box.height / 2 },
+    );
+    await expect(page.locator('[data-slot="photo-count"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+    await expect(lightbox(page)).toBeHidden();
+    // Chromium emits no compatibility click after this drag. A keyboard
+    // activation must work even while that unused pointer guard remains set.
+    await page.getByRole("button", { name: "Odpri fotografijo 3 čez cel zaslon" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(lightbox(page)).toBeVisible();
+    await expect(lightbox(page).locator('[data-slot="badge"]')).toHaveText(`3 / ${KLOPKA_PHOTOS}`);
+  });
+
+  test("steps the fan with reduced motion through the same touch gesture", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const fan = await openFan(page, KLOPKA, { layout: "phone" });
+    const path = await swipePath(fan);
+    const cdp = await page.context().newCDPSession(page);
+    await dragTouch(page, cdp, { x: path.from, y: path.y }, { x: path.to, y: path.y });
+    await expectPhoto(fan, 2, KLOPKA_PHOTOS);
+  });
+
+  test("keeps a reduced-motion card swipe on the animal list", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const card = page.locator('[data-slot="results"] article').filter({
+      has: page.locator('[data-slot="photo-position"]'),
+    }).first();
+    const frame = card.locator('[data-slot="photo-frame"]');
+    await frame.scrollIntoViewIfNeeded();
+    const box = await frame.boundingBox();
+    if (!box) throw new Error("the card photograph has no touch surface");
+    const cdp = await page.context().newCDPSession(page);
+    await dragTouch(
+      page,
+      cdp,
+      { x: box.x + box.width * 0.75, y: box.y + box.height / 2 },
+      { x: box.x + box.width * 0.25, y: box.y + box.height / 2 },
+    );
+    await expect(card.locator('[data-slot="photo-position"]')).toHaveText(/^Fotografija 2 od /);
+    await expect(dialog(page)).toBeHidden();
+    await expect(page).toHaveURL("/");
+  });
 
   test("turns one photo on a one-finger swipe", async ({ page }) => {
     const fan = await openFan(page, KLOPKA, { layout: "phone" });

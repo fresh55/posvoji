@@ -17,6 +17,7 @@ import { FilterSheet } from "./filter-sheet";
 import { LocationPicker } from "./location-picker";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import { SpeciesTabs } from "./species-tabs";
+import { resetFilterSectionsStore } from "./use-filter-sections";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -211,7 +212,7 @@ describe("mobile filter hardening", () => {
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
 
-  it("takes the trigger and the plate away where the order is all the sheet holds", () => {
+  it("hides the order-only trigger at md only while the toolbar stays pinned", () => {
     // The state above, asked the other question. The order is the sheet's one
     // reason to exist here and the toolbar draws the order itself from md, so
     // the trigger stands down there rather than opening on a title, a footer
@@ -333,6 +334,7 @@ describe("mobile filter hardening", () => {
     const mobileSort = within(mobileToolbar).getByRole("combobox");
     const sortClasses = mobileSort.className.split(" ");
     expect(sortClasses).toContain("max-md:hidden");
+    expect(sortClasses).toContain("short:hidden");
     expect(sortClasses).toContain("shrink-0");
     // The row only becomes a flex box at md. Below it the strip's -my-2/py-2
     // collapse through this block and hold the row at 44px; flex at every
@@ -487,6 +489,32 @@ describe("mobile filter hardening", () => {
     ).toBe(false);
   });
 
+  it("reveals initially active sheet sections and lets the visitor fold them", async () => {
+    window.localStorage.clear();
+    window.localStorage.setItem("posvoji:filter-sections", JSON.stringify({ size: false }));
+    resetFilterSectionsStore();
+    renderSheet({
+      filters: { ...EMPTY_FILTERS, size: ["small"] },
+      groups: [{ group: "size", options: [{ value: "small", label: "Small" }] }],
+      counts: { ...emptyCounts, size: new Map([["small", 3]]) },
+      activeCount: 1,
+      resultCount: 3,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+    const dialog = await screen.findByRole("dialog");
+    const section = within(dialog).getByRole("button", { name: /^Size/ });
+    expect(section.getAttribute("aria-expanded")).toBe("true");
+    expect(within(dialog).getByRole("button", { name: /^Small/ })).toBeTruthy();
+
+    fireEvent.click(section);
+    expect(section.getAttribute("aria-expanded")).toBe("false");
+    expect(section.textContent).toContain("Small");
+    await waitFor(() => expect(within(dialog).queryByRole("button", { name: /^Small/ })).toBeNull());
+    fireEvent.click(section);
+    expect(section.getAttribute("aria-expanded")).toBe("true");
+    expect(within(dialog).getByRole("button", { name: /^Small/ })).toBeTruthy();
+  });
+
   it("keeps the header outside the scrolling body", async () => {
     renderSheet();
 
@@ -500,13 +528,10 @@ describe("mobile filter hardening", () => {
     expect(scrollBody?.contains(header as Node)).toBe(false);
   });
 
-  it("stands the sheet's sort row down where the toolbar carries it, and keeps it on a landscape phone", async () => {
-    // On a phone this row is the only way to change the order; from md the
-    // toolbar behind the sheet has 336px spare and carries the same control.
-    // Not on a short screen, though: there the toolbar unpins and is gone two
-    // rows into the grid (measured at y = -1256 on 844x390), so the row stays
-    // in the sheet, which is the one surface that is always reachable. jsdom
-    // resolves no breakpoint, so the query is asserted on the class.
+  it("keeps the sheet's sort row on short landscape screens where the toolbar scrolls away", async () => {
+    // Below md or on a short viewport the sheet is the only sort placement.
+    // From md in a taller viewport the sticky toolbar carries it instead. jsdom
+    // resolves no breakpoint, so the band is asserted on the class.
     renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
@@ -764,6 +789,7 @@ describe("the sheet's surfaces", () => {
   // half of the change that has to stay put.
   it("keeps the sex and size options as tiles", async () => {
     renderSheet({
+      filters: { ...EMPTY_FILTERS, size: ["small"] },
       groups: [
         { group: "sex", options: [{ value: "male", label: "Male" }] },
         { group: "size", options: [{ value: "small", label: "Small" }] },

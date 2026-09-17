@@ -52,6 +52,21 @@ describe("shelter directory context", () => {
     expect(screen.getByRole("link", { name: lookup }).getAttribute("href")).toBe(href);
   });
 
+  it.each([
+    { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti?", directory: "Zavetišča" },
+    { locale: "en" as const, invitation: "Would your shelter like to join?", directory: "Shelters" },
+  ])("offers one email invitation before the directory in $locale", ({ locale, invitation, directory }) => {
+    render(<SheltersPage locale={locale} />);
+    const main = within(screen.getByRole("main"));
+    const links = main.getAllByRole("link", { name: "info@posvoji.si" });
+    expect(links).toHaveLength(1);
+    const link = links[0];
+    expect(link.getAttribute("href")).toBe("mailto:info@posvoji.si");
+    expect(link.closest("p")?.textContent).toContain(invitation);
+    expect(link.compareDocumentPosition(main.getByRole("region", { name: directory }))
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it.each([null, { animals: [] }])("keeps the directory when no animal listings are available: %s", dataset => {
     fixtures.loadDataset.mockReturnValue(dataset);
     render(<SheltersPage locale="sl" />);

@@ -4,7 +4,7 @@
 // (motion/react), which reads window.matchMedia when it resolves the
 // reducedMotion="user" setting.
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -35,7 +35,7 @@ const { ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO } = vi.hoisted(() => 
     // Undefined for an animal the shelter never named. The register carries a
     // few, and the page has to say something in place of a name.
     name: string | undefined,
-    images: { sourceUrl: string; cachedUrl: string; width: number; height: number; rights: "display-permitted" }[],
+    images: { sourceUrl: string; cachedUrl: string; width: number; height: number; rights: "display-permitted" | "unknown" }[],
   ) {
     return {
       id,
@@ -67,6 +67,20 @@ const { ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO } = vi.hoisted(() => 
         width: 800,
         height: 600,
         rights: "display-permitted",
+      },
+      {
+        sourceUrl: "https://example.test/fant.jpg",
+        cachedUrl: "/media/animals/fant.jpg",
+        width: 800,
+        height: 600,
+        rights: "display-permitted",
+      },
+      {
+        sourceUrl: "https://example.test/not-permitted.jpg",
+        cachedUrl: "/media/animals/not-permitted.jpg",
+        width: 800,
+        height: 600,
+        rights: "unknown",
       },
     ]),
   };
@@ -121,6 +135,7 @@ vi.mock("@/components/animal-dialog/shelter-block", async (importOriginal) => {
 afterEach(() => {
   cleanup();
   handedOver.length = 0;
+  window.history.replaceState(null, "", "/");
 });
 
 // The hero grid: `<div class="grid gap-8 ...">` wrapping the gallery (when
@@ -132,6 +147,20 @@ function heroGrid(container: HTMLElement): HTMLElement {
 }
 
 describe("the animal page's hero", () => {
+  it("clamps shared-photo links against permitted unique photos and shares that same selection", async () => {
+    window.history.replaceState(null, "", "?foto=3");
+    const { container } = render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_WITH_PHOTO).animal} />,
+    );
+    expect(container.querySelector('[data-slot="photo-count"]')).toBeNull();
+    expect(container.querySelector('[data-slot="photo-dots"]')).toBeNull();
+    expect(container.querySelector('[data-slot="photo-frame"] img')?.getAttribute("src")).toContain("fant.jpg");
+    expect(container.querySelector('img[src*="not-permitted"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Deli" }));
+    const link = await screen.findByRole("textbox", { name: "Povezava" });
+    expect((link as HTMLInputElement).value).not.toContain("?foto=");
+  });
+
   it("stays single-column when the animal has no photo", () => {
     const { container } = render(
       <AnimalPage
@@ -246,10 +275,11 @@ describe("the animal page's way to a printed sheet", () => {
       posterPath(ANIMAL_NO_PHOTO, "sl"),
     );
 
-    // The same quiet grammar as "Poglej vse živali", down to the focus ring
+    // The same quiet grammar as the finder link, down to the focus ring
     // and the tap target: this is a second way on, not a second call to
     // action. The one call to action is on the shelter block above.
-    const finder = screen.getByRole("link", { name: /Poglej vse živali/ });
+    const finder = screen.getByRole("link", { name: /Odpri v iskalniku živali/ });
+    expect(finder.getAttribute("href")).toBe("/?zival=zonzani%3A1");
     expect(poster.className).toBe(finder.className);
   });
 });

@@ -2,7 +2,7 @@
 
 import type * as React from "react";
 import { Pencil, PencilLine, Search, Undo2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { cn } from "@/lib/utils";
 

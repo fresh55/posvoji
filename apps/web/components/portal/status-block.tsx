@@ -6,7 +6,7 @@ import { statusOf } from "@/components/portal/animal-meta";
 import { RevertButton } from "@/components/portal/override-mark";
 import { portalText } from "@/components/portal/portal-text";
 import { StatusActions } from "@/components/portal/status-actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import type {
   PortalAnimal,
   PortalAnimalPatch,
@@ -112,12 +112,10 @@ export function StatusBlock({
           One flex line, never two. The sentence is flex-1 and wraps inside
           its own column, so the control stays beside it at 375px instead of
           being orphaned onto a line of its own.
-          mt-3, not mt-2: the control below carries max-lg:tap-target, whose
-          layer overhangs its 24px drawing by 10px per side, and the status
-          buttons above are the neighbour that 12px keeps clear of it. See
-          the utility's note in globals.css. */}
+          The control reserves its full touch target in this row; the gap
+          separates it from the status buttons without an overhanging layer. */}
       {(overridden || status !== null) && (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-2 flex items-center gap-2">
           <p className="min-w-0 flex-1 text-2xs leading-relaxed text-muted-foreground">
             {overridden
               ? portalText.statusOwnLine
@@ -125,7 +123,6 @@ export function StatusBlock({
           </p>
           {overridden ? (
             <RevertButton
-              className="max-lg:tap-target"
               field={portalText.statusLegend}
               disabled={busy}
               onRevert={() => onSave({ status: null })}
@@ -142,7 +139,7 @@ export function StatusBlock({
               disabled={busy}
               aria-label={portalText.statusConfirmLabel}
               onClick={() => onSave({ status })}
-              className="h-6 shrink-0 gap-1 px-1.5 text-2xs font-normal text-muted-foreground max-lg:tap-target hover:text-foreground"
+              className="h-6 shrink-0 gap-1 px-1.5 text-2xs font-normal text-muted-foreground hover:text-foreground"
             >
               <Check aria-hidden />
               {portalText.statusConfirm}

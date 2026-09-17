@@ -614,8 +614,10 @@ describe("MunicipalityFinder search feedback", () => {
     const search = screen.getByRole("combobox");
     fireEvent.change(search, { target: { value: "zzzz" } });
     expect(status.textContent).toBe("Ni občine z imenom »zzzz«");
+    expect(screen.getByRole("link", { name: "Poglej zavetišča" }).getAttribute("href")).toBe("/zavetisca");
     fireEvent.change(search, { target: { value: "1000" } });
     expect(status.textContent).toBe("Ljubljana · pristojno zavetišče");
+    expect(screen.queryByRole("link", { name: "Poglej zavetišča" })).toBeNull();
   });
 
   it("uses English postcode feedback on the English page", () => {
@@ -626,6 +628,7 @@ describe("MunicipalityFinder search feedback", () => {
         "No such postcode. Type the municipality or use your location.",
       ),
     ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "View shelters" }).getAttribute("href")).toBe("/en/shelters");
   });
 });
 

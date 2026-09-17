@@ -218,12 +218,15 @@ describe("PhotoLightbox contact sheet", () => {
     const { lightbox, onIndexChange } = open();
 
     fireEvent.click(toggle(lightbox));
-    fireEvent.click(tiles(lightbox)[3]!);
+    const chosen = tiles(lightbox)[3]!;
+    chosen.focus();
+    fireEvent.click(chosen);
 
     expect(onIndexChange).toHaveBeenCalledWith(3);
     // The index is the caller's, so the counter still reads the photo this
     // test opened on. What matters here is that the single view is back.
     expect(tiles(lightbox)).toHaveLength(0);
+    expect(document.activeElement).toBe(lightbox);
     expect(within(lightbox).getByText("1 / 6")).toBeTruthy();
   });
 

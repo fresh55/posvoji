@@ -14,7 +14,8 @@ export type PointerKind =
   | "pointerdown"
   | "pointermove"
   | "pointerup"
-  | "pointercancel";
+  | "pointercancel"
+  | "lostpointercapture";
 
 /**
  * One pointer event, as a phone or a mouse would deliver it.

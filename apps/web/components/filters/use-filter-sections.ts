@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 export type FilterSectionKey =
   | "sex"
@@ -14,7 +14,7 @@ export type FilterSectionKey =
 
 const STORAGE_KEY = "posvoji:filter-sections";
 
-// Spol and Starost start open; every other section folds away until asked for.
+// Spol and Starost start open; inactive secondary sections fold until asked for.
 // The sidebar scrolls on its own from lg up, so page scrolling never reveals
 // what sits under its fold: at 1440x900 the panel held 972px of content in an
 // 876px box and the last two headers were off the bottom of it. Velikost is
@@ -28,6 +28,8 @@ const STORAGE_KEY = "posvoji:filter-sections";
 // One set of defaults for both, because the question they answer is which
 // sections a visitor is usually after, and that does not change with the
 // width the list is drawn at.
+// The sheet also opens its initially active sections so a filtered link shows
+// its selected options immediately; a manual fold still wins for that opening.
 const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   sex: true,
   age: true,
@@ -123,10 +125,9 @@ export function resetFilterSectionsStore(): void {
   for (const listener of listeners) listener();
 }
 
-/** Which filter sections are unfolded, in the sidebar and in the phone sheet
-    alike. Choices survive the visit through localStorage; only departures from
-    the defaults are stored. */
-export function useFilterSections(): {
+/** Shared folds for sidebar and sheet. A sheet can reveal its active sections
+    on mount without replacing the visitor's stored choices for other sections. */
+export function useFilterSections(initiallyOpen?: Overrides): {
   isOpen: (key: FilterSectionKey) => boolean;
   toggleSection: (key: FilterSectionKey) => void;
 } {
@@ -135,16 +136,25 @@ export function useFilterSections(): {
     getSnapshot,
     getServerSnapshot,
   );
+  const [revealed, setRevealed] = useState(initiallyOpen);
 
   const isOpen = useCallback(
-    (key: FilterSectionKey) => overrides[key] ?? DEFAULT_OPEN[key],
-    [overrides],
+    (key: FilterSectionKey) =>
+      revealed?.[key] || (overrides[key] ?? DEFAULT_OPEN[key]),
+    [overrides, revealed],
   );
 
-  const toggleSection = useCallback((key: FilterSectionKey) => {
-    const current = getSnapshot();
-    write({ ...current, [key]: !(current[key] ?? DEFAULT_OPEN[key]) });
-  }, []);
+  const toggleSection = useCallback(
+    (key: FilterSectionKey) => {
+      const current = getSnapshot();
+      const open = revealed?.[key] || (current[key] ?? DEFAULT_OPEN[key]);
+      if (revealed?.[key]) {
+        setRevealed((previous) => ({ ...previous, [key]: false }));
+      }
+      write({ ...current, [key]: !open });
+    },
+    [revealed],
+  );
 
   return { isOpen, toggleSection };
 }

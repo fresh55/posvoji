@@ -24,7 +24,7 @@ import { StatusMenu } from "@/components/portal/status-menu";
 import type { PortalSaveState } from "@/hooks/portal-list";
 import { portalAnimalPath } from "@/hooks/use-portal-session";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import {
   DropdownMenu,
   DropdownMenuContent,

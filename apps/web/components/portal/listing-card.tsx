@@ -21,7 +21,7 @@ import { ListingStatusBlock } from "@/components/portal/status-block";
 import type { PortalSaveState } from "@/hooks/portal-list";
 import type { PortalListingActions } from "@/hooks/use-portal-listings";
 import { portalAnimalPath } from "@/hooks/use-portal-session";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import {
   Tooltip,
   TooltipContent,

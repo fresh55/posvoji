@@ -22,17 +22,19 @@ import {
   type PortalListEntry,
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
+import { NEW_DRAFT_ID } from "@/components/portal/listing-draft";
 import { PortalNotice, SessionError } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { ReviewBanner } from "@/components/portal/review-banner";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/portal/portal-button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { IDLE } from "@/hooks/portal-list";
 import { portalNewListingPath } from "@/hooks/use-portal-session";
 import { animalCount } from "@/lib/labels";
 import { draftIds, subscribeDrafts } from "@/lib/portal-drafts";
+import { photoDraftIds, subscribePhotoDrafts } from "@/hooks/portal-photo-drafts";
 
 // One empty set for every state with no stored drafts, so a re-read that
 // finds none does not hand the list a new object to re-render for.
@@ -45,14 +47,14 @@ function cardDomId(animalId: string): string {
 }
 
 /** The one action a manual shelter has up here, drawn wherever it is offered. */
-function AddListing({ shelter }: { shelter: string }) {
+function AddListing({ shelter, hasDraft = false }: { shelter: string; hasDraft?: boolean }) {
   return (
     <Button asChild size="sm">
       {/* A page, not a dialog: the new listing is written on the same frame
           an existing one is edited on. */}
       <Link href={portalNewListingPath(shelter)}>
         <Plus aria-hidden />
-        {portalText.listingAdd}
+        {hasDraft ? portalText.listingResume : portalText.listingAdd}
       </Link>
     </Button>
   );
@@ -183,17 +185,19 @@ export function PortalWorkspace() {
   });
   const subscribeToDrafts = useCallback((onChange: () => void) => {
     const unsubscribe = subscribeDrafts(onChange);
+    const unsubscribePhotos = subscribePhotoDrafts(onChange);
     window.addEventListener("pageshow", onChange);
     document.addEventListener("visibilitychange", onChange);
     return () => {
       unsubscribe();
+      unsubscribePhotos();
       window.removeEventListener("pageshow", onChange);
       document.removeEventListener("visibilitychange", onChange);
     };
   }, []);
   const readDrafts = useCallback((): ReadonlySet<string> => {
     if (!account || !active) return EMPTY_DRAFTS;
-    const ids = draftIds(account, active);
+    const ids = new Set([...draftIds(account, active), ...photoDraftIds(account, active)]);
     // Ids never carry a newline, so it is a safe separator for the join.
     const signature = [...ids].sort().join("\n");
     if (draftCache.current.signature !== signature) {
@@ -285,7 +289,7 @@ export function PortalWorkspace() {
                       <p className="text-sm text-muted-foreground">
                         {animalCount(all.length, "sl")}
                       </p>
-                      <AddListing shelter={active} />
+                      <AddListing shelter={active} hasDraft={drafts.has(NEW_DRAFT_ID)} />
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -340,7 +344,7 @@ export function PortalWorkspace() {
                 <PortalNotice
                   icon={Inbox}
                   title={portalText.emptyTitle}
-                  action={<AddListing shelter={active} />}
+                  action={<AddListing shelter={active} hasDraft={drafts.has(NEW_DRAFT_ID)} />}
                 >
                   {portalText.listingsEmptyLead}
                 </PortalNotice>

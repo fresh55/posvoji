@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -153,6 +154,60 @@ describe("copying the link", () => {
 });
 
 describe("on a phone", () => {
+  it("offers the existing copy popover after a genuine native-share failure", async () => {
+    phone = true;
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: vi.fn().mockRejectedValue(new DOMException("unavailable", "NotAllowedError")),
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const button = renderButton(2);
+    fireEvent.click(button);
+    const copy = await screen.findByRole("button", { name: "Kopiraj povezavo" });
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo"));
+    await act(async () => fireEvent.click(copy));
+    expect(writeText).toHaveBeenCalledWith(`${PAGE}?foto=3`);
+  });
+
+  it("announces the failure after the fallback region mounts and retries native share after closing", async () => {
+    phone = true;
+    const share = vi.fn()
+      .mockRejectedValueOnce(new DOMException("unavailable", "NotAllowedError"))
+      .mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    const button = renderButton();
+    const announcements: string[] = [];
+    const observer = new MutationObserver(() => {
+      const status = screen.queryByRole("status");
+      if (status) announcements.push(status.textContent ?? "");
+    });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+    try {
+      fireEvent.click(button);
+      await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo"));
+      expect(announcements[0]).toBe("");
+      expect(announcements.some((text) => text.includes("Deljenje ni uspelo"))).toBe(true);
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "Povezava" }), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByText("Deli to žival")).toBeNull());
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Deli" })));
+      expect(share).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText("Deli to žival")).toBeNull();
+    } finally {
+      observer.disconnect();
+    }
+  });
+
+  it("keeps a cancelled native share quiet", async () => {
+    phone = true;
+    const share = vi.fn().mockRejectedValue(new DOMException("cancelled", "AbortError"));
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    const button = renderButton();
+    await act(async () => fireEvent.click(button));
+    expect(share).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Deli to žival")).toBeNull();
+  });
+
   // The platform's sheet lists every app the visitor has, and copying is one
   // of its rows: a popover of our own in front of it was one tap more for
   // less. So the button is the share.

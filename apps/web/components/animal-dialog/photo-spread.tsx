@@ -46,6 +46,7 @@ export const PhotoSpread = memo(function PhotoSpread({
   washProgress,
   onWashWindow,
   holdFrontPrint,
+  onLightboxOpenChange,
 }: {
   animal: ClientAnimal;
   /** Which photo to open on. A shared link can name one; anything out of
@@ -72,6 +73,7 @@ export const PhotoSpread = memo(function PhotoSpread({
    * Wired by the dialog; the fan answers it.
    */
   holdFrontPrint?: boolean;
+  onLightboxOpenChange?: (open: boolean) => void;
 }) {
   const { messages } = useI18n();
   // Already resolved and already filtered to what may be drawn.
@@ -83,6 +85,14 @@ export const PhotoSpread = memo(function PhotoSpread({
     onIndexChange?.(activeIndex);
   }, [onIndexChange, activeIndex]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const changeLightboxOpen = useCallback(
+    (open: boolean) => {
+      setLightboxOpen(open);
+      onLightboxOpenChange?.(open);
+    },
+    [onLightboxOpenChange],
+  );
+  useEffect(() => () => onLightboxOpenChange?.(false), [onLightboxOpenChange]);
   const [lightboxOrigin, setLightboxOrigin] = useState<DOMRect | undefined>(
     undefined,
   );
@@ -110,9 +120,9 @@ export const PhotoSpread = memo(function PhotoSpread({
     (from: DOMRect, view: "photo" | "sheet" = "photo") => {
       setLightboxOrigin(from);
       setLightboxView(view);
-      setLightboxOpen(true);
+      changeLightboxOpen(true);
     },
-    [],
+    [changeLightboxOpen],
   );
   const openSheet = useCallback(
     (from: DOMRect) => openLightbox(from, "sheet"),
@@ -257,7 +267,7 @@ export const PhotoSpread = memo(function PhotoSpread({
 
       <PhotoLightbox
         open={lightboxOpen}
-        onOpenChange={setLightboxOpen}
+        onOpenChange={changeLightboxOpen}
         images={images}
         index={activeIndex}
         onIndexChange={setActiveIndex}

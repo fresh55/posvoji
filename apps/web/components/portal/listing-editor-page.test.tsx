@@ -42,6 +42,7 @@ import {
   type PortalShelter,
 } from "@/lib/portal-api";
 import { writeDraft } from "@/lib/portal-drafts";
+import { clearAccountPhotoDrafts, photoDraftIds } from "@/hooks/portal-photo-drafts";
 
 // The address is the page's only argument, so the tests set it the way a
 // visitor would and the mock reads it back at every render.
@@ -165,6 +166,7 @@ beforeEach(() => {
   // A draft outlives the page it was typed on, on purpose, so each test has to
   // start in a tab that has never been used.
   window.sessionStorage.clear();
+  clearAccountPhotoDrafts(ACCOUNT);
   search = new URLSearchParams({ zavetisce: "johanca", id: ID });
   push.mockReset();
   replace.mockReset();
@@ -1039,6 +1041,89 @@ describe("taking a listing off the site", () => {
 });
 
 describe("leaving with unsaved work", () => {
+  it("cannot create twice or change photos after Back and resume during a slow POST", async () => {
+    let finish!: (saved: PortalListing) => void;
+    vi.mocked(createListing).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const view = await openNew();
+    fireEvent.click(card(portalText.fieldSpecies, SPECIES_META.cat.label));
+    fireEvent.change(nameBox(), { target: { value: "Luna" } });
+    pick(jpeg("original.jpg"));
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(createListing).toHaveBeenCalledTimes(1));
+    // Back removes the page while the shared (app) provider/session remains.
+    view.rerender(<PortalProvider><div>List page</div></PortalProvider>);
+    view.rerender(<PortalProvider><AnimalEditorPage /></PortalProvider>);
+    await waitFor(() => expect(nameBox()).toBeTruthy());
+    expect(fileBox().disabled).toBe(true);
+    expect(nameBox().disabled).toBe(true);
+    expect((screen.getByRole("button", { name: portalText.saving }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.submit(nameBox().closest("form")!);
+    expect(createListing).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(listing()); });
+    await waitFor(() => expect(uploadListingPhoto).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(uploadListingPhoto).mock.calls[0][2].name).toBe("original.jpg");
+    expect(photoDraftIds(ACCOUNT, "johanca")).toEqual([]);
+  });
+
+  it("keeps new photos and typed fields when Back remounts the editor", async () => {
+    const view = await openNew();
+    fireEvent.change(nameBox(), { target: { value: "Luna" } });
+    const file = jpeg("pending.jpg");
+    pick(file);
+    view.unmount();
+
+    await openNew();
+
+    expect(nameBox().value).toBe("Luna");
+    expect(photoImages().map((img) => img.getAttribute("src"))).toEqual(["blob:pending.jpg"]);
+    expect(revokeObjectURL).not.toHaveBeenCalledWith("blob:pending.jpg");
+    expect(photoDraftIds(ACCOUNT, "johanca")).toEqual(["nova"]);
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+  });
+
+  it("recovers failed photos under the created listing ID, not the next new listing", async () => {
+    vi.mocked(uploadListingPhoto).mockRejectedValue(new PortalError(500));
+    const view = await openNew();
+    fireEvent.click(card(portalText.fieldSpecies, SPECIES_META.cat.label));
+    fireEvent.change(nameBox(), { target: { value: "Luna" } });
+    pick(jpeg("failed.jpg"));
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(screen.getByRole("button", { name: portalText.photoRetry })).toBeTruthy());
+    expect(photoDraftIds(ACCOUNT, "johanca")).toEqual([ID]);
+    view.unmount();
+    search = new URLSearchParams({ zavetisce: "johanca", id: ID });
+    await open();
+    expect(screen.getByRole("button", { name: portalText.photoRetry })).toBeTruthy();
+    expect(photoImages().map((img) => img.getAttribute("src"))).toEqual(["blob:failed.jpg"]);
+  });
+
+  it("clears queued files and the document warning after confirmed discard", async () => {
+    await openNew();
+    pick(jpeg("discard.jpg"));
+    fireEvent.click(cancelButton());
+    expect(screen.getByRole("alertdialog").textContent).toContain(portalText.leaveNewPhotosLead);
+    fireEvent.click(screen.getByRole("button", { name: portalText.discardChanges }));
+    expect(photoDraftIds(ACCOUNT, "johanca")).toEqual([]);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:discard.jpg");
+    const unload = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(false);
+  });
+
+  it("names failed photos in an existing listing's discard prompt and keeps them on cancel", async () => {
+    vi.mocked(uploadListingPhoto).mockRejectedValue(new PortalError(500));
+    await open();
+    pick(jpeg("failed.jpg"));
+    await screen.findByRole("button", { name: portalText.photoRetry });
+    fireEvent.click(cancelButton());
+    expect(screen.getByRole("alertdialog").textContent).toContain(portalText.leavePhotosLead);
+    fireEvent.click(screen.getByRole("button", { name: portalText.keepEditing }));
+    expect(photoDraftIds(ACCOUNT, "johanca")).toEqual([ID]);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+  });
+
   it("holds Prekliči back and asks first", async () => {
     await open();
     fireEvent.change(nameBox(), { target: { value: "Lunica" } });

@@ -250,12 +250,10 @@ export function LocationScopeRow({
                 The fold budget this row exists for, measured in the app's own
                 Inter at 320px, the narrowest phone the sheet is built for. The
                 scroller pays px-5 and the button a border and p-2, so the line
-                has 262px: glyph 49, gap 8, the longest Slovene sentence
-                "3 od 17 zavetišč" 106, gap 8, and the "Zemljevid" caption with
-                its pin 73. That is 244, and it still fits at 262. The
-                invitation is what does not: 170px of "Izberi zavetišča na
-                zemljevidu" puts the line 160px over at 320 and 90px over at
-                390, so the one-row layout drops it and the plate keeps it.
+                has 262px for the glyph, the shelter label and the "Izberi"
+                caption with its pin. The one-row layout keeps that compact
+                invitation; the plate has room for the longer line below its
+                label instead. Neither layout asks for the same press twice.
                 Against the plate's 164px card this row costs 52, so the
                 sections under Spol get about 112px of the first screen back.
                 */}
@@ -332,14 +330,14 @@ export function LocationScopeRow({
                 {t("originFrom", { place: origin.place })}
               </span>
             )}
-            {/* Not a chevron: nothing folds open here, a full-screen map does.
-                The pin is the mark every picked shelter already wears on its
-                chip, and the word beside it says where the press goes, which a
-                bare expand glyph left to be guessed. */}
-            <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden />
-              {messages.mapCaption}
-            </span>
+            {/* The picker opens its list first on a phone and its map on a
+                wide screen. Name the choice instead of promising one view. */}
+            {!inviting && (
+              <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden />
+                {messages.mapCaption}
+              </span>
+            )}
           </span>
         </LazyMotion>
       </button>

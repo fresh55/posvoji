@@ -59,10 +59,21 @@ describe("when the way back up appears", () => {
 
   it("caps a desktop at the same 700px rather than two of its screens", () => {
     // A 900px window asked for 1800px of scroll, which is four rows of cards
-    // at that width. The header is out of sight long before that.
-    expect(reachable(mountAt(900, 720))).toBe(true);
+    // at that width. The header is out of sight long before that, but 700px
+    // on a 900px screen is the hero barely gone, so the floor is one screen.
+    expect(reachable(mountAt(900, 920))).toBe(true);
     cleanup();
-    expect(reachable(mountAt(900, 690))).toBe(false);
+    expect(reachable(mountAt(900, 880))).toBe(false);
+    cleanup();
+    expect(reachable(mountAt(900, 720))).toBe(false);
+  });
+
+  it("shows a portrait phone the button one screen down", () => {
+    // 390x844: two screens is 1688, the cap is 700, and one screen is 844.
+    // The floor wins, so the disc arrives once the landing screen has gone.
+    expect(reachable(mountAt(844, 860))).toBe(true);
+    cleanup();
+    expect(reachable(mountAt(844, 820))).toBe(false);
   });
 
   it("still waits two screens on a window shorter than 350px", () => {

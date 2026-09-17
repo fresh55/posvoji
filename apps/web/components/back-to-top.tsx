@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 // only the filters and the map, so the way home was a flick that took longer
 // than most people will spend. This is the way back up.
 
-// How far down the button appears: two screens, and never more than 700px.
+// How far down the button appears: two screens, capped at 700px, and never
+// before one screen.
 //
 // Two screens alone was a screen-height measurement of something that is not
 // about the screen's height. What it was meant to say is that the header is
@@ -22,15 +23,24 @@ import { cn } from "@/lib/utils";
 // and two screens put this button at 780, so between 270 and 780 there was
 // nothing on screen that changed the species and nothing that went back up.
 //
-// The cap therefore bites everywhere, and that is the point: a 900px desktop
-// shows the button at 700 rather than 1800, a 390px landscape phone at 700
-// rather than 780, a 844px portrait phone at 700 rather than 1688. 700px is
-// past the first row of cards at every width (the tallest card row is 431px),
-// so the disc still arrives after the page has moved rather than sitting in
-// the corner of the landing screen. The two-screen term only decides anything
-// below 350px of viewport, which is a window that has barely scrolled at all.
+// The cap bites where the screen is short: a 390px landscape phone shows the
+// button at 700 rather than 780. The one-screen floor is for the screens the
+// cap would otherwise reach too early: a 900px desktop shows it at 900 and an
+// 844px portrait phone at 844, one full screen down, not at 700 with the hero
+// barely gone. 700px is past the first row of cards at every width (the
+// tallest card row is 431px), so the disc still arrives after the page has
+// moved rather than sitting in the corner of the landing screen. The
+// two-screen term only decides anything below 350px of viewport, which is a
+// window that has barely scrolled at all.
 const SHOW_AFTER_SCREENS = 2;
 const SHOW_AFTER_MAX_PX = 700;
+
+function showAfter(innerHeight: number): number {
+  return Math.max(
+    innerHeight,
+    Math.min(innerHeight * SHOW_AFTER_SCREENS, SHOW_AFTER_MAX_PX),
+  );
+}
 
 // Clear of the dock, with a gap above it, so the two read as a stack rather
 // than a collision. The distance itself is --back-to-top-bottom in globals.css,
@@ -76,13 +86,7 @@ export function BackToTop() {
     const footer = document.querySelector("footer");
     const read = () => {
       frame = 0;
-      setShown(
-        window.scrollY >
-          Math.min(
-            window.innerHeight * SHOW_AFTER_SCREENS,
-            SHOW_AFTER_MAX_PX,
-          ),
-      );
+      setShown(window.scrollY > showAfter(window.innerHeight));
       // How much of the footer is on screen, which is exactly how far the
       // button has to come up to sit on top of it: the inset it already holds
       // off the viewport's bottom edge becomes the gap above the footer. Zero

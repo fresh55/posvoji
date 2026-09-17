@@ -315,10 +315,21 @@ export function animalSubtitle(
  *  of the joined string in another file is a contract nothing enforces. */
 export const META_SEPARATOR = " · ";
 
-/** How a separating middot is drawn wherever one appears between facts: half
- *  strength, so the facts read as words rather than as one string. Shared so
- *  the card's meta line and the shelter header's do not drift apart. */
-export const META_DOT_CLASS = "text-muted-foreground/50";
+/** How a separating middot is drawn wherever one appears between facts, so
+ *  they read as words rather than as one string. Shared so the card's meta
+ *  line and the shelter header's do not drift apart.
+ *
+ *  Muted at full strength. It was half, which measures 2.08:1 in light mode
+ *  and 2.68:1 in dark, and this is text inside the paragraph rather than an
+ *  aria-hidden ornament: a text pair that far under AA, at 12px, reads as a
+ *  rendering fault and not as a quiet separator. Full muted is 5.54:1 and
+ *  7.64:1, and it still recedes, because what recedes it is the step down
+ *  from the facts either side of it: the card draws those in ink at 19.76:1,
+ *  and a middot is a smaller glyph than the words it stands between. The
+ *  shelter header's line is muted throughout, so there the middot stops being
+ *  lighter than its neighbours, which is intended: one separator, drawn one
+ *  way. */
+export const META_DOT_CLASS = "text-muted-foreground";
 
 /** How many facts the line may carry. Two is what the card's width buys on a
  *  phone: measured at 375px, a third fact wrapped onto a second line on most

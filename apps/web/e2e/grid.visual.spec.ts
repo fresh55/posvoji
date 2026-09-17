@@ -166,8 +166,9 @@ test.describe("desktop card grid", () => {
     // outside a box that card-paint clips (globals.css).
     expect(shadow).toContain("inset");
 
-    // A mouse gets the row it is drawn with and no thumb allowance. 34px
-    // here, against the 44 a coarse pointer is given below.
+    // A mouse gets the row it is drawn with and no thumb allowance. 38px
+    // here, 10px of padding over a 16px line over 12px below it, against the
+    // 44 a coarse pointer is given.
     expect(await heightOf(shelterRow(card))).toBeLessThan(44);
 
     await expect(card).toHaveScreenshot("grid-card-focus.png", {

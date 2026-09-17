@@ -1,18 +1,19 @@
 // @vitest-environment jsdom
 
+import { type ComponentProps } from "react";
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
 import { getMessages } from "@/lib/i18n";
+import { installFilterFoldSeams } from "@/test/filter-folds";
 import { FilterSheet } from "./filter-sheet";
 
 // vaul asks the viewport about itself; jsdom answers nothing, which is the
@@ -27,7 +28,8 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-afterEach(() => cleanup());
+// The fold's jsdom seams, and the stored folds dropped around every test.
+installFilterFoldSeams();
 
 const sl = getMessages("sl");
 
@@ -36,10 +38,13 @@ const emptyCounts = Object.fromEntries(
 ) as Record<MultiGroup, Map<string, number>>;
 
 /** The sheet as a phone opens it, with nothing filtered. The sort row is the
- *  part these tests are about, so every list is empty: what is left in the
- *  header is the title, the caption and the control under it. */
-async function openSheet() {
-  render(
+ *  part most of these tests are about, so every list is empty by default:
+ *  what is left in the header is the title, the caption and the control under
+ *  it. The fold tests below pass sections in. */
+function renderSheet(
+  overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
+) {
+  return render(
     <I18nProvider locale="sl">
       <FilterSheet
         sort="longest-in-shelter"
@@ -57,12 +62,33 @@ async function openSheet() {
         onToggleMany={vi.fn()}
         onToggleProperty={vi.fn()}
         onToggleManyProperties={vi.fn()}
+        {...overrides}
       />
     </I18nProvider>,
   );
+}
+
+async function openSheet(
+  overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
+) {
+  renderSheet(overrides);
   fireEvent.click(screen.getByRole("button", { name: sl.filters }));
   return screen.findByRole("dialog");
 }
+
+/** Spol and Velikost, one option each: the first opens by default and the
+ *  second does not, which is what the fold tests below read. */
+const SEX_AND_SIZE: Partial<ComponentProps<typeof FilterSheet>> = {
+  groups: [
+    { group: "sex", options: [{ value: "male", label: "Samec" }] },
+    { group: "size", options: [{ value: "small", label: "Majhna" }] },
+  ],
+  counts: {
+    ...emptyCounts,
+    sex: new Map([["male", 1]]),
+    size: new Map([["small", 1]]),
+  },
+};
 
 describe("FilterSheet and the back gesture", () => {
   it("opens on a history entry of its own and closes when that entry pops", async () => {
@@ -94,8 +120,9 @@ describe("FilterSheet sort caption", () => {
 
     const caption = within(dialog).getByText(sl.sortCaption);
     expect(caption.textContent).toBe(sl.sortCaption);
-    // And it leaves at exactly the width the row leaves at, so no label is
-    // left standing over a control the toolbar has taken over.
+    // And it leaves on exactly the query the row leaves on, so no label is
+    // left standing over a control the toolbar has taken over, and neither
+    // leaves on a landscape phone, where that toolbar scrolls away.
     expect(caption.className.split(" ")).toContain("md:not-short:hidden");
   });
 
@@ -114,5 +141,79 @@ describe("FilterSheet sort caption", () => {
           name.includes(sl.sortLongestInShelter),
       }),
     ).toBe(sort);
+  });
+});
+
+describe("FilterSheet section folds", () => {
+  it("folds the sections a visitor did not ask for, on the panel's defaults", async () => {
+    // The sheet used to expand every section into whatever a phone had left:
+    // 1586px of body in a 388px window at 390x844, 1649px in 189px at
+    // 320x568, six to eight section names never seen. It folds on the same
+    // defaults the panel uses, so Spol is open and Velikost is not.
+    const dialog = await openSheet(SEX_AND_SIZE);
+
+    const sex = within(dialog).getByRole("button", { name: /^Spol/ });
+    expect(sex.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      within(dialog).getByRole("button", { name: /^Samec/ }),
+    ).toBeTruthy();
+
+    const size = within(dialog).getByRole("button", { name: /^Velikost/ });
+    expect(size.getAttribute("aria-expanded")).toBe("false");
+    expect(
+      within(dialog).queryByRole("button", { name: /^Majhna/ }),
+    ).toBeNull();
+    // And the header says what a closed section holds, so a body under the
+    // fold is the only thing hidden.
+    expect(size.getAttribute("aria-controls")).toBeTruthy();
+  });
+
+  it("opens a folded section from its header", async () => {
+    const dialog = await openSheet(SEX_AND_SIZE);
+
+    const size = within(dialog).getByRole("button", { name: /^Velikost/ });
+    fireEvent.click(size);
+
+    expect(size.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      within(dialog).getByRole("button", { name: /^Majhna/ }),
+    ).toBeTruthy();
+  });
+
+  it("keeps the section's own reset in an open section", async () => {
+    // The fold moves this button from the header's flex row to an absolute
+    // place in it, which is the one thing about the sheet's sections the fold
+    // changes besides the fold itself.
+    // The section's own `active` is its selection and not the sheet's count,
+    // so the trigger's name stays the plain one openSheet presses.
+    const dialog = await openSheet({
+      ...SEX_AND_SIZE,
+      filters: { ...EMPTY_FILTERS, sex: ["male"] },
+    });
+
+    expect(
+      within(dialog).getByRole("button", { name: sl.resetSexFilters }),
+    ).toBeTruthy();
+  });
+});
+
+describe("FilterSheet trigger badge", () => {
+  it("draws the count at every width", () => {
+    // The badge used to start at 360px, with a dot standing in below that
+    // because the number was said not to fit. It fits: at 320 the trigger
+    // draws "Filtri 2" whole and the dock stays 320 wide, and the dot left a
+    // sighted visitor on the narrowest phone with no way to learn how many
+    // filters were on short of opening the sheet.
+    renderSheet({ activeCount: 2 });
+
+    const badge = document.querySelector('[data-slot="badge"]');
+    expect(badge?.textContent).toBe("2");
+    expect(badge?.className).not.toContain("min-[360px]");
+    // And the dot it stood in for is gone with it.
+    expect(document.querySelectorAll('[data-slot="badge"]').length).toBe(1);
+    expect(
+      screen.getByRole("button", { name: /^Filtri/ }).querySelectorAll("span")
+        .length,
+    ).toBe(1);
   });
 });

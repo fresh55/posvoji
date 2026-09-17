@@ -54,7 +54,17 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
           placeholder={messages.placeOrShelter}
           aria-label={messages.placeOrShelter}
           aria-describedby={statusId}
-          className="h-11 bg-background pl-9 pr-11 text-base shadow-none lg:text-sm"
+          className={cn(
+            "h-11 bg-background pl-9 pr-11 text-base shadow-none lg:text-sm",
+            // The frame is the whole of this control: one field in a dialog
+            // with no label beside it and nothing else drawn around it.
+            // ui/input.tsx ships border-input, which measures 1.26:1 on the
+            // page, against the 3.66:1 --control-border carries. Spelled here
+            // rather than on the primitive, which every portal form shares. No
+            // dark: half, because ui/input.tsx spells no dark border of its
+            // own (see CONTROL_FRAME in lib/link-styles.ts).
+            "border-control-border",
+          )}
         />
         {query !== "" && (
           <Button
@@ -106,9 +116,13 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
       <p id={statusId} aria-live="polite" className={cn("text-xs leading-snug text-muted-foreground", !status && "hidden")}>
         {status}
       </p>
-      {query.trim() && !placeMode && (
-        <p className="text-xs font-medium text-muted-foreground">{copy.shelters}</p>
-      )}
+      {/* The "Zavetišča" heading used to close this block, where it labelled
+          whatever came next rather than the list it names: the confirmed
+          origin button, its distance note and the live status line all sit
+          between here and the first shelter row, so on a query that had
+          resolved to a place the heading stood over "Najbližje prvo". It is
+          drawn in picker-shelter-list.tsx now, directly above the first row
+          and tied to the rows it heads. */}
     </div>
   );
 }

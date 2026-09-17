@@ -133,5 +133,25 @@ describe("the language switcher", () => {
     expect(well.className.split(" ")).toContain("lg:bg-muted");
     expect(slovenian.className.split(" ")).not.toContain("bg-background");
     expect(slovenian.className.split(" ")).toContain("lg:bg-background");
+    expect(slovenian.className.split(" ")).not.toContain("border-control-border");
+    expect(slovenian.className.split(" ")).toContain(
+      "lg:border-control-border",
+    );
+  });
+
+  it("frames the chosen half rather than relying on its plate", () => {
+    // The plate measured 1.09:1 against the well it stands in, and in dark it
+    // is darker than the well at 1.30:1 with a 2.48:1 ink step, so which
+    // language the page is in was the one control state on the page that
+    // nothing reached 3:1 with. The frame carries it now, and only the chosen
+    // half wears it.
+    renderSwitcher();
+
+    expect(
+      screen.getByRole("link", { name: "Slovenščina" }).className.split(" "),
+    ).toContain("lg:border-control-border");
+    expect(
+      screen.getByRole("link", { name: "English" }).className.split(" "),
+    ).not.toContain("lg:border-control-border");
   });
 });

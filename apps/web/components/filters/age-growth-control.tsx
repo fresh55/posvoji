@@ -16,10 +16,11 @@ import {
 } from "@/components/filters/age-stage-icon";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FilterCardMark,
   FilterCardTail,
-  SIDEBAR_COUNT_CLASS,
   SIDEBAR_LABEL_CLASS,
+  countClass,
   filterCardVariants,
 } from "@/components/filters/filter-card";
 import {
@@ -453,7 +454,16 @@ export function AgeGrowthControl({
                         className={filterCardVariants({
                           layout,
                           selected: checked,
-                          className:
+                          // DEAD_OPTION_CLASS by hand, because this section
+                          // spells its own box rather than going through
+                          // filterCardLayoutClass. Age is also the one section
+                          // that keeps its dead stages in the sidebar, so
+                          // without this it was the only place left where a
+                          // zero-count option still drew at half opacity, with
+                          // its mark already hidden: a 2.08:1 label beside an
+                          // empty box.
+                          className: cn(
+                            DEAD_OPTION_CLASS,
                             layout === "sheet"
                               ? "flex h-[4.75rem] flex-1 flex-col items-center justify-center gap-0.5 px-1.5 py-1.5 text-center"
                               : // The row's surface comes from the layout
@@ -469,6 +479,7 @@ export function AgeGrowthControl({
                                 // section in the sidebar whose check was on
                                 // the other side of the row from the rest.
                                 "grid h-10 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left",
+                          ),
                         })}
                       >
                         {/* The shared mark, so the check's position and
@@ -544,7 +555,7 @@ export function AgeGrowthControl({
                             </span>
                             <CountRoll
                               value={count}
-                              className={SIDEBAR_COUNT_CLASS}
+                              className={countClass(layout, checked)}
                             />
                           </>
                         )}

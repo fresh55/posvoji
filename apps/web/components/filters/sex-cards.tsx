@@ -3,11 +3,13 @@
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
   FilterCardTail,
   FilterSelectionMark,
+  countClass,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -229,7 +231,10 @@ export function SexCards({
                 selected: checked,
                 className:
                   layout === "sheet"
-                    ? "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center"
+                    ? cn(
+                        DEAD_OPTION_CLASS,
+                        "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
+                      )
                     : cn("flex", filterCardLayoutClass(layout)),
               })}
             >
@@ -243,9 +248,13 @@ export function SexCards({
                   <span className={cn("text-xs", checked && "font-medium")}>
                     {label}
                   </span>
+                  {/* The shared voice, not a hand-spelled one. This tile drew
+                      its count at 11px where every section that goes through
+                      FilterCardTail draws the sheet's 12px, and it kept the
+                      resting ink on the green fill when chosen. */}
                   <CountRoll
                     value={count}
-                    className="text-2xs tabular-nums text-muted-foreground"
+                    className={countClass(layout, checked)}
                   />
                 </>
               ) : (

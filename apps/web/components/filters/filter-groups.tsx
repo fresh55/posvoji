@@ -396,6 +396,41 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
   }
 }
 
+/**
+ * The options a layout draws, which is not always every option a section has.
+ *
+ * A dead option explains itself on the sheet, where there is a tile with a 0
+ * in it and a page to scroll. In the sidebar it costs the panel its fold: the
+ * column is 224px of rows in a 720px window with nine sections in it, and a
+ * row that answers nothing pushes a section that does below the fold. So the
+ * sidebar draws the live options only, the same rule PR #231 applied one level
+ * up when it stopped drawing a section the pool answers nothing of.
+ *
+ * One option always stays, because a section must not fold down to a bare
+ * heading. That is reachable: the section survives PR #231's test on the
+ * species pool while the counts are taken against the whole filter state, so
+ * a narrowing in one section can zero every option of another. The one kept
+ * is the first, which is the section's own leading answer and the same row
+ * each time, rather than whichever happens to sit last.
+ *
+ * Age is not filtered. Its three stages are one drawing: the grove above the
+ * rows is a three-column grid whose plants stand over the rows they belong to,
+ * so an age stage is not a row that can be taken out on its own.
+ *
+ * Here and not in filter-card.tsx, which is the surface primitive the portal
+ * shares: which options a list puts on screen is this list's rule, and
+ * FilterGroupList below is its only caller.
+ */
+export function drawnOptions<T>(
+  options: T[],
+  layout: FilterCardLayout,
+  isDead: (option: T) => boolean,
+): T[] {
+  if (layout !== "sidebar") return options;
+  const live = options.filter((option) => !isDead(option));
+  return live.length > 0 ? live : options.slice(0, 1);
+}
+
 // A closed section still says what it holds: the first selected label, and how
 // many more stand behind it. Language-neutral, so it needs no plural rules.
 function selectionSummary(
@@ -423,7 +458,6 @@ export function FilterGroupList({
   onToggleProperty,
   onToggleManyProperties,
   layout = "sidebar",
-  collapsible = false,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -438,8 +472,6 @@ export function FilterGroupList({
       age control's alone once, and by the time the sex and size sections were
       brought onto the row treatment it was deciding all of them. */
   layout?: FilterCardLayout;
-  /** Folds sections behind their headers, shared by the sidebar and sheet. */
-  collapsible?: boolean;
 } & FilterActionContract) {
   const { isOpen, toggleSection } = useFilterSections(
     layout === "sheet" ? {
@@ -457,44 +489,92 @@ export function FilterGroupList({
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();
 
+  // Which of a section's options this layout draws. The rule and the reason
+  // for it are in drawnOptions; it is applied here, once, rather than in each
+  // of the seven section components, so no section can quietly opt out. The
+  // closed-section summary below still reads its labels off the full list,
+  // which differs only by options nobody has chosen.
+  const drawn = <T,>(options: T[], isDead: (option: T) => boolean) =>
+    drawnOptions(options, layout, isDead);
+
+  // The same call four times over, in the four sections whose options carry a
+  // `key`: health, Družba, Dom and Posebna skrb. Each differed only in which
+  // tally to count in and which list of chosen values to ask, and spelled the
+  // dead test out again to say so.
+  //
+  // Two shapes and not one, because the options have two shapes. The card
+  // groups below key on `value` (FilterOption, which is what lib/filters
+  // builds a group from) and these four key on `key`, so a single helper would
+  // have to take a reader function per call and would be the thing it
+  // replaced. The groups.map case keeps its own call.
+  const drawnByKey = <T extends { key: string }>(
+    options: T[],
+    counts: Map<string, number>,
+    selected: readonly string[],
+  ): T[] =>
+    drawn(options, ({ key }) =>
+      isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
+    );
+
+  // Every section folds, on both surfaces. This was a prop for the pass in
+  // which only the sidebar folded; the phone sheet joined it on 2026-09-17
+  // (filter-sheet.tsx has the numbers: nine open sections through a 189px
+  // window at 320x568), and with both callers passing the same answer the
+  // unfolded list was a configuration the site no longer had.
   const collapseFor = (
     key: FilterSectionKey,
     summary: string | null,
-  ): SectionCollapse | undefined =>
-    collapsible
-      ? {
-          open: isOpen(key),
-          onToggle: () => toggleSection(key),
-          summary,
-          contentId: `${idBase}-${key}`,
-        }
-      : undefined;
+  ): SectionCollapse => ({
+    open: isOpen(key),
+    onToggle: () => toggleSection(key),
+    summary,
+    contentId: `${idBase}-${key}`,
+  });
 
   return (
     <>
-      {groups.map(({ group, options }) => (
-        <FilterGroup
-          key={group}
-          group={group}
-          layout={layout}
-          options={options}
-          counts={counts[group]}
-          selected={filters[group]}
-          onToggle={(value) => onToggle(group, value)}
-          onToggleMany={(values) => onToggleMany(group, values)}
-          collapse={collapseFor(
-            group,
-            selectionSummary(
-              filters[group],
-              (value) => options.find((option) => option.value === value)?.label,
-            ),
-          )}
-        />
-      ))}
+      {groups.map(({ group, options }) => {
+        // Read once and widened to string[]: indexed by a union of groups,
+        // filters[group] is a union of arrays, and .includes on one of those
+        // takes the intersection of their element types, which is never.
+        const selected: string[] = filters[group];
+        const groupCounts = counts[group];
+
+        return (
+          <FilterGroup
+            key={group}
+            group={group}
+            layout={layout}
+            // Age keeps every stage in both layouts: drawnOptions says why.
+            options={
+              group === "age"
+                ? options
+                : drawn(options, ({ value }) =>
+                    isDeadOption(
+                      groupCounts.get(value) ?? 0,
+                      selected.includes(value),
+                    ),
+                  )
+            }
+            counts={groupCounts}
+            selected={selected}
+            onToggle={(value) => onToggle(group, value)}
+            onToggleMany={(values) => onToggleMany(group, values)}
+            collapse={collapseFor(
+              group,
+              selectionSummary(
+                selected,
+                (value) =>
+                  options.find((option) => option.value === value)?.label,
+              ),
+            )}
+          />
+        );
+      })}
 
       {toggles.length > 0 && (
         <HealthToggleCards
-          toggles={toggles}
+          toggles={drawnByKey(toggles, toggleTally, filters.toggles)}
           counts={toggleTally}
           selected={filters.toggles}
           onToggle={onToggleProperty}
@@ -512,7 +592,11 @@ export function FilterGroupList({
 
       {goodWith && goodWith.options.length > 0 && (
         <GoodWithCards
-          options={goodWith.options}
+          options={drawnByKey(
+            goodWith.options,
+            goodWith.counts,
+            filters.goodWith,
+          )}
           counts={goodWith.counts}
           selected={filters.goodWith}
           resultCount={goodWith.resultCount}
@@ -536,7 +620,7 @@ export function FilterGroupList({
           asks what the visitor is willing to take on. */}
       {home && home.options.length > 0 && (
         <HomeCards
-          options={home.options}
+          options={drawnByKey(home.options, home.counts, filters.home)}
           counts={home.counts}
           selected={filters.home}
           resultCount={home.resultCount}
@@ -557,7 +641,7 @@ export function FilterGroupList({
 
       {care && care.options.length > 0 && (
         <CareCards
-          options={care.options}
+          options={drawnByKey(care.options, care.counts, filters.care)}
           counts={care.counts}
           selected={filters.care}
           resultCount={care.resultCount}

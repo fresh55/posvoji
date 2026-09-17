@@ -102,7 +102,18 @@ export function LanguageSwitcher({
                   // inherits it, where the other half spends a class muting
                   // itself. The hover keeps its lg prefix because ghost's own
                   // dark:hover rule would otherwise outrank an unprefixed one.
-                  "max-lg:hidden lg:bg-background lg:shadow-sm lg:hover:bg-background"
+                  //
+                  // The border is what actually says which language the page
+                  // is in. The raised plate does not: measured against the
+                  // well it stands in, it is 1.09:1 light, and in dark the
+                  // plate is darker than the well at 1.30:1 with a 2.48:1 ink
+                  // step, so nothing about the chosen half reached the 3:1 SC
+                  // 1.4.11 asks of a control's own state. --control-border is
+                  // 3.66:1 and 3.77:1 (globals.css). Colour only, because
+                  // buttonVariants already reserves `border border-transparent`
+                  // on every button, so this costs no layout and the phone,
+                  // where this half is not drawn, is untouched.
+                  "max-lg:hidden lg:border-control-border lg:bg-background lg:shadow-sm lg:hover:bg-background"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

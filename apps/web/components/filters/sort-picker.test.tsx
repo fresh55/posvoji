@@ -60,7 +60,8 @@ const CAPTION_ID = "sheet-sort-caption";
 
 // The two placements, by the props each one is mounted with: the toolbar's
 // trigger (mounted identically on the desktop row and the md-to-lg one) and
-// the sheet header's full-width control, which is drawn below md only and
+// the sheet header's full-width control, which is drawn on a phone and on any
+// screen short enough that the toolbar unpins (SORT_ROW_HIDDEN), and
 // takes its name from the caption over it. One dress between them now; what
 // the sheet still changes is the width and the 44px height it gives a thumb.
 // See the component's own "Three placements, one dress" note.

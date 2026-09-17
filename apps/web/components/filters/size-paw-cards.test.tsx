@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
+import {
+  installFilterFoldSeams,
+  openFilterSection,
+} from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 import { SizePawCards } from "./size-paw-cards";
 
-afterEach(() => cleanup());
+installFilterFoldSeams();
 
 const options = groupOptions("size", [], "sl");
 const counts = new Map(options.map(({ value }) => [value, 3]));
@@ -151,6 +155,7 @@ describe("size section reset", () => {
     const selected = [options[0].value, options[1].value];
     const { onToggleMany } = renderSizeGroup(selected);
 
+    openFilterSection("Velikost");
     fireEvent.click(
       screen.getByRole("button", { name: "Ponastavi filter velikosti" }),
     );

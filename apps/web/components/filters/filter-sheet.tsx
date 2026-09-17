@@ -77,14 +77,48 @@ export const SORT_TOOLBAR_HIDDEN = "max-md:hidden short:hidden";
  *  in the panel uses, so the one row that is not a filter section still reads
  *  as one. FilterSectionHeader itself is not used: it carries a reset link and
  *  a disclosure trigger, and this row wants neither. The caption wears
- *  SORT_ROW_HIDDEN too, so the label and the control it labels leave at the
- *  same width.
+ *  SORT_ROW_HIDDEN too, so the label and the control it labels leave on the
+ *  same query.
  *
  *  mt-3 moved up to the caption and the row kept mt-1.5, which is the gap that
  *  makes the two read as one labelled control rather than as a heading and a
  *  separate setting under it. */
 const SORT_CAPTION_CLASS = cn(SECTION_LABEL_CLASS, "mt-3", SORT_ROW_HIDDEN);
 const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
+
+/** The column the sheet's own content stands in. The header and the footer
+ *  wear it as a class each; the body says the same thing about its children
+ *  one at a time (SHEET_BLOCK_CHILDREN_CLASS below, which says why). The three
+ *  line up either way.
+ *
+ *  The frame itself stays full-bleed, and ui/drawer.tsx says why: a horizontal
+ *  inset on it shows the overlay down the notch side and draws the drawer's
+ *  border where it used to be off screen, so the way to clear an inset here is
+ *  to pad the content. This is that padding, for the one screen that needs it.
+ *  A drawer is as wide as the viewport, and a tablet is not a phone: measured
+ *  at 834 the sheet was 834px across and a Spol tile came to 393px of it for
+ *  the word "Samec", with the footer's two buttons stretched the same way.
+ *
+ *  28rem because the dock on the same screen is capped there from sm
+ *  (animal-filters.tsx), so the sheet and the button that opened it hold
+ *  their controls in one column. min() keeps it a cap rather than a floor. */
+const SHEET_BLOCK_CLASS = "sm:mx-auto sm:w-[min(28rem,100%)]";
+
+/** The same column, said about a box's children one at a time.
+ *
+ *  The cap sits on each block in the scrolling body rather than on one box
+ *  around them. The scroll box itself has to stay the sheet's full width, so
+ *  its bar is at the sheet's edge and its padding is the sheet's, and the
+ *  sections in it are a fragment: a box around them would be a node added for
+ *  nothing but its width. Every child in there is a block of its own, so
+ *  centring them one by one is the same column.
+ *
+ *  Beside the class it mirrors, and not spelled out at the call site 360 lines
+ *  below. The child-selector form has a reason; a second copy of the two
+ *  measurements it repeats does not, and a column named twice is a column that
+ *  moves in one place. */
+const SHEET_BLOCK_CHILDREN_CLASS =
+  "[&>*]:sm:mx-auto [&>*]:sm:w-[min(28rem,100%)]";
 
 /** What is behind the Filtri button, or undefined when nothing is.
  *
@@ -95,23 +129,23 @@ const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
  *  from. Three things can be inside, so there are three named answers and a
  *  section added below has one place to be counted.
  *
- *  Sorting is the reason the last two exist. Below md or in a short viewport
- *  the sheet changes the order, so a result set that no facet can narrow has
+ *  Sorting is the reason the last two exist. On a phone the sheet is where the
+ *  order is changed, so a result set that no facet can narrow still has
  *  something to do in here, and so does a filtered-to-nothing one, which is
  *  where a visitor most needs the way back out.
  *
- *  A reason and not a yes, because one of the three is drawn at one width and
- *  not another: from md in a taller viewport the toolbar carries the order
- *  and the sheet row stands down (SORT_ROW_HIDDEN). A sheet for `order` alone
- *  opens there on a title, a footer, and a body holding the Kje row or
- *  nothing at all, depending on whether the dataset has shelters to choose
- *  between. The caller stands the trigger down at that width instead, in CSS
- *  (animal-filters.tsx).
+ *  A reason and not a yes, because one of the three is drawn at some sizes and
+ *  not others: on a screen that is both wide and tall the toolbar carries the
+ *  order itself and the sort row below stands down (SORT_ROW_HIDDEN), so a
+ *  sheet held open by `order` alone opens there on a title, a footer, and a
+ *  body holding the Kje row or nothing at all, depending on whether the
+ *  dataset has shelters to choose between. The caller stands the trigger down
+ *  on the same query instead, in CSS (animal-filters.tsx).
  *
  *  `order` is tried last, and the order of the returns below is the contract
  *  rather than a style: a sheet with anything else in it keeps its trigger at
- *  every width, so only the answer that follows SORT_ROW_HIDDEN may be given.
- *  A clause inserted above it changes which states lose their button. */
+ *  every size, so only the answer that runs out may be the one given. A clause
+ *  inserted above it changes which states lose their button. */
 type FilterSheetReason = "sections" | "undo" | "order";
 
 export function filterSheetReason({
@@ -183,14 +217,13 @@ export function FilterSheet({
    *  trigger no longer promises a section the sheet does not have. */
   activeCount: number;
   resultCount: number;
-  /** Sorting is offered here on a phone, and below md it is offered nowhere
+  /** Sorting is offered here on a phone, and on a phone it is offered nowhere
    *  else. It is not a filter and does not join `Filters` (lib/sort.ts keeps
    *  the two apart on purpose, since one orders the list the other has
    *  already matched); what it shares with them is the sheet, because on a
    *  phone the sheet is the one surface a visitor can always reach to change
-   *  what the grid shows. From md the toolbar has the room for the control
-   *  and the row below stands down unless the short viewport lets that toolbar
-   *  scroll away. */
+   *  what the grid shows. On a screen wide and tall enough for the toolbar to
+   *  pin the control, the row below stands down (SORT_ROW_HIDDEN). */
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   /** The way from the species pill back to every species. The pill is the
@@ -205,7 +238,7 @@ export function FilterSheet({
   /** Keeps the page's Undo clock paused while the sheet owns that control. */
   onOpenChange?: (open: boolean) => void;
   /** Merged onto the trigger, which is all this component draws until it is
-   *  opened. The dock passes the width at which the sheet has nothing left in
+   *  opened. The dock passes the query on which the sheet has nothing left in
    *  it (animal-filters.tsx); the content is portalled to <body> and takes
    *  none of it. */
   className?: string;
@@ -291,22 +324,23 @@ export function FilterSheet({
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
           {activeCount > 0 && (
-            <>
-              <Badge
-                variant="secondary"
-                aria-hidden="true"
-                className="hidden h-5 min-w-5 rounded-full px-1 text-xs tabular-nums min-[360px]:inline-flex"
-              >
-                {activeCount}
-              </Badge>
-              {/* Below 360px the full badge doesn't fit the trigger, but the
-                  aria-label still announces the count, so sighted users need
-                  some visible sign filters are active. A dot is that sign. */}
-              <span
-                aria-hidden="true"
-                className="inline-block size-1.5 shrink-0 rounded-full bg-background min-[360px]:hidden"
-              />
-            </>
+            /* The count, at every width. It used to start at 360px, with a 6px
+               dot standing in below that because "the full badge doesn't fit
+               the trigger". Measured at 320: it fits. The trigger draws
+               "Filtri 2" whole, nothing in it truncates, and the dock is
+               still 320px wide. What the badge does cost there is 14px of the
+               shelter trigger beside it, whose label is a town name already
+               truncated at that width, against a number that was otherwise
+               only in the aria-label: a sighted visitor on the narrowest
+               phone had a dot saying something was on and no way to learn how
+               much short of opening the sheet. */
+            <Badge
+              variant="secondary"
+              aria-hidden="true"
+              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums"
+            >
+              {activeCount}
+            </Badge>
           )}
         </Button>
       </DrawerTrigger>
@@ -342,8 +376,8 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
-          {/* Sort on its own full-width row under the title, below md and on
-              short landscape screens,
+          {/* Sort on its own full-width row under the title, on a phone and on
+              any screen short enough that the toolbar unpins (SORT_ROW_HIDDEN),
               and inside the header block rather than the scrolling body, so
               it stays put while the filter list moves under it.
 
@@ -362,7 +396,10 @@ export function FilterSheet({
               control has one placement below lg, including at scroll zero. The
               header's own pb-3 is what sits under the title once the pair is
               gone. The sheet is only reachable below lg, so this is the
-              md-to-lg band and nothing else.
+              md-to-lg band, less the landscape phones in it: under 32rem of
+              height that toolbar stops pinning and scrolls away with the page
+              (SORT_ROW_HIDDEN says what that measured), so 844x390 and
+              932x430 keep the pair in here.
 
               It shared the title's row for one pass and could not: the close
               button is absolutely positioned in that corner at 44px, and the
@@ -409,43 +446,61 @@ export function FilterSheet({
               longest label, "Other animals", measures 148px at 320 and the
               button starts 267px in, so the clearance is for a label that
               has not been written yet, not for these. */}
-          <div className="mt-3 flex min-w-0 items-center gap-3 pe-12">
-            <DrawerTitle className="text-base">{messages.filters}</DrawerTitle>
-            {filters.species !== "all" && (
-              <button
-                type="button"
-                data-slot="species-scope"
-                onClick={() => {
-                  contentRef.current?.focus();
-                  onSpeciesChange("all");
-                }}
-                aria-label={t("speciesScope", {
-                  label: speciesScopeLabel(filters.species, locale),
-                })}
-                className="inline-flex h-8 min-w-0 touch-manipulation select-none items-center gap-1.5 rounded-ui bg-foreground px-2.5 text-sm text-background outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
-              >
-                <SpeciesGlyphIcon tab={filters.species} />
-                <span className="min-w-0 truncate">
-                  {speciesScopeLabel(filters.species, locale)}
-                </span>
-                <X aria-hidden className="size-3.5 shrink-0 opacity-70" />
-              </button>
-            )}
+          {/* The header's own column, so the title line and the sort row
+              stand where the body's sections do (SHEET_BLOCK_CLASS). The
+              border under the header stays on the block outside it and runs
+              the full width: it is the drawer's own edge when the body is
+              scrolled, not a rule under this content. */}
+          <div className={SHEET_BLOCK_CLASS}>
+            <div className="mt-3 flex min-w-0 items-center gap-3 pe-12">
+              <DrawerTitle className="text-base">{messages.filters}</DrawerTitle>
+              {filters.species !== "all" && (
+                <button
+                  type="button"
+                  data-slot="species-scope"
+                  onClick={() => {
+                    contentRef.current?.focus();
+                    onSpeciesChange("all");
+                  }}
+                  aria-label={t("speciesScope", {
+                    label: speciesScopeLabel(filters.species, locale),
+                  })}
+                  className="inline-flex h-8 min-w-0 touch-manipulation select-none items-center gap-1.5 rounded-ui bg-foreground px-2.5 text-sm text-background outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
+                >
+                  <SpeciesGlyphIcon tab={filters.species} />
+                  <span className="min-w-0 truncate">
+                    {speciesScopeLabel(filters.species, locale)}
+                  </span>
+                  <X aria-hidden className="size-3.5 shrink-0 opacity-70" />
+                </button>
+              )}
+            </div>
+            <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
+              {messages.sortCaption}
+            </div>
+            <SortPicker
+              value={sort}
+              onChange={onSortChange}
+              labelledBy={sortCaptionId}
+              className={SORT_ROW_CLASS}
+            />
           </div>
-          <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
-            {messages.sortCaption}
-          </div>
-          <SortPicker
-            value={sort}
-            onChange={onSortChange}
-            labelledBy={sortCaptionId}
-            className={SORT_ROW_CLASS}
-          />
         </div>
 
+        {/* scrollbar-thin because until it was here this box said nothing
+            about being a scroll box: no fade, no bar, and nine folded section
+            names that end at the bottom edge with more under it. The same thin
+            bar the picker's shelter list wears (picker-shelter-list.tsx), and
+            the utility carries the thumb colour that a hand-written
+            scrollbar-width never got (globals.css); a phone draws no bar at
+            all and loses nothing, and on a mouse or a trackpad it is the whole
+            of the cue. */}
         <div
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
-          className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
+          className={cn(
+            "flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6 scrollbar-thin",
+            SHEET_BLOCK_CHILDREN_CLASS,
+          )}
         >
           {/* Kje above every section, the same order the panel keeps at lg.
               The pills under it are the mobile half of the fix: the dock's
@@ -465,6 +520,28 @@ export function FilterSheet({
             </LocationScopeRow>
           )}
 
+          {/* The sections fold behind their headers here, the way they do in
+              the panel at lg. This sheet used to open all nine of them into
+              whatever a phone had left, on the argument that it scrolls as
+              one page: measured on 2026-09-17 the body held 1586px of content
+              in a 388px window at 390x844 and 1649px in 189px at 320x568,
+              and with the keyboard up 10.7 times the window, so six to eight
+              section names were never seen at all. The panel's worst case is
+              1.07x, so the argument for folding applies to this surface more
+              than to the one already doing it. At 390x844 the body goes from
+              1586px to about 774.
+
+              Nothing new is built for it: the fold, the defaults that keep
+              Spol and Starost open, the summary chip a closed header shows so
+              an active filter never disappears with its cards, and the pull
+              into view once a section has grown all ship for the panel
+              already (use-filter-sections.ts, filter-section-header.tsx).
+              The folds are stored per section and the two surfaces share the
+              store, which is right: a visitor who folded Velikost has said
+              which sections they care about, and that answer is theirs on
+              both surfaces. Initially active sections are revealed when this
+              sheet opens so a filtered link shows its selected options; a
+              manual fold still wins for the rest of that opening. */}
           <FilterGroupList
             filters={filters}
             groups={groups}
@@ -479,41 +556,46 @@ export function FilterSheet({
             onToggleProperty={onToggleProperty}
             onToggleManyProperties={onToggleManyProperties}
             layout="sheet"
-            collapsible
           />
         </div>
 
-        <div className="flex shrink-0 gap-3 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button
-            variant="ghost"
-            className="h-11"
-            disabled={activeCount === 0 && !undo}
-            onClick={activeCount === 0 && undo ? undo : onClearAll}
-            aria-label={activeCount === 0 && undo ? messages.undoClearFilters : undefined}
-          >
-            {/* "Počisti filtre" and not "Počisti vse": the species pill on the
-                title line survives this press, and a button that says
-                everything while a dark pill beside it stays put is a button
-                that lies. */}
-            {activeCount === 0 && undo ? (
-              <>
-                <Undo2 className="size-4" aria-hidden />
-                {messages.undoClear}
-              </>
-            ) : messages.clearFilters}
-          </Button>
-          <DrawerClose asChild>
-            <Button className="h-11 flex-1">
-              {messages.show}
-              <ResultCount
-                count={resultCount}
-                locale={locale}
-                announce={false}
-                variant="inline"
-                className="justify-start text-current"
-              />
+        {/* The footer's band keeps its rule, its ground and the safe-area
+            padding full width; the two buttons stand in the same column the
+            sections above them do, rather than stretching a tablet's whole
+            width (SHEET_BLOCK_CLASS). */}
+        <div className="shrink-0 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className={cn("flex gap-3", SHEET_BLOCK_CLASS)}>
+            <Button
+              variant="ghost"
+              className="h-11"
+              disabled={activeCount === 0 && !undo}
+              onClick={activeCount === 0 && undo ? undo : onClearAll}
+              aria-label={activeCount === 0 && undo ? messages.undoClearFilters : undefined}
+            >
+              {/* "Počisti filtre" and not "Počisti vse": the species pill on the
+                  title line survives this press, and a button that says
+                  everything while a dark pill beside it stays put is a button
+                  that lies. */}
+              {activeCount === 0 && undo ? (
+                <>
+                  <Undo2 className="size-4" aria-hidden />
+                  {messages.undoClear}
+                </>
+              ) : messages.clearFilters}
             </Button>
-          </DrawerClose>
+            <DrawerClose asChild>
+              <Button className="h-11 flex-1">
+                {messages.show}
+                <ResultCount
+                  count={resultCount}
+                  locale={locale}
+                  announce={false}
+                  variant="inline"
+                  className="justify-start text-current"
+                />
+              </Button>
+            </DrawerClose>
+          </div>
         </div>
       </DrawerContent>
     </Drawer>

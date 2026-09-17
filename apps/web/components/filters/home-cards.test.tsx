@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, homeOptions, type HomeKey } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
+import {
+  installFilterFoldSeams,
+  openFilterSection,
+} from "@/test/filter-folds";
 import { FilterGroupList } from "./filter-groups";
 import { HomeCards } from "./home-cards";
 
-afterEach(() => cleanup());
+installFilterFoldSeams();
 
 const options = homeOptions("sl");
 const counts = new Map(options.map(({ key }) => [key, 2]));
@@ -196,8 +200,17 @@ describe("FilterGroupList", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Dom" })).toBeTruthy();
-    expect(
-      screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
-    ).toHaveLength(2);
+    openFilterSection("Dom");
+    // Only "apartment" has a count, so the sidebar draws that option and
+    // leaves the rest out. Named rather than counted: one surviving option is
+    // also what drawnOptions' keep-the-first fallback leaves behind when every
+    // option is dead, and the two say different things about the data.
+    const drawn = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("aria-pressed"));
+    expect(drawn).toHaveLength(1);
+    expect(drawn[0].getAttribute("aria-label")).toMatch(
+      new RegExp(`^${options.find(({ key }) => key === "apartment")!.label}, `),
+    );
   });
 });

@@ -73,7 +73,11 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // studio shots on a white ground, and on the white page such a photo has no
 // edge at all: the corners disappear and the wait mark at the top right sits
 // in what reads as empty page. 9% black in light mode and 8% white in dark
-// close the shape without reading as a border around the picture. It was 6%,
+// close the shape without reading as a border around the picture. Those two
+// values are --card-photo-edge (globals.css), which is the only thing the
+// theme changes about this frame: both shadows below read the token, so the
+// hairline and the focused ring's inner edge are each one string instead of a
+// light one and a dark one that had to be kept in step by hand. It was 6%,
 // and at 6% the edge is rgb(240) on the white page: the top of the frame read,
 // but where a studio photo runs to pure white at the bottom the corners
 // vanished and the picture ended nowhere. 9% is rgb(232), an edge the eye
@@ -88,11 +92,36 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // Tailwind builds box-shadow out of --tw-ring-shadow and --tw-shadow together,
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
+//
+// That list is also how the focused ring gets an inner edge. The ring is drawn
+// inside the picture, so its inner boundary falls on whatever the photograph
+// happens to be there, and on 54 of 59 lead photos that boundary measured
+// under 3:1: the ring is a light green, and most shelter photos are studio
+// shots on white. So while a card is focused the shadow slot carries a second
+// layer, 4px of black at 45%, which the 3px ring covers all but the innermost
+// pixel of. What is left is a dark line between the green and the picture,
+// 3.4:1 against a white photo, and on a dark photo the ring was already the
+// bright thing. The hairline stays in the same value: it is under the ring
+// while the ring is there, and back on its own the moment focus leaves.
+//
+// The 45% black is the same in both themes, so with the hairline behind a
+// token neither shadow has a dark twin left to write. That pair used to be
+// four strings differing in one colour, and the focused dark one existed only
+// to restate the hairline's dark rule, which wrote the same property at the
+// same specificity and would otherwise have won.
+//
+// shrink-0 is the frame's own. It used to sit on a wrapper div around the
+// gallery, back when the two marks on the photo were positioned against that
+// div; they are drawn against the article now, which left the wrapper holding
+// one child and one class. PhotoGallery puts this string on its own root, the
+// element carrying data-slot="photo-frame", so the frame is the card's flex
+// item and holds its box whatever the text under it does.
 const PHOTO_FRAME =
-  `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
+  `relative shrink-0 ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
   ` after:${CARD_PHOTO_RADIUS}` +
-  " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]" +
+  " group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({
@@ -265,120 +294,66 @@ export function AnimalCard({
         // page, and underlining the animal's name while the pointer is on it
         // would promise the wrong destination. can-hover (globals.css) keeps
         // it off touch, where :hover sticks after a tap.
-        "group/card flex flex-col overflow-hidden transition-transform motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99] can-hover:[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline",
+        //
+        // relative, because the two marks on the photo are drawn last in this
+        // element and positioned against it; see them below.
+        "group/card relative flex flex-col overflow-hidden transition-transform motion-safe:[&:active:not(:has([data-press-exempt]:active))]:scale-[0.99] can-hover:[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline",
         className,
       )}
       style={style}
     >
-      <div className="relative shrink-0">
-        <PhotoGallery
-          images={animal.images}
-          name={animal.name}
-          className={PHOTO_FRAME}
-          sizes={CARD_PHOTO_SIZES}
-          // The frame is square, and 265 of the 484 lead photos are wider
-          // than 4:3: a square cut from the middle of one throws away a third
-          // of its width, and with it a tail or the whole cat at one end of
-          // the bench. Told the shape, the photo keeps the animal ingest
-          // found in the box.
-          frame={CARD_PHOTO_RATIO}
-          // A plain click here opens the dialog, whose fan mounts its five
-          // prints at once at 24rem. The rung ladder is 320/480/640 plus the
-          // original, so at every common density that is a different file
-          // from the card's: the front print would otherwise be a cold fetch
-          // the moment the dialog opens. Tied to openDialog below,
-          // which is what makes this photo open the fan at all.
-          //
-          // The constant comes from lib and not from the fan itself: an
-          // import of photo-spread here would pull the whole fan into the
-          // grid's bundle.
-          warmSizes={FAN_PHOTO_SIZES}
-          warmSideSizes={FAN_SIDE_PHOTO_SIZES}
-          tone={settled ? QUIET_PHOTO : undefined}
-          // What the empty frame draws above its caption, for an animal the
-          // shelter published without a photo. A frame holding one grey
-          // sentence is the only card in the grid with nothing in its
-          // picture, and at a glance it reads as a card that failed to load
-          // rather than as a dog whose photo is on the shelter's own page.
-          //
-          // The card is what knows the species. The gallery is handed images
-          // and a name and nothing else, and it is drawn on the animal's own
-          // page and in the dialog as well, so teaching it to read an animal
-          // would tie a photo component to the schema for one caller's sake.
-          //
-          // It takes the component and not the species for the same reason:
-          // a species would make the gallery import the icon map and own the
-          // mapping, which is animal-icons.ts's job and is already shared by
-          // the filter panel and the dialog. Handed the component, the
-          // gallery only draws what it is given.
-          //
-          // animal.species, not the species prop above, which is the grid's
-          // active tab and is "all" on most of these cards.
-          emptyMark={SPECIES_ICONS[animal.species]}
-          variant="card"
-          href={href}
-          onNavigate={openDialog}
-          index={photoIndex}
-          onIndexChange={setPhotoIndex}
-          announceChanges={announcePhotoChanges}
-          eager={eager}
-        />
-        {/* One copy, on the photo, at every width. A status disqualifies the
-            whole card, so it belongs on the thing it disqualifies rather
-            than queueing for space beside the name. It used to be two DOM
-            copies swapped by a breakpoint, which also left the phone copy
-            orphaned between the two links, inside neither. */}
-        {/* 8px in from the corner, which the 14px radius asks for: at 6px
-            the pill's own corner sat on the photo's curve. */}
-        <StatusBadge
-          status={animal.status}
-          locale={locale}
-          overlay
-          className="absolute left-2 top-2"
-        />
-        {showWaitMark && waitMonths !== undefined && (
-          // On the photo, opposite the counter, for the same reason the
-          // status is: it is a flag about the animal's situation, not one of
-          // the animal's own facts. Off the text block it stops competing
-          // with the shelter for a line that three of the registry's
-          // seventeen names cannot fit even on their own.
-          //
-          // One string, seen and spoken. It used to be three: the duration
-          // alone for the eye, an hourglass to say what kind of duration it
-          // was, and the full phrase again for a screen reader and a hover.
-          // The eye's copy was "3 leta" over a meta line reading
-          // "Mačka · samec · 3 leta", which is the same number twice, told
-          // apart by a 12px icon; 54 of the 101 cards carrying the mark are
-          // that case, because an animal that grew up in the shelter has
-          // waited exactly as long as it has been alive. The verb settles it
-          // in four characters and pays for them with the icon.
-          //
-          // One quiet tier, and not amber. A solid warm pill on every photo
-          // is an alarm ringing so often it stops being one, and the filled
-          // warm treatment stays with the status badge, which really does
-          // disqualify a card. A second, louder tier for the longest waits
-          // does not work either: the default sort is longest in shelter, so
-          // every card above the fold would wear it.
-          //
-          // Which is also the rule the order prop carries. A mark on every
-          // card in a list already ordered by the wait says nothing the order
-          // has not said: under the default sort the first hundred cards all
-          // wore it, and the shelter page sorts the same way. So both grids
-          // hand over the order they sorted by and the mark stays off there,
-          // while every other order and every caller with no order of its own
-          // draws it. The animal's own page says how long it has been waiting
-          // either way.
-          //
-          // Top right, opposite the status. The bottom edge belongs to the
-          // gallery dots now, and on a phone card the two met in the middle.
-          <Badge
-            variant="overlay-quiet"
-            className="absolute right-2 top-2"
-          >
-            {t("longStayMark", { duration: ageLabel(waitMonths, locale) })}
-          </Badge>
-        )}
-      </div>
+      <PhotoGallery
+        images={animal.images}
+        name={animal.name}
+        className={PHOTO_FRAME}
+        sizes={CARD_PHOTO_SIZES}
+        // The frame is square, and 265 of the 484 lead photos are wider
+        // than 4:3: a square cut from the middle of one throws away a third
+        // of its width, and with it a tail or the whole cat at one end of
+        // the bench. Told the shape, the photo keeps the animal ingest
+        // found in the box.
+        frame={CARD_PHOTO_RATIO}
+        // A plain click here opens the dialog, whose fan mounts its five
+        // prints at once at 24rem. The rung ladder is 320/480/640 plus the
+        // original, so at every common density that is a different file
+        // from the card's: the front print would otherwise be a cold fetch
+        // the moment the dialog opens. Tied to openDialog below,
+        // which is what makes this photo open the fan at all.
+        //
+        // The constant comes from lib and not from the fan itself: an
+        // import of photo-spread here would pull the whole fan into the
+        // grid's bundle.
+        warmSizes={FAN_PHOTO_SIZES}
+        warmSideSizes={FAN_SIDE_PHOTO_SIZES}
+        tone={settled ? QUIET_PHOTO : undefined}
+        // What the empty frame draws above its caption, for an animal the
+        // shelter published without a photo. A frame holding one grey
+        // sentence is the only card in the grid with nothing in its
+        // picture, and at a glance it reads as a card that failed to load
+        // rather than as a dog whose photo is on the shelter's own page.
+        //
+        // The card is what knows the species. The gallery is handed images
+        // and a name and nothing else, and it is drawn on the animal's own
+        // page and in the dialog as well, so teaching it to read an animal
+        // would tie a photo component to the schema for one caller's sake.
+        //
+        // It takes the component and not the species for the same reason:
+        // a species would make the gallery import the icon map and own the
+        // mapping, which is animal-icons.ts's job and is already shared by
+        // the filter panel and the dialog. Handed the component, the
+        // gallery only draws what it is given.
+        //
+        // animal.species, not the species prop above, which is the grid's
+        // active tab and is "all" on most of these cards.
+        emptyMark={SPECIES_ICONS[animal.species]}
+        variant="card"
+        href={href}
+        onNavigate={openDialog}
+        index={photoIndex}
+        onIndexChange={setPhotoIndex}
+        announceChanges={announcePhotoChanges}
+        eager={eager}
+      />
       <a
         // The card's own link, and the one thing in the article that names
         // the animal. animal-grid.tsx looks for this after "show more" so
@@ -472,10 +447,12 @@ export function AnimalCard({
             muted-foreground on white is about 4.7:1, so anything lighter
             fails AA, and that line is a link. */}
         <p className="text-pretty text-sm text-foreground tabular-nums">
-          {/* The middots recede to half strength so the facts between them
-              read as three words rather than one string. The parts come from
-              labels.ts already separate, so nothing here has to know how the
-              joined form is glued together. */}
+          {/* The middot is drawn one step under the facts it stands between,
+              so the line reads as words rather than as one string; how far
+              under, and why it is not an alpha any more, is META_DOT_CLASS's
+              own comment in labels.ts. The parts come from there already
+              separate, so nothing here has to know how the joined form is
+              glued together. */}
           {animalMetaParts(animal, locale, reference, species).flatMap(
             (part, i) =>
               i === 0
@@ -520,23 +497,35 @@ export function AnimalCard({
           // This line leaves for the shelter's page, so the card must not
           // squeeze under it. See the article's own comment.
           data-press-exempt
-          // No divider and no hover ground. The muted colour and the gap
-          // mt-auto keeps above the line do the separating, and the hover
-          // is the contact rows' (shelter-card.tsx): the ink comes up and
-          // the name underlines, which is what says this answers a press.
+          // No divider and no hover ground. The muted colour and the air
+          // above the line do the separating, and the hover is the contact
+          // rows' (shelter-card.tsx): the ink comes up and the name
+          // underlines, which is what says this answers a press.
           // A ground here would have to reach past the text on both sides
           // to read as a row, and card-paint clips anything past the box.
           //
+          // pt-2.5, and it is this padding that is the air: 10px, the same
+          // step the photo keeps above the name (see the anchor above), so
+          // the two gaps in the text block are one measurement. It was 6px,
+          // against 10px above, which left the card's quietest line closer
+          // to the facts than the facts are to the picture. mt-auto adds to
+          // it only on a row where a neighbour's text wrapped and this card
+          // has leftover height to collect; measured across the grid the
+          // cards in a row differ by 0.0px at every band, so on almost every
+          // card the padding is the whole gap. The 4px costs a desktop card
+          // 4px of height and a phone nothing, because the coarse box below
+          // is 44px either way and absorbs it.
+          //
           // 44px for a thumb and no more than the line for a mouse.
           // pointer-coarse:min-h-11 grows the box only where a finger is
-          // what presses it; on a desktop the row is the six, sixteen and
+          // what presses it; on a desktop the row is the ten, sixteen and
           // twelve pixels it is drawn with. items-start rather than
           // items-center, so the grown box keeps its air below the words
           // instead of around them: what a phone reads is a line the same
           // distance under the meta line at every pointer, and the target's
           // extra height falls to the card's bottom edge, where on a card
           // with no border it is only the gap before the next row.
-          className="mt-auto flex w-full items-start pt-1.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
+          className="mt-auto flex w-full items-start pt-2.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
         >
           {/* No mark at all. This used to carry a House, and the argument for
               it was that the pin means "place" everywhere else on the site
@@ -559,12 +548,19 @@ export function AnimalCard({
           </span>
           {/* The chevron appears when a pointer or the keyboard is already
               on the card. At rest the muted line is enough on its own, now
-              that the house that used to sit beside it is gone, and on
-              touch, where hover never fires, the whole row is the
-              affordance. */}
+              that the house that used to sit beside it is gone.
+
+              Except on a coarse pointer, where it is drawn the whole time.
+              The row is the target, but hover never fires on a thumb, so
+              everything that answered for this line on a desktop answered for
+              nothing on a phone: 12px of muted text 6px under the meta line,
+              with no mark on the card saying that this one line leaves for
+              another page while everything above it opens the animal. The
+              same 60% the hover draws, so it is one mark in two places rather
+              than a phone treatment of its own. */}
           <ChevronRight
             aria-hidden
-            className="ml-auto mt-0.5 size-3 shrink-0 opacity-0 transition-opacity group-hover/card:opacity-60 group-focus-within/card:opacity-60"
+            className="ml-auto mt-0.5 size-3 shrink-0 opacity-0 transition-opacity pointer-coarse:opacity-60 group-hover/card:opacity-60 group-focus-within/card:opacity-60"
           />
         </a>
       ) : (
@@ -572,6 +568,80 @@ export function AnimalCard({
         // nothing to add and nowhere to click; the anchor above just carries
         // the card's bottom padding instead.
         <div className="mt-auto pb-3" />
+      )}
+      {/* The two marks on the photograph, drawn last and positioned against
+          the article (relative, above).
+
+          Last because this is the order they are read in. They used to sit
+          in the photo's wrapper, before the animal's name, so a screen
+          reader walking a card said "Čaka 8 let. Fotografija 1 od 6." and
+          only then whose card it was. Drawn after the shelter line they are
+          the card's footnotes in the tree and its corners on the screen: the
+          frame's top edge is the article's top edge and the article carries
+          no padding, so left-2 / right-2 top-2 land on the pixels they
+          landed on before. Nothing moves, and the aria-labelledby on the
+          article still puts the name first for anyone who enters it as a
+          whole.
+
+          They stay over the photo by tree order: both are positioned with no
+          z-index of their own and come after the frame, and the only layer
+          above them is the frame's own ::after, which is a 1px hairline and a
+          3px focus ring at the frame's edge, four pixels short of an 8px
+          inset. */}
+      {/* One copy, on the photo, at every width. A status disqualifies the
+          whole card, so it belongs on the thing it disqualifies rather
+          than queueing for space beside the name. It used to be two DOM
+          copies swapped by a breakpoint, which also left the phone copy
+          orphaned between the two links, inside neither. */}
+      {/* 8px in from the corner, which the 14px radius asks for: at 6px
+          the pill's own corner sat on the photo's curve. */}
+      <StatusBadge
+        status={animal.status}
+        locale={locale}
+        overlay
+        className="absolute left-2 top-2"
+      />
+      {showWaitMark && waitMonths !== undefined && (
+        // On the photo, opposite the counter, for the same reason the
+        // status is: it is a flag about the animal's situation, not one of
+        // the animal's own facts. Off the text block it stops competing
+        // with the shelter for a line that three of the registry's
+        // seventeen names cannot fit even on their own.
+        //
+        // One string, seen and spoken. It used to be three: the duration
+        // alone for the eye, an hourglass to say what kind of duration it
+        // was, and the full phrase again for a screen reader and a hover.
+        // The eye's copy was "3 leta" over a meta line reading
+        // "Mačka · samec · 3 leta", which is the same number twice, told
+        // apart by a 12px icon; 54 of the 101 cards carrying the mark are
+        // that case, because an animal that grew up in the shelter has
+        // waited exactly as long as it has been alive. The verb settles it
+        // in four characters and pays for them with the icon.
+        //
+        // One quiet tier, and not amber. A solid warm pill on every photo
+        // is an alarm ringing so often it stops being one, and the filled
+        // warm treatment stays with the status badge, which really does
+        // disqualify a card. A second, louder tier for the longest waits
+        // does not work either: the default sort is longest in shelter, so
+        // every card above the fold would wear it.
+        //
+        // Which is also the rule the order prop carries. A mark on every
+        // card in a list already ordered by the wait says nothing the order
+        // has not said: under the default sort the first hundred cards all
+        // wore it, and the shelter page sorts the same way. So both grids
+        // hand over the order they sorted by and the mark stays off there,
+        // while every other order and every caller with no order of its own
+        // draws it. The animal's own page says how long it has been waiting
+        // either way.
+        //
+        // Top right, opposite the status. The bottom edge belongs to the
+        // gallery dots now, and on a phone card the two met in the middle.
+        <Badge
+          variant="overlay-quiet"
+          className="absolute right-2 top-2"
+        >
+          {t("longStayMark", { duration: ageLabel(waitMonths, locale) })}
+        </Badge>
       )}
     </article>
   );

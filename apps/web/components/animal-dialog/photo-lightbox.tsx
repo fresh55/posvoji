@@ -30,8 +30,14 @@ import {
 // the sensor housing, where a notched iPhone reports 44 to 59px of inset. The
 // insets are now the same max() at every width, and 44px is the floor for a
 // finger; a mouse keeps the 36px disc.
+//
+// The plate is stated for dark as well, for the reason GALLERY_BUTTON_CLASS
+// gives in photo-gallery.tsx: the outline variant carries its own dark fill,
+// and that fill outranks an unprefixed one from here. These four discs stand
+// on a photograph filling the screen, so losing the plate leaves the glyph on
+// the picture with nothing under it.
 const LIGHTBOX_BUTTON_CLASS =
-  "absolute z-10 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background active:translate-y-0! pointer-fine:size-9";
+  "absolute z-10 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background active:translate-y-0! dark:bg-background/80 dark:hover:bg-background pointer-fine:size-9";
 
 // Slow enough to read as one photo travelling, quick enough that nobody waits
 // for it. Barely underdamped, so it lands rather than wobbles.

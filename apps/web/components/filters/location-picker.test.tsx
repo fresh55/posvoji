@@ -232,7 +232,11 @@ describe("LocationPicker typed location", () => {
 
     type(input, "1000");
 
-    expect(rowOrder()).toEqual([]);
+    // The roster stays whole under a place query that matched no shelter's
+    // name, in the order it was already in, so choosing the place is a list
+    // reordering itself rather than a list arriving. What the typing has not
+    // done is move anything.
+    expect(rowOrder()).toEqual(["sever", "jug"]);
     expect(screen.queryByText(/Razvrščeno po bližini/)).toBeNull();
     expect(screen.getByRole("button", { name: /^V bližini Ljubljana/ })).toBeTruthy();
     choosePlace();
@@ -505,7 +509,8 @@ describe("LocationPicker keyboard", () => {
 
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^V bližini Ljubljana/ }));
     expect(screen.queryByText(/Razvrščeno po bližini/)).toBeNull();
-    expect(rowOrder()).toEqual([]);
+    // Still the resting order: focus moved to the suggestion, nothing chose it.
+    expect(rowOrder()).toEqual(["sever", "jug"]);
     expect((input as HTMLInputElement).value).toBe("1000");
   });
 
@@ -3137,7 +3142,10 @@ describe("LocationPicker audit regressions", () => {
       expect(screen.queryByText(/Razvrščeno po bližini/)).toBeNull();
     }
     type(input, "1000");
-    expect(rowOrder()).toEqual([]);
+    // Four digits match no shelter's name, so the roster stays whole in its
+    // resting order for the place row to reorder; three of them are not a
+    // postcode yet, so the list above is narrowed to nothing and says so.
+    expect(rowOrder()).toEqual(["sever", "jug"]);
     expect(screen.getByRole("button", { name: /^V bližini Ljubljana/ })).toBeTruthy();
     expect(screen.queryByText(/Razvrščeno po bližini/)).toBeNull();
     choosePlace();
@@ -3147,6 +3155,29 @@ describe("LocationPicker audit regressions", () => {
     const input = await openPicker();
     type(input, " Zavetišče Jug ");
     expect(rowOrder()).toEqual(["jug"]);
+  });
+  // The heading closed the search block, from where it labelled whatever came
+  // next: on a query that had resolved to a place it stood over the
+  // confirmed-origin button, and on a place query with no name match it stood
+  // over nothing at all.
+  it("heads the shelter rows with Zavetišča and names them by it", async () => {
+    const input = await openPicker();
+    expect(screen.queryByText("Zavetišča")).toBeNull();
+
+    type(input, "Zavetišče");
+    const heading = screen.getByText("Zavetišča");
+    const group = screen
+      .getByRole("dialog")
+      .querySelector(`[aria-labelledby="${heading.id}"]`);
+    expect(group?.querySelector("[data-shelter-row]")).toBeTruthy();
+    // Nothing between the words and the rows they name.
+    expect(heading.nextElementSibling).toBe(group);
+
+    // A place query leaves the whole roster on screen, which is not a set of
+    // matches, and the row above the list is what says what the typing did.
+    type(input, "1000");
+    expect(screen.queryByText("Zavetišča")).toBeNull();
+    expect(rowOrder()).toEqual(["sever", "jug"]);
   });
   it("asks for a row choice when Enter has more than one match", async () => {
     const onToggle = vi.fn();

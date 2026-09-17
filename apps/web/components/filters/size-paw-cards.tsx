@@ -6,9 +6,11 @@ import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import { useState, type ReactNode } from "react";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FilterCardIconWell,
   FilterCardMark,
   FilterCardTail,
+  countClass,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -412,7 +414,10 @@ export function SizePawCards({
                 className: sheet
                   ? // isolate keeps the watermark's negative z-index above the
                     // card's own background instead of behind it.
-                    "isolate flex min-h-[4.75rem] flex-col items-center justify-center gap-1 px-1.5 py-2 text-center"
+                    cn(
+                      DEAD_OPTION_CLASS,
+                      "isolate flex min-h-[4.75rem] flex-col items-center justify-center gap-1 px-1.5 py-2 text-center",
+                    )
                   : cn("flex", filterCardLayoutClass(layout)),
               })}
             >
@@ -586,7 +591,11 @@ export function SizePawCards({
                   <span className={cn("text-xs", checked && "font-medium")}>
                     {label}
                   </span>
-                  {joltedCount("text-2xs tabular-nums text-muted-foreground")}
+                  {/* The shared voice, not a hand-spelled one. This tile drew
+                      its count at 11px where every section that goes through
+                      FilterCardTail draws the sheet's 12px, and it kept the
+                      resting ink on the green fill when chosen. */}
+                  {joltedCount(countClass(layout, checked))}
                 </>
               ) : (
                 <FilterCardTail

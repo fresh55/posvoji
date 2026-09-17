@@ -119,13 +119,34 @@ const FOCUSABLE =
  *  For the one keystroke that takes the row away with it: taking off the last
  *  filter unmounts everything the keyboard was standing on, and focus fell to
  *  the body, which puts the next Tab back at the top of the document. What
- *  follows the row is the results it was filtering, which is where someone who
- *  has just dropped their last filter was heading anyway. */
+ *  follows the row is the page the visitor was reading, which is where
+ *  someone who has just dropped their last filter was heading anyway.
+ *
+ *  Only something that can take focus. In document order the first candidate
+ *  after either row is not a card: after the phone's row it is BackToTop,
+ *  which is inert until the page has scrolled two screens, and after the
+ *  band's row at lg it is the phone row's own pill, which is display:none.
+ *  focus() on either is a no-op, and the keystroke that reached here would
+ *  have left focus on the body after all. Skipping them lands on the dock's
+ *  Filtri button on a phone (measured at 375px) and on the first card at lg.
+ *
+ *  Read off computed display and not off getClientRects: jsdom lays nothing
+ *  out, so every rect there is empty, while display:none is a stylesheet fact
+ *  both can answer. */
+function canTakeFocus(node: HTMLElement): boolean {
+  if (node.closest("[inert]")) return false;
+  for (let el: HTMLElement | null = node; el; el = el.parentElement) {
+    if (getComputedStyle(el).display === "none") return false;
+  }
+  return true;
+}
+
 function focusAfterRow(toolbar: HTMLElement | null): void {
   if (!toolbar) return;
   const next = [...document.querySelectorAll<HTMLElement>(FOCUSABLE)].find(
     (node) =>
       !toolbar.contains(node) &&
+      canTakeFocus(node) &&
       Boolean(
         toolbar.compareDocumentPosition(node) &
           Node.DOCUMENT_POSITION_FOLLOWING,
@@ -279,11 +300,10 @@ export function FilterChips({
     // fires on mount for a single-facet deep link. That is the case the helper
     // exists for: scrollIntoView would hand the visitor's first Tab press to
     // this pill's remove button (see lib/scroll-strip.ts).
-    if (wrap) return;
     const keys = chipsKey === "" ? [] : chipsKey.split("|");
     const added = keys.filter((key) => !seenChips.current.includes(key));
     seenChips.current = keys;
-    if (added.length !== 1) return;
+    if (wrap || added.length !== 1) return;
     scrollChildIntoViewX(stopNode(toolbarRef.current, added[0]), {
       smooth: !reduceMotion,
     });
@@ -293,14 +313,25 @@ export function FilterChips({
   // out of the DOM, so counting nodes for a render or two after a removal
   // counts one that is on its way out; an id belongs to one pill only, and
   // the departing one's is no longer in `stops`.
+  //
+  // The id was chosen from the stops before the removal, and one of those can
+  // go with it: the phone's row draws its clear only while nothing matches,
+  // so taking off the pill that was blocking the results takes the clear
+  // after it out of the row in the same render. The last stop left is the
+  // fallback, which is the pill before the one removed.
   useEffect(() => {
     const id = refocusTo.current;
     if (id === null) return;
     refocusTo.current = null;
-    const next = stopNode(toolbarRef.current, id);
+    const last = stops[stops.length - 1];
+    const next =
+      stopNode(toolbarRef.current, id) ??
+      (last !== undefined ? stopNode(toolbarRef.current, last) : null);
     if (!next) return;
-    setFocusId(id);
+    setFocusId(next.getAttribute(STOP) ?? id);
     next.focus();
+    // `stops` is read for the fallback only and follows stopsKey exactly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopsKey]);
 
   if (count === 0 && !undo) return null;

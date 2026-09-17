@@ -325,6 +325,81 @@ describe("the active filters row", () => {
     }
   });
 
+  it("hands focus past what cannot take it: an inert control or a hidden row", () => {
+    // In document order the first focusable after the phone row is BackToTop,
+    // inert until the page has scrolled, and after the band row at lg it is
+    // the phone row itself, display:none. focus() on either is a no-op and
+    // the visitor would land on the body, which is what the hand-off exists
+    // to prevent.
+    const onRemove = vi.fn();
+    renderChips([chip({ key: "only", label: "Dogs", onRemove })]);
+
+    const inert = document.createElement("button");
+    inert.textContent = "back to top";
+    inert.setAttribute("inert", "");
+    const hidden = document.createElement("div");
+    hidden.style.display = "none";
+    const hiddenPill = document.createElement("button");
+    hiddenPill.textContent = "a pill in the other row";
+    hidden.append(hiddenPill);
+    const card = document.createElement("a");
+    card.href = "/zivali/x";
+    card.textContent = "first card";
+    document.body.append(inert, hidden, card);
+
+    try {
+      const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
+      dogs.focus();
+      fireEvent.click(dogs, { detail: 0 });
+
+      expect(onRemove).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(card);
+    } finally {
+      inert.remove();
+      hidden.remove();
+      card.remove();
+    }
+  });
+
+  it("falls back to the last stop when the removal takes the clear with it", () => {
+    // The phone row draws its clear only while nothing matches. Removing the
+    // pill that was blocking the results turns the clear off in the same
+    // render, so the stop the keystroke aimed at is gone; the row must not
+    // drop focus on the body for it.
+    const onRemove = vi.fn();
+    const { rerender } = render(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[
+            chip({ key: "a", label: "Dogs" }),
+            chip({ key: "b", facet: "age", label: "Puppies", onRemove }),
+          ]}
+          onClearAll={vi.fn()}
+          clear
+        />
+      </I18nProvider>,
+    );
+
+    const puppies = screen.getByRole("button", { name: "Remove filter Puppies" });
+    puppies.focus();
+    fireEvent.keyDown(puppies, { key: "Delete" });
+    expect(onRemove).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[chip({ key: "a", label: "Dogs" })]}
+          onClearAll={vi.fn()}
+          clear={false}
+        />
+      </I18nProvider>,
+    );
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Remove filter Dogs" }),
+    );
+  });
+
   it("leaves focus where a pointer left it", () => {
     // A mouse gets no focus move: the cursor is already where the visitor is
     // looking, and stealing focus to the neighbouring pill would put a ring
@@ -594,11 +669,12 @@ describe("the active filters row", () => {
 
     // The box around the pills scrolls nothing: no overflow to scroll in, and
     // none of the fade the strip draws over its own edges. Read off the
-    // classes, because jsdom lays nothing out, and off these rather than off
-    // data-scroll-strip, which the wrapping box still carries.
+    // classes, because jsdom lays nothing out. The mark goes with them: it
+    // tells a child it can be scrolled into view inside this box.
     const outer = box?.parentElement;
     expect(outer?.className).not.toContain("overflow-x-auto");
     expect(outer?.className).not.toContain("fade-scroll-x");
+    expect(outer?.hasAttribute("data-scroll-strip")).toBe(false);
 
     expect(box?.className).toContain("flex-wrap");
     // w-max is the strip's own width: a row as wide as its content, for the

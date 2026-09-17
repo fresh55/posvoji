@@ -452,6 +452,13 @@ export function AnimalFilters({
           condition holds on `undo` with no chips left: clearing is the one
           filter action repeating the gesture cannot undo, and FilterChips
           swaps the pills for the offer for the few seconds it stands. */}
+      {/* A second mount of the same row and not the band's moved: one
+          instance cannot be inside the sticky band at lg and in flow below
+          it, and a hook choosing a parent from the width would break the
+          static prerender. The chunk was already on this route for the lg
+          row, so the cost is a second layout tree, one of which is always
+          display:none, and it has to stay zero-rect-safe (focusAfterRow in
+          filter-chips.tsx). */}
       {!isEmpty && (chips.length > 0 || undo) && (
         <div data-slot="mobile-filter-row" className="lg:hidden">
           <FilterChips

@@ -167,7 +167,7 @@ function EmptyState({ children }: { children: ReactNode }) {
     // names the filter to drop (animal-filters.tsx), and the advice under it
     // 284px. Advice reads against the thing it is advice about, so below lg
     // the block starts at the top of the floor instead: 84px, which is the
-    // padding and the paw. The floor is untouched and still holds the footer
+    // grid's gap, the top padding, the paw and the gap under it. The floor is untouched and still holds the footer
     // off the dock. From lg it lifts with the dock and the box is its content
     // again, so the centring left standing there has no spare height to
     // spend.

@@ -805,10 +805,12 @@
    more: about 163px on a 375px phone, about 307px in an xl column.
 
    So this takes one value per band of card width. 17rem is 272px, a little
-   above the 263px phone card. From sm the measured card is 319px at 768 and
-   341px at 834 (three columns, no rail), so 22rem (352px); from lg it is 314px
-   beside the rail at 1024 to 1199, so 20rem (320px); from xl it is 401px, so
-   25rem (400px, the one value that sits just under). One 25rem value from sm
+   above the 263px phone card. From sm the measured card is 323px at 768 and
+   345px at 834 (three columns, no rail), so 22rem (352px); from lg it is 318px
+   beside the rail at 1024 to 1199, so 20rem (320px); from xl it is 405px, so
+   25rem (400px, the one value that sits under). Those figures include the 4px
+   the shelter row's padding added on fine pointers in the 2026-09-17 pass; a
+   phone's 44px coarse row absorbed it. One 25rem value from sm
    used to cover all of that, and it was 86px over the real card at 1024: the
    document measured 8726px at scroll 0 and 7952px at scroll 3200 with the same
    sixty cards drawn, because every card the browser had not painted yet

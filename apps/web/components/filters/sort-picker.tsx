@@ -205,6 +205,16 @@ export function SortPicker({
           // is colour and box-shadow: without it the new wash arrives in one
           // frame while every other control in the row eases into its own.
           "border-control-border transition-[color,background-color,box-shadow] hover:bg-muted dark:hover:bg-muted/50",
+          // min-w-0, so the trigger can be narrower than its own words. The
+          // primitive is w-fit, and a flex item's minimum width is its
+          // content unless it is told otherwise: at 200% browser text this
+          // trigger measured 496px, the cluster around it was already allowed
+          // to shrink, and the document still scrolled sideways by 197px at
+          // 1024 and 28px at 1440 because the button itself would not give.
+          // With the floor lifted the value's own truncate takes over;
+          // measured after the change, 0px of overflow at 1024, 1100, 1280
+          // and 1440, and "Najdlje v zavetišču" still whole at 1024.
+          "min-w-0 max-w-full",
           // The label takes the room between the two icons instead of
           // floating in the middle of it. The trigger is justify-between and
           // the value is the middle of its three children, so a trigger given

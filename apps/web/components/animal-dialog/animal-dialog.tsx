@@ -55,7 +55,6 @@ import {
   subscribeToLocation,
 } from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-import type { ShelterPhones } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
 
 /** Where a photo was standing on screen, in viewport coordinates. */
@@ -264,7 +263,6 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
 export function AnimalDialog({
   animal,
   logos,
-  phones = {},
   origin,
   siblingIds,
   reference,
@@ -274,9 +272,6 @@ export function AnimalDialog({
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
   logos: ShelterLogos;
-  /** The register's phone per shelter, for the shelter box to offer a call.
-   *  Empty where the page has not read the register. */
-  phones?: ShelterPhones;
   origin?: DialogOrigin;
   /** What the dialog steps through: the list as filtered and sorted, whole
    *  rather than the page of it the grid has drawn so far. */
@@ -890,7 +885,6 @@ export function AnimalDialog({
                     <ShelterBlock
                       animal={lastAnimal}
                       logos={logos}
-                      phones={phones}
                       reference={reference}
                       // The sticky bar below repeats this box's button on the
                       // phone, so the box keeps its own for sm and up only.

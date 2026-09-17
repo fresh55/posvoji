@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  CalendarClock,
-  ExternalLink,
-  Heart,
-  Hourglass,
-  Phone,
-} from "lucide-react";
+import { CalendarClock, ExternalLink, Heart, Hourglass } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
-import { telHref } from "@/lib/contact-links";
 import type { ShelterLogos } from "@/lib/shelter-logos";
-import type { ShelterPhones } from "@/lib/shelters";
 import { shelterPath } from "@/lib/shelter-path";
 import { stayStatement } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -23,19 +15,11 @@ import { SourceFreshness } from "@/components/source-freshness";
 export function ShelterBlock({
   animal,
   logos,
-  phones = {},
   reference,
   ctaMirrored = false,
 }: {
   animal: AnimalFields;
   logos: ShelterLogos;
-  /**
-   * The register's phone numbers, id to number. Optional and empty by default,
-   * because the surfaces that render this box are server-rendered and read the
-   * register themselves; a caller that has not threaded it through yet gets
-   * the box it had.
-   */
-  phones?: ShelterPhones;
   /** The dataset's own build time, so the wait agrees with the cards. */
   reference: Date;
   /**
@@ -156,39 +140,11 @@ export function ShelterBlock({
           <p className="truncate text-xs text-muted-foreground">
             {shelter.city}
           </p>
-          {/* The number the register holds, where the box already says who to
-              ask. Adoption goes through the shelter and this box's one button
-              leaves the site for a listing that may be out of date; a phone is
-              the answer to "is this animal still there", and until now only the
-              printed poster carried it.
-
-              Drawn as quietly as the city above it. The primary action is the
-              listing button and this must not compete with it, so it is 12px
-              muted text that only underlines on hover.
-
-              Printed the way the register writes it ("051 304 435"), which is
-              the form a Slovenian reader reads back down the line; telHref
-              makes the href E.164 for a handset roaming on a foreign SIM. The
-              label alone is digits, so a screen reader gets the word first. */}
-          {phones[shelter.id] && (
-            <a
-              href={telHref(phones[shelter.id])}
-              // pointer-coarse:min-h-11 is the register card's contact row
-              // (CONTACT_ROW_CLASS in shelter-card.tsx): a number to dial is a
-              // control, and 16px of it was the smallest thing in this box.
-              // The row grows rather than an overlay reaching out, because the
-              // name above it already carries one.
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline pointer-coarse:min-h-11"
-            >
-              <Phone
-                className="size-3.5 shrink-0 opacity-70"
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <span className="sr-only">{messages.contactPhone}: </span>
-              {phones[shelter.id]}
-            </a>
-          )}
+          {/* No number here. The shelter page the name above links to holds
+              its phone, mail and site, and adoption starts with the shelter's
+              own form rather than with a call, so a number beside one animal
+              invited the call shelters ask people not to make. The printed
+              poster keeps it: paper carries no links. */}
         </div>
 
         {/* An adopted animal has no listing worth sending anyone to, so the

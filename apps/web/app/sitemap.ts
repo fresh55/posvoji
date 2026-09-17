@@ -12,6 +12,7 @@ import { loadShelters } from "@/lib/shelters";
 import { SITE_URL } from "@/lib/site";
 import {
   ABOUT_PATHS,
+  DATA_POLICY_PATHS,
   HIDDEN_LINK_KEYS,
   RESOURCES_PATHS,
 } from "@/lib/site-links";
@@ -124,6 +125,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // before.
     {
       paths: ABOUT_PATHS,
+      changeFrequency: "yearly",
+    },
+    // What a shelter's permission covers, in full. Listed here despite being
+    // in no menu, for the reason the cat's page below is: a shelter looking up
+    // what happens to its photos should find this, and the site linking to it
+    // from one page is not a reason to keep it out of search.
+    {
+      paths: DATA_POLICY_PATHS,
       changeFrequency: "yearly",
     },
     // The cat the about page is dedicated to. Listed here despite being in no

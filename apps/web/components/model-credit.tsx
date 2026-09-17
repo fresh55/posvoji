@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 
 // Same source in both locales: a model credit and its license are not
 // translated, only the sentence that follows them is.
@@ -34,6 +34,13 @@ const copy = {
  */
 export function ModelCredit({ locale }: { locale: Locale }) {
   const text = copy[locale];
+  // Both links below leave the site, and target="_blank" announces that to
+  // nobody. The rule is the site's own and is kept word for word from the
+  // catalogue: the footer's repository link a few pixels above these two says
+  // it, and so does the technical link on /o-nas/vsebine. These were the only
+  // two on that screen that did not, which is the site contradicting itself
+  // inside one footer.
+  const { newWindow } = getMessages(locale);
 
   return (
     <details className="group/credit">
@@ -60,6 +67,7 @@ export function ModelCredit({ locale }: { locale: Locale }) {
           className="underline underline-offset-4"
         >
           {MODEL_CREDIT}
+          <span className="sr-only"> {newWindow}</span>
         </a>
         {" · "}
         <a
@@ -69,6 +77,7 @@ export function ModelCredit({ locale }: { locale: Locale }) {
           className="underline underline-offset-4"
         >
           {LICENSE_LABEL}
+          <span className="sr-only"> {newWindow}</span>
         </a>
         {". "}
         {text.adapted}

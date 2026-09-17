@@ -2,9 +2,17 @@
  * GitHub's mark as plain geometry, in a module that imports nothing.
  *
  * The path is GitHub's own octocat mark on a 16x16 box. lucide-react dropped
- * brand icons in v1, so there is no component to reach for, and the site draws
- * this in two places at two sizes: the footer at 14px inside a text link, the
- * about page at 16px inside a button.
+ * brand icons in v1, so there is no component to reach for.
+ *
+ * One caller, the footer, at 14px inside a text link. It used to be two: the
+ * about page drew the same mark at 16px inside a "Koda na GitHubu" button,
+ * which was removed because that page's readers are shelters and adopters and
+ * a repository is not an answer to anything they came for. The footer's small
+ * print is where an open-source invitation belongs, and it is on every page.
+ *
+ * The module stays as it is with one caller. The 581 characters are still
+ * worth keeping out of a component, and the next caller should reach for this
+ * rather than paste the path a second time.
  *
  * The string is shared rather than the drawing, the same shape
  * filters/animal-glyph-paths.ts takes and for the same reason. Each caller

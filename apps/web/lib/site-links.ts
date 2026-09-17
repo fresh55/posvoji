@@ -24,6 +24,22 @@ export const ABOUT_PATHS = {
   en: "/en/about",
 } as const;
 
+/**
+ * The content and permissions page, under the about page the way Srečko's is.
+ *
+ * It is not a roster key and is reached from the one fact it explains, the
+ * "Vsebine z dovoljenjem" row on /o-nas. The footer carries two destinations
+ * by a decision of its own and this is not a third, and the header's inline
+ * row is for pages a reader arrives wanting; nobody opens the site to read a
+ * data policy. It is in app/sitemap.ts regardless, the way Srečko's page is:
+ * unlisted in the site's own navigation is not the same as hidden from search,
+ * and a shelter searching for what we do with its photos should find this.
+ */
+export const DATA_POLICY_PATHS = {
+  sl: "/o-nas/vsebine",
+  en: "/en/about/content",
+} as const;
+
 export type SiteLink = {
   key: SiteLinkKey;
   href: string;

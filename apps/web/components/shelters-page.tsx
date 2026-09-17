@@ -25,10 +25,18 @@ import { siteLinks } from "@/lib/site-links";
 import { PAGE_TITLE } from "@/lib/link-styles";
 
 /** The issue form a shelter that is not in the registry yet can actually
- *  reach. The project has no contact address of its own, and the portal login
- *  only answers to an address already on file, so this is the only real way
- *  in. Named here rather than inside the copy, so the two locales point at one
- *  destination. */
+ *  reach. The portal login only answers to an address already on file, so
+ *  without this there is no way in for a shelter nobody has heard from yet.
+ *  Named here rather than inside the copy, so the two locales point at one
+ *  destination.
+ *
+ *  This used to say the project had no contact address of its own, which was
+ *  the whole argument for sending a shelter to GitHub. It is no longer true:
+ *  CONTACT_EMAIL is info@posvoji.si, the footer prints it on every page, and
+ *  /o-nas prints it as the closing line's one button. A shelter that has to
+ *  make a GitHub account to ask to be listed is still the wrong door, and the
+ *  reason it is still here is that nothing has replaced it yet, not that a
+ *  repository is the right answer. */
 const JOIN_URL = `${REPO_URL}/issues/new?template=predlagaj-zavetisce.yml`;
 
 const pageText = {

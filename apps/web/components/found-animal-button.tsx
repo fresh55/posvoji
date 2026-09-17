@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import { QUIET_UNDERLINE } from "@/lib/link-styles";
 
 // The visible entry point for the other question people arrive with: not
 // "which animal do I want" but "I found one, who takes it". It sits on the
@@ -58,7 +59,7 @@ export function FoundAnimalButton() {
       // the underline are what say so at zero pixels of extra height. The
       // drawing is still 14px text, so tap-target grows the tappable box
       // without moving what is drawn (globals.css).
-      className="h-auto gap-1 p-0 text-sm font-normal text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground pointer-coarse:tap-target"
+      className={`h-auto gap-1 p-0 text-sm font-normal ${QUIET_UNDERLINE} underline-offset-4 pointer-coarse:tap-target`}
     >
       <a href={FOUND_ANIMAL_PATHS[locale]}>
         {messages.muniPromptTitle}

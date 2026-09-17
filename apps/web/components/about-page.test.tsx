@@ -75,34 +75,44 @@ describe("the about page", () => {
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
   });
 
-  // Two buttons under the closing line: the address, printed as itself so it
-  // can be read off the page, and the repository the open-source fact names.
-  it.each<[Locale, string]>([
-    ["sl", "Koda na GitHubu"],
-    ["en", "Code on GitHub"],
-  ])("offers the address and the code as buttons (%s)", (locale, code) => {
+  // One button under the closing line: the address, printed as itself so it
+  // can be read off the page.
+  it.each<Locale>(["sl", "en"])(
+    "offers the address as the closing line's one button (%s)",
+    (locale) => {
+      const { container } = render(<AboutPage locale={locale} />);
+
+      expect(
+        screen
+          .getByRole("link", { name: "info@posvoji.si" })
+          .getAttribute("href"),
+      ).toBe("mailto:info@posvoji.si");
+      // The repository used to sit beside the address as a second button of
+      // the same size, under a sentence addressed to shelters. It is the
+      // footer's now and only the footer's, so the one inside `main` is gone.
+      const main = container.querySelector("main");
+      expect(main).not.toBeNull();
+      const mainHrefs = [...main!.querySelectorAll("a")].map((a) =>
+        a.getAttribute("href"),
+      );
+      expect(mainHrefs.some((href) => href?.includes("github.com"))).toBe(false);
+    },
+  );
+
+  // The policy is a page of this site, and it used to be a markdown file on
+  // github.com: the one link on this page a shelter has a reason to open.
+  it.each<[Locale, string, string]>([
+    ["sl", "O vsebinah in dovoljenjih", "/o-nas/vsebine"],
+    ["en", "Content and permissions", "/en/about/content"],
+  ])("links the policy on-site (%s)", (locale, label, href) => {
     render(<AboutPage locale={locale} />);
 
-    expect(
-      screen.getByRole("link", { name: "info@posvoji.si" }).getAttribute("href"),
-    ).toBe("mailto:info@posvoji.si");
-    // Both links leave the site, so both say so: target="_blank" announces
-    // nothing on its own and the accessible name is what a screen reader has.
-    const newWindow = getMessages(locale).newWindow;
-    const repo = screen.getByRole("link", { name: `${code} ${newWindow}` });
-    expect(repo.getAttribute("href")).toBe("https://github.com/fresh55/posvoji");
-    expect(repo.getAttribute("rel")).toBe("noreferrer");
-    expect(repo.getAttribute("target")).toBe("_blank");
-    const policyLabel =
-      locale === "sl" ? "O vsebinah in dovoljenjih" : "Content and permissions";
-    const policy = screen.getByRole("link", {
-      name: `${policyLabel} ${newWindow}`,
-    });
-    expect(policy.getAttribute("href")).toBe(
-      `https://github.com/fresh55/posvoji/blob/main/docs/DATA-POLICY.md${locale === "en" ? "#english-summary" : ""}`,
-    );
-    expect(policy.getAttribute("rel")).toBe("noreferrer");
-    expect(policy.getAttribute("target")).toBe("_blank");
+    // The query matches the accessible name in full, so it is already the
+    // assertion that nothing was appended to the label: the test this replaced
+    // had to write `${code} ${newWindow}` to find the old link at all.
+    const policy = screen.getByRole("link", { name: label });
+    expect(policy.getAttribute("href")).toBe(href);
+    expect(policy.getAttribute("target")).toBeNull();
   });
 
   // The phone step the five content pages were missing; resources-page's own

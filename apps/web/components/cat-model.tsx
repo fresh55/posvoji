@@ -33,7 +33,7 @@ const BLANK_PIXEL =
 const CAT_FRAMING: CatFraming = {
   orbit: "-19deg 81deg 1.45m",
   target: "0m 0.25m 0m",
-  poster: "/models/our-cat/poster.webp?v=19.1",
+  poster: "/models/our-cat/poster.webp?v=20",
 };
 
 const copy = {
@@ -157,7 +157,10 @@ export const CatModel = memo(function CatModel({
   // What the stage still owes the visitor, and empty once it owes nothing.
   // One expression, so the label's text, its box and whether it is drawn
   // cannot fall out of step.
-  const waiting = status === "ready" ? "" : status === "failed" ? text.unavailable : text.loading;
+  // The ready/not-ready split, named once. The three-way checks below still
+  // read `status`, because they distinguish loading from failed.
+  const ready = status === "ready";
+  const waiting = ready ? "" : status === "failed" ? text.unavailable : text.loading;
   // Whether the visitor has reached for him before he was there. The label
   // is drawn from then on, and stays until he is, rather than following the
   // pointer in and out.
@@ -393,7 +396,7 @@ export const CatModel = memo(function CatModel({
         {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
         <Image
           src={posterMedia ? BLANK_PIXEL : framing.poster}
-          alt={status === "ready" ? "" : text.alt}
+          alt={ready ? "" : text.alt}
           fill
           // Load the fallback immediately. Where WebGL can replace it before
           // it paints, don't speculatively preload it either (React skips
@@ -401,13 +404,33 @@ export const CatModel = memo(function CatModel({
           loading="eager"
           {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
           sizes={sizes}
-          className={`object-contain ${status === "ready" ? "invisible" : ""}`}
+          className={`object-contain ${ready ? "invisible" : ""}`}
         />
       </picture>
+      {/* inert alongside aria-hidden, and not aria-hidden alone.
+          <model-viewer> is appended into this host as soon as the module
+          arrives, which is long before `ready`, and its shadow root keeps a
+          focusable poster button at the host's full size. aria-hidden prunes
+          that button from the accessibility tree without taking it out of the
+          tab order, which is the aria-hidden-focus failure exactly: measured
+          on /o-nas under slow-4G throttling, a plain Tab walk from the top of
+          the document stopped on a 448x496 element that announced nothing,
+          between the contact address and Srečko's link. opacity-0 does not
+          help, because an element at zero opacity is still focusable.
+
+          Not a transient state either. Where WebGL never comes up or the .glb
+          never arrives, `ready` never happens and the dead stop is permanent.
+
+          inert is the half that removes it from the tab order; aria-hidden
+          stays because it is what the older browsers in this audience read,
+          and the two say the same thing. Both come off together at `ready`,
+          where the viewer is a real image with a real name and belongs in
+          both trees. */}
       <div
         ref={host}
-        aria-hidden={status !== "ready"}
-        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "ready" ? "opacity-100" : "opacity-0"}`}
+        inert={!ready}
+        aria-hidden={!ready}
+        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`}
       />
       {/* The one thing ever drawn over the stage, and only while there is
           no cat to touch and someone has tried. It sits at the foot, on the

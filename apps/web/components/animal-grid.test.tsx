@@ -185,6 +185,46 @@ describe("animal grid empty state", () => {
     expect(block!.className).toContain("justify-center");
   });
 
+  it("keeps its own actions out of the dock's band below lg", () => {
+    // The floor above put the block's contents in the middle of a screenful,
+    // which is the bottom of the screen: at 375x667 the clear was 44px under
+    // the dock and entirely hidden, at 320x568 the primary button was fully
+    // covered. Below lg the block starts at the top of its floor and reserves
+    // the dock's own clearance underneath, read from the token the button in
+    // the corner and the footer's run-off already share. jsdom runs no media
+    // query, so what is pinned is the pair of insets and the paw leaving.
+    window.history.replaceState(null, "", "/?vrsta=ostalo");
+    const { container } = renderGrid(
+      ANIMALS.filter((a) => a.species !== "rabbit"),
+    );
+
+    const block = screen.getByText("Ni zadetkov.").closest("div.py-16")!;
+    expect(block.className).toContain("max-lg:justify-start");
+    expect(block.className).toContain("max-lg:pt-8");
+    expect(block.className).toContain("max-lg:pb-(--back-to-top-bottom)");
+    expect(container.querySelector("svg.max-lg\\:hidden")).toBeTruthy();
+  });
+
+  it("stands the two ways out side by side rather than stacked", () => {
+    // Stacked they were two 44px rows and a gap, 100px of a 568px screen with
+    // a dock over the last 74 of it, so the second one was inside the band
+    // whatever the block's insets did. A shelter with none of the chosen
+    // species is the state that draws both.
+    window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    const drop = screen.getByRole("button", {
+      name: "Pokaži iz vseh zavetišč",
+    });
+    const clear = screen
+      .getAllByRole("button", { name: "Počisti filtre" })
+      .find((button) => button.closest('[class~="lg:hidden"]'))!;
+    const row = drop.parentElement!;
+
+    expect(row.className).toContain("flex-wrap");
+    expect(clear.parentElement).toBe(row);
+  });
+
   it("keeps the generic empty state when no shelter is selected", () => {
     // The rabbit is filtered out, so the Ostale tab matches nobody, and no
     // shelter filter is active, so dropping the shelter group could not

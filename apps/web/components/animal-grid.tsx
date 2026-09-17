@@ -152,20 +152,40 @@ const EMPTY_STATE_ACTION = COARSE_ACTION;
 // said as much.
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    // The floor is about the filter dock, not about the drawing. Below lg the
-    // dock is on screen (animal-filters.tsx, lg:hidden) and it floats over the
-    // page end; a filter that matches nothing leaves a block short enough that
-    // the footer's nav row lands inside the dock's band, and a tap where
-    // "Zavetišča" is drawn opens the filter sheet instead. Three fifths of the
-    // viewport put the whole footer under the fold at scroll 0 on every phone
-    // size measured, landscape included, so the band has nothing of it to
-    // cover; half was not enough, it left the footer starting at 808 against a
-    // band that ends at 828. Reaching the footer then means scrolling to the
-    // page end, which is the case the footer's own docked padding is for, and
-    // nothing here adds a second clearance.
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh]">
+    // The floor and both of the insets below lg are about the filter dock,
+    // not about the drawing. The dock is on screen there (animal-filters.tsx,
+    // lg:hidden) and it floats over the page end, and this is the shortest
+    // page the site draws, so everything in it comes to rest in the dock's
+    // band unless it is told not to.
+    //
+    // The floor is the footer's half of that. A filter matching nothing left a
+    // block short enough that the footer's nav row was drawn inside the band,
+    // and a tap where "Zavetišča" is drawn opened the filter sheet instead.
+    // Three fifths of the viewport put the whole footer under the fold at
+    // scroll 0 on every phone size measured, landscape included, so the band
+    // has nothing of it to cover; half was not enough, it left the footer
+    // starting at 808 against a band that ends at 828. Reaching the footer
+    // then means scrolling to the page end, which is the case the footer's own
+    // docked padding is for, and nothing here adds a second clearance.
+    //
+    // The insets are the state's own half, which the floor made worse: the
+    // block is centred, so its buttons were centred inside a screenful and
+    // stood at the bottom of it. Measured at 375x667 "Počisti filtre" sat 44px
+    // under the dock, entirely hidden; at 320x568 the primary button was fully
+    // covered; at 844x390 all three actions were below the fold. So below lg
+    // the block starts at the top of its floor rather than in the middle, and
+    // keeps the dock's own clearance free at the bottom. That distance is
+    // --back-to-top-bottom, the same token the button in the corner and the
+    // footer's run-off are measured with, because it is the same dock being
+    // cleared and a literal here would be a third copy of it (globals.css).
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh] max-lg:justify-start max-lg:pt-8 max-lg:pb-(--back-to-top-bottom)">
+      {/* Decoration, and the first thing to go where the room is needed: it
+          is aria-hidden, it says nothing the sentence under it does not, and
+          the 32px plus the gap it takes is what put the actions inside the
+          dock's band at 320 and 360. Drawn from lg, where the state has a
+          screen to itself and the dock is gone. */}
       <PawPrint
-        className="size-8 text-muted-foreground/50"
+        className="size-8 text-muted-foreground/50 max-lg:hidden"
         strokeWidth={1.5}
         aria-hidden
       />
@@ -598,50 +618,66 @@ export function AnimalGrid({
                   className="max-w-full justify-center lg:hidden"
                 />
               )}
-              {shelterOnlyEmpty && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={EMPTY_STATE_ACTION}
-                  onClick={() => toggleMany("shelter", filters.shelter)}
-                >
-                  {messages.showFromAllShelters}
-                </Button>
-              )}
-              {/* The one way out of this screen, drawn once. With pills above
-                  it, it stands under the row and takes the clear that row
-                  would otherwise have ended in. It is lg:hidden with them: the
-                  pills are, because the sticky toolbar draws its own row there
-                  with its own clear at the end of it, and this button goes
-                  with them or a desktop would show two.
+              {/* Both ways out on one wrapping row rather than stacked. The
+                  state draws at most two of them, and stacked they were two
+                  44px rows and a gap, 100px of a 568px screen with a dock over
+                  the last 74 of it: at 320 and 360 the second button was
+                  inside the band whatever the block's own insets did. Side by
+                  side they take one row on every phone measured and wrap to
+                  two only where the words are long enough to need it, which is
+                  the same answer at less cost. */}
+              {(shelterOnlyEmpty ||
+                chips.length > 0 ||
+                filters.species !== "all") && (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {shelterOnlyEmpty && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={EMPTY_STATE_ACTION}
+                      onClick={() => toggleMany("shelter", filters.shelter)}
+                    >
+                      {messages.showFromAllShelters}
+                    </Button>
+                  )}
+                  {/* The one way out of this screen, drawn once. With pills
+                      above it, it stands under the row and takes the clear
+                      that row would otherwise have ended in. It is lg:hidden
+                      with them: the pills are, because the sticky toolbar
+                      draws its own row there with its own clear at the end of
+                      it, and this button goes with them or a desktop would
+                      show two.
 
-                  Without pills the state is a species tab with nothing in it,
-                  which a deep link to a species the roster does not hold can
-                  reach, and the only thing left to undo is the species. A
-                  clear leaves the species standing (use-animal-filters.ts),
-                  so what this offers there is the species' own way back,
-                  worded as what it does. Nothing else on any width offers the
-                  press, so it stays at every width. */}
-              {chips.length > 0 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
-                  onClick={handleClearAll}
-                >
-                  {messages.clearFilters}
-                </Button>
-              ) : (
-                filters.species !== "all" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={EMPTY_STATE_ACTION}
-                    onClick={() => setSpecies("all")}
-                  >
-                    {messages.showAllSpecies}
-                  </Button>
-                )
+                      Without pills the state is a species tab with nothing in
+                      it, which a deep link to a species the roster does not
+                      hold can reach, and the only thing left to undo is the
+                      species. A clear leaves the species standing
+                      (use-animal-filters.ts), so what this offers there is the
+                      species' own way back, worded as what it does. Nothing
+                      else on any width offers the press, so it stays at every
+                      width. */}
+                  {chips.length > 0 ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
+                      onClick={handleClearAll}
+                    >
+                      {messages.clearFilters}
+                    </Button>
+                  ) : (
+                    filters.species !== "all" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={EMPTY_STATE_ACTION}
+                        onClick={() => setSpecies("all")}
+                      >
+                        {messages.showAllSpecies}
+                      </Button>
+                    )
+                  )}
+                </div>
               )}
             </EmptyState>
           ) : (

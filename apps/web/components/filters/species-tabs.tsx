@@ -548,6 +548,15 @@ export function SpeciesTabs({
               // boxes measured from these buttons, and a count arriving on
               // press changes every width while the fill is sliding between
               // them.
+              //
+              // The 2026-09-17 home audit came at 375 from the other side and
+              // it is left as it is: the small step leaves 19% of that row
+              // empty, and forcing the large step back onto it overflows 11px
+              // into the mask fade. An empty fifth of a row is slack a phone
+              // can carry. A count under the fade is what a visitor reported
+              // not being able to read, and the fade is also the only thing
+              // saying the strip scrolls, so spending it costs more than the
+              // gap does.
               "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-[384px]:gap-0.5 max-[384px]:px-1 max-[384px]:text-xs pointer-coarse:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,

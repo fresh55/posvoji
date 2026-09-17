@@ -520,23 +520,35 @@ export function AnimalCard({
           // This line leaves for the shelter's page, so the card must not
           // squeeze under it. See the article's own comment.
           data-press-exempt
-          // No divider and no hover ground. The muted colour and the gap
-          // mt-auto keeps above the line do the separating, and the hover
-          // is the contact rows' (shelter-card.tsx): the ink comes up and
-          // the name underlines, which is what says this answers a press.
+          // No divider and no hover ground. The muted colour and the air
+          // above the line do the separating, and the hover is the contact
+          // rows' (shelter-card.tsx): the ink comes up and the name
+          // underlines, which is what says this answers a press.
           // A ground here would have to reach past the text on both sides
           // to read as a row, and card-paint clips anything past the box.
           //
+          // pt-2.5, and it is this padding that is the air: 10px, the same
+          // step the photo keeps above the name (see the anchor above), so
+          // the two gaps in the text block are one measurement. It was 6px,
+          // against 10px above, which left the card's quietest line closer
+          // to the facts than the facts are to the picture. mt-auto adds to
+          // it only on a row where a neighbour's text wrapped and this card
+          // has leftover height to collect; measured across the grid the
+          // cards in a row differ by 0.0px at every band, so on almost every
+          // card the padding is the whole gap. The 4px costs a desktop card
+          // 4px of height and a phone nothing, because the coarse box below
+          // is 44px either way and absorbs it.
+          //
           // 44px for a thumb and no more than the line for a mouse.
           // pointer-coarse:min-h-11 grows the box only where a finger is
-          // what presses it; on a desktop the row is the six, sixteen and
+          // what presses it; on a desktop the row is the ten, sixteen and
           // twelve pixels it is drawn with. items-start rather than
           // items-center, so the grown box keeps its air below the words
           // instead of around them: what a phone reads is a line the same
           // distance under the meta line at every pointer, and the target's
           // extra height falls to the card's bottom edge, where on a card
           // with no border it is only the gap before the next row.
-          className="mt-auto flex w-full items-start pt-1.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
+          className="mt-auto flex w-full items-start pt-2.5 pb-3 text-left text-xs text-muted-foreground underline-offset-4 outline-none transition-colors pointer-coarse:min-h-11 hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
         >
           {/* No mark at all. This used to carry a House, and the argument for
               it was that the pin means "place" everywhere else on the site

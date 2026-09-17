@@ -755,6 +755,13 @@ export function PhotoGallery({
         // same animal as two links under two unrelated names, which put 503
         // "Odpri podrobnosti o ..." rows in the rotor ahead of the headings
         // that actually distinguish them.
+        //
+        // aria-hidden beside its own tabIndex={-1}, and not inert, which is
+        // what the two sites that could take it now use (back-to-top.tsx).
+        // inert takes the pointer as well, and the pointer is the whole
+        // point of this element: it is the picture's click target. Hidden
+        // from the keyboard and from the tree, live to a press, which is one
+        // attribute short of what inert means.
         <a
           href={href}
           aria-hidden="true"
@@ -835,6 +842,9 @@ export function PhotoGallery({
             // link, and the sr-only line below announces the position. Again
             // the card's case only: where there is no link these are the
             // announced way through the gallery.
+            //
+            // Not inert, for the same reason as the anchor above: these turn
+            // the picture under a press and have to keep taking one.
             aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${chevron.className} ${chevron.previous}`}
           >

@@ -389,6 +389,13 @@ export function MapCallout({
   }, [onRect, rectKey, blockX, blockY, boxWidth, boxHeight]);
 
   return (
+    // aria-hidden and not inert: inert is an HTML attribute and an SVG
+    // element ignores it, so the pair this annotation keeps has to stay the
+    // aria one. What holds it correct is that the only focusable thing it
+    // can contain is the action button, drawn from the same `action` this
+    // attribute is read off, so a hidden subtree has no button in it to
+    // hide. The sweep in e2e/reach.ts is what says so if that stops being
+    // true.
     <g
       aria-hidden={action ? undefined : true}
       data-map-callout

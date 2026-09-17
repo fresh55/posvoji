@@ -1,8 +1,10 @@
 import {
   Building2,
+  Clock3,
   HeartHandshake,
   type LucideIcon,
   Mail,
+  PawPrint,
   ShieldCheck,
 } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
@@ -26,7 +28,6 @@ import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
 type PageText = {
   lead: string;
-  maintainer: string;
   points: { key: PointKey; title: string; body: string; link?: { label: string; href: string } }[];
   /** The closing line. The address follows it as a button and is not
    *  translated. */
@@ -44,7 +45,9 @@ type PageText = {
 const pointIcons = {
   free: HeartHandshake,
   shelterData: ShieldCheck,
-  shelterDecides: Building2,
+  shelterDecides: PawPrint,
+  freshness: Clock3,
+  shelterJoin: Building2,
 } satisfies Record<string, LucideIcon>;
 
 type PointKey = keyof typeof pointIcons;
@@ -55,51 +58,73 @@ type PointKey = keyof typeof pointIcons;
 const pageText: Record<Locale, PageText> = {
   sl: {
     lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
-    maintainer: "Posvoji.si razvijam in vzdržujem kot osebni projekt.",
     points: [
       {
         key: "shelterDecides",
         title: "Želite posvojiti?",
-        body: "Za spoznavanje in pogoje posvojitve se obrnite na zavetišče ob objavi. Pred obiskom preverite, ali žival še išče dom. Posvojitev vodi zavetišče; naš seznam ne zajema vseh živali.",
+        body: "Ob vsaki objavi je navedeno zavetišče, ki za žival skrbi. Z njim se pogovorite o njenih potrebah, svojem vsakdanu in spoznavanju. Zavetišče vam pojasni pogoje in morebitne stroške ter vodi posvojitev.",
+        link: { label: "Poiščite žival, ki išče dom", href: "/" },
+      },
+      {
+        key: "freshness",
+        title: "Ali žival še išče dom?",
+        body: "Objave se lahko spremenijo, preden se sprememba pokaže pri nas. Pred obiskom pri zavetišču preverite, ali je žival še na voljo, in se dogovorite za termin. Naš seznam ne zajema vseh živali in zavetišč.",
       },
       {
         key: "free",
         title: "Brezplačna uporaba",
-        body: "Za obiskovalce in zavetišča. Za ogled ne potrebujete računa. Brez oglasov in plačanih prednostnih uvrstitev.",
+        body: "Ogled živali in sodelovanje zavetišč sta brezplačna. Za ogled ne potrebujete računa. Na strani ni oglasov ali plačanih prednostnih uvrstitev.",
       },
       {
         key: "shelterData",
-        title: "Vsebine z dovoljenjem",
-        body: "Podatke, fotografije in opise objavljamo z dovoljenjem zavetišč in navedemo njihov vir.",
+        title: "Zavetišča odločate o svojih vsebinah",
+        body: "Vaše objave vključimo z vašim dovoljenjem in obiskovalce usmerimo k vam. Sami določite, katere fotografije in opise smemo uporabiti; vir vedno navedemo. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
         link: { label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl },
+      },
+      {
+        key: "shelterJoin",
+        title: "Kako se zavetišče vključi?",
+        body: "Pišite nam na spodnji naslov. Dogovorimo se o objavah z vaše spletne strani ali neposrednem vnosu pri nas, če svojega seznama živali nimate. Za ureditev dostopa do prijave nam prav tako pišite.",
+        link: { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
       },
     ],
     report:
-      "Ste zavetišče ali imate predlog? Pišite nam. Za popravek ali umik dodajte povezavo do objave.",
+      "Ste opazili napako ali je žival že našla dom? Pošljite nam povezavo do objave in povejte, kaj je treba popraviti. Na isti naslov nam lahko pišete za sodelovanje, umik vsebin ali predlog.",
   },
   en: {
     lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",
-    maintainer: "I develop and maintain Posvoji.si as a personal project.",
     points: [
       {
         key: "shelterDecides",
         title: "Want to adopt?",
-        body: "Contact the shelter on the listing to arrange a meeting and ask about adoption requirements. Check availability before visiting. The shelter handles the adoption; our list does not include every animal.",
+        body: "Each listing names the shelter caring for the animal. Talk to them about the animal’s needs, your daily routine and arranging a meeting. The shelter explains the requirements and any costs, and handles the adoption.",
+        link: { label: "Find an animal looking for a home", href: "/en" },
+      },
+      {
+        key: "freshness",
+        title: "Is the animal still available?",
+        body: "Listings can change before the update appears here. Before visiting, check availability with the shelter and arrange a time to meet. Our list does not include every animal or shelter.",
       },
       {
         key: "free",
         title: "Free to use",
-        body: "For visitors and shelters. No account needed to browse. No ads or paid priority listings.",
+        body: "Browsing and shelter participation are free. You do not need an account to browse. There are no ads or paid priority listings.",
       },
       {
         key: "shelterData",
-        title: "Content with permission",
-        body: "We publish data, photos and descriptions with the shelters’ permission and credit their source.",
+        title: "Shelters stay in control of their content",
+        body: "We include your listings with your permission and direct visitors to you. You decide which photos and descriptions we may use, and we always credit the source. You can request corrections, content removal or an end to your participation at any time.",
         link: { label: "Content and permissions", href: DATA_POLICY_PATHS.en },
+      },
+      {
+        key: "shelterJoin",
+        title: "How can a shelter join?",
+        body: "Email us at the address below. We can arrange to use listings from your website, or help you list animals here if you do not have a catalogue of your own. Email us to arrange login access too.",
+        link: { label: "Already have access? Shelter login", href: "/portal/prijava" },
       },
     ],
     report:
-      "Run a shelter or have a suggestion? Email us. For corrections or removal, include the listing link.",
+      "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting. Use the same address to join, request content removal or share a suggestion.",
   },
 };
 
@@ -111,7 +136,7 @@ const pageText: Record<Locale, PageText> = {
 const THUMB_BUTTON = `${COARSE_ACTION} pointer-coarse:gap-1.5`;
 
 /** w-fit because this one sits in a flex column; the rest is the shared rule. */
-const POLICY_LINK = `${QUIET_DOC_LINK} w-fit`;
+const POINT_LINK = `${QUIET_DOC_LINK} w-fit`;
 
 /**
  * The site's introduction remains readable while the cat loads independently.
@@ -146,9 +171,6 @@ export function AboutPage({ locale }: { locale: Locale }) {
               bodies below it and the whole column read as one size. */}
           <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
             {text.lead}
-          </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {text.maintainer}
           </p>
         </div>
       </div>
@@ -188,14 +210,9 @@ export function AboutPage({ locale }: { locale: Locale }) {
                   {point.body}
                 </ItemDescription>
                 {point.link && (
-                  // A page of this site now, and it used to be a markdown file
-                  // on github.com. This is the one link on the page a shelter
-                  // has a reason to open, and it landed them in a code
-                  // repository. Nothing here says "new window" any more,
-                  // because nothing here opens one.
                   <a
                     href={point.link.href}
-                    className={POLICY_LINK}
+                    className={POINT_LINK}
                   >
                     {point.link.label}
                   </a>

@@ -59,7 +59,7 @@ describe("shelter directory context", () => {
     expect(within(census).getAllByRole("listitem").map(item => item.textContent)).toEqual([
       "3 zavetišča v registru",
     ]);
-    expect(screen.getAllByText("Brez objav")).toHaveLength(3);
+    expect(screen.getAllByText("Brez objav na Posvoji.si")).toHaveLength(3);
     expect(screen.getByRole("link", { name: "Prvo zavetišče" })).toBeTruthy();
   });
 });

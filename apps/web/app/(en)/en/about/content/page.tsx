@@ -9,7 +9,7 @@ export const metadata: Metadata = staticPageMetadata({
   // The English half of the pair. See the note on the /o-nas/vsebine route.
   title: dataPolicyTitle("en"),
   description:
-    "Whose permission Slovenian shelter listings rest on, what we publish by default, what each shelter decides and how it opts out at any time.",
+    "How we publish shelter listings, photos and descriptions with permission, respect your privacy and handle corrections or content removal.",
 });
 
 export default function DataPolicy() {

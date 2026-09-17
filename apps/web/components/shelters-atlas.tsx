@@ -3,19 +3,7 @@ import {
   type ShelterCardData,
   type ShelterCardText,
 } from "@/components/shelter-card";
-import { Card } from "@/components/ui/card";
-import { MUTED_LINK } from "@/lib/link-styles";
 import { SKIP_LINK } from "@/lib/skip-link";
-import { cn } from "@/lib/utils";
-
-/** The invitation cell's anchor, named once because two things point at it:
- *  the cell itself and the mobile-only link above the grid. Not derived from
- *  any copy string, so it survives a rewording in either locale.
- *
- *  Deliberately not "za-zavetisca", which is one letter off the skip link's
- *  landing pad at the foot of this file ("za-zavetisci") and would leave two
- *  anchors on one page that a reader has to spell out to tell apart. */
-const INVITE_ID = "ste-zavetisce";
 
 export type SheltersAtlasText = {
   /** The section's accessible name, and the section prints no heading of its
@@ -38,11 +26,11 @@ export type SheltersAtlasText = {
    *
    *  Printed once, on the section. It was on the list as well, so a reader
    *  arriving at the grid heard "Zavetišča, region" and then "Zavetišča, list,
-   *  18 items": one word twice inside two announcements, the second of them
+   *  17 items": one word twice inside two announcements, the second of them
    *  spending the reader's attention on nothing new. The region is the copy
    *  that keeps it, because it is the one a reader can jump to from anywhere on
    *  a 6000px page; the list is only ever entered from inside the region that
-   *  has just named it, and "list, 18 items" is the whole of what it has left
+   *  has just named it, and "list, 17 items" is the whole of what it has left
    *  to say there. */
   heading: string;
   skip: string;
@@ -53,19 +41,6 @@ export type SheltersAtlasText = {
    *  the key legible, which is a different thing from making the order
    *  predictable, so this line stays whatever size the town is drawn at. */
   sortNote: string;
-};
-
-/** The invitation, the grid's last cell rather than a banner under it. Every
- *  string it prints, so the page keeps its copy in one object. */
-export type SheltersInvite = {
-  title: string;
-  body: string;
-  /** What the header's login does, and does not do, for a shelter we do not
-   *  hold yet. This block prints no login of its own; see the cell below. */
-  note: string;
-  joinLabel: string;
-  joinHref: string;
-  newWindow: string;
 };
 
 /**
@@ -98,13 +73,11 @@ export function SheltersAtlas({
   shelters,
   card,
   text,
-  invite,
 }: {
   /** In the order the page draws them: by town, then by name. */
   shelters: ShelterCardData[];
   card: ShelterCardText;
   text: SheltersAtlasText;
-  invite?: SheltersInvite;
 }) {
   return (
     <section aria-label={text.heading} className="w-full">
@@ -117,176 +90,15 @@ export function SheltersAtlas({
         {text.skip}
       </a>
 
-      {/* The sort note, and beside it the one thing on this page addressed to
-          somebody who is not here to read the register.
+      <p className="mb-3 text-sm text-muted-foreground">{text.sortNote}</p>
 
-          The invitation is the grid's eighteenth cell, which is right: it is
-          one card among the shelters rather than a banner over them, and the
-          comment on that cell argues it at length. On three columns it lands
-          in the last visible row. On one column it is about 5,700px down, so
-          the only route in for a shelter we do not hold yet sits behind
-          seventeen cards of the register, and the header's login is no help to
-          them: it only answers an address already on file. So below sm the
-          note's own line carries an anchor to the cell, which costs no height
-          in a band that at 375px already holds the h1, the lede, the lookup
-          button and its sentence, and the census over two lines. It stays
-          quieter than that button: whoever has just found a stray outranks
-          whoever runs a shelter. invite.title is the label, so no copy string
-          is added and SheltersAtlasText is untouched.
-
-          flex-wrap, and the link does not hold its width. The two sit at
-          opposite ends of one line wherever both fit, which is every size the
-          page is read at; past that the link takes a line of its own rather
-          than pushing the row wider than the column. Held rigid at 200% text
-          on a 320px phone it wanted 191px against a 288px column and put the
-          whole document into a horizontal scroll, which is the failure the
-          card's slots had, arriving from the other direction. */}
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4">
-        {/* Directly above the grid and nowhere else: it is a property of the
-            list that follows, so it has to be read before the list rather
-            than found under it. Small and muted, with no icon and no box,
-            because it is a note about the page and not a control on it. */}
-        <p className="text-sm text-muted-foreground">{text.sortNote}</p>
-        {invite && (
-          <a
-            href={`#${INVITE_ID}`}
-            // The site's quiet secondary link, which already carries the
-            // tap-target this needs (lib/link-styles.ts). Overlaid rather
-            // than grown, because the nearest control is a band above; see
-            // the tap-target utility in globals.css for that rule. The
-            // standing underline is the one departure: this points into the
-            // page rather than out of it, and the sort note beside it is
-            // prose, so the link has to read as a link before it is hovered.
-            className={cn(MUTED_LINK, "underline sm:hidden")}
-          >
-            {invite.title}
-          </a>
-        )}
-      </div>
-
-      {/* Two columns from sm and three from lg. Seventeen shelters plus the
-          invitation is eighteen cells: the last row comes out even at two
-          columns and at three.
-
-          lg and not xl. The third column used to wait for 1280px, and at
-          1024px, which is a laptop window, the two-column card measured 472px
-          wide with three short contact rows in its left third: a card that
-          was two thirds air, and a page a third taller than it needed to be.
-          At 1024px three columns are 309px each inside the frame's 2rem
-          gutters, wider than the 288px the two-column band draws at 640px, so
-          no card in the register is narrower than one it already draws. The
-          long names wrap to a second line there and the subgrid below keeps
-          the rows level whatever they do.
-
-          The rows are the cards' own sections rather than the cards. Every
-          cell spans three implicit rows and the shelter card takes those three
-          as its own tracks (Item's subgrid layout), so a row of cards agrees
-          section by section: the tallest logo plate sets the first, the longest
-          name the second, the longest contact list the third. What used to do
-          this was a reserved title line and a cancelled mt-auto on the card,
-          each true of the seventeen names in data/shelters.yaml and of nothing
-          else. Nothing here is sized in advance now.
-
-          The implicit rows are auto, which is the default and is why no
-          grid-auto-rows is spelled out: the tracks are whatever the row's
-          contents need.
-
-          Tailwind's preflight strips the marker and WebKit drops the list role
-          with it, so role="list" is spelled out: without it this is announced
-          as eighteen unrelated headings rather than as a list of them.
-
-          The role and nothing else. The section's aria-label used to be
-          repeated here; see SheltersAtlasText.heading for why it is not. */}
+      {/* Cards share their three content tracks so each row stays aligned.
+          Keep an explicit list role for browsers that omit it without markers. */}
       <ul role="list" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {shelters.map((shelter) => (
           <ShelterCard key={shelter.id} shelter={shelter} text={card} />
         ))}
 
-        {/* The eighteenth cell. Below the grid it was the loudest thing on the
-            page under the h1 and it sat above the provenance line that is the
-            page's actual credential; in the grid it is one card among the
-            shelters, which is what it is asking to become.
-
-            row-span-3 and nothing else. It spans the same three rows a card
-            does, so the cells beside it keep the rhythm, but it is still a flex
-            column inside: it has no media, no title track and no footer, so
-            there is nothing here for a subgrid to line up with, and asking for
-            one would only pin these three paragraphs to tracks the cards own.
-
-            One thing to know if this block ever grows: an item spanning three
-            auto tracks that is taller than all three can hold spreads the
-            excess over them, so an invitation taller than every card in its row
-            would add air above those cards' logos as well as under their
-            contacts. It is shorter than a card with two contact rows today, and
-            it should stay that way. */}
-        {invite && (
-          <Card
-            asChild
-            className="border-dashed-muted border-dashed bg-transparent shadow-none"
-          >
-            <li
-              id={INVITE_ID}
-              // scroll-mt-4, the same offset the shelter cards carry, so an
-              // arrival from the anchor above lands with the dashed edge clear
-              // of the viewport top rather than flush against it. The value
-              // is argued on CARD in shelter-card.tsx.
-              className="row-span-3 flex scroll-mt-4 flex-col gap-2 p-5"
-            >
-              {/* h2, the rank the shelter names beside it take. The outline
-                  has to say what the layout says: after seventeen h2s an h3
-                  here reads as a subsection of the last shelter, which is the
-                  one thing this cell is not. Preflight leaves a heading at the
-                  inherited size, so the rank changes and the drawing does
-                  not. */}
-              <h2 className="font-medium">{invite.title}</h2>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {invite.body}
-              </p>
-              {/* No login button here. The header carries one in the corner a
-                  login is looked for, at every width, and printing a second
-                  copy of it inside the grid said the same thing twice to the
-                  handful of people it is for.
-
-                  What this block owes a shelter is the thing the header
-                  cannot give: the way in for one we do not hold yet. The
-                  login is a magic link to an address already on file, so a
-                  new shelter pressing it gets an email that never arrives and
-                  no explanation.
-
-                  It follows the body rather than sitting on the cell's bottom
-                  edge: the invitation is two paragraphs of one thought, and
-                  mt-auto opened a band of blank between them as wide as the
-                  tallest card in the row.
-
-                  pointer-coarse:py-3.5 is the thumb's share of an inline
-                  link. This is a link inside a sentence, so it wraps with the
-                  sentence and cannot grow into a 44px box the way the contact
-                  rows do, and the tap-target overlay is drawn against one
-                  fragment of a link that may have two. Vertical padding on an
-                  inline box changes no line's height and every pixel of it
-                  takes presses. The box it pads is the font's own, 17px for
-                  this face at 14px, not the 22.75px line the text sits in, so
-                  14px above and below is what reaches 45px; 12px measured
-                  41. It overlaps the lines either side, and those are prose,
-                  so a press that strays lands on the link rather than on
-                  nothing. Hit-tested before this: 22px, the only control on
-                  the page under the floor. */}
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {invite.note}{" "}
-                <a
-                  href={invite.joinHref}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="relative z-10 underline underline-offset-4 hover:text-foreground pointer-coarse:py-3.5"
-                >
-                  {invite.joinLabel}
-                  <span className="sr-only"> {invite.newWindow}</span>
-                </a>
-                .
-              </p>
-            </li>
-          </Card>
-        )}
       </ul>
 
       {/* Where the skip link lands. tabIndex so focus actually moves here

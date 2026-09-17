@@ -134,6 +134,8 @@ export async function crawlProviders({
           reason:
             verdict.heldBy === "check"
               ? null
+              : verdict.heldBy === "cooldown"
+                ? `schedule: ${policy.providerId} is deferred until ${nextAllowedAt} by a host cooldown beyond its ${policy.crawl.intervalHours}h check interval. Its previous records were carried forward and this run is not a clean one.`
               : heldOffByAttempt(
                   policy,
                   nextAllowedAt,

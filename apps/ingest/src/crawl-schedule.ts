@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { PoliteClientOptions } from "@posvoji/provider-sdk";
+import { MAX_RETRY_AFTER_MS, type PoliteClientOptions } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { writeFileAtomic } from "./write-atomic";
 
@@ -16,9 +16,20 @@ function readTimes(path: string): Record<string, number> {
   return value as Record<string, number>;
 }
 
-export function hostCooldowns(directory: string): NonNullable<PoliteClientOptions["cooldowns"]> {
+export function hostCooldowns(directory: string, now = Date.now()): NonNullable<PoliteClientOptions["cooldowns"]> {
   const path = join(directory, "host-cooldowns.json");
   const times = readTimes(path);
+  let changed = false;
+  for (const host of Object.keys(times)) {
+    if (times[host]! <= now) { delete times[host]; changed = true; }
+    else if (times[host]! > now + MAX_RETRY_AFTER_MS) {
+      times[host] = now + MAX_RETRY_AFTER_MS;
+      changed = true;
+    }
+  }
+  // Persist legacy repair once. Reopening this file must not move the recovery
+  // deadline forward indefinitely. Expired entries do not accumulate either.
+  if (changed) writeFileAtomic(path, JSON.stringify(times));
   return {
     get: (host) => Object.hasOwn(times, host) ? times[host] : undefined,
     set(host, at) {
@@ -35,7 +46,7 @@ export function hostCooldowns(directory: string): NonNullable<PoliteClientOption
  */
 export type CrawlVerdict =
   | { admit: true }
-  | { admit: false; heldBy: "check" | "attempt"; nextAllowedAt: number };
+  | { admit: false; heldBy: "check" | "attempt" | "cooldown"; nextAllowedAt: number };
 
 /** Records an attempt stamped with the moment its crawl began. */
 export type CrawlAttempt = () => void;
@@ -43,10 +54,12 @@ export type CrawlAttempt = () => void;
 export class CrawlSchedule {
   private readonly path: string;
   private readonly attempts: Record<string, number>;
+  private readonly cooldowns: NonNullable<PoliteClientOptions["cooldowns"]>;
 
   constructor(directory: string, private readonly now: () => Date = () => new Date()) {
     this.path = join(directory, "crawl-schedule.json");
     this.attempts = readTimes(this.path);
+    this.cooldowns = hostCooldowns(directory, now().getTime());
   }
 
   private attemptedAt(policy: ProviderPolicy): number {
@@ -79,9 +92,13 @@ export class CrawlSchedule {
   // about to carry forward are older than this provider's own policy allows.
   check(policy: ProviderPolicy, checkedAt?: string | null): CrawlVerdict {
     const at = this.now().getTime();
-    const nextAllowedAt = this.nextAllowedAt(policy, checkedAt);
-    if (at >= nextAllowedAt) return { admit: true };
     const observed = this.observedAt(checkedAt);
+    const cooldown = this.cooldowns.get(new URL(policy.source).host) ?? 0;
+    const nextAllowedAt = Math.max(this.nextAllowedAt(policy, checkedAt), cooldown);
+    if (at >= nextAllowedAt) return { admit: true };
+    if (cooldown > at && (observed === 0 || cooldown > observed + policy.crawl.intervalHours * 3600000)) {
+      return { admit: false, heldBy: "cooldown", nextAllowedAt };
+    }
     const fresh = observed > 0 && at - observed < policy.crawl.intervalHours * 3600000;
     return { admit: false, heldBy: fresh ? "check" : "attempt", nextAllowedAt };
   }

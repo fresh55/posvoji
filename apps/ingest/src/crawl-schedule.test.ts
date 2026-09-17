@@ -1,4 +1,5 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { MAX_RETRY_AFTER_MS } from "@posvoji/provider-sdk";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -87,6 +88,27 @@ it("rejects corrupt scheduling state instead of resetting permission limits", ()
 
 it("preserves server cooldowns across exports", () => {
   const root = directory();
-  hostCooldowns(root).set("shelter.example", 1900000000000);
-  expect(hostCooldowns(root).get("shelter.example")).toBe(1900000000000);
+  const until = Date.now() + 3600000;
+  hostCooldowns(root).set("shelter.example", until);
+  expect(hostCooldowns(root).get("shelter.example")).toBe(until);
+});
+
+it("repairs a legacy extreme deferral once and removes it after expiry", () => {
+  const root = directory();
+  const at = Date.now();
+  const path = join(root, "host-cooldowns.json");
+  writeFileSync(path, JSON.stringify({ "shelter.example": Number.MAX_SAFE_INTEGER }));
+  expect(hostCooldowns(root, at).get("shelter.example")).toBe(at + MAX_RETRY_AFTER_MS);
+  expect(hostCooldowns(root, at + 1000).get("shelter.example")).toBe(at + MAX_RETRY_AFTER_MS);
+  expect(hostCooldowns(root, at + MAX_RETRY_AFTER_MS).get("shelter.example")).toBeUndefined();
+  expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({});
+});
+
+it("keeps a short cooldown inside the successful check interval clean", () => {
+  const root = directory();
+  const checked = Date.parse("2026-09-08T10:00:00Z");
+  const at = checked + 3600000;
+  hostCooldowns(root, at).set("shelter.example", checked + 6 * 3600000);
+  const verdict = new CrawlSchedule(root, () => new Date(at)).check(policy, new Date(checked).toISOString());
+  expect(verdict).toMatchObject({ admit: false, heldBy: "check" });
 });

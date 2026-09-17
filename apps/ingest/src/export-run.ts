@@ -95,10 +95,10 @@ const defaultServices = {
   crawledDatasetPath,
   overrideReportPath,
   crawlStatePath,
-  createClient: (directory: string) =>
+  createClient: (directory: string, at = Date.now()) =>
     new PoliteClient({
       userAgent: "PosvojiBot/0.1 (+https://posvoji.si/bot; bot@posvoji.si)",
-      cooldowns: hostCooldowns(directory),
+      cooldowns: hostCooldowns(directory, at),
     }),
   createSnapshots: (
     directory: string,
@@ -304,7 +304,7 @@ export async function runExport(
             ({ policy }) => policy.providerId === requestedProviderId,
           )
         : policies;
-    const client = createClient(datasetDir);
+    const client = createClient(datasetDir, now().getTime());
 
     // Fetched before the crawl, not after it. A bad token or a payload that no
     // longer matches the contract throws, and a run that is going to fail on that

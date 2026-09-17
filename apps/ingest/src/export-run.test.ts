@@ -142,6 +142,22 @@ function harness(previous: Animal[] = []) {
 }
 
 describe("the export command's production pipeline", () => {
+  it("reports a cooldown beyond the provider interval as degraded and recovers when it expires", async () => {
+    const h = harness();
+    expect((await runExport({}, h.services)).exitCode).toBe(0);
+    const start = Date.parse(NOW);
+    writeFileSync(join(h.root, "host-cooldowns.json"), JSON.stringify({ "shelter.example": start + 24 * 3600000 }));
+    h.services.now = () => new Date(start + 3600000);
+    const held = await runExport({}, h.services);
+    expect(held.exitCode).toBe(2);
+    expect(held.dataset.animals.map((a) => a.id)).toEqual([animal().id]);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(expect.stringContaining("host cooldown"));
+    h.services.now = () => new Date(start + 24 * 3600000);
+    expect((await runExport({}, h.services)).exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledTimes(2);
+  });
+
   it("checks a still-listed available animal's reservation on the next permitted crawl", async () => {
     const held = animal();
     held.source.fetchedAt = BEFORE;

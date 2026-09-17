@@ -3,7 +3,11 @@ import robotsParser from "robots-parser";
 
 const BACKOFF_BASE_MS = 2_000;
 const BACKOFF_CAP_MS = 60_000;
-// Longer waits defer the host; they never shorten the server's instruction.
+// Operator policy: bound server retry deferrals to one day, without sleeping
+// through a whole crawl. Ordinary server delays below this ceiling are honored.
+export const MAX_RETRY_AFTER_MS = 24 * 60 * 60 * 1000;
+export const ROBOTS_FAILURE_TTL_MS = 5 * 60 * 1000;
+// Longer waits defer the host instead of blocking this process.
 const MAX_INLINE_WAIT_MS = 60_000;
 // Large enough for the source photos the ingest pipeline accepts, but finite
 // so a bad or hostile endpoint cannot exhaust the crawler's memory.
@@ -84,18 +88,40 @@ export function parseRetryAfter(
   now: number = Date.now(),
 ): number | undefined {
   if (!header) return undefined;
-  if (/^\d+$/.test(header)) return Number(header) * 1_000;
-  const date = Date.parse(header);
-  if (Number.isNaN(date)) return undefined;
-  return Math.max(0, date - now);
+  const value = header.replace(/^[ \t]+|[ \t]+$/g, "");
+  if (/^\d+$/.test(value)) {
+    const ms = Number(value) * 1_000;
+    return Number.isSafeInteger(ms) ? Math.min(ms, MAX_RETRY_AFTER_MS) : undefined;
+  }
+  // RFC 9110 HTTP-date accepts IMF-fixdate and the two legacy forms. Do not
+  // feed arbitrary strings ("-1", "1.5", ISO dates) to Date.parse.
+  const day = "(Mon|Tue|Wed|Thu|Fri|Sat|Sun)";
+  const month = "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
+  const time = "(\\d{2}:\\d{2}:\\d{2})";
+  let canonical = value;
+  if (!new RegExp(`^${day}, \\d{2} ${month} \\d{4} ${time} GMT$`).test(value)) {
+    const old = value.match(new RegExp(`^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (\\d{2})-${month}-(\\d{2}) ${time} GMT$`));
+    const ascii = value.match(new RegExp(`^${day} ${month} ([ \\d]\\d) ${time} (\\d{4})$`));
+    if (old) {
+      const currentYear = new Date(now).getUTCFullYear();
+      let year = Math.floor(currentYear / 100) * 100 + Number(old[4]);
+      if (year > currentYear + 50) year -= 100;
+      canonical = `${old[1]!.slice(0, 3)}, ${old[2]} ${old[3]} ${year} ${old[5]} GMT`;
+    } else if (ascii) {
+      canonical = `${ascii[1]}, ${ascii[3]!.trim().padStart(2, "0")} ${ascii[2]} ${ascii[5]} ${ascii[4]} GMT`;
+    } else return undefined;
+  }
+  const date = Date.parse(canonical);
+  if (!Number.isFinite(date) || new Date(date).toUTCString() !== canonical) return undefined;
+  return Math.min(MAX_RETRY_AFTER_MS, Math.max(0, date - now));
 }
 
 export function computeBackoffMs(
   attempt: number,
   retryAfterMs?: number,
 ): number {
-  if (retryAfterMs !== undefined) {
-    return retryAfterMs;
+  if (retryAfterMs !== undefined && Number.isFinite(retryAfterMs) && retryAfterMs >= 0) {
+    return Math.min(retryAfterMs, MAX_RETRY_AFTER_MS);
   }
   return Math.min(BACKOFF_BASE_MS * 2 ** attempt, BACKOFF_CAP_MS);
 }
@@ -219,6 +245,7 @@ export class PoliteClient {
   private readonly lastRequestAt = new Map<string, number>();
   private readonly robots = new Map<string, ReturnType<typeof robotsParser>>();
   private readonly pendingRobots = new Map<string, Promise<void>>();
+  private readonly robotsFailures = new Map<string, { until: number; error: Error }>();
   private readonly crawlDelayMs = new Map<string, number>();
 
   constructor(options: PoliteClientOptions) {
@@ -410,6 +437,9 @@ export class PoliteClient {
 
   private async ensureRobots(origin: string): Promise<void> {
     if (this.robots.has(origin)) return;
+    const failure = this.robotsFailures.get(origin);
+    if (failure && failure.until > Date.now()) throw failure.error;
+    this.robotsFailures.delete(origin);
     const pending = this.pendingRobots.get(origin);
     if (pending) return pending;
     const loading = this.loadRobots(origin);
@@ -438,8 +468,16 @@ export class PoliteClient {
         content = DISALLOW_ALL;
       }
     } catch (error) {
-      if (error instanceof ResponseBodyTooLargeError) throw error;
-      throw new Error(`robots.txt for ${origin} unreachable`, { cause: error });
+      const failure = new Error(`robots.txt for ${origin} unreachable`, { cause: error });
+      const now = Date.now();
+      for (const [key, cached] of this.robotsFailures) {
+        if (cached.until <= now) this.robotsFailures.delete(key);
+      }
+      // Bound memory as well as time. Evicting an entry permits a fresh robots
+      // attempt; it never grants permission to fetch content without rules.
+      if (this.robotsFailures.size >= 256) this.robotsFailures.delete(this.robotsFailures.keys().next().value!);
+      this.robotsFailures.set(origin, { until: now + ROBOTS_FAILURE_TTL_MS, error: failure });
+      throw failure;
     }
     const robots = robotsParser(robotsUrl, content);
     this.robots.set(origin, robots);

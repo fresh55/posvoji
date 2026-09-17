@@ -658,7 +658,7 @@ describe("photo gallery controls", () => {
     // resolved either.
     const dots = document.querySelector('[data-slot="photo-dots"]');
     expect(dots?.className).toContain("rounded-full");
-    expect(dots?.className).toContain("bg-black/35");
+    expect(dots?.className).toContain("bg-black/45");
     // The width of its dots and centred, not stretched across the frame: the
     // pill is the row's shape, and a full-width element would draw it as a
     // bar. It used to be exactly that, a 48px gradient the width of the
@@ -678,7 +678,27 @@ describe("photo gallery controls", () => {
     // White in both themes: the pill is dark whatever the theme is, so a dot
     // following bg-background would be stone-950 on near-black in the dark one.
     expect(dots?.children[0]?.className).toContain("bg-white");
-    expect(dots?.children[1]?.className).toContain("bg-white/50");
+    expect(dots?.children[1]?.className).toContain("bg-white/55");
+  });
+
+  it("marks the card's current photo by size and not by alpha alone", () => {
+    setup();
+
+    // White against white/50 on the pill measured 1.50:1 on a white studio
+    // photo and under 3:1 on 48 of 59 lead photos, so the state is carried by
+    // the disc's size: 6px against 4px is 2.25x the area, and no photograph can
+    // take that away. The alphas stay as a second, weaker signal.
+    const dots = document.querySelector('[data-slot="photo-dots"]');
+    const [current, rest] = Array.from(dots?.children ?? []);
+    expect(current?.className).toContain("size-1.5");
+    expect(current?.className).not.toContain("size-1 ");
+    expect(rest?.className).toContain("size-1");
+    // And the hoisted 6px is gone from it rather than sitting beside the 4px:
+    // the two land in one class list and it is cn that has to settle them.
+    expect(rest?.className).not.toContain("size-1.5");
+    // Two sizes in one row: without items-center the small discs are laid at
+    // the top of a 6px line instead of on the current dot's centre line.
+    expect(dots?.className).toContain("items-center");
   });
 
   it("keeps the pill on the dots' own element so the two move together", () => {
@@ -692,7 +712,7 @@ describe("photo gallery controls", () => {
     // repeats the gating test above and still passes with the pill moved onto
     // a wrapper of its own, which is the arrangement this is here to refuse.
     const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("bg-black/35");
+    expect(dots?.className).toContain("bg-black/45");
     expect(dots?.className).toContain("can-hover:opacity-0");
     expect(dots?.className).toContain("group-hover/card:opacity-100");
   });
@@ -764,7 +784,7 @@ describe("photo gallery controls", () => {
     // And no pill: here the row stands on one large photograph the visitor
     // asked for, so every dot keeps carrying its own ground, and the row is
     // laid across the frame the way it always was.
-    expect(dots?.className).not.toContain("bg-black/35");
+    expect(dots?.className).not.toContain("bg-black/45");
     expect(dots?.className).toContain("inset-x-0");
     expect(dots?.children[0]?.className).toContain(
       "shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]",

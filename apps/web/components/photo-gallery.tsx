@@ -166,7 +166,9 @@ const DEFAULT_WRAPPER_CLASS =
 // two paint objects below would otherwise spell the size and the corner out
 // twice: DOT_EDGE used to be what they shared, and the pill made the edge
 // redundant. The pill's own padding is measured against this size (CARD_DOTS),
-// so a change here has to reach both.
+// so a change here has to reach both. It is the card's current dot as well;
+// the card's other dots step down from it, and only that step is spelled out
+// there.
 const DOT_SHAPE = "size-1.5 rounded-full transition-colors";
 
 const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]`;
@@ -182,8 +184,8 @@ const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgb
 // So the card puts the ground under the row once, as a pill on the row's own
 // element, and the dots on top of it are plain discs. The pill is sized to the
 // dots: 6px of air at the ends, 4px above and below, so a five-dot row is a
-// 58 by 14 shape at the bottom of the picture and nothing else on the picture
-// changes.
+// 50 by 14 shape at the bottom of the picture and nothing else on the picture
+// changes. It was 58 wide while every dot was 6px.
 //
 // It used to be a 48px gradient across the whole width of the frame, black/30
 // at the bottom edge fading to nothing. On a mid-tone photo that read as the
@@ -193,14 +195,23 @@ const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgb
 // card, which is 86% of them, so a phone saw the band sixty times down the
 // page. The pill covers only what the dots need covered.
 //
-// black/35 and not lighter. The pill has two jobs: say there are more photos,
-// and say which one this is. The second needs the current dot and the rest to
-// come apart, and over a white photo a lighter pill leaves white/50 sitting
-// on near white. At 35% the ground under the dots is about rgb(166) on a
-// white photo, which puts the current dot at 2.4:1 against it and the rest a
-// clear step under the current one; on a dark photo the pill is near black and
-// the dots need no help. No 1px edge on the dots any more: the ground is now
-// always dark enough to draw them, which was the only thing the edge was for.
+// The row has two jobs: say there are more photos, and say which one this is.
+// The first it has always done (median 7.3:1 for a dot against its ground
+// across 59 cards). The second was left to the alpha between a white dot and a
+// white/50 one, and measured over the 59 lead photos that pair comes to 1.50:1
+// on a white studio shot, 2.30:1 at the median, and under 3:1 on 48 of them.
+// Alpha cannot carry it either: taking the pill to black/45 only moves that
+// pair to 1.82:1, because both dots darken with the ground under them.
+//
+// So the current dot is carried by size instead. 6px against 4px is 2.25x the
+// area, which is unmistakable at a glance on a white photo where the two
+// alphas were not, and it is a difference alpha cannot take away. The pill
+// goes to black/45 so the current dot itself clears 3:1 against its own
+// ground on all 59 photos (3.36:1 in the worst case, 2.4:1 at black/35). On a
+// dark photo the pill is near black and the dots need no help either way.
+//
+// No 1px edge on the dots: the ground is always dark enough to draw them,
+// which was the only thing the edge was for.
 //
 // Centred with a transform rather than stretched across the frame. The row's
 // shape is the pill, so the element has to be the width of its dots; inset-x-0
@@ -217,18 +228,21 @@ const DOT_CLASS = `${DOT_SHAPE} shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgb
 // chevrons bring a near-solid ground and a hairline ring (CARD_CHEVRON above).
 // Both of those carry text or an icon a visitor has to read against an
 // arbitrary backdrop, and neither may lose to a white studio shot. These dots
-// carry no glyph and say one thing, which of five, so what they need is that
-// the current dot and the rest come apart. A 35% wash does that on every
-// photo in the register while staying a shape on the picture rather than a
-// label over it, and the badge sits on the same frame at the same time.
+// carry no glyph and say one thing, which of five, and the size step above is
+// what says it, so a 45% wash is enough: the row stays a shape on the picture
+// rather than a label over it, and the badge sits on the same frame at the
+// same time.
 //
 // The dots stay white for the same reason the ground is dark, so the pair is
 // read as one decision.
 const CARD_DOTS = {
-  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/35 px-1.5 py-1`,
+  container: `${CARD_DOTS_CLASS} bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/45 px-1.5 py-1`,
   dot: DOT_SHAPE,
   current: "bg-white",
-  rest: "bg-white/50",
+  // The step down, in size and in alpha both. size-1 lands after DOT_SHAPE's
+  // size-1.5 in the same class list and cn merges the pair, so this is the one
+  // place the 4px dot is stated.
+  rest: "size-1 bg-white/55",
 } as const;
 
 const PLAIN_DOTS = {
@@ -896,7 +910,11 @@ export function PhotoGallery({
             data-slot="photo-dots"
             aria-hidden
             className={cn(
-              "pointer-events-none absolute z-10 flex gap-1",
+              // items-center because the card's dots are two sizes: a 4px disc
+              // in a row whose line is 6px tall is laid at the line's top edge
+              // under the default stretch, which puts the small dots 1px above
+              // the current one instead of on its centre line.
+              "pointer-events-none absolute z-10 flex items-center gap-1",
               dotPaint.container,
             )}
           >

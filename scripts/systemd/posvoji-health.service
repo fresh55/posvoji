@@ -10,6 +10,7 @@ Group=caddy
 WorkingDirectory=/srv/posvoji/app
 ExecStart=/bin/bash /srv/posvoji/app/scripts/monitor-production.sh
 Environment=POSVOJI_MONITOR_NETRC_FILE=/etc/posvoji/health.netrc
+Environment=POSVOJI_MONITOR_MODEL_ENCODING=1
 TimeoutStartSec=5min
 NoNewPrivileges=true
 PrivateTmp=true

@@ -30,6 +30,7 @@ jobs:
       - name: Verify the public release and source freshness
         env:
           MONITOR_NETRC: ${{ secrets.POSVOJI_MONITOR_NETRC }}
+          POSVOJI_MONITOR_MODEL_ENCODING: "1"
         shell: bash
         run: |
           set -euo pipefail

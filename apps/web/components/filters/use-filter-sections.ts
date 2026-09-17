@@ -21,6 +21,13 @@ const STORAGE_KEY = "posvoji:filter-sections";
 // 185px of that and the one of the three a visitor is least often after, so it
 // folds with the rest. A closed section still shows its selection in the
 // header, and a visitor who opens it keeps it open (the overrides below).
+//
+// The phone sheet folds on the same defaults since 2026-09-17, and it needs
+// them more: its body held 1586px of content in a 388px window at 390x844 and
+// 1649px in 189px at 320x568, against the panel's 1.07x (filter-sheet.tsx).
+// One set of defaults for both, because the question they answer is which
+// sections a visitor is usually after, and that does not change with the
+// width the list is drawn at.
 const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   sex: true,
   age: true,
@@ -37,6 +44,9 @@ type Overrides = Partial<Record<FilterSectionKey, boolean>>;
 const NO_OVERRIDES: Overrides = {};
 
 // One store per tab, so every list reading the sections sees the same folds.
+// The sidebar and the phone sheet are both readers and they share it. Only one
+// of the two is on screen at a width, so they cannot disagree in front of a
+// visitor; a phone rotated into the lg layout finds the folds it left.
 const listeners = new Set<() => void>();
 let cache: Overrides | null = null;
 
@@ -113,8 +123,9 @@ export function resetFilterSectionsStore(): void {
   for (const listener of listeners) listener();
 }
 
-/** Which sidebar sections are unfolded. Choices survive the visit through
-    localStorage; only departures from the defaults are stored. */
+/** Which filter sections are unfolded, in the sidebar and in the phone sheet
+    alike. Choices survive the visit through localStorage; only departures from
+    the defaults are stored. */
 export function useFilterSections(): {
   isOpen: (key: FilterSectionKey) => boolean;
   toggleSection: (key: FilterSectionKey) => void;

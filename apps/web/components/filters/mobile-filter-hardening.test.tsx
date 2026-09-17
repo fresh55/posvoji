@@ -2,7 +2,7 @@
 
 import { type ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
 import { AnimalFilters } from "./animal-filters";
@@ -10,6 +10,7 @@ import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
 import { LocationPicker } from "./location-picker";
 import { SpeciesTabs } from "./species-tabs";
+import { resetFilterSectionsStore } from "./use-filter-sections";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -21,7 +22,23 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
-afterEach(() => cleanup());
+// The sheet's sections fold, and the fold pulls an opened section into view
+// through a timeout jsdom has no scrollIntoView for; the fold also measures
+// its own height, around which motion restores the scroll position.
+Element.prototype.scrollIntoView = vi.fn();
+window.scrollTo = vi.fn();
+
+// Folds are stored, so a test that opened one would hand it to the next.
+beforeEach(() => {
+  window.localStorage.clear();
+  resetFilterSectionsStore();
+});
+
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+  resetFilterSectionsStore();
+});
 
 const emptyCounts = Object.fromEntries(
   GROUPS.map((group) => [group, new Map()]),
@@ -700,6 +717,11 @@ describe("the sheet's surfaces", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     const dialog = await screen.findByRole("dialog");
+
+    // Size folds by default in here now, the way it does in the panel
+    // (use-filter-sections.ts), so its tiles are asked for before they are
+    // read. Sex is open already.
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Size/ }));
 
     for (const name of [/^Male, /, /^Small, /]) {
       const option = within(dialog).getByRole("button", { name });

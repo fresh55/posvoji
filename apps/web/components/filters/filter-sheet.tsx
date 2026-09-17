@@ -446,7 +446,28 @@ export function FilterSheet({
             </LocationScopeRow>
           )}
 
+          {/* The sections fold behind their headers here, the way they do in
+              the panel at lg. This sheet used to open all nine of them into
+              whatever a phone had left, on the argument that it scrolls as
+              one page: measured on 2026-09-17 the body held 1586px of content
+              in a 388px window at 390x844 and 1649px in 189px at 320x568,
+              and with the keyboard up 10.7 times the window, so six to eight
+              section names were never seen at all. The panel's worst case is
+              1.07x, so the argument for folding applies to this surface more
+              than to the one already doing it. At 390x844 the body goes from
+              1586px to about 774.
+
+              Nothing new is built for it: the fold, the defaults that keep
+              Spol and Starost open, the summary chip a closed header shows so
+              an active filter never disappears with its cards, and the pull
+              into view once a section has grown all ship for the panel
+              already (use-filter-sections.ts, filter-section-header.tsx).
+              The folds are stored per section and the two surfaces share the
+              store, which is right: a visitor who folded Velikost has said
+              which sections they care about, and that answer is theirs on
+              both surfaces rather than per surface. */}
           <FilterGroupList
+            collapsible
             filters={filters}
             groups={groups}
             counts={counts}

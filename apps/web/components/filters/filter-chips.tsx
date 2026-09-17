@@ -408,7 +408,9 @@ export function FilterChips({
         // still has content past it, and a wrapping box has neither, so wired
         // up there it would watch a box that never scrolls and dim nothing.
         ref={wrap ? undefined : scrollRef}
-        {...{ [SCROLL_STRIP_MARK]: "" }}
+        // The mark says "a child can be scrolled into view inside me", and a
+        // wrapping box cannot, so it goes with the ref.
+        {...(wrap ? {} : { [SCROLL_STRIP_MARK]: "" })}
         // SCROLL_STRIP is the fade, the scroll padding that keeps a focused
         // pill out from under it, and the horizontal room the focus ring
         // needs; the couplings between those three are on the constant. The

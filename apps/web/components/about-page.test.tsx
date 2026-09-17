@@ -29,7 +29,8 @@ describe("the about page", () => {
   it("explains shelter adoption before site details in Slovenian", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
-      "Želite posvojiti?", "Brezplačna uporaba", "Vsebine z dovoljenjem",
+      "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba",
+      "Zavetišča odločate o svojih vsebinah", "Kako se zavetišče vključi?",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
@@ -46,7 +47,7 @@ describe("the about page", () => {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
         getMessages(locale).about,
       );
-      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(5);
     },
   );
 

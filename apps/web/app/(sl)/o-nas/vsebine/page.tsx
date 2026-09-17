@@ -10,7 +10,7 @@ export const metadata: Metadata = staticPageMetadata({
   // it, so the head cannot name the page something the page does not.
   title: dataPolicyTitle("sl"),
   description:
-    "S čigavim dovoljenjem objavljamo živali slovenskih zavetišč, kaj objavimo privzeto, kaj določi zavetišče in kako se kadarkoli izključi.",
+    "Kako z dovoljenjem zavetišč objavljamo živali, fotografije in opise, varujemo zasebnost ter uredimo popravek ali umik vsebin.",
 });
 
 export default function DataPolicy() {

@@ -31,8 +31,8 @@ describe("the content and permissions page", () => {
     render(<DataPolicyPage locale={locale} />);
 
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(
-      // The eight rules, and the grants block's own heading.
-      9,
+      // Five reader-facing commitments in both languages.
+      5,
     );
   });
 
@@ -83,11 +83,10 @@ describe("the content and permissions page", () => {
     },
   );
 
-  // The page's one way out of the site, and the only one. A shelter reading
-  // what happens to its photos should not be handed a repository, which is
-  // what /o-nas used to do with the link that now lands here.
+  // A shelter can read the explanation and ask for a change without being
+  // sent to developer documentation. The footer keeps the site's code link.
   it.each<Locale>(["sl", "en"])(
-    "leaves the site once, for the technical version (%s)",
+    "keeps developer documentation out of the explanation (%s)",
     (locale) => {
       const { container } = render(<DataPolicyPage locale={locale} />);
 
@@ -96,12 +95,7 @@ describe("the content and permissions page", () => {
       const external = [...main!.querySelectorAll("a")].filter((a) =>
         a.getAttribute("href")?.includes("github.com"),
       );
-      expect(external).toHaveLength(1);
-      // target="_blank" announces nothing on its own, so the accessible name
-      // carries the sentence, the way the footer and the shelter cards do.
-      expect(external[0].getAttribute("target")).toBe("_blank");
-      expect(external[0].getAttribute("rel")).toBe("noreferrer");
-      expect(external[0].textContent).toContain(getMessages(locale).newWindow);
+      expect(external).toHaveLength(0);
     },
   );
 

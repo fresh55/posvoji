@@ -16,28 +16,11 @@ import {
   shelterCount,
 } from "@/lib/labels";
 import { shelterCensus } from "@/lib/shelter-census";
-import { REPO_URL } from "@/lib/site";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
-import { siteLinks } from "@/lib/site-links";
 import { PAGE_TITLE } from "@/lib/link-styles";
-
-/** The issue form a shelter that is not in the registry yet can actually
- *  reach. The portal login only answers to an address already on file, so
- *  without this there is no way in for a shelter nobody has heard from yet.
- *  Named here rather than inside the copy, so the two locales point at one
- *  destination.
- *
- *  This used to say the project had no contact address of its own, which was
- *  the whole argument for sending a shelter to GitHub. It is no longer true:
- *  CONTACT_EMAIL is info@posvoji.si, the footer prints it on every page, and
- *  /o-nas prints it as the closing line's one button. A shelter that has to
- *  make a GitHub account to ask to be listed is still the wrong door, and the
- *  reason it is still here is that nothing has replaced it yet, not that a
- *  repository is the right answer. */
-const JOIN_URL = `${REPO_URL}/issues/new?template=predlagaj-zavetisce.yml`;
 
 const pageText = {
   sl: {
@@ -50,15 +33,9 @@ const pageText = {
     withListings: "z objavami",
     onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
-    noAnimals: "Brez objav",
+    noAnimals: "Brez objav na Posvoji.si",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
-    inviteTitle: "Ste zavetišče?",
-    inviteBody:
-      "Vaše živali objavimo z vašim dovoljenjem in povezavo na vašo objavo.",
-    inviteNote:
-      "Prijava deluje le za e-naslove, ki so pri nas že vpisani. Če vas še nimamo,",
-    inviteJoin: "nam to sporočite na GitHubu",
     source: "Vir: register zavetišč UVHVVR (gov.si)",
     asOf: "stanje na dan",
   },
@@ -72,15 +49,9 @@ const pageText = {
     withListings: "with listings",
     onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
-    noAnimals: "No listings",
+    noAnimals: "No listings on Posvoji.si",
     heading: "Shelters",
     skip: "Skip the list of shelters",
-    inviteTitle: "Are you a shelter?",
-    inviteBody:
-      "We publish your animals with your permission, linking back to your own listing.",
-    inviteNote:
-      "The login only works for an address already on our list. If we do not have you yet,",
-    inviteJoin: "tell us on GitHub",
     source: "Source: UVHVVR shelter registry (gov.si)",
     asOf: "as of",
   },
@@ -150,9 +121,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
   const asOf = registerDate
     ? registerDateLabel(registerDate, locale)
     : undefined;
-  const portal = siteLinks(locale, messages).find(
-    (link) => link.key === "portal",
-  );
 
   return (
     <SiteShell
@@ -334,16 +302,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           skip: text.skip,
           sortNote: text.sortNote,
         }}
-        invite={
-          portal && {
-            title: text.inviteTitle,
-            body: text.inviteBody,
-            note: text.inviteNote,
-            joinLabel: text.inviteJoin,
-            joinHref: JOIN_URL,
-            newWindow: messages.newWindow,
-          }
-        }
       />
 
       {/* Keep publishing context beside the source so the introduction

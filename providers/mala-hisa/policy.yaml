@@ -49,5 +49,8 @@ crawl:
   intervalHours: 12
   excludePaths:
     - /privat-oddaja/
+    # The archive uses hyphens; the separate WordPress post type uses underscores.
+    # Block detail redirects and carried records as well as the archive itself.
+    - /privat_oddaja/
     - /najdeni-psi/
     - /wp-admin/

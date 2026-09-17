@@ -216,7 +216,7 @@ describe("provider", () => {
         { client: { get: vi.fn() } as never, policy },
         {
           sourceAnimalId: "1",
-          sourceUrl: "https://zavetisce-malahisa.si/privat_oddajo/zasebni-pes/",
+          sourceUrl: "https://zavetisce-malahisa.si/privat_oddaja/zasebni-pes/",
         },
       ),
     ).rejects.toThrow(/refused non-adoption detail URL/);

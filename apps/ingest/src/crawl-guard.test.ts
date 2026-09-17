@@ -272,6 +272,16 @@ describe("current provider entry requests", () => {
     ).toBe(true);
   });
 
+  it("blocks Mala hiša's private post path before following a redirect", async () => {
+    const currentPolicy = policyById.get("mala-hisa")!;
+    const client = new RedirectingClient("/privat_oddaja/fixture/");
+    const guarded = guardProviderRequests(client, currentPolicy);
+    const url = "https://zavetisce-malahisa.si/psi_za_oddajo/fixture/";
+
+    await expect(guarded.get(url)).rejects.toThrow(/refusing to fetch it/);
+    expect(client.calls).toEqual([url]);
+  });
+
   for (const provider of providers) {
     it(`${provider.id} starts its crawl on its policy origin`, async () => {
       const currentPolicy = policyById.get(provider.id);

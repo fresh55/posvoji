@@ -88,17 +88,22 @@ export const CARD_GRID =
 // ladder lives in apps/ingest (DERIVATIVE_VERSION in cache-images.ts) and
 // adding one re-cuts every derivative in the cache, so it is its own change.
 //
-// On a phone the widening buys almost nothing, because a 2x or 3x screen is
-// already asking for the 480 or 640 rung at the plain width. Only a 1.75x
-// screen would move up, and a 164px thumbnail on a phone connection is the one
-// place this trade is not worth making.
+// On a phone the widening is left off, and the reason is the bytes rather than
+// the rungs. The rungs were the argument here until they were measured: a 375
+// phone at 2x draws a 163.5px card, asks for 327 device pixels and takes the
+// 320 rung, and 291 of 484 leads have a wider rung than that available, so a
+// band stated at 4/3 would move most of them up rather than nothing. It moves
+// them up at a price: 60 cards on a 375@2x first screen go from 434KB to
+// 769KB, +77%, to undo a 1.28x upscale on a 136px thumbnail. That is the one
+// place on the site where the file is the cost and the picture is the size of
+// a stamp, so the conclusion stands and only its reason has changed.
 //
 // The page is `max-w-(--page-max) px-gutter` and --page-max is 80rem except on
 // the results page from 2xl, where CARD_GRID_PAGE_MAX above takes it to 100rem.
 // --gutter is 1rem below sm, 1.5rem from sm
 // and 2rem from lg (globals.css), and the grid's own column gap is 1rem up to
 // xl and 1.25rem from there.
-// From lg the results section is a 14rem sidebar plus a 2rem column gap ahead
+// From lg the results section is a 224px sidebar plus a 2rem column gap ahead
 // of the grid. Columns are two fixed ones below sm and auto-fill minmax(13rem)
 // above it, which is what the breakpoints between the bands are: each one is
 // the width where another 13rem column starts fitting.
@@ -119,7 +124,7 @@ export const CARD_GRID =
 //
 // That last band clears its floor by 4px and no more: four 18rem columns and
 // three 20px gaps need 1212 of the 1216 the breakpoint leaves. Anything that
-// moves the sidebar's 14rem, the 2rem gutter or the grid's own gap at 2xl
+// moves the sidebar's 224px, the 2rem gutter or the grid's own gap at 2xl
 // spends that slack and drops the row to three columns of 392px, which the
 // 412px band below would then under-declare by a quarter.
 //
@@ -149,6 +154,18 @@ export const CARD_GRID =
 // It costs height: a desktop card goes from about 261px to about 409px, so
 // roughly a fifth fewer fit a screen. CARD_PHOTO_SIZES below pays the other
 // half of the bill.
+//
+// It also costs sharpness on a retina desktop, which is the trade this frame
+// is worth writing down rather than discovering again. cover scales a photo
+// until the box is filled, so a 307px square box on a 3:2 master asks for a
+// 920px file: 54% of desktop cards upscale at DPR 2, by a median of 1.23x, and
+// 87 of the leads are soft only because the ingest master is capped at 800px
+// (DERIVATIVE_VERSION in apps/ingest/src/cache-images.ts). At 1.23x on a
+// photograph that is soft rather than blocky, and the alternative is 4/3 on
+// every card, which is the third of the box spent on what is beside the animal
+// that this shape exists to take back. So the square stays and the upscale is
+// accepted; 1024px lead masters would settle it properly and are ingest's
+// change, not this file's.
 export const CARD_PHOTO_ASPECT = "aspect-square";
 // The same shape as a number, for the crop: the photo has to know how much
 // wider or taller than its box it is to keep the animal inside (see
@@ -173,19 +190,31 @@ export const CARD_PHOTO_RADIUS = "rounded-2xl";
 export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 
 // The two columns the results page draws from lg: the filter rail, then the
-// grid. Here rather than in animal-grid.tsx because the 14rem is already this
-// file's number - the bands below are derived from "a 14rem sidebar plus a 2rem
+// grid. Here rather than in animal-grid.tsx because the 224px is already this
+// file's number - the bands below are derived from "a 224px sidebar plus a 2rem
 // column gap", and the note above says what moving it costs. Two elements wear
 // this string, the results block and the stand-in that holds its place while a
 // filtered link hydrates, and they have to agree about the page's shape or the
 // grid jumps sideways when the real one arrives.
 //
-// minmax(0,1fr) and not 1fr: a 1fr track takes its automatic minimum from its
-// content, and the content is a toolbar sized in rem, so at 200% browser text
-// the column refused to shrink and the document scrolled sideways at every
-// desktop width.
+// Both tracks are stated so that 200% browser text cannot push the page
+// sideways, and each half was needed:
+//
+// minmax(0,1fr) and not 1fr, for the grid's own track: a 1fr track takes its
+// automatic minimum from its content, and the content is a toolbar sized in
+// rem, so at 200% text the column refused to shrink.
+//
+// 224px and not 14rem, for the rail: a rem track grows with the text the same
+// way the toolbar does, and at 200% this one measured 448px, half of a 1024px
+// frame, which is what was left of the 80px the document still scrolled
+// sideways at 1024 once the toolbar could shrink. The rail's width is a
+// layout, not type: a sidebar that took half the page would be the wrong
+// answer to large text even if the page fitted. Identical at 100% text, and
+// CARD_PHOTO_SIZES below already states its own lengths in px for the same
+// reason. Measured with the px track: no overflow at 1024 or 1100, and at
+// 1440/200% the grid gets a second card column back.
 export const RESULTS_COLUMNS =
-  "lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
+  "lg:grid lg:grid-cols-[224px_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
 
 export const CARD_PHOTO_SIZES =
   "(max-width: 639px) calc(50vw - 24px)," +

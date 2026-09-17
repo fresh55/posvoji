@@ -489,7 +489,7 @@ export function AnimalGrid({
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
         // The rail and the grid beside it, from lib/card-grid.ts, which owns
-        // the 14rem the photo bands are derived from and the minmax(0,...)
+        // the 224px the photo bands are derived from and the minmax(0,...)
         // floor that keeps the column shrinkable. The stand-in above wears the
         // same string; what happens when the two disagree is written there.
         className={cn(hasSidebar && RESULTS_COLUMNS)}

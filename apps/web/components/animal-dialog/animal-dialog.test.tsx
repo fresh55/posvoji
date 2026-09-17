@@ -2743,23 +2743,20 @@ describe("animal dialog", () => {
     ).toBe("/en/shelters/test-shelter");
   });
 
-  // 17px of name and 16px of phone number, both of them controls: the way to
-  // the shelter's page and the way to call it. A finger gets 44px of each.
-  it("gives the shelter box's two contacts a finger's box", () => {
+  // 17px of name, and it is a control: the one way out of this box that
+  // stays on the site, and the way to the shelter's contacts now that the
+  // box draws none of its own. A finger gets 44px of it.
+  it("gives the shelter's name a finger's box", () => {
     render(
       <I18nProvider locale="sl">
         <ShelterBlock
           animal={REX}
           logos={{}}
-          phones={{ "test-shelter": "051 304 435" }}
           reference={new Date(REFERENCE)}
         />
       </I18nProvider>,
     );
 
-    expect(
-      screen.getByRole("link", { name: /051 304 435/ }).className,
-    ).toContain("pointer-coarse:min-h-11");
     // The name's own overlay is clipped by the clamp on its line, so the row
     // carries the height and the link is stretched over it.
     const name = screen.getByRole("link", { name: "Zavetišče Test" });

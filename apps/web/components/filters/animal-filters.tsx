@@ -82,9 +82,13 @@ import type { AnimalSort } from "@/lib/sort";
 //
 // z-30, under the sticky toolbar band (z-40) and above the page. The two only
 // ever meet at 200% text, where the band lands at y 687-792 on a 390x844
-// phone and this plate covers 698-812: with the plate on top the species tabs
-// were unreachable at landing, and the band is where they live. This plate is
-// fixed, so one scroll frees it whatever the band does. Nothing above it below
+// phone and this plate covers 698-812. Something is covered at landing either
+// way, so this is a choice about which: with the plate on top the species tabs
+// were unreachable, and with the band on top about 38px of this plate is,
+// leaving its lower edge and both labels. The tabs win because the band is the
+// only place they live, while everything in this plate opens a sheet that
+// carries its own way back to every species; and one scroll frees whichever is
+// covered, since the plate is fixed and the band pins. Nothing above it below
 // lg but BackToTop (z-40), which stands 5.5rem up and never overlaps it.
 const DOCK_CLASS =
   "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";

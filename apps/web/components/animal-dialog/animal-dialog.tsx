@@ -114,10 +114,12 @@ const CONTENT_CLASS =
 // the port's edge, which is under the bar. 80px is the 64px bar and a little
 // air.
 //
-// sm:[scrollbar-width:thin] because on Windows the classic 17px scrollbar sits
-// inside the card's rounded corner, under the next arrow.
+// scrollbar-thin because on Windows the classic 17px scrollbar sits inside the
+// card's rounded corner, under the next arrow. The utility rather than the bare
+// property (globals.css): it carries the thumb colour that was measured to read
+// on both grounds, which a hand-written scrollbar-width does not.
 const CARD_CLASS =
-  "relative flex flex-1 flex-col gap-4 p-4 desktop-box:min-h-0 desktop-box:scroll-pt-20 desktop-box:overflow-y-auto desktop-box:rounded-ui desktop-box:border desktop-box:bg-popover desktop-box:bg-clip-padding desktop-box:p-6 desktop-box:pt-12 desktop-box:text-popover-foreground desktop-box:shadow-lg desktop-box:[scrollbar-width:thin]";
+  "relative flex flex-1 flex-col gap-4 p-4 desktop-box:min-h-0 desktop-box:scroll-pt-20 desktop-box:overflow-y-auto desktop-box:rounded-ui desktop-box:border desktop-box:bg-popover desktop-box:bg-clip-padding desktop-box:p-6 desktop-box:pt-12 desktop-box:text-popover-foreground desktop-box:shadow-lg desktop-box:scrollbar-thin";
 
 // Room for the close button on the photo, which is fixed to the top right of
 // the phone shell while the whole card scrolls under it. At 390px it stood

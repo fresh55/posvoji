@@ -43,15 +43,28 @@ export function pick(
 function plural(
   n: number,
   forms: [string, string, string, string],
+  separator = " ",
 ): string {
-  return `${n} ${pick(n, forms)}`;
+  return `${n}${separator}${pick(n, forms)}`;
 }
 
-export function formatAge(months: number, locale: Locale): string {
+/**
+ * "2 leti", "10 mesecev", "3 years".
+ *
+ * `separator` is what stands between the number and its unit. A parameter and
+ * not a constant because one surface needs the two welded and the rest do not:
+ * see NBSP and the card's age in animalMetaParts.
+ */
+export function formatAge(
+  months: number,
+  locale: Locale,
+  separator = " ",
+): string {
   if (locale === "en") {
-    if (months < 12) return `${months} ${months === 1 ? "month" : "months"}`;
+    if (months < 12)
+      return `${months}${separator}${months === 1 ? "month" : "months"}`;
     const years = Math.floor(months / 12);
-    return `${years} ${years === 1 ? "year" : "years"}`;
+    return `${years}${separator}${years === 1 ? "year" : "years"}`;
   }
   if (months < 12) {
     // Nominative plural for 3 and 4: "trije meseci", "štirje meseci". The
@@ -65,9 +78,13 @@ export function formatAge(months: number, locale: Locale): string {
     // the site is the dialog's longStay sentence, and it is safe only because
     // LONG_STAY_MONTHS is 36 and it can never be handed a month string. If
     // that constant ever drops below 12, that sentence needs its own forms.
-    return plural(months, ["mesec", "meseca", "meseci", "mesecev"]);
+    return plural(months, ["mesec", "meseca", "meseci", "mesecev"], separator);
   }
-  return plural(Math.floor(months / 12), ["leto", "leti", "leta", "let"]);
+  return plural(
+    Math.floor(months / 12),
+    ["leto", "leti", "leta", "let"],
+    separator,
+  );
 }
 
 // "1 žival", "2 živali", "5 živali" for result counts.
@@ -240,10 +257,15 @@ export function regionCommitNote(
   return `${dropping ? "Odstrani" : "Izbere"} ${shelterCount(n, locale)}`;
 }
 
-// An age of zero months is a number nobody says out loud.
-export function ageLabel(months: number, locale: Locale): string {
+// An age of zero months is a number nobody says out loud. That phrase carries
+// no numeral, so it ignores the separator and stays free to wrap.
+export function ageLabel(
+  months: number,
+  locale: Locale,
+  separator = " ",
+): string {
   if (months === 0) return translate(locale, "lessThanMonth");
-  return formatAge(months, locale);
+  return formatAge(months, locale, separator);
 }
 
 export function speciesLabel(species: Species, locale: Locale): string {
@@ -303,9 +325,13 @@ export const META_DOT_CLASS = "text-muted-foreground/50";
  *  cards, which makes every card in that grid row taller. */
 const META_PART_LIMIT = 2;
 
-/** The card's fact line, as its parts: "Mačka · 2 leti", skipping whatever we
- *  don't know. The card maps over these so it can style the separators without
- *  splitting a joined string back apart.
+// Welds a number to its unit. Only the card's age asks for it, and only
+// because its column is 164px wide on a phone.
+const NBSP = "\u00a0";
+
+/** The card's fact line, as its parts: "Mačka · starost 2 leti", skipping
+ *  whatever we don't know. The card maps over these so it can style the
+ *  separators without splitting a joined string back apart.
  *
  *  At most two facts, taken from a ranked list: the first two we know. An
  *  empty slot falls through to the next fact rather than leaving the line
@@ -347,7 +373,20 @@ export function animalMetaParts(
     facts.push(speciesLabel(animal.species, locale));
   }
   const months = ageInMonths(animal, now);
-  if (months !== undefined) facts.push(ageLabel(months, locale));
+  // Named, not bare. The grid's default order is the longest wait first, and
+  // the wait mark stays off under that very sort, so "5 mesecev" alone read as
+  // five months in the shelter with nothing on the card to say otherwise. The
+  // animal's own page names the same number "Starost: 5 mesecev".
+  //
+  // NBSP because with the word in front the line no longer fits a 375px
+  // card's 164px column, and the free wrap broke it after "starost 10" and
+  // left "mesecev" below. Welding the number to its unit leaves the space
+  // after "starost" as the only break left, so the line breaks before the
+  // number instead.
+  if (months !== undefined) {
+    const age = ageLabel(months, locale, NBSP);
+    facts.push(translate(locale, "cardAge", { age }));
+  }
   // Everything below is built only where the line still has room for it. This
   // runs for every card in a grid of sixty, and on the Vse tab the species and
   // the age already fill the line for all but a handful of animals, so the

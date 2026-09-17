@@ -84,8 +84,8 @@ describe("localized labels", () => {
 
     // The fixture carries a sex and the line does not: two facts is all the
     // card's width buys, so the sex reads on the animal's own page instead.
-    expect(meta(animal, "sl")).toBe("Pes · 1 leto");
-    expect(meta(animal, "en")).toBe("Dog · 1 year");
+    expect(meta(animal, "sl")).toBe("Pes · starost 1\u00a0leto");
+    expect(meta(animal, "en")).toBe("Dog · 1\u00a0year old");
   });
 
   it("derives card age from a known birth date", () => {
@@ -96,8 +96,8 @@ describe("localized labels", () => {
     } as Animal;
     const now = new Date("2026-08-18T00:00:00Z");
 
-    expect(meta(animal, "sl", now)).toBe("Mačka · 2 leti");
-    expect(meta(animal, "en", now)).toBe("Cat · 2 years");
+    expect(meta(animal, "sl", now)).toBe("Mačka · starost 2\u00a0leti");
+    expect(meta(animal, "en", now)).toBe("Cat · 2\u00a0years old");
   });
 
   it("translates filter choices", () => {

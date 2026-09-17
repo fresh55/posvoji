@@ -28,16 +28,18 @@ export interface SkippedProvider {
   // True when the skip is not backed by a check inside the provider's own
   // interval, which means a recorded attempt alone is holding it off.
   stale: boolean;
+  // The instant `stale` was decided on. Reporting reads the age of the check
+  // from here rather than from a later clock, so the age it prints is the one
+  // the decision was made on.
+  decidedAt: number;
 }
 
 /** How old the last successful check of a skipped provider is, in words. */
-function lastCheck(
-  skip: SkippedProvider,
-  now: number,
-  intervalHours: number,
-): string {
+function lastCheck(skip: SkippedProvider, intervalHours: number): string {
   if (!skip.checkedAt) return "no successful check of it was ever recorded";
-  const hours = Math.round((now - Date.parse(skip.checkedAt)) / 3600000);
+  const hours = Math.round(
+    (skip.decidedAt - Date.parse(skip.checkedAt)) / 3600000,
+  );
   return (
     `its last successful check was ${skip.checkedAt}, ${hours}h ago, ` +
     `longer than its ${intervalHours}h interval`
@@ -120,12 +122,15 @@ export async function crawlProviders({
     if (!schedule.admit(policy, checkedAt)) {
       const interval = policy.crawl.intervalHours * 3600000;
       const observed = checkedAt ? Date.parse(checkedAt) : null;
-      // The same arithmetic admit() uses, so no tolerance is needed: a
-      // provider whose check is exactly one interval old is admitted rather
-      // than skipped, and every skip we reach here with a successful check
-      // inside the interval is strictly younger than it.
-      const stale =
-        observed === null || services.now().getTime() - observed > interval;
+      const decidedAt = services.now().getTime();
+      // No tolerance is needed, because the two tests agree by arithmetic.
+      // Being here means `now < max(attempted, observed) + interval`, and an
+      // attempt is stamped with the start of its crawl, so a crawl that
+      // observed the source has `attempted <= observed` and the skip means
+      // `now - observed < interval`. What is left over is a skip whose
+      // attempt outruns its observation, which is a crawl that failed or
+      // never ran, and that is what `stale` is here to name.
+      const stale = observed === null || decidedAt - observed > interval;
       return {
         skipped: {
           providerId: policy.providerId,
@@ -134,6 +139,7 @@ export async function crawlProviders({
             schedule.nextAllowedAt(policy, checkedAt),
           ).toISOString(),
           stale,
+          decidedAt,
         },
       };
     }
@@ -144,6 +150,14 @@ export async function crawlProviders({
     // The attempt is recorded after the fetch settles, not before it, and a
     // throw records it too. The mass-removal guard below runs after the fetch
     // as well, so its throw also counts as an attempt.
+    //
+    // It is stamped with the start of the crawl, not with the moment it
+    // settled. The listing check is taken right after discovery, so an attempt
+    // stamped at the end would postdate the check by the whole detail phase.
+    // The next run would then hold the provider off past its own interval,
+    // read that skip as stale, and walk the provider's crawl time forward by a
+    // detail phase every interval.
+    const startedAt = services.now().getTime();
     let result: ProviderCrawlResult;
     try {
       result = await crawlProviderIncrementally(provider, ctx, {
@@ -152,7 +166,7 @@ export async function crawlProviders({
         now: services.now,
       });
     } finally {
-      schedule.record(policy);
+      schedule.record(policy, startedAt);
     }
     const policyMap = new Map([[policy.providerId, policy]]);
     result.animals = applyAllowedFields(
@@ -247,7 +261,7 @@ export async function crawlProviders({
             logger.warn(
               `schedule: ${providerId} is held off until ${skip.nextAllowedAt} by a ` +
                 `recorded attempt, but ` +
-                `${lastCheck(skip, services.now().getTime(), policy.crawl.intervalHours)}. ` +
+                `${lastCheck(skip, policy.crawl.intervalHours)}. ` +
                 `Its previous records were carried forward and this run is not a ` +
                 `clean one.`,
             );

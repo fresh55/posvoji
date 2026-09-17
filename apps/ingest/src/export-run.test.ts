@@ -220,6 +220,22 @@ describe("the export command's production pipeline", () => {
     );
   });
 
+  it("fails the run when the release refuses because the lock changed hands", async () => {
+    const h = harness();
+    // releaseArtifactLock marks its ownership refusals with this code. They
+    // mean another process held the lock while we were writing data/dist, so
+    // the run's own result is not to be trusted and must not reach a deploy.
+    h.release.mockImplementation(() => {
+      throw Object.assign(new Error("fixture ownership refusal"), {
+        code: "ARTIFACT_LOCK_OWNERSHIP",
+      });
+    });
+    await expect(runExport({}, h.services)).rejects.toThrow(
+      "fixture ownership refusal",
+    );
+    expect(h.seal).toHaveBeenCalledOnce();
+  });
+
   it("reuses a completed provider checkpoint after a later phase fails", async () => {
     const h = harness();
     h.cacheImages.mockRejectedValueOnce(new Error("fixture media failure"));
@@ -305,13 +321,16 @@ describe("the export command's production pipeline", () => {
     const second = await runExport({}, h.services);
     expect(second.exitCode).toBe(0);
     expect(h.discover).toHaveBeenCalledOnce();
-    expect(
-      log.mock.calls.filter(([line]) => String(line).startsWith("schedule:")),
-    ).toEqual([
-      [
-        "schedule: 1 provider(s) not due: test-shelter (next 2026-09-08T22:00:00.000Z)",
-      ],
-    ]);
+    // The line has to name the provider, say it was not due and say when it
+    // next is. Asserting the derived timestamp in full would make every change
+    // to the schedule arithmetic land here as a string mismatch.
+    const notDue = log.mock.calls
+      .map(([line]) => String(line))
+      .filter((line) => line.startsWith("schedule:"));
+    expect(notDue).toHaveLength(1);
+    expect(notDue[0]).toContain("test-shelter");
+    expect(notDue[0]).toContain("not due");
+    expect(notDue[0]).toMatch(/next \d{4}-\d{2}-\d{2}T[\d:.]+Z/);
     expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
       expect.stringContaining("schedule:"),
     );
@@ -347,6 +366,50 @@ describe("the export command's production pipeline", () => {
     ).toEqual([]);
   });
 
+  it("stamps a provider's attempt with the start of its crawl, not with the end", async () => {
+    const h = harness();
+    let clock = Date.parse(NOW);
+    h.services.now = () => new Date(clock);
+    // A detail phase that takes real time. The listing check is taken once,
+    // right after discovery, so an attempt stamped when the crawl settled
+    // would sit an hour and a half in front of the check it belongs to and
+    // hold the provider past its own interval.
+    h.services.providers![0]!.fetch = async (_ctx, ref) => {
+      clock += 90 * 60000;
+      return { ref, fetchedAt: new Date(clock).toISOString(), data: {} };
+    };
+    const first = await runExport({}, h.services);
+    expect(first.exitCode).toBe(0);
+    const checkedAt = Date.parse(NOW);
+    const interval = 12 * 3600000;
+
+    // Five minutes short of the interval the provider is not due, and the run
+    // is clean because the check behind the skip is younger than the interval.
+    clock = checkedAt + interval - 5 * 60000;
+    const early = await runExport({}, h.services);
+    expect(early.exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("schedule:"),
+    );
+
+    // A minute past it the provider is due again. Stamping the attempt at the
+    // end of the crawl would hold it off until 23:30 instead and report the
+    // skip as stale, because the check it is measured against is 12h old by
+    // then.
+    clock = checkedAt + interval + 60000;
+    const due = await runExport({}, h.services);
+    expect(due.exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledTimes(2);
+    expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("schedule:"),
+    );
+  });
+
+  // A failed attempt is only ever recorded for a provider the schedule
+  // admitted, so its last successful check is already at least an interval old
+  // when it is written. Every skip a failed attempt causes is therefore stale,
+  // and this is what that looks like.
   it("is degraded when a failed attempt holds off a provider whose check has aged out", async () => {
     const h = harness();
     await runExport({}, h.services);

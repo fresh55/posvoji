@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
@@ -8,7 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   isStagingFile,
@@ -16,9 +15,21 @@ import {
   writeFileAtomic,
 } from "./write-atomic";
 
-// The name writeFileAtomic stages beside `target`, built the way it builds it.
-const stagingName = (target: string) =>
-  `${target}.${process.pid}-${randomUUID()}.tmp`;
+// A name writeFileAtomic really staged, rather than the convention written out
+// a second time here: a target whose directory does not exist fails on the
+// staging write itself, and the error carries the staged path.
+function stagingName(target: string): string {
+  const probe = mkdtempSync(join(tmpdir(), "posvoji-staging-probe-"));
+  try {
+    writeFileAtomic(join(probe, "absent", target), "staged");
+  } catch (error) {
+    const staged = (error as NodeJS.ErrnoException).path;
+    if (staged) return basename(staged);
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+  throw new Error("writeFileAtomic staged no sibling to name");
+}
 
 describe("writeFileAtomic", () => {
   let dir: string;

@@ -373,6 +373,20 @@ function prepareOwnedDirectory(path, owner) {
 }
 
 /**
+ * A refusal that means the lock is no longer ours: somebody else holds it and
+ * may be writing the artifacts beside us. Callers that log a failed release
+ * and carry on have to stop on this one, so it is marked rather than left to
+ * be recognised by its message.
+ * @param {string} message
+ * @returns {Error & {code: string}}
+ */
+function ownershipError(message) {
+  return Object.assign(new Error(message), {
+    code: "ARTIFACT_LOCK_OWNERSHIP",
+  });
+}
+
+/**
  * Atomically retire one exact owner to a deterministic, nonce-scoped path.
  * Release and recovery deliberately use the same path, and it is retained:
  * if either operation is delayed while a successor acquires the canonical
@@ -385,7 +399,7 @@ function prepareOwnedDirectory(path, owner) {
 function retireArtifactLock(lockDir, expected) {
   const current = readOwner(lockDir);
   if (current.raw !== expected.raw) {
-    throw new Error(
+    throw ownershipError(
       `artifact-lock owner changed before retirement at ${lockDir}; refusing to move it`,
     );
   }
@@ -396,7 +410,7 @@ function retireArtifactLock(lockDir, expected) {
   // concurrent retirements contain the owner file, so rename also refuses
   // them atomically after this check.
   if (existsSync(retired)) {
-    throw new Error(
+    throw ownershipError(
       `artifact-lock retirement already exists for ${expected.owner.nonce}; ` +
         "refusing to move a possibly replaced successor",
     );
@@ -406,7 +420,7 @@ function retireArtifactLock(lockDir, expected) {
   } catch (error) {
     if (!existsSync(lockDir)) return false;
     if (existsSync(retired)) {
-      throw new Error(
+      throw ownershipError(
         `artifact-lock retirement already exists for ${expected.owner.nonce}; ` +
           "refusing to move a possibly replaced successor",
       );
@@ -495,7 +509,7 @@ export function releaseArtifactLock({ lockDir, token }) {
   const first = readOwner(lockDir);
   const { owner } = first;
   if (owner.nonce !== token) {
-    throw new Error(
+    throw ownershipError(
       `refusing to release artifact lock owned by ${describeOwner(owner)}; ` +
         "the release token does not match",
     );

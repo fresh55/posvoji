@@ -782,13 +782,24 @@ export async function runExport(
     });
     return { exitCode, dataset, generationId };
   } finally {
-    // The dataset is written and sealed by the time this runs. A release that
-    // throws (a retired lock, a token mismatch, a directory the process cannot
-    // rename) would replace the run's result with exit 1 and abort a deploy
-    // the run earned. The next run recovers a lock whose owner is gone.
+    // On the path that reaches here after a finished run the dataset is
+    // written and sealed, and a release that fails on a rename it could not
+    // perform would replace that result with exit 1 and abort a deploy the run
+    // earned. The next run recovers a lock whose owner is gone.
+    //
+    // An ownership refusal is the other thing entirely: the lock we hold is
+    // held by somebody else now, so another process has been free to write
+    // data/dist alongside us and what we just sealed is not known to be ours.
+    // That one stays fatal.
     try {
       release();
     } catch (error) {
+      if (
+        error instanceof Error &&
+        (error as { code?: unknown }).code === "ARTIFACT_LOCK_OWNERSHIP"
+      ) {
+        throw error;
+      }
       const message = error instanceof Error ? error.message : String(error);
       logger.warn(`artifact lock: release failed, the next run recovers it: ${message}`);
     }

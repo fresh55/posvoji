@@ -63,9 +63,12 @@ export function sweepStagingFiles(dir: string): number {
     if (!isStagingFile(name)) continue;
     const path = join(dir, name);
     // A directory or a link wearing the name is not ours to delete. Leave it
-    // for the caller's own checks to refuse.
-    if (!lstatSync(path).isFile() || lstatSync(path).isSymbolicLink()) continue;
-    rmSync(path);
+    // for the caller's own checks to refuse. One lstat answers both: it does
+    // not follow the link, so a link never reports itself as a file.
+    if (!lstatSync(path).isFile()) continue;
+    // The entry can be gone between the readdir and here, swept by an operator
+    // or by whoever else is cleaning up after the same dead run.
+    rmSync(path, { force: true });
     removed++;
   }
   return removed;

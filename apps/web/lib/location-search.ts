@@ -6,12 +6,46 @@
 // commitSearch and commitLocation.
 const listeners = new Set<() => void>();
 
+function notify(): void {
+  for (const listener of listeners) listener();
+}
+
+// What the next pop's notification is to be run inside, set by the dialog just
+// before it pops the entry it pushed (animal-dialog.tsx, where the morph
+// itself lives). One pop only: a back press the dialog did not ask for, and
+// any write that moves the address without a pop, both notify plainly.
+//
+// A wrapper rather than the morph itself, so nothing about view transitions,
+// and no import of react-dom, reaches this module. Its other half is read on
+// the server: animal-path.ts takes decodeOrRaw from here and every animal page
+// takes animal-path.
+let popWrapper: ((notify: () => void) => void) | null = null;
+
+/** Runs the next pop's notification inside `wrap`. What needs this is a view
+ *  transition: the browser takes its new snapshot the moment the update
+ *  returns, so every subscriber has to have rendered by then and not one
+ *  commit later. */
+export function wrapNextPop(wrap: (notify: () => void) => void): void {
+  popWrapper = wrap;
+}
+
+// One handler for every subscriber rather than one each, because that is the
+// only way the whole notification can be wrapped.
+function onPopState(): void {
+  const wrap = popWrapper;
+  popWrapper = null;
+  if (wrap) wrap(notify);
+  else notify();
+}
+
 export function subscribeToLocation(listener: () => void): () => void {
   listeners.add(listener);
-  window.addEventListener("popstate", listener);
+  if (listeners.size === 1) window.addEventListener("popstate", onPopState);
   return () => {
     listeners.delete(listener);
-    window.removeEventListener("popstate", listener);
+    if (listeners.size === 0) {
+      window.removeEventListener("popstate", onPopState);
+    }
   };
 }
 
@@ -114,6 +148,10 @@ export function commitLocation(
   // protects against is re-encoding foreign bytes, not this replace.
   const search = query.replace(/%2C/g, ",");
   const url = search ? `${path}?${search}` : path;
+  // A write is not a pop, so whatever the dialog armed for one is stale here.
+  // Closing takes this branch when the dialog stands on an entry nothing
+  // pushed, and the arm would otherwise sit and fire on the next back press.
+  popWrapper = null;
   if (mode === "push") {
     history.pushState(state ?? null, "", url);
   } else {
@@ -123,5 +161,5 @@ export function commitLocation(
     // back.
     history.replaceState(state ?? window.history.state, "", url);
   }
-  for (const listener of listeners) listener();
+  notify();
 }

@@ -1164,11 +1164,21 @@
 
   /* No crossfade of the page under it on the way in. The overlay's own 100ms
      fade and the dialog's are already in the document and run live inside the
-     new snapshot; a root crossfade on top of them is the same dim drawn twice.
-     The way out has no other fade of its own, so there it stays. */
+     new snapshot; a root crossfade on top of them is the same dim drawn
+     twice. */
   :root[data-photo-morph="open"]::view-transition-old(root),
   :root[data-photo-morph="open"]::view-transition-new(root) {
     animation: none;
+  }
+
+  /* The way out keeps it, because there it is the only fade there is: the
+     dialog is taken out of the document inside the update, since Radix will
+     not release a closing one otherwise, so this crossfade is what carries the
+     overlay and the box away. The browser's own is 250ms; matched to the
+     photograph's trip, the dim lifts as the picture lands. */
+  :root[data-photo-morph="close"]::view-transition-old(root),
+  :root[data-photo-morph="close"]::view-transition-new(root) {
+    animation-duration: 320ms;
   }
 
   /* One subject. Under a morph the dialog's box does not also zoom up out of

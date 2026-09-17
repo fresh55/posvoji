@@ -49,10 +49,15 @@ import {
   getSearchSnapshot,
   getServerSearchSnapshot,
   subscribeToLocation,
+  wrapNextPop,
 } from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { cn } from "@/lib/utils";
-import { PHOTO_MORPH_MS } from "@/lib/view-transition";
+import {
+  canMorphPhoto,
+  morphPhoto,
+  PHOTO_MORPH_MS,
+} from "@/lib/view-transition";
 
 /**
  * Viewport coordinates of the card the dialog was opened from, and what the
@@ -239,6 +244,28 @@ const CARD_REVEAL = {
   ease: "easeOut",
 } as const;
 
+/** The grid card standing behind the dialog for the animal it is showing, by
+ *  the address that card links to. After a step through the list it is not the
+ *  card the dialog opened from, and after a shared link there may be none: an
+ *  animal this visitor's filters hide has no card, and neither has one on a
+ *  page that never drew the grid. */
+function cardBehind(href: string) {
+  return document.querySelector<HTMLElement>(
+    `a[data-slot="card-link"][href="${href}"]`,
+  );
+}
+
+/** And the photo box on it, which is where the dialog's front print goes back
+ *  to. The same box the card names for itself on the way in
+ *  (animal-card.tsx). */
+function cardPhotoBehind(href: string) {
+  return (
+    cardBehind(href)
+      ?.closest("article")
+      ?.querySelector<HTMLElement>('[data-slot="photo-frame"]') ?? null
+  );
+}
+
 // The desktop box is centered, so the card's viewport center reads as an
 // offset from the middle of the box the zoom grows out of.
 function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
@@ -400,6 +427,9 @@ export function AnimalDialog({
   if (!lastAnimal) return null;
 
   const name = lastAnimal.name ?? messages.unnamed;
+  // The address this animal has of its own, which is also what the card behind
+  // the dialog links to, so it is how that card is found.
+  const href = animalPath(lastAnimal, locale);
   // The subtitle carries what the fact badges below it do not: the species and
   // the breed. Sex and age used to be repeated here, one line above their own
   // badges, and the two "10 let" read as a mistake. The words come from
@@ -457,6 +487,47 @@ export function AnimalDialog({
     if (!front) return;
     event.preventDefault();
     front.focus({ preventScroll: true });
+  }
+
+  // Closing is the opening played backwards: the front print goes back into
+  // the card's photo box, and the page comes back up under it.
+  //
+  // Armed here rather than in the hook that owns the address, because this is
+  // the end that knows there is a print to carry and which card it belongs to.
+  // The pop it arms is the one close() is about to ask for, and only that one:
+  // a back press the dialog did not start, and an animal with no card behind
+  // it, both keep the plain unmount.
+  function closeDialog() {
+    const photo = cardPhotoBehind(href);
+    if (photo && canMorphPhoto() && frontPrintOf(contentRef.current)) {
+      wrapNextPop((notify) =>
+        morphPhoto({
+          photo,
+          at: "new",
+          direction: "close",
+          update: () => {
+            // Radix keeps a closing dialog in the document until its own exit
+            // animation has ended, and an exit animation is exactly what a
+            // synchronous flush cannot wait for: the update would return with
+            // the dialog still on screen and the morph would capture a new
+            // state no different from the old one. Told there is nothing to
+            // wait for, Radix lets go inside the flush, and what carries the
+            // overlay and the box away is the root's own crossfade
+            // (globals.css).
+            for (const layer of [
+              contentRef.current,
+              document.querySelector<HTMLElement>(
+                '[data-slot="dialog-overlay"]',
+              ),
+            ]) {
+              if (layer) layer.style.animationName = "none";
+            }
+            notify();
+          },
+        }),
+      );
+    }
+    onClose();
   }
 
   function startDrag(event: PointerEvent<HTMLDivElement>) {
@@ -518,7 +589,7 @@ export function AnimalDialog({
     if (!pull.committed) return;
     if (event.clientY - pull.y > DRAG_CLOSE_PX) {
       dragY.set(0);
-      onClose();
+      closeDialog();
       return;
     }
     dragSnap.current = animate(dragY, 0, DRAG_SPRING);
@@ -536,7 +607,7 @@ export function AnimalDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && closeDialog()}>
       <DialogPortal>
         <DialogOverlay />
         <DialogPrimitive.Content
@@ -555,9 +626,7 @@ export function AnimalDialog({
             // taken away is not, and focusing a detached node leaves focus on
             // the body with the dialog's keys dead. Otherwise Radix keeps its
             // own default.
-            const card = document.querySelector<HTMLElement>(
-              `a[data-slot="card-link"][href="${animalPath(lastAnimal, locale)}"]`,
-            );
+            const card = cardBehind(href);
             const saved = returnFocus.current;
             returnFocus.current = null;
             const target = card ?? (saved?.isConnected ? saved : null);
@@ -772,7 +841,7 @@ export function AnimalDialog({
                           </Button>
                         )}
                         <DialogShareButton
-                          path={animalPath(lastAnimal, locale)}
+                          path={href}
                           name={name}
                           photo={shownPhoto}
                           className={PHONE_SHARE_CLASS}

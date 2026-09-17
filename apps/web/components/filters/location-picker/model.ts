@@ -46,7 +46,14 @@ export function pickerRecoveryActions(
 // Search text with its accents taken off, so a keyboard without them finds
 // every name. NFD splits č ć š ž into a letter and a combining mark and the
 // mark is dropped; đ is its own letter with no decomposition, so it is named
-// here. Same alphabet as lib/geo.ts cityKey, which the town table folds with.
+// here.
+//
+// Not the same function as lib/geo.ts cityKey, and not the same alphabet: that
+// one folds five letters by hand and never normalises, which is enough for the
+// town table it keys. Three more of these exist (shelter-initial.ts, the
+// slugify in animal-path.ts), no two spelled alike. One folder in lib/ would
+// be the right answer and is a change for its own pass, since the slug one
+// addresses animals.
 export function fold(text: string): string {
   return text
     .normalize("NFD")
@@ -112,10 +119,10 @@ export const pickerText = {
     countsMatch: "Število živali upošteva izbrane filtre.",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
     // The footer's way out of an empty result, beside "Počisti filtre" and
-    // "Pokaži vse živali". A verb like them, and not the bare two words the
-    // panel head uses for the state of having nothing picked (lib/labels.ts
-    // allShelters), which read as a label rather than a button.
-    allShelters: "Pokaži vsa zavetišča",
+    // "Pokaži vse živali". Named for the press and not for the state, the same
+    // as those two, so it cannot be read as lib/labels.ts allShelters, which
+    // is what the panel head calls having nothing picked.
+    showAllShelters: "Pokaži vsa zavetišča",
     backToResults: "Nazaj k rezultatom",
     showList: "Pokaži seznam",
     chooseShelters: "Izberi zavetišča",
@@ -135,7 +142,7 @@ export const pickerText = {
     distance: "Approximate straight-line distance between towns.",
     countsMatch: "Animal counts reflect your current filters.",
     zeroMatches: "No published animals match your selection.",
-    allShelters: "Show all shelters",
+    showAllShelters: "Show all shelters",
     backToResults: "Back to results",
     // Not i18n's expandPanel, which the desktop rail says as "Show the list".
     // This names a view on a switch beside "Zemljevid", not a panel that

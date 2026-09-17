@@ -3,102 +3,30 @@
 // What the picker has to keep true after the hardening pass: a visit that ends
 // takes its hover and its geolocation error with it, the search reads a query
 // as words rather than one run of characters, and the live region says its
-// facts as separate nodes. The render harness is the same one
-// location-picker.test.tsx uses, copied rather than imported: that file owns
-// its own helpers and nothing there is exported.
+// facts as separate nodes. The stubs, the roster and the door are the picker's
+// shared harness (test/location-picker.tsx), which also says why a suite
+// cannot import them from another suite.
 
-import { useState, type ComponentProps } from "react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { I18nProvider } from "@/components/i18n-provider";
-import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
-import { resetNearbyStore } from "@/hooks/use-nearby";
-import { toggleValues } from "@/lib/filters";
-import { LocationPicker } from "./location-picker";
+  choosePlace,
+  dialog,
+  offSite,
+  openPicker,
+  reopenPicker,
+  resetPickerSession,
+  rowOrder,
+  stubMatchMedia,
+  stubScrollIntoView,
+  type,
+} from "@/test/location-picker";
 import { fold } from "./location-picker/model";
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+stubMatchMedia();
+stubScrollIntoView();
 
-// jsdom has no layout, so it has no scrollIntoView.
-Element.prototype.scrollIntoView = vi.fn();
-
-afterEach(() => {
-  cleanup();
-  resetNearbyOriginStore();
-  // The query, the chosen place and the geolocation state are one page
-  // session shared by every mounted picker, so a test that leaves one behind
-  // hands it to the next.
-  resetNearbyStore();
-});
-
-const options = [
-  { value: "sever", label: "Zavetišče Sever", city: "Maribor" },
-  { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
-];
-
-const counts = new Map([
-  ["sever", 4],
-  ["jug", 7],
-]);
-
-const offSite = [{ value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" }];
-
-function Harness({
-  selected: initialSelected = [],
-  ...props
-}: Partial<ComponentProps<typeof LocationPicker>>) {
-  const [selected, setSelected] = useState<string[]>(initialSelected);
-  const toggleMany = (values: string[]) =>
-    setSelected((current) => toggleValues(current, values));
-  return (
-    <I18nProvider locale="sl">
-      <LocationPicker
-        options={options}
-        counts={counts}
-        selected={selected}
-        onToggle={(value) => toggleMany([value])}
-        onToggleMany={toggleMany}
-        resultCount={11}
-        {...props}
-      />
-    </I18nProvider>
-  );
-}
-
-async function openPicker(
-  props: Partial<ComponentProps<typeof LocationPicker>> = {},
-) {
-  render(<Harness {...props} />);
-  await reopenPicker();
-  return screen.getByLabelText("Kraj, pošta ali zavetišče");
-}
-
-async function reopenPicker() {
-  fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
-  await screen.findByRole("dialog");
-  // The plate is a dynamic import, so the dialog is on screen a tick before
-  // the country is. Everything below reads the map, so wait for it.
-  await waitFor(() =>
-    expect(dialog().querySelector("[data-slot='map-attribution']")).toBeTruthy(),
-  );
-}
-
-const dialog = () => screen.getByRole("dialog");
+afterEach(resetPickerSession);
 
 async function closePicker() {
   fireEvent.keyDown(dialog(), { key: "Escape" });
@@ -108,16 +36,6 @@ async function closePicker() {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
-}
-
-function type(input: HTMLElement, value: string) {
-  fireEvent.change(input, { target: { value } });
-}
-
-function rowValues(): string[] {
-  return Array.from(
-    dialog().querySelectorAll<HTMLElement>("[data-shelter-row]"),
-  ).map((row) => row.getAttribute("data-shelter-row") ?? "");
 }
 
 describe("LocationPicker hover ends with the visit", () => {
@@ -152,7 +70,7 @@ describe("LocationPicker hover ends with the visit", () => {
     // leave event fires, so the marker and its region used to stay lit for a
     // shelter the list no longer held.
     type(input, "Jug");
-    expect(rowValues()).toEqual(["jug"]);
+    expect(rowOrder()).toEqual(["jug"]);
     expect(dialog().querySelector("[data-marker-highlighted]")).toBeNull();
   });
 });
@@ -197,7 +115,7 @@ describe("LocationPicker search reads a query as words", () => {
     // bracket between them, which one raw substring could never match.
     type(input, "maribor snaga");
 
-    expect(rowValues()).toEqual(["maribor"]);
+    expect(rowOrder()).toEqual(["maribor"]);
   });
 
   it("finds a row whose words the visitor typed in the other order", async () => {
@@ -205,7 +123,7 @@ describe("LocationPicker search reads a query as words", () => {
 
     type(input, "ljubljana zavetisce");
 
-    expect(rowValues()).toEqual(["jug"]);
+    expect(rowOrder()).toEqual(["jug"]);
   });
 
   it("ignores the space a visitor typed twice", async () => {
@@ -213,7 +131,7 @@ describe("LocationPicker search reads a query as words", () => {
 
     type(input, "zavetisce  maribor");
 
-    expect(rowValues()).toEqual(["maribor"]);
+    expect(rowOrder()).toEqual(["maribor"]);
   });
 
   it("still narrows to a single word the way it always did", async () => {
@@ -221,7 +139,7 @@ describe("LocationPicker search reads a query as words", () => {
 
     type(input, "Snaga");
 
-    expect(rowValues()).toEqual(["maribor"]);
+    expect(rowOrder()).toEqual(["maribor"]);
   });
 });
 
@@ -262,7 +180,7 @@ describe("LocationPicker status line", () => {
     const input = await openPicker();
 
     type(input, "1000");
-    fireEvent.click(screen.getByRole("button", { name: /^V bližini / }));
+    choosePlace();
 
     // The chip above this line reads "Ljubljana" and every row carries its
     // own distance, so a status line saying both again was the third telling.

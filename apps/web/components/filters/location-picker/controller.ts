@@ -309,13 +309,13 @@ export function useLocationPickerController({
   // True to start with, which is what ShelterMap starts at too, so the two are
   // one answer from the first render rather than converging on the second.
   const [markersVisible, setMarkersVisible] = useState(true);
-  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty, densitySteps }, setMapFacts] =
+  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty, hasDensityRank }, setMapFacts] =
     useState<MapFacts>({
       hasSelected: false,
       hasMixed: false,
       hasEmpty: false,
       hasFilteredEmpty: false,
-      densitySteps: 0,
+      hasDensityRank: false,
     });
 
   const pins: ShelterPin[] = useMemo(
@@ -506,13 +506,13 @@ export function useLocationPickerController({
   const onScreen = (value: string) =>
     visibleRows.some((row) => row.value === value) ||
     visibleOffRows.some((row) => row.value === value);
-  const hoveredRow =
-    hoveredRowValue && onScreen(hoveredRowValue) ? hoveredRowValue : null;
   // Retired and not merely hidden, the same way the drop note retires above. A
   // masked value comes back the moment the query is cleared, and the row it
   // names lights up again under a pointer that has not moved since it was
-  // somewhere else entirely.
-  if (hoveredRowValue && !hoveredRow) setHoveredRowValue(null);
+  // somewhere else entirely. Retiring it is also the only one of the two a
+  // reader can see: a set during render makes React drop the render and run
+  // it again, so a mask would never reach the screen anyway.
+  if (hoveredRowValue && !onScreen(hoveredRowValue)) setHoveredRowValue(null);
   // Open details are an answer someone asked for, and asking outranks a
   // pointer passing over the map: the hover still tints its row, but it stops
   // scrolling the list, which used to carry the answer off the top of it.
@@ -605,14 +605,19 @@ export function useLocationPickerController({
   // The postcode branch stays, because four digits are the one input that
   // cannot have been a shelter's name. There the list is empty and the reason
   // is worth having: the number was wrong, not the roster.
+  //
+  // Flat, with the geolocation test written into the postcode arm rather than
+  // left as the shape of a nest: a located visitor typing four digits is
+  // sorted from where they stand, and the number they typed is not the reason
+  // the list looks as it does.
   const status =
     state.status === "error"
       ? state.message
-      : resolved.source === "geolocation"
-        ? origin && !onMap(origin)
-          ? messages.locationOutsideMap
-          : undefined
-        : typed.status === "unknown" && looksLikePostcode(query)
+      : resolved.source === "geolocation" && origin && !onMap(origin)
+        ? messages.locationOutsideMap
+        : resolved.source !== "geolocation" &&
+            typed.status === "unknown" &&
+            looksLikePostcode(query)
           ? messages.postcodeNotFound
           : undefined;
   const missing =
@@ -631,14 +636,25 @@ export function useLocationPickerController({
   // Selection names belong in the trigger and footer; full registry totals
   // and animal counts answer different questions and stay out of this label.
   //
-  // The roster is built once, not once per selected shelter: this controller
-  // re-renders on every hover anywhere on the map, and the lookup used to
-  // allocate a fresh copy of the whole list inside the map callback.
-  const roster = new Map(
-    [...options, ...(offSite ?? [])].map((row) => [row.value, row]),
+  // Memoized, not merely hoisted out of the callback: this controller
+  // re-renders on every hover anywhere on the map, and a roster rebuilt on
+  // each of those is work for a list that only changes when its props do. The
+  // lookup it replaces allocated a fresh copy of the whole roster once per
+  // selected shelter.
+  //
+  // Sorted here and not in the footer, because the chip, the summary beside it
+  // and the trigger's label all read this one list, and a sort in one of them
+  // was how the chip came to name a different shelter than the list it opens.
+  const roster = useMemo(
+    () => new Map([...options, ...(offSite ?? [])].map((row) => [row.value, row])),
+    [options, offSite],
   );
-  const selectedRows = selected.map(
-    (value) => roster.get(value) ?? { value, label: value },
+  const selectedRows = useMemo(
+    () =>
+      selected
+        .map((value) => roster.get(value) ?? { value, label: value })
+        .sort((a, b) => a.label.localeCompare(b.label, locale)),
+    [locale, roster, selected],
   );
   const label = shelterSelectionLabel(selectedRows, locale);
 
@@ -712,7 +728,7 @@ export function useLocationPickerController({
     resolved,
     origin,
     rowRefs,
-    hoveredRow,
+    hoveredRow: hoveredRowValue,
     setHoveredRowValue,
     hoveredMarkerValues,
     setHoveredMarkerValues,
@@ -732,7 +748,7 @@ export function useLocationPickerController({
     hasMixed,
     hasEmpty,
     hasFilteredEmpty,
-    densitySteps,
+    hasDensityRank,
     nearbyOn,
     status,
     missing,

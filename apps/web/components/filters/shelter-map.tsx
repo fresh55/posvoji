@@ -8,8 +8,10 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import {
   distanceKm,
   formatKm,
@@ -312,12 +314,21 @@ export function ShelterMap({
    *  did not perform names a region they never pointed at. See
    *  handleRegionPointerEnter. */
   const pointerAsked = useRef(false);
-  /** The same answer again, as state, because the plate has to say it in the
-   *  markup: the CSS hover rules on the regions are gated on it (see
-   *  data-pointer-asked on the svg below). The ref stays for the handlers,
-   *  which read it synchronously inside a pointerenter that has to decide
-   *  before the next render. */
+  /** Whether a pointer that can hover has moved over the plate, which is the
+   *  stricter question and a different one. The plate has to answer it in the
+   *  markup, because the CSS hover rules on the regions are gated on it (see
+   *  data-pointer-asked on the svg below), and a finger has no hover to draw:
+   *  a drag across the plate is a pointer moving, so the ref above says yes to
+   *  it, and unlocking the hover look on the strength of that put the sticky
+   *  post-tap tint back on the map. The ref stays for the handlers, which read
+   *  it synchronously inside a pointerenter that has to decide before the next
+   *  render.
+   *
+   *  hoverAsked is the same answer once more, as a ref, so a move that has
+   *  nothing new to say costs a ref read rather than a setState React would
+   *  only bail out of. */
   const [pointerHasAsked, setPointerHasAsked] = useState(false);
+  const hoverAsked = useRef(false);
   useEffect(
     () => () => {
       if (regionDwellRef.current !== null) clearTimeout(regionDwellRef.current);
@@ -345,54 +356,9 @@ export function ShelterMap({
   const [calloutTownKey, setCalloutTownKey] = useState<string | null>(null);
   const townRefs = useRef(new Map<string, SVGGElement>());
 
-  /** The frames the blur teardowns below are waiting on, so an unmount can
-   *  cancel whatever has not run yet. */
-  const blurFramesRef = useRef(new Set<{ frame: number }>());
-  useEffect(
-    () => () => {
-      for (const pending of blurFramesRef.current) {
-        cancelAnimationFrame(pending.frame);
-      }
-      blurFramesRef.current.clear();
-    },
-    [],
-  );
-
-  /** Runs a blur's teardown after the focusout that asked for it has finished
-   *  dispatching, rather than inside it.
-   *
-   *  Every blur on this plate takes something off it: the region's annotation,
-   *  the coin's, the wedge ring inside a drilled coin. Done synchronously,
-   *  React flushes that removal while the browser is still moving focus, so
-   *  document.activeElement is the body for that moment. The picker draws this
-   *  map inside a Radix dialog, whose FocusScope watches for removed nodes and
-   *  pulls focus back to the dialog whenever it finds it on the body. Forward
-   *  Tab out of a region or a coin therefore landed on the dialog element
-   *  instead of the next control, and the search box, the list and the confirm
-   *  button were unreachable from the map: a keyboard trap around the whole
-   *  plate.
-   *
-   *  A frame and not a microtask. A microtask still runs before focus has
-   *  settled, and the rescue fires anyway; the next frame is the first point at
-   *  which the new activeElement is the one the Tab chose.
-   *
-   *  Deferring is safe because each teardown below only clears its own id (the
-   *  "current === id ? null : current" guards). Whatever the new focus names
-   *  is written first, and the late blur then finds a different id and does
-   *  nothing, which is the same order the pointer's own leave already keeps. */
-  const deferAfterBlur = useCallback((teardown: () => void) => {
-    // A token of our own rather than the frame id, because a test that runs
-    // frames synchronously runs the callback inside the request: keyed on the
-    // id, the delete would run before the add and leave the set growing by an
-    // entry per blur. The id is read out of the token when the cleanup
-    // cancels, by which time the request has returned either way.
-    const pending: { frame: number } = { frame: 0 };
-    blurFramesRef.current.add(pending);
-    pending.frame = requestAnimationFrame(() => {
-      blurFramesRef.current.delete(pending);
-      teardown();
-    });
-  }, []);
+  // Why a blur on this plate waits a frame, and what each teardown owes in
+  // return: see useDeferredBlur. The coins use the same hook.
+  const deferAfterBlur = useDeferredBlur();
 
   const plateRef = useRef<SVGSVGElement>(null);
   /** How many pixels the plate draws one user unit at. The annotations set
@@ -737,9 +703,12 @@ export function ShelterMap({
       // cannot catch it, because the pointer does rest there, and it rests
       // there for good.
       //
-      // Only asked of a pointer that can hover. A finger has no resting
-      // position and no move to give: on a coarse pointer the tap is the
-      // hover, and swallowing it would take the empty region's card with it.
+      // Not asked of a coarse pointer at all. A finger has no resting
+      // position: on a coarse pointer the tap is the hover, so an enter that
+      // waited for a move would swallow the empty region's card with it. This
+      // is the looser of the plate's two gates, and the only one that decides
+      // what the plate says. What it looks like is decided by the stricter
+      // one, which no finger ever opens; see handleRegionPointerMove.
       if (!pointerAsked.current && !window.matchMedia?.(NO_HOVER).matches) {
         return;
       }
@@ -770,16 +739,33 @@ export function ShelterMap({
 
   // The move that turns the guard above off, and the enter it stands in for:
   // the pointer is already inside the region it just moved in, so there is no
-  // second pointerenter coming to raise the name. Costs a ref read per move
-  // once the pointer has spoken.
+  // second pointerenter coming to raise the name. Costs two ref reads per move
+  // once the pointer has spoken, and nothing else.
   //
-  // It also lets the plate say so in its markup, once, which is what unlocks
-  // the regions' own hover rules; see data-pointer-asked below.
+  // It also lets the plate say so in its markup, which is what unlocks the
+  // regions' own hover rules; see data-pointer-asked below. Two answers and
+  // not one, because the two questions are different: the ref asks whether a
+  // pointer has moved on the plate at all, which is what tells a cursor coming
+  // to the map from a map opening under a resting cursor, and a finger dragging
+  // across it has genuinely moved. The attribute asks whether the pointer can
+  // hover, and a finger cannot: a drag that unlocked the hover rules left the
+  // tint standing under the last thing touched, which reads as a selection.
   const handleRegionPointerMove = useCallback(
-    (regionId: number, stats: RegionStats) => {
+    (
+      regionId: number,
+      stats: RegionStats,
+      event: ReactPointerEvent<SVGPathElement>,
+    ) => {
+      // The event's own kind rather than the NO_HOVER media query: the query
+      // answers for the device's primary pointer, and a laptop with a
+      // touchscreen answers "hover" for the finger that is on the glass right
+      // now. Anything that is not a finger counts as able to hover; a pen can.
+      if (!hoverAsked.current && event.pointerType !== "touch") {
+        hoverAsked.current = true;
+        setPointerHasAsked(true);
+      }
       if (pointerAsked.current) return;
       pointerAsked.current = true;
-      setPointerHasAsked(true);
       handleRegionPointerEnter(regionId, stats);
     },
     [handleRegionPointerEnter],
@@ -1061,15 +1047,16 @@ export function ShelterMap({
       // One listener for the whole plate, above every mark on it, so a tap is
       // read before the mark it landed on can act on it. See the handler.
       onClickCapture={interactive ? handlePlateClickCapture : undefined}
-      // The JS half of this answer is pointerAsked above, and this is the
-      // other half. A region's hover look is written in CSS, and CSS has no
-      // way to tell a cursor that came to the plate from a plate that opened
-      // under a cursor: the picker's dialog arrives where the pointer already
-      // is, so whatever region lands under it paints its hover tint for a
-      // hover nobody performed (Goriška, at every desktop width). The gate
-      // travels with the plate rather than with each region, so it is one
-      // attribute on one element and the eleven memoized regions do not
-      // redraw to learn it.
+      // Set by a pointer that can hover, once it has moved on the plate; see
+      // handleRegionPointerMove, which holds the rule. A region's hover look
+      // is written in CSS, and CSS has no way to tell a cursor that came to
+      // the plate from a plate that opened under a cursor: the picker's dialog
+      // arrives where the pointer already is, so whatever region lands under
+      // it paints its hover tint for a hover nobody performed (Goriška, at
+      // every desktop width). Nor can CSS tell a hover from a finger, which is
+      // the same tint left standing after a tap. The gate travels with the
+      // plate rather than with each region, so it is one attribute on one
+      // element and the eleven memoized regions do not redraw to learn it.
       data-pointer-asked={interactive && pointerHasAsked ? "" : undefined}
       // A finger that moved is not a tap. The plate does not pan, so a drag
       // across it is the page or the sheet under it moving, and the mark the

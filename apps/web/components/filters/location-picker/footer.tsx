@@ -34,6 +34,17 @@ export function PickerFooter({ controller, hug = false }: {
     ? `Pokaži izbrana zavetišča (${selectedRows.length})`
     : `Show selected shelters (${selectedRows.length})`;
   const canWidenShelters = selected.length > 0 && [...counts.values()].some((count) => count > 0);
+  // One way out of a zero, the nearest first: the shelters where something is,
+  // then the filters, then the species, which no clear touches
+  // (pickerRecoveryActions). Built once rather than spelled as three ladders,
+  // which is what let the label say one thing while the press did another.
+  const recovery = canWidenShelters
+    ? { run: () => onToggleMany(selected), label: copy.showAllShelters }
+    : onClearFilters
+      ? { run: onClearFilters, label: messages.clearFilters }
+      : onShowAllSpecies
+        ? { run: onShowAllSpecies, label: messages.showAllSpecies }
+        : null;
   return (
     <div
       data-picker-footer
@@ -66,10 +77,8 @@ export function PickerFooter({ controller, hug = false }: {
               </Button>
               {/* Offered from one selection, not two: at 320 a long name
                   truncates in the chip, and title is nothing a finger can
-                  read. The trigger already prints "1" for that case, and the
-                  chip beside it only exists when there is a selection, so
-                  there is nothing left to gate on. */}
-                <Popover
+                  read. */}
+              <Popover
                   open={summaryOpen}
                   onOpenChange={(nextOpen) => {
                     if (nextOpen) summaryInteractedOutsideRef.current = false;
@@ -150,10 +159,7 @@ export function PickerFooter({ controller, hug = false }: {
         </div>
       )}
       <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
-        {/* One way out of a zero, the nearest first: the shelters where
-            something is, then the filters, then the species, which no clear
-            touches (pickerRecoveryActions). */}
-        {resultCount === 0 && (canWidenShelters || onClearFilters || onShowAllSpecies) && (
+        {resultCount === 0 && recovery && (
           <Button
             variant="outline"
             // The one control in this row that is a frame and nothing else:
@@ -165,19 +171,9 @@ export function PickerFooter({ controller, hug = false }: {
               "min-h-11 flex-1 shadow-none sm:flex-none",
               CONTROL_FRAME,
             )}
-            onClick={() =>
-              canWidenShelters
-                ? onToggleMany(selected)
-                : onClearFilters
-                  ? onClearFilters()
-                  : onShowAllSpecies?.()
-            }
+            onClick={recovery.run}
           >
-            {canWidenShelters
-              ? copy.allShelters
-              : onClearFilters
-                ? messages.clearFilters
-                : messages.showAllSpecies}
+            {recovery.label}
           </Button>
         )}
         <DialogClose asChild>

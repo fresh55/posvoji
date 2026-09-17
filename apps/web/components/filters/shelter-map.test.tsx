@@ -25,6 +25,7 @@ import {
 import { getMessages } from "@/lib/i18n";
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { ShelterSummary } from "@/lib/shelter-summary";
+import { pointer } from "@/test/pointer";
 import { MapLegend } from "./map-legend";
 import { Marker } from "./map-marker";
 import {
@@ -77,8 +78,9 @@ function hoverRegion(node: Element) {
 
 // A blur on this plate hands its teardown to the next frame rather than doing
 // it inside the focusout, so a node is never removed while the browser is
-// between two elements; see deferAfterBlur in shelter-map.tsx. Anything
-// asserting that a blur took something away has to let that frame run.
+// between two elements; see useDeferredBlur, which the plate and its coins
+// share. Anything asserting that a blur took something away has to let that
+// frame run.
 // Real timers only: with a frozen clock the frame never arrives.
 async function nextFrame() {
   await act(async () => {
@@ -1347,7 +1349,7 @@ describe("ShelterMap region dwell", () => {
     fireEvent.blur(map.live);
     // Still up inside the focusout, which is the whole point: unmounting the
     // annotation there is what made the dialog's focus scope haul focus back
-    // to itself and trap the keyboard inside the map. See deferAfterBlur.
+    // to itself and trap the keyboard inside the map. See useDeferredBlur.
     expect(map.callout()).not.toBeNull();
 
     await nextFrame();
@@ -1530,24 +1532,22 @@ describe("ShelterMap hover, asked and unasked", () => {
     expect(map.plate.getAttribute("data-pointer-asked")).toBe("");
   });
 
-  it("hangs every region hover rule off that answer", () => {
-    const html = renderMap(pins);
+  // A finger dragging across the plate is a pointer that has moved, and the
+  // JS gate takes it as one: a tap has to be able to name a region. This gate
+  // is the stricter one and does not, because there is no hover to draw for a
+  // finger. It used to, and the tint a tap left behind stood on the map until
+  // something else was touched.
+  it("stays shut for a finger, however far it drags", () => {
+    const map = renderPlate();
 
-    for (const name of ["Osrednjeslovenska", "Goriška"]) {
-      const region = regionTag(html, name);
-      expect(region).not.toBe("");
-      // The class attribute alone: the --map-density-hover custom property in
-      // the style attribute beside it is a value, not a variant.
-      const classes = region.match(/class="([^"]*)"/)?.[1] ?? "";
-      expect(classes).toContain("hover:");
-      // And not one bare hover: utility among them. Strip the gate and nothing
-      // that answers a pointer survives.
-      expect(
-        classes.replace(/group-data-\[pointer-asked\]\/plate:hover:/g, ""),
-      ).not.toContain("hover:");
-    }
-    // And the plate carries the group the gate is written against.
-    expect(html).toContain("group/plate");
+    pointer(map.live, "pointermove", { x: 10, y: 10, pointerType: "touch" });
+    pointer(map.live, "pointermove", { x: 40, y: 32, pointerType: "touch" });
+    expect(map.plate.getAttribute("data-pointer-asked")).toBeNull();
+
+    // And opens for the mouse that arrives afterwards, on a plate the finger
+    // has already been over.
+    pointer(map.live, "pointermove", { x: 42, y: 32, pointerType: "mouse" });
+    expect(map.plate.getAttribute("data-pointer-asked")).toBe("");
   });
 });
 
@@ -1650,9 +1650,9 @@ describe("MapLegend rows", () => {
   });
 });
 
-describe("mapFacts: densitySteps", () => {
-  it("counts the steps the choropleth drew, not the regions", () => {
-    // Two shelters in one region: one live region, one step, nothing to rank.
+describe("mapFacts: hasDensityRank", () => {
+  it("asks what the choropleth drew, not how many regions are live", () => {
+    // Two shelters in one region: one live region, one tint, nothing to rank.
     expect(
       factsFor(
         [
@@ -1660,8 +1660,8 @@ describe("mapFacts: densitySteps", () => {
           pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
         ],
         [],
-      ).densitySteps,
-    ).toBe(1);
+      ).hasDensityRank,
+    ).toBe(false);
 
     // Two regions with different totals rank against each other, so the ramp
     // has something to explain.
@@ -1672,15 +1672,15 @@ describe("mapFacts: densitySteps", () => {
           pin("maribor", "Zavetišče Maribor", "Maribor", 40),
         ],
         [],
-      ).densitySteps,
-    ).toBe(2);
+      ).hasDensityRank,
+    ).toBe(true);
   });
 
-  it("is one while a filter leaves a single region tinted", () => {
+  it("is false while a filter leaves a single region tinted", () => {
     expect(
       factsFor([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)], [])
-        .densitySteps,
-    ).toBe(1);
+        .hasDensityRank,
+    ).toBe(false);
   });
 });
 
@@ -2791,6 +2791,69 @@ describe("ShelterMap wedge keyboard", () => {
       value: "koper",
     });
     expect(map.coin("koper").getAttribute("data-marker-drilled")).toBeNull();
+  });
+});
+
+// The coin's blur hands its teardown to the next frame rather than running it
+// inside the focusout; see useDeferredBlur. This is what it owes for that: a
+// frame is long enough for the coin to be standing on another mark by the time
+// the teardown arrives, and it closes the mark it was scheduled on or nothing
+// at all. Real frames here, which is why this is not in the block above.
+describe("ShelterMap drilled coin, blurred", () => {
+  it("closes only the mark the blur was scheduled on", async () => {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[
+            pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+            pin("zahod", "Zavetišče Zahod", "Celje", 20),
+          ]}
+          selected={[]}
+          onPick={() => undefined}
+        />
+      </I18nProvider>,
+    );
+    const celje = container.querySelector<SVGGElement>(
+      '[data-marker-key="celje"]',
+    )!;
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+    expect(celje.getAttribute("data-marker-drilled")).toBe("vzhod");
+
+    // The blur, and then the drill moves on before the frame it is waiting for.
+    fireEvent.focusOut(celje);
+    fireEvent.keyDown(celje, { key: "ArrowRight" });
+    expect(celje.getAttribute("data-marker-drilled")).toBe("zahod");
+
+    await nextFrame();
+
+    expect(celje.getAttribute("data-marker-drilled")).toBe("zahod");
+    expect(screen.queryByText("Zavetišče Zahod")).not.toBeNull();
+  });
+
+  it("closes it when it is still the one on screen", async () => {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[
+            pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+            pin("zahod", "Zavetišče Zahod", "Celje", 20),
+          ]}
+          selected={[]}
+          onPick={() => undefined}
+        />
+      </I18nProvider>,
+    );
+    const celje = container.querySelector<SVGGElement>(
+      '[data-marker-key="celje"]',
+    )!;
+    fireEvent.focusIn(celje);
+    fireEvent.keyDown(celje, { key: "Enter" });
+    fireEvent.focusOut(celje);
+
+    await nextFrame();
+
+    expect(celje.getAttribute("data-marker-drilled")).toBeNull();
   });
 });
 

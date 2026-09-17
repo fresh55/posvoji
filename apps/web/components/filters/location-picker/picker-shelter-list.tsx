@@ -12,6 +12,9 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
   // query in the field that is not a confirmed place (controller.ts). A place
   // query that matched no name is answered by the row above the list instead.
   const showHeading = searching && !placeOnly;
+  // The one question both halves of this list ask, asked once: the empty state
+  // is drawn when it is false, and the heading above the rows needs it too.
+  const hasRows = visibleRows.length > 0 || visibleOffRows.length > 0;
   const offGroupList = (
     <ShelterRows
       rows={visibleOffRows.map((row) => ({
@@ -48,10 +51,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                       was found about a place the dialog has just found. Drawn
                       either way, the block reads as "no such place" and
                       offers to clear the one input that worked. */}
-                  {searching &&
-                  visibleRows.length === 0 &&
-                  visibleOffRows.length === 0 &&
-                  !placeOnly ? (
+                  {searching && !hasRows && !placeOnly ? (
                     <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
                       <p className="text-sm text-muted-foreground">
                         {messages.noSheltersFound} »{query.trim()}«

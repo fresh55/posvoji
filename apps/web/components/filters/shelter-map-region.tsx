@@ -1,6 +1,10 @@
 "use client";
 
-import { memo, type CSSProperties } from "react";
+import {
+  memo,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { filteredAnimalCount, shelterCount } from "@/lib/labels";
 import {
@@ -195,8 +199,16 @@ export const Region = memo(function Region({
   onPointerEnter: (regionId: number, stats: RegionStats) => void;
   /** The first move over this region, which is how the plate tells a pointer
    *  that came to it from one that it opened underneath. The map ignores the
-   *  hover until it arrives; see handleRegionPointerEnter in shelter-map.tsx. */
-  onPointerMove: (regionId: number, stats: RegionStats) => void;
+   *  hover until it arrives; see handleRegionPointerEnter in shelter-map.tsx.
+   *
+   *  The event goes with it because the plate asks what kind of pointer moved:
+   *  a finger dragging across the plate has moved, and draws no hover look for
+   *  it. See the gate on the hover classes below. */
+  onPointerMove: (
+    regionId: number,
+    stats: RegionStats,
+    event: ReactPointerEvent<SVGPathElement>,
+  ) => void;
   onPointerLeave: (regionId: number, stats: RegionStats) => void;
   /** A shelter in this region is hovered in the list, so it wears the same
    *  look pointer hover would give it. */
@@ -260,7 +272,9 @@ export const Region = memo(function Region({
           interactive ? () => onPointerEnter(region.id, stats) : undefined
         }
         onPointerMove={
-          interactive ? () => onPointerMove(region.id, stats) : undefined
+          interactive
+            ? (event) => onPointerMove(region.id, stats, event)
+            : undefined
         }
         onPointerLeave={
           interactive ? () => onPointerLeave(region.id, stats) : undefined
@@ -277,20 +291,22 @@ export const Region = memo(function Region({
           // region moves by on hover, so this is under half of that and lands
           // 13 points below DENSITY_STEPS[0]. The surface confirms it heard the
           // pointer without ever reading as "a few animals here".
-          // Gated on the plate having been pointed at, like every other hover
-          // rule on a region: the dialog opens under a resting cursor, and a
-          // region that lights up for a hover nobody performed is the plate
-          // answering a question that was never asked. The argument is written
-          // down beside pointerAsked in shelter-map.tsx.
+          // Gated on the plate having been pointed at by a pointer that can
+          // hover, like every other hover rule on a region: the dialog opens
+          // under a resting cursor, and a region that lights up for a hover
+          // nobody performed is the plate answering a question that was never
+          // asked. The argument is written down beside pointerAsked in
+          // shelter-map.tsx.
           //
-          // The gate is stricter here than the one in that file, on purpose.
-          // There a coarse pointer is exempt, because a tap is the only hover
-          // a finger has and the naming would be swallowed with it. The
-          // attribute is set by a pointer that moved, which a tap is not, so
-          // on touch a region draws no hover look at all. That is the state
-          // worth having: the tint a tap used to leave behind stayed until
-          // something else was touched, and a mark that outlives the finger
-          // reads as a selection rather than as a hover.
+          // Two gates there, and this is the stricter of them. The JS one asks
+          // whether any pointer has moved on the plate, and exempts a coarse
+          // pointer outright, because a tap is the only hover a finger has and
+          // the naming would be swallowed with it. This one asks whether the
+          // pointer can hover at all, so a finger never sets the attribute,
+          // tapping or dragging, and on touch a region draws no hover look.
+          // That is the state worth having: the tint a tap used to leave
+          // behind stayed until something else was touched, and a mark that
+          // outlives the finger reads as a selection rather than as a hover.
           // Dark carries its own pair, because the rest value there is half of
           // this one (see the fill below) and a hover that stayed at 7% would
           // be three and a half times the resting tint rather than the barely
@@ -381,7 +397,9 @@ export const Region = memo(function Region({
         interactive ? () => onPointerEnter(region.id, stats) : undefined
       }
       onPointerMove={
-        interactive ? () => onPointerMove(region.id, stats) : undefined
+        interactive
+          ? (event) => onPointerMove(region.id, stats, event)
+          : undefined
       }
       onPointerLeave={
         interactive ? () => onPointerLeave(region.id, stats) : undefined

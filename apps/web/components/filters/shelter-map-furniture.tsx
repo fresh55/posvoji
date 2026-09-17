@@ -1,7 +1,7 @@
 import { cityAt, project } from "@/lib/geo";
 import type { Town } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
-import type { CalloutRect } from "./map-callout";
+import { intersectionArea, type CalloutRect } from "./map-callout";
 import { PLATE_TOO_SMALL } from "./map-marker";
 
 // The plate's own type, the part a printed atlas carries and a chart does not:
@@ -106,14 +106,11 @@ const ANCHOR_WIDTH_PER_CHAR = 0.62;
 const ANCHOR_ASCENT = 0.8;
 const ANCHOR_DESCENT = 0.25;
 
-// Whether two rectangles in user units touch at all.
+// Whether two rectangles in user units touch at all. Any shared area is an
+// overlap; two boxes that only meet along an edge are not. The arithmetic is
+// the annotation's own, which is where every rectangle here comes from.
 function boxesOverlap(a: CalloutRect, b: CalloutRect): boolean {
-  return (
-    a.x < b.x + b.width &&
-    b.x < a.x + a.width &&
-    a.y < b.y + b.height &&
-    b.y < a.y + a.height
-  );
+  return intersectionArea(a, b) > 0;
 }
 /** The box an anchor's name takes up, estimated from its character count. `x`
  *  is where the text is anchored and `y` the baseline it sits on, so a name

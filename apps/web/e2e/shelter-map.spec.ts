@@ -171,8 +171,8 @@ test.describe("desktop", () => {
   // focus nowhere, hauled it back to the dialog element: Tab from a region or
   // a coin looped between the close button, the region and the dialog, and the
   // search box, the list and the confirm button were unreachable from the map.
-  // The teardowns wait for the next frame now; see deferAfterBlur in
-  // shelter-map.tsx.
+  // The teardowns wait for the next frame now; see useDeferredBlur in
+  // hooks/use-deferred-blur.ts.
   //
   // Only a real browser can answer this. jsdom fires no focus rescue, because
   // there is no focus scope and no observer running in it.

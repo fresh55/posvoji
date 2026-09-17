@@ -220,6 +220,23 @@ export type CalloutRect = {
   height: number;
 };
 
+/** How much of `a` and `b` is the same piece of plate, in square user units.
+ *  Zero when they miss each other, and zero when they only meet along an edge.
+ *
+ *  The one rectangle test the map keeps. Everything the plate lays out is a
+ *  CalloutRect and everything it asks about them is this: the annotation asks
+ *  for the area, to choose the emptier side of a mark; the furniture and the
+ *  region names ask whether it is anything at all, to drop a name that would
+ *  be read through another. `> 0` is the same strict test those two wrote by
+ *  hand, edges included. */
+export function intersectionArea(a: CalloutRect, b: CalloutRect): number {
+  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  if (width <= 0) return 0;
+  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  if (height <= 0) return 0;
+  return width * height;
+}
+
 /** How much of `box` the rectangles in `others` cover, in square user units.
  *
  *  Area and not a count, because the question the side choice asks is how much
@@ -231,15 +248,7 @@ function coveredArea(
 ): number {
   let total = 0;
   for (const other of others) {
-    const width =
-      Math.min(box.x + box.width, other.x + other.width) -
-      Math.max(box.x, other.x);
-    if (width <= 0) continue;
-    const height =
-      Math.min(box.y + box.height, other.y + other.height) -
-      Math.max(box.y, other.y);
-    if (height <= 0) continue;
-    total += width * height;
+    total += intersectionArea(box, other);
   }
   return total;
 }
@@ -396,11 +405,9 @@ export function MapCallout({
       { x: clampX(boxX), y: blockY, width: boxWidth, height: boxHeight },
       avoid ?? [],
     );
-  const onRight = !rightFits
-    ? false
-    : !leftFits || !avoid?.length
-      ? true
-      : hides(rightX) <= hides(leftX);
+  // A caller with nothing to avoid needs no arm of its own: both sides hide
+  // nothing, and a tie goes right, which is the answer it wants.
+  const onRight = rightFits && (!leftFits || hides(rightX) <= hides(leftX));
   const naturalX = onRight ? rightX : leftX;
   const blockX = clampX(naturalX);
 

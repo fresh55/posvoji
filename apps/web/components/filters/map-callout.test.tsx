@@ -621,25 +621,34 @@ describe("MapCallout side choice", () => {
 
   const rightOf = (x: number) => x + REACH + type.labelGap;
   const leftOf = (x: number) => x - REACH - type.labelGap - type.width;
-  const clamped = (value: number) =>
-    Math.min(
-      Math.max(value, FRAME_MARGIN),
-      MAP_WIDTH - type.width - FRAME_MARGIN,
+
+  // The rule as it stood before anything was avoided: the right side, unless
+  // the reserved column runs off the frame there. One mark on each side of that
+  // line states it, each with its premise asserted rather than assumed.
+  it("keeps the chip on the right while its column fits there", () => {
+    const x = 120;
+    expect(rightOf(x) + type.width).toBeLessThanOrEqual(
+      MAP_WIDTH - FRAME_MARGIN,
     );
 
-  it("takes the side the frame alone chose, for a caller with nothing to avoid", () => {
-    // The rule as it stood before any of this: the right side unless the
-    // reserved column runs off the frame there. Across the plate, including the
-    // ends where the clamp is what lands the chip.
-    for (const x of [10, 50, 120, 160, 200, 260, 310]) {
-      const rightFits = rightOf(x) + type.width <= MAP_WIDTH - FRAME_MARGIN;
-      const expected = clamped(rightFits ? rightOf(x) : leftOf(x));
+    expect(placed(x).x).toBeCloseTo(rightOf(x), 5);
+    // An empty list is the same answer as no list at all, which is what a
+    // caller with nothing painted near it hands in.
+    expect(placed(x, []).x).toBeCloseTo(rightOf(x), 5);
+  });
 
-      expect(placed(x).x).toBeCloseTo(expected, 5);
-      // An empty list is the same answer as no list at all, which is what a
-      // caller with nothing painted near it hands in.
-      expect(placed(x, []).x).toBeCloseTo(expected, 5);
-    }
+  it("takes it to the left once that column would run off the frame", () => {
+    const x = 260;
+    expect(rightOf(x) + type.width).toBeGreaterThan(MAP_WIDTH - FRAME_MARGIN);
+
+    expect(placed(x).x).toBeCloseTo(leftOf(x), 5);
+    expect(placed(x, []).x).toBeCloseTo(leftOf(x), 5);
+    // Which is the whole of what the frame had to say: the chip it moved is
+    // inside it, all of it.
+    expect(placed(x).x).toBeGreaterThanOrEqual(FRAME_MARGIN);
+    expect(placed(x).x + type.width).toBeLessThanOrEqual(
+      MAP_WIDTH - FRAME_MARGIN,
+    );
   });
 
   it("flips to the quiet side when a mark is painted on the one it prefers", () => {

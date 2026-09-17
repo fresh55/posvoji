@@ -31,20 +31,15 @@ export type MapFacts = {
   hasMixed: boolean;
   hasEmpty: boolean;
   hasFilteredEmpty?: boolean;
-  /** How many steps of the density ramp the choropleth actually drew, counted
-   *  over the live regions that are drawing one.
+  /** Whether the choropleth drew more than one step of the density ramp.
    *
    *  The ramp's legend row is a ranking, and a ranking of one shape is not a
    *  ranking: filtered down to a species one shelter has, the plate held eleven
    *  inert regions and a single tinted one while the key underneath still
    *  printed all five steps with "fewer animals" and "more animals" around
-   *  them. The caller gates the row on this being more than one, which is the
-   *  same rule every other row in that legend already follows: it is drawn
-   *  while the state it explains is on the map, and not otherwise.
-   *
-   *  Optional so an initial facts object need not name it; a caller with no
-   *  facts yet has nothing to draw a ramp for either. */
-  densitySteps?: number;
+   *  them. The row follows the same rule as every other row in that legend: it
+   *  is drawn while the state it explains is on the map, and not otherwise. */
+  hasDensityRank: boolean;
 };
 
 /** What one look at the laid-out country says, for the panel and its legend.
@@ -81,10 +76,11 @@ export function mapFacts(
     // same step are one tint, and one tint is nothing to rank. A wholly
     // picked region is not counted either, because it gives the ramp up for
     // the selection fill and so draws none of the steps the row explains.
-    densitySteps: new Set(
-      regions
-        .filter(({ stats }) => stats.live && stats.state !== true)
-        .map(({ stats }) => stats.density),
-    ).size,
+    hasDensityRank:
+      new Set(
+        regions
+          .filter(({ stats }) => stats.live && stats.state !== true)
+          .map(({ stats }) => stats.density),
+      ).size > 1,
   };
 }

@@ -44,7 +44,7 @@ export function PickerMapPlate({
     hasMixed,
     hasEmpty,
     hasFilteredEmpty,
-    densitySteps,
+    hasDensityRank,
   } = controller;
 
   // Which shelters answer for the municipalities inside each region, by region
@@ -137,7 +137,7 @@ export function PickerMapPlate({
             : messages.mapInstructionsMobile}
         </p>
         <MapLegend
-          showDensity={(densitySteps ?? 0) > 1}
+          showDensity={hasDensityRank}
           highlightedDensity={highlightedDensity}
           onHoverDensity={setHighlightedDensity}
           onLeaveDensity={() => setHighlightedDensity(null)}

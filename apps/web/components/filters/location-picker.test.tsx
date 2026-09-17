@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { useState, type ComponentProps } from "react";
@@ -24,75 +23,25 @@ import { DENSITY_STEPS } from "@/lib/map-layout";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { LocationPicker } from "./location-picker";
 import { REGION_DWELL_MS, ShelterMap, type ShelterPin } from "./shelter-map";
+import {
+  choosePlace,
+  counts,
+  offSite,
+  openPicker,
+  options,
+  resetPickerSession,
+  rowOrder,
+  stubMatchMedia,
+  stubScrollIntoView,
+  type,
+} from "@/test/location-picker";
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+// The stubs, the roster and the door are shared with the picker's other three
+// suites; test/location-picker.tsx says why they cannot be imported from here.
+stubMatchMedia();
+stubScrollIntoView();
 
-// jsdom has no layout, so it has no scrollIntoView. The picker brings the
-// picked row and the card it just opened into view; neither is worth a layout
-// engine to assert.
-Element.prototype.scrollIntoView = vi.fn();
-
-afterEach(() => {
-  cleanup();
-  resetNearbyOriginStore();
-});
-
-// Alphabetical order puts Sever first, and Sever is the far one from
-// Ljubljana, so a nearest-first sort has to visibly move it.
-const options = [
-  { value: "sever", label: "Zavetišče Sever", city: "Maribor" },
-  { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
-];
-
-const counts = new Map([
-  ["sever", 4],
-  ["jug", 7],
-]);
-
-// Registry shelters with nothing to filter by. Celje places on the map, so
-// they also become the faint markers the legend explains.
-const offSite = [{ value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" }];
-
-// Stateful for the same reason the pick-card harness below is: the card
-// folds once nothing it stands for is selected, so toggles have to land in
-// the next render's `selected` the way animal-grid's real handlers land them.
-async function openPicker({
-  selected: initialSelected = [],
-  ...props
-}: Partial<ComponentProps<typeof LocationPicker>> = {}) {
-  function Harness() {
-    const [selected, setSelected] = useState<string[]>(initialSelected);
-    const toggleMany = (values: string[]) =>
-      setSelected((current) => toggleValues(current, values));
-    return (
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={options}
-          counts={counts}
-          selected={selected}
-          onToggle={(value) => toggleMany([value])}
-          onToggleMany={toggleMany}
-          resultCount={11}
-          {...props}
-        />
-      </I18nProvider>
-    );
-  }
-  render(<Harness />);
-
-  fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
-  await screen.findByRole("dialog");
-
-  return screen.getByLabelText("Kraj, pošta ali zavetišče");
-}
+afterEach(resetPickerSession);
 
 // The registry shelters with nothing listed sit behind a fold now, shut on
 // arrival: none of them is pickable, so their rows are scroll the picker would
@@ -104,29 +53,10 @@ function openOffGroup() {
   );
 }
 
-// Selection chips carry the same names, so read only the actual list toggles.
-function rowOrder(): string[] {
-  return Array.from(screen.getByRole("dialog").querySelectorAll("[data-shelter-row] button[aria-pressed]"))
-    .map((button) => button.textContent ?? "")
-    .filter(
-      (text) =>
-        text.includes("Zavetišče Sever") || text.includes("Zavetišče Jug"),
-    )
-    .map((text) => (text.includes("Sever") ? "sever" : "jug"));
-}
-
-function type(input: HTMLElement, value: string) {
-  fireEvent.change(input, { target: { value } });
-}
-
-function choosePlace() {
-  fireEvent.click(screen.getByRole("button", { name: /^V bližini / }));
-}
-
 // A region is named only once the pointer has settled on it (REGION_DWELL_MS
 // in shelter-map.tsx). Fake timers are installed for the dwell alone: opening
-// the dialog above is an async find, and it has no business running on a
-// frozen clock.
+// the dialog is an async find and a waited-for chunk, and neither has any
+// business running on a frozen clock.
 function hoverRegion(node: Element) {
   vi.useFakeTimers();
   // The move first: the plate ignores a hover from a pointer that has not
@@ -955,10 +885,37 @@ describe("LocationPicker off-site shelters", () => {
 // are unmounted, which means the row registered no ref. A key that moved
 // nothing belongs to the browser, or Tab and Enter go dead in the one field
 // that has to keep working.
-describe("LocationPicker search keys with nothing to move to", () => {
+describe("LocationPicker search keys", () => {
   // Every live row empty, which is what a filter can leave behind: the rows
   // stay in the list, greyed and unpickable.
   const noCounts = new Map<string, number>();
+
+  it("reaches an off-site row from the search when only that row matches", async () => {
+    const input = await openPicker({ offSite });
+
+    // Nothing live matches, so the off-site group is the whole answer and
+    // stands open: the row is mounted and the fallback can reach it.
+    type(input, "Vzhod");
+    expect(rowOrder()).toEqual([]);
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(document.activeElement?.textContent).toContain("Zavetišče Vzhod");
+  });
+
+  it("leaves Enter to the browser when the search has nothing to move to", async () => {
+    const input = await openPicker();
+
+    type(input, "zzz");
+    input.focus();
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(input, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
 
   it("leaves the key alone when the only match is behind the fold", async () => {
     const input = await openPicker({ offSite, counts: noCounts });
@@ -3307,23 +3264,6 @@ describe("LocationPicker audit regressions", () => {
     clear.focus();
     fireEvent.click(clear);
     expect(screen.queryByRole("button", { name: /Počisti izbor/ })).toBeNull();
-    expect(document.activeElement).toBe(input);
-  });
-  it("reaches an off-site row from the search when only that row matches", async () => {
-    const input = await openPicker({ offSite });
-    type(input, "Vzhod");
-    expect(rowOrder()).toEqual([]);
-
-    fireEvent.keyDown(input, { key: "ArrowDown" });
-    expect(document.activeElement?.textContent).toContain("Zavetišče Vzhod");
-  });
-  it("leaves Enter to the browser when the search has nothing to move to", async () => {
-    const input = await openPicker();
-    type(input, "zzz");
-    input.focus();
-    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
-    fireEvent(input, event);
-    expect(event.defaultPrevented).toBe(false);
     expect(document.activeElement).toBe(input);
   });
   it("names the place the origin chip shows in the chip's accessible name", async () => {

@@ -70,20 +70,20 @@ export class CrawlSchedule {
   // the crawl has settled instead.
   //
   // The refusal carries its own reason rather than leaving the caller to
-  // re-derive one. Next-allowed is max(attempted, observed) + interval, so the
-  // term that won the max is the term holding the provider off: a check that
-  // won is a successful check inside the interval, which is what the interval
-  // is for, and an attempt that won is a crawl that produced no check. A
-  // provider we hold no check for lands in the second case, because with no
-  // attempt either there is nothing to hold it off and it is admitted.
+  // re-derive one, and the reason is the question the caller actually has:
+  // are we holding this provider off because we already know what it lists,
+  // or because an attempt that learned nothing is in the way? A check still
+  // inside the interval answers the first, which is the interval doing its
+  // job. Anything else, a check that has aged past the interval or a provider
+  // we hold no check for at all, answers the second, and the records we are
+  // about to carry forward are older than this provider's own policy allows.
   check(policy: ProviderPolicy, checkedAt?: string | null): CrawlVerdict {
+    const at = this.now().getTime();
     const nextAllowedAt = this.nextAllowedAt(policy, checkedAt);
-    if (this.now().getTime() >= nextAllowedAt) return { admit: true };
-    return {
-      admit: false,
-      heldBy: this.observedAt(checkedAt) >= this.attemptedAt(policy) ? "check" : "attempt",
-      nextAllowedAt,
-    };
+    if (at >= nextAllowedAt) return { admit: true };
+    const observed = this.observedAt(checkedAt);
+    const fresh = observed > 0 && at - observed < policy.crawl.intervalHours * 3600000;
+    return { admit: false, heldBy: fresh ? "check" : "attempt", nextAllowedAt };
   }
 
   // Called when the crawl starts. Invoke what it returns after the crawl

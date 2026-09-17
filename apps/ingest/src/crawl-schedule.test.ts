@@ -59,6 +59,26 @@ it("uses saved observations on upgrade and respects a widened policy interval", 
   expect(schedule.check({ ...policy, crawl: { ...policy.crawl, intervalHours: 12 } }, "2026-09-02T06:00:00Z").admit).toBe(true);
 });
 
+// Widening an interval leaves an attempt on record that was admitted under the
+// old one, so the attempt outruns the check although the check is now well
+// inside the interval. The provider is held off, but nothing about it is
+// stale, and calling that run degraded would be a false alarm every hour until
+// the next crawl.
+it("holds a provider off on its check when a widened interval makes that check fresh", () => {
+  const root = directory();
+  let at = Date.parse("2026-09-01T06:00:00Z");
+  const narrow = { ...policy, crawl: { ...policy.crawl, intervalHours: 1 } };
+  const now = () => new Date(at);
+  expect(new CrawlSchedule(root, now).check(narrow, "2026-09-01T05:00:00Z").admit).toBe(true);
+  new CrawlSchedule(root, now).begin(narrow)();
+  at += 1800000;
+  expect(new CrawlSchedule(root, now).check(policy, "2026-09-01T05:00:00Z")).toEqual({
+    admit: false,
+    heldBy: "check",
+    nextAllowedAt: Date.parse("2026-09-03T06:00:00Z"),
+  });
+});
+
 it("rejects corrupt scheduling state instead of resetting permission limits", () => {
   const root = directory();
   writeFileSync(join(root, "crawl-schedule.json"), '{"fixture":"bad"}');

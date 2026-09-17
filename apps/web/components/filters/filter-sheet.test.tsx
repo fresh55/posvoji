@@ -51,6 +51,7 @@ async function openSheet() {
         toggleTally={new Map()}
         activeCount={0}
         resultCount={3}
+        onSpeciesChange={vi.fn()}
         onClearAll={vi.fn()}
         onToggle={vi.fn()}
         onToggleMany={vi.fn()}

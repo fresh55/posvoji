@@ -405,7 +405,9 @@ export function AnimalGrid({
   );
 
   const handleClearAll = useCallback(() => {
-    if (activeCount > 0 || filters.species !== "all") {
+    // The species is not part of what clears (use-animal-filters.ts), so it
+    // is not part of what decides whether there is anything to take back.
+    if (activeCount > 0) {
       // Held for as long as the row offers the way back, and only that long.
       // A snapshot with no offer beside it is a trap: nothing on screen would
       // say it existed.
@@ -428,11 +430,14 @@ export function AnimalGrid({
     return () => window.clearTimeout(timer);
   }, [cleared]);
 
+  // The species is put back as it is now, not as it was: the clear never
+  // took it (use-animal-filters.ts), so a species pressed on the strip during
+  // the window is a choice this undo has no business reverting.
   const handleUndo = useCallback(() => {
     if (!cleared) return;
-    restore(cleared);
+    restore({ ...cleared, species: filters.species });
     setCleared(null);
-  }, [cleared, restore]);
+  }, [cleared, filters.species, restore]);
 
   const {
     speciesRoster,
@@ -512,6 +517,7 @@ export function AnimalGrid({
         {hasSidebar && (
           <FilterSidebar
             onClearAll={handleClearAll}
+            onSpeciesChange={setSpecies}
             // lg:bg-background is load-bearing, not decoration. lg:sticky
             // puts the sidebar on its own compositing layer, and Chrome
             // keeps subpixel text antialiasing on such a layer only while
@@ -645,35 +651,41 @@ export function AnimalGrid({
                   {messages.showFromAllShelters}
                 </Button>
               )}
-              {/* The one way out of this screen, drawn once whether or not
-                  there are pills above it to name what it clears. With them it
-                  stands under the row and takes the clear that row would
-                  otherwise have ended in; without them the state is a species
-                  tab with nothing in it, and this is the only control there is.
+              {/* The one way out of this screen, drawn once. With pills above
+                  it, it stands under the row and takes the clear that row
+                  would otherwise have ended in. It is lg:hidden with them: the
+                  pills are, because the sticky toolbar draws its own row there
+                  with its own clear at the end of it, and this button goes
+                  with them or a desktop would show two.
 
-                  Only the word changes: "Počisti vse" answers a row of removes
-                  and would not say what "vse" was on its own, which is the
-                  state where there is no row.
-
-                  lg only matters in the first case. The pills above are
-                  lg:hidden because the sticky toolbar draws its own row there,
-                  with its own clear at the end of it; this button goes with
-                  them, or a desktop would show two. With no pills anywhere,
-                  nothing else on any width offers the press, so it stays. */}
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  EMPTY_STATE_ACTION,
-                  chips.length > 0 && "lg:hidden",
-                )}
-                onClick={handleClearAll}
-                aria-label={
-                  chips.length > 0 ? messages.clearAllFilters : undefined
-                }
-              >
-                {chips.length > 0 ? messages.clearAll : messages.clearFilters}
-              </Button>
+                  Without pills the state is a species tab with nothing in it,
+                  which a deep link to a species the roster does not hold can
+                  reach, and the only thing left to undo is the species. A
+                  clear leaves the species standing (use-animal-filters.ts),
+                  so what this offers there is the species' own way back,
+                  worded as what it does. Nothing else on any width offers the
+                  press, so it stays at every width. */}
+              {chips.length > 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
+                  onClick={handleClearAll}
+                >
+                  {messages.clearFilters}
+                </Button>
+              ) : (
+                filters.species !== "all" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={EMPTY_STATE_ACTION}
+                    onClick={() => setSpecies("all")}
+                  >
+                    {messages.showAllSpecies}
+                  </Button>
+                )
+              )}
             </EmptyState>
           ) : (
             <div

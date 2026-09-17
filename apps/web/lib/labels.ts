@@ -250,6 +250,23 @@ export function speciesLabel(species: Species, locale: Locale): string {
   return SPECIES[locale][species];
 }
 
+// What a species tab is called when it stands alone as the scope of a list:
+// the species strip's own word where one is enough, and the noun phrase where
+// the tab's word is not ("Ostale" is not a sentence on its own). The filter
+// sheet's scope pill and the location picker's summary both say it, so it is
+// written once here.
+const SPECIES_SCOPE: Record<Locale, Record<SpeciesFilter, string>> = {
+  sl: { all: "Vse živali", dog: "Psi", cat: "Mačke", other: "Ostale živali" },
+  en: { all: "All animals", dog: "Dogs", cat: "Cats", other: "Other animals" },
+};
+
+export function speciesScopeLabel(
+  species: SpeciesFilter,
+  locale: Locale,
+): string {
+  return SPECIES_SCOPE[locale][species];
+}
+
 /** The line under an animal's name: the species, then the breed where the
  *  shelter gave one. The dialog and the animal's own page both print it, and
  *  they used to answer differently: the dialog as this sentence, the page as

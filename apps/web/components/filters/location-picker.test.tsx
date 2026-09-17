@@ -2578,8 +2578,21 @@ describe("LocationPicker persistent footer", () => {
     expect(footer.textContent).toContain("0 živali");
     expect(footer.textContent).toContain("Nobena objavljena žival ne ustreza tvoji izbiri.");
     expect(screen.getByRole("button", { name: "Nazaj k rezultatom" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
     expect(onClearFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the species' own way back when no clear is left to offer", async () => {
+    // A clear never touches the species, so a deep link to a species the
+    // roster does not hold reaches this footer with nothing for a clear to
+    // do; the button it draws then is the one that moves something
+    // (pickerRecoveryActions).
+    const onShowAllSpecies = vi.fn();
+    await openPicker({ counts: new Map(), resultCount: 0, onShowAllSpecies });
+
+    expect(screen.queryByRole("button", { name: "Počisti filtre" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Pokaži vse živali" }));
+    expect(onShowAllSpecies).toHaveBeenCalledTimes(1);
   });
 
   it("widens shelter selection at zero when other shelters have matching animals", async () => {

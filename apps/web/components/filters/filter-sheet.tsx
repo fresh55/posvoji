@@ -1,7 +1,7 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
-import { useId, useState } from "react";
+import { SlidersHorizontal, X } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
@@ -25,14 +25,17 @@ import {
 } from "@/components/ui/drawer";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { SortPicker } from "@/components/filters/sort-picker";
+import { SpeciesGlyphIcon } from "@/components/filters/species-glyph";
 import { useDesktopBreakpointClose } from "@/hooks/use-desktop-breakpoint-close";
 import { usePickerHistory } from "@/hooks/use-picker-history";
 import type {
   FilterOption,
   Filters,
   MultiGroup,
+  SpeciesFilter,
   ToggleDef,
 } from "@/lib/filters";
+import { speciesScopeLabel } from "@/lib/labels";
 import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 
@@ -158,6 +161,7 @@ export function FilterSheet({
   resultCount,
   sort,
   onSortChange,
+  onSpeciesChange,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -188,6 +192,12 @@ export function FilterSheet({
    *  and the row below stands down. */
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
+  /** The way from the species pill back to every species. The pill is the
+   *  one species control in here, so this is only ever called with "all";
+   *  it takes the strip's own setter so the two write the query the same
+   *  way, and the hook behind it knows to write in place while the sheet is
+   *  open (use-animal-filters.ts). */
+  onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
   /** Merged onto the trigger, which is all this component draws until it is
    *  opened. The dock passes the width at which the sheet has nothing left in
@@ -203,6 +213,12 @@ export function FilterSheet({
   // mounting two of these, and a duplicate id points aria-labelledby at
   // whichever one the document happens to hold first.
   const sortCaptionId = useId();
+  // Where focus goes when the species pill takes itself off the screen: the
+  // dialog itself, which Radix already gives tabIndex -1, so a keyboard user
+  // stays inside the sheet at its top rather than being dropped on the body
+  // or wherever the focus trap's own fallback lands. The chips row and the
+  // picker's footer hand focus on the same way when a control removes itself.
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // FilterSheet never unmounts, so a divider left "scrolled" from a previous
   // visit would otherwise still be there the next time the sheet opens at
@@ -278,6 +294,7 @@ export function FilterSheet({
         </Button>
       </DrawerTrigger>
       <DrawerContent
+        ref={contentRef}
         closeLabel={messages.close}
         // 72dvh, down from a full 85dvh takeover: the sheet used to open the
         // visitor onto a blind list with the count in the footer as the only
@@ -303,9 +320,6 @@ export function FilterSheet({
         // only direct button child the content has.
         className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
       >
-        {/* The species tabs used to repeat here, but the visitor just used
-            that same row in the sticky bar behind the trigger to get here, so
-            a second copy only cost the sheet 56px of a phone's short 85dvh. */}
         <div
           data-slot="filter-sheet-header"
           data-scrolled={scrolled ? "" : undefined}
@@ -345,9 +359,60 @@ export function FilterSheet({
               of the way down. Full width also stops the longest order from
               truncating, and reads as a setting for the whole sheet rather
               than an ornament on the heading. */}
-          <DrawerTitle className="mt-3 text-base">
-            {messages.filters}
-          </DrawerTitle>
+          {/* The title, and beside it the species the list is being read in.
+
+              The species tabs used to repeat here and were taken out to save
+              the sheet 56px, on the argument that the visitor had just used
+              the strip behind the trigger to get here. Measured on
+              2026-09-17, that argument does not hold: with the page at the
+              top the strip sits under the open sheet at every phone width,
+              scrolled it is under the overlay's blur where no word survives,
+              in landscape it has scrolled away, and a deep link arrives with
+              a species pressed and no press made. A visitor who chose Ostale
+              and opened the sheet found "Samica 0" with nothing on screen
+              saying the 0 was counted among two rabbits.
+
+              So the sheet states its scope, once, in the one place that never
+              scrolls: a pill on the title line, drawn in the pressed tab's
+              own token (the dark fill, the species glyph, the species word)
+              so it is recognised rather than read, and pressable, because
+              "show me everything again" is the one species action anyone
+              wants from in here. It costs 8px of header, against 38 for the
+              strip, and nothing at all on Vse, where every count in the sheet
+              means what it says and there is no scope to state.
+
+              A scope, not a filter: it is not in the badge on the trigger,
+              and "Počisti filtre" below leaves it standing
+              (use-animal-filters.ts). The x on the pill is its own reset.
+
+              The row keeps clear of the drawer's close button on the right
+              (44px, absolutely positioned in this band) with pe-12: the
+              longest label, "Other animals", measures 148px at 320 and the
+              button starts 267px in, so the clearance is for a label that
+              has not been written yet, not for these. */}
+          <div className="mt-3 flex min-w-0 items-center gap-3 pe-12">
+            <DrawerTitle className="text-base">{messages.filters}</DrawerTitle>
+            {filters.species !== "all" && (
+              <button
+                type="button"
+                data-slot="species-scope"
+                onClick={() => {
+                  contentRef.current?.focus();
+                  onSpeciesChange("all");
+                }}
+                aria-label={t("speciesScope", {
+                  label: speciesScopeLabel(filters.species, locale),
+                })}
+                className="inline-flex h-8 min-w-0 touch-manipulation select-none items-center gap-1.5 rounded-ui bg-foreground px-2.5 text-sm text-background outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
+              >
+                <SpeciesGlyphIcon tab={filters.species} />
+                <span className="min-w-0 truncate">
+                  {speciesScopeLabel(filters.species, locale)}
+                </span>
+                <X aria-hidden className="size-3.5 shrink-0 opacity-70" />
+              </button>
+            )}
+          </div>
           <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
             {messages.sortCaption}
           </div>
@@ -406,7 +471,11 @@ export function FilterSheet({
             disabled={activeCount === 0}
             onClick={onClearAll}
           >
-            {messages.clearAll}
+            {/* "Počisti filtre" and not "Počisti vse": the species pill on the
+                title line survives this press, and a button that says
+                everything while a dark pill beside it stays put is a button
+                that lies. */}
+            {messages.clearFilters}
           </Button>
           <DrawerClose asChild>
             <Button className="h-11 flex-1">

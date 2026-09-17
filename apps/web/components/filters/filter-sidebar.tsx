@@ -11,7 +11,10 @@ import {
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
-import { pickerFilterSummary } from "@/components/filters/location-picker/model";
+import {
+  pickerFilterSummary,
+  pickerRecoveryActions,
+} from "@/components/filters/location-picker/model";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/i18n-provider";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
@@ -20,6 +23,7 @@ import type {
   FilterOption,
   Filters,
   MultiGroup,
+  SpeciesFilter,
   ToggleDef,
 } from "@/lib/filters";
 import type { LookupEntry } from "@/lib/municipality-coverage";
@@ -54,6 +58,7 @@ export function FilterSidebar({
   onToggleProperty,
   onToggleManyProperties,
   onClearAll,
+  onSpeciesChange,
   className,
 }: {
   filters: Filters;
@@ -66,6 +71,10 @@ export function FilterSidebar({
   care?: CareSection;
   scope?: SidebarScope;
   onClearAll?: () => void;
+  /** For the Kje dialog's zero state, which may need the species' own way
+   *  back (pickerRecoveryActions). The panel draws no species control of
+   *  its own; the strip in the toolbar across the gutter is it. */
+  onSpeciesChange?: (species: SpeciesFilter) => void;
   className?: string;
 } & FilterActionContract) {
   const { messages, locale } = useI18n();
@@ -162,7 +171,7 @@ export function FilterSidebar({
           onToggleMany={(values) => onToggleMany("shelter", values)}
           resultCount={scope.resultCount}
           filterSummary={pickerFilterSummary(filters, locale)}
-          onClearFilters={onClearAll}
+          {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
           municipalities={scope.municipalities}
           offSite={scope.offSite}
           summaries={scope.summaries}

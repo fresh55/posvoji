@@ -10,6 +10,18 @@ import { commitLocation, subscribeToLocation } from "@/lib/location-search";
  * gesture should dismiss instead of leaving the page. The filter sheet and the
  * photo lightbox use it too, and layers stack, because each caller pushes and
  * pops its own keyed entry, so two open layers peel one press at a time. */
+/** Whether the entry the visitor is standing on is one a layer pushed.
+ *
+ *  Exported for the species write, which pushes an entry of its own on the
+ *  page and must not do so from inside an open sheet: the entry under the
+ *  sheet's marker is the one its back gesture pops to, and a push from inside
+ *  stacks a second entry carrying the same marker, so back then spends one
+ *  press undoing the species and a second closing the sheet
+ *  (use-animal-filters.ts). */
+export function standsOnLayerEntry(): boolean {
+  return typeof window.history.state?.locationPicker === "string";
+}
+
 export function usePickerHistory(open: boolean, close: () => void) {
   const id = useId();
   const serial = useRef(0);

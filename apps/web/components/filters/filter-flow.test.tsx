@@ -337,7 +337,7 @@ describe("filter flow interactions", () => {
     renderFilters();
     fireEvent.click(screen.getByRole("button", { name: /^Samec/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
 
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
@@ -459,7 +459,7 @@ describe("filter flow interactions", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
   });
@@ -598,6 +598,38 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?vrsta=pes");
     expect(window.history.length).toBe(before);
     expect(window.history.state).toEqual({ animal: true });
+  });
+
+  it("writes the species in place while a sheet is open", () => {
+    // The filter sheet repeats the chosen species as a pill that sets it back
+    // to all, and the sheet stands on an entry its back gesture pops
+    // (use-picker-history.ts). A push from inside it would carry the sheet's
+    // marker onto a second entry, and back would then undo the species
+    // before closing the sheet.
+    window.history.replaceState(null, "", "/?vrsta=macka");
+    window.history.pushState({ locationPicker: "sheet:1" }, "", "/?vrsta=macka");
+    renderFilters();
+    const before = window.history.length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Vrsta: all" }));
+
+    expect(query()).toBe("");
+    expect(window.history.length).toBe(before);
+    expect(window.history.state).toEqual({ locationPicker: "sheet:1" });
+  });
+
+  it("keeps the species when everything else is cleared", () => {
+    // The species is the scope the list is read in, chosen outside the sheet
+    // and not counted by its badge. A clear that reset it was a button inside
+    // the sheet undoing a choice made outside it, behind the sheet where the
+    // strip cannot be seen: pressing Mačke, narrowing and clearing lands on
+    // every cat again, not on every animal.
+    window.history.replaceState(null, "", "/?vrsta=macka&spol=samica");
+    renderFilters();
+
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
+
+    expect(query()).toBe("?vrsta=macka");
   });
 
   it("writes no entry for the species already chosen", () => {

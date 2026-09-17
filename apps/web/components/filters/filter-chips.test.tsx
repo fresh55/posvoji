@@ -119,7 +119,7 @@ describe("the active filters row", () => {
       "Samec",
       "Mlad",
       "Potrpežljiv dom",
-      "Clear all",
+      "Clear filters",
     ]);
   });
 
@@ -485,7 +485,7 @@ describe("the active filters row", () => {
     // pills. It is one tap away in the sheet footer the whole time.
     renderChips([chip({ key: "a", label: "Dogs" })]);
 
-    const clear = screen.getByRole("button", { name: "Clear all filters" });
+    const clear = screen.getByRole("button", { name: "Clear filters" });
     expect(clear.closest(".fade-scroll-x")).not.toBeNull();
     // Still the last stop the arrow keys reach, wherever it is drawn.
     const stops = [...pills()].map((b) => b.getAttribute("data-chip-stop"));
@@ -507,7 +507,7 @@ describe("the active filters row", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: "Clear all filters" }),
+      screen.queryByRole("button", { name: "Clear filters" }),
     ).toBeNull();
 
     // No stop bookkeeping for a button nobody draws: the last stop the arrows
@@ -564,7 +564,7 @@ describe("the active filters row", () => {
 
     // Clear, then arrive at a fresh three: they fold again rather than
     // inheriting a request that belonged to a state that no longer exists.
-    fireEvent.click(screen.getByRole("button", { name: "Clear all filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     rerender(
       <I18nProvider locale="en">
         <FilterChips chips={shelters} onClearAll={vi.fn()} />

@@ -16,6 +16,10 @@ export type LocationPickerProps = {
   filterSummary?: string;
   /** Explicit recovery when no animal matches, including across shelters. */
   onClearFilters?: () => void;
+  /** The species' own way back, for the zero that no clear can undo
+   *  because the species is all that is narrowing the list
+   *  (pickerRecoveryActions in model.ts). */
+  onShowAllSpecies?: () => void;
   /** Municipality → responsible-shelter entries. Map furniture, not a mode:
    * the picker names who answers for the občine inside a region the roster
    * leaves empty. The lookup itself is a page (found-animal-page.tsx). */

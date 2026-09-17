@@ -101,8 +101,16 @@ export function BackToTop() {
       // Hidden from everything, not just from view: a control that cannot be
       // reached should not be the next tab stop either, and a screen reader
       // has no use for a scroll shortcut it cannot act on yet.
+      //
+      // inert rather than a hand-written tabIndex={-1} beside the
+      // aria-hidden. The two have to say the same thing and nothing held them
+      // to it; inert says both halves in one expression and cannot come apart
+      // from itself. It also takes the pointer, which this button has already
+      // given up below (pointer-events-none), so nothing else changes.
+      // aria-hidden stays for the browsers that do not read inert yet, the
+      // same pairing cat-model.tsx carries and for the same reason.
+      inert={!shown}
       aria-hidden={!shown}
-      tabIndex={shown ? undefined : -1}
       onClick={() => {
         // Instant, with no reduced-motion branch to make: a smooth ride from
         // 60,000px is not a transition, it is a wait, so nobody gets one.

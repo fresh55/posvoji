@@ -185,8 +185,12 @@ export function FilterSectionHeader({
       variant="link"
       size="xs"
       onClick={onReset}
+      // One expression for both halves of being unreachable; see
+      // back-to-top.tsx for why this is not aria-hidden beside its own
+      // tabIndex={-1}. The pointer is already gone below when !showReset, so
+      // inert takes nothing this button still had.
+      inert={!showReset}
       aria-hidden={!showReset}
-      tabIndex={showReset ? undefined : -1}
       aria-label={resetAriaLabel}
       className={cn(
         // text-xs below lg and text-2xs from it, the same one decision the

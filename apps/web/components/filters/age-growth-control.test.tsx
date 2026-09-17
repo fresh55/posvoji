@@ -58,18 +58,20 @@ describe("AgeGrowthControl", () => {
     expect(html).toContain("Izberi eno ali več starosti.");
   });
 
+  // inert is what takes it out of the tab order, not a tabIndex={-1} written
+  // beside the aria-hidden: one attribute for both halves, which is the only
+  // spelling that cannot come apart from itself (filter-section-header.tsx).
   it("keeps the reset action stable but unreachable until a filter is selected", () => {
     const inactiveHtml = renderAgeControl();
     const activeHtml = renderAgeControl(["odrasel"]);
 
     expect(inactiveHtml).toContain('aria-hidden="true"');
     expect(inactiveHtml).toMatch(
-      /tabindex="-1" aria-label="Ponastavi filter starosti"/,
+      /inert="" aria-hidden="true" aria-label="Ponastavi filter starosti"/,
     );
     expect(activeHtml).toContain('aria-hidden="false"');
-    expect(activeHtml).not.toMatch(
-      /tabindex="-1" aria-label="Ponastavi filter starosti"/,
-    );
+    expect(activeHtml).not.toContain("inert=");
+    expect(activeHtml).not.toContain('tabindex="-1"');
   });
 });
 

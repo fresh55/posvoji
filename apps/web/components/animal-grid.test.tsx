@@ -237,13 +237,15 @@ describe("animal grid empty state", () => {
       clears.filter((clear) => clear.closest('[class~="max-lg:hidden"]')),
     ).toHaveLength(1);
 
-    // The row's own clear is the whole clear: it drops the shelter and the
-    // species tab with it, which is what the button used to be there for.
+    // The row's own clear clears the filters. The species tab stays: it is
+    // the scope the list is read in, not one of the pills, and clearing from
+    // under it lands on every rabbit rather than on every animal
+    // (use-animal-filters.ts).
     fireEvent.click(
       clears.find((clear) => clear.closest('[class~="lg:hidden"]'))!,
     );
 
-    expect(query()).toBe("");
+    expect(query()).toBe("?vrsta=ostalo");
   });
 
   it("draws the phone way out under the pills rather than off the end of them", () => {
@@ -271,22 +273,24 @@ describe("animal grid empty state", () => {
     expect(clear.getAttribute("data-size")).toBe("sm");
 
     fireEvent.click(clear);
-    expect(query()).toBe("");
+    expect(query()).toBe("?vrsta=ostalo");
   });
 
-  it("offers the button where no chip row exists to carry the clear", () => {
+  it("offers the species' own way back where no chip row exists", () => {
     // The species tab is the one filter that makes no chip (it undoes itself
     // in a press of its own tab), so an empty tab with nothing else on has no
-    // chips row on either surface and the button is the only way out.
+    // chips row on either surface, and a clear would leave the species
+    // standing anyway. The only thing left to undo is the species, so that
+    // is what the button says and does.
     window.history.replaceState(null, "", "/?vrsta=ostalo");
     renderGrid(ANIMALS.filter((a) => a.species !== "rabbit"));
 
     expect(
       screen.queryAllByRole("button", { name: "Počisti vse filtre" }),
     ).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Počisti filtre" })).toBeNull();
 
-    const clear = screen.getByRole("button", { name: "Počisti filtre" });
-    fireEvent.click(clear);
+    fireEvent.click(screen.getByRole("button", { name: "Pokaži vse živali" }));
 
     expect(query()).toBe("");
   });

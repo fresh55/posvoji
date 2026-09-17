@@ -22,10 +22,9 @@ import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
 import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
 import { useI18n } from "@/components/i18n-provider";
 import {
-  CAT_GLYPH,
-  DOG_GLYPH,
-  RABBIT_GLYPH,
-} from "@/components/filters/animal-glyph-paths";
+  SPECIES_GLYPHS,
+  SpeciesGlyphIcon,
+} from "@/components/filters/species-glyph";
 import { useOneShotCelebration } from "@/components/filters/use-filter-motion";
 import { cn } from "@/lib/utils";
 
@@ -61,24 +60,11 @@ const SLIDE_SPRING = {
   mass: 0.7,
 } as const;
 
-// The tab keyed "other" wears the rabbit because the bucket is rabbits today,
-// and a paw print would repeat the mark "Vse" already spends.
-//
-// The geometry itself is shared (animal-glyph-paths.ts): the "dobro z" cards
-// draw the same dog and the same cat, and one data module is what keeps the
-// two in step. An upgrade that redraws one of these icons has to be noticed
-// rather than left to drift, so species-tabs.test.tsx compares that module
-// against the lucide components it was copied from.
-const SPECIES_GLYPHS: Record<SpeciesTab, readonly string[]> = {
-  dog: DOG_GLYPH,
-  cat: CAT_GLYPH,
-  other: RABBIT_GLYPH,
-};
-
-// One step smaller at the narrowest phones, with the rest of the tab. See the
-// max-[360px] comment on the tab itself: at 320 the strip ran 360px inside 288
-// and the fourth species was 18px of an icon under the mask.
-const GLYPH_CLASS = "size-4 shrink-0 max-[360px]:size-3.5";
+// One step smaller at narrow phones, with the rest of the tab. See the
+// max-[384px] comment on the tab itself: at 320 the strip ran 360px inside 288
+// and the fourth species was 18px of an icon under the mask. The glyph's own
+// size is the icon's default (species-glyph.tsx); this only steps it down.
+const GLYPH_CLASS = "max-[384px]:size-3.5";
 
 type Beat = {
   /** What the glyph does, as keyframes on the svg itself. */
@@ -180,24 +166,7 @@ function SpeciesGlyph({
   // even when it is animating nothing. The key below remounts the glyph for a
   // beat anyway, so there is nothing to carry across the swap.
   if (beatId === null) {
-    return (
-      <svg
-        aria-hidden
-        viewBox="0 0 24 24"
-        width="24"
-        height="24"
-        className={GLYPH_CLASS}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {paths.map((d) => (
-          <path key={d} d={d} />
-        ))}
-      </svg>
-    );
+    return <SpeciesGlyphIcon tab={tab} className={GLYPH_CLASS} />;
   }
 
   const beat = BEATS[tab];
@@ -209,7 +178,7 @@ function SpeciesGlyph({
       viewBox="0 0 24 24"
       width="24"
       height="24"
-      className={GLYPH_CLASS}
+      className={cn("size-4 shrink-0", GLYPH_CLASS)}
       fill="none"
       stroke="currentColor"
       strokeWidth={1.75}
@@ -493,7 +462,7 @@ export function SpeciesTabs({
           // gets the same from the fade-scroll-x utility; this one masks by
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
-          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain py-2 no-scrollbar max-[360px]:gap-0.5",
+          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain py-2 no-scrollbar max-[384px]:gap-0.5",
           fullWidth && "w-full",
         )}
       >
@@ -561,18 +530,25 @@ export function SpeciesTabs({
               // instead of changing species, and a rapid press on the label
               // could start a selection or raise the iOS callout.
               //
-              // max-[360px] is the narrowest common phone, where the strip
-              // measured 360px inside 288 and "Ostale" showed 18px of the
-              // rabbit under the mask fade: no name, no count, and no sign it
-              // could be scrolled to. Every part of the tab goes down one step
-              // there rather than one part going away -- the padding, both
-              // gaps, the label, the count and the glyph -- which buys back
-              // 84px and leaves the four tabs 276px inside 288. Dropping the
-              // count from the inactive tabs was the other candidate, measured
-              // and rejected: the fill travels on boxes measured from these
-              // buttons, and a count arriving on press changes every width
-              // while the fill is sliding between them.
-              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-[360px]:gap-0.5 max-[360px]:px-1 max-[360px]:text-xs pointer-coarse:tap-target",
+              // Below 384px the strip does not fit the row. At full size the
+              // four tabs measure 360px and the row is the viewport less 32px
+              // of margin, so at 320 "Ostale" showed 18px of the rabbit under
+              // the mask fade: no name, no count, and no sign it could be
+              // scrolled to. The step sat at 360 and was measured again on
+              // 2026-09-17: a 360px phone got the large size and overflowed
+              // by 32px, a 375px one by 17px, and the mask faded the last
+              // tab's count on both. At 384 the overflow is 8px, the row's
+              // own slack (EDGE_SLACK_PX), and it lands inside the last tab's
+              // padding, so that is where the step goes. Every part of the
+              // tab goes down one step there rather than one part going away
+              // -- the padding, both gaps, the label, the count and the
+              // glyph -- which buys back 84px and leaves the four tabs 276px
+              // inside 288. Dropping the count from the inactive tabs was the
+              // other candidate, measured and rejected: the fill travels on
+              // boxes measured from these buttons, and a count arriving on
+              // press changes every width while the fill is sliding between
+              // them.
+              "relative inline-flex min-w-0 touch-manipulation select-none items-center justify-center gap-1 rounded-ui px-2 py-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring disabled:opacity-50 max-[384px]:gap-0.5 max-[384px]:px-1 max-[384px]:text-xs pointer-coarse:tap-target",
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a
@@ -639,7 +615,7 @@ export function SpeciesTabs({
                 token is used whole and stays quieter by contrast with the
                 label alone, not by fading further past it. */}
             {!disabled && (
-              <span className="shrink-0 text-xs tabular-nums max-[360px]:text-2xs">
+              <span className="shrink-0 text-xs tabular-nums max-[384px]:text-2xs">
                 {counts[tab]}
               </span>
             )}

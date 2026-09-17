@@ -199,20 +199,20 @@ describe("SpeciesTabs", () => {
     // press moves every one of them while the fill is sliding.
     renderTabs({ value: "all" });
 
-    expect(row().className).toContain("max-[360px]:gap-0.5");
+    expect(row().className).toContain("max-[384px]:gap-0.5");
 
     const dogs = tab("Dogs");
-    expect(dogs.className).toContain("max-[360px]:px-1");
-    expect(dogs.className).toContain("max-[360px]:gap-0.5");
-    expect(dogs.className).toContain("max-[360px]:text-xs");
+    expect(dogs.className).toContain("max-[384px]:px-1");
+    expect(dogs.className).toContain("max-[384px]:gap-0.5");
+    expect(dogs.className).toContain("max-[384px]:text-xs");
     expect(dogs.querySelector("svg")?.getAttribute("class")).toContain(
-      "max-[360px]:size-3.5",
+      "max-[384px]:size-3.5",
     );
 
     // Every tab still carries its count at every width.
     const count = dogs.querySelector("span:last-child");
     expect(count?.textContent).toBe("1");
-    expect(count?.className).toContain("max-[360px]:text-2xs");
+    expect(count?.className).toContain("max-[384px]:text-2xs");
   });
 
   it("restarts the glyph of the species that was pressed, drawing the same animal", () => {

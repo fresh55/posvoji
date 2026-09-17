@@ -2,6 +2,7 @@ import type { ShelterRow } from "@/components/filters/shelter-rows";
 import { activeFilterCount, type FilterOption, type Filters } from "@/lib/filters";
 import { cityAt, distanceKm, type LatLon } from "@/lib/geo";
 import type { Locale } from "@/lib/i18n";
+import { speciesScopeLabel } from "@/lib/labels";
 import type { ShelterPin } from "@/lib/map-layout";
 
 export function sameValues(a: string[], b: string[]): boolean {
@@ -9,11 +10,8 @@ export function sameValues(a: string[], b: string[]): boolean {
 }
 
 export function pickerFilterSummary(filters: Filters, locale: Locale): string {
-  const species = locale === "sl"
-    ? { all: "Vse živali", dog: "Psi", cat: "Mačke", other: "Ostale živali" }
-    : { all: "All animals", dog: "Dogs", cat: "Cats", other: "Other animals" };
   const extra = activeFilterCount({ ...filters, shelter: [] });
-  return [species[filters.species], extra > 0
+  return [speciesScopeLabel(filters.species, locale), extra > 0
     ? locale === "sl" ? `Dodatni filtri: ${extra}` : `Additional filters: ${extra}`
     : null].filter(Boolean).join(" · ");
 }

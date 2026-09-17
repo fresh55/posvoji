@@ -115,6 +115,7 @@ function renderSheet({
         }}
         activeCount={selected.length}
         resultCount={11}
+        onSpeciesChange={vi.fn()}
         onClearAll={vi.fn()}
         {...filterActions}
       />

@@ -481,6 +481,7 @@ export function AnimalFilters({
               className={cn(triggerStandsDown)}
               sort={sort}
               onSortChange={onSortChange}
+              onSpeciesChange={onSpeciesChange}
               filters={filters}
               groups={groups}
               counts={counts}

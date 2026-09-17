@@ -54,6 +54,7 @@ function renderSheet(overrides: SheetProps = {}) {
         toggleTally={new Map()}
         activeCount={0}
         resultCount={0}
+        onSpeciesChange={vi.fn()}
         onClearAll={vi.fn()}
         {...filterActions}
         {...props}
@@ -401,13 +402,13 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(await screen.findByRole("dialog")).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Clear filters" }).hasAttribute("disabled"),
     ).toBe(true);
 
     rerender({ activeCount: 1 });
 
     expect(
-      screen.getByRole("button", { name: "Clear all" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Clear filters" }).hasAttribute("disabled"),
     ).toBe(false);
   });
 
@@ -440,13 +441,80 @@ describe("mobile filter hardening", () => {
 
   it("does not repeat the species tabs inside the sheet", async () => {
     // The sticky bar behind the trigger already carries them; a second copy
-    // here used to cost the sheet 56px on top of an 85dvh takeover.
+    // here used to cost the sheet 56px on top of an 85dvh takeover. What the
+    // sheet states instead is the one species chosen, as a pill on its title
+    // line (the tests below).
     renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).queryByRole("button", { name: "All" })).toBeNull();
+  });
+
+  it("draws no species pill while every species is shown", async () => {
+    // On Vse every count in the sheet means what it says and there is no
+    // scope to state, so the sheet is exactly what it was.
+    renderSheet();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.querySelector('[data-slot="species-scope"]')).toBeNull();
+  });
+
+  it("names the chosen species on the title line and sets it back to all", async () => {
+    // A visitor who chose Ostale and opened the sheet found "Samica 0" with
+    // nothing on screen saying the 0 was counted among two rabbits: the strip
+    // behind the trigger is under the sheet at the top of the page and under
+    // the overlay's blur once scrolled. The pill is the sheet's own statement
+    // of its scope, in the pressed tab's token, and the x on it is the one
+    // species action wanted from in here.
+    const onSpeciesChange = vi.fn();
+    renderSheet({
+      filters: { ...EMPTY_FILTERS, species: "other" },
+      onSpeciesChange,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const pill = within(dialog).getByRole("button", {
+      name: "Species: Other animals. Show all animals",
+    });
+    // The pill lives in the header block, which never scrolls, not in the
+    // body under it: the step the report fails on is the sheet body scrolled
+    // to a section whose counts make no sense without the species.
+    expect(
+      pill.closest('[data-slot="filter-sheet-header"]'),
+    ).not.toBeNull();
+    expect(pill.textContent).toBe("Other animals");
+    expect(pill.querySelector("svg")).not.toBeNull();
+
+    fireEvent.click(pill);
+
+    expect(onSpeciesChange).toHaveBeenCalledWith("all");
+  });
+
+  it("clears filters, in the footer's own words", async () => {
+    // "Clear filters" and not "Clear all": the species pill survives the
+    // press (use-animal-filters.ts), and a button that says everything while
+    // a dark pill beside it stays put is a button that lies.
+    renderSheet({
+      filters: { ...EMPTY_FILTERS, species: "cat" },
+      activeCount: 1,
+    });
+
+    // The trigger names its count once a filter is on (filtersWithCount).
+    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("button", { name: "Clear filters" }),
+    ).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", { name: "Clear all" }),
+    ).toBeNull();
   });
 
   it("moves focus inside the drawer content when it opens", async () => {

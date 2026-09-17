@@ -238,6 +238,7 @@ const sl = {
   noResultsShelterDual: "Izbrani zavetišči trenutno nimata {species}.",
   noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
+  showAllSpecies: "Pokaži vse živali",
   resetFilters: "Ponastavi",
   resetAgeFilters: "Ponastavi filter starosti",
   resetSexFilters: "Ponastavi filter spola",
@@ -262,6 +263,7 @@ const sl = {
   activeFiltersCount: "Aktivni filtri: {count}",
   clearAll: "Počisti vse",
   clearAllFilters: "Počisti vse filtre",
+  speciesScope: "Vrsta: {label}. Pokaži vse živali",
   // Tooltip on a chip: what pressing it gives back. {count} arrives already
   // formatted by animalCount, so the noun agrees with the number.
   removeShowsMore: "Odstrani, +{count}",
@@ -705,6 +707,7 @@ const en: Messages = {
   noResultsShelterDual: "The selected shelters currently have no {species}.",
   noResultsShelterPlural: "The selected shelters currently have no {species}.",
   showFromAllShelters: "Show from all shelters",
+  showAllSpecies: "Show all animals",
   resetFilters: "Reset",
   resetAgeFilters: "Reset age filters",
   resetSexFilters: "Reset sex filters",
@@ -725,6 +728,7 @@ const en: Messages = {
   activeFiltersCount: "Active filters: {count}",
   clearAll: "Clear all",
   clearAllFilters: "Clear all filters",
+  speciesScope: "Species: {label}. Show all animals",
   removeShowsMore: "Remove, +{count}",
   expandFilterGroup: "Show all selected: {label}",
   showMoreFilters: "Show {count} more",

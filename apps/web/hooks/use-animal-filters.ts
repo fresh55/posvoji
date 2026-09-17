@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
+import { standsOnLayerEntry } from "@/hooks/use-picker-history";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
@@ -152,9 +153,18 @@ export function useAnimalFilters() {
   // change behind a card nobody can see past. The strip is behind the dialog
   // at every width, so the entry a species change wants there is the one it is
   // already standing on.
+  //
+  // Nor on top of an open sheet, for the same reason. The filter sheet
+  // repeats the chosen species as a pill that sets it back to all
+  // (filter-sheet.tsx), and the sheet stands on an entry of its own that its
+  // back gesture pops; a push from inside it would carry the sheet's marker
+  // onto a second entry and back would undo the species before closing.
   const setSpecies = useCallback(
     (species: SpeciesFilter) => {
-      const stacks = species !== filters.species && !standsOnDialogEntry();
+      const stacks =
+        species !== filters.species &&
+        !standsOnDialogEntry() &&
+        !standsOnLayerEntry();
       writeFilters({ ...filters, species }, stacks ? "push" : "replace");
     },
     [filters],
@@ -267,7 +277,18 @@ export function useAnimalFilters() {
 
   const setSort = useCallback((next: AnimalSort) => writeSort(next), []);
 
-  const clearAll = useCallback(() => writeFilters(EMPTY_FILTERS), []);
+  // Everything but the species. The species is the scope the list is read
+  // in, chosen on the strip outside the sheet and outside the sidebar, and it
+  // is not counted by the badge or the chips (activeFilterCount): a clear
+  // that reset it was a button inside the sheet undoing a choice made
+  // outside it, and on a phone it did so behind the sheet where the strip
+  // cannot be seen. Pressing Mačke, narrowing, and clearing lands on every
+  // cat again, not on every animal. The way back to all species is the
+  // strip, or the sheet's own species pill.
+  const clearAll = useCallback(
+    () => writeFilters({ ...EMPTY_FILTERS, species: filters.species }),
+    [filters.species],
+  );
 
   // Clearing is the one filter action that cannot be undone by repeating the
   // gesture that caused it, so it is the one that needs a way back. The

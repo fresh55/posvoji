@@ -4,7 +4,13 @@ import { type ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
+import { phoneRow, stickyRow } from "@/test/filter-rows";
+import {
+  EMPTY_FILTERS,
+  FILTER_FACETS,
+  GROUPS,
+  type MultiGroup,
+} from "@/lib/filters";
 import { AnimalFilters } from "./animal-filters";
 import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
@@ -314,8 +320,10 @@ describe("mobile filter hardening", () => {
     // toolbar wraps them in, so the strip can still scroll inside the row.
     const tabsBox = mobileTab.closest('[data-slot="mobile-toolbar"] > div');
     expect(tabsBox?.className).toContain("min-w-0");
-    // A chips row would be the fourth surface stating the filter state on one
-    // screen, so it is not in the bar either.
+    // The chips row is not in the bar. It states the filters below lg now,
+    // but under the band and in flow (the test below), not inside a sticky
+    // header that would hold its height for the whole scroll and push the
+    // grid down the moment a filter landed.
     expect(
       within(mobileToolbar).queryByRole("toolbar", { name: /filter/i }),
     ).toBeNull();
@@ -325,6 +333,49 @@ describe("mobile filter hardening", () => {
     const live = document.querySelector("[aria-live]");
     expect(live?.textContent).toContain("2 animals");
     expect(live?.closest(".sr-only")).toBeTruthy();
+  });
+
+  it("states the filters under the band on a phone, wrapping and capped at five", () => {
+    // Below lg the count on the Filtri button was the whole statement of what
+    // was on. The row names the filters instead, in flow under the band: it
+    // pushes the grid down once, where a row inside the sticky bar holds its
+    // height for the whole scroll, and it wraps rather than laying a second
+    // sideways scroller under the species strip.
+    const six = FILTER_FACETS.slice(0, 6).map((facet) => ({
+      key: `${facet}:0`,
+      facet,
+      value: "0",
+      label: `${facet}0`,
+      onRemove: vi.fn(),
+    }));
+    const { container } = renderFilters({
+      ...SEX_GROUP,
+      chips: six,
+      speciesTally: { all: 2, dog: 1, cat: 1, other: 0 },
+      speciesRoster: { all: 2, dog: 1, cat: 1, other: 0 },
+      shelterTally: new Map([["test", 2]]),
+      resultCount: 2,
+    });
+
+    // This suite's share of the pair is where the row sits: outside the
+    // sticky band and outside the toolbar the species strip rides in. What
+    // each row holds is asserted next door (animal-grid.test.tsx), and the
+    // caps themselves in filter-chips.test.tsx.
+    const row = phoneRow(container);
+    expect(row.className).toContain("lg:hidden");
+    expect(row.closest('[class~="sticky"]')).toBeNull();
+    expect(row.closest('[data-slot="mobile-toolbar"]')).toBeNull();
+
+    // One assertion on the contents, because it is the one that says the two
+    // rows are not the same row: five pills here against the band's eight.
+    expect(
+      within(row).getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(5);
+    expect(
+      within(stickyRow(container)).getAllByRole("button", {
+        name: /^Remove filter/,
+      }),
+    ).toHaveLength(6);
   });
 
   it("keeps a flick off the end of the tab strip out of the browser's back gesture", () => {

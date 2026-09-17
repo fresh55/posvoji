@@ -6,7 +6,6 @@ import {
   TOOLBAR_BAND,
   TOOLBAR_ROW_HEIGHT,
 } from "@/components/filters/animal-filters";
-import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-provider";
 import { GridLoadMore } from "@/components/grid-load-more";
@@ -161,7 +160,18 @@ function EmptyState({ children }: { children: ReactNode }) {
     // band that ends at 828. Reaching the footer then means scrolling to the
     // page end, which is the case the footer's own docked padding is for, and
     // nothing here adds a second clearance.
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh]">
+    //
+    // The floor is height and not spacing, though, and centring in it put the
+    // message in the middle of that height. Measured at 375px with two lines
+    // of pills above the grid, "Ni zadetkov" started 260px under the row that
+    // names the filter to drop (animal-filters.tsx), and the advice under it
+    // 284px. Advice reads against the thing it is advice about, so below lg
+    // the block starts at the top of the floor instead: 84px, which is the
+    // grid's gap, this box's own top padding, the paw and the gap under it.
+    // The floor is untouched and still holds the footer off the dock. From lg
+    // it lifts with the dock and the box is its content again, so the
+    // centring left standing there has no spare height to spend.
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh] max-lg:justify-start max-lg:pt-6">
       <PawPrint
         className="size-8 text-muted-foreground/50"
         strokeWidth={1.5}
@@ -612,29 +622,6 @@ export function AnimalGrid({
                   </p>
                 )}
               </div>
-              {/* Below lg only, where the sticky bar no longer carries a chips
-                  row. This is the one state that row was genuinely needed for:
-                  with nothing matching, "try fewer filters" is advice and not a
-                  way out, and a visitor facing five active filters has no means
-                  of telling which of them is the one to drop. The row's stuck
-                  mode names it (filter-chips.tsx). Here it costs nothing that
-                  matters, because there is no grid underneath for it to push
-                  down and nothing to scroll it past.
-
-                  Without its own clear, though: this state draws that itself,
-                  below. At the end of the strip it is the row's last item, and
-                  at 390px with four filters the pills already ran to x 497, so
-                  the way out sat at x 514, off the screen, behind a sideways
-                  scroll the state gave no sign of. */}
-              {chips.length > 0 && (
-                <FilterChips
-                  chips={chips}
-                  onClearAll={handleClearAll}
-                  stuck
-                  clear={false}
-                  className="max-w-full justify-center lg:hidden"
-                />
-              )}
               {shelterOnlyEmpty && (
                 <Button
                   variant="outline"
@@ -645,40 +632,29 @@ export function AnimalGrid({
                   {messages.showFromAllShelters}
                 </Button>
               )}
-              {/* The one way out of this screen, drawn once. With pills above
-                  it, it stands under the row and takes the clear that row
-                  would otherwise have ended in. It is lg:hidden with them: the
-                  pills are, because the sticky toolbar draws its own row there
-                  with its own clear at the end of it, and this button goes
-                  with them or a desktop would show two.
+              {/* This state draws no clear of its own at any width. The pills
+                  that name the filters are above the grid everywhere now: the
+                  sticky bar's row from lg and the in-flow row below it
+                  (animal-filters.tsx). That row marks the chip costing the
+                  most when nothing matches and ends in the clear, so a second
+                  way out down here would be the same press a screenful lower,
+                  away from the pills that say what it takes off.
 
-                  Without pills the state is a species tab with nothing in it,
-                  which a deep link to a species the roster does not hold can
-                  reach, and the only thing left to undo is the species. A
-                  clear leaves the species standing (use-animal-filters.ts),
-                  so what this offers there is the species' own way back,
-                  worded as what it does. Nothing else on any width offers the
-                  press, so it stays at every width. */}
-              {chips.length > 0 ? (
+                  The species is what is left, because no clear touches it
+                  (use-animal-filters.ts). With no pills at all the state is a
+                  species tab with nothing in it, which a deep link to a
+                  species the roster does not hold can reach, and the species
+                  is then the only thing to undo. Nothing else on any width
+                  offers that press, so it stays at every width. */}
+              {chips.length === 0 && filters.species !== "all" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
-                  onClick={handleClearAll}
+                  className={EMPTY_STATE_ACTION}
+                  onClick={() => setSpecies("all")}
                 >
-                  {messages.clearFilters}
+                  {messages.showAllSpecies}
                 </Button>
-              ) : (
-                filters.species !== "all" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={EMPTY_STATE_ACTION}
-                    onClick={() => setSpecies("all")}
-                  >
-                    {messages.showAllSpecies}
-                  </Button>
-                )
               )}
             </EmptyState>
           ) : (

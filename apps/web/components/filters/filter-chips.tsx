@@ -48,9 +48,16 @@ export type Chip = {
 const COLLAPSE_AT = 3;
 
 /** Chips past which the rest go behind a "+N". A bound on how tall the row
- *  can get, which matters because it sits inside a sticky header on a phone.
- *  Nine facets at two values each would otherwise be eighteen pills. */
+ *  can get, which is what the sticky header at lg is paying for: nine facets
+ *  at two values each would otherwise be eighteen pills, wrapping to four
+ *  lines of pinned chrome. The phone's in-flow row is not sticky and wraps
+ *  narrower, so it passes a cap of its own (animal-filters.tsx). */
 const MAX_VISIBLE = 8;
+
+/** The same bound in flow, where a line is narrower and the pills are 44px
+ *  tall rather than 28. Measured at 375px: five pills plus the "+N" is three
+ *  lines, which is as much of the grid as a row above it may take. */
+const FLOW_VISIBLE = 5;
 
 /** Chips past which the sheet's Kje section shows a "+N" instead of the rest.
  *  The same bound the row above keeps, at the size a section can afford: three
@@ -87,6 +94,60 @@ const CHIP_PILL =
 const CHIP_REMOVABLE =
   "group border-border bg-background text-foreground hover:border-brand-border hover:bg-muted active:bg-muted";
 
+/** Where the row is drawn. The band is the sticky bar at lg; flow is under
+ *  it on a phone (animal-filters.tsx). Everything the two do differently
+ *  follows from this one answer, so it is asked once, here, rather than
+ *  arriving as a boolean per difference. */
+export type ChipRowPlacement = "band" | "flow";
+
+/** The shape each placement gives the row.
+ *
+ *  `scrolls` is the whole of the difference underneath: a strip that scrolls
+ *  sideways needs the edge fades, the mark a child is scrolled into view by,
+ *  and the vertical room a 44px pill takes inside a box sized to 28px. In
+ *  flow the row wraps into a page that already scrolls, so it needs none of
+ *  them, and a second horizontal scroller under the species strip is the
+ *  objection that kept this row off phones until now.
+ *
+ *  The band keeps the strip although it wraps from sm: measured at 1024px
+ *  with nine pills it does not overflow at all, and at 200% text it overflows
+ *  by 22px. The strip is what that case falls back on. */
+const PLACEMENT: Record<
+  ChipRowPlacement,
+  { visible: number; scrolls: boolean; box: string; pills: string; pill?: string }
+> = {
+  band: {
+    visible: MAX_VISIBLE,
+    scrolls: true,
+    // SCROLL_STRIP is the fade, the scroll padding that keeps a focused pill
+    // out from under it, and the horizontal room the focus ring needs; the
+    // couplings between those three are on the constant. The -my/py pair is
+    // this row's own vertical half of it: it holds the pills' 44px, which the
+    // scroll box would otherwise clip to its own content height.
+    box: cn(
+      SCROLL_STRIP,
+      "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
+    ),
+    // w-max is the strip's own width, a row as wide as its content for the
+    // strip to scroll. It wraps from sm, where there is width to wrap into.
+    pills: "w-max sm:w-auto sm:flex-wrap",
+  },
+  flow: {
+    visible: FLOW_VISIBLE,
+    scrolls: false,
+    // min-w-0 and nothing else: the box is as wide as the column and the
+    // pills wrap inside it.
+    box: "min-w-0",
+    pills: "flex-wrap",
+    // Narrows CHIP_PILL's own pointer-coarse:px-3. Measured at 375px, three
+    // typical pills came to 110, 112 and 111 wide and missed one line by 6px.
+    pill: "pointer-coarse:px-2.5",
+  },
+};
+
+/** What every pill row wears at both placements. */
+const PILL_ROW = "flex items-center gap-1.5 pointer-coarse:gap-2";
+
 type Run = { facet: FilterFacet; chips: Chip[] };
 
 type Item =
@@ -117,13 +178,34 @@ const FOCUSABLE =
  *  For the one keystroke that takes the row away with it: taking off the last
  *  filter unmounts everything the keyboard was standing on, and focus fell to
  *  the body, which puts the next Tab back at the top of the document. What
- *  follows the row is the results it was filtering, which is where someone who
- *  has just dropped their last filter was heading anyway. */
+ *  follows the row is the page the visitor was reading, which is where
+ *  someone who has just dropped their last filter was heading anyway.
+ *
+ *  Only something that can take focus. In document order the first candidate
+ *  after either row is not a card: after the phone's row it is BackToTop,
+ *  which is inert until the page has scrolled two screens, and after the
+ *  band's row at lg it is the phone row's own pill, which is display:none.
+ *  focus() on either is a no-op, and the keystroke that reached here would
+ *  have left focus on the body after all. Skipping them lands on the dock's
+ *  Filtri button on a phone (measured at 375px) and on the first card at lg.
+ *
+ *  Read off computed display and not off getClientRects: jsdom lays nothing
+ *  out, so every rect there is empty, while display:none is a stylesheet fact
+ *  both can answer. */
+function canTakeFocus(node: HTMLElement): boolean {
+  if (node.closest("[inert]")) return false;
+  for (let el: HTMLElement | null = node; el; el = el.parentElement) {
+    if (getComputedStyle(el).display === "none") return false;
+  }
+  return true;
+}
+
 function focusAfterRow(toolbar: HTMLElement | null): void {
   if (!toolbar) return;
   const next = [...document.querySelectorAll<HTMLElement>(FOCUSABLE)].find(
     (node) =>
       !toolbar.contains(node) &&
+      canTakeFocus(node) &&
       Boolean(
         toolbar.compareDocumentPosition(node) &
           Node.DOCUMENT_POSITION_FOLLOWING,
@@ -137,7 +219,7 @@ export function FilterChips({
   onClearAll,
   undo,
   stuck = false,
-  clear = true,
+  placement = "band",
   className,
 }: {
   chips: Chip[];
@@ -149,16 +231,19 @@ export function FilterChips({
    *  costing the most, because it is the way out and the visitor has no other
    *  means of telling which of five pills is the one to drop. */
   stuck?: boolean;
-  /** Whether the row ends in its own clear-everything. On by default, which
-   *  is the toolbar's case: the last thing in the scroll strip, after the
-   *  pills it clears. The empty state turns it off and draws its own way out
-   *  under the row instead, because there the pills can be scrolled past and
-   *  clearing is the point of the screen (animal-grid.tsx). */
-  clear?: boolean;
+  /** Which of the two mounts this is. Defaults to the band, which is the one
+   *  that has always been here. */
+  placement?: ChipRowPlacement;
   className?: string;
 }) {
   const { locale, messages, t } = useI18n();
   const reduceMotion = useReducedMotion();
+  const shape = PLACEMENT[placement];
+  // Whether the row ends in its own clear-everything. The band's is the last
+  // thing in the strip, after the pills it clears, at every result count. In
+  // flow the sheet's footer holds a clear one tap away the whole time, so the
+  // row spends a line on one only where clearing is the point of the screen.
+  const clear = shape.scrolls || stuck;
   const scrollRef = useScrollEdgeFadesX<HTMLDivElement>();
   const toolbarRef = useRef<HTMLElement>(null);
 
@@ -214,10 +299,10 @@ export function FilterChips({
   // worth drawing if it is on screen, and with nothing matching there are no
   // cards below for a taller row to push down.
   const hidden =
-    showAll || blocker ? 0 : Math.max(0, all.length - MAX_VISIBLE);
+    showAll || blocker ? 0 : Math.max(0, all.length - shape.visible);
   const items: Item[] =
     hidden > 0
-      ? [...all.slice(0, MAX_VISIBLE), { id: "more", kind: "more", hidden }]
+      ? [...all.slice(0, shape.visible), { id: "more", kind: "more", hidden }]
       : all;
 
   // Every stop the arrow keys walk, in the order they are drawn. Inline, clear
@@ -239,18 +324,23 @@ export function FilterChips({
     // A mark nobody can see is not a way out. With nothing matching, the row
     // uncaps itself and can run well past a phone's width, and the pill worth
     // pressing is as likely to be at the end of that as at the start.
-    if (!blockerKey) return;
+    //
+    // Nothing to bring into view when the row wraps: every pill it holds is
+    // already on screen, and the box has no scrollLeft to write.
+    if (!shape.scrolls || !blockerKey) return;
     scrollChildIntoViewX(stopNode(toolbarRef.current, blockerKey), {
       smooth: !reduceMotion,
     });
-  }, [blockerKey, reduceMotion]);
+  }, [blockerKey, reduceMotion, shape.scrolls]);
   const chipsKey = chips.map((chip) => chip.key).join("|");
   const seenChips = useRef<string[]>([]);
 
   useEffect(() => {
     // A filter picked in the sheet lands in a row the sheet was covering. If
     // it landed past the right edge of a phone, the visitor closes the sheet
-    // onto no visible evidence that anything happened.
+    // onto no visible evidence that anything happened. A wrapping row has no
+    // right edge to land past, which is the whole of why the phone's row
+    // wraps, so there is nothing for this to do there.
     //
     // One at a time only. A restored undo or a fresh page brings back several
     // at once, and there is no single one of those to point at. A chip folded
@@ -264,24 +354,35 @@ export function FilterChips({
     const keys = chipsKey === "" ? [] : chipsKey.split("|");
     const added = keys.filter((key) => !seenChips.current.includes(key));
     seenChips.current = keys;
-    if (added.length !== 1) return;
+    if (!shape.scrolls || added.length !== 1) return;
     scrollChildIntoViewX(stopNode(toolbarRef.current, added[0]), {
       smooth: !reduceMotion,
     });
-  }, [chipsKey, reduceMotion]);
+  }, [chipsKey, reduceMotion, shape.scrolls]);
 
   // By id and not by position. A removed pill fades out before it is taken
   // out of the DOM, so counting nodes for a render or two after a removal
   // counts one that is on its way out; an id belongs to one pill only, and
   // the departing one's is no longer in `stops`.
+  //
+  // The id was chosen from the stops before the removal, and one of those can
+  // go with it: the phone's row draws its clear only while nothing matches,
+  // so taking off the pill that was blocking the results takes the clear
+  // after it out of the row in the same render. The last stop left is the
+  // fallback, which is the pill before the one removed.
   useEffect(() => {
     const id = refocusTo.current;
     if (id === null) return;
     refocusTo.current = null;
-    const next = stopNode(toolbarRef.current, id);
+    const last = stops[stops.length - 1];
+    const next =
+      stopNode(toolbarRef.current, id) ??
+      (last !== undefined ? stopNode(toolbarRef.current, last) : null);
     if (!next) return;
-    setFocusId(id);
+    setFocusId(next.getAttribute(STOP) ?? id);
     next.focus();
+    // `stops` is read for the fallback only and follows stopsKey exactly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopsKey]);
 
   if (count === 0 && !undo) return null;
@@ -344,7 +445,9 @@ export function FilterChips({
     }
   };
 
-  const pill = CHIP_PILL;
+  // Two pixels tighter per side when wrapping: at 375 three typical pills
+  // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
+  const pill = cn(CHIP_PILL, shape.pill);
 
   // "Show me all of these" belonged to a filter state that is about to stop
   // existing. Carried over, the next pills a visitor picks would arrive
@@ -357,13 +460,12 @@ export function FilterChips({
 
   const row = (
     <>
-      {/* A phone gets no caption at all: the pills are the caption, and the
-          number that used to sit here is already on the Filtri button in the
-          dock, which is on screen the whole time and counts the same values.
-          Two copies of one number cost this row thirty-four pixels of a track
-          that had three hundred and thirty, on the screen with the least of
-          it. Past md there is room for the words and the row is no longer a
-          scroller, so they come back.
+      {/* No caption below md: the pills are the caption, and the number that
+          would sit here is already on the Filtri button in the dock, which is
+          on screen the whole time and counts the same values. Two copies of
+          one number cost this row thirty-four pixels of a track that had
+          three hundred and thirty, on the screen with the least of it. Past
+          md there is room for the words, so they come back.
 
           aria-hidden either way: the toolbar's own name below says the same
           thing, with the count, at every width. */}
@@ -374,28 +476,20 @@ export function FilterChips({
         {messages.activeFilters}
       </span>
 
-      {/* min-w-0 and nothing else: the default shrink is what lets this box
+      {/* min-w-0 in both shapes: the default shrink is what lets this box
           take the width it needs and no more. It used to be flex-1, which on
           a wide screen parked the clear a thousand pixels to the right of the
           last pill it clears, with the whole empty middle of the row between
-          them.
-
-          The vertical padding holds the pills' 44px height, which this scroll
-          box would otherwise clip to its own content height. The negative
-          margin gives the row back the height it had before. */}
+          them. What the two shapes differ in is on PLACEMENT above. */}
       <div
-        ref={scrollRef}
-        {...{ [SCROLL_STRIP_MARK]: "" }}
-        // SCROLL_STRIP is the fade, the scroll padding that keeps a focused
-        // pill out from under it, and the horizontal room the focus ring
-        // needs; the couplings between those three are on the constant. The
-        // -my/py pair below is this row's own vertical half of it.
-        className={cn(
-          SCROLL_STRIP,
-          "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
-        )}
+        // Both only where there is a scroll: the hook masks whichever edge
+        // still has content past it, and the mark says a child can be
+        // scrolled into view in here. A wrapping box can do neither.
+        ref={shape.scrolls ? scrollRef : undefined}
+        {...(shape.scrolls ? { [SCROLL_STRIP_MARK]: "" } : {})}
+        className={shape.box}
       >
-        <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap pointer-coarse:gap-2">
+        <div className={cn(PILL_ROW, shape.pills)}>
           <AnimatePresence initial={false} mode="popLayout">
             {items.map((item) => (
               <m.span
@@ -485,11 +579,12 @@ export function FilterChips({
               is 180px on its own. Scrolling past it costs nothing there,
               because it is one tap away in the sheet's footer the whole time.
 
-              The empty state is the exception, and it asks for the below
-              placement instead: with nothing matching, the sheet is a way back
-              to the filters and this is the way out of them, and at 390px with
-              four pills it sat at x 514 with no visible sign the strip
-              scrolled at all.
+              Nothing matching is the state that asks for it here rather than
+              in the sheet: the sheet is the way back to the filters and this
+              is the way out of them. The row that draws it then is the phone's
+              wrapping one, so it ends the last line. In the scrolling row it
+              sat at x 514 at 390px with four pills, with no visible sign the
+              strip scrolled at all.
 
               A seam and not just a gap, so an overscroll flick that runs out
               of pills to eat meets a line rather than sliding straight into
@@ -563,11 +658,11 @@ export function FilterChips({
   );
 }
 
-/** The way back from a clear, drawn once and shown in two places: here at the
- *  end of the chips row on a desktop, and on a phone in the status line under
- *  the species tabs, where the chips row no longer is (animal-filters.tsx).
- *  Both surfaces offer it for the same few seconds and cancel it the same way,
- *  so they had better not drift into two different offers. */
+/** The way back from a clear, drawn in place of the pills it took away. One
+ *  offer at every width: the sticky toolbar's row at lg and the in-flow row
+ *  below it are both this component (animal-filters.tsx), so neither can drift
+ *  into a different offer, and a phone is not left with clearing as the one
+ *  filter action it cannot take back. */
 export function UndoOffer({
   onUndo,
   className,

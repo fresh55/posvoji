@@ -11,7 +11,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
-import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
 import {
   Select,
   SelectContent,
@@ -54,32 +53,33 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  always reachable is the sheet behind the dock, so that is where sorting
  *  went, and a sheet has room for the same Select the desktop toolbar uses.
  *  From md the sticky toolbar has the room too (animal-filters.tsx), so the
- *  quiet trigger goes back on the row there and the sheet's copy stands down.
- *  Three placements, two dresses, one control, and a hand-rolled listbox
- *  less.
+ *  trigger goes back on the row there and the sheet's copy stands down.
+ *  Three placements, one dress, one control, and a hand-rolled listbox less.
  *
- *  The trigger says "Razvrsti:" before the order wherever nothing above it
- *  does, which is both of the toolbar's rows. A quiet trigger draws no border
- *  until it is hovered, so without that word the control was a phrase between
- *  two small glyphs, and a phrase is read as a caption for whatever it comes
- *  to rest under.
+ *  That one dress is a framed control that says "Razvrsti:" before the order.
+ *  It wore the toolbar's quiet dress until a visitor was confused by it: quiet
+ *  draws no border until hover, so on the home page it was a bare phrase
+ *  between two small glyphs, standing 12px under Srečko's caption and in
+ *  louder ink than it, and it was read as a fact about the cat rather than as
+ *  the order of the grid (home-cat.tsx). Both halves of that are fixed here.
+ *  The word is what stops the phrase being a caption, and the frame is what
+ *  says the thing can be pressed at all: Baymard's list testing asks for a
+ *  label beside the control with the chosen order visible, and it is the
+ *  primary way a visitor re-orders 486 animals.
  *
- *  `quiet` is the toolbar's dress: borderless until hovered, so a desktop row
- *  has one anchor instead of four framed boxes. Inside the sheet it is off,
- *  because there the Select is a control on its own and needs to look like
- *  one. */
+ *  The quiet dress stays what the species tabs and the shelter trigger wear
+ *  (toolbar-trigger.ts). A tab strip needs no frame, because its chosen tab is
+ *  a filled pill; a control holding a value the visitor has to read does. */
 export function SortPicker({
   value,
   onChange,
   disabled = false,
-  quiet = true,
   labelledBy,
   className,
 }: {
   value: AnimalSort;
   onChange: (sort: AnimalSort) => void;
   disabled?: boolean;
-  quiet?: boolean;
   /** The id of a caption already saying what this control does, which the
    *  sheet draws above the row (filter-sheet.tsx). With one the trigger takes
    *  its name from that caption plus the order it shows, so the visible label
@@ -132,7 +132,16 @@ export function SortPicker({
       onValueChange={(sort) => onChange(sort as AnimalSort)}
     >
       <SelectTrigger
-        size="sm"
+        // 36px, the size ui/select.tsx calls default, where this was the 32px
+        // "sm" one. 32 is a dense-table height; this is the control a visitor
+        // re-orders the whole grid with, and Apple and Material both put a
+        // pressable thing at 44 and 48. The coarse-pointer floor below already
+        // holds 44 for a thumb, so what this settles is the mouse: 36 is what
+        // the row can carry without the species tabs beside it looking small,
+        // and the band and the filter panel's head state the same height so
+        // the two columns still start their first line together
+        // (animal-filters.tsx, filter-sidebar.tsx).
+        size="default"
         // The same words as the trigger draws, in the same order. A combobox
         // takes no name from its contents (the accname spec allows that for
         // neither of this control's roles), so the name has to be written;
@@ -148,9 +157,7 @@ export function SortPicker({
           // text-sm, the size the species tabs across the row from it are
           // set at. At text-xs this was the smallest type on the page and the
           // only control in the toolbar drawn below the row's own size, which
-          // read as a caption rather than as the other half of the bar. The
-          // trigger keeps its size="sm" height, so the row's geometry is
-          // unchanged; only the label grows the 2px.
+          // read as a caption rather than as the other half of the bar.
           //
           // The 44px floor asks the pointer rather than the width. A 1024px
           // laptop window is a mouse and a 1180px tablet is a thumb, and the
@@ -174,7 +181,6 @@ export function SortPicker({
           // justify-* here, since the value's own flex row already starts at
           // the start.
           "*:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:text-left",
-          quiet && cn(QUIET_TRIGGER_CLASS, "data-[state=open]:border-border"),
           className,
         )}
       >

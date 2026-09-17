@@ -58,15 +58,15 @@ function GrantOrigin({ resolved }: { resolved: ResolvedOrigin }) {
 // for the sheet itself: the component takes the id and nothing else of it.
 const CAPTION_ID = "sheet-sort-caption";
 
-// The two dresses, by the props each one is mounted with: the quiet trigger
-// the toolbar wears (on the desktop row and on the md-to-lg one, which mount
-// it identically) and the sheet header's full-width control, which is drawn
-// below md only and takes its name from the caption over it. See the
-// component's own "Three placements, two dresses" note.
+// The two placements, by the props each one is mounted with: the toolbar's
+// trigger (mounted identically on the desktop row and the md-to-lg one) and
+// the sheet header's full-width control, which is drawn below md only and
+// takes its name from the caption over it. One dress between them now; what
+// the sheet still changes is the width and the 44px height it gives a thumb.
+// See the component's own "Three placements, one dress" note.
 const PLACEMENTS = {
   "toolbar row": {},
   "mobile sheet header": {
-    quiet: false,
     labelledBy: CAPTION_ID,
     className: "mt-1.5 h-11 w-full text-sm",
   },
@@ -179,6 +179,21 @@ describe("SortPicker visible caption", () => {
     expect(screen.getByText(`${sl.sortCaption}:`).className).toContain(
       "shrink-0",
     );
+  });
+
+  it("keeps a border at rest, so the row reads as a control", () => {
+    mount(NOTHING);
+
+    // The toolbar's quiet dress (QUIET_TRIGGER_CLASS) draws no border until
+    // hover, which is what let this trigger read as a line of text under the
+    // cat. It is not worn here any more: what the trigger carries is
+    // ui/select.tsx's own border, and nothing turns it transparent.
+    const trigger = screen.getByRole("combobox");
+    expect(trigger.className).not.toContain("border-transparent");
+    // 36px, not the 32px "sm" height. The class is the data-size attribute
+    // ui/select.tsx switches the height on; jsdom lays nothing out.
+    expect(trigger.dataset.size).toBe("default");
+    expect(trigger.className).toContain("pointer-coarse:min-h-11");
   });
 
   it("leaves it to the caption above the sheet's", () => {

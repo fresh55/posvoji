@@ -264,14 +264,15 @@ export function AnimalFilters({
           padding, so the two columns start their content on one line. The
           number is written once, in globals.css. */}
       <div className={cn(TOOLBAR_BAND, "sticky top-0 z-20 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
-        {/* min-h-8 states the row's height rather than leaving it to whichever
-            control happens to be tallest. It was the sort trigger's 32px
-            (size="sm"), and that control stands down at zero results, so the
-            row fell to the tabs' own 28px in the one state where nothing else
-            filled it and the panel head across the gutter drifted 4px off. */}
+        {/* min-h-9 states the row's height rather than leaving it to whichever
+            control happens to be tallest. It is the sort trigger's 36px
+            (size="default"), and that control stands down at zero results, so
+            the row would otherwise fall to the tabs' own 28px in the one state
+            where nothing else filled it and the panel head across the gutter
+            would drift 8px off. */}
         <div
           data-slot="desktop-toolbar"
-          className="hidden min-h-8 items-center justify-between gap-4 lg:flex"
+          className="hidden min-h-9 items-center justify-between gap-4 lg:flex"
         >
           {speciesStrip}
 

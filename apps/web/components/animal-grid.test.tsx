@@ -214,20 +214,18 @@ describe("animal grid empty state", () => {
   it("leaves one clear control per surface once chips can carry it", () => {
     // A shelter is picked, so there is a chip, so both chip rows render: the
     // toolbar's at lg and the empty state's own below it. Each already ends in
-    // "Počisti vse", and the state used to put a "Počisti filtre" button under
-    // them anyway -- two clear-alls stacked on a phone, and a third at lg back
-    // when the sidebar head carried its own copy too, all of them the same
-    // press.
+    // a clear, and the state used to put a second clear button under them
+    // anyway -- two stacked on a phone, and a third at lg back when the
+    // sidebar head carried its own copy too, all of them the same press.
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 
-    expect(screen.queryByRole("button", { name: "Počisti filtre" })).toBeNull();
-
-    // One per surface, and no surface twice. The class tokens are how the two
+    // One per surface, and no surface twice, which is also what says no third
+    // button stands under the pills. The class tokens are how the two
     // rows are told apart, because only one of them is painted at a time and
     // jsdom paints neither.
     const clears = screen.getAllByRole("button", {
-      name: "Počisti vse filtre",
+      name: "Počisti filtre",
     });
     expect(clears).toHaveLength(2);
     expect(
@@ -258,7 +256,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     const belowLg = screen
-      .getAllByRole("button", { name: "Počisti vse filtre" })
+      .getAllByRole("button", { name: "Počisti filtre" })
       .filter((clear) => clear.closest('[class~="lg:hidden"]'));
     expect(belowLg).toHaveLength(1);
 
@@ -286,9 +284,8 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS.filter((a) => a.species !== "rabbit"));
 
     expect(
-      screen.queryAllByRole("button", { name: "Počisti vse filtre" }),
+      screen.queryAllByRole("button", { name: "Počisti filtre" }),
     ).toHaveLength(0);
-    expect(screen.queryByRole("button", { name: "Počisti filtre" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Pokaži vse živali" }));
 
@@ -805,7 +802,7 @@ describe("the chips row inside the grid", () => {
       renderGrid(ANIMALS);
 
       fireEvent.click(
-        screen.getByRole("button", { name: "Počisti vse filtre" }),
+        screen.getByRole("button", { name: "Počisti filtre" }),
       );
       expect(query()).toBe("");
 
@@ -839,7 +836,7 @@ describe("the chips row inside the grid", () => {
     vi.useFakeTimers();
     try {
       fireEvent.click(
-        screen.getByRole("button", { name: "Počisti vse filtre" }),
+        screen.getByRole("button", { name: "Počisti filtre" }),
       );
       expect(
         screen.getAllByRole("button", {

@@ -509,6 +509,8 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
 
     const dialog = await screen.findByRole("dialog");
+    // The premise: the pill is on screen beside the footer being argued about.
+    expect(dialog.querySelector('[data-slot="species-scope"]')).not.toBeNull();
     expect(
       within(dialog).getByRole("button", { name: "Clear filters" }),
     ).toBeTruthy();

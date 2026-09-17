@@ -15,7 +15,7 @@ export function PickerFooter({ controller, hug = false }: {
    *  longer fills, it would sit under a band of nothing. */
   hug?: boolean;
 }) {
-  const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, resultCount, counts, doneLabel, locale } = controller;
+  const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, onShowAllSpecies, resultCount, counts, doneLabel, locale } = controller;
   const copy = pickerText[locale];
   const [summaryOpen, setSummaryOpen] = useState(false);
   const firstSelectionRef = useRef<HTMLButtonElement>(null);
@@ -138,13 +138,26 @@ export function PickerFooter({ controller, hug = false }: {
         </div>
       )}
       <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
-        {resultCount === 0 && (canWidenShelters || onClearFilters) && (
+        {/* One way out of a zero, the nearest first: the shelters where
+            something is, then the filters, then the species, which no clear
+            touches (pickerRecoveryActions). */}
+        {resultCount === 0 && (canWidenShelters || onClearFilters || onShowAllSpecies) && (
           <Button
             variant="outline"
             className="min-h-11 flex-1 shadow-none sm:flex-none"
-            onClick={() => canWidenShelters ? onToggleMany(selected) : onClearFilters?.()}
+            onClick={() =>
+              canWidenShelters
+                ? onToggleMany(selected)
+                : onClearFilters
+                  ? onClearFilters()
+                  : onShowAllSpecies?.()
+            }
           >
-            {canWidenShelters ? copy.allShelters : copy.clearFilters}
+            {canWidenShelters
+              ? copy.allShelters
+              : onClearFilters
+                ? copy.clearFilters
+                : copy.allSpecies}
           </Button>
         )}
         <DialogClose asChild>

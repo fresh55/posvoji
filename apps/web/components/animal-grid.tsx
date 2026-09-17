@@ -430,11 +430,14 @@ export function AnimalGrid({
     return () => window.clearTimeout(timer);
   }, [cleared]);
 
+  // The species is put back as it is now, not as it was: the clear never
+  // took it (use-animal-filters.ts), so a species pressed on the strip during
+  // the window is a choice this undo has no business reverting.
   const handleUndo = useCallback(() => {
     if (!cleared) return;
-    restore(cleared);
+    restore({ ...cleared, species: filters.species });
     setCleared(null);
-  }, [cleared, restore]);
+  }, [cleared, filters.species, restore]);
 
   const {
     speciesRoster,
@@ -514,6 +517,7 @@ export function AnimalGrid({
         {hasSidebar && (
           <FilterSidebar
             onClearAll={handleClearAll}
+            onSpeciesChange={setSpecies}
             // lg:bg-background is load-bearing, not decoration. lg:sticky
             // puts the sidebar on its own compositing layer, and Chrome
             // keeps subpixel text antialiasing on such a layer only while
@@ -667,9 +671,8 @@ export function AnimalGrid({
                   size="sm"
                   className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
                   onClick={handleClearAll}
-                  aria-label={messages.clearAllFilters}
                 >
-                  {messages.clearAll}
+                  {messages.clearFilters}
                 </Button>
               ) : (
                 filters.species !== "all" && (

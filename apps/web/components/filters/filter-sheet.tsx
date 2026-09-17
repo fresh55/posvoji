@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontal, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
@@ -213,6 +213,12 @@ export function FilterSheet({
   // mounting two of these, and a duplicate id points aria-labelledby at
   // whichever one the document happens to hold first.
   const sortCaptionId = useId();
+  // Where focus goes when the species pill takes itself off the screen: the
+  // dialog itself, which Radix already gives tabIndex -1, so a keyboard user
+  // stays inside the sheet at its top rather than being dropped on the body
+  // or wherever the focus trap's own fallback lands. The chips row and the
+  // picker's footer hand focus on the same way when a control removes itself.
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // FilterSheet never unmounts, so a divider left "scrolled" from a previous
   // visit would otherwise still be there the next time the sheet opens at
@@ -288,6 +294,7 @@ export function FilterSheet({
         </Button>
       </DrawerTrigger>
       <DrawerContent
+        ref={contentRef}
         closeLabel={messages.close}
         // 72dvh, down from a full 85dvh takeover: the sheet used to open the
         // visitor onto a blind list with the count in the footer as the only
@@ -389,7 +396,10 @@ export function FilterSheet({
               <button
                 type="button"
                 data-slot="species-scope"
-                onClick={() => onSpeciesChange("all")}
+                onClick={() => {
+                  contentRef.current?.focus();
+                  onSpeciesChange("all");
+                }}
                 aria-label={t("speciesScope", {
                   label: speciesScopeLabel(filters.species, locale),
                 })}

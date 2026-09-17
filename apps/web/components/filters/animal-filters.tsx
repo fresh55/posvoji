@@ -29,7 +29,10 @@ import {
 } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
-import { pickerFilterSummary } from "@/components/filters/location-picker/model";
+import {
+  pickerFilterSummary,
+  pickerRecoveryActions,
+} from "@/components/filters/location-picker/model";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { activeFilterCount } from "@/lib/filters";
@@ -299,7 +302,7 @@ export function AnimalFilters({
                   onToggleMany={(values) => onToggleMany("shelter", values)}
                   resultCount={resultCount}
                   filterSummary={pickerFilterSummary(filters, locale)}
-                  onClearFilters={onClearAll}
+                  {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
                   municipalities={municipalities}
                   offSite={offSiteShelters}
                   summaries={shelterSummaries}
@@ -520,7 +523,7 @@ export function AnimalFilters({
                 onToggleMany={(values) => onToggleMany("shelter", values)}
                 resultCount={resultCount}
                 filterSummary={pickerFilterSummary(filters, locale)}
-                onClearFilters={onClearAll}
+                {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
                 municipalities={municipalities}
                 offSite={offSiteShelters}
                 summaries={shelterSummaries}

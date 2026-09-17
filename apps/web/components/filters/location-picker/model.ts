@@ -1,5 +1,10 @@
 import type { ShelterRow } from "@/components/filters/shelter-rows";
-import { activeFilterCount, type FilterOption, type Filters } from "@/lib/filters";
+import {
+  activeFilterCount,
+  type FilterOption,
+  type Filters,
+  type SpeciesFilter,
+} from "@/lib/filters";
 import { cityAt, distanceKm, type LatLon } from "@/lib/geo";
 import type { Locale } from "@/lib/i18n";
 import { speciesScopeLabel } from "@/lib/labels";
@@ -14,6 +19,28 @@ export function pickerFilterSummary(filters: Filters, locale: Locale): string {
   return [speciesScopeLabel(filters.species, locale), extra > 0
     ? locale === "sl" ? `Dodatni filtri: ${extra}` : `Additional filters: ${extra}`
     : null].filter(Boolean).join(" · ");
+}
+
+/** What the picker's footer may offer at zero results, beside widening the
+ *  shelters. A clear never touches the species (use-animal-filters.ts), so
+ *  it is offered only while there is a filter for it to clear; once the
+ *  species is the only thing left narrowing the list, the offer is the
+ *  species' own way back, or the button would press and nothing would move.
+ *  Written here because three surfaces mount the picker and each of them
+ *  was about to decide this for itself. */
+export function pickerRecoveryActions(
+  filters: Filters,
+  onClearAll: (() => void) | undefined,
+  onSpeciesChange: ((species: SpeciesFilter) => void) | undefined,
+): { onClearFilters?: () => void; onShowAllSpecies?: () => void } {
+  const extra = activeFilterCount({ ...filters, shelter: [] });
+  return {
+    onClearFilters: extra > 0 ? onClearAll : undefined,
+    onShowAllSpecies:
+      filters.species !== "all" && onSpeciesChange
+        ? () => onSpeciesChange("all")
+        : undefined,
+  };
 }
 
 export function fold(text: string): string {
@@ -81,7 +108,8 @@ export const pickerText = {
     countsMatch: "Število živali upošteva izbrane filtre.",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
     allShelters: "Vsa zavetišča",
-    clearFilters: "Počisti vse filtre",
+    clearFilters: "Počisti filtre",
+    allSpecies: "Pokaži vse živali",
     backToResults: "Nazaj k rezultatom",
     chooseShelters: "Izberi zavetišča",
     chooseSheltersHint: "Izberi eno ali več zavetišč.",
@@ -103,7 +131,8 @@ export const pickerText = {
     countsMatch: "Animal counts reflect your current filters.",
     zeroMatches: "No published animals match your selection.",
     allShelters: "All shelters",
-    clearFilters: "Clear all filters",
+    clearFilters: "Clear filters",
+    allSpecies: "Show all animals",
     backToResults: "Back to results",
     chooseShelters: "Choose shelters",
     chooseSheltersHint: "Select one or more shelters.",

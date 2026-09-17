@@ -337,7 +337,7 @@ describe("filter flow interactions", () => {
     renderFilters();
     fireEvent.click(screen.getByRole("button", { name: /^Samec/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
 
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
@@ -459,7 +459,7 @@ describe("filter flow interactions", () => {
     fireEvent.click(
       screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
     expect(query()).toBe("");
   });
@@ -627,7 +627,7 @@ describe("filter flow interactions", () => {
     window.history.replaceState(null, "", "/?vrsta=macka&spol=samica");
     renderFilters();
 
-    fireEvent.click(screen.getByRole("button", { name: "Počisti vse filtre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
 
     expect(query()).toBe("?vrsta=macka");
   });

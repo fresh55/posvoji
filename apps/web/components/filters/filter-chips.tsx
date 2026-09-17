@@ -504,18 +504,19 @@ export function FilterChips({
             <>
               <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
 
-              {/* "Vse" is what separates this from the removes it sits among,
-                  which take one thing off each. */}
+              {/* "Filtre" names what this takes off, which is every pill it
+                  sits among, against the removes that take one each. Not
+                  "vse": the species is not a pill and a clear leaves it
+                  standing (use-animal-filters.ts). */}
               <button
                 {...{ [STOP]: "clear" }}
                 type="button"
                 tabIndex={activeId === "clear" ? 0 : -1}
                 onFocus={() => setFocusId("clear")}
                 onClick={clearAll}
-                aria-label={messages.clearAllFilters}
                 className="h-7 shrink-0 rounded-ui px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground active:bg-muted focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
               >
-                {messages.clearAll}
+                {messages.clearFilters}
               </button>
             </>
           )}

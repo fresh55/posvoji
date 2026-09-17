@@ -44,6 +44,15 @@ export function BoundariesCredit() {
  * on the paper; over a hillshade that varies underneath it the ratio would
  * vary with it, so the paper travels with the text.
  *
+ * bg-card and not bg-background, because the paper has to be the paper of the
+ * surface this box stands on rather than the page's. Inside the picker that
+ * surface is the dialog, which is --popover, and --card resolves to the same
+ * value in both themes; on the found-animal page the plate is a card too. With
+ * --background the box painted a black pill across the Koper coast in dark
+ * mode, 1.14:1 darker than the map beside it and 1.27:1 against the sea above
+ * it, which is a hole in the plate rather than a credit on it. In light both
+ * tokens are white, so nothing there moves.
+ *
  * pointer-events-none on the paragraph and auto on the links alone: the box
  * sits over a corner of the country that can be picked, and a credit is not
  * allowed to eat a region's taps. Bottom-left because that is the emptiest
@@ -63,7 +72,7 @@ export function MapAttribution({
   return (
     <p
       data-slot="map-attribution"
-      className="pointer-events-none absolute bottom-0 left-0 max-w-[26rem] rounded-ui bg-background px-1.5 py-0.5 text-3xs leading-tight text-muted-foreground"
+      className="pointer-events-none absolute bottom-0 left-0 max-w-[26rem] rounded-ui bg-card px-1.5 py-0.5 text-3xs leading-tight text-muted-foreground"
     >
       <span className="max-lg:hidden">{messages.regionBoundaries}: </span>
       <BoundariesCredit />{" "}

@@ -255,6 +255,24 @@ export function ShelterMap({
   const contextFadeId = `map-context-fade-${uid}`;
   const hillshadeClipId = `map-hillshade-clip-${uid}`;
   const towns = useMemo(() => layoutTowns(pins), [pins]);
+  /** What every town paints, as a box each, keyed by the town so an annotation
+   *  can leave its own mark out.
+   *
+   *  reach and not r: a dominated town hangs satellite discs outside its coin,
+   *  and those are as much of the mark as the coin is. The annotations take
+   *  this as the list of things they should not be laid over when they have a
+   *  choice of side; see `avoid` in map-callout.tsx. */
+  const markerBoxes = useMemo(
+    () =>
+      towns.map((town) => ({
+        key: town.key,
+        x: town.x - town.reach,
+        y: town.y - town.reach,
+        width: town.reach * 2,
+        height: town.reach * 2,
+      })),
+    [towns],
+  );
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
   /** The single shelter under the pointer inside a cluster marker. A cluster
    *  answers per disc, so the callout and the list row follow the wedge rather
@@ -294,6 +312,12 @@ export function ShelterMap({
    *  did not perform names a region they never pointed at. See
    *  handleRegionPointerEnter. */
   const pointerAsked = useRef(false);
+  /** The same answer again, as state, because the plate has to say it in the
+   *  markup: the CSS hover rules on the regions are gated on it (see
+   *  data-pointer-asked on the svg below). The ref stays for the handlers,
+   *  which read it synchronously inside a pointerenter that has to decide
+   *  before the next render. */
+  const [pointerHasAsked, setPointerHasAsked] = useState(false);
   useEffect(
     () => () => {
       if (regionDwellRef.current !== null) clearTimeout(regionDwellRef.current);
@@ -320,6 +344,51 @@ export function ShelterMap({
   const [focusedTownKey, setFocusedTownKey] = useState<string | null>(null);
   const [calloutTownKey, setCalloutTownKey] = useState<string | null>(null);
   const townRefs = useRef(new Map<string, SVGGElement>());
+
+  /** The frames the blur teardowns below are waiting on, so an unmount can
+   *  cancel whatever has not run yet. */
+  const blurFramesRef = useRef(new Set<number>());
+  useEffect(
+    () => () => {
+      for (const frame of blurFramesRef.current) cancelAnimationFrame(frame);
+      blurFramesRef.current.clear();
+    },
+    [],
+  );
+
+  /** Runs a blur's teardown after the focusout that asked for it has finished
+   *  dispatching, rather than inside it.
+   *
+   *  Every blur on this plate takes something off it: the region's annotation,
+   *  the coin's, the wedge ring inside a drilled coin. Done synchronously,
+   *  React flushes that removal while the browser is still moving focus, so
+   *  document.activeElement is the body for that moment. The picker draws this
+   *  map inside a Radix dialog, whose FocusScope watches for removed nodes and
+   *  pulls focus back to the dialog whenever it finds it on the body. Forward
+   *  Tab out of a region or a coin therefore landed on the dialog element
+   *  instead of the next control, and the search box, the list and the confirm
+   *  button were unreachable from the map: a keyboard trap around the whole
+   *  plate.
+   *
+   *  A frame and not a microtask. A microtask still runs before focus has
+   *  settled, and the rescue fires anyway; the next frame is the first point at
+   *  which the new activeElement is the one the Tab chose.
+   *
+   *  Deferring is safe because each teardown below only clears its own id (the
+   *  "current === id ? null : current" guards). Whatever the new focus names
+   *  is written first, and the late blur then finds a different id and does
+   *  nothing, which is the same order the pointer's own leave already keeps. */
+  const deferAfterBlur = useCallback((teardown: () => void) => {
+    // Declared and initialised before the request, so the callback has a
+    // binding to read whenever it runs. A test that runs frames synchronously
+    // does run it during the request itself.
+    let frame = 0;
+    frame = requestAnimationFrame(() => {
+      blurFramesRef.current.delete(frame);
+      teardown();
+    });
+    blurFramesRef.current.add(frame);
+  }, []);
 
   const plateRef = useRef<SVGSVGElement>(null);
   /** How many pixels the plate draws one user unit at. The annotations set
@@ -639,13 +708,20 @@ export function ShelterMap({
     setNamedRegionId(regionId);
   }, []);
 
-  const handleRegionBlur = useCallback((regionId: number) => {
-    // Only if this region is still the one being named. A pointer that has
-    // since named another one is the more recent act, and a blur arriving
-    // after it must not take that answer down. Same shape as the pointer's own
-    // leave below, for the same reason.
-    setNamedRegionId((current) => (current === regionId ? null : current));
-  }, []);
+  const handleRegionBlur = useCallback(
+    (regionId: number) => {
+      // Only if this region is still the one being named. A pointer that has
+      // since named another one is the more recent act, and a blur arriving
+      // after it must not take that answer down. Same shape as the pointer's
+      // own leave below, for the same reason.
+      //
+      // Out of the focusout's own dispatch: see deferAfterBlur.
+      deferAfterBlur(() =>
+        setNamedRegionId((current) => (current === regionId ? null : current)),
+      );
+    },
+    [deferAfterBlur],
+  );
 
   const handleRegionPointerEnter = useCallback(
     (regionId: number, stats: RegionStats) => {
@@ -692,10 +768,14 @@ export function ShelterMap({
   // the pointer is already inside the region it just moved in, so there is no
   // second pointerenter coming to raise the name. Costs a ref read per move
   // once the pointer has spoken.
+  //
+  // It also lets the plate say so in its markup, once, which is what unlocks
+  // the regions' own hover rules; see data-pointer-asked below.
   const handleRegionPointerMove = useCallback(
     (regionId: number, stats: RegionStats) => {
       if (pointerAsked.current) return;
       pointerAsked.current = true;
+      setPointerHasAsked(true);
       handleRegionPointerEnter(regionId, stats);
     },
     [handleRegionPointerEnter],
@@ -780,9 +860,16 @@ export function ShelterMap({
     setCalloutTownKey(town.key);
   }, []);
 
-  const handleTownBlur = useCallback((town: Town) => {
-    setCalloutTownKey((current) => (current === town.key ? null : current));
-  }, []);
+  // Deferred for the reason the region's blur is, and guarded the same way:
+  // see deferAfterBlur.
+  const handleTownBlur = useCallback(
+    (town: Town) => {
+      deferAfterBlur(() =>
+        setCalloutTownKey((current) => (current === town.key ? null : current)),
+      );
+    },
+    [deferAfterBlur],
+  );
 
   const handleTownMoveFocus = useCallback(
     (town: Town, key: RegionMoveKey) => {
@@ -970,6 +1057,16 @@ export function ShelterMap({
       // One listener for the whole plate, above every mark on it, so a tap is
       // read before the mark it landed on can act on it. See the handler.
       onClickCapture={interactive ? handlePlateClickCapture : undefined}
+      // The JS half of this answer is pointerAsked above, and this is the
+      // other half. A region's hover look is written in CSS, and CSS has no
+      // way to tell a cursor that came to the plate from a plate that opened
+      // under a cursor: the picker's dialog arrives where the pointer already
+      // is, so whatever region lands under it paints its hover tint for a
+      // hover nobody performed (Goriška, at every desktop width). The gate
+      // travels with the plate rather than with each region, so it is one
+      // attribute on one element and the eleven memoized regions do not
+      // redraw to learn it.
+      data-pointer-asked={interactive && pointerHasAsked ? "" : undefined}
       // A finger that moved is not a tap. The plate does not pan, so a drag
       // across it is the page or the sheet under it moving, and the mark the
       // finger started on is no longer the mark it is over.
@@ -987,7 +1084,10 @@ export function ShelterMap({
       // this dense zooms in on whatever was under the second tap rather than
       // picking it.
       className={cn(
-        "h-auto w-full shrink-0",
+        // group/plate: the regions' hover rules are written against the
+        // plate's own data-pointer-asked, which is what keeps a hover the
+        // visitor never performed off the map. See the attribute above.
+        "group/plate h-auto w-full shrink-0",
         interactive && "touch-manipulation",
         className,
       )}
@@ -1156,6 +1256,13 @@ export function ShelterMap({
                 // one name covers the site rather than one per town.
                 rectKey="town"
                 onRect={handleCalloutRect}
+                // Every coin but the one being named. The chip is opaque, so
+                // the side it takes is the side of the plate it deletes, and
+                // frame fit alone had it deleting the largest mark on the map
+                // (hovering Zavod Muri covered the Celje coin whole).
+                avoid={markerBoxes.filter(
+                  (box) => box.key !== activeTown.key,
+                )}
                 // A wedge under the pointer names its own shelter. Without that a
                 // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
                 // at, which is the one question the cluster cannot answer.
@@ -1184,6 +1291,10 @@ export function ShelterMap({
           // needs no region id in its name.
           rectKey="region"
           onRect={handleCalloutRect}
+          // A region's chip stands at the region's label point, which is
+          // routinely inside a cluster of coins, and it owns none of them: the
+          // same courtesy as the town chip above, with nothing to leave out.
+          avoid={markersVisible ? markerBoxes : undefined}
           title={hoveredRegion.region.name}
           action={armedRegion?.region.id === hoveredRegion.region.id ? armedAction : undefined}
           metadata={

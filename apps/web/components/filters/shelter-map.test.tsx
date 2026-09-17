@@ -22,8 +22,10 @@ import {
   regionStatsByRegion,
   type ShelterPin,
 } from "@/lib/map-layout";
+import { getMessages } from "@/lib/i18n";
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { ShelterSummary } from "@/lib/shelter-summary";
+import { MapLegend } from "./map-legend";
 import { Marker } from "./map-marker";
 import {
   ARMED_TTL_MS,
@@ -71,6 +73,19 @@ function hoverRegion(node: Element) {
     vi.advanceTimersByTime(REGION_DWELL_MS);
   });
   vi.useRealTimers();
+}
+
+// A blur on this plate hands its teardown to the next frame rather than doing
+// it inside the focusout, so a node is never removed while the browser is
+// between two elements; see deferAfterBlur in shelter-map.tsx. Anything
+// asserting that a blur took something away has to let that frame run.
+// Real timers only: with a frozen clock the frame never arrives.
+async function nextFrame() {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
 }
 
 // The one path a region draws, found by the accessible name it keeps.
@@ -1323,14 +1338,42 @@ describe("ShelterMap region dwell", () => {
     expect(screen.getByText("1 zavetišče · 5 živali")).toBeTruthy();
   });
 
-  it("takes the name back when focus leaves", () => {
+  it("takes the name back when focus leaves, on the frame after it", async () => {
     const map = renderRegions();
 
     fireEvent.focus(map.live);
     expect(map.callout()).not.toBeNull();
 
     fireEvent.blur(map.live);
+    // Still up inside the focusout, which is the whole point: unmounting the
+    // annotation there is what made the dialog's focus scope haul focus back
+    // to itself and trap the keyboard inside the map. See deferAfterBlur.
+    expect(map.callout()).not.toBeNull();
+
+    await nextFrame();
     expect(map.callout()).toBeNull();
+  });
+
+  it("leaves focus free to walk out of the map, rather than rescuing it", async () => {
+    const map = renderRegions();
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    try {
+      act(() => (map.live as SVGElement & { focus: () => void }).focus());
+      expect(map.callout()).not.toBeNull();
+
+      // What a forward Tab does, in the order a browser does it: the blur
+      // arrives while the next element is taking focus. The teardown the plate
+      // owes that blur must not land in the middle of it.
+      fireEvent.blur(map.live);
+      act(() => outside.focus());
+      await nextFrame();
+
+      expect(document.activeElement).toBe(outside);
+      expect(map.callout()).toBeNull();
+    } finally {
+      outside.remove();
+    }
   });
 
   // Hover and focus can now both name a region, which they never could while
@@ -1355,7 +1398,7 @@ describe("ShelterMap region dwell", () => {
     expect(screen.queryByText("Goriška")).toBeNull();
   });
 
-  it("lets the pointer outrank a region that still holds focus", () => {
+  it("lets the pointer outrank a region that still holds focus", async () => {
     const map = renderRegions();
     vi.useFakeTimers();
 
@@ -1372,8 +1415,12 @@ describe("ShelterMap region dwell", () => {
     expect(screen.queryByText("Osrednjeslovenska")).toBeNull();
 
     // And the blur that eventually arrives for the region focus left behind
-    // must not take down the answer the pointer has since given.
+    // must not take down the answer the pointer has since given. The clock
+    // goes back to real here because the teardown waits for a frame, and a
+    // deferred clear that never runs would prove nothing.
+    vi.useRealTimers();
     fireEvent.blur(map.live);
+    await nextFrame();
     expect(screen.getByText("Goriška")).toBeTruthy();
   });
 
@@ -1445,6 +1492,195 @@ describe("ShelterMap density colour", () => {
     // Focus-visible has to outrank that 1.8 hover/highlighted step, or
     // tabbing to a selected region would not visibly change anything.
     expect(region).toContain("focus-visible:[stroke-width:2.1]");
+  });
+});
+
+describe("ShelterMap hover, asked and unasked", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+  ];
+
+  // The plate answers a hover in CSS, and CSS cannot tell a cursor that came
+  // to the map from a map that opened under a cursor. The picker's dialog does
+  // exactly the second, so every hover rule on a region is gated on the plate
+  // having been pointed at once. The JS half of the same guard is pointerAsked
+  // in shelter-map.tsx; this is the half a stylesheet can read.
+  function renderPlate() {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={[]} onPick={() => undefined} />
+      </I18nProvider>,
+    );
+    return {
+      plate: container.querySelector("svg")!,
+      live: container.querySelector('[aria-label^="Osrednjeslovenska"]')!,
+    };
+  }
+
+  it("says nothing about a pointer until one has moved over the plate", () => {
+    const map = renderPlate();
+
+    expect(map.plate.getAttribute("data-pointer-asked")).toBeNull();
+    // An enter is not an answer: that is the plate arriving, not the pointer.
+    fireEvent.pointerOver(map.live);
+    expect(map.plate.getAttribute("data-pointer-asked")).toBeNull();
+
+    fireEvent.pointerMove(map.live);
+    expect(map.plate.getAttribute("data-pointer-asked")).toBe("");
+  });
+
+  it("hangs every region hover rule off that answer", () => {
+    const html = renderMap(pins);
+
+    for (const name of ["Osrednjeslovenska", "Goriška"]) {
+      const region = regionTag(html, name);
+      expect(region).not.toBe("");
+      // The class attribute alone: the --map-density-hover custom property in
+      // the style attribute beside it is a value, not a variant.
+      const classes = region.match(/class="([^"]*)"/)?.[1] ?? "";
+      expect(classes).toContain("hover:");
+      // And not one bare hover: utility among them. Strip the gate and nothing
+      // that answers a pointer survives.
+      expect(
+        classes.replace(/group-data-\[pointer-asked\]\/plate:hover:/g, ""),
+      ).not.toContain("hover:");
+    }
+    // And the plate carries the group the gate is written against.
+    expect(html).toContain("group/plate");
+  });
+});
+
+describe("ShelterMap mixed region fill", () => {
+  const celje = [
+    pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+    pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+  ];
+
+  it("keeps the density ramp under a partly picked region", () => {
+    const region = regionTag(renderMap(celje, ["macja-hisa"]), "Savinjska");
+
+    expect(region).toContain('data-region-state="mixed"');
+    // The rank is still a fact about this region: there is something left in
+    // it to pick. The flat selection tint this replaces threw the rank away,
+    // and drew the busiest region in the country as one of the emptiest.
+    expect(region).toContain("fill-[var(--map-density-fill)]");
+    expect(region).toContain("--map-density:");
+    expect(region).not.toContain("fill-[var(--map-selected-fill)]");
+    // The dashed brand boundary is what says "partly", and it is untouched.
+    expect(region).toContain("[stroke-dasharray:3_2]");
+    expect(region).toContain("stroke-brand-strong");
+  });
+
+  it("still drops the ramp for a region picked whole", () => {
+    const region = regionTag(
+      renderMap(celje, ["macja-hisa", "sia-in-lu"]),
+      "Savinjska",
+    );
+
+    expect(region).toContain('data-region-state="selected"');
+    expect(region).toContain("fill-[var(--map-selected-fill)]");
+    expect(region).not.toContain("--map-density-fill");
+  });
+});
+
+describe("MapLegend rows", () => {
+  const messages = getMessages("sl");
+
+  function renderLegend(props: Record<string, boolean> = {}) {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <MapLegend
+          highlightedDensity={null}
+          onHoverDensity={() => undefined}
+          onLeaveDensity={() => undefined}
+          hasSelectedRegion={false}
+          hasMixedRegion={false}
+          hasEmptyMarker={false}
+          origin={undefined}
+          messages={messages}
+          {...props}
+        />
+      </I18nProvider>,
+    );
+    return container.querySelector("[data-map-legend]")!;
+  }
+
+  it("draws one hollow-circle row, whichever of the two states is on the plate", () => {
+    expect(renderLegend({ hasEmptyMarker: true }).textContent).toContain(
+      "Brez objavljenih živali",
+    );
+    cleanup();
+    expect(renderLegend({ hasFilteredMarker: true }).textContent).toContain(
+      "Brez zadetkov s temi filtri",
+    );
+  });
+
+  it("draws it once when both states are, because the map draws one mark", () => {
+    const legend = renderLegend({
+      hasEmptyMarker: true,
+      hasFilteredMarker: true,
+    });
+
+    // One glyph and one caption. Two captions beside two identical circles
+    // promised a distinction the marker cannot draw: the hollow disc is the
+    // same disc for a shelter with nothing published and for one the filter
+    // emptied.
+    expect(legend.querySelectorAll("svg").length).toBe(1);
+    expect(legend.textContent).toContain("Brez objavljenih živali");
+    expect(legend.textContent).not.toContain("Brez zadetkov s temi filtri");
+  });
+
+  it("puts the partly picked swatch on the ramp the map now draws there", () => {
+    const legend = renderLegend({ hasMixedRegion: true });
+    const row = Array.from(legend.children).find((child) =>
+      child.textContent?.includes("Delno izbrana regija"),
+    )!;
+    const swatch = row.querySelector("span[aria-hidden]") as HTMLElement;
+
+    expect(swatch.className).toContain("border-dashed");
+    expect(swatch.className).toContain("border-brand-strong");
+    expect(swatch.className).not.toContain("--map-selected-fill");
+    // Built the same two layers the density swatches are, so the legend and
+    // the region it explains are made of the same ink.
+    expect(swatch.querySelector("span")!.className).toContain(
+      "bg-[var(--map-density-fill)]",
+    );
+  });
+});
+
+describe("mapFacts: densitySteps", () => {
+  it("counts the steps the choropleth drew, not the regions", () => {
+    // Two shelters in one region: one live region, one step, nothing to rank.
+    expect(
+      factsFor(
+        [
+          pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+          pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+        ],
+        [],
+      ).densitySteps,
+    ).toBe(1);
+
+    // Two regions with different totals rank against each other, so the ramp
+    // has something to explain.
+    expect(
+      factsFor(
+        [
+          pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+          pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+        ],
+        [],
+      ).densitySteps,
+    ).toBe(2);
+  });
+
+  it("is one while a filter leaves a single region tinted", () => {
+    expect(
+      factsFor([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)], [])
+        .densitySteps,
+    ).toBe(1);
   });
 });
 

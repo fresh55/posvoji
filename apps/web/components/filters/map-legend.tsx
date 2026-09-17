@@ -127,13 +127,25 @@ export function MapLegend({
         </span>
       )}
       {/* The dashed boundary distinguishes a partial choice without painting
-          a strong pattern across the whole region. */}
+          a strong pattern across the whole region. The ground under it is the
+          ramp, because that is what a partly picked region is still drawn on:
+          it keeps its rank until the last shelter in it is chosen. Built the
+          same two-layer way the density swatches above are, for the same
+          reason (see the comment there), at a middle step, since the swatch
+          stands for whichever region happens to be half picked. */}
       {hasMixedRegion && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <span
             aria-hidden
-            className="size-2.5 shrink-0 rounded-[2px] border border-dashed border-brand-strong bg-[var(--map-selected-fill)]/20"
-          />
+            className="relative block size-2.5 shrink-0 overflow-hidden rounded-[2px] border border-dashed border-brand-strong"
+            style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-[var(--map-density-fill)]"
+              style={{ opacity: DENSITY_STEPS[2] }}
+            />
+          </span>
           {messages.mixedRegionLegend}
         </span>
       )}
@@ -149,16 +161,21 @@ export function MapLegend({
           guesses at it. max-md:hidden used to be what kept the row off a
           phone; it also kept it off a tablet that draws markers, and left it
           standing on a landscape phone that does not. */}
-      {hasEmptyMarker && (
+      {(hasEmptyMarker || hasFilteredMarker) && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
-          {mapAvailabilityText[locale].noListingsLegend}
-        </span>
-      )}
-      {hasFilteredMarker && (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <EmptyMarkerGlyph className="size-3.5 shrink-0" />
-          {mapAvailabilityText[locale].noMatchesLegend}
+          {/* One row, because the plate draws one mark. A shelter with nothing
+              published and a shelter whose animals the filter removed are the
+              same hollow circle (MarkerDisc's !selected && !live branch in
+              map-marker.tsx), so two captions beside two identical glyphs
+              promised a distinction the map cannot draw: fifteen hollow discs
+              and a key claiming some of them were one thing and some the
+              other. With both states on the plate the row takes the wider of
+              the two captions, since the narrower one is only true of half the
+              circles it would be explaining. */}
+          {hasEmptyMarker
+            ? mapAvailabilityText[locale].noListingsLegend
+            : mapAvailabilityText[locale].noMatchesLegend}
         </span>
       )}
       {/* Only once there is a point to explain. The ring repeats the dashed

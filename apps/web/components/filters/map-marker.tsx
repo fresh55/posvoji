@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import type { Locale } from "@/lib/i18n";
@@ -436,6 +436,18 @@ export const Marker = memo(function Marker({
     onHoverShelter(town, null);
   };
 
+  /** The frame the blur below hands its teardown to, so an unmount can cancel
+   *  one that has not run yet. See the onBlur for why the teardown waits. */
+  const blurFrameRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (blurFrameRef.current !== null) {
+        cancelAnimationFrame(blurFrameRef.current);
+      }
+    },
+    [],
+  );
+
   // Escape, while a coin is drilled into, belongs to the coin and to nothing
   // else. It cannot be answered in onKeyDown below, and the reason is worth
   // writing down: the picker draws this map inside a Radix dialog, whose
@@ -550,7 +562,20 @@ export const Marker = memo(function Marker({
           ? () => {
               // Focus leaving the coin closes the drill outright, so a coin
               // the visitor comes back to is always found at coin level.
-              if (drilledIndex !== null) leaveWedges();
+              //
+              // On the next frame rather than inside the focusout, because
+              // closing the drill unmounts the wedge and its focus ring, and a
+              // node removed while focus is between two elements makes the
+              // dialog's FocusScope haul focus back to the dialog: forward Tab
+              // off the coin never reached the panel. onBlur is deferred on the
+              // map's side for the same reason; see deferAfterBlur in
+              // shelter-map.tsx.
+              if (drilledIndex !== null) {
+                blurFrameRef.current = requestAnimationFrame(() => {
+                  blurFrameRef.current = null;
+                  leaveWedges();
+                });
+              }
               onBlur(town);
             }
           : undefined

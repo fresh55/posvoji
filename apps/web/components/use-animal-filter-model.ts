@@ -114,7 +114,7 @@ export function useAnimalFilterModel({
   // The panel follows the species tab and keeps every applicable group available
   // so a zero-count option is still there to explain its unknown state, which
   // the sheet's tile does; the sidebar leaves it out (drawnOptions in
-  // filter-card.tsx) unless it is the section's only option. A
+  // filters/filter-groups.tsx) unless it is the section's only option. A
   // section no animal in the pool answers at all is the one exception: it has
   // no unknown to explain, only disabled zeros, so it goes whole until the
   // dataset carries the field.

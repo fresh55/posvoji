@@ -15,7 +15,6 @@ import {
   FilterCardRipple,
   FilterCardSection,
   FilterCardTail,
-  drawnOptions,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -395,6 +394,41 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
         />
       );
   }
+}
+
+/**
+ * The options a layout draws, which is not always every option a section has.
+ *
+ * A dead option explains itself on the sheet, where there is a tile with a 0
+ * in it and a page to scroll. In the sidebar it costs the panel its fold: the
+ * column is 224px of rows in a 720px window with nine sections in it, and a
+ * row that answers nothing pushes a section that does below the fold. So the
+ * sidebar draws the live options only, the same rule PR #231 applied one level
+ * up when it stopped drawing a section the pool answers nothing of.
+ *
+ * One option always stays, because a section must not fold down to a bare
+ * heading. That is reachable: the section survives PR #231's test on the
+ * species pool while the counts are taken against the whole filter state, so
+ * a narrowing in one section can zero every option of another. The one kept
+ * is the first, which is the section's own leading answer and the same row
+ * each time, rather than whichever happens to sit last.
+ *
+ * Age is not filtered. Its three stages are one drawing: the grove above the
+ * rows is a three-column grid whose plants stand over the rows they belong to,
+ * so an age stage is not a row that can be taken out on its own.
+ *
+ * Here and not in filter-card.tsx, which is the surface primitive the portal
+ * shares: which options a list puts on screen is this list's rule, and
+ * FilterGroupList below is its only caller.
+ */
+export function drawnOptions<T>(
+  options: T[],
+  layout: FilterCardLayout,
+  isDead: (option: T) => boolean,
+): T[] {
+  if (layout !== "sidebar") return options;
+  const live = options.filter((option) => !isDead(option));
+  return live.length > 0 ? live : options.slice(0, 1);
 }
 
 // A closed section still says what it holds: the first selected label, and how

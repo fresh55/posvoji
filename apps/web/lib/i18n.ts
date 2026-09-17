@@ -130,6 +130,12 @@ const sl = {
   // something a translator can see and change. A bare "2 leti" beside a box
   // whose first line is a wait was read as the wait.
   factAgeValue: "Starost: {age}",
+  // The same fact as the card prints it: lowercase and without the colon, so
+  // it sits in the middot list beside the species. A bare "5 mesecev" under a
+  // grid whose default order is the longest wait first was read as the wait,
+  // and the wait mark stays off under that very sort, so the word is what
+  // says which of the two numbers this is.
+  cardAge: "starost {age}",
   factStayValue: "V zavetišču: {duration}",
   // The name in front turns a statistic into one animal's wait. "Čaka" is
   // third person singular and carries no gender, so it fits any name without
@@ -674,6 +680,7 @@ const en: Messages = {
   factSize: "Size",
   factTimeInShelter: "In the shelter",
   factAgeValue: "Age: {age}",
+  cardAge: "{age} old",
   factStayValue: "In the shelter: {duration}",
   longStay: "{name} has been waiting in the shelter for {duration}.",
   longStayUnnamed: "At the shelter for {duration} now.",

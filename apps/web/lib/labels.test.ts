@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
+  ageLabel,
   animalMetaParts,
   LONG_STAY_MONTHS,
   META_SEPARATOR,
@@ -11,6 +12,29 @@ import {
 } from "./labels";
 
 const NOW = new Date("2026-08-15T00:00:00Z");
+
+describe("ageLabel's separator", () => {
+  // The card welds the number to its unit because its column is 164px wide on
+  // a phone. The rule belongs to whoever writes the join, so the number and
+  // the unit are never taken apart again to change the character between them.
+  it("puts the caller's separator between the number and the unit", () => {
+    expect(ageLabel(24, "sl", "\u00a0")).toBe("2\u00a0leti");
+    expect(ageLabel(10, "sl", "\u00a0")).toBe("10\u00a0mesecev");
+    expect(ageLabel(24, "en", "\u00a0")).toBe("2\u00a0years");
+  });
+
+  it("leaves every other caller the plain space", () => {
+    expect(ageLabel(24, "sl")).toBe("2 leti");
+    expect(ageLabel(10, "en")).toBe("10 months");
+  });
+
+  // "manj kot mesec" carries no numeral, so there is nothing to weld and the
+  // phrase stays free to wrap.
+  it("ignores the separator where the label has no number", () => {
+    expect(ageLabel(0, "sl", "\u00a0")).toBe("manj kot mesec");
+    expect(ageLabel(0, "en", "\u00a0")).toBe("less than a month");
+  });
+});
 
 describe("shelterSelectionLabel", () => {
   it("names the unrestricted selection in either language", () => {
@@ -61,20 +85,23 @@ describe("the card's meta line on the species tabs", () => {
 
   // Every fixture here carries a sex, which is what makes these exact strings
   // prove the line leaves it out: two facts is all the card's width buys.
+  //
+  // The \u00a0 is the card's own: it ties the age's number to its unit so the
+  // line never breaks between them.
   const rabbit = animal({ sex: "female", approximateAgeMonths: 24 });
 
   it("drops the species word only on a tab that names one species", () => {
-    expect(meta(rabbit, "sl", "all")).toBe("Zajček · 2 leti");
+    expect(meta(rabbit, "sl", "all")).toBe("Zajček · starost 2\u00a0leti");
     // The merged Ostale tab holds rabbits and whatever else, so the line
     // still has to say which animal this is.
-    expect(meta(rabbit, "sl", "other")).toBe("Zajček · 2 leti");
+    expect(meta(rabbit, "sl", "other")).toBe("Zajček · starost 2\u00a0leti");
     const cat = animal({
       species: "cat",
       sex: "female",
       approximateAgeMonths: 24,
       size: "medium",
     });
-    expect(meta(cat, "sl", "cat")).toBe("2 leti · srednja");
+    expect(meta(cat, "sl", "cat")).toBe("starost 2\u00a0leti · srednja");
   });
 
   it("names the species and the age in English too", () => {
@@ -83,7 +110,7 @@ describe("the card's meta line on the species tabs", () => {
       sex: "male",
       approximateAgeMonths: 36,
     });
-    expect(meta(dog, "en", "all")).toBe("Dog · 3 years");
+    expect(meta(dog, "en", "all")).toBe("Dog · 3\u00a0years old");
   });
 
   // A missing age used to leave the card reading "Mačka" on its own, which
@@ -128,7 +155,7 @@ describe("the card's meta line on the species tabs", () => {
     });
     expect(animalMetaParts(dog, "sl", NOW, "all")).toHaveLength(2);
     expect(animalMetaParts(dog, "sl", NOW, "dog")).toHaveLength(2);
-    expect(meta(dog, "sl", "dog")).toBe("3 leta · velika");
+    expect(meta(dog, "sl", "dog")).toBe("starost 3\u00a0leta · velika");
   });
 });
 

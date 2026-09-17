@@ -48,8 +48,10 @@ export type Chip = {
 const COLLAPSE_AT = 3;
 
 /** Chips past which the rest go behind a "+N". A bound on how tall the row
- *  can get, which matters because it sits inside a sticky header on a phone.
- *  Nine facets at two values each would otherwise be eighteen pills. */
+ *  can get, which is what the sticky header at lg is paying for: nine facets
+ *  at two values each would otherwise be eighteen pills, wrapping to four
+ *  lines of pinned chrome. The phone's in-flow row is not sticky and wraps
+ *  narrower, so it passes a cap of its own (animal-filters.tsx). */
 const MAX_VISIBLE = 8;
 
 /** Chips past which the sheet's Kje section shows a "+N" instead of the rest.
@@ -160,10 +162,11 @@ export function FilterChips({
    *  means of telling which of five pills is the one to drop. */
   stuck?: boolean;
   /** Whether the row ends in its own clear-everything. On by default, which
-   *  is the toolbar's case: the last thing in the scroll strip, after the
-   *  pills it clears. The empty state turns it off and draws its own way out
-   *  under the row instead, because there the pills can be scrolled past and
-   *  clearing is the point of the screen (animal-grid.tsx). */
+   *  is the sticky toolbar's case at lg: the last thing in the strip, after
+   *  the pills it clears. The phone's in-flow row turns it off, because there
+   *  the sheet's footer holds a clear that is one tap away the whole time, and
+   *  turns it back on when nothing matches, where clearing is the point of the
+   *  screen (animal-filters.tsx). */
   clear?: boolean;
   className?: string;
 }) {
@@ -249,18 +252,23 @@ export function FilterChips({
     // A mark nobody can see is not a way out. With nothing matching, the row
     // uncaps itself and can run well past a phone's width, and the pill worth
     // pressing is as likely to be at the end of that as at the start.
-    if (!blockerKey) return;
+    //
+    // Nothing to bring into view when the row wraps: every pill it holds is
+    // already on screen, and the box has no scrollLeft to write.
+    if (wrap || !blockerKey) return;
     scrollChildIntoViewX(stopNode(toolbarRef.current, blockerKey), {
       smooth: !reduceMotion,
     });
-  }, [blockerKey, reduceMotion]);
+  }, [blockerKey, reduceMotion, wrap]);
   const chipsKey = chips.map((chip) => chip.key).join("|");
   const seenChips = useRef<string[]>([]);
 
   useEffect(() => {
     // A filter picked in the sheet lands in a row the sheet was covering. If
     // it landed past the right edge of a phone, the visitor closes the sheet
-    // onto no visible evidence that anything happened.
+    // onto no visible evidence that anything happened. A wrapping row has no
+    // right edge to land past, which is the whole of why the phone's row
+    // wraps, so there is nothing for this to do there.
     //
     // One at a time only. A restored undo or a fresh page brings back several
     // at once, and there is no single one of those to point at. A chip folded
@@ -271,6 +279,7 @@ export function FilterChips({
     // fires on mount for a single-facet deep link. That is the case the helper
     // exists for: scrollIntoView would hand the visitor's first Tab press to
     // this pill's remove button (see lib/scroll-strip.ts).
+    if (wrap) return;
     const keys = chipsKey === "" ? [] : chipsKey.split("|");
     const added = keys.filter((key) => !seenChips.current.includes(key));
     seenChips.current = keys;
@@ -278,7 +287,7 @@ export function FilterChips({
     scrollChildIntoViewX(stopNode(toolbarRef.current, added[0]), {
       smooth: !reduceMotion,
     });
-  }, [chipsKey, reduceMotion]);
+  }, [chipsKey, reduceMotion, wrap]);
 
   // By id and not by position. A removed pill fades out before it is taken
   // out of the DOM, so counting nodes for a render or two after a removal
@@ -369,13 +378,12 @@ export function FilterChips({
 
   const row = (
     <>
-      {/* A phone gets no caption at all: the pills are the caption, and the
-          number that used to sit here is already on the Filtri button in the
-          dock, which is on screen the whole time and counts the same values.
-          Two copies of one number cost this row thirty-four pixels of a track
-          that had three hundred and thirty, on the screen with the least of
-          it. Past md there is room for the words and the row is no longer a
-          scroller, so they come back.
+      {/* No caption below md: the pills are the caption, and the number that
+          would sit here is already on the Filtri button in the dock, which is
+          on screen the whole time and counts the same values. Two copies of
+          one number cost this row thirty-four pixels of a track that had
+          three hundred and thirty, on the screen with the least of it. Past
+          md there is room for the words, so they come back.
 
           aria-hidden either way: the toolbar's own name below says the same
           thing, with the count, at every width. */}
@@ -396,7 +404,10 @@ export function FilterChips({
           box would otherwise clip to its own content height. The negative
           margin gives the row back the height it had before. */}
       <div
-        ref={scrollRef}
+        // Only where there is a scroll to fade. The hook masks whichever edge
+        // still has content past it, and a wrapping box has neither, so wired
+        // up there it would watch a box that never scrolls and dim nothing.
+        ref={wrap ? undefined : scrollRef}
         {...{ [SCROLL_STRIP_MARK]: "" }}
         // SCROLL_STRIP is the fade, the scroll padding that keeps a focused
         // pill out from under it, and the horizontal room the focus ring
@@ -507,11 +518,12 @@ export function FilterChips({
               is 180px on its own. Scrolling past it costs nothing there,
               because it is one tap away in the sheet's footer the whole time.
 
-              The empty state is the exception, and it asks for the below
-              placement instead: with nothing matching, the sheet is a way back
-              to the filters and this is the way out of them, and at 390px with
-              four pills it sat at x 514 with no visible sign the strip
-              scrolled at all.
+              Nothing matching is the state that asks for it here rather than
+              in the sheet: the sheet is the way back to the filters and this
+              is the way out of them. The row that draws it then is the phone's
+              wrapping one, so it ends the last line. In the scrolling row it
+              sat at x 514 at 390px with four pills, with no visible sign the
+              strip scrolled at all.
 
               A seam and not just a gap, so an overscroll flick that runs out
               of pills to eat meets a line rather than sliding straight into
@@ -585,11 +597,11 @@ export function FilterChips({
   );
 }
 
-/** The way back from a clear, drawn once and shown in two places: here at the
- *  end of the chips row on a desktop, and on a phone in the status line under
- *  the species tabs, where the chips row no longer is (animal-filters.tsx).
- *  Both surfaces offer it for the same few seconds and cancel it the same way,
- *  so they had better not drift into two different offers. */
+/** The way back from a clear, drawn in place of the pills it took away. One
+ *  offer at every width: the sticky toolbar's row at lg and the in-flow row
+ *  below it are both this component (animal-filters.tsx), so neither can drift
+ *  into a different offer, and a phone is not left with clearing as the one
+ *  filter action it cannot take back. */
 export function UndoOffer({
   onUndo,
   className,

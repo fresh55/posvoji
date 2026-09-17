@@ -36,6 +36,7 @@ import {
 import { shelterPath } from "@/lib/shelter-path";
 import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
+import { canMorphPhoto, morphPhoto } from "@/lib/view-transition";
 
 // Adopted and hold are over, and the photo says so quietly: about a fifth of
 // the light and two fifths of the colour come off it.
@@ -183,7 +184,7 @@ export function AnimalCard({
   const href = animalPath(animal, locale);
   // The href is a real deep link, so a middle click or a held modifier gets
   // the tab it asked for. A plain click stays on the page and opens the
-  // dialog, and hands over where it came from for the zoom to grow out of.
+  // dialog, and carries this card's photograph into it.
   function openDialog(event: MouseEvent<HTMLAnchorElement>) {
     if (
       event.metaKey ||
@@ -196,30 +197,30 @@ export function AnimalCard({
     }
     event.preventDefault();
     const rect = cardRef.current?.getBoundingClientRect();
-    // The photo as the visitor sees it, which is what the dialog carries into
-    // the fan. Found by name rather than by walking to the first child, so
-    // anything added above or beside the photo cannot silently send the zoom
-    // off from the wrong rectangle.
-    const photo = cardRef.current
-      ?.querySelector('[data-slot="photo-frame"]')
-      ?.getBoundingClientRect();
-    onOpen(
-      animal.id,
-      rect
-        ? {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2,
-            photo: photo?.width
-              ? {
-                  left: photo.left,
-                  top: photo.top,
-                  width: photo.width,
-                  height: photo.height,
-                }
-              : undefined,
-          }
-        : undefined,
+    // Where the dialog grows from when nothing carries the photo: the card's
+    // own centre, which is the fallback zoom's origin.
+    const origin = rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : undefined;
+    // The photo as the visitor sees it, which is the box the browser morphs
+    // into the dialog's front print. Found by name rather than by walking to
+    // the first child, so anything added above or beside the photo cannot
+    // silently hand the morph the wrong rectangle.
+    const photo = cardRef.current?.querySelector<HTMLElement>(
+      '[data-slot="photo-frame"]',
     );
+    // An animal with no photograph has nothing to carry, and a browser without
+    // the API or a visitor who asked for less movement gets the plain open.
+    if (!photo || photoCount === 0 || !canMorphPhoto()) {
+      onOpen(animal.id, origin);
+      return;
+    }
+    morphPhoto({
+      photo,
+      at: "old",
+      direction: "open",
+      update: () => onOpen(animal.id, origin),
+    });
   }
 
   // The keyboard's way through the gallery. The chevrons are pointer

@@ -9,6 +9,7 @@ import { type DragEvent, type ReactNode } from "react";
 import { frontPrintOf } from "./fan-focus";
 import { printBox } from "./fan-geometry";
 import {
+  ENTRANCE_LEAD,
   ENTRANCE_STAGGER,
   MOUNT_FADE,
   NO_FADE,
@@ -78,8 +79,6 @@ export function Fan(props: FanProps) {
     prints,
     printAt,
     spoken,
-    frontWasHeld,
-    holdFront,
     factors,
     entered,
     progress,
@@ -106,13 +105,16 @@ export function Fan(props: FanProps) {
   // in one frame, which on a gallery past the fan's reach was a photograph
   // switching on at the leading tier as the step landed.
   //
-  // A front print held back for the bloom keeps its entrance offered after the
-  // cascade is over, because the fade it still owes is that entrance running
-  // late.
+  // The front print is not drawn in at all. It is the box the browser carries
+  // the card's photograph into, and what arrives there is that photograph: a
+  // fade under it would be a second photo appearing behind the one already
+  // landing. The rest wait for the landing and then cascade, so that for the
+  // length of the morph the only thing moving on the stage is the picture the
+  // visitor pressed (ENTRANCE_LEAD).
   function entranceOf(active: boolean, offset: number, fresh: boolean) {
     if (shouldReduceMotion) return false;
-    if (!entered.current || (active && frontWasHeld)) {
-      return Math.abs(offset) * ENTRANCE_STAGGER;
+    if (!entered.current) {
+      return active ? false : ENTRANCE_LEAD + Math.abs(offset) * ENTRANCE_STAGGER;
     }
     return fresh ? "fade" : false;
   }
@@ -256,11 +258,6 @@ export function Fan(props: FanProps) {
               }
               entrance={entranceOf(active, offset, fresh)}
               fade={fade}
-              // Only the front print, and only its mount: a print that comes
-              // to the front later has nothing to wait for, because what the
-              // dialog is holding it against is the copy of the card's
-              // photograph flying into that seat as the dialog opens.
-              hold={active && holdFront}
               tempo={tempo}
               label={
                 active

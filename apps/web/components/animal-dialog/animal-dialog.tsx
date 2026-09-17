@@ -22,10 +22,6 @@ import {
 } from "motion/react";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { DialogShareButton } from "@/components/animal-dialog/dialog-share-button";
-import {
-  PhotoBloom,
-  bloomWillFly,
-} from "@/components/animal-dialog/photo-bloom";
 import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
@@ -56,24 +52,17 @@ import {
 } from "@/lib/location-search";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { cn } from "@/lib/utils";
-
-/** Where a photo was standing on screen, in viewport coordinates. */
-export type DialogPhotoRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
+import { PHOTO_MORPH_MS } from "@/lib/view-transition";
 
 /**
- * Viewport coordinates of the card the dialog was opened from. The point is
- * what the zoom grows out of; the photo box is what the fan's first picture
- * travels from, and is absent when there was no card to measure.
+ * Viewport coordinates of the card the dialog was opened from, and what the
+ * fallback zoom grows out of. The browser carries the photograph itself where
+ * it can (lib/view-transition.ts); this is the point the box grows from where
+ * it cannot, and is absent when there was no card to measure.
  */
 export type DialogOrigin = {
   x: number;
   y: number;
-  photo?: DialogPhotoRect;
 };
 
 // Written fresh rather than layered on DialogContent: the default is a
@@ -231,33 +220,24 @@ const DRAG_SPRING = {
 // Far enough that no ordinary scroll flick throws the dialog away.
 const DRAG_CLOSE_PX = 140;
 
-// How long the fan's front print may be kept back waiting for the bloom to
-// say the print's turn has come. The copy says so 180ms after it is placed, so
-// this only ever fires when the report is not coming at all.
-const BLOOM_HOLD_MS = 800;
-
 // The layout the dismiss gesture was designed for, and the one question the
 // whole shell is gated on. It and DESKTOP_FAN_QUERY in fan-layout.ts are the
 // two halves of one boundary, derived from it in lib/viewport-queries.ts so
 // they cannot answer differently on the line between them.
 const PHONE_SHELL = PHONE_SHELL_QUERY;
 
-const REVEAL_SPRING = {
-  type: "spring",
-  stiffness: 420,
-  damping: 26,
-  mass: 0.5,
+// When the card under the photographs arrives: the last third of the morph,
+// as one fade for the whole of it.
+//
+// It used to be five children 40ms apart on a spring, which at the same moment
+// as a flying copy, a zooming box and a cascading fan read as a ripple through
+// the text rather than as a reveal. One subject at a time: for the length of
+// the morph only the photograph moves, and the words follow it in.
+const CARD_REVEAL = {
+  duration: 0.2,
+  delay: (PHOTO_MORPH_MS / 1000) * 0.66,
+  ease: "easeOut",
 } as const;
-
-const CONTENT_STAGGER = {
-  hidden: {},
-  shown: { transition: { staggerChildren: 0.04 } },
-};
-
-const CONTENT_ITEM = {
-  hidden: { opacity: 0, y: 8 },
-  shown: { opacity: 1, y: 0, transition: REVEAL_SPRING },
-};
 
 // The desktop box is centered, so the card's viewport center reads as an
 // offset from the middle of the box the zoom grows out of.
@@ -366,18 +346,6 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
-  // The card shows an animal's first photo, and so does the fan on the way in,
-  // so that is the one the bloom carries across.
-  const firstPhoto = lastAnimal?.images[0];
-  // Whether a copy is about to set off at all, asked the way the copy itself
-  // asks it: a card to leave from, a photograph to carry, and motion to carry
-  // it with. Two spellings of that could disagree, and both ways round are a
-  // defect, an empty front seat or the photograph drawn twice.
-  const bloomOpening = bloomWillFly({
-    from: origin?.photo,
-    photo: firstPhoto,
-    reduced: shouldReduceMotion,
-  });
   // Radix announces the title on open and never again, so stepping to another
   // animal changed every word in the dialog in silence. The name goes through a
   // live region instead. Adjusted during render the way lastAnimal above is.
@@ -385,24 +353,7 @@ export function AnimalDialog({
     id: string | undefined;
     name: string;
   }>({ id: animal?.id, name: "" });
-  // The fan keeps its own front print back until the copy starts to fade, so
-  // the same photograph is not on screen twice. It was: the cascade had the
-  // print fully opaque at +519ms with the copy still flying at +744ms. The two
-  // hand over as one crossfade now, and when the bloom says so rather than on
-  // a length of time this end knows.
-  //
-  // True from the first render for the animal the dialog opened on, which is
-  // the render that mounts the fan. Waiting for the bloom to report would draw
-  // the print for a frame and then take it away again.
-  //
-  // Only that animal. Stepping through the list with the arrows runs no bloom,
-  // because the card it would leave from is behind the dialog and was never
-  // measured, so the hold is armed on the step out of nothing and cleared on
-  // every step after it. Which animal is open is what `announced` already
-  // tracks, on the same transition, so the two are decided together.
-  const [holdFront, setHoldFront] = useState(bloomOpening);
   if (announced.id !== animal?.id) {
-    setHoldFront(announced.id === undefined && bloomOpening);
     setAnnounced({
       id: animal?.id,
       // Silent on the way in, because the title has just been announced, and
@@ -446,23 +397,6 @@ export function AnimalDialog({
   );
   const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
 
-  // Fired by the copy as its fade begins, and by the fail-safe below. Setting
-  // it false when it already is one is a state update React drops, so the
-  // second caller costs nothing.
-  const endBloom = useCallback(() => setHoldFront(false), []);
-
-  // The fail-safe. A front print that never arrives is a worse failure than
-  // the same photograph drawn twice for a moment, and the bloom's report rides
-  // on an animation completing: a starved frame loop, which is what a
-  // background tab and a preview pane that has stopped compositing both are,
-  // can leave that animation without the frame that would have finished it.
-  // The timer clears the hold whether or not the copy ever reports.
-  useEffect(() => {
-    if (!holdFront) return;
-    const timer = setTimeout(endBloom, BLOOM_HOLD_MS);
-    return () => clearTimeout(timer);
-  }, [holdFront, endBloom]);
-
   if (!lastAnimal) return null;
 
   const name = lastAnimal.name ?? messages.unnamed;
@@ -471,7 +405,7 @@ export function AnimalDialog({
   // badges, and the two "10 let" read as a mistake. The words come from
   // labels.ts, where the animal's own page reads the same line.
   const subtitle = animalSubtitle(lastAnimal, locale);
-  const transition = shouldReduceMotion ? { duration: 0 } : undefined;
+  const cardReveal = shouldReduceMotion ? { duration: 0 } : CARD_REVEAL;
 
   // Whether the phone gets the sticky bar at the bottom of the dialog. There
   // has to be a button in the card for it to be a mirror of, and an adopted
@@ -605,13 +539,6 @@ export function AnimalDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogPortal>
         <DialogOverlay />
-        {/* Outside the content on purpose: the content carries the zoom, and a
-            copy aimed at viewport coordinates cannot sit inside a transform. */}
-        <PhotoBloom
-          from={origin?.photo}
-          photo={firstPhoto}
-          onFlightEnd={endBloom}
-        />
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"
@@ -689,16 +616,13 @@ export function AnimalDialog({
               onPointerMove={moveDrag}
               onPointerUp={endDrag}
               onPointerCancel={cancelDrag}
-              variants={CONTENT_STAGGER}
-              initial={shouldReduceMotion ? false : "hidden"}
-              animate="shown"
-              transition={transition}
             >
-              <m.div
-                className="relative z-10 shrink-0"
-                variants={CONTENT_ITEM}
-                transition={transition}
-              >
+              {/* Nothing of the dialog's own is animated on this box. The
+                  front print inside it is the element the browser is carrying
+                  the card's photograph into, and an animated ancestor is not
+                  applied to what the morph lifts out: a fade here would be
+                  ignored for the length of the morph and then snap. */}
+              <div className="relative z-10 shrink-0">
                 {/* The wash and the fan, with everything a photo step changes
                     held inside them. Not keyed: the wash has to outlive the
                     fan's own per-animal remount for one animal's colour to
@@ -707,20 +631,24 @@ export function AnimalDialog({
                   animal={lastAnimal}
                   initialIndex={askedPhoto}
                   onIndexChange={reportPhoto}
-                  holdFrontPrint={holdFront}
                   onLightboxOpenChange={trackLightbox}
                 />
-              </m.div>
+              </div>
 
               <div
                 ref={frameRef}
                 data-slot="animal-dialog-frame"
                 className={CARD_FRAME_CLASS}
               >
-                <div
+                {/* The card arrives as one fade, in the last third of the
+                    morph; see CARD_REVEAL. */}
+                <m.div
                   ref={cardRef}
                   data-slot="animal-dialog-card"
                   className={cn(CARD_CLASS, DESCRIPTION_GUTTER)}
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={cardReveal}
                   // The whole handler is one clamp and one custom property
                   // written on the frame above, so a scroll neither renders
                   // anything nor reads any layout back. Below sm this box is
@@ -786,11 +714,7 @@ export function AnimalDialog({
                       270. Growing the box by a pixel of padding does not
                       clear it, so what matters is that the row is asked for
                       as a decoration, not that the ground is a pixel taller. */}
-                  <m.div
-                    className="desktop-box:sticky desktop-box:-top-12 desktop-box:z-20 desktop-box:-mx-6 desktop-box:-mt-6 desktop-box:bg-popover desktop-box:px-6 desktop-box:pt-6 desktop-box:pb-3 desktop-box:shadow-[inset_0_-1px_0_0_var(--popover)]"
-                    variants={CONTENT_ITEM}
-                    transition={transition}
-                  >
+                  <div className="desktop-box:sticky desktop-box:-top-12 desktop-box:z-20 desktop-box:-mx-6 desktop-box:-mt-6 desktop-box:bg-popover desktop-box:px-6 desktop-box:pt-6 desktop-box:pb-3 desktop-box:shadow-[inset_0_-1px_0_0_var(--popover)]">
                     <div className="flex flex-wrap items-center gap-2">
                       {/* The name is what gives way, not the controls. On a
                           360px phone "brezrepa tritačka Luna" pushed all three
@@ -870,7 +794,7 @@ export function AnimalDialog({
                         </DialogPrimitive.Close>
                       </span>
                     </div>
-                  </m.div>
+                  </div>
 
                   {/* The species line, in the flow with the facts it belongs
                       to rather than pinned above them. Pulled back up to 8px
@@ -878,15 +802,11 @@ export function AnimalDialog({
                       not a section: the card's gap-4 and the bar's padding
                       would otherwise put it 28px down (16px on the phone, where
                       the bar has no padding of its own). */}
-                  <m.div
-                    className="-mt-2 desktop-box:-mt-5"
-                    variants={CONTENT_ITEM}
-                    transition={transition}
-                  >
+                  <div className="-mt-2 desktop-box:-mt-5">
                     <DialogDescription>{subtitle}</DialogDescription>
-                  </m.div>
+                  </div>
 
-                  <m.div variants={CONTENT_ITEM} transition={transition}>
+                  <div>
                     {/* Keyed, so the health row's expanded state starts over
                         with each animal. */}
                     <AnimalFacts
@@ -894,15 +814,11 @@ export function AnimalDialog({
                       animal={lastAnimal}
                       reference={reference}
                     />
-                  </m.div>
+                  </div>
 
                   {/* Identity above, action below: the shelter box anchors the
                       bottom of the card with a little extra air over it. */}
-                  <m.div
-                    className="mt-2"
-                    variants={CONTENT_ITEM}
-                    transition={transition}
-                  >
+                  <div className="mt-2">
                     <ShelterBlock
                       animal={lastAnimal}
                       logos={logos}
@@ -911,8 +827,8 @@ export function AnimalDialog({
                       // phone, so the box keeps its own for sm and up only.
                       ctaMirrored
                     />
-                  </m.div>
-                </div>
+                  </div>
+                </m.div>
 
                 {/* Last in the card, though they are drawn at its edges.
                     Placed first, they were what the dialog opened on: Radix

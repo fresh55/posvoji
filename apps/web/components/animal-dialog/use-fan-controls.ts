@@ -73,10 +73,6 @@ export type FanProps = {
   keptFocusRef: RefObject<FanFocusKind | null>;
   /** The wash's copy of the walk, mounted above the fan. */
   washProgress?: MotionValue<number>;
-  /** True while the card's photograph is still travelling into the front seat.
-   *  The front print keeps its mount entrance back until this turns false, so
-   *  the same photograph is not drawn twice. */
-  holdFrontPrint?: boolean;
   onSelect: (index: number) => void;
   onOpenLightbox: (from: DOMRect) => void;
   /** Opens the lightbox on the contact sheet instead of on one photo. */
@@ -88,7 +84,6 @@ export function useFanControls({
   activeIndex,
   tempo,
   washProgress,
-  holdFrontPrint,
   stageRef,
   keptFocusRef,
   onSelect,
@@ -362,19 +357,6 @@ export function useFanControls({
   useEffect(() => {
     entered.current = true;
   }, []);
-
-  // Whether this fan mounted with its front print held back, which is the
-  // dialog saying the card's photograph is still flying into that seat. Read
-  // once, at the mount, because the fade the print still owes is the entrance
-  // it did not take then: by the time the hold is lifted the cascade above is
-  // over, and without this the print would appear rather than arrive.
-  //
-  // Reduced motion ignores it. Nothing is flying there, so there is nothing to
-  // wait for and nothing to fade.
-  const [frontWasHeld] = useState(
-    () => Boolean(holdFrontPrint) && !shouldReduceMotion,
-  );
-  const holdFront = Boolean(holdFrontPrint) && !shouldReduceMotion;
 
   const progress = useMotionValue(0);
   const snap = useRef<ReturnType<typeof animate> | null>(null);
@@ -998,8 +980,6 @@ export function useFanControls({
     prints,
     printAt,
     spoken,
-    frontWasHeld,
-    holdFront,
     factors,
     entered,
     progress,

@@ -102,7 +102,6 @@ export const FanPhoto = memo(function FanPhoto({
   nudge,
   entrance,
   fade,
-  hold,
   tempo,
   label,
   active,
@@ -139,12 +138,6 @@ export const FanPhoto = memo(function FanPhoto({
   /** The tween a print arrives and leaves on when it is not part of the
    *  opening cascade. Zero where motion was asked for none. */
   fade: Transition;
-  /** Whether this print's mount is still being held back, because the same
-   *  photograph is on screen somewhere else: the copy the dialog flies from
-   *  the card it was opened from. The print waits at nothing rather than
-   *  cascading in, and fades in on the entrance it is owed when this turns
-   *  false. Only ever true of the print at the front, and only at its mount. */
-  hold?: boolean;
   tempo: FanTempo;
   label: string;
   active: boolean;
@@ -340,9 +333,22 @@ export const FanPhoto = memo(function FanPhoto({
         // time and the stage's own rule cannot reach through it.
         active ? "cursor-zoom-in" : count > 1 && "cursor-grab",
         count > 1 && "group-data-dragging:cursor-grabbing",
+        // What the browser morphs the card's photograph into on the way in,
+        // and back out of on the way out. The whole seat and not the picture
+        // inside it: what the morph names is lifted out of the page for the
+        // length of it, so naming the well alone left this print's paper
+        // standing empty at the far end, a white card waiting for its
+        // photograph. Named here, the print arrives as one thing.
+        //
+        // The name is the one in lib/view-transition.ts, written out because
+        // Tailwind reads the class and not the constant. Only the print in
+        // front carries it, and only one element may carry it at a time: the
+        // card takes its own off inside the same update that mounts this one,
+        // or the browser skips the morph.
+        active && "[view-transition-name:animal-photo]",
       )}
       initial={entrance === false ? false : { opacity: 0 }}
-      animate={{ opacity: hold ? 0 : 1 }}
+      animate={{ opacity: 1 }}
       // A print leaves the window in two ways. One walks off the trailing edge,
       // where the seats are clamped and there is nothing left of it to see, and
       // one is the copy of a print that has wrapped round to the other side of

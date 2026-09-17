@@ -23,7 +23,6 @@ export function PhotoStage({
   animal,
   initialIndex,
   onIndexChange,
-  holdFrontPrint,
   onLightboxOpenChange,
 }: {
   animal: ClientAnimal;
@@ -31,8 +30,6 @@ export function PhotoStage({
   initialIndex?: number;
   /** Reports the photo on show, so the share link can name it. */
   onIndexChange?: (index: number) => void;
-  /** Passed through to the fan: see PhotoSpread. */
-  holdFrontPrint?: boolean;
   onLightboxOpenChange?: (open: boolean) => void;
 }) {
   // The fan's walk, held above the fan rather than inside it: the wash is
@@ -61,7 +58,6 @@ export function PhotoStage({
         animal={animal}
         initialIndex={initialIndex}
         onIndexChange={onIndexChange}
-        holdFrontPrint={holdFrontPrint}
         onLightboxOpenChange={onLightboxOpenChange}
         washProgress={washProgress}
         onWashWindow={setWashLayers}

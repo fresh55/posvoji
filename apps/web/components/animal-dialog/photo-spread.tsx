@@ -45,7 +45,6 @@ export const PhotoSpread = memo(function PhotoSpread({
   onIndexChange,
   washProgress,
   onWashWindow,
-  holdFrontPrint,
   onLightboxOpenChange,
 }: {
   animal: ClientAnimal;
@@ -66,13 +65,6 @@ export const PhotoSpread = memo(function PhotoSpread({
    * one's.
    */
   onWashWindow?: (layers: WashLayer[]) => void;
-  /**
-   * True while the card's photo is still travelling into the front seat
-   * (the bloom in photo-bloom.tsx). The front print keeps its own entrance
-   * back until this turns false, so the same photograph is not drawn twice.
-   * Wired by the dialog; the fan answers it.
-   */
-  holdFrontPrint?: boolean;
   onLightboxOpenChange?: (open: boolean) => void;
 }) {
   const { messages } = useI18n();
@@ -257,7 +249,6 @@ export const PhotoSpread = memo(function PhotoSpread({
         activeIndex={activeIndex}
         tempo={tempo}
         washProgress={washProgress}
-        holdFrontPrint={holdFrontPrint}
         stageRef={stageRef}
         keptFocusRef={keptFocusRef}
         onSelect={setActiveIndex}

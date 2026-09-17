@@ -1125,6 +1125,66 @@
   @view-transition {
     navigation: auto;
   }
+
+  /* The same API in its same-document form, for the card that opens the animal
+     dialog. One name on two boxes, the card's photo frame and the fan's front
+     print, and the browser morphs the first into the second on the compositor:
+     what a hand-measured copy flying between them could not do is the aspect,
+     because the card's photograph is square and the print is 4:3.
+
+     Scoped to the mark lib/view-transition.ts writes for the length of the
+     morph. The front print wears its name for as long as it is the front
+     print, so without the scope a cross-document navigation out of an open
+     dialog would pull the photograph out of the page snapshot and run these
+     rules on it. Unmarked, it keeps the browser's own fade and goes with the
+     rest of the page. */
+  :root[data-photo-morph]::view-transition-group(animal-photo) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Both snapshots fill the box the morph is carrying, and crop rather than
+     stretch. The browser's own sizing keeps each snapshot's aspect, so the
+     square one and the 4:3 one stand at different heights in the same box and
+     the picture visibly changes shape as it travels.
+
+     And they cross over in the first tenth of a second rather than over the
+     whole trip. They are the same photograph but not the same picture: the
+     card's is cut square and carries the gallery's chevrons and its dots,
+     because the pointer was on it when it was pressed, and the print's is cut
+     4:3 and carries none of that. Crossfaded across the whole 320ms, the
+     card's controls were drawn at half strength over a photograph that has
+     none. Short, it reads as one photo the whole way. */
+  :root[data-photo-morph]::view-transition-old(animal-photo),
+  :root[data-photo-morph]::view-transition-new(animal-photo) {
+    height: 100%;
+    object-fit: cover;
+    animation-duration: 120ms;
+  }
+
+  /* No crossfade of the page under it on the way in. The overlay's own 100ms
+     fade and the dialog's are already in the document and run live inside the
+     new snapshot; a root crossfade on top of them is the same dim drawn twice.
+     The way out has no other fade of its own, so there it stays. */
+  :root[data-photo-morph="open"]::view-transition-old(root),
+  :root[data-photo-morph="open"]::view-transition-new(root) {
+    animation: none;
+  }
+
+  /* One subject. Under a morph the dialog's box does not also zoom up out of
+     the card, and on a phone it does not slide up either: the photograph is
+     what travels and the rest fades.
+
+     Written as the two variables tw-animate-css builds its enter keyframes
+     out of, rather than as a fight with data-open:zoom-in-95 over which rule
+     wins. The same trap the comment on DialogOverlay in ui/dialog.tsx
+     describes: those utilities compile to the same specificity in the same
+     layer and are emitted last. Setting what they feed leaves the fade alone
+     and takes out the scale and the lift. */
+  :root[data-photo-morph] [data-slot="animal-dialog"] {
+    --tw-enter-scale: 1;
+    --tw-enter-translate-y: 0;
+  }
 }
 
 /* Paper. An A4 sheet is about 794px, which is 49.6rem, so lg never applies and

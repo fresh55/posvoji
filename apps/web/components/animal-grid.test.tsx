@@ -21,7 +21,11 @@ import {
 } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
-import { RESULTS_COLUMNS } from "@/lib/card-grid";
+import {
+  RESULTS_COLUMNS,
+  RESULTS_GRID_TRACK,
+  RESULTS_RAIL_TRACK,
+} from "@/lib/card-grid";
 import {
   columnTracks,
   restoreGridColumns,
@@ -440,7 +444,27 @@ describe("the pre-hydration mark", () => {
     expect(results.className).toContain(RESULTS_COLUMNS);
     expect(pending.className).toContain(RESULTS_COLUMNS);
     expect(pending.children).toHaveLength(1);
-    expect(pending.children[0].className).toContain("lg:col-start-2");
+    expect(pending.children[0].className).toContain(RESULTS_GRID_TRACK);
+  });
+
+  it("reads in the order the page is used in, and draws in the other one", () => {
+    // The toolbar over the cards holds the species tabs and the sort control,
+    // and with the panel rendered first they were the 26th tab stop of the
+    // page, behind 14 to 32 stops of filters. The results come first in the
+    // document now and the two tracks put the drawing back, so what is pinned
+    // here is both halves: the reading order, and that neither element is
+    // left to auto-placement.
+    const { container } = renderGrid(ANIMALS);
+
+    const results = container.querySelector('[data-slot="results"]')!;
+    const rail = results.querySelector("aside")!;
+    const column = results.querySelector(`[class*="${RESULTS_GRID_TRACK}"]`)!;
+
+    expect(rail.className).toContain(RESULTS_RAIL_TRACK);
+    expect(column.querySelector("[data-card-grid]")).toBeTruthy();
+    expect(
+      column.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("holds a screenful so the footer stays under the fold", () => {

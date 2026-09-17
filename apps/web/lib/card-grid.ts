@@ -216,6 +216,21 @@ export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 export const RESULTS_COLUMNS =
   "lg:grid lg:grid-cols-[224px_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
 
+// Which of those two tracks a block stands in, stated rather than left to
+// auto-placement, because the results now come first in the document: the
+// toolbar carries the species tabs and the sort control, and behind the rail
+// they were the 26th tab stop of the page. Reading order is the DOM's, so the
+// DOM is what changed and these put the drawing back. Three elements wear
+// them, the rail, the results block and the stand-in that holds the block's
+// place while a filtered link hydrates, and the stand-in has to claim the same
+// track as the block or the cards move sideways when they arrive.
+//
+// Row as well as column. With one of the two tracks' items ahead of the other
+// in the DOM, auto-placement would otherwise put the rail on a second row the
+// moment anything else in the section became a grid item.
+export const RESULTS_RAIL_TRACK = "lg:col-start-1 lg:row-start-1";
+export const RESULTS_GRID_TRACK = "lg:col-start-2 lg:row-start-1";
+
 export const CARD_PHOTO_SIZES =
   "(max-width: 639px) calc(50vw - 24px)," +
   " (max-width: 703px) calc(50vw - 32px)," +

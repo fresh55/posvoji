@@ -22,6 +22,8 @@ import {
   CARD_PHOTO_ASPECT,
   CARD_PHOTO_RADIUS,
   RESULTS_COLUMNS,
+  RESULTS_GRID_TRACK,
+  RESULTS_RAIL_TRACK,
 } from "@/lib/card-grid";
 import {
   applyFilters,
@@ -220,8 +222,11 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
       {/* The cards go in the second track and the rail's is left empty: what is
           promised here is where the animals will be, and an empty 224px is a
           truer promise than a grey panel about to become a list of controls.
-          col-start rather than an empty element to hold the column open. */}
-      <div className={cn("flex flex-col gap-4", hasSidebar && "lg:col-start-2")}>
+          The track rather than an empty element to hold the column open, and
+          the same constant the block itself wears (lib/card-grid.ts). */}
+      <div
+        className={cn("flex flex-col gap-4", hasSidebar && RESULTS_GRID_TRACK)}
+      >
         {/* The toolbar the hidden block also covers: the species tabs, the
             result count and the sort control are as unanswered as the cards.
             In the band the real bar draws, rule and all, and at the height its
@@ -508,57 +513,15 @@ export function AnimalGrid({
         >
           {messages.skipResults}
         </a>
-        {hasSidebar && (
-          <FilterSidebar
-            onClearAll={handleClearAll}
-            onSpeciesChange={setSpecies}
-            // lg:bg-background is load-bearing, not decoration. lg:sticky
-            // puts the sidebar on its own compositing layer, and Chrome
-            // keeps subpixel text antialiasing on such a layer only while
-            // it has a fully opaque background colour. Transparent, every
-            // label in here renders greyscale while the rest of the page
-            // does not, which reads as blur at the same size.
-            //
-            // lg:top-0 with a padding of its own and not an inset: the toolbar
-            // across the gutter pins at top-0 and holds its species tabs down
-            // inside its own padding (animal-filters.tsx). Pinning the aside to
-            // the same edge and carrying the same amount inside it is what puts
-            // the panel head on the tabs' line in both states. An inset moved
-            // the head 12px below the tabs once the two stuck. The padding is
-            // inside the scroll box, so it scrolls away with the head and the
-            // fade mask still starts at the aside's own top edge.
-            //
-            // Both read --rail-pad, which is where that amount is written and
-            // why the two cannot drift apart again (globals.css). The height
-            // spends it twice, so the rail leaves the same gap at the bottom of
-            // the viewport that it takes at the top.
-            className="hidden lg:sticky lg:top-0 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad"
-            filters={filters}
-            groups={groups}
-            counts={counts}
-            toggles={toggles}
-            toggleTally={toggleTally}
-            goodWith={goodWith}
-            home={home}
-            care={care}
-            scope={
-              shelters && {
-                options: shelters,
-                counts: counts.shelter,
-                municipalities,
-                offSite: offSiteShelters,
-                summaries: shelterSummaries,
-                resultCount: visible.length,
-              }
-            }
-            onToggle={toggle}
-            onToggleMany={toggleMany}
-            onToggleProperty={toggleProperty}
-            onToggleManyProperties={toggleManyProperties}
-          />
-        )}
-
-        <div className="flex flex-col gap-4">
+        {/* The results, ahead of the rail in the document and put back beside
+            it by the tracks both of them name (lib/card-grid.ts). What is at
+            stake is the order a keyboard and a screen reader meet this page
+            in: the toolbar above the cards holds the species tabs and the sort
+            control, and with the panel rendered first they were the 26th tab
+            stop, behind 14 to 32 stops of filters, with the skip link aiming
+            past the grid rather than at them. Below lg the rail is
+            display:none and there is one column, so nothing there changes. */}
+        <div className={cn("flex flex-col gap-4", hasSidebar && RESULTS_GRID_TRACK)}>
           <AnimalFilters
             isEmpty={isEmpty}
             hasSidebar={hasSidebar}
@@ -797,6 +760,65 @@ export function AnimalGrid({
               only scrolling the page. */}
           <div id="za-rezultati" tabIndex={-1} />
         </div>
+
+        {hasSidebar && (
+          <FilterSidebar
+            onClearAll={handleClearAll}
+            onSpeciesChange={setSpecies}
+            // lg:bg-background is load-bearing, not decoration. lg:sticky
+            // puts the sidebar on its own compositing layer, and Chrome
+            // keeps subpixel text antialiasing on such a layer only while
+            // it has a fully opaque background colour. Transparent, every
+            // label in here renders greyscale while the rest of the page
+            // does not, which reads as blur at the same size.
+            //
+            // lg:top-0 with a padding of its own and not an inset: the toolbar
+            // across the gutter pins at top-0 and holds its species tabs down
+            // inside its own padding (animal-filters.tsx). Pinning the aside to
+            // the same edge and carrying the same amount inside it is what puts
+            // the panel head on the tabs' line in both states. An inset moved
+            // the head 12px below the tabs once the two stuck. The padding is
+            // inside the scroll box, so it scrolls away with the head and the
+            // fade mask still starts at the aside's own top edge.
+            //
+            // Both read --rail-pad, which is where that amount is written and
+            // why the two cannot drift apart again (globals.css). The height
+            // spends it twice, so the rail leaves the same gap at the bottom of
+            // the viewport that it takes at the top.
+            //
+            // That pairing survives the panel being second in the document:
+            // each of the two pins against the page's own scrolling and not
+            // against the other, so which one the browser lays out first
+            // decides nothing about where either comes to rest. The track is
+            // what puts the panel back in the left column (lib/card-grid.ts).
+            className={cn(
+              RESULTS_RAIL_TRACK,
+              "hidden lg:sticky lg:top-0 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad",
+            )}
+            filters={filters}
+            groups={groups}
+            counts={counts}
+            toggles={toggles}
+            toggleTally={toggleTally}
+            goodWith={goodWith}
+            home={home}
+            care={care}
+            scope={
+              shelters && {
+                options: shelters,
+                counts: counts.shelter,
+                municipalities,
+                offSite: offSiteShelters,
+                summaries: shelterSummaries,
+                resultCount: visible.length,
+              }
+            }
+            onToggle={toggle}
+            onToggleMany={toggleMany}
+            onToggleProperty={toggleProperty}
+            onToggleManyProperties={toggleManyProperties}
+          />
+        )}
 
         {dialogMounted && (
           <AnimalDialog

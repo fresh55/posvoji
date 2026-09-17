@@ -207,6 +207,35 @@ describe("the export command's production pipeline", () => {
     expect(h.release).toHaveBeenCalledOnce();
   });
 
+  it("keeps a sealed run's exit code when the lock release throws", async () => {
+    const h = harness();
+    h.release.mockImplementation(() => {
+      throw new Error("fixture release failure");
+    });
+    const result = await runExport({}, h.services);
+    expect(result.exitCode).toBe(0);
+    expect(h.seal).toHaveBeenCalledOnce();
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining("fixture release failure"),
+    );
+  });
+
+  it("fails the run when the release refuses because the lock changed hands", async () => {
+    const h = harness();
+    // releaseArtifactLock marks its ownership refusals with this code. They
+    // mean another process held the lock while we were writing data/dist, so
+    // the run's own result is not to be trusted and must not reach a deploy.
+    h.release.mockImplementation(() => {
+      throw Object.assign(new Error("fixture ownership refusal"), {
+        code: "ARTIFACT_LOCK_OWNERSHIP",
+      });
+    });
+    await expect(runExport({}, h.services)).rejects.toThrow(
+      "fixture ownership refusal",
+    );
+    expect(h.seal).toHaveBeenCalledOnce();
+  });
+
   it("reuses a completed provider checkpoint after a later phase fails", async () => {
     const h = harness();
     h.cacheImages.mockRejectedValueOnce(new Error("fixture media failure"));
@@ -278,6 +307,123 @@ describe("the export command's production pipeline", () => {
     expect(result.dataset.animals).toEqual([]);
     expect(result.exitCode).toBe(0);
     expect(h.discover).not.toHaveBeenCalled();
+  });
+
+  it("reports a provider checked inside its interval as clean and names it once", async () => {
+    const h = harness();
+    const log = h.services.logger!.log as ReturnType<typeof vi.fn>;
+    await runExport({}, h.services);
+    expect(
+      log.mock.calls.filter(([line]) => String(line).startsWith("schedule:")),
+    ).toEqual([]);
+    log.mockClear();
+    h.services.now = () => new Date(Date.parse(NOW) + 3600000);
+    const second = await runExport({}, h.services);
+    expect(second.exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledOnce();
+    // The line has to name the provider, say it was not due and say when it
+    // next is. Asserting the derived timestamp in full would make every change
+    // to the schedule arithmetic land here as a string mismatch.
+    const notDue = log.mock.calls
+      .map(([line]) => String(line))
+      .filter((line) => line.startsWith("schedule:"));
+    expect(notDue).toHaveLength(1);
+    expect(notDue[0]).toMatch(
+      /^schedule: 1 provider\(s\) not due: test-shelter \(next \d{4}-\d{2}-\d{2}T[\d:.]+Z\)$/,
+    );
+    expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("schedule:"),
+    );
+  });
+
+  it("carries a provider held off by a recorded attempt alone forward as degraded", async () => {
+    const h = harness([animal()]);
+    h.discover.mockRejectedValueOnce(new Error("fixture outage"));
+    const first = await runExport({}, h.services);
+    expect(first.exitCode).toBe(2);
+    // An hour later the provider is still inside its 12-hour interval although
+    // no successful check of it was ever recorded, so the skip is the failed
+    // attempt's doing and the run must not report it as clean.
+    h.services.now = () => new Date(Date.parse(NOW) + 3600000);
+    const second = await runExport({}, h.services);
+    expect(second.exitCode).toBe(2);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(second.dataset.animals.map((a) => a.id)).toEqual([animal().id]);
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "schedule: test-shelter is held off until 2026-09-08T22:00:00.000Z by a recorded attempt",
+      ),
+    );
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining("no successful check of it was ever recorded"),
+    );
+    const log = h.services.logger!.log as ReturnType<typeof vi.fn>;
+    expect(
+      log.mock.calls.filter(([line]) => String(line).startsWith("schedule:")),
+    ).toEqual([]);
+  });
+
+  it("stamps a provider's attempt with the start of its crawl, not with the end", async () => {
+    const h = harness();
+    let clock = Date.parse(NOW);
+    h.services.now = () => new Date(clock);
+    // A detail phase that takes real time. The listing check is taken once,
+    // right after discovery, so an attempt stamped when the crawl settled
+    // would sit an hour and a half in front of the check it belongs to and
+    // hold the provider past its own interval.
+    h.services.providers![0]!.fetch = async (_ctx, ref) => {
+      clock += 90 * 60000;
+      return { ref, fetchedAt: new Date(clock).toISOString(), data: {} };
+    };
+    const first = await runExport({}, h.services);
+    expect(first.exitCode).toBe(0);
+    const checkedAt = Date.parse(NOW);
+    const interval = 12 * 3600000;
+
+    // Five minutes short of the interval the provider is not due, and the run
+    // is clean because the check behind the skip is younger than the interval.
+    clock = checkedAt + interval - 5 * 60000;
+    const early = await runExport({}, h.services);
+    expect(early.exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledOnce();
+    expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("schedule:"),
+    );
+
+    // A minute past it the provider is due again. Stamping the attempt at the
+    // end of the crawl would hold it off until 23:30 instead, and the skip
+    // would then be the attempt's doing rather than the check's.
+    clock = checkedAt + interval + 60000;
+    const due = await runExport({}, h.services);
+    expect(due.exitCode).toBe(0);
+    expect(h.discover).toHaveBeenCalledTimes(2);
+    expect(h.services.logger!.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("schedule:"),
+    );
+  });
+
+  // A failed attempt is only ever recorded for a provider the schedule
+  // admitted, so its last successful check is already at least an interval old
+  // when it is written. Every skip a failed attempt causes therefore degrades
+  // the run, and this is what that looks like.
+  it("is degraded when a failed attempt holds off a provider whose check has aged out", async () => {
+    const h = harness();
+    await runExport({}, h.services);
+    h.services.now = () => new Date(Date.parse(NOW) + 13 * 3600000);
+    h.discover.mockRejectedValueOnce(new Error("fixture outage"));
+    expect((await runExport({}, h.services)).exitCode).toBe(2);
+    // The failed attempt pushes the next crawl to 25 hours after the last
+    // successful check, which is past the 12-hour interval the policy asks for.
+    h.services.now = () => new Date(Date.parse(NOW) + 14 * 3600000);
+    const third = await runExport({}, h.services);
+    expect(third.exitCode).toBe(2);
+    expect(h.discover).toHaveBeenCalledTimes(2);
+    expect(third.dataset.animals.map((a) => a.id)).toEqual([animal().id]);
+    expect(h.services.logger!.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `its last successful check was ${NOW}, 14h ago, longer than its 12h interval`,
+      ),
+    );
   });
 
   it("rejects incompatible options without acquiring a lock", async () => {

@@ -262,11 +262,19 @@ of scope; source check metadata here is for operational correctness.
 
 ## Crawl frequency and rate-limit recovery
 
-`crawl-schedule.json` records attempts before requests begin, including failed
-attempts. Normal runs, targeted runs and `--refresh-all` respect the provider's
-interval. A clean checkpoint can resume without requests. Lower-frequency
-providers retain their previous source timestamps between due crawls. Permission
-withdrawal and other publication restrictions still apply immediately.
+`crawl-schedule.json` records an attempt once the crawl of a provider has
+settled, on success and on failure alike. A run killed mid-crawl records
+nothing, so the next run retries that provider. Normal runs, targeted runs and
+`--refresh-all` respect the provider's interval. A clean checkpoint can resume
+without requests. Lower-frequency providers retain their previous source
+timestamps between due crawls. Permission withdrawal and other publication
+restrictions still apply immediately.
+
+A provider the schedule holds back is reported on. One whose last successful
+check is inside its interval is named in a single "not due" line and the run
+stays clean. One held back by a recorded attempt alone, with its last
+successful check older than its interval or with no successful check at all, is
+warned about by name, keeps its previous records and makes the run exit 2.
 
 `host-cooldowns.json` persists server Retry-After instructions across exports.
 Waits longer than one minute defer the host rather than shortening its requested

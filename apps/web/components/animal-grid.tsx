@@ -38,7 +38,6 @@ import {
 } from "@/lib/prehydration-script";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { sheltersIndexPath } from "@/lib/shelter-path";
-import type { ShelterPhones } from "@/lib/shelters";
 import { SKIP_LINK } from "@/lib/skip-link";
 import { effectiveSort, sortAnimals } from "@/lib/sort";
 import { cn } from "@/lib/utils";
@@ -254,17 +253,12 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
 export function AnimalGrid({
   animals,
   logos,
-  phones,
   referenceDate,
   municipalities,
   offSiteShelters,
 }: {
   animals: ClientAnimal[];
   logos: ShelterLogos;
-  /** The register's phone numbers, for the dialog's shelter box. Read on the
-   *  server beside the logos, because the grid is a client component and the
-   *  register file is not something it can open. */
-  phones?: ShelterPhones;
   /** When the dataset was built. Ages are measured from it rather than from
       the clock, so the prerendered HTML and the hydrated page agree. */
   referenceDate: string;
@@ -808,7 +802,6 @@ export function AnimalGrid({
           <AnimalDialog
             animal={selected}
             logos={logos}
-            phones={phones}
             origin={origin}
             siblingIds={shownIds}
             reference={reference}

@@ -170,7 +170,7 @@ export to the production host as a new release.
 Stages:
   1. Preflight     clean tree, verify and snapshot one committed generation
   2. Build         git worktree at HEAD, pnpm install, pnpm --filter web build
-  3. Artifact      tar of apps/web/out without media/ and without .br/.gz
+  3. Artifact      tar of apps/web/out without media/, model siblings kept
   4. Deploy        host lock, layout gate, snapshot validation, media sync,
                    host verify, staged release, atomic flip/health, prune
 
@@ -774,22 +774,37 @@ stage "Artifact"
 # /media/* from /srv/posvoji/media with handle_path, so a copy inside the
 # release would be dead weight that shadows nothing.
 #
-# The .br/.gz exclude is a guard, not a fix. `next build` emits no
-# precompressed siblings (nothing in next.config.ts turns that on, and a fresh
-# out/ contains none), so the ~10500 of them in the current live release came
-# from an earlier hand-made deploy. The Caddyfile has no `precompressed`
-# directive and encodes text on the fly, so they were never read. The exclude
-# costs nothing and keeps a future plugin from quietly putting 54 MB back.
-info "packing apps/web/out without media/ and without .br/.gz"
+# Precompressed siblings are checked rather than excluded. The build writes
+# exactly two, cat.glb.br and cat.glb.gz, because Caddy's `encode` matches
+# responses by Content-Type and no `model/*` type is in its default list, so
+# the 3D model is the one large asset a host cannot compress on the fly
+# (apps/web/scripts/precompress-out.mjs, docs/DEPLOY-HEADERS.md). They have to
+# reach the release for `precompressed br gzip` to have anything to serve.
+#
+# Text siblings still must not. `next build` emits none, so the ~10500 in the
+# current live release came from an earlier hand-made deploy, where they were
+# never read and cost 54 MB. A blanket exclude used to drop them silently; an
+# assertion on the packed listing below fails the deploy instead and names the
+# file, which is what a change upstream turning precompression on for
+# everything deserves.
+info "packing apps/web/out without media/"
 tar -C "${OUT_DIR}" \
   --exclude=./media \
-  --exclude='*.br' \
-  --exclude='*.gz' \
   -czf "${ARTIFACT}" . || fail "could not create the artifact"
 
 ARTIFACT_SIZE="$(du -h "${ARTIFACT}" | cut -f1)"
 tar -tzf "${ARTIFACT}" >"${TMP_ROOT}/listing.txt" || fail "could not list the artifact"
 ARTIFACT_FILES="$(grep -c -v '/$' "${TMP_ROOT}/listing.txt" || true)"
+
+# The only precompressed siblings a release carries are the model's. Anything
+# else precompressed is a text asset the host already encodes per request, and
+# it stops the deploy here, before an upload. A `.tmp` is caught with them:
+# precompress-out.mjs writes each sibling under that suffix and renames it, so
+# one left behind is a half-written body from an interrupted build.
+UNEXPECTED_SIDECAR="$(grep -E '\.(br|gz|zst)$|\.tmp$' "${TMP_ROOT}/listing.txt" |
+  grep -v -E '\.glb\.(br|gz)$' | head -n 1 || true)"
+[ -z "${UNEXPECTED_SIDECAR}" ] ||
+  fail "the export carries a sibling that is not a model's finished .br or .gz: ${UNEXPECTED_SIDECAR}"
 
 # One real file out of the archive, so the post-upload check on the host tests
 # something more than index.html existing. A hashed JS chunk is a good pick:

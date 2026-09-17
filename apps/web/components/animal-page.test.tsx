@@ -294,10 +294,7 @@ describe("what the animal page hands its client components", () => {
 describe("the shelter box", () => {
   const REFERENCE = new Date("2026-08-18T00:00:00.000Z");
 
-  function block(
-    rest: Partial<AnimalFields> = {},
-    phones: Record<string, string> = {},
-  ) {
+  function block(rest: Partial<AnimalFields> = {}) {
     const animal: AnimalFields = {
       id: "horjul:1",
       source: {
@@ -317,7 +314,6 @@ describe("the shelter box", () => {
         <ShelterBlock
           animal={animal}
           logos={{}}
-          phones={phones}
           reference={REFERENCE}
         />
       </I18nProvider>,
@@ -362,18 +358,13 @@ describe("the shelter box", () => {
     expect(screen.queryByText(/čaka že/)).toBeNull();
   });
 
-  // Adoption goes through the shelter, and the box's own button leaves for a
-  // listing that may be out of date. The number is the way to ask.
-  it("dials the register's number in international form", () => {
-    block({}, { horjul: "051 304 435" });
+  // The box used to print the register's number under the town. Adoption at
+  // the shelters starts with their own form, and a number beside one animal
+  // asked for the call they ask people not to make; their page, which the
+  // name here links to, holds it, and so does the printed poster.
+  it("offers no call of its own", () => {
+    const { container } = block();
 
-    const dial = screen.getByRole("link", { name: /051 304 435/ });
-    expect(dial.getAttribute("href")).toBe("tel:+38651304435");
-  });
-
-  it("draws no dial link where the register has no number", () => {
-    block();
-
-    expect(screen.queryByRole("link", { name: /Telefon/ })).toBeNull();
+    expect(container.querySelector('a[href^="tel:"]')).toBeNull();
   });
 });

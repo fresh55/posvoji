@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -111,6 +112,31 @@ function query() {
   return window.location.search;
 }
 
+/** Both chip rows. A section and not a role query: the sidebar's toggle groups
+ *  come back as toolbars too, and these two are the only sections that are
+ *  one (filter-chips.tsx). */
+function chipRows(): HTMLElement[] {
+  return [...document.querySelectorAll<HTMLElement>("section[role='toolbar']")];
+}
+
+/** The active filters are stated twice, once per width: in flow under the
+ *  toolbar band below lg, and inside the sticky bar at lg. Only CSS separates
+ *  the two, so jsdom mounts both and every query about one of them has to name
+ *  which (animal-filters.tsx). */
+function phoneRow(): HTMLElement {
+  const row = document.querySelector<HTMLElement>(
+    '[data-slot="mobile-filter-row"]',
+  );
+  if (!row) throw new Error("no phone filter row on the page");
+  return row;
+}
+
+function stickyRow(): HTMLElement {
+  const row = chipRows().find((candidate) => !phoneRow().contains(candidate));
+  if (!row) throw new Error("no chips row in the sticky bar");
+  return row;
+}
+
 
 describe("animal grid empty state", () => {
   it("names the shelter-species conflict and offers to drop only the shelter", () => {
@@ -213,8 +239,9 @@ describe("animal grid empty state", () => {
 
   it("leaves one clear control per surface once chips can carry it", () => {
     // A shelter is picked, so there is a chip, so both chip rows render: the
-    // toolbar's at lg and the empty state's own below it. Each already ends in
-    // a clear, and the state used to put a second clear button under them
+    // sticky bar's at lg and the phone's own below it. Nothing matches here,
+    // which is the one state the phone's row ends in a clear of its own, and
+    // the empty state used to put a second clear button under the pills
     // anyway -- two stacked on a phone, and a third at lg back when the
     // sidebar head carried its own copy too, all of them the same press.
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
@@ -246,29 +273,34 @@ describe("animal grid empty state", () => {
     expect(query()).toBe("?vrsta=ostalo");
   });
 
-  it("draws the phone way out under the pills rather than off the end of them", () => {
+  it("draws the phone way out in the wrapping row rather than off the end of a strip", () => {
     // Same state as above, read for where the clear is rather than how many
-    // there are. Measured at 390px with four filters active: the pills ran to
-    // x 497 and the clear, as the strip's last item, sat at x 514, off the
-    // right edge, with nothing on screen saying the strip scrolled sideways.
-    // This is the one state where clearing everything is the way out.
+    // there are. It is back inside the row, because the row below lg no
+    // longer scrolls: the pills wrap under the toolbar band and the clear
+    // wraps with them. In the strip it was the last item, and measured at
+    // 390px with four filters active the pills ran to x 497 and the clear sat
+    // at x 514, off the right edge, with nothing on screen saying the strip
+    // scrolled sideways.
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 
-    const belowLg = screen
-      .getAllByRole("button", { name: "Počisti filtre" })
-      .filter((clear) => clear.closest('[class~="lg:hidden"]'));
-    expect(belowLg).toHaveLength(1);
+    const row = phoneRow();
+    expect(row.className).toContain("lg:hidden");
+    // Nothing in it scrolls sideways, so there is no end to fall off.
+    expect(row.querySelector('[class*="overflow-x-auto"]')).toBeNull();
 
-    // Out of the strip the pills scroll in and out of the row that walks them
-    // with the arrow keys, drawn as the same outline button this state offers
-    // when there are no chips at all to carry a clear.
-    const clear = belowLg[0];
-    expect(clear.closest("[data-scroll-strip]")).toBeNull();
-    expect(clear.closest("[role='toolbar']")).toBeNull();
-    expect(clear.getAttribute("data-slot")).toBe("button");
-    expect(clear.getAttribute("data-variant")).toBe("outline");
-    expect(clear.getAttribute("data-size")).toBe("sm");
+    const clear = within(row).getByRole("button", { name: "Počisti filtre" });
+    // The row's own clear, walked by the arrow keys with the pills it clears,
+    // and not the outline button the empty state used to draw under them: the
+    // state draws no chips and no clear of its own any more, so the two rows
+    // on the page are both the filters' own.
+    expect(clear.closest("[role='toolbar']")).not.toBeNull();
+    expect(chipRows()).toHaveLength(2);
+    expect(
+      screen
+        .getAllByRole("button", { name: "Počisti filtre" })
+        .filter((button) => button.getAttribute("data-slot") === "button"),
+    ).toHaveLength(0);
 
     fireEvent.click(clear);
     expect(query()).toBe("?vrsta=ostalo");
@@ -808,8 +840,9 @@ describe("the chips row inside the grid", () => {
 
       // The offer stands, and it puts the query back exactly as it was.
       //
-      // Two of them, from one component. The chips row carries it at lg and
-      // the phone's status line carries it below that (UndoOffer,
+      // Two of them, from one component. The sticky bar's chips row carries
+      // it at lg and the phone's row under the band carries it below that,
+      // each in place of the pills the clear took away (UndoOffer,
       // filter-chips.tsx), and only CSS separates the two surfaces, so jsdom
       // renders both. Either one has to do the whole job, and taking the
       // offer has to end it everywhere.
@@ -870,7 +903,9 @@ describe("the chips row inside the grid", () => {
     window.history.replaceState(null, "", "/?zavetisce=muri,tretje");
     renderGrid(ANIMALS);
 
-    const chip = screen.getByRole("button", {
+    // Named against one of the two rows: both draw the same pills, and the
+    // question here is about the pill and not about the surface.
+    const chip = within(stickyRow()).getByRole("button", {
       name: "Odstrani filter Shelter muri",
     });
     expect(chip.hasAttribute("data-slot")).toBe(false);
@@ -883,16 +918,98 @@ describe("the chips row inside the grid", () => {
     renderGrid(ANIMALS);
 
     // Two rows again, and this is the state both of them exist for. At lg the
-    // sticky bar's row is on screen; below it that row is gone and the empty
-    // state carries its own copy, which is the only place a phone is told
-    // which of its filters is the one to drop. Whichever surface the visitor
-    // is on, the way out has to be marked, so both are checked.
+    // sticky bar's row is on screen; below it the phone's own row under the
+    // band is, and it is the only place a phone is told which of its filters
+    // is the one to drop. Whichever surface the visitor is on, the way out
+    // has to be marked, so both are checked.
     // The marked pill carries the number it draws in its name too.
     const chips = screen.getAllByRole("button", {
       name: "Odstrani filter Shelter muri: +1 žival",
     });
     expect(chips).toHaveLength(2);
     for (const chip of chips) expect(chip.textContent).toContain("+1");
+  });
+
+  it("states the same filters once per width, each row in its own band", () => {
+    // Below lg the count on the Filtri button was the whole statement: a
+    // number, with the names of what it counts a tap away behind the sheet.
+    // The row under the band names them, and the sticky bar's copy stays the
+    // one drawn at lg, where it costs a wide screen nothing.
+    window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+    renderGrid(ANIMALS);
+
+    const phone = phoneRow();
+    const sticky = stickyRow();
+    expect(phone.className).toContain("lg:hidden");
+    expect(sticky.closest('[class~="max-lg:hidden"]')).not.toBeNull();
+    // In flow under the band and not inside it: the row grows the page rather
+    // than the sticky header, so it pushes the grid once instead of holding
+    // the pixels for the whole scroll.
+    expect(phone.closest('[class~="sticky"]')).toBeNull();
+
+    // Two shelters picked, so two pills, and the same two in both rows.
+    for (const row of [phone, sticky]) {
+      expect(
+        within(row)
+          .getAllByRole("button", { name: /^Odstrani filter/ })
+          .map((pill) => pill.textContent),
+      ).toEqual(["Shelter muri", "Shelter druga"]);
+    }
+  });
+
+  it("keeps the phone's clear for the state where clearing is the way out", () => {
+    // With results on screen the row is a statement of what is on, and
+    // clearing everything is one tap away in the sheet's footer the whole
+    // time. With nothing matching the row is the way out, so it ends in one.
+    // The sticky row carries its own at either count: nothing there is
+    // competing for a phone's width.
+    window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+    const { unmount } = renderGrid(ANIMALS);
+
+    expect(
+      within(phoneRow()).queryByRole("button", { name: "Počisti filtre" }),
+    ).toBeNull();
+    expect(
+      within(stickyRow()).getByRole("button", { name: "Počisti filtre" }),
+    ).toBeTruthy();
+
+    // The same filter state with nothing left matching it. Unmounted first,
+    // because two grids in one document would be four rows.
+    unmount();
+    window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    expect(
+      within(phoneRow()).getByRole("button", { name: "Počisti filtre" }),
+    ).toBeTruthy();
+    expect(
+      within(stickyRow()).getByRole("button", { name: "Počisti filtre" }),
+    ).toBeTruthy();
+  });
+
+  it("offers the way back from a clear in the phone's row, where the pills were", () => {
+    // What the undo row below the band used to be on its own, now the same
+    // row that named the filters: clearing is the one filter action a phone
+    // cannot take back by repeating the gesture, and the offer stands in the
+    // place the pills it took away were standing.
+    window.history.replaceState(null, "", "/?zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    fireEvent.click(
+      within(stickyRow()).getByRole("button", { name: "Počisti filtre" }),
+    );
+    expect(query()).toBe("");
+
+    const phone = phoneRow();
+    expect(
+      within(phone).queryAllByRole("button", { name: /^Odstrani filter/ }),
+    ).toHaveLength(0);
+    fireEvent.click(
+      within(phone).getByRole("button", {
+        name: "Razveljavi čiščenje filtrov",
+      }),
+    );
+    expect(query()).toBe("?zavetisce=muri");
   });
 });
 

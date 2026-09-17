@@ -575,6 +575,64 @@ describe("the active filters row", () => {
     ).toBeTruthy();
   });
 
+  it("wraps the pills instead of laying a second sideways scroller under the bar", () => {
+    // What the phone's in-flow row asks for (animal-filters.tsx). A strip
+    // there would be a horizontal scroller stacked under the species strip
+    // inside a page that already scrolls vertically, which is the objection
+    // that kept this row off a phone in the first place; the page's own
+    // vertical scroll is what a wrapping row costs instead.
+    renderChips(
+      [
+        chip({ key: "a", label: "Dogs" }),
+        chip({ key: "b", facet: "age", label: "Cats" }),
+      ],
+      { wrap: true },
+    );
+
+    const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
+    const box = dogs.closest("span")?.parentElement;
+
+    // The box around the pills scrolls nothing: no overflow to scroll in, and
+    // none of the fade the strip draws over its own edges. Read off the
+    // classes, because jsdom lays nothing out, and off these rather than off
+    // data-scroll-strip, which the wrapping box still carries.
+    const outer = box?.parentElement;
+    expect(outer?.className).not.toContain("overflow-x-auto");
+    expect(outer?.className).not.toContain("fade-scroll-x");
+
+    expect(box?.className).toContain("flex-wrap");
+    // w-max is the strip's own width: a row as wide as its content, for the
+    // strip to scroll. Wrapping, the row is as wide as the box it is in.
+    expect(box?.className).not.toContain("w-max");
+
+    // Two pixels tighter per side on a thumb: at 375 three typical pills
+    // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
+    expect(dogs.className).toContain("pointer-coarse:px-2.5");
+    expect(dogs.className).not.toContain("pointer-coarse:px-3");
+  });
+
+  it("takes a lower cap than the bar's own, and hands the rest over on press", () => {
+    // The phone's row caps at five (animal-filters.tsx). It wraps, so the cap
+    // bounds how many lines the row can push the grid down by rather than how
+    // far it runs off the right edge, and five is what fits two lines at 375.
+    const six = FILTER_FACETS.slice(0, 6).map((facet) =>
+      chip({ key: `${facet}:0`, facet, label: `${facet}0` }),
+    );
+    expect(six).toHaveLength(6);
+    renderChips(six, { maxVisible: 5 });
+
+    expect(
+      screen.getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(5);
+    const more = screen.getByRole("button", { name: "Show 1 more" });
+    expect(more.textContent).toBe("+1");
+
+    fireEvent.click(more);
+    expect(
+      screen.getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(6);
+  });
+
   it("draws nothing at all with no chips and no offer", () => {
     const { container } = renderChips([]);
     expect(container.querySelector("[role='toolbar']")).toBeNull();

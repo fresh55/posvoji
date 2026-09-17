@@ -4,7 +4,12 @@ import { type ComponentProps } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
+import {
+  EMPTY_FILTERS,
+  FILTER_FACETS,
+  GROUPS,
+  type MultiGroup,
+} from "@/lib/filters";
 import { AnimalFilters } from "./animal-filters";
 import { FilterChips } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
@@ -314,8 +319,10 @@ describe("mobile filter hardening", () => {
     // toolbar wraps them in, so the strip can still scroll inside the row.
     const tabsBox = mobileTab.closest('[data-slot="mobile-toolbar"] > div');
     expect(tabsBox?.className).toContain("min-w-0");
-    // A chips row would be the fourth surface stating the filter state on one
-    // screen, so it is not in the bar either.
+    // The chips row is not in the bar. It states the filters below lg now,
+    // but under the band and in flow (the test below), not inside a sticky
+    // header that would hold its height for the whole scroll and push the
+    // grid down the moment a filter landed.
     expect(
       within(mobileToolbar).queryByRole("toolbar", { name: /filter/i }),
     ).toBeNull();
@@ -325,6 +332,65 @@ describe("mobile filter hardening", () => {
     const live = document.querySelector("[aria-live]");
     expect(live?.textContent).toContain("2 animals");
     expect(live?.closest(".sr-only")).toBeTruthy();
+  });
+
+  it("states the filters under the band on a phone, wrapping and capped at five", () => {
+    // Below lg the count on the Filtri button was the whole statement of what
+    // was on. The row names the filters instead, in flow under the band: it
+    // pushes the grid down once, where a row inside the sticky bar holds its
+    // height for the whole scroll, and it wraps rather than laying a second
+    // sideways scroller under the species strip.
+    const six = FILTER_FACETS.slice(0, 6).map((facet) => ({
+      key: `${facet}:0`,
+      facet,
+      value: "0",
+      label: `${facet}0`,
+      onRemove: vi.fn(),
+    }));
+    const { container } = renderFilters({
+      ...SEX_GROUP,
+      chips: six,
+      speciesTally: { all: 2, dog: 1, cat: 1, other: 0 },
+      speciesRoster: { all: 2, dog: 1, cat: 1, other: 0 },
+      shelterTally: new Map([["test", 2]]),
+      resultCount: 2,
+    });
+
+    const row = container.querySelector(
+      '[data-slot="mobile-filter-row"]',
+    ) as HTMLElement;
+    expect(row.className).toContain("lg:hidden");
+    expect(row.closest('[class~="sticky"]')).toBeNull();
+    expect(row.closest('[data-slot="mobile-toolbar"]')).toBeNull();
+
+    // Five pills, the rest behind a count. The bar's own row takes eight;
+    // this one wraps, so its cap bounds the lines it can push the grid down
+    // by rather than how far it runs past the right edge.
+    expect(
+      within(row).getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(5);
+    expect(within(row).getByRole("button", { name: "Show 1 more" })).toBeTruthy();
+
+    // With results on screen the row names what is on and nothing else:
+    // clearing everything is in the sheet's footer, one tap away the whole
+    // time, and the row keeps a clear only where it is the way out.
+    expect(
+      within(row).queryByRole("button", { name: "Clear filters" }),
+    ).toBeNull();
+
+    // The row at lg is the sticky bar's own, with the whole eight-pill cap
+    // and its clear at the end of the strip. Only CSS separates the two, so
+    // jsdom mounts both and each has to be named.
+    const sticky = [
+      ...container.querySelectorAll<HTMLElement>("section[role='toolbar']"),
+    ].find((candidate) => !row.contains(candidate)) as HTMLElement;
+    expect(sticky.closest('[class~="max-lg:hidden"]')).not.toBeNull();
+    expect(
+      within(sticky).getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(6);
+    expect(
+      within(sticky).getByRole("button", { name: "Clear filters" }),
+    ).toBeTruthy();
   });
 
   it("keeps a flick off the end of the tab strip out of the browser's back gesture", () => {

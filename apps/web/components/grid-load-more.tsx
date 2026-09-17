@@ -85,7 +85,15 @@ export function GridLoadMore({
           // is the one control at the bottom of the list, and h-8 is short of
           // what a thumb needs. The pointer and not the width, so a touch tablet
           // past lg gets it and a narrow mouse window does not.
-          className={COARSE_ACTION}
+          //
+          // The frame is what says this is pressable at all: it is an outline
+          // button with no fill, alone on a line under sixty photographs, and
+          // --border measures 1.26:1 light and 1.47:1 dark, which SC 1.4.11
+          // asks 3:1 of. --control-border is the token for exactly that
+          // (globals.css, 3.66:1 and 3.77:1). Stated for dark as well because
+          // the variant states dark:border-input for itself and a dark: class
+          // outranks an unprefixed one whatever the merge does with it.
+          className={`${COARSE_ACTION} border-control-border dark:border-control-border`}
         >
           {t("showMoreAnimals", { n: Math.min(CARDS_PER_CLICK, total - drawn) })}
         </Button>

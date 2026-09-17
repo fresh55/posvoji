@@ -133,7 +133,8 @@ function shelterAbsenceKey(count: number): TranslationKey {
   return "noResultsShelterPlural";
 }
 
-/** The touch line the empty state's buttons keep on a coarse pointer.
+/** What the empty state's buttons wear: a touch line on a coarse pointer, and
+ *  a frame that can be seen.
  *
  *  They are `size="sm"`, which is a mouse's height, and on a phone this state
  *  holds the only controls on screen. Grown rather than overlaid, and padded
@@ -141,8 +142,16 @@ function shelterAbsenceKey(count: number): TranslationKey {
  *  gate asks the pointer rather than the width, which is what the rest of the
  *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
  *  mouse.
+ *
+ *  The border is the same argument in the other dimension. These are outline
+ *  buttons with no fill on an empty page, so their edge is the whole of what
+ *  says they are controls, and --border measures 1.26:1 light and 1.47:1 dark
+ *  where SC 1.4.11 asks 3:1. --control-border is the token for a frame that
+ *  identifies a control (globals.css, 3.66:1 and 3.77:1). Dark is stated as
+ *  well: the variant carries dark:border-input and a dark: class outranks an
+ *  unprefixed one whatever tailwind-merge makes of the pair.
  */
-const EMPTY_STATE_ACTION = COARSE_ACTION;
+const EMPTY_STATE_ACTION = `${COARSE_ACTION} border-control-border dark:border-control-border`;
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they

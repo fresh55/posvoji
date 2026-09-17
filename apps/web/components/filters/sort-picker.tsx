@@ -78,6 +78,13 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  label beside the control with the chosen order visible, and it is the
  *  primary way a visitor re-orders 486 animals.
  *
+ *  A frame doing that job has a number to hit, and the stock one did not: the
+ *  --input token this wore measured 1.26:1 against the page in light mode,
+ *  where SC 1.4.11 asks 3:1 of a boundary that identifies a control.
+ *  border-control-border measures 3.66:1 light and 3.77:1 dark. The token is
+ *  for exactly this and not for dividers, which is why --border and --input
+ *  stay where they are (globals.css).
+ *
  *  The species tabs across the row keep no frame and need none: which one is
  *  chosen is a filled pill, and a strip of text with one pill in it is not
  *  mistakable for a sentence. The shelter trigger shows a value the same way
@@ -182,6 +189,22 @@ export function SortPicker({
           // width gate had it the other way round: measured at 1180x820 with a
           // coarse pointer this trigger was 32px.
           "text-sm pointer-coarse:min-h-11",
+          // The frame this control is named for, at the strength the job
+          // asks: the primitive's border-input is 1.26:1 on the page in light
+          // mode and 1.47:1 in dark, and --control-border is 3.66:1 and
+          // 3.77:1. No dark: half is needed, because the token carries its own
+          // dark value and ui/select.tsx spells no dark border of its own.
+          //
+          // hover:bg-muted with it. Under the pointer this trigger changed 0
+          // of its 42,840 pixels in light mode, while the species tabs across
+          // the row from it change 74% of theirs; the wash is the ghost
+          // button's, which is what the tabs and the shelter trigger answer
+          // with, and the dark half replaces the primitive's own 1.17:1
+          // dark:hover:bg-input/50.
+          // background-color joins the primitive's own transition list, which
+          // is colour and box-shadow: without it the new wash arrives in one
+          // frame while every other control in the row eases into its own.
+          "border-control-border transition-[color,background-color,box-shadow] hover:bg-muted dark:hover:bg-muted/50",
           // The label takes the room between the two icons instead of
           // floating in the middle of it. The trigger is justify-between and
           // the value is the middle of its three children, so a trigger given

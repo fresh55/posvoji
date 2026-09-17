@@ -15,6 +15,7 @@ import {
   FilterCardRipple,
   FilterCardSection,
   FilterCardTail,
+  drawnOptions,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -447,6 +448,14 @@ export function FilterGroupList({
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();
 
+  // Which of a section's options this layout draws. The rule and the reason
+  // for it are in drawnOptions; it is applied here, once, rather than in each
+  // of the seven section components, so no section can quietly opt out. The
+  // closed-section summary below still reads its labels off the full list,
+  // which differs only by options nobody has chosen.
+  const drawn = <T,>(options: T[], isDead: (option: T) => boolean) =>
+    drawnOptions(options, layout, isDead);
+
   const collapseFor = (
     key: FilterSectionKey,
     summary: string | null,
@@ -462,29 +471,53 @@ export function FilterGroupList({
 
   return (
     <>
-      {groups.map(({ group, options }) => (
-        <FilterGroup
-          key={group}
-          group={group}
-          layout={layout}
-          options={options}
-          counts={counts[group]}
-          selected={filters[group]}
-          onToggle={(value) => onToggle(group, value)}
-          onToggleMany={(values) => onToggleMany(group, values)}
-          collapse={collapseFor(
-            group,
-            selectionSummary(
-              filters[group],
-              (value) => options.find((option) => option.value === value)?.label,
-            ),
-          )}
-        />
-      ))}
+      {groups.map(({ group, options }) => {
+        // Read once and widened to string[]: indexed by a union of groups,
+        // filters[group] is a union of arrays, and .includes on one of those
+        // takes the intersection of their element types, which is never.
+        const selected: string[] = filters[group];
+        const groupCounts = counts[group];
+
+        return (
+          <FilterGroup
+            key={group}
+            group={group}
+            layout={layout}
+            // Age keeps every stage in both layouts: drawnOptions says why.
+            options={
+              group === "age"
+                ? options
+                : drawn(options, ({ value }) =>
+                    isDeadOption(
+                      groupCounts.get(value) ?? 0,
+                      selected.includes(value),
+                    ),
+                  )
+            }
+            counts={groupCounts}
+            selected={selected}
+            onToggle={(value) => onToggle(group, value)}
+            onToggleMany={(values) => onToggleMany(group, values)}
+            collapse={collapseFor(
+              group,
+              selectionSummary(
+                selected,
+                (value) =>
+                  options.find((option) => option.value === value)?.label,
+              ),
+            )}
+          />
+        );
+      })}
 
       {toggles.length > 0 && (
         <HealthToggleCards
-          toggles={toggles}
+          toggles={drawn(toggles, ({ key }) =>
+            isDeadOption(
+              toggleTally.get(key) ?? 0,
+              filters.toggles.includes(key),
+            ),
+          )}
           counts={toggleTally}
           selected={filters.toggles}
           onToggle={onToggleProperty}
@@ -502,7 +535,12 @@ export function FilterGroupList({
 
       {goodWith && goodWith.options.length > 0 && (
         <GoodWithCards
-          options={goodWith.options}
+          options={drawn(goodWith.options, ({ key }) =>
+            isDeadOption(
+              goodWith.counts.get(key) ?? 0,
+              filters.goodWith.includes(key),
+            ),
+          )}
           counts={goodWith.counts}
           selected={filters.goodWith}
           resultCount={goodWith.resultCount}
@@ -526,7 +564,9 @@ export function FilterGroupList({
           asks what the visitor is willing to take on. */}
       {home && home.options.length > 0 && (
         <HomeCards
-          options={home.options}
+          options={drawn(home.options, ({ key }) =>
+            isDeadOption(home.counts.get(key) ?? 0, filters.home.includes(key)),
+          )}
           counts={home.counts}
           selected={filters.home}
           resultCount={home.resultCount}
@@ -547,7 +587,9 @@ export function FilterGroupList({
 
       {care && care.options.length > 0 && (
         <CareCards
-          options={care.options}
+          options={drawn(care.options, ({ key }) =>
+            isDeadOption(care.counts.get(key) ?? 0, filters.care.includes(key)),
+          )}
           counts={care.counts}
           selected={filters.care}
           resultCount={care.resultCount}

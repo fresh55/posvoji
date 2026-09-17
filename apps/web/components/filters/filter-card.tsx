@@ -121,6 +121,62 @@ export function isDeadOption(count: number, checked: boolean): boolean {
 }
 
 /**
+ * The dress a dead option wears, which is the filters' decision and not the
+ * card's.
+ *
+ * The base cva carries disabled:opacity-50, and that is right where it came
+ * from: the portal's choice cards are disabled while a save is in flight, and
+ * half opacity is what a control being waited on looks like. Here disabled
+ * means something else, and at half opacity the label measured 2.08:1, which
+ * reads as a tile that failed to paint rather than as an answer the current
+ * narrowing has none of. Under /?vrsta=pes four such rows were 160 of the
+ * 243px the sidebar overflowed at 1280x720.
+ *
+ * So the label keeps the full muted ink it has at rest, 5.54:1, and the two
+ * things that are actually true of a dead option are what say so: the count
+ * reads 0, and the box there would be nothing to tick in is not drawn
+ * (group-disabled:hidden on FilterSelectionMark). In the sidebar the row is
+ * not drawn at all; see drawnOptions.
+ *
+ * It rides here rather than on the cva because the cva's default layout is the
+ * tile and the portal calls it without one, so a variant or a compound would
+ * have taken the portal's busy cards with it. This helper has no caller
+ * outside the filters.
+ */
+export const DEAD_OPTION_CLASS = "disabled:opacity-100";
+
+/**
+ * The options a layout draws, which is not always every option a section has.
+ *
+ * A dead option explains itself on the sheet, where there is a tile with a 0
+ * in it and a page to scroll. In the sidebar it costs the panel its fold: the
+ * column is 224px of rows in a 720px window with nine sections in it, and a
+ * row that answers nothing pushes a section that does below the fold. So the
+ * sidebar draws the live options only, the same rule PR #231 applied one level
+ * up when it stopped drawing a section the pool answers nothing of.
+ *
+ * One option always stays, because a section must not fold down to a bare
+ * heading. That is reachable: the section survives PR #231's test on the
+ * species pool while the counts are taken against the whole filter state, so
+ * a narrowing in one section can zero every option of another. The one kept
+ * is the first, which is the section's own leading answer and the same row
+ * each time, rather than whichever happens to sit last.
+ *
+ * Age is not filtered. Its three stages are one drawing: the grove above the
+ * rows is a three-column grid whose plants stand over the rows they belong to,
+ * so an age stage is not a row that can be taken out on its own.
+ */
+export function drawnOptions<T>(
+  options: T[],
+  layout: FilterCardLayout,
+  isDead: (option: T) => boolean,
+): T[] {
+  if (layout !== "sidebar") return options;
+  const live = options.filter((option) => !isDead(option));
+  return live.length > 0 ? live : options.slice(0, 1);
+}
+
+/**
  * Why the sidebar draws rows.
  *
  * The sheet draws tiles and the sidebar draws rows, and both wore the same
@@ -144,9 +200,12 @@ export function isDeadOption(count: number, checked: boolean): boolean {
  * two whole sections sat below its own fold.
  */
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
-  return layout === "sheet"
-    ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
-    : "h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left";
+  return cn(
+    DEAD_OPTION_CLASS,
+    layout === "sheet"
+      ? "min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center"
+      : "h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left",
+  );
 }
 
 function markClass(layout: FilterCardLayout): string {
@@ -223,7 +282,11 @@ export function FilterSelectionMark({
       <span
         aria-hidden
         className={cn(
-          "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150",
+          // group-disabled:hidden, because a dead option has nothing to tick.
+          // The card is the group, and a disabled card in the filters is one
+          // the current narrowing has no animals for; see DEAD_OPTION_CLASS
+          // for why the rest of that dress is not in the cva.
+          "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150 group-disabled:hidden",
           checked
             ? // The ink is a token and not text-white, because this is the one
               // place the strong accent is a ground and that ground is light in

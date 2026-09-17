@@ -3,6 +3,7 @@
 import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
@@ -230,7 +231,10 @@ export function SexCards({
                 selected: checked,
                 className:
                   layout === "sheet"
-                    ? "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center"
+                    ? cn(
+                        DEAD_OPTION_CLASS,
+                        "h-[4.75rem] min-w-0 flex-1 flex-col gap-1 px-2 py-2 text-center",
+                      )
                     : cn("flex", filterCardLayoutClass(layout)),
               })}
             >

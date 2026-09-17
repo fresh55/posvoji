@@ -4,10 +4,12 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
+import { cn } from "@/lib/utils";
 import {
   SHEET_COUNT_CLASS,
   SIDEBAR_COUNT_CLASS,
   countClass,
+  drawnOptions,
   filterCardLayoutClass,
   filterCardVariants,
 } from "./filter-card";
@@ -122,6 +124,44 @@ describe("the filter card's two surfaces", () => {
     expect(countClass("sheet", false)).toContain("text-xs");
     expect(countClass("sidebar", true)).toContain("text-2xs");
     expect(countClass("sidebar", false)).toContain("text-2xs");
+  });
+
+  // disabled:opacity-50 took the label to 2.08:1, which reads as a tile that
+  // failed to paint. It stays in the base for the portal's choice cards, which
+  // are disabled while a save is in flight, and the filters' own layout class
+  // is what overrides it. Both classes survive the merge as one key, so the
+  // later one has to be the filters'.
+  it("keeps a dead option's label at full ink in both layouts", () => {
+    for (const layout of ["sidebar", "sheet"] as const) {
+      const card = filterCardVariants({
+        layout,
+        selected: false,
+        className: cn("flex", filterCardLayoutClass(layout)),
+      });
+
+      expect(card).toContain("disabled:opacity-100");
+      expect(card).not.toContain("disabled:opacity-50");
+      expect(card).toContain("disabled:pointer-events-none");
+    }
+  });
+
+  // The sidebar draws the live options only: a row that answers nothing pushed
+  // a section that does below the panel's own fold, 160 of the 243px it
+  // overflowed at 1280x720 under /?vrsta=pes. The sheet keeps the tile, where
+  // there is a page to scroll and a 0 to read.
+  it("draws only the live options in the sidebar", () => {
+    const options = ["a", "b", "c"];
+    const dead = (option: string) => option !== "b";
+
+    expect(drawnOptions(options, "sidebar", dead)).toEqual(["b"]);
+    expect(drawnOptions(options, "sheet", dead)).toEqual(options);
+  });
+
+  // A section must not fold down to a bare heading, and it can: the section
+  // survives on the species pool while its counts are taken against the whole
+  // filter state, so one section's narrowing can zero every option of another.
+  it("keeps one option when every option is dead", () => {
+    expect(drawnOptions(["a", "b"], "sidebar", () => true)).toEqual(["a"]);
   });
 
   // The sidebar is lg-only and mouse-driven, and the panel had two sections

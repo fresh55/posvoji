@@ -88,11 +88,29 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // Tailwind builds box-shadow out of --tw-ring-shadow and --tw-shadow together,
 // so the two coexist, and the ring comes first in that list, which is what
 // paints the focused 3px over the 1px it covers.
+//
+// That list is also how the focused ring gets an inner edge. The ring is drawn
+// inside the picture, so its inner boundary falls on whatever the photograph
+// happens to be there, and on 54 of 59 lead photos that boundary measured
+// under 3:1: the ring is a light green, and most shelter photos are studio
+// shots on white. So while a card is focused the shadow slot carries a second
+// layer, 4px of black at 45%, which the 3px ring covers all but the innermost
+// pixel of. What is left is a dark line between the green and the picture,
+// 3.4:1 against a white photo, and on a dark photo the ring was already the
+// bright thing. The hairline stays in the same value: it is under the ring
+// while the ring is there, and back on its own the moment focus leaves.
+//
+// The dark theme repeats the pair rather than inheriting it, because the
+// hairline's dark rule and this one both write the same property and, being
+// equally specific, the later of the two wins: the dark rule has to be the
+// focused one in the dark theme as well.
 const PHOTO_FRAME =
   `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
   ` after:${CARD_PHOTO_RADIUS}` +
   " after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)] dark:after:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
+  " group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(0,0,0,0.09)]" +
+  " dark:group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.08)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
 export function AnimalCard({

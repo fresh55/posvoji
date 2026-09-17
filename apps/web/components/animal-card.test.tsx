@@ -535,6 +535,44 @@ describe("AnimalCard hover", () => {
   });
 });
 
+describe("AnimalCard focus ring", () => {
+  // The class list again, for the reason the hover block above gives: jsdom
+  // resolves no :focus-visible on an ancestor and paints nothing, so what can
+  // be pinned is the shape of the rule. The e2e spec reads the computed shadow.
+  it("gives the ring a dark inner edge in both themes", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard animal={animal()} reference={NOW} onOpen={() => undefined} />
+      </I18nProvider>,
+    );
+
+    const frame = document.querySelector('[data-slot="photo-frame"]');
+    // Still three pixels of the ring token, drawn inside the picture.
+    expect(frame?.className).toContain(
+      "group-has-[a:focus-visible]/card:after:ring-3",
+    );
+    expect(frame?.className).toContain(
+      "group-has-[a:focus-visible]/card:after:ring-inset",
+    );
+    // And under it 4px of black at 45%, so the ring's inner boundary is not a
+    // light green edge on a white studio photo: that boundary measured under
+    // 3:1 on 54 of 59 lead photos, and 3.4:1 with this layer.
+    expect(frame?.className).toContain(
+      "group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(0,0,0,0.09)]",
+    );
+    // The dark theme repeats it, because the hairline's own dark rule writes
+    // the same property at the same specificity.
+    expect(frame?.className).toContain(
+      "dark:group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+    );
+    // The hairline is still there at rest, which is what closes a white photo
+    // against the white page.
+    expect(frame?.className).toContain(
+      "after:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.09)]",
+    );
+  });
+});
+
 describe("AnimalCard empty photo", () => {
   // An animal the shelter published with no photo at all. The frame is the
   // only picture in the grid with nothing in it, so it draws the species

@@ -458,7 +458,6 @@ export function FilterGroupList({
   onToggleProperty,
   onToggleManyProperties,
   layout = "sidebar",
-  collapsible = false,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -473,10 +472,6 @@ export function FilterGroupList({
       age control's alone once, and by the time the sex and size sections were
       brought onto the row treatment it was deciding all of them. */
   layout?: FilterCardLayout;
-  /** Folds sections behind their headers. Both the sidebar and the phone
-      sheet turn it on; the sheet needs it more (filter-sheet.tsx has the
-      numbers: nine open sections through a 189px window at 320x568). */
-  collapsible?: boolean;
 } & FilterActionContract) {
   const { isOpen, toggleSection } = useFilterSections();
   // One base per list, so a header and the body it controls agree on an id
@@ -510,18 +505,20 @@ export function FilterGroupList({
       isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
     );
 
+  // Every section folds, on both surfaces. This was a prop for the pass in
+  // which only the sidebar folded; the phone sheet joined it on 2026-09-17
+  // (filter-sheet.tsx has the numbers: nine open sections through a 189px
+  // window at 320x568), and with both callers passing the same answer the
+  // unfolded list was a configuration the site no longer had.
   const collapseFor = (
     key: FilterSectionKey,
     summary: string | null,
-  ): SectionCollapse | undefined =>
-    collapsible
-      ? {
-          open: isOpen(key),
-          onToggle: () => toggleSection(key),
-          summary,
-          contentId: `${idBase}-${key}`,
-        }
-      : undefined;
+  ): SectionCollapse => ({
+    open: isOpen(key),
+    onToggle: () => toggleSection(key),
+    summary,
+    contentId: `${idBase}-${key}`,
+  });
 
   return (
     <>

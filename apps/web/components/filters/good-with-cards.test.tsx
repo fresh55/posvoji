@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, goodWithOptions, type GoodWithKey } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
+import {
+  installFilterFoldSeams,
+  openFilterSection,
+} from "@/test/filter-folds";
 import { FilterGroupList } from "./filter-groups";
 import { GoodWithCards } from "./good-with-cards";
 
-afterEach(() => cleanup());
+installFilterFoldSeams();
 
 const options = goodWithOptions("sl");
 const counts = new Map(options.map(({ key }) => [key, 2]));
@@ -291,6 +295,7 @@ describe("FilterGroupList", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Doma imam" })).toBeTruthy();
+    openFilterSection("Doma imam");
     expect(
       screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
     ).toHaveLength(1);

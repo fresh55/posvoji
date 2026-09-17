@@ -1,14 +1,18 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, homeOptions, type HomeKey } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
+import {
+  installFilterFoldSeams,
+  openFilterSection,
+} from "@/test/filter-folds";
 import { FilterGroupList } from "./filter-groups";
 import { HomeCards } from "./home-cards";
 
-afterEach(() => cleanup());
+installFilterFoldSeams();
 
 const options = homeOptions("sl");
 const counts = new Map(options.map(({ key }) => [key, 2]));
@@ -196,6 +200,7 @@ describe("FilterGroupList", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Dom" })).toBeTruthy();
+    openFilterSection("Dom");
     // One facet has a count, so the sidebar draws that option alone; the
     // section itself appearing is what this test is about.
     expect(

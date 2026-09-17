@@ -192,7 +192,6 @@ export function FilterSidebar({
         onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}
         onToggleManyProperties={onToggleManyProperties}
-        collapsible
       />
     </aside>
   );

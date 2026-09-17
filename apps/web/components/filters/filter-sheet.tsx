@@ -355,7 +355,8 @@ export function FilterSheet({
           data-scrolled={scrolled ? "" : undefined}
           className="shrink-0 border-b border-transparent px-5 pb-3 data-scrolled:border-border"
         >
-          {/* Sort on its own full-width row under the title, below md only,
+          {/* Sort on its own full-width row under the title, on a phone and on
+              any screen short enough that the toolbar unpins (SORT_ROW_HIDDEN),
               and inside the header block rather than the scrolling body, so
               it stays put while the filter list moves under it.
 
@@ -524,7 +525,6 @@ export function FilterSheet({
               which sections they care about, and that answer is theirs on
               both surfaces rather than per surface. */}
           <FilterGroupList
-            collapsible
             filters={filters}
             groups={groups}
             counts={counts}

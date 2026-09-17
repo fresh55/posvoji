@@ -689,6 +689,11 @@ describe("animal dialog", () => {
     );
     expect(quiet.parentElement?.className).toContain("text-muted-foreground");
     expect(quiet.className).not.toContain("font-medium");
+    // The age pill names itself for everyone, not only for a screen reader,
+    // so the two spans of time on this card cannot be taken for each other.
+    const age = within(dialog).getByText("Starost:", { exact: false });
+    expect(age.className).not.toContain("sr-only");
+    expect(age.closest("li")?.textContent).toBe("Starost: 2 leti");
     expect(within(dialog).queryByText(/čaka že/)).toBeNull();
     expect(within(dialog).queryByText("Kamnik")).toBeNull();
   });

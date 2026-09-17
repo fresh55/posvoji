@@ -121,7 +121,10 @@ export function posterTiles(
   if (months !== undefined) {
     tiles.push({
       key: "age",
-      label: ageLabel(months, locale),
+      // Named, as the dialog's pill is: "2 leti" beside a "V zavetišču: 2
+      // meseca" tile is two spans of time told apart by a 5mm glyph, read
+      // across a room on paper.
+      label: `${messages.factAge}: ${ageLabel(months, locale)}`,
       tone: "identity",
       // The same sprout, shrub or tree the age filter buckets by.
       glyph: { kind: "age", stage: ageGroup(months) },

@@ -213,7 +213,7 @@ describe("the fact tiles", () => {
     expect(tiles(container)).toEqual([
       "Mačka",
       "Samica",
-      "2 leti",
+      "Starost: 2 leti",
       "Srednja",
       "Cepljenje",
     ]);

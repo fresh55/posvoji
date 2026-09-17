@@ -410,12 +410,21 @@ function Fact({
   icon: Icon,
   iconNode,
   prefix,
+  named = false,
   className,
   children,
 }: {
   icon?: LucideIcon;
   iconNode?: ReactNode;
   prefix?: string;
+  /**
+   * Print the prefix for everyone, not only for a screen reader. "Samica"
+   * and "Velika" name themselves; "2 leti" does not, and a bare span of time
+   * a few lines above a box whose first line is a wait read as the wait to
+   * some visitors. One span carries the prefix either way, so a screen
+   * reader never hears it twice.
+   */
+  named?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -436,8 +445,14 @@ function Fact({
       ) : (
         iconNode
       )}
-      {prefix && <span className="sr-only">{prefix}: </span>}
-      <span>{children}</span>
+      {/* A named prefix shares the value's span. As its own flex item it
+          stood a gap-1.5 away from the number, and "Starost:  1 leto" read
+          as double-spaced. */}
+      {prefix && !named && <span className="sr-only">{prefix}: </span>}
+      <span>
+        {named && prefix ? `${prefix}: ` : null}
+        {children}
+      </span>
     </li>
   );
 }
@@ -561,6 +576,7 @@ export function AnimalFacts({
                     />
                   }
                   prefix={messages.factAge}
+                  named
                 >
                   {ageLabel(months, locale)}
                 </Fact>

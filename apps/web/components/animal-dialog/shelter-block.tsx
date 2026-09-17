@@ -75,11 +75,12 @@ export function ShelterBlock({
     stayMonths === undefined ? undefined : ageLabel(stayMonths, locale);
 
   // An animal that came in before its first birthday prints the same number
-  // twice: the age pill says "4 leta" and the plea says it waited 4 leta. That
-  // is 56 of the 96 long-stay animals whose age we know, and a reader who
-  // notices takes the repeated number for a bug rather than for a life. The
-  // tail says which it is. The gate is the arrival age, not a birth in the
-  // shelter, which is why the sentence says "skoraj".
+  // twice: the age pill says "Starost: 4 leta" and the plea says it waited 4
+  // leta. That is 56 of the 96 long-stay animals whose age we know. The pill
+  // now names itself, so the repeat no longer reads as a bug; the tail stays
+  // because it says something true about a life that the two numbers only
+  // imply. The gate is the arrival age, not a birth in the shelter, which is
+  // why the sentence says "skoraj".
   //
   // Only where the age is known: without it there is no repeated number to
   // explain, and the plainer sentence is the honest one. The poster keeps the

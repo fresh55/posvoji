@@ -375,6 +375,10 @@ export function monthsInShelter(
 ): number | undefined {
   const intake = new Date(intakeDate);
   if (Number.isNaN(intake.getTime())) return undefined;
+  // A date after the reference is a typo in a listing, not a stay. The month
+  // arithmetic below rounds a date later this month down to zero and would
+  // print "manj kot mesec" for an animal that by the record has not arrived.
+  if (intake.getTime() > now.getTime()) return undefined;
   const months =
     (now.getUTCFullYear() - intake.getUTCFullYear()) * 12 +
     (now.getUTCMonth() - intake.getUTCMonth());

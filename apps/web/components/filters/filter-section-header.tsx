@@ -195,7 +195,7 @@ export function FilterSectionHeader({
       className={cn(
         // text-xs below lg and text-2xs from it, the same one decision the
         // hint above states: 11px is a 224px column's size, not a phone's.
-        "h-auto p-0 text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
+        "h-auto text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
         // shapes, because the two placements differ. In the sheet this sits in
@@ -205,9 +205,32 @@ export function FilterSectionHeader({
         // the drawn box is grown instead, which costs the row nothing because
         // the button is out of flow and the header beside it is 44px on the
         // same pointer.
+        //
+        // On a mouse that box was the drawn 17.5px and nothing else, and the
+        // fold trigger runs the full width of the row underneath it, so a
+        // 10px miss above or below this link collapsed the section instead of
+        // clearing it. px-1 py-1 grows the box to 25.5px and takes 54x25px of
+        // the trigger's own dead space; the padding is spelled here rather
+        // than in the shared string above, so p-0 is not left in the class
+        // list for the stylesheet's emit order to settle against px-1.
+        //
+        // No -my-1 with it. The row places this button at top-1/2 and pulls it
+        // back by half its own height, so a taller box re-centres itself and
+        // the ink does not move; a negative block margin would shift the ink
+        // up by 4px. -mx-1 is needed, because right-6 pins the right margin
+        // edge and without it the words would move 4px left.
         collapse
-          ? "absolute right-6 top-1/2 -translate-y-1/2 pointer-coarse:min-h-11"
-          : "pointer-coarse:tap-target",
+          ? "absolute right-6 top-1/2 -mx-1 -translate-y-1/2 px-1 py-1 pointer-coarse:min-h-11"
+          : // 39.5px on a coarse pointer, not the 44 the utility's name
+            // suggests: the overlay reaches 44px in both axes from the
+            // control's centre, and this control sits in a flex row whose
+            // own height the 19px line box sets, so what it can claim
+            // downwards stops where the first filter row begins, 17px under
+            // that centre. Left at 39.5. The 4px per section that an mb-3
+            // here would buy back is 36px of sheet body across nine
+            // sections, and the sheet's own headers are the ones moving to
+            // the folding shape above, where the coarse floor is a real 44.
+            "p-0 pointer-coarse:tap-target",
       )}
     >
       {messages.resetFilters}

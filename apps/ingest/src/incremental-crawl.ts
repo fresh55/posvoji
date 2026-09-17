@@ -9,7 +9,7 @@ import type {
 import { Animal } from "@posvoji/schema";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { stripCacheDerivedFields } from "./cache-images";
-import { excludedPathFor } from "./crawl-guard";
+import { excludedPathFor, isAllowedPath } from "./crawl-guard";
 import { datasetDir } from "./paths";
 
 // Recovery and optional incremental helpers. Production export forces detail
@@ -290,6 +290,9 @@ function partitionExcluded(
   for (const ref of refs) {
     const under = excludedPathFor(ref.sourceUrl, policy.crawl.excludePaths);
     if (under === undefined) {
+      if (!isAllowedPath(ref.sourceUrl, policy.crawl.allowPaths)) {
+        throw new Error(`${policy.providerId}: discovered URL is outside crawl.allowPaths; refusing to fetch or reuse it`);
+      }
       crawlable.push(ref);
       continue;
     }

@@ -272,6 +272,42 @@ describe("current provider entry requests", () => {
     ).toBe(true);
   });
 
+  it.each(["privat_oddaja", "privat_oddajo", "unknown-section"])("blocks Mala hiša redirects into %s", async (path) => {
+    const currentPolicy = policyById.get("mala-hisa")!;
+    const client = new RedirectingClient(`/${path}/fixture/`);
+    const guarded = guardProviderRequests(client, currentPolicy);
+    const url = "https://zavetisce-malahisa.si/psi_za_oddajo/fixture/";
+
+    await expect(guarded.get(url)).rejects.toThrow(/refusing to fetch it/);
+    expect(client.calls).toEqual([url]);
+  });
+
+  it.each(["get", "getBytes"] as const)("blocks unlisted direct Mala hiša %s requests", async (method) => {
+    const client = new StubClient();
+    const guarded = guardProviderRequests(client, policyById.get("mala-hisa")!);
+    await expect(guarded[method]("/privat_oddajo/fixture/")).rejects.toThrow(/outside crawl.allowPaths/);
+    expect(client.calls).toEqual([]);
+  });
+
+  it.each(["/psi_za_oddajo-private/fixture/", "/psi_za_oddajo/%252e%252e/private/", "/psi_za_oddajo/a%2f..%2f..%2fprivate/"])("fails closed for ambiguous or sibling path %s", async (path) => {
+    const client = new StubClient();
+    const guarded = guardProviderRequests(client, policyById.get("mala-hisa")!);
+    await expect(guarded.get(path)).rejects.toThrow(/outside crawl.allowPaths/);
+    expect(client.calls).toEqual([]);
+  });
+
+  it("allows adoption redirects and decoded paths, while exclusions still win", async () => {
+    const current = policyById.get("mala-hisa")!;
+    const client = new RedirectingClient("/muce_za_oddajo/fixture/");
+    await expect(guardProviderRequests(client, current).get("/psi_za_oddajo/fixture/")).resolves.toMatchObject({ status: 200 });
+    const direct = new StubClient();
+    await guardProviderRequests(direct, current).get("/psi%5fza%5foddajo/fixture/");
+    const narrowed = { ...current, crawl: { ...current.crawl, excludePaths: ["/psi_za_oddajo/"] } };
+    await expect(guardProviderRequests(new StubClient(), narrowed).get("/psi_za_oddajo/fixture/")).rejects.toThrow(/excludes/);
+    const closed = { ...current, crawl: { ...current.crawl, allowPaths: [] } };
+    await expect(guardProviderRequests(new StubClient(), closed).get(current.source)).rejects.toThrow(/outside crawl.allowPaths/);
+  });
+
   for (const provider of providers) {
     it(`${provider.id} starts its crawl on its policy origin`, async () => {
       const currentPolicy = policyById.get(provider.id);

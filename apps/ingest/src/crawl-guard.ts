@@ -106,6 +106,20 @@ export function excludedPathFor(
   return excludePaths.find((excluded) => decoded.startsWith(excluded));
 }
 
+// Allow entries name a path and its descendants, never similarly named siblings.
+// Ambiguous encodings must not turn an admitted path into another server path.
+export function isAllowedPath(url: string, allowPaths: readonly string[] | undefined): boolean {
+  if (allowPaths === undefined) return true;
+  let path: string;
+  try { path = decodeURIComponent(new URL(url).pathname); } catch { return false; }
+  if (/[\\\u0000-\u001f\u007f]/.test(path) || /%[0-9a-f]{2}/i.test(path) ||
+      path.includes("//") || path.split("/").some((part) => part === "." || part === "..")) return false;
+  return allowPaths.some((allowed) => {
+    const base = allowed.endsWith("/") ? allowed.slice(0, -1) : allowed;
+    return path === base || path.startsWith(`${base}/`);
+  });
+}
+
 // Both rules are central rather than trusted to every parser: a provider may
 // crawl only its policy source origin, and excluded private-owner paths may
 // never reach the network even when a link percent-encodes part of the path.
@@ -131,6 +145,9 @@ export function guardProviderRequests(
         `${policy.providerId}: ${url} is under "${excluded}", which ` +
           `policy.yaml excludes from the crawl; refusing to fetch it`,
       );
+    }
+    if (!isAllowedPath(url, policy.crawl.allowPaths)) {
+      throw new Error(`${policy.providerId}: ${url} is outside crawl.allowPaths; refusing to fetch it`);
     }
     return url;
   };

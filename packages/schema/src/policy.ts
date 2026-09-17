@@ -55,7 +55,8 @@ export type PermissionStatus = z.infer<typeof PermissionStatus>;
 // These prefixes are a permission boundary: private-owner sections are kept
 // out of the crawl with them. Accept one unambiguous, already-decoded pathname
 // representation so a typo cannot validate but fail to match at runtime.
-export const CrawlExcludePath = z.string().min(1).superRefine((path, ctx) => {
+function crawlPath(field: "excludePaths" | "allowPaths") {
+  return z.string().min(1).superRefine((path, ctx) => {
   let problem: string | undefined;
 
   if (!path.startsWith("/") || path.startsWith("//")) {
@@ -86,10 +87,13 @@ export const CrawlExcludePath = z.string().min(1).superRefine((path, ctx) => {
   if (problem !== undefined) {
     ctx.addIssue({
       code: "custom",
-      message: `crawl.excludePaths entry ${problem}`,
+      message: `crawl.${field} entry ${problem}`,
     });
   }
-});
+  });
+}
+export const CrawlExcludePath = crawlPath("excludePaths");
+export const CrawlAllowPath = crawlPath("allowPaths");
 
 const ProviderPolicyShape = z.strictObject({
   providerId: z
@@ -118,6 +122,8 @@ const ProviderPolicyShape = z.strictObject({
   crawl: z.strictObject({
     intervalHours: z.number().positive(),
     excludePaths: z.array(CrawlExcludePath).default([]),
+    // Omitted preserves the existing policy. An explicit empty list denies all.
+    allowPaths: z.array(CrawlAllowPath).optional(),
   }),
 });
 

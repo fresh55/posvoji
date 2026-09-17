@@ -188,4 +188,13 @@ describe("ProviderPolicy", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("keeps allowPaths optional and preserves an explicit deny-all list", () => {
+    expect(ProviderPolicy.parse(basePolicy).crawl.allowPaths).toBeUndefined();
+    expect(ProviderPolicy.parse({ ...basePolicy, crawl: { intervalHours: 12, allowPaths: [] } }).crawl.allowPaths).toEqual([]);
+  });
+
+  it.each(["relative/", "//host/path", "/path?query", "/path#hash", "/path/../private", "/path/%2e%2e", "/path//child"])("rejects noncanonical allowPaths entry %s", (path) => {
+    expect(ProviderPolicy.safeParse({ ...basePolicy, crawl: { intervalHours: 12, allowPaths: [path] } }).success).toBe(false);
+  });
 });

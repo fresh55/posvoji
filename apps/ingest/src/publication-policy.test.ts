@@ -8,6 +8,11 @@ import {
 } from "./publication-policy";
 
 const PROVIDER = "macja-hisa";
+it("drops carried records outside a newly declared allowlist without requiring an exclusion", () => {
+  const result = applyPublicationPolicy([animal()], policies({ crawl: { intervalHours: 12, allowPaths: ["/dogs/"] } }));
+  expect(result.animals).toEqual([]);
+  expect(result.dropped).toEqual([{ providerId: PROVIDER, count: 1, reason: "outside crawl.allowPaths" }]);
+});
 const ATTRIBUTION = "Vir: Zavetišče Mačja hiša";
 
 function animal(overrides: Partial<Animal> = {}): Animal {

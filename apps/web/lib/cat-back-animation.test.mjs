@@ -8,6 +8,17 @@ beforeAll(async () => {
   clips = gltf.animations;
   root = gltf.scene;
 });
+// The web export writes animation samples through Meshopt's 16-bit filters,
+// which leave a value within max|component| / 2**15 of the authored one, and
+// canonicalise a quaternion's sign so that q arrives as -q. Both mean the same
+// pose, so compare a whole key at a time and let it choose the sign.
+const tolerance = 5e-4;
+const samePose = (track, offset, other, otherOffset) => {
+  const size = track.getValueSize();
+  const signs = track.name.endsWith(".quaternion") ? [1, -1] : [1];
+  return signs.some(sign => Array.from({ length: size }, (_, i) =>
+    Math.abs(track.values[offset + i] - sign * other[otherOffset + i])).every(delta => delta <= tolerance));
+};
 const angle = (clip, bone, time) => {
   const track = clip.tracks.find(track => track.name === `${bone}.quaternion`);
   const first = new Quaternion().fromArray(track.values).normalize();
@@ -22,11 +33,8 @@ it("returns both back reactions to their shared idle pose", () => {
     for (const track of clip.tracks) {
       const size = track.getValueSize();
       const resting = idle.tracks.find(candidate => candidate.name === track.name);
-      for (let i = 0; i < size; i++) {
-        // Existing compressed clips contain sub-micro-unit rounding noise.
-        expect(track.values[i]).toBeCloseTo(resting.values[i], 5);
-        expect(track.values[track.values.length - size + i]).toBeCloseTo(track.values[i], 5);
-      }
+      expect(samePose(track, 0, resting.values, 0), `${track.name} against the idle pose`).toBe(true);
+      expect(samePose(track, track.values.length - size, track.values, 0), `${track.name} endpoints`).toBe(true);
     }
     // Regression: a two-key static Blender export must replace the previous
     // raised-tail curve even though their first and last poses are identical.

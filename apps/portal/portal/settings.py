@@ -165,6 +165,8 @@ SESAME_MAX_AGE = 60 * 60 * 24
 # Opening a link changes last_login and invalidates that token. A forwarded or
 # leaked link therefore cannot be replayed for the rest of its life.
 SESAME_ONE_TIME = True
+# An address changed in admin must also revoke links sent to the old inbox.
+SESAME_INVALIDATE_ON_EMAIL_CHANGE = True
 
 # POST /auth/request-link is deliberately anonymous, but one client must not
 # be able to make the service send an unlimited number of messages. The

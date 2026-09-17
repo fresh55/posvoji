@@ -102,7 +102,8 @@ const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
 
 /** The column the sheet's own content stands in. The header and the footer
  *  wear it as a class each; the body says the same thing about its children
- *  one at a time, for the reason written there. The three line up either way.
+ *  one at a time (SHEET_BLOCK_CHILDREN_CLASS below, which says why). The three
+ *  line up either way.
  *
  *  The frame itself stays full-bleed, and ui/drawer.tsx says why: a horizontal
  *  inset on it shows the overlay down the notch side and draws the drawer's

@@ -230,7 +230,14 @@ export function FilterSelectionMark({
               // dark mode: a white tick on it measured 2.39:1. See
               // --brand-strong-foreground in globals.css.
               "border-brand-strong bg-brand-strong text-brand-strong-foreground"
-            : "border-muted-foreground/40 bg-background text-transparent",
+            : // /80 and not the /40 this was. At /40 the resting box measured
+              // 1.77:1 in light and 2.11:1 in dark against the surface it
+              // stands on, which is a box nobody can see: the one thing that
+              // says a row or a tile can be picked at all was invisible until
+              // it was picked. /80 measures 3.65:1 and 5.20:1, which clears
+              // the 3:1 SC 1.4.11 asks of a control's own boundary in both
+              // modes. The checked box is not affected; its tick is 7.37:1.
+              "border-muted-foreground/80 bg-background text-transparent",
           className,
         )}
       >

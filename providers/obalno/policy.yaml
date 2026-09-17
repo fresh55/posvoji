@@ -36,6 +36,10 @@ attribution: "Vir: Obalno zavetišče (Marjetica Koper)"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /iscejo-nov-dom/psi/
+    - /iscejo-nov-dom/macke/
+    - /žival/
   excludePaths:
     - /wp-admin/
     - /privat-oddaja/

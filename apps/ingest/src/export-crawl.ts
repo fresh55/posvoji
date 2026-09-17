@@ -1,7 +1,7 @@
-import { PoliteClient } from "@posvoji/provider-sdk";
+import type { ProviderContext } from "@posvoji/provider-sdk";
 import type { Animal, ProviderPolicy } from "@posvoji/schema";
 import { applyAllowedFields } from "./allowed-fields";
-import { guardProviderRequests, type CrawlClient } from "./crawl-guard";
+import type { CrawlClient } from "./crawl-guard";
 import type { ExportServices } from "./export-run";
 import type { CrawlSchedule } from "./crawl-schedule";
 import {
@@ -101,13 +101,8 @@ export async function crawlProviders({
         `policy ${policy.providerId} is enabled but no provider is registered`,
       );
     }
-    // ProviderContext types client as the concrete PoliteClient, so the guard
-    // is handed over as one. It forwards everything it does not refuse.
-    const guarded = guardProviderRequests(
-      client,
-      policy,
-    ) as unknown as PoliteClient;
-    const ctx = { client: guarded, policy };
+    // The crawl scopes its guard separately to discovery and each detail ref.
+    const ctx = { client: client as ProviderContext["client"], policy };
     const resumed =
       !refreshAll && !bootstrappingSnapshot
         ? providerSnapshots.resume(policy, codeSha, previousPublishedAt, services.now().getTime())

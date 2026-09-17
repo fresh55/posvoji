@@ -25,4 +25,6 @@ attribution: "Vir: Mačji dol (Žverca)"
 
 crawl:
   intervalHours: 12
+  allowPaths:
+    - /mucki-iscejo-dom/
   excludePaths: []

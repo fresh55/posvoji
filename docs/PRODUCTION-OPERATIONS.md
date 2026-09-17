@@ -277,11 +277,26 @@ successful check older than its interval or with no successful check at all, is
 warned about by name, keeps its previous records and makes the run exit 2.
 
 `host-cooldowns.json` persists server Retry-After instructions across exports.
+Valid numeric and HTTP-date deferrals are honored in full, including requests
+longer than a day; restarting does not shorten or extend their stored deadline.
+Malformed or unrepresentable headers use exponential backoff. Invalid stored
+timestamps fail closed for operator inspection, rather than being guessed to
+be legacy corruption and shortened. A cooldown extending beyond the provider's
+last successful check plus its interval is reported as a degraded skip.
 Waits longer than one minute defer the host rather than shortening its requested
 wait. Long Crawl-delay instructions also defer work. Robots redirect hops use
 the same per-host queue and delay as content. Preserve both state files in
 handover, restore and backup; deleting them is not a supported way to force a
 crawl. Invalid state fails closed and needs repair from known good state.
+
+Connection failures obtaining robots.txt are cached per origin for five minutes,
+with at most 256 failure entries per client. Expiry or eviction permits a fresh
+robots attempt; it never grants permission to fetch without rules.
+
+Every admitted provider crawl verifies all discovered details. There is no
+per-animal age rotation. Failed details retain their previous records and real
+fetch timestamps; provider scheduling, checkpoint resume and media caching
+continue to limit work independently.
 
 After upgrading, verify a permitted crawl and its sealed provider timestamps,
 then a second run inside the interval: it must preserve source check times.

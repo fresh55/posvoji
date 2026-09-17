@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loadPolicies } from "./policies";
+import { loadPolicies, validateCrawlAllowlists } from "./policies";
 
 let root: string;
 
@@ -53,6 +53,17 @@ function writePolicy(
 }
 
 describe("loadPolicies", () => {
+  it("names enabled crawl providers with missing, empty or whole-site allowlists", () => {
+    writePolicy("muri", { providerId: "muri", enabled: true });
+    const [loaded] = loadPolicies(root).policies;
+    expect(validateCrawlAllowlists([loaded!])[0]?.message).toContain('provider "muri"');
+    for (const allowPaths of [[], ["/"]]) {
+      const item = { ...loaded!, policy: { ...loaded!.policy, crawl: { intervalHours: 12, excludePaths: [], allowPaths } } };
+      expect(validateCrawlAllowlists([item])).toHaveLength(1);
+    }
+    expect(validateCrawlAllowlists([{ ...loaded!, policy: { ...loaded!.policy, enabled: false } }])).toEqual([]);
+    expect(validateCrawlAllowlists([{ ...loaded!, policy: { ...loaded!.policy, ingestion: "manual" } }])).toEqual([]);
+  });
   it("loads a valid tree without complaint", () => {
     writePolicy("muri", { providerId: "muri", enabled: true });
     writePolicy("_template", { providerId: "template", enabled: false });

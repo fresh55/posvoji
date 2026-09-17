@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
@@ -9,25 +8,17 @@ import type {
 import { Animal } from "@posvoji/schema";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { stripCacheDerivedFields } from "./cache-images";
-import { excludedPathFor, isAllowedPath } from "./crawl-guard";
+import { excludedPathFor, isAllowedListingUrl, guardProviderRequests } from "./crawl-guard";
 import { datasetDir } from "./paths";
 
-// Recovery and optional incremental helpers. Production export forces detail
-// verification on every admitted provider crawl; a discovery list alone cannot
-// reveal reservation edits on a still-listed animal. The provider schedule
-// enforces request frequency before this function is called.
-export const REFRESH_WINDOW_DAYS = 3;
-const DAY_MS = 24 * 60 * 60_000;
+// Every admitted crawl verifies every detail. The provider schedule limits
+// frequency; previous records are used only for failure recovery.
 
 // Which generation of the parsers produced the records we are holding.
 //
 // **Bump this by hand whenever a provider parser changes what it derives.**
-// Reused records keep the parse they were written with, so without a bump a
-// parser fix would only reach the animals that happen to fall due, and the
-// rest would keep the old value until they rotated through the window (or
-// forever, for a field the old parser never set). A bump forces one full
-// detail crawl of every provider on the next run, after which the incremental
-// schedule resumes.
+// This marker records which parser produced a fully successful provider crawl.
+// Failed details retain their previous values and leave the marker unchanged.
 //
 // It is a per-provider marker rather than a per-animal one because Animal is a
 // strictObject in packages/schema and this is not dataset content: it is state
@@ -114,8 +105,8 @@ export function advanceCrawlState(
   return { providers };
 }
 
-// Why this provider must re-fetch every animal this run, or undefined when the
-// incremental schedule applies.
+// Diagnostic reason for a full refresh; all admitted crawls verify details
+// even when neither the parser generation nor the policy changed.
 export function forceFullRefresh(
   state: CrawlState,
   policy: ProviderPolicy,
@@ -131,70 +122,6 @@ export function forceFullRefresh(
     return "policy.yaml changed what a record carries";
   }
   return undefined;
-}
-
-// The animal's own phase inside the refresh window, in milliseconds.
-//
-// Without it every animal would fall due at the same moment: they were all
-// last fetched by the same full crawl, so they would all go stale together and
-// one run in six would fetch everything. 52 bits of a sha256 over the animal
-// id spreads them uniformly instead, and it is deterministic, so an animal
-// keeps its slot across runs, hosts and Node versions. 13 hex digits stay
-// inside Number.MAX_SAFE_INTEGER.
-export function refreshOffsetMs(id: string, windowMs: number): number {
-  const digest = createHash("sha256").update(id).digest("hex").slice(0, 13);
-  return Number.parseInt(digest, 16) % windowMs;
-}
-
-export type RefreshReason = "new" | "forced" | "status" | "stale" | "fresh";
-
-export interface RefreshDecision {
-  fetch: boolean;
-  reason: RefreshReason;
-}
-
-export interface RefreshOptions {
-  // The record this run's list page matched, or undefined for an animal we
-  // have never held.
-  previous: Animal | undefined;
-  now: number;
-  forceAll?: boolean;
-  windowDays?: number;
-}
-
-// The whole per-animal decision, pure so it can be exercised without a crawl.
-//
-// The window is measured from source.fetchedAt, which is the last time we
-// actually read the detail page. lastSeenAt moves on every run and says
-// nothing about how stale the parse is.
-export function decideRefresh(options: RefreshOptions): RefreshDecision {
-  const previous = options.previous;
-  if (previous === undefined) return { fetch: true, reason: "new" };
-  if (options.forceAll) return { fetch: true, reason: "forced" };
-
-  // Reserved, on hold and unknown are the states that move: an available
-  // animal that stops being available usually leaves the list page entirely,
-  // but these stay on it while the shelter edits the page. They are ~4% of the
-  // dataset, so re-reading them every run costs little.
-  if (previous.status !== "available") return { fetch: true, reason: "status" };
-
-  const windowMs = (options.windowDays ?? REFRESH_WINDOW_DAYS) * DAY_MS;
-  const fetchedAt = Date.parse(previous.source.fetchedAt);
-  // An unreadable date, or one from the future (a host with a bad clock),
-  // cannot be reasoned about. Re-fetching writes a usable one.
-  if (Number.isNaN(fetchedAt) || fetchedAt > options.now) {
-    return { fetch: true, reason: "stale" };
-  }
-
-  // Each animal's window boundaries sit at its own offset, so an animal falls
-  // due once per window and the due moments are spread evenly across the whole
-  // window rather than bunched at one run. Missing a run does not skip a turn:
-  // the boundary stays crossed until the animal is fetched.
-  const offset = refreshOffsetMs(previous.id, windowMs);
-  const cycle = (at: number): number => Math.floor((at - offset) / windowMs);
-  return cycle(options.now) > cycle(fetchedAt)
-    ? { fetch: true, reason: "stale" }
-    : { fetch: false, reason: "fresh" };
 }
 
 // What ties a ref from the list page to a record we already hold. Both halves
@@ -269,7 +196,6 @@ export interface IncrementalCrawlOptions {
   previous: readonly Animal[];
   // The reason every animal is being fetched, from forceFullRefresh.
   forcedBecause?: string;
-  windowDays?: number;
   // Injected in tests. Taken once per provider, after discovery, so every
   // animal in one crawl records the same lastSeenAt.
   now?: () => Date;
@@ -290,7 +216,7 @@ function partitionExcluded(
   for (const ref of refs) {
     const under = excludedPathFor(ref.sourceUrl, policy.crawl.excludePaths);
     if (under === undefined) {
-      if (!isAllowedPath(ref.sourceUrl, policy.crawl.allowPaths)) {
+      if (!isAllowedListingUrl(ref.sourceUrl, policy)) {
         throw new Error(`${policy.providerId}: discovered URL is outside crawl.allowPaths; refusing to fetch or reuse it`);
       }
       crawlable.push(ref);
@@ -355,13 +281,16 @@ export async function crawlProviderIncrementally(
 ): Promise<ProviderCrawlResult> {
   const providerId = ctx.policy.providerId;
   const held = indexPrevious(options.previous, providerId);
-  const listed = await provider.discover(ctx);
+  const contextFor = (discoveredUrl?: string): ProviderContext => ({
+    ...ctx,
+    client: guardProviderRequests(ctx.client, ctx.policy, discoveredUrl) as ProviderContext["client"],
+  });
+  const listed = await provider.discover(contextFor());
   console.log(`${providerId}: discovered ${listed.length} animals`);
   const { crawlable: refs, excluded } = partitionExcluded(listed, ctx.policy);
 
   const now = options.now ? options.now() : new Date();
   const seenAt = now.toISOString();
-  const nowMs = now.getTime();
 
   const animals: Animal[] = [];
   const failedRefs: SourceAnimalRef[] = [];
@@ -370,25 +299,15 @@ export async function crawlProviderIncrementally(
   let reused = 0;
   for (const ref of refs) {
     const previous = held.get(refKey(ref));
-    const decision = decideRefresh({
-      previous,
-      now: nowMs,
-      forceAll: options.forcedBecause !== undefined,
-      windowDays: options.windowDays,
-    });
-    if (!decision.fetch && previous) {
-      animals.push(reuseAnimal(previous, seenAt));
-      reused++;
-      continue;
-    }
     // One listing the shelter left behind, whose page 404s on every run, used
     // to reject the whole provider: every finished refresh was thrown away,
     // export carried the entire previous dataset forward and the run exited 2
     // again the next time, indefinitely. The failure is per animal, so it is
     // contained per animal.
     try {
-      const raw = await provider.fetch(ctx, ref);
-      const animal = Animal.parse(await provider.normalize(ctx, raw));
+      const detailContext = contextFor(ref.sourceUrl);
+      const raw = await provider.fetch(detailContext, ref);
+      const animal = Animal.parse(await provider.normalize(detailContext, raw));
       assertNormalizedIdentity(animal, ctx.policy, ref);
       animals.push(animal);
       fetched++;

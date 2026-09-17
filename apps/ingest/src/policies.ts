@@ -15,6 +15,18 @@ export interface PolicyError {
   message: string;
 }
 
+// Coverage is a repository gate, while the shared schema retains compatibility
+// with disabled/manual policies and consumers that do not run this crawler.
+export function validateCrawlAllowlists(policies: readonly LoadedPolicy[]): PolicyError[] {
+  return policies.flatMap(({ dir, policy }) => {
+    if (!policy.enabled || isManualPolicy(policy)) return [];
+    const paths = policy.crawl.allowPaths;
+    return paths === undefined || paths.length === 0 || paths.includes("/")
+      ? [{ dir, message: `provider "${policy.providerId}" needs nonempty crawl.allowPaths without a whole-site / grant` }]
+      : [];
+  });
+}
+
 // A manual provider is crawled by our own portal rather than by an adapter:
 // it has no entry in registry.ts, no crawl state and no detail pages, and its
 // animals arrive on the listings feed. Several loops in the pipeline turn on

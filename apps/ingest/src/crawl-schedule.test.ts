@@ -1,5 +1,4 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { MAX_RETRY_AFTER_MS } from "@posvoji/provider-sdk";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -93,14 +92,14 @@ it("preserves server cooldowns across exports", () => {
   expect(hostCooldowns(root).get("shelter.example")).toBe(until);
 });
 
-it("repairs a legacy extreme deferral once and removes it after expiry", () => {
+it("preserves a 48-hour deadline across restarts and removes it only after expiry", () => {
   const root = directory();
   const at = Date.now();
   const path = join(root, "host-cooldowns.json");
-  writeFileSync(path, JSON.stringify({ "shelter.example": Number.MAX_SAFE_INTEGER }));
-  expect(hostCooldowns(root, at).get("shelter.example")).toBe(at + MAX_RETRY_AFTER_MS);
-  expect(hostCooldowns(root, at + 1000).get("shelter.example")).toBe(at + MAX_RETRY_AFTER_MS);
-  expect(hostCooldowns(root, at + MAX_RETRY_AFTER_MS).get("shelter.example")).toBeUndefined();
+  writeFileSync(path, JSON.stringify({ "shelter.example": at + 48 * 3600000 }));
+  expect(hostCooldowns(root, at).get("shelter.example")).toBe(at + 48 * 3600000);
+  expect(hostCooldowns(root, at + 1000).get("shelter.example")).toBe(at + 48 * 3600000);
+  expect(hostCooldowns(root, at + 48 * 3600000).get("shelter.example")).toBeUndefined();
   expect(JSON.parse(readFileSync(path, "utf8"))).toEqual({});
 });
 
@@ -111,4 +110,26 @@ it("keeps a short cooldown inside the successful check interval clean", () => {
   hostCooldowns(root, at).set("shelter.example", checked + 6 * 3600000);
   const verdict = new CrawlSchedule(root, () => new Date(at)).check(policy, new Date(checked).toISOString());
   expect(verdict).toMatchObject({ admit: false, heldBy: "check" });
+});
+
+it.each([Number.MAX_SAFE_INTEGER, -1, 1.5, "tomorrow", null])("fails closed for invalid persisted cooldown %s", (value) => {
+  const root = directory();
+  const path = join(root, "host-cooldowns.json");
+  const original = JSON.stringify({ "shelter.example": value });
+  writeFileSync(path, original);
+  expect(() => hostCooldowns(root)).toThrow(/invalid crawl scheduling/);
+  expect(readFileSync(path, "utf8")).toBe(original);
+});
+
+it("reports a 48-hour server deferral beyond a 12-hour check interval as degraded", () => {
+  const root = directory();
+  const checked = Date.parse("2026-09-17T06:00:00Z");
+  const until = checked + 48 * 3600000;
+  hostCooldowns(root, checked).set("shelter.example", until);
+  const shortPolicy = { ...policy, crawl: { ...policy.crawl, intervalHours: 12 } };
+  const at = checked + 24 * 3600000;
+  expect(new CrawlSchedule(root, () => new Date(at)).check(shortPolicy, new Date(checked).toISOString()))
+    .toEqual({ admit: false, heldBy: "cooldown", nextAllowedAt: until });
+  expect(new CrawlSchedule(root, () => new Date(until)).check(shortPolicy, new Date(checked).toISOString()))
+    .toEqual({ admit: true });
 });

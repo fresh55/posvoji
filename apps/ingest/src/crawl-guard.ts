@@ -120,6 +120,18 @@ export function isAllowedPath(url: string, allowPaths: readonly string[] | undef
   });
 }
 
+// Discovery establishes membership in the adoption catalogue where permalink
+// paths cannot. Publication may retain those records after a failed crawl, but
+// retaining a record never authorizes a network request in a later crawl.
+export function isAllowedListingUrl(url: string, policy: ProviderPolicy): boolean {
+  if (isAllowedPath(url, policy.crawl.allowPaths)) return true;
+  if (!policy.crawl.discoveredUrls) return false;
+  try {
+    canonicalRequestUrl(url, policy, new URL(policy.source));
+    return isAllowedPath(url, ["/"]);
+  } catch { return false; }
+}
+
 // Both rules are central rather than trusted to every parser: a provider may
 // crawl only its policy source origin, and excluded private-owner paths may
 // never reach the network even when a link percent-encodes part of the path.
@@ -133,9 +145,14 @@ export function isAllowedPath(url: string, allowPaths: readonly string[] | undef
 export function guardProviderRequests(
   client: CrawlClient,
   policy: ProviderPolicy,
+  discoveredUrl?: string,
 ): CrawlClient {
   const source = new URL(policy.source);
   const excludePaths = policy.crawl.excludePaths;
+  // This exception is scoped to ONE detail fetch after discovery. It is never
+  // available during discovery and does not authorize a redirected sibling.
+  const exact = policy.crawl.discoveredUrls === "exact" && discoveredUrl !== undefined
+    ? canonicalRequestUrl(discoveredUrl, policy, source) : undefined;
 
   const check = (input: string): string => {
     const url = canonicalRequestUrl(input, policy, source);
@@ -146,7 +163,8 @@ export function guardProviderRequests(
           `policy.yaml excludes from the crawl; refusing to fetch it`,
       );
     }
-    if (!isAllowedPath(url, policy.crawl.allowPaths)) {
+    if (!isAllowedPath(url, policy.crawl.allowPaths) &&
+        !(url === exact && isAllowedPath(url, ["/"]))) {
       throw new Error(`${policy.providerId}: ${url} is outside crawl.allowPaths; refusing to fetch it`);
     }
     return url;

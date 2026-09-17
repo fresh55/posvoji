@@ -35,6 +35,10 @@ crawl:
   intervalHours: 12
   # Lost-and-found notices. They carry owners' and finders' phone numbers, so
   # they stay out of the crawl regardless of what else a post is filed under.
+  allowPaths:
+    - /wp-json/wp/v2/posts
+  # Adoption-category API responses supply records; never crawl public posts.
+  discoveredUrls: publish-only
   excludePaths:
     - /index.php/category/pogresane-zivali
     - /index.php/category/najdene-zivali

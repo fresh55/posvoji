@@ -1,13 +1,15 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PoliteClientOptions } from "./polite-client";
 import {
   PoliteClient,
   ResponseBodyTooLargeError,
   computeBackoffMs,
   parseRetryAfter,
+  MAX_RETRY_AFTER_MS,
+  ROBOTS_FAILURE_TTL_MS,
 } from "./polite-client";
 
 describe("parseRetryAfter", () => {
@@ -30,6 +32,20 @@ describe("parseRetryAfter", () => {
   it("returns undefined for missing or garbage values", () => {
     expect(parseRetryAfter(undefined)).toBeUndefined();
     expect(parseRetryAfter("soon")).toBeUndefined();
+  });
+  it.each(["-1", "1.5", "+12", "Infinity", "9".repeat(400), "2026-08-15", "Sun, 31 Feb 2026 08:49:37 GMT"])("rejects malformed or overflowing %s", (value) => {
+    expect(parseRetryAfter(value)).toBeUndefined();
+  });
+  it("bounds numeric and date deferrals without shortening ordinary waits", () => {
+    const now = Date.parse("2026-08-15T12:00:00Z");
+    expect(parseRetryAfter("3153600000", now)).toBe(MAX_RETRY_AFTER_MS);
+    expect(parseRetryAfter(new Date(now + 7 * MAX_RETRY_AFTER_MS).toUTCString(), now)).toBe(MAX_RETRY_AFTER_MS);
+    expect(parseRetryAfter(" 3600\t", now)).toBe(3600000);
+  });
+  it("accepts both legacy HTTP dates in UTC", () => {
+    const now = Date.parse("1994-11-06T08:49:07Z");
+    expect(parseRetryAfter("Sunday, 06-Nov-94 08:49:37 GMT", now)).toBe(30000);
+    expect(parseRetryAfter("Sun Nov  6 08:49:37 1994", now)).toBe(30000);
   });
 });
 
@@ -78,6 +94,7 @@ describe("PoliteClient", () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     setGlobalDispatcher(previousDispatcher);
     await agent.close();
   });
@@ -538,7 +555,9 @@ describe("PoliteClient", () => {
       expect(robotsRequests).toBe(2);
     });
 
-    it("throws on an unreachable robots.txt and retries it next time", async () => {
+    it("caches connection failures per origin until expiry, then recovers", async () => {
+      let now = Date.now();
+      vi.spyOn(Date, "now").mockImplementation(() => now);
       const pool = agent.get(ORIGIN);
       pool
         .intercept({ path: "/robots.txt" })
@@ -548,6 +567,14 @@ describe("PoliteClient", () => {
       await expect(c.getBytes(`${ORIGIN}/cat.jpg`)).rejects.toThrow(
         `robots.txt for ${ORIGIN} unreachable`,
       );
+
+      now += ROBOTS_FAILURE_TTL_MS - 1;
+      await expect(c.getBytes(`${ORIGIN}/dog.jpg`)).rejects.toThrow(/unreachable/);
+      const other = "https://other.example";
+      agent.get(other).intercept({ path: "/robots.txt" }).reply(200, "");
+      agent.get(other).intercept({ path: "/cat.jpg" }).reply(200, "cat");
+      expect((await c.getBytes(`${other}/cat.jpg`)).status).toBe(200);
+      now += 1;
 
       pool.intercept({ path: "/robots.txt" }).reply(200, "");
       pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");

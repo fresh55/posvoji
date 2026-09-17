@@ -424,10 +424,12 @@ export function AnimalCard({
             muted-foreground on white is about 4.7:1, so anything lighter
             fails AA, and that line is a link. */}
         <p className="text-pretty text-sm text-foreground tabular-nums">
-          {/* The middots recede to half strength so the facts between them
-              read as three words rather than one string. The parts come from
-              labels.ts already separate, so nothing here has to know how the
-              joined form is glued together. */}
+          {/* The middot is drawn one step under the facts it stands between,
+              so the line reads as words rather than as one string; how far
+              under, and why it is not an alpha any more, is META_DOT_CLASS's
+              own comment in labels.ts. The parts come from there already
+              separate, so nothing here has to know how the joined form is
+              glued together. */}
           {animalMetaParts(animal, locale, reference, species).flatMap(
             (part, i) =>
               i === 0

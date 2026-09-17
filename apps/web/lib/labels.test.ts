@@ -4,6 +4,7 @@ import {
   ageLabel,
   animalMetaParts,
   LONG_STAY_MONTHS,
+  META_DOT_CLASS,
   META_SEPARATOR,
   longStayMonths,
   registerDateLabel,
@@ -156,6 +157,14 @@ describe("the card's meta line on the species tabs", () => {
     expect(animalMetaParts(dog, "sl", NOW, "all")).toHaveLength(2);
     expect(animalMetaParts(dog, "sl", NOW, "dog")).toHaveLength(2);
     expect(meta(dog, "sl", "dog")).toBe("starost 3\u00a0leta · velika");
+  });
+
+  it("draws the separator at full muted strength", () => {
+    // The middot is text inside the paragraph and not an aria-hidden
+    // ornament, and at half strength it measured 2.08:1 light and 2.68:1
+    // dark. What recedes it is the step down from the ink either side of it,
+    // not a second alpha on the colour.
+    expect(META_DOT_CLASS).toBe("text-muted-foreground");
   });
 });
 

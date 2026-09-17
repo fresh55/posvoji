@@ -231,6 +231,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-control-border: var(--control-border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -326,7 +327,11 @@
      statement, so one name. */
   --brand: oklch(0.92 0.045 151);
   --brand-foreground: oklch(0.32 0.075 151);
-  --brand-border: oklch(0.68 0.075 151);
+  /* 0.64, not 0.68: this line is a chip's hover edge, a chosen filter card's
+     border and a picker row's mark, and at 0.68 it measured 2.78:1 on the page
+     and 2.55:1 on --muted. SC 1.4.11 asks 3:1 of a state boundary; 0.64
+     measures 3.27:1 and 3.00:1 (2026-09-17 audit). */
+  --brand-border: oklch(0.64 0.075 151);
   --brand-strong: oklch(0.44 0.1 151);
   /* The ink for the one place that green is a ground rather than a line: the
      check inside a selected filter card's mark (filter-card.tsx). It spelled
@@ -465,6 +470,15 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.923 0.003 48.717);
   --input: oklch(0.923 0.003 48.717);
+  /* The edge of a control whose frame is what says it can be pressed: the sort
+     trigger, back-to-top, the load-more and empty-state buttons, the header
+     login, the dock's shelter trigger, the picker's search field, the chips.
+     --border stays a hairline (1.26:1 on the page) because it is also every
+     divider and the card's edge, and a divider is not a component. A frame
+     that identifies a component is, and SC 1.4.11 asks 3:1 of it: this
+     measures 3.66:1 on the page and 3.36:1 on --muted (2026-09-17 audit).
+     Worn as border-control-border, never as a divider. */
+  --control-border: oklch(0.62 0.004 49);
   /* The focus ring, and the one token here with a number it has to hit: SC
      1.4.11 asks a focus indicator for 3:1 against what it sits on. Measured
      against the worst surface it can actually land on rather than against
@@ -524,7 +538,9 @@
   --foreground: oklch(0.985 0.001 106.423);
   --brand: oklch(0.25 0.035 151);
   --brand-foreground: oklch(0.88 0.055 151);
-  --brand-border: oklch(0.48 0.06 151);
+  /* See the light block: 0.56 measures 4.38:1 on the page and 3.36:1 on
+     --muted; 0.48 was 3.10:1 and 2.38:1. */
+  --brand-border: oklch(0.56 0.06 151);
   --brand-strong: oklch(0.72 0.09 151);
   /* The page's ink, not white. See the light block: on this lightness white is
      a 2.39:1 tick. */
@@ -581,6 +597,8 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  /* See the light block. 3.77:1 on the page, 3.67:1 on --muted. */
+  --control-border: oklch(1 0 0 / 40%);
   --ring: oklch(0.75 0.105 151);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -605,7 +623,7 @@
     --foreground: oklch(0.985 0.001 106.423);
     --brand: oklch(0.25 0.035 151);
     --brand-foreground: oklch(0.88 0.055 151);
-    --brand-border: oklch(0.48 0.06 151);
+    --brand-border: oklch(0.56 0.06 151);
     --brand-strong: oklch(0.72 0.09 151);
     /* Kept in step with the .dark block above. */
     --brand-strong-foreground: oklch(0.147 0.004 49.25);
@@ -639,6 +657,7 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
+    --control-border: oklch(1 0 0 / 40%);
     --ring: oklch(0.75 0.105 151);
   }
 }
@@ -785,12 +804,19 @@
    the card's height follows its width, and its width is not one number any
    more: about 163px on a 375px phone, about 307px in an xl column.
 
-   So this takes two values rather than one. 17rem is 272px, a little above the
-   263px phone card; 25rem is 400px, just under the 401px an xl card measures
-   and above the 324px a card beside the sidebar does. Above the real height
-   rather than under it wherever there is a choice: the fallback is what the
-   scrollbar believes until a card has been drawn once, and an estimate under it
-   promises a shorter page than the grid delivers.
+   So this takes one value per band of card width. 17rem is 272px, a little
+   above the 263px phone card. From sm the measured card is 319px at 768 and
+   341px at 834 (three columns, no rail), so 22rem (352px); from lg it is 314px
+   beside the rail at 1024 to 1199, so 20rem (320px); from xl it is 401px, so
+   25rem (400px, the one value that sits just under). One 25rem value from sm
+   used to cover all of that, and it was 86px over the real card at 1024: the
+   document measured 8726px at scroll 0 and 7952px at scroll 3200 with the same
+   sixty cards drawn, because every card the browser had not painted yet
+   claimed a row 432px apart while the drawn ones were 346px apart. Above the
+   real height rather than under it wherever there is a choice: the fallback is
+   what the scrollbar believes until a card has been drawn once, and an
+   estimate under it promises a shorter page than the grid delivers. Residual
+   drift is 6 to 11px per row.
 
    Safe on this element in particular: the card is already overflow-hidden and
    its one focus ring is an inset ring on an overlay inside the photo frame
@@ -803,6 +829,14 @@
   contain-intrinsic-size: auto 17rem;
 
   @media (width >= 40rem) {
+    contain-intrinsic-size: auto 22rem;
+  }
+
+  @media (width >= 64rem) {
+    contain-intrinsic-size: auto 20rem;
+  }
+
+  @media (width >= 80rem) {
     contain-intrinsic-size: auto 25rem;
   }
 }

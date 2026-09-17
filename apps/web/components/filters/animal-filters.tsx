@@ -11,7 +11,6 @@ import { useState } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import {
   FilterChips,
-  UndoOffer,
   type Chip,
 } from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
@@ -241,6 +240,20 @@ export function AnimalFilters({
   // going out of step between two call sites, not the second mount. The box
   // is the strip's, because SpeciesTabs takes no className and the row needs
   // something that can be told to give way before the sort control does.
+  // The two mounts of the chips row ask the same question of the same state,
+  // so they ask it once here. Only where they are drawn differs, and that is
+  // the placement each passes (filter-chips.tsx).
+  const showChips = !isEmpty && (chips.length > 0 || undo);
+  const chipProps = {
+    chips,
+    onClearAll,
+    undo,
+    // With nothing matching the row names the chip costing the most, because
+    // "try fewer filters" is advice and not a way out, and the empty state
+    // draws no pills of its own to say it with (animal-grid.tsx).
+    stuck: resultCount === 0,
+  };
+
   const speciesStrip = (
     <div className="min-w-0">
       <SpeciesTabs
@@ -413,32 +426,25 @@ export function AnimalFilters({
           )}
         </div>
 
-        {/* From lg only. On a phone this row was the fourth surface stating
-            the filter state, after the badge on the Filtri button, the pressed
-            cards in the sheet that badge opens, and the count that moved when
-            the filter landed. It charged 52px of a sticky header for it, and
-            it charged them by growing, which pushed the grid down the moment
-            a filter arrived. Worse than the pixels: it was a horizontal
-            scroller stacked 8px under a second horizontal scroller inside a
-            vertically scrolling page, and every pixel of every pill in it
-            removes a filter with no way to take that back. A flick the
-            browser resolved as a tap dropped a filter silently.
+        {/* The sticky band's own row, from lg only. There the row wraps
+            instead of scrolling, sits beside a sidebar that shows the same
+            state anyway, and costs a wide screen nothing.
 
-            What it was genuinely good for survives. Removal moves to the
-            sheet, beside the pressed card that set it, where the causal link
-            is visible and nothing is on a scroll path. The stuck mode, which
-            names the one chip costing the most, moves to the empty state
-            (animal-grid.tsx), which is the screen it was for and the one
-            screen with no grid underneath to push down.
+            Below lg it is not what a sticky bar can afford: 52px of pinned
+            chrome, charged by growing, so the grid moved the moment a filter
+            arrived, and a horizontal scroller stacked 8px under a second
+            horizontal scroller inside a vertically scrolling page, where
+            every pixel of every pill removes a filter and a flick the browser
+            resolved as a tap dropped one silently. The filters are stated
+            below lg in flow instead, under the band, where none of that
+            holds (the mobile-filter-row below).
 
-            At lg the row wraps instead of scrolling, sits beside a sidebar
-            that shows the same state anyway, and costs a wide screen nothing.
-            It stays. So does the grow-in: this header is sticky at lg too, and
-            an arrival that shifts the grid by its full height in one frame
-            reads as the page jumping. */}
+            The grow-in stays: this header is sticky at lg too, and an arrival
+            that shifts the grid by its full height in one frame reads as the
+            page jumping. */}
         <LazyMotion features={domAnimation}>
           <AnimatePresence initial={false}>
-            {!isEmpty && (chips.length > 0 || undo) && (
+            {showChips && (
               <m.div
                 key="filter-chips"
                 initial={{ height: 0, opacity: 0 }}
@@ -451,13 +457,7 @@ export function AnimalFilters({
                 transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
                 className="min-w-0 overflow-hidden max-lg:hidden"
               >
-                <FilterChips
-                  chips={chips}
-                  onClearAll={onClearAll}
-                  undo={undo}
-                  stuck={resultCount === 0}
-                  className="mt-2"
-                />
+                <FilterChips {...chipProps} className="mt-2" />
               </m.div>
             )}
           </AnimatePresence>
@@ -491,18 +491,34 @@ export function AnimalFilters({
         </span>
       )}
 
-      {/* The way back from a clear, on a phone. It used to ride the sort row
-          and went with it; at lg the chips row still carries its own copy,
-          but that row is hidden below lg, which left clearing as the one
-          filter action a phone could not take back. Repeating the gesture
-          undoes every other one.
+      {/* What is on, named below lg, in flow under the band. Before this the
+          count badge on the Filtri button was the whole of it, and a badge is
+          a number: four filters and the one wrong filter look the same on it,
+          so the only way to read the state was to open the sheet.
 
-          Only while the offer stands, which is a few seconds, so it costs no
-          room at rest -- the reason it can afford to be a row of its own here
-          rather than sharing one that has to exist all the time. */}
-      {!isEmpty && undo && (
-        <div data-slot="mobile-undo-row" className="lg:hidden">
-          <UndoOffer onUndo={undo} />
+          In flow and not in the band, which answers each objection that took
+          the row off the phone in the first place (see the lg-only row
+          above). It scrolls away with the results, so the pinned chrome pays
+          nothing and the badge carries the state once the row is past. And it
+          sits where the sheet was: a filter picked in the sheet lands behind
+          it, so closing the sheet lands on the evidence. The shape it takes
+          here is the "flow" placement in filter-chips.tsx, which is where the
+          wrapping and the cap are settled and measured.
+
+          It carries the way back from a clear as well, which is why the gate
+          holds on `undo` with no chips left: clearing is the one filter
+          action repeating the gesture cannot undo, and FilterChips swaps the
+          pills for the offer for the few seconds it stands. */}
+      {/* A second mount of the same row and not the band's moved: one
+          instance cannot be inside the sticky band at lg and in flow below
+          it, and a hook choosing a parent from the width would break the
+          static prerender. The chunk was already on this route for the lg
+          row, so the cost is a second layout tree, one of which is always
+          display:none, and it has to stay zero-rect-safe (focusAfterRow in
+          filter-chips.tsx). */}
+      {showChips && (
+        <div data-slot="mobile-filter-row" className="lg:hidden">
+          <FilterChips {...chipProps} placement="flow" />
         </div>
       )}
 

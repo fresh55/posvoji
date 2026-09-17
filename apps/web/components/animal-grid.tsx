@@ -6,7 +6,6 @@ import {
   TOOLBAR_BAND,
   TOOLBAR_ROW_HEIGHT,
 } from "@/components/filters/animal-filters";
-import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-provider";
 import { GridLoadMore } from "@/components/grid-load-more";
@@ -166,7 +165,7 @@ function EmptyState({ children }: { children: ReactNode }) {
     //
     // The floor is the footer's half of that. A filter matching nothing left a
     // block short enough that the footer's nav row was drawn inside the band,
-    // and a tap where "Zavetišča" is drawn opened the filter sheet instead.
+    // and a tap where "Zavetisca" is drawn opened the filter sheet instead.
     // Three fifths of the viewport put the whole footer under the fold at
     // scroll 0 on every phone size measured, landscape included, so the band
     // has nothing of it to cover; half was not enough, it left the footer
@@ -174,17 +173,25 @@ function EmptyState({ children }: { children: ReactNode }) {
     // then means scrolling to the page end, which is the case the footer's own
     // docked padding is for, and nothing here adds a second clearance.
     //
-    // The insets are the state's own half, which the floor made worse: the
-    // block is centred, so its buttons were centred inside a screenful and
-    // stood at the bottom of it. Measured at 375x667 "Počisti filtre" sat 44px
-    // under the dock, entirely hidden; at 320x568 the primary button was fully
-    // covered; at 844x390 all three actions were below the fold. So below lg
-    // the block starts at the top of its floor rather than in the middle, and
-    // keeps the dock's own clearance free at the bottom. That distance is
+    // The floor is height and not spacing, though, and two separate
+    // measurements asked for the same answer to that. Centring in it put the
+    // message in the middle of the height: at 375px with two lines of pills
+    // above the grid, "Ni zadetkov" started 260px under the row that names the
+    // filter to drop (animal-filters.tsx), and the advice under it 284px, when
+    // advice reads against the thing it is advice about. Centring also put the
+    // block's buttons at the bottom of a screenful, where the dock is: at
+    // 375x667 "Pocisti filtre" sat 44px under it, entirely hidden, at 320x568
+    // the primary button was fully covered, and at 844x390 all three actions
+    // were below the fold.
+    //
+    // So below lg the block starts at the top of its floor and keeps the
+    // dock's own clearance free at the bottom. That distance is
     // --back-to-top-bottom, the same token the button in the corner and the
     // footer's run-off are measured with, because it is the same dock being
     // cleared and a literal here would be a third copy of it (globals.css).
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh] max-lg:justify-start max-lg:pt-8 max-lg:pb-(--back-to-top-bottom)">
+    // From lg the floor lifts with the dock and the box is its content again,
+    // so the centring left standing there has no spare height to spend.
+    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center max-lg:min-h-[60dvh] max-lg:justify-start max-lg:pt-6 max-lg:pb-(--back-to-top-bottom)">
       {/* Decoration, and the first thing to go where the room is needed: it
           is aria-hidden, it says nothing the sentence under it does not, and
           the 32px plus the gap it takes is what put the actions inside the
@@ -601,99 +608,40 @@ export function AnimalGrid({
                   </p>
                 )}
               </div>
-              {/* Below lg only, where the sticky bar no longer carries a chips
-                  row. This is the one state that row was genuinely needed for:
-                  with nothing matching, "try fewer filters" is advice and not a
-                  way out, and a visitor facing five active filters has no means
-                  of telling which of them is the one to drop. The row's stuck
-                  mode names it (filter-chips.tsx). Here it costs nothing that
-                  matters, because there is no grid underneath for it to push
-                  down and nothing to scroll it past.
-
-                  Without its own clear, though: this state draws that itself,
-                  below. At the end of the strip it is the row's last item, and
-                  at 390px with four filters the pills already ran to x 497, so
-                  the way out sat at x 514, off the screen, behind a sideways
-                  scroll the state gave no sign of. */}
-              {chips.length > 0 && (
-                <FilterChips
-                  chips={chips}
-                  onClearAll={handleClearAll}
-                  stuck
-                  clear={false}
-                  className="max-w-full justify-center lg:hidden"
-                />
+              {shelterOnlyEmpty && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={EMPTY_STATE_ACTION}
+                  onClick={() => toggleMany("shelter", filters.shelter)}
+                >
+                  {messages.showFromAllShelters}
+                </Button>
               )}
-              {/* Both ways out on one wrapping row rather than stacked. The
-                  state draws at most two of them, and stacked they were two
-                  44px rows and a gap, 100px of a 568px screen with a dock over
-                  the last 74 of it: at 320 and 360 the second button was
-                  inside the band whatever the block's own insets did. Side by
-                  side they take one row on every phone measured and wrap to
-                  two only where the words are long enough to need it, which is
-                  the same answer at less cost. */}
-              {/* empty:hidden rather than a guard around the row. The guard
-                  was shelterOnlyEmpty || chips.length > 0 || species !== "all",
-                  which is exactly the render conditions of the two children
-                  restated, so a change to either of them had two places to
-                  reach. React renders false as no node at all, so with both
-                  children out the div really is :empty and hides itself, and
-                  a hidden element is not a flex item, so EmptyState's gap-3
-                  closes over it. */}
-              <div className="flex flex-wrap justify-center gap-2 empty:hidden">
-                {shelterOnlyEmpty && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={EMPTY_STATE_ACTION}
-                    onClick={() => toggleMany("shelter", filters.shelter)}
-                  >
-                    {messages.showFromAllShelters}
-                  </Button>
-                )}
-                {/* The one way out of this screen, drawn once and at every
-                    width. With pills above it, it stands under the row and
-                    takes the clear that row would otherwise have ended in.
+              {/* This state draws no clear of its own at any width. The pills
+                  that name the filters are above the grid everywhere now: the
+                  sticky bar's row from lg and the in-flow row below it
+                  (animal-filters.tsx). That row marks the chip costing the
+                  most when nothing matches and ends in the clear, so a second
+                  way out down here would be the same press a screenful lower,
+                  away from the pills that say what it takes off.
 
-                    It used to be lg:hidden with the pills, on the grounds
-                    that the sticky toolbar draws its own row up there with
-                    its own clear at the end of it and a desktop would
-                    otherwise show two. What that left at lg was a screen
-                    saying "Ni zadetkov. Poskusi z manj filtri." with no
-                    control under it at all, and the only way out a 12px
-                    pill at the end of a strip 130px above the sentence. Two
-                    presses that do the same thing is the cheaper of the two
-                    faults, and the branch beside this one has always drawn
-                    its button at lg for exactly that reason.
-
-                    Without pills the state is a species tab with nothing in
-                    it, which a deep link to a species the roster does not
-                    hold can reach, and the only thing left to undo is the
-                    species. A clear leaves the species standing
-                    (use-animal-filters.ts), so what this offers there is the
-                    species' own way back, worded as what it does. */}
-                {chips.length > 0 ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={EMPTY_STATE_ACTION}
-                    onClick={handleClearAll}
-                  >
-                    {messages.clearFilters}
-                  </Button>
-                ) : (
-                  filters.species !== "all" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={EMPTY_STATE_ACTION}
-                      onClick={() => setSpecies("all")}
-                    >
-                      {messages.showAllSpecies}
-                    </Button>
-                  )
-                )}
-              </div>
+                  The species is what is left, because no clear touches it
+                  (use-animal-filters.ts). With no pills at all the state is a
+                  species tab with nothing in it, which a deep link to a
+                  species the roster does not hold can reach, and the species
+                  is then the only thing to undo. Nothing else on any width
+                  offers that press, so it stays at every width. */}
+              {chips.length === 0 && filters.species !== "all" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={EMPTY_STATE_ACTION}
+                  onClick={() => setSpecies("all")}
+                >
+                  {messages.showAllSpecies}
+                </Button>
+              )}
             </EmptyState>
           ) : (
             <div

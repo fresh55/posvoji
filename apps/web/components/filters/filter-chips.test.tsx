@@ -325,6 +325,82 @@ describe("the active filters row", () => {
     }
   });
 
+  it("hands focus past what cannot take it: an inert control or a hidden row", () => {
+    // In document order the first focusable after the phone row is BackToTop,
+    // inert until the page has scrolled, and after the band row at lg it is
+    // the phone row itself, display:none. focus() on either is a no-op and
+    // the visitor would land on the body, which is what the hand-off exists
+    // to prevent.
+    const onRemove = vi.fn();
+    renderChips([chip({ key: "only", label: "Dogs", onRemove })]);
+
+    const inert = document.createElement("button");
+    inert.textContent = "back to top";
+    inert.setAttribute("inert", "");
+    const hidden = document.createElement("div");
+    hidden.style.display = "none";
+    const hiddenPill = document.createElement("button");
+    hiddenPill.textContent = "a pill in the other row";
+    hidden.append(hiddenPill);
+    const card = document.createElement("a");
+    card.href = "/zivali/x";
+    card.textContent = "first card";
+    document.body.append(inert, hidden, card);
+
+    try {
+      const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
+      dogs.focus();
+      fireEvent.click(dogs, { detail: 0 });
+
+      expect(onRemove).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(card);
+    } finally {
+      inert.remove();
+      hidden.remove();
+      card.remove();
+    }
+  });
+
+  it("falls back to the last stop when the removal takes the clear with it", () => {
+    // The phone row draws its clear only while nothing matches. Removing the
+    // pill that was blocking the results turns the clear off in the same
+    // render, so the stop the keystroke aimed at is gone; the row must not
+    // drop focus on the body for it.
+    const onRemove = vi.fn();
+    const { rerender } = render(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[
+            chip({ key: "a", label: "Dogs" }),
+            chip({ key: "b", facet: "age", label: "Puppies", onRemove }),
+          ]}
+          onClearAll={vi.fn()}
+          placement="flow"
+          stuck
+        />
+      </I18nProvider>,
+    );
+
+    const puppies = screen.getByRole("button", { name: "Remove filter Puppies" });
+    puppies.focus();
+    fireEvent.keyDown(puppies, { key: "Delete" });
+    expect(onRemove).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <I18nProvider locale="en">
+        <FilterChips
+          chips={[chip({ key: "a", label: "Dogs" })]}
+          onClearAll={vi.fn()}
+          placement="flow"
+        />
+      </I18nProvider>,
+    );
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Remove filter Dogs" }),
+    );
+  });
+
   it("leaves focus where a pointer left it", () => {
     // A mouse gets no focus move: the cursor is already where the visitor is
     // looking, and stealing focus to the neighbouring pill would put a ring
@@ -492,18 +568,16 @@ describe("the active filters row", () => {
     expect(stops[stops.length - 1]).toBe("clear");
   });
 
-  it("hands the clear back to the caller when asked, stops and seam with it", () => {
-    // The empty state asks for this and draws its own way out instead
-    // (animal-grid.tsx). At the end of the strip the clear is the row's last
-    // item, and at 390px with four filters the pills already ran past the
-    // right edge: the one control that ends the state sat at x 514 behind a
-    // sideways scroll nothing on screen advertised.
+  it("draws no clear in flow while something matches, stops and seam with it", () => {
+    // In flow the sheet's footer holds a clear one tap away the whole time,
+    // so the row spends a line on one only where clearing is the point of the
+    // screen. Everything that belongs to the button goes when it does.
     const { container } = renderChips(
       [
         chip({ key: "a", label: "Dogs" }),
         chip({ key: "b", facet: "age", label: "Cats" }),
       ],
-      { clear: false },
+      { placement: "flow" },
     );
 
     expect(
@@ -517,12 +591,12 @@ describe("the active filters row", () => {
     );
     expect(stops).toEqual(["a", "b"]);
 
-    // The seam guards the inline button against an overscroll flick. With no
-    // button behind the pills there is nothing to guard, and a line at the end
-    // of the strip is then a line to nowhere.
-    const strip = container.querySelector("[data-scroll-strip]");
-    expect(strip?.querySelectorAll("span[aria-hidden]")).toHaveLength(0);
-    expect(strip?.querySelectorAll("button")).toHaveLength(2);
+    // The seam guards the button against an overscroll flick. With no button
+    // behind the pills there is nothing to guard, and a line at the end of
+    // the row is then a line to nowhere.
+    const row = container.querySelector("section[role='toolbar'] > div");
+    expect(row?.querySelectorAll("span[aria-hidden]")).toHaveLength(0);
+    expect(row?.querySelectorAll("button")).toHaveLength(2);
   });
 
   it("brings the way out into view rather than leaving it past the scroll", () => {
@@ -573,6 +647,65 @@ describe("the active filters row", () => {
     expect(
       screen.getByRole("button", { name: "Show all selected: Shelter" }),
     ).toBeTruthy();
+  });
+
+  it("wraps the pills instead of laying a second sideways scroller under the bar", () => {
+    // What the phone's in-flow row asks for (animal-filters.tsx). A strip
+    // there would be a horizontal scroller stacked under the species strip
+    // inside a page that already scrolls vertically, which is the objection
+    // that kept this row off a phone in the first place; the page's own
+    // vertical scroll is what a wrapping row costs instead.
+    renderChips(
+      [
+        chip({ key: "a", label: "Dogs" }),
+        chip({ key: "b", facet: "age", label: "Cats" }),
+      ],
+      { placement: "flow" },
+    );
+
+    const dogs = screen.getByRole("button", { name: "Remove filter Dogs" });
+    const box = dogs.closest("span")?.parentElement;
+
+    // The box around the pills scrolls nothing: no overflow to scroll in, and
+    // none of the fade the strip draws over its own edges. Read off the
+    // classes, because jsdom lays nothing out. The mark goes with them: it
+    // tells a child it can be scrolled into view inside this box.
+    const outer = box?.parentElement;
+    expect(outer?.className).not.toContain("overflow-x-auto");
+    expect(outer?.className).not.toContain("fade-scroll-x");
+    expect(outer?.hasAttribute("data-scroll-strip")).toBe(false);
+
+    expect(box?.className).toContain("flex-wrap");
+    // w-max is the strip's own width: a row as wide as its content, for the
+    // strip to scroll. Wrapping, the row is as wide as the box it is in.
+    expect(box?.className).not.toContain("w-max");
+
+    // Two pixels tighter per side on a thumb: at 375 three typical pills
+    // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
+    expect(dogs.className).toContain("pointer-coarse:px-2.5");
+    expect(dogs.className).not.toContain("pointer-coarse:px-3");
+  });
+
+  it("takes a lower cap than the bar's own, and hands the rest over on press", () => {
+    // The phone's row caps at five (animal-filters.tsx). It wraps, so the cap
+    // bounds how many lines the row can push the grid down by rather than how
+    // far it runs off the right edge, and five is what fits two lines at 375.
+    const six = FILTER_FACETS.slice(0, 6).map((facet) =>
+      chip({ key: `${facet}:0`, facet, label: `${facet}0` }),
+    );
+    expect(six).toHaveLength(6);
+    renderChips(six, { placement: "flow" });
+
+    expect(
+      screen.getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(5);
+    const more = screen.getByRole("button", { name: "Show 1 more" });
+    expect(more.textContent).toBe("+1");
+
+    fireEvent.click(more);
+    expect(
+      screen.getAllByRole("button", { name: /^Remove filter/ }),
+    ).toHaveLength(6);
   });
 
   it("draws nothing at all with no chips and no offer", () => {

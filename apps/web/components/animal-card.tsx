@@ -109,8 +109,15 @@ const QUIET_PHOTO = "saturate-[60%] opacity-80";
 // four strings differing in one colour, and the focused dark one existed only
 // to restate the hairline's dark rule, which wrote the same property at the
 // same specificity and would otherwise have won.
+//
+// shrink-0 is the frame's own. It used to sit on a wrapper div around the
+// gallery, back when the two marks on the photo were positioned against that
+// div; they are drawn against the article now, which left the wrapper holding
+// one child and one class. PhotoGallery puts this string on its own root, the
+// element carrying data-slot="photo-frame", so the frame is the card's flex
+// item and holds its box whatever the text under it does.
 const PHOTO_FRAME =
-  `relative ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
+  `relative shrink-0 ${CARD_PHOTO_ASPECT} ${CARD_PHOTO_RADIUS} overflow-hidden bg-muted` +
   " after:pointer-events-none after:absolute after:inset-0 after:z-20" +
   ` after:${CARD_PHOTO_RADIUS}` +
   " after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]" +
@@ -295,64 +302,58 @@ export function AnimalCard({
       )}
       style={style}
     >
-      {/* shrink-0 and nothing else. The photo holds its box whatever the text
-          under it does, and the two marks that used to be positioned against
-          this div are drawn at the end of the article now, against the
-          article itself. */}
-      <div className="shrink-0">
-        <PhotoGallery
-          images={animal.images}
-          name={animal.name}
-          className={PHOTO_FRAME}
-          sizes={CARD_PHOTO_SIZES}
-          // The frame is square, and 265 of the 484 lead photos are wider
-          // than 4:3: a square cut from the middle of one throws away a third
-          // of its width, and with it a tail or the whole cat at one end of
-          // the bench. Told the shape, the photo keeps the animal ingest
-          // found in the box.
-          frame={CARD_PHOTO_RATIO}
-          // A plain click here opens the dialog, whose fan mounts its five
-          // prints at once at 24rem. The rung ladder is 320/480/640 plus the
-          // original, so at every common density that is a different file
-          // from the card's: the front print would otherwise be a cold fetch
-          // the moment the dialog opens. Tied to openDialog below,
-          // which is what makes this photo open the fan at all.
-          //
-          // The constant comes from lib and not from the fan itself: an
-          // import of photo-spread here would pull the whole fan into the
-          // grid's bundle.
-          warmSizes={FAN_PHOTO_SIZES}
-          warmSideSizes={FAN_SIDE_PHOTO_SIZES}
-          tone={settled ? QUIET_PHOTO : undefined}
-          // What the empty frame draws above its caption, for an animal the
-          // shelter published without a photo. A frame holding one grey
-          // sentence is the only card in the grid with nothing in its
-          // picture, and at a glance it reads as a card that failed to load
-          // rather than as a dog whose photo is on the shelter's own page.
-          //
-          // The card is what knows the species. The gallery is handed images
-          // and a name and nothing else, and it is drawn on the animal's own
-          // page and in the dialog as well, so teaching it to read an animal
-          // would tie a photo component to the schema for one caller's sake.
-          //
-          // It takes the component and not the species for the same reason:
-          // a species would make the gallery import the icon map and own the
-          // mapping, which is animal-icons.ts's job and is already shared by
-          // the filter panel and the dialog. Handed the component, the
-          // gallery only draws what it is given.
-          //
-          // animal.species, not the species prop above, which is the grid's
-          // active tab and is "all" on most of these cards.
-          emptyMark={SPECIES_ICONS[animal.species]}
-          variant="card"
-          href={href}
-          onNavigate={openDialog}
-          index={photoIndex}
-          onIndexChange={setPhotoIndex}
-          announceChanges={announcePhotoChanges}
-          eager={eager}
-        />
-      </div>
+      <PhotoGallery
+        images={animal.images}
+        name={animal.name}
+        className={PHOTO_FRAME}
+        sizes={CARD_PHOTO_SIZES}
+        // The frame is square, and 265 of the 484 lead photos are wider
+        // than 4:3: a square cut from the middle of one throws away a third
+        // of its width, and with it a tail or the whole cat at one end of
+        // the bench. Told the shape, the photo keeps the animal ingest
+        // found in the box.
+        frame={CARD_PHOTO_RATIO}
+        // A plain click here opens the dialog, whose fan mounts its five
+        // prints at once at 24rem. The rung ladder is 320/480/640 plus the
+        // original, so at every common density that is a different file
+        // from the card's: the front print would otherwise be a cold fetch
+        // the moment the dialog opens. Tied to openDialog below,
+        // which is what makes this photo open the fan at all.
+        //
+        // The constant comes from lib and not from the fan itself: an
+        // import of photo-spread here would pull the whole fan into the
+        // grid's bundle.
+        warmSizes={FAN_PHOTO_SIZES}
+        warmSideSizes={FAN_SIDE_PHOTO_SIZES}
+        tone={settled ? QUIET_PHOTO : undefined}
+        // What the empty frame draws above its caption, for an animal the
+        // shelter published without a photo. A frame holding one grey
+        // sentence is the only card in the grid with nothing in its
+        // picture, and at a glance it reads as a card that failed to load
+        // rather than as a dog whose photo is on the shelter's own page.
+        //
+        // The card is what knows the species. The gallery is handed images
+        // and a name and nothing else, and it is drawn on the animal's own
+        // page and in the dialog as well, so teaching it to read an animal
+        // would tie a photo component to the schema for one caller's sake.
+        //
+        // It takes the component and not the species for the same reason:
+        // a species would make the gallery import the icon map and own the
+        // mapping, which is animal-icons.ts's job and is already shared by
+        // the filter panel and the dialog. Handed the component, the
+        // gallery only draws what it is given.
+        //
+        // animal.species, not the species prop above, which is the grid's
+        // active tab and is "all" on most of these cards.
+        emptyMark={SPECIES_ICONS[animal.species]}
+        variant="card"
+        href={href}
+        onNavigate={openDialog}
+        index={photoIndex}
+        onIndexChange={setPhotoIndex}
+        announceChanges={announcePhotoChanges}
+        eager={eager}
+      />
       <a
         // The card's own link, and the one thing in the article that names
         // the animal. animal-grid.tsx looks for this after "show more" so

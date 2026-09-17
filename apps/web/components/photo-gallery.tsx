@@ -783,8 +783,9 @@ export function PhotoGallery({
   return (
     // data-slot, because the card hands the dialog this box to grow its zoom
     // out of and used to find it by walking to the article's firstElementChild.
-    // That is the wrapper div, not this one, and it only returned the right
-    // rectangle because the wrapper happens to have exactly one in-flow child.
+    // That walk landed on a wrapper div around this element and only returned
+    // the right rectangle because the wrapper held exactly one in-flow child.
+    // The wrapper is gone and the name is what finds this box.
     <div
       data-slot="photo-frame"
       className={cn("group/photo", className ?? DEFAULT_WRAPPER_CLASS)}

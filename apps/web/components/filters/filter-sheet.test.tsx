@@ -59,10 +59,10 @@ const emptyCounts = Object.fromEntries(
  *  part most of these tests are about, so every list is empty by default:
  *  what is left in the header is the title, the caption and the control under
  *  it. The fold tests below pass sections in. */
-async function openSheet(
+function renderSheet(
   overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
 ) {
-  render(
+  return render(
     <I18nProvider locale="sl">
       <FilterSheet
         sort="longest-in-shelter"
@@ -84,6 +84,12 @@ async function openSheet(
       />
     </I18nProvider>,
   );
+}
+
+async function openSheet(
+  overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
+) {
+  renderSheet(overrides);
   fireEvent.click(screen.getByRole("button", { name: sl.filters }));
   return screen.findByRole("dialog");
 }
@@ -206,5 +212,26 @@ describe("FilterSheet section folds", () => {
     expect(
       within(dialog).getByRole("button", { name: sl.resetSexFilters }),
     ).toBeTruthy();
+  });
+});
+
+describe("FilterSheet trigger badge", () => {
+  it("draws the count at every width", () => {
+    // The badge used to start at 360px, with a dot standing in below that
+    // because the number was said not to fit. It fits: at 320 the trigger
+    // draws "Filtri 2" whole and the dock stays 320 wide, and the dot left a
+    // sighted visitor on the narrowest phone with no way to learn how many
+    // filters were on short of opening the sheet.
+    renderSheet({ activeCount: 2 });
+
+    const badge = document.querySelector('[data-slot="badge"]');
+    expect(badge?.textContent).toBe("2");
+    expect(badge?.className).not.toContain("min-[360px]");
+    // And the dot it stood in for is gone with it.
+    expect(document.querySelectorAll('[data-slot="badge"]').length).toBe(1);
+    expect(
+      screen.getByRole("button", { name: /^Filtri/ }).querySelectorAll("span")
+        .length,
+    ).toBe(1);
   });
 });

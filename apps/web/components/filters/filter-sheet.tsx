@@ -100,6 +100,23 @@ export const SORT_ROW_HIDDEN = "md:not-short:hidden";
 const SORT_CAPTION_CLASS = cn(SECTION_LABEL_CLASS, "mt-3", SORT_ROW_HIDDEN);
 const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
 
+/** The column the sheet's own content stands in. The header and the footer
+ *  wear it as a class each; the body says the same thing about its children
+ *  one at a time, for the reason written there. The three line up either way.
+ *
+ *  The frame itself stays full-bleed, and ui/drawer.tsx says why: a horizontal
+ *  inset on it shows the overlay down the notch side and draws the drawer's
+ *  border where it used to be off screen, so the way to clear an inset here is
+ *  to pad the content. This is that padding, for the one screen that needs it.
+ *  A drawer is as wide as the viewport, and a tablet is not a phone: measured
+ *  at 834 the sheet was 834px across and a Spol tile came to 393px of it for
+ *  the word "Samec", with the footer's two buttons stretched the same way.
+ *
+ *  28rem because the dock on the same screen is capped there from sm
+ *  (animal-filters.tsx), so the sheet and the button that opened it hold
+ *  their controls in one column. min() keeps it a cap rather than a floor. */
+const SHEET_BLOCK_CLASS = "sm:mx-auto sm:w-[min(28rem,100%)]";
+
 /** What is behind the Filtri button, or undefined when nothing is.
  *
  *  It lives here rather than in the dock that mounts the sheet, because what
@@ -286,22 +303,23 @@ export function FilterSheet({
           <SlidersHorizontal className="size-4" aria-hidden />
           {messages.filters}
           {activeCount > 0 && (
-            <>
-              <Badge
-                variant="secondary"
-                aria-hidden="true"
-                className="hidden h-5 min-w-5 rounded-full px-1 text-xs tabular-nums min-[360px]:inline-flex"
-              >
-                {activeCount}
-              </Badge>
-              {/* Below 360px the full badge doesn't fit the trigger, but the
-                  aria-label still announces the count, so sighted users need
-                  some visible sign filters are active. A dot is that sign. */}
-              <span
-                aria-hidden="true"
-                className="inline-block size-1.5 shrink-0 rounded-full bg-background min-[360px]:hidden"
-              />
-            </>
+            /* The count, at every width. It used to start at 360px, with a 6px
+               dot standing in below that because "the full badge doesn't fit
+               the trigger". Measured at 320: it fits. The trigger draws
+               "Filtri 2" whole, nothing in it truncates, and the dock is
+               still 320px wide. What the badge does cost there is 14px of the
+               shelter trigger beside it, whose label is a town name already
+               truncated at that width, against a number that was otherwise
+               only in the aria-label: a sighted visitor on the narrowest
+               phone had a dot saying something was on and no way to learn how
+               much short of opening the sheet. */
+            <Badge
+              variant="secondary"
+              aria-hidden="true"
+              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums"
+            >
+              {activeCount}
+            </Badge>
           )}
         </Button>
       </DrawerTrigger>
@@ -405,43 +423,67 @@ export function FilterSheet({
               longest label, "Other animals", measures 148px at 320 and the
               button starts 267px in, so the clearance is for a label that
               has not been written yet, not for these. */}
-          <div className="mt-3 flex min-w-0 items-center gap-3 pe-12">
-            <DrawerTitle className="text-base">{messages.filters}</DrawerTitle>
-            {filters.species !== "all" && (
-              <button
-                type="button"
-                data-slot="species-scope"
-                onClick={() => {
-                  contentRef.current?.focus();
-                  onSpeciesChange("all");
-                }}
-                aria-label={t("speciesScope", {
-                  label: speciesScopeLabel(filters.species, locale),
-                })}
-                className="inline-flex h-8 min-w-0 touch-manipulation select-none items-center gap-1.5 rounded-ui bg-foreground px-2.5 text-sm text-background outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
-              >
-                <SpeciesGlyphIcon tab={filters.species} />
-                <span className="min-w-0 truncate">
-                  {speciesScopeLabel(filters.species, locale)}
-                </span>
-                <X aria-hidden className="size-3.5 shrink-0 opacity-70" />
-              </button>
-            )}
+          {/* The header's own column, so the title line and the sort row
+              stand where the body's sections do (SHEET_BLOCK_CLASS). The
+              border under the header stays on the block outside it and runs
+              the full width: it is the drawer's own edge when the body is
+              scrolled, not a rule under this content. */}
+          <div className={SHEET_BLOCK_CLASS}>
+            <div className="mt-3 flex min-w-0 items-center gap-3 pe-12">
+              <DrawerTitle className="text-base">{messages.filters}</DrawerTitle>
+              {filters.species !== "all" && (
+                <button
+                  type="button"
+                  data-slot="species-scope"
+                  onClick={() => {
+                    contentRef.current?.focus();
+                    onSpeciesChange("all");
+                  }}
+                  aria-label={t("speciesScope", {
+                    label: speciesScopeLabel(filters.species, locale),
+                  })}
+                  className="inline-flex h-8 min-w-0 touch-manipulation select-none items-center gap-1.5 rounded-ui bg-foreground px-2.5 text-sm text-background outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
+                >
+                  <SpeciesGlyphIcon tab={filters.species} />
+                  <span className="min-w-0 truncate">
+                    {speciesScopeLabel(filters.species, locale)}
+                  </span>
+                  <X aria-hidden className="size-3.5 shrink-0 opacity-70" />
+                </button>
+              )}
+            </div>
+            <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
+              {messages.sortCaption}
+            </div>
+            <SortPicker
+              value={sort}
+              onChange={onSortChange}
+              labelledBy={sortCaptionId}
+              className={SORT_ROW_CLASS}
+            />
           </div>
-          <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
-            {messages.sortCaption}
-          </div>
-          <SortPicker
-            value={sort}
-            onChange={onSortChange}
-            labelledBy={sortCaptionId}
-            className={SORT_ROW_CLASS}
-          />
         </div>
 
+        {/* [scrollbar-width:thin] because until it was here this box said
+            nothing about being a scroll box: no fade, no bar, and nine folded
+            section names that end at the bottom edge with more under it. The
+            same thin bar the picker's shelter list wears
+            (picker-shelter-list.tsx); a phone draws no bar at all and loses
+            nothing, and on a mouse or a trackpad it is the whole of the cue. */}
         <div
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
-          className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6"
+          className={cn(
+            "flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6 [scrollbar-width:thin]",
+            // The cap sits on each block in here rather than on one box around
+            // them. The scroll box itself has to stay the sheet's full width,
+            // so its bar is at the sheet's edge and its padding is the
+            // sheet's, and the sections below are a fragment: a box around
+            // them would be a node added for nothing but its width. Every
+            // child in here is a block of its own, so centring them one by one
+            // is the same column (SHEET_BLOCK_CLASS, worn by the header and
+            // the footer as one class each).
+            "[&>*]:sm:mx-auto [&>*]:sm:w-[min(28rem,100%)]",
+          )}
         >
           {/* Kje above every section, the same order the panel keeps at lg.
               The pills under it are the mobile half of the fix: the dock's
@@ -499,31 +541,37 @@ export function FilterSheet({
           />
         </div>
 
-        <div className="flex shrink-0 gap-3 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <Button
-            variant="ghost"
-            className="h-11"
-            disabled={activeCount === 0}
-            onClick={onClearAll}
-          >
-            {/* "Počisti filtre" and not "Počisti vse": the species pill on the
-                title line survives this press, and a button that says
-                everything while a dark pill beside it stays put is a button
-                that lies. */}
-            {messages.clearFilters}
-          </Button>
-          <DrawerClose asChild>
-            <Button className="h-11 flex-1">
-              {messages.show}
-              <ResultCount
-                count={resultCount}
-                locale={locale}
-                announce={false}
-                variant="inline"
-                className="justify-start text-current"
-              />
+        {/* The footer's band keeps its rule, its ground and the safe-area
+            padding full width; the two buttons stand in the same column the
+            sections above them do, rather than stretching a tablet's whole
+            width (SHEET_BLOCK_CLASS). */}
+        <div className="shrink-0 border-t bg-popover px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className={cn("flex gap-3", SHEET_BLOCK_CLASS)}>
+            <Button
+              variant="ghost"
+              className="h-11"
+              disabled={activeCount === 0}
+              onClick={onClearAll}
+            >
+              {/* "Počisti filtre" and not "Počisti vse": the species pill on the
+                  title line survives this press, and a button that says
+                  everything while a dark pill beside it stays put is a button
+                  that lies. */}
+              {messages.clearFilters}
             </Button>
-          </DrawerClose>
+            <DrawerClose asChild>
+              <Button className="h-11 flex-1">
+                {messages.show}
+                <ResultCount
+                  count={resultCount}
+                  locale={locale}
+                  announce={false}
+                  variant="inline"
+                  className="justify-start text-current"
+                />
+              </Button>
+            </DrawerClose>
+          </div>
         </div>
       </DrawerContent>
     </Drawer>

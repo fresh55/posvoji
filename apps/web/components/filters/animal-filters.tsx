@@ -11,7 +11,6 @@ import { useState } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import {
   FilterChips,
-  UndoOffer,
   type Chip,
 } from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
@@ -447,9 +446,23 @@ export function AnimalFilters({
           Only while the offer stands, which is a few seconds, so it costs no
           room at rest -- the reason it can afford to be a row of its own here
           rather than sharing one that has to exist all the time. */}
-      {!isEmpty && undo && (
-        <div data-slot="mobile-undo-row" className="lg:hidden">
-          <UndoOffer onUndo={undo} />
+      {/* PROTOTYPE: the active filters, in flow under the band on a phone.
+          Not sticky, wrapping, capped at five pills, and the one surface that
+          names what is on: it carries the undo offer, and the stuck mode when
+          nothing matches. */}
+      {!isEmpty && (chips.length > 0 || undo) && (
+        <div data-slot="mobile-filter-row" className="lg:hidden">
+          <FilterChips
+            chips={chips}
+            onClearAll={onClearAll}
+            undo={undo}
+            stuck={resultCount === 0}
+            // Clearing everything stays in the sheet's footer, one tap away
+            // the whole time; the row keeps it only where it is the way out.
+            clear={resultCount === 0}
+            wrap
+            maxVisible={5}
+          />
         </div>
       )}
 

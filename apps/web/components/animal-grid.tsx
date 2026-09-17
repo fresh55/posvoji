@@ -6,7 +6,6 @@ import {
   TOOLBAR_BAND,
   TOOLBAR_ROW_HEIGHT,
 } from "@/components/filters/animal-filters";
-import { FilterChips } from "@/components/filters/filter-chips";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-provider";
 import { GridLoadMore } from "@/components/grid-load-more";
@@ -612,29 +611,6 @@ export function AnimalGrid({
                   </p>
                 )}
               </div>
-              {/* Below lg only, where the sticky bar no longer carries a chips
-                  row. This is the one state that row was genuinely needed for:
-                  with nothing matching, "try fewer filters" is advice and not a
-                  way out, and a visitor facing five active filters has no means
-                  of telling which of them is the one to drop. The row's stuck
-                  mode names it (filter-chips.tsx). Here it costs nothing that
-                  matters, because there is no grid underneath for it to push
-                  down and nothing to scroll it past.
-
-                  Without its own clear, though: this state draws that itself,
-                  below. At the end of the strip it is the row's last item, and
-                  at 390px with four filters the pills already ran to x 497, so
-                  the way out sat at x 514, off the screen, behind a sideways
-                  scroll the state gave no sign of. */}
-              {chips.length > 0 && (
-                <FilterChips
-                  chips={chips}
-                  onClearAll={handleClearAll}
-                  stuck
-                  clear={false}
-                  className="max-w-full justify-center lg:hidden"
-                />
-              )}
               {shelterOnlyEmpty && (
                 <Button
                   variant="outline"
@@ -659,26 +635,15 @@ export function AnimalGrid({
                   so what this offers there is the species' own way back,
                   worded as what it does. Nothing else on any width offers the
                   press, so it stays at every width. */}
-              {chips.length > 0 ? (
+              {chips.length === 0 && filters.species !== "all" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className={cn(EMPTY_STATE_ACTION, "lg:hidden")}
-                  onClick={handleClearAll}
+                  className={EMPTY_STATE_ACTION}
+                  onClick={() => setSpecies("all")}
                 >
-                  {messages.clearFilters}
+                  {messages.showAllSpecies}
                 </Button>
-              ) : (
-                filters.species !== "all" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={EMPTY_STATE_ACTION}
-                    onClick={() => setSpecies("all")}
-                  >
-                    {messages.showAllSpecies}
-                  </Button>
-                )
               )}
             </EmptyState>
           ) : (

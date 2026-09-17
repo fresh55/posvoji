@@ -138,6 +138,8 @@ export function FilterChips({
   undo,
   stuck = false,
   clear = true,
+  wrap = false,
+  maxVisible = MAX_VISIBLE,
   className,
 }: {
   chips: Chip[];
@@ -145,6 +147,14 @@ export function FilterChips({
   /** Offered for a few seconds after a clear, in place of the chips it took
    *  away. Absent the rest of the time. */
   undo?: () => void;
+  /** Wrap the pills instead of scrolling them sideways. The phone's in-flow
+   *  row wraps: it sits in a page that already scrolls vertically, and a
+   *  second horizontal scroller under the species strip was the objection
+   *  that took the row off the phone in the first place. */
+  wrap?: boolean;
+  /** Pills past which the rest fold behind "+N". The phone row caps lower
+   *  than the desktop one: it wraps, so the cap bounds lines, not width. */
+  maxVisible?: number;
   /** The filter state matches nothing. The row then names the chip that is
    *  costing the most, because it is the way out and the visitor has no other
    *  means of telling which of five pills is the one to drop. */
@@ -214,10 +224,10 @@ export function FilterChips({
   // worth drawing if it is on screen, and with nothing matching there are no
   // cards below for a taller row to push down.
   const hidden =
-    showAll || blocker ? 0 : Math.max(0, all.length - MAX_VISIBLE);
+    showAll || blocker ? 0 : Math.max(0, all.length - maxVisible);
   const items: Item[] =
     hidden > 0
-      ? [...all.slice(0, MAX_VISIBLE), { id: "more", kind: "more", hidden }]
+      ? [...all.slice(0, maxVisible), { id: "more", kind: "more", hidden }]
       : all;
 
   // Every stop the arrow keys walk, in the order they are drawn. Inline, clear
@@ -344,7 +354,9 @@ export function FilterChips({
     }
   };
 
-  const pill = CHIP_PILL;
+  // Two pixels tighter per side when wrapping: at 375 three typical pills
+  // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
+  const pill = wrap ? cn(CHIP_PILL, "pointer-coarse:px-2.5") : CHIP_PILL;
 
   // "Show me all of these" belonged to a filter state that is about to stop
   // existing. Carried over, the next pills a visitor picks would arrive
@@ -390,12 +402,22 @@ export function FilterChips({
         // pill out from under it, and the horizontal room the focus ring
         // needs; the couplings between those three are on the constant. The
         // -my/py pair below is this row's own vertical half of it.
-        className={cn(
-          SCROLL_STRIP,
-          "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
-        )}
+        className={
+          wrap
+            ? "min-w-0"
+            : cn(
+                SCROLL_STRIP,
+                "min-w-0 pointer-coarse:-my-2.5 pointer-coarse:py-2.5",
+              )
+        }
       >
-        <div className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap pointer-coarse:gap-2">
+        <div
+          className={
+            wrap
+              ? "flex flex-wrap items-center gap-1.5 pointer-coarse:gap-2"
+              : "flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap pointer-coarse:gap-2"
+          }
+        >
           <AnimatePresence initial={false} mode="popLayout">
             {items.map((item) => (
               <m.span

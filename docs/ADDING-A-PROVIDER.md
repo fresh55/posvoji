@@ -40,28 +40,17 @@ Start by copying `providers/_template`.
    schema rejects unknown fields on purpose.
 6. **Respect the policy.** Without granted permission, `images` must be
    `none` and `descriptions` must be `facts-only`; the schema enforces this.
-   Declare the known catalogue and detail paths in `crawl.allowPaths`.
-   Each entry permits that exact path (with or without its trailing slash) and
-   descendants, not similarly named siblings. An explicit empty list denies
-   all paths. The shared schema accepts omission for compatibility, but
-   `validate:policies` rejects missing, empty or whole-site (`/`) allowlists
-   for enabled crawlers. Manual providers are exempt.
-   The guard checks direct requests and every content redirect, including
-   `getBytes`, and publication checks carried records too. Unknown paths fail
-   closed. The SDK still handles robots.txt separately; these catalogue paths
-   do not grant access to private media or change robots rules.
-   Where animal permalinks have no dedicated path prefix, do not allow `/`.
-   `crawl.discoveredUrls: exact` lets a detail fetch request only its exact
-   current discovery URL in addition to the fixed paths. It does not allow
-   sibling URLs, added query parameters or redirects to unrelated paths.
-   The discovery parser must establish adoption-catalogue membership; previous
-   records never authorize requests. For an API that returns the records itself,
-   `discoveredUrls: publish-only` admits its public links for publication while
-   requests remain restricted to the API allowlist. Those links can be retained
-   on failure, subject to the same origin and exclusion rules. Cover discovery,
-   pagination, API fallback requests and forbidden redirects with fixtures.
-   Keep private-listing paths in `crawl.excludePaths` as defence in depth;
-   exclusions win even inside an allowed path.
+   Enabled crawlers need `crawl.allowPaths`; missing, empty or `/` lists fail
+   validation. Manual providers are exempt. Each entry allows a path, with or
+   without its trailing slash, and its descendants. `excludePaths` wins.
+   These rules cover requests, redirects and retained records. Robots rules
+   still apply.
+
+   For animal pages outside a shared path, `discoveredUrls: exact` allows only
+   the current adoption listing's exact URL during its detail fetch. API providers
+   can use `publish-only` to publish links without granting request access.
+   Retained records grant no request access. Test discovery, pagination, API
+   fallback and blocked redirects with fixtures.
 
 ## Wiring it up
 

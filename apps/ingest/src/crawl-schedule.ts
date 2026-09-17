@@ -4,13 +4,18 @@ import type { PoliteClientOptions } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
 import { writeFileAtomic } from "./write-atomic";
 
+function isTimestamp(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) &&
+    value >= 0 && Number.isFinite(new Date(value).getTime());
+}
+
 // Both stores are protected by the export's artifact lock. Invalid state must
 // stop requests, not silently reset the limits a shelter already imposed.
 function readTimes(path: string): Record<string, number> {
   if (!existsSync(path)) return {};
   const value: unknown = JSON.parse(readFileSync(path, "utf8"));
   if (!value || typeof value !== "object" || Array.isArray(value) ||
-      Object.values(value).some((time) => !Number.isSafeInteger(time) || time < 0 || !Number.isFinite(new Date(time).getTime()))) {
+      Object.values(value).some((time) => !isTimestamp(time))) {
     throw new Error(`invalid crawl scheduling state: ${path}`);
   }
   return value as Record<string, number>;
@@ -21,15 +26,17 @@ export function hostCooldowns(directory: string, now = Date.now()): NonNullable<
   const times = readTimes(path);
   let changed = false;
   for (const host of Object.keys(times)) {
-    if (times[host]! <= now) { delete times[host]; changed = true; }
+    if (times[host]! <= now) {
+      delete times[host];
+      changed = true;
+    }
   }
-  // A distant deadline can be a legitimate server instruction. Preserve it;
-  // invalid state fails closed for operator inspection. Only expiry removes it.
+  // Remove expired deadlines; preserve all future server instructions.
   if (changed) writeFileAtomic(path, JSON.stringify(times));
   return {
     get: (host) => Object.hasOwn(times, host) ? times[host] : undefined,
     set(host, at) {
-      if (!Number.isSafeInteger(at) || at < 0 || !Number.isFinite(new Date(at).getTime())) throw new Error("invalid host cooldown");
+      if (!isTimestamp(at)) throw new Error("invalid host cooldown");
       Object.defineProperty(times, host, { value: at, enumerable: true, writable: true, configurable: true });
       writeFileAtomic(path, JSON.stringify(times));
     },

@@ -139,12 +139,18 @@ export const ProviderPolicy = ProviderPolicyShape.superRefine((p, ctx) => {
   const granted = p.permission.status === "granted";
 
   if (p.crawl.discoveredUrls && p.crawl.allowPaths === undefined) {
-    ctx.addIssue({ code: "custom", path: ["crawl", "allowPaths"],
-      message: "discoveredUrls requires an explicit discovery/API allowlist" });
+    ctx.addIssue({
+      code: "custom",
+      path: ["crawl", "allowPaths"],
+      message: "discoveredUrls requires an explicit discovery/API allowlist",
+    });
   }
   if (p.crawl.discoveredUrls === "publish-only" && p.ingestion !== "api") {
-    ctx.addIssue({ code: "custom", path: ["crawl", "discoveredUrls"],
-      message: "publish-only discovered URLs require API ingestion" });
+    ctx.addIssue({
+      code: "custom",
+      path: ["crawl", "discoveredUrls"],
+      message: "publish-only discovered URLs require API ingestion",
+    });
   }
 
   if (p.enabled && !granted) {

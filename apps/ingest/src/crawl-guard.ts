@@ -1,16 +1,7 @@
-import type {
-  GetBytesOptions,
-  PoliteBytesResponse,
-  PoliteResponse,
-} from "@posvoji/provider-sdk";
+import type { GetBytesOptions, PoliteClient } from "@posvoji/provider-sdk";
 import type { ProviderPolicy } from "@posvoji/schema";
 
-// The slice of PoliteClient a provider uses. Structural on purpose: the guard
-// wraps whatever the SDK hands over without depending on the class.
-export interface CrawlClient {
-  get(url: string, options?: GetBytesOptions): Promise<PoliteResponse>;
-  getBytes(url: string, options?: GetBytesOptions): Promise<PoliteBytesResponse>;
-}
+export type CrawlClient = Pick<PoliteClient, "get" | "getBytes">;
 
 function effectivePort(url: URL): string {
   if (url.port !== "") return url.port;
@@ -106,30 +97,41 @@ export function excludedPathFor(
   return excludePaths.find((excluded) => decoded.startsWith(excluded));
 }
 
-// Allow entries name a path and its descendants, never similarly named siblings.
-// Ambiguous encodings must not turn an admitted path into another server path.
+function decodedCrawlPath(url: string): string | undefined {
+  let path: string;
+  try {
+    path = decodeURIComponent(new URL(url).pathname);
+  } catch {
+    return undefined;
+  }
+  if (
+    /[\\\u0000-\u001f\u007f]/.test(path) || /%[0-9a-f]{2}/i.test(path) ||
+    path.includes("//") || path.split("/").some((part) => part === "." || part === "..")
+  ) return undefined;
+  return path;
+}
+
+// Match a path and its descendants, excluding ambiguous encodings and siblings.
 export function isAllowedPath(url: string, allowPaths: readonly string[] | undefined): boolean {
   if (allowPaths === undefined) return true;
-  let path: string;
-  try { path = decodeURIComponent(new URL(url).pathname); } catch { return false; }
-  if (/[\\\u0000-\u001f\u007f]/.test(path) || /%[0-9a-f]{2}/i.test(path) ||
-      path.includes("//") || path.split("/").some((part) => part === "." || part === "..")) return false;
+  const path = decodedCrawlPath(url);
+  if (path === undefined) return false;
   return allowPaths.some((allowed) => {
     const base = allowed.endsWith("/") ? allowed.slice(0, -1) : allowed;
     return path === base || path.startsWith(`${base}/`);
   });
 }
 
-// Discovery establishes membership in the adoption catalogue where permalink
-// paths cannot. Publication may retain those records after a failed crawl, but
-// retaining a record never authorizes a network request in a later crawl.
+// Retaining a discovered permalink for publication grants no request access.
 export function isAllowedListingUrl(url: string, policy: ProviderPolicy): boolean {
   if (isAllowedPath(url, policy.crawl.allowPaths)) return true;
   if (!policy.crawl.discoveredUrls) return false;
   try {
     canonicalRequestUrl(url, policy, new URL(policy.source));
-    return isAllowedPath(url, ["/"]);
-  } catch { return false; }
+    return decodedCrawlPath(url) !== undefined;
+  } catch {
+    return false;
+  }
 }
 
 // Both rules are central rather than trusted to every parser: a provider may
@@ -149,8 +151,7 @@ export function guardProviderRequests(
 ): CrawlClient {
   const source = new URL(policy.source);
   const excludePaths = policy.crawl.excludePaths;
-  // This exception is scoped to ONE detail fetch after discovery. It is never
-  // available during discovery and does not authorize a redirected sibling.
+  // Only this detail's discovered URL gets an exception to the fixed paths.
   const exact = policy.crawl.discoveredUrls === "exact" && discoveredUrl !== undefined
     ? canonicalRequestUrl(discoveredUrl, policy, source) : undefined;
 
@@ -164,7 +165,7 @@ export function guardProviderRequests(
       );
     }
     if (!isAllowedPath(url, policy.crawl.allowPaths) &&
-        !(url === exact && isAllowedPath(url, ["/"]))) {
+        !(url === exact && decodedCrawlPath(url) !== undefined)) {
       throw new Error(`${policy.providerId}: ${url} is outside crawl.allowPaths; refusing to fetch it`);
     }
     return url;

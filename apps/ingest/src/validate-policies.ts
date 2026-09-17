@@ -4,10 +4,11 @@ import { validateProviderRegistry } from "./registry-validation";
 
 const loaded = loadPolicies();
 const { policies } = loaded;
+const allowlistErrors = validateCrawlAllowlists(policies);
 const errors = [
   ...loaded.errors,
   ...validateProviderRegistry(policies, providers),
-  ...validateCrawlAllowlists(policies),
+  ...allowlistErrors,
 ];
 
 for (const { dir, policy } of policies) {
@@ -15,7 +16,7 @@ for (const { dir, policy } of policies) {
   console.log(`ok       ${policy.providerId} (${state}) ${dir}`);
 }
 
-console.log(`crawl allowlists: ${crawlablePolicies(policies).length} providers, ${validateCrawlAllowlists(policies).length} coverage gaps`);
+console.log(`crawl allowlists: ${crawlablePolicies(policies).length} providers, ${allowlistErrors.length} coverage gaps`);
 
 for (const { dir, message } of errors) {
   console.error(`invalid  ${dir}: ${message}`);

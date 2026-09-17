@@ -15,11 +15,9 @@ export interface PolicyError {
   message: string;
 }
 
-// Coverage is a repository gate, while the shared schema retains compatibility
-// with disabled/manual policies and consumers that do not run this crawler.
+// Enforce crawler coverage here without narrowing the shared policy schema.
 export function validateCrawlAllowlists(policies: readonly LoadedPolicy[]): PolicyError[] {
-  return policies.flatMap(({ dir, policy }) => {
-    if (!policy.enabled || isManualPolicy(policy)) return [];
+  return crawlablePolicies(policies).flatMap(({ dir, policy }) => {
     const paths = policy.crawl.allowPaths;
     return paths === undefined || paths.length === 0 || paths.includes("/")
       ? [{ dir, message: `provider "${policy.providerId}" needs nonempty crawl.allowPaths without a whole-site / grant` }]

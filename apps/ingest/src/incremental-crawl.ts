@@ -194,7 +194,7 @@ export interface IncrementalCrawlOptions {
   // The whole previous dataset. Filtered to this provider here, so a caller
   // does not have to.
   previous: readonly Animal[];
-  // The reason every animal is being fetched, from forceFullRefresh.
+  // Diagnostic label only; every admitted crawl fetches all details.
   forcedBecause?: string;
   // Injected in tests. Taken once per provider, after discovery, so every
   // animal in one crawl records the same lastSeenAt.
@@ -285,7 +285,8 @@ export async function crawlProviderIncrementally(
     ...ctx,
     client: guardProviderRequests(ctx.client, ctx.policy, discoveredUrl) as ProviderContext["client"],
   });
-  const listed = await provider.discover(contextFor());
+  const discoveryContext = contextFor();
+  const listed = await provider.discover(discoveryContext);
   console.log(`${providerId}: discovered ${listed.length} animals`);
   const { crawlable: refs, excluded } = partitionExcluded(listed, ctx.policy);
 
@@ -305,7 +306,9 @@ export async function crawlProviderIncrementally(
     // again the next time, indefinitely. The failure is per animal, so it is
     // contained per animal.
     try {
-      const detailContext = contextFor(ref.sourceUrl);
+      const detailContext = ctx.policy.crawl.discoveredUrls === "exact"
+        ? contextFor(ref.sourceUrl)
+        : discoveryContext;
       const raw = await provider.fetch(detailContext, ref);
       const animal = Animal.parse(await provider.normalize(detailContext, raw));
       assertNormalizedIdentity(animal, ctx.policy, ref);

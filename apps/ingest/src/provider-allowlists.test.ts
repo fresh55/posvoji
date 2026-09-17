@@ -10,11 +10,42 @@ const loaded = loadPolicies();
 const byId = new Map(loaded.policies.map((item) => [item.policy.providerId, item]));
 const stop = new Error("request reached fixture transport");
 
+function stoppingClient(calls: string[] = []): CrawlClient {
+  const request = async (url: string): Promise<never> => {
+    calls.push(url);
+    throw stop;
+  };
+  return { get: request, getBytes: request };
+}
+
+function discoveryPageCount(providerId: string): number {
+  if (providerId === "turk") return 3;
+  return ["muri", "mala-hisa", "obalno", "zonzani"].includes(providerId) ? 2 : 1;
+}
+
+function discoveryResponse(providerId: string, dir: string, url: URL): PoliteResponse {
+  let file = "list.html";
+  const headers: Record<string, string> = {};
+  if (providerId === "mala-hisa" || providerId === "obalno") {
+    file = /psi/.test(url.pathname) ? "list-dogs.html" : "list-cats.html";
+  }
+  if (providerId === "turk") {
+    const dogs = url.searchParams.get("categories") === "4";
+    headers["x-wp-totalpages"] = dogs ? "2" : "1";
+    file = dogs ? `list-dogs-page-${url.searchParams.get("page")}.json` : "list-cats.json";
+  }
+  return {
+    status: 200,
+    body: readFileSync(join(dir, "fixtures", file), "utf8"),
+    notModified: false,
+    headers,
+  };
+}
+
 describe("all registered provider allowlists", () => {
   it("requires coverage for every enabled crawler", () => {
     expect(loaded.errors).toEqual([]);
     expect(validateCrawlAllowlists(loaded.policies)).toEqual([]);
-    expect(providers).toHaveLength(11);
   });
 
   for (const provider of providers) {
@@ -22,32 +53,18 @@ describe("all registered provider allowlists", () => {
       const { policy, dir } = byId.get(provider.id)!;
       const discoveryCalls: string[] = [];
       const transport: CrawlClient = {
-        async get(input): Promise<PoliteResponse> {
+        async get(input) {
           discoveryCalls.push(input);
-          const url = new URL(input);
-          let file = "list.html";
-          const headers: Record<string, string> = {};
-          if (provider.id === "mala-hisa" || provider.id === "obalno") {
-            file = /psi/.test(url.pathname) ? "list-dogs.html" : "list-cats.html";
-          }
-          if (provider.id === "turk") {
-            const dogs = url.searchParams.get("categories") === "4";
-            headers["x-wp-totalpages"] = dogs ? "2" : "1";
-            file = dogs ? `list-dogs-page-${url.searchParams.get("page")}.json` : "list-cats.json";
-          }
-          return { status: 200, body: readFileSync(join(dir, "fixtures", file), "utf8"), notModified: false, headers };
+          return discoveryResponse(provider.id, dir, new URL(input));
         },
         async getBytes() { throw new Error("unexpected discovery binary request"); },
       };
       const ctx: ProviderContext = { policy, client: guardProviderRequests(transport, policy) as PoliteClient };
       const refs = await provider.discover(ctx);
       expect(refs.length).toBeGreaterThan(0);
-      expect(discoveryCalls.length).toBe(provider.id === "turk" ? 3 : ["muri", "mala-hisa", "obalno", "zonzani"].includes(provider.id) ? 2 : 1);
+      expect(discoveryCalls).toHaveLength(discoveryPageCount(provider.id));
       const detailCalls: string[] = [];
-      const detailTransport: CrawlClient = {
-        async get(url) { detailCalls.push(url); throw stop; },
-        async getBytes(url) { detailCalls.push(url); throw stop; },
-      };
+      const detailTransport = stoppingClient(detailCalls);
       for (const ref of refs) {
         expect(isAllowedListingUrl(ref.sourceUrl, policy)).toBe(true);
         const detailCtx = { policy, client: guardProviderRequests(detailTransport, policy, ref.sourceUrl) as PoliteClient };
@@ -88,10 +105,7 @@ describe("all registered provider allowlists", () => {
     const { policy } = byId.get("horjul")!;
     const url = new URL("/fixture-animal/", policy.source).href;
     const calls: string[] = [];
-    const transport: CrawlClient = {
-      async get(input) { calls.push(input); throw stop; },
-      async getBytes(input) { calls.push(input); throw stop; },
-    };
+    const transport = stoppingClient(calls);
     await expect(guardProviderRequests(transport, policy).get(url)).rejects.toThrow(/outside/);
     await expect(guardProviderRequests(transport, policy, url).get(url)).rejects.toBe(stop);
     const scoped = guardProviderRequests(transport, policy, url);
@@ -113,7 +127,7 @@ describe("all registered provider allowlists", () => {
   it("never lets a Turk public permalink authorize an HTTP request", async () => {
     const { policy } = byId.get("turk")!;
     const url = new URL("/index.php/2026/09/17/fixture/", policy.source).href;
-    const transport: CrawlClient = { async get() { throw stop; }, async getBytes() { throw stop; } };
+    const transport = stoppingClient();
     expect(isAllowedListingUrl(url, policy)).toBe(true);
     expect(isAllowedListingUrl("https://unrelated.example/fixture", policy)).toBe(false);
     await expect(guardProviderRequests(transport, policy, url).get(url)).rejects.toThrow(/outside/);

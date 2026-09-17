@@ -3,7 +3,7 @@ import { ChangeSet, Dataset } from "@posvoji/schema";
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { holdArtifactLock } from "./artifact-lock";
+import { holdArtifactLock, releaseOrWarn } from "./artifact-lock";
 import { cacheImages, hotlinkedCachePermittedImages } from "./cache-images";
 import { loadSubjectDetector } from "./subject-detector";
 import { cacheLogos, logoTargets } from "./cache-logos";
@@ -324,6 +324,7 @@ export async function runExport(
       animals: crawled,
       crawled: crawledProviderIds,
       failed,
+      skipped: scheduleSkips,
       failedAnimals,
       fullyRefreshed,
       fetched: detailsFetched,
@@ -347,6 +348,18 @@ export async function runExport(
     logger.log(
       `detail pages: ${detailsFetched} fetched, ${detailsReused} reused`,
     );
+    // One line for every provider the schedule held back with a check still
+    // inside its interval. A skip that is not backed by such a check is in
+    // failed instead and has already warned for itself.
+    const notDue = scheduleSkips.filter((skip) => skip.reason === null);
+    if (notDue.length > 0) {
+      logger.log(
+        `schedule: ${notDue.length} provider(s) not due: ` +
+          notDue
+            .map((skip) => `${skip.providerId} (next ${skip.nextAllowedAt})`)
+            .join(", "),
+      );
+    }
     if (failedAnimals.length > 0) {
       logger.error(
         `detail pages: ${failedAnimals.length} could not be refreshed`,
@@ -769,6 +782,6 @@ export async function runExport(
     });
     return { exitCode, dataset, generationId };
   } finally {
-    release();
+    releaseOrWarn(release, (message) => logger.warn(message));
   }
 }

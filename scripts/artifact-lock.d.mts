@@ -16,6 +16,14 @@ export declare function artifactLockIdentity(lockDir: string): string;
 /** @param {number} pid @returns {ProcessProbe} */
 export declare function probeProcess(pid: number): ProcessProbe;
 /**
+ * Whether a thrown value is that refusal. Callers that treat an ordinary
+ * release failure as a warning ask this rather than matching a message or
+ * reaching for the code themselves.
+ * @param {unknown} error
+ * @returns {boolean}
+ */
+export declare function isArtifactLockOwnershipError(error: unknown): boolean;
+/**
  * Acquire the checkout-wide generated-artifact lock.
  * @param {AcquireArtifactLockOptions} options
  * @returns {{token: string, owner: ArtifactLockOwner}}

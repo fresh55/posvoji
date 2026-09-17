@@ -9,7 +9,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { writeFileAtomic } from "./write-atomic";
+import {
+  isStagingFile,
+  stagingPath,
+  sweepStagingFiles,
+  writeFileAtomic,
+} from "./write-atomic";
 
 describe("writeFileAtomic", () => {
   let dir: string;
@@ -59,5 +64,56 @@ describe("writeFileAtomic", () => {
 
     expect(() => writeFileAtomic(path, "not a directory")).toThrow();
     expect(readdirSync(dir)).toEqual(["occupied"]);
+  });
+});
+
+// stagingPath appends to the path it is given, so a bare target name yields
+// the bare name writeFileAtomic stages beside that target.
+describe("isStagingFile", () => {
+  it("accepts a name writeFileAtomic would stage", () => {
+    expect(isStagingFile(stagingPath("latest.json"))).toBe(true);
+    expect(isStagingFile(stagingPath(`${"a".repeat(64)}.json`))).toBe(true);
+  });
+
+  it("rejects published names and near misses", () => {
+    expect(isStagingFile("latest.json")).toBe(false);
+    expect(isStagingFile(`${"a".repeat(64)}.json`)).toBe(false);
+    expect(isStagingFile("foo.tmp")).toBe(false);
+    expect(isStagingFile("x.123-notauuid.tmp")).toBe(false);
+    expect(isStagingFile(`${stagingPath("latest.json")}.json`)).toBe(false);
+  });
+});
+
+describe("sweepStagingFiles", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "posvoji-sweep-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("removes a dead run's staging file and leaves everything else", () => {
+    const stagingDirectory = stagingPath("cards");
+    writeFileSync(join(dir, stagingPath("latest.json")), "half written");
+    writeFileSync(join(dir, "latest.json"), "published");
+    mkdirSync(join(dir, stagingDirectory));
+
+    const kept = sweepStagingFiles(dir).map((entry) => entry.name);
+    expect(kept.sort()).toEqual(["latest.json", stagingDirectory].sort());
+    expect(readdirSync(dir).sort()).toEqual(
+      ["latest.json", stagingDirectory].sort(),
+    );
+  });
+
+  it("hands back a published directory untouched", () => {
+    writeFileSync(join(dir, "latest.json"), "published");
+
+    expect(sweepStagingFiles(dir).map((entry) => entry.name)).toEqual([
+      "latest.json",
+    ]);
+    expect(readdirSync(dir)).toEqual(["latest.json"]);
   });
 });

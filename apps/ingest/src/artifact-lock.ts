@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import {
   acquireArtifactLock,
+  isArtifactLockOwnershipError,
   releaseArtifactLock,
 } from "../../../scripts/artifact-lock.mjs";
 import { repoRoot } from "./paths";
@@ -62,6 +63,27 @@ export function holdArtifactLock(
   return stopHolding;
 }
 
+/**
+ * Release a lock whose work is already finished and its result already on
+ * disk. A release can fail for two very different reasons. A rename that did
+ * not go through leaves a lock the next run recovers once it proves the owner
+ * is gone, and failing the finished work over it would throw away a result
+ * that is sound. A refusal on ownership grounds means somebody else holds the
+ * lock and may have been writing beside us, so that one still throws.
+ */
+export function releaseOrWarn(
+  stopHolding: () => void,
+  warn: (message: string) => void = (message) => console.warn(message),
+): void {
+  try {
+    stopHolding();
+  } catch (error) {
+    if (isArtifactLockOwnershipError(error)) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    warn(`artifact lock: release failed, the next run recovers it: ${message}`);
+  }
+}
+
 export async function withArtifactLock<T>(
   activity: string,
   run: () => Promise<T>,
@@ -71,6 +93,6 @@ export async function withArtifactLock<T>(
   try {
     return await run();
   } finally {
-    stopHolding();
+    releaseOrWarn(stopHolding);
   }
 }

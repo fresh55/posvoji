@@ -19,6 +19,38 @@ import {
   guardUniqueAnimalIds,
 } from "./run-guards";
 
+/** A provider its schedule held back this run. */
+export interface SkippedProvider {
+  providerId: string;
+  nextAllowedAt: string;
+  // Null when the interval is doing its job and the run stays clean. Otherwise
+  // the whole sentence to warn with, built where the skip was decided so that
+  // the age it quotes is the one the decision was made on.
+  reason: string | null;
+}
+
+/**
+ * Why a provider held off by a recorded attempt alone leaves the run degraded,
+ * as one sentence. `decidedAt` is the instant the skip was decided on.
+ */
+function heldOffByAttempt(
+  policy: ProviderPolicy,
+  nextAllowedAt: string,
+  checkedAt: string | null,
+  decidedAt: number,
+): string {
+  const lastCheck = checkedAt
+    ? `its last successful check was ${checkedAt}, ` +
+      `${Math.round((decidedAt - Date.parse(checkedAt)) / 3600000)}h ago, ` +
+      `longer than its ${policy.crawl.intervalHours}h interval`
+    : "no successful check of it was ever recorded";
+  return (
+    `schedule: ${policy.providerId} is held off until ${nextAllowedAt} by a ` +
+    `recorded attempt, but ${lastCheck}. Its previous records were carried ` +
+    `forward and this run is not a clean one.`
+  );
+}
+
 /** Crawl independent providers, retaining completed checkpoints for recovery. */
 export async function crawlProviders({
   client,
@@ -62,7 +94,7 @@ export async function crawlProviders({
     policy: LoadedPolicy["policy"],
     previousAnimals: readonly Animal[],
     state: CrawlState,
-  ): Promise<ProviderCrawlResult | null> {
+  ): Promise<ProviderCrawlResult | { skipped: SkippedProvider }> {
     const provider = providers.find((p) => p.id === policy.providerId);
     if (!provider) {
       throw new Error(
@@ -92,18 +124,44 @@ export async function crawlProviders({
       return resumed;
     }
     const checkedAt = snapshotReferences[policy.providerId]?.checkedAt;
-    if (!schedule.admit(policy, checkedAt)) {
-      logger.log(`${policy.providerId}: not due until ${new Date(schedule.nextAllowedAt(policy, checkedAt)).toISOString()}`);
-      return null;
+    const verdict = schedule.check(policy, checkedAt);
+    if (!verdict.admit) {
+      const nextAllowedAt = new Date(verdict.nextAllowedAt).toISOString();
+      return {
+        skipped: {
+          providerId: policy.providerId,
+          nextAllowedAt,
+          reason:
+            verdict.heldBy === "check"
+              ? null
+              : heldOffByAttempt(
+                  policy,
+                  nextAllowedAt,
+                  checkedAt ?? null,
+                  services.now().getTime(),
+                ),
+        },
+      };
     }
     // Discovery alone cannot see a reservation edited into a still-listed
     // detail page. Every admitted crawl verifies all details; the provider
     // interval, rather than a per-animal three-day rotation, limits traffic.
-    const result = await crawlProviderIncrementally(provider, ctx, {
-      previous: previousAnimals,
-      forcedBecause: forceFullRefresh(state, policy, refreshAll) ?? "availability verification",
-      now: services.now,
-    });
+    //
+    // The attempt is recorded after the fetch settles, not before it, and a
+    // throw records it too. The mass-removal guard below runs after the fetch
+    // as well, so its throw also counts as an attempt. The schedule stamps it
+    // with this moment, the start of the crawl, and explains why there.
+    const attempt = schedule.begin(policy);
+    let result: ProviderCrawlResult;
+    try {
+      result = await crawlProviderIncrementally(provider, ctx, {
+        previous: previousAnimals,
+        forcedBecause: forceFullRefresh(state, policy, refreshAll) ?? "availability verification",
+        now: services.now,
+      });
+    } finally {
+      attempt();
+    }
     const policyMap = new Map([[policy.providerId, policy]]);
     result.animals = applyAllowedFields(
       applyPublicationPolicy(
@@ -133,6 +191,9 @@ export async function crawlProviders({
     // previous dataset.
     crawled: Set<string>;
     failed: string[];
+    // Providers the schedule held back. One whose skip carries a reason is in
+    // failed as well.
+    skipped: SkippedProvider[];
     // Animals a finished provider could not refresh. Their previous record was
     // carried forward where we held one; where we did not, the listing was
     // skipped this run.
@@ -172,6 +233,7 @@ export async function crawlProviders({
     const animals: Animal[] = [];
     const crawled = new Set<string>();
     const failed: string[] = [];
+    const skipped: SkippedProvider[] = [];
     const failedAnimals: { providerId: string; sourceUrl: string }[] = [];
     const fullyRefreshed: ProviderPolicy[] = [];
     let fetched = 0;
@@ -180,7 +242,20 @@ export async function crawlProviders({
       const policy = enabled[index]!.policy;
       const providerId = policy.providerId;
       if (result.status === "fulfilled") {
-        if (result.value === null) continue;
+        if ("skipped" in result.value) {
+          const skip = result.value.skipped;
+          skipped.push(skip);
+          // A provider whose last successful check is inside its interval was
+          // skipped for the reason the interval exists, and the run stays
+          // clean. One held off by a recorded attempt alone is shipping
+          // records nobody has checked since before its interval, which is the
+          // same outcome as a failed crawl and takes the same path.
+          if (skip.reason !== null) {
+            failed.push(providerId);
+            logger.warn(skip.reason);
+          }
+          continue;
+        }
         crawled.add(providerId);
         animals.push(...result.value.animals);
         fetched += result.value.fetched;
@@ -202,6 +277,7 @@ export async function crawlProviders({
       animals,
       crawled,
       failed,
+      skipped,
       failedAnimals,
       fullyRefreshed,
       fetched,

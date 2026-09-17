@@ -100,10 +100,8 @@ export function PortalShell({
             </main>
           </div>
 
-          {/* The portal states the address itself, under the login form and in
-              the workspace's no-shelters lead, and takes it away again on the
-              card that has said its piece. A footer copy would put it back on
-              all three. */}
+          {/* Login and recovery cards carry their own access-help link, as does
+              the workspace's no-shelters lead. Avoid duplicating it here. */}
           <SiteFooter locale="sl" showContact={false} />
         </div>
       </LazyMotion>

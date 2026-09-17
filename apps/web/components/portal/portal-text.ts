@@ -20,13 +20,18 @@ export const portalText = {
   emailPlaceholder: "info@zavetisce.si",
   sendLink: "Pošlji povezavo",
   sending: "Pošiljam …",
-  sentTitle: "Povezava je na poti",
+  sentTitle: "Preverite e-pošto",
   sentLead:
-    "Če je naslov {email} vpisan pri nas, je povezava za prijavo že v predalu. Velja 24 ur.",
+    "Če ima naslov {email} urejen dostop, boste prejeli povezavo za prijavo. Velja 24 ur.",
   sentHint: "Če je ni, poglejte med vsiljeno pošto ali jo pošljite znova.",
   // Going back keeps the address that was typed, so the same button covers
   // both a link that never arrived and a second address to try.
-  sendAgain: "Pošlji znova",
+  sendAgain: "Popravi naslov ali pošlji znova",
+  logoutFailedTitle: "Odjava ni uspela",
+  logoutFailedLead:
+    "Seja je morda še vedno odprta. Preden zapustite skupni računalnik, preverite povezavo in poskusite odjavo znova.",
+  retryLogout: "Poskusi odjavo znova",
+  loggingOut: "Odjavljam …",
   emailRequired: "Vpišite e-naslov.",
   emailInvalid: "E-naslov ni v pravi obliki. Preverite vnos.",
   verifying: "Preverjam povezavo …",

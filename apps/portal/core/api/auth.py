@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth import logout as django_logout
 from django.core.mail import EmailMessage
+from django.db import transaction
 from django.http import HttpResponse
 from django.middleware.csrf import get_token as get_csrf_token
 from django.utils.cache import add_never_cache_headers
@@ -202,7 +203,10 @@ def request_link(request, payload: RequestLinkIn):
 
 
 @router.post("/auth/verify", auth=csrf_auth, response={200: MeOut, 401: ErrorOut})
+@transaction.atomic
 def verify(request, payload: VerifyIn):
+    # IMMEDIATE begins before token validation, so concurrent uses cannot both
+    # validate against the old last_login value and open separate sessions.
     user = get_user(payload.token)
     if user is None or not user.shelter_memberships.exists():
         return Status(401, {"detail": "invalid or expired token"})

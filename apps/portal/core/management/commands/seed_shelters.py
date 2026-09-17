@@ -1,8 +1,8 @@
 """Load data/shelters.yaml into the portal.
 
 Upserts one Shelter per registry entry and, for every entry with an
-institutional address, the login and the membership that go with it. Nothing
-is duplicated when it runs again.
+institutional address and an enabled, permitted provider, the login and its
+membership. A public contact address alone does not grant portal access.
 
 Memberships it makes carry the source "registry" and follow the registry: once
 an entry names another address, or none at all, the membership for the old
@@ -44,30 +44,37 @@ class Command(BaseCommand):
             default=None,
             help="Provider directory to read (defaults to the repository providers/)",
         )
+        parser.add_argument(
+            "--prune",
+            action="store_true",
+            help="Remove registry memberships for shelters absent from this registry",
+        )
 
-    def read_ingestion(self, providers: Path, slug: str) -> str:
-        """The provider's declared ingestion mode, or the crawled default.
-
-        A shelter with no policy file has no adapter either, so it stays on
-        the default rather than becoming a manual one by accident.
-        """
+    def read_provider(self, providers: Path, slug: str) -> tuple[str, bool]:
+        """Read the editor mode and whether registry access can be granted."""
         path = providers / slug / "policy.yaml"
         if not path.is_file():
-            return IngestionMode.SCRAPE
+            return IngestionMode.SCRAPE, False
         try:
             document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except yaml.YAMLError as error:
             raise CommandError(f"invalid YAML in {path}: {error}") from error
         if not isinstance(document, dict):
-            return IngestionMode.SCRAPE
+            return IngestionMode.SCRAPE, False
 
         mode = str(document.get("ingestion") or "").strip()
         if mode not in IngestionMode.values:
             # CI validates every policy against the TypeScript schema, so a
             # mode this model does not know means the file is ahead of it.
             self.stderr.write(f"{path}: unknown ingestion mode {mode!r}, using scrape")
-            return IngestionMode.SCRAPE
-        return mode
+            return IngestionMode.SCRAPE, False
+        permission = document.get("permission")
+        eligible = (
+            document.get("enabled") is True
+            and isinstance(permission, dict)
+            and permission.get("status") == "granted"
+        )
+        return mode, eligible
 
     def drop_stale_logins(self, shelter: Shelter, email: str) -> int:
         """Delete the shelter's registry logins the registry no longer names.
@@ -112,20 +119,30 @@ class Command(BaseCommand):
         if not isinstance(entries, list):
             raise CommandError(f"{path} has no 'shelters' list")
 
+        # Validate the complete set before any reconciliation, especially prune.
+        # A malformed row must not be mistaken for a deliberately removed shelter.
+        slugs = set()
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise CommandError("every registry entry must be a mapping with an id")
+            slug = entry.get("id")
+            if not isinstance(slug, str) or not slug.strip():
+                raise CommandError("every registry entry must have a nonempty id")
+            slug = slug.strip()
+            if slug in slugs:
+                raise CommandError(f"duplicate registry id: {slug}")
+            slugs.add(slug)
+
         shelters_created = shelters_updated = 0
         users_created = memberships_created = memberships_removed = 0
         without_email = []
+        without_provider = []
         manual = []
 
         for entry in entries:
-            if not isinstance(entry, dict):
-                continue
-            slug = str(entry.get("id") or "").strip()
-            if not slug:
-                self.stderr.write("skipping an entry without an id")
-                continue
+            slug = entry["id"].strip()
 
-            ingestion = self.read_ingestion(providers, slug)
+            ingestion, eligible = self.read_provider(providers, slug)
             if ingestion == IngestionMode.MANUAL:
                 manual.append(slug)
 
@@ -143,7 +160,12 @@ class Command(BaseCommand):
                 shelters_updated += 1
 
             email = str(entry.get("email") or "").strip()
-            memberships_removed += self.drop_stale_logins(shelter, email)
+            memberships_removed += self.drop_stale_logins(
+                shelter, email if eligible else ""
+            )
+            if not eligible:
+                without_provider.append(slug)
+                continue
             if not email:
                 without_email.append(slug)
                 continue
@@ -159,6 +181,23 @@ class Command(BaseCommand):
             )
             memberships_created += int(membership_created)
 
+        absent = ShelterMembership.objects.filter(
+            source=MembershipSource.REGISTRY
+        ).exclude(shelter__slug__in=slugs)
+        absent_slugs = sorted(set(absent.values_list("shelter__slug", flat=True)))
+        if absent_slugs:
+            if options["prune"]:
+                memberships_removed += absent.count()
+                absent.delete()
+                self.stdout.write(
+                    "removed absent registry memberships: " + ", ".join(absent_slugs)
+                )
+            else:
+                self.stdout.write(
+                    "absent shelters retain registry access; review and use --prune: "
+                    + ", ".join(absent_slugs)
+                )
+
         self.stdout.write(
             f"shelters: {shelters_created} created, {shelters_updated} updated"
         )
@@ -172,4 +211,9 @@ class Command(BaseCommand):
         if without_email:
             self.stdout.write(
                 "no registry email, no login: " + ", ".join(sorted(without_email))
+            )
+        if without_provider:
+            self.stdout.write(
+                "no enabled permitted provider, no registry login: "
+                + ", ".join(sorted(without_provider))
             )

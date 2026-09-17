@@ -32,15 +32,28 @@ The API is then on `http://localhost:8000/api/`, the admin on
 `http://localhost:8000/api/docs`.
 
 `seed_shelters` reads `data/shelters.yaml` and upserts one shelter per entry,
-plus a login and a membership for every entry that carries an institutional
-address. Nothing is duplicated when it runs again. The memberships it makes
+plus a login and a membership only when an entry carries an institutional
+address and its provider has `enabled: true`, recorded `permission.status: granted`
+and a recognized ingestion mode. The public contact email alone is not a grant
+of access. Missing or disabled policies leave the shelter listed without granting
+a registry login. Nothing is duplicated when it runs again. The memberships it makes
 carry the source `registry` and follow the registry: when an entry names
 another address, or none at all, the membership for the old address is deleted
-and that address loses portal access. A membership added by hand in `/admin`
+and that address loses portal access. Losing provider eligibility also removes
+existing registry memberships. A membership added by hand in `/admin`
 or minted by the development login carries a different source and is never
 touched. The login row itself stays, without access, because both
 `/auth/request-link` and `/auth/verify` require a membership. Pass `--path` to
 read another file.
+
+If a shelter disappears from the registry entirely, the default run reports its
+remaining registry access but does not delete it. After reviewing the complete
+input registry, run `uv run python manage.py seed_shelters --prune` to remove
+registry-owned memberships for absent IDs. This explicit flag prevents a normal
+run against truncated input from revoking every missing shelter. An explicitly
+empty registry with `--prune` removes all registry memberships. Malformed rows or
+duplicate IDs abort the transaction. Users, historical edits and memberships
+managed by an administrator or development login are preserved.
 
 It also reads `ingestion` out of `providers/<slug>/policy.yaml`, which is what
 decides whether a shelter writes its own listings. A shelter with no policy
@@ -159,8 +172,10 @@ not remove that user's access to any other shelter.
 Changing a user's email directly invalidates outstanding magic links but does
 not end existing sessions. It also changes the login for every shelter attached
 to that user. Use separate users and remove the old membership when transferring
-access between mailboxes. Do not create duplicate users for one email: login
-currently selects the first active matching user with a membership.
+access between mailboxes. The admin rejects duplicate nonempty emails without
+regard to case. Reuse the existing user when adding another shelter membership.
+Direct imports must follow the same rule: login still selects the first active
+matching user with a membership, and this check is not a database constraint.
 
 ### Mail
 

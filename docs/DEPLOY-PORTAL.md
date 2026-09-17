@@ -195,6 +195,14 @@ sudo systemctl reload caddy
 `seed_shelters` reads `data/shelters.yaml` and `providers/*/policy.yaml`, so
 the clone must be the whole repository, not just `apps/portal`.
 
+Registry access requires an email and an enabled, permitted provider with a
+recognized ingestion mode. Seeding withdraws registry grants for disabled or
+missing providers, so rerun it after a policy change before inviting users.
+Admin-managed grants remain explicit exceptions and must be reviewed separately.
+The default run reports registry memberships for IDs absent from its input.
+After reviewing the complete registry, use `seed_shelters --prune` to remove
+those grants. Never append this flag automatically to deployment commands.
+
 `migrate` matters on an upgrade too, not only here: `0007` adds a source to
 every shelter membership and marks the rows that already exist as `registry`,
 which is what lets `seed_shelters` withdraw an address the registry has

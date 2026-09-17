@@ -558,6 +558,7 @@ describe("PoliteClient", () => {
     it("caches connection failures per origin until expiry, then recovers", async () => {
       let now = Date.now();
       vi.spyOn(Date, "now").mockImplementation(() => now);
+      const requests = vi.spyOn(agent, "dispatch");
       const pool = agent.get(ORIGIN);
       pool
         .intercept({ path: "/robots.txt" })
@@ -570,6 +571,7 @@ describe("PoliteClient", () => {
 
       now += ROBOTS_FAILURE_TTL_MS - 1;
       await expect(c.getBytes(`${ORIGIN}/dog.jpg`)).rejects.toThrow(/unreachable/);
+      expect(requests.mock.calls.filter(([options]) => String(options.origin) === ORIGIN && options.path === "/robots.txt")).toHaveLength(1);
       const other = "https://other.example";
       agent.get(other).intercept({ path: "/robots.txt" }).reply(200, "");
       agent.get(other).intercept({ path: "/cat.jpg" }).reply(200, "cat");

@@ -198,8 +198,14 @@ const NAV_SHIFT_MAX = 24;
 // they sit on the card's own ground, not over a photograph. size-11 is the
 // 44px floor every other control on the phone layout is held to (the share
 // button beside them does the same); icon-sm alone would be 32px.
+//
+// The plate is stated for dark as well, for the reason GALLERY_BUTTON_CLASS
+// gives in photo-gallery.tsx: the outline variant carries its own dark fill
+// and it outranks an unprefixed one from here. PHONE_SHARE_CLASS below already
+// did this, by lending the variant's own dark pair rather than repeating the
+// background; either way the point is that the dark half has to be written.
 const PHONE_NAV_CLASS =
-  "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background desktop-box:hidden";
+  "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background dark:bg-background/80 dark:hover:bg-background desktop-box:hidden";
 
 // The share button stands third in that row, and on the phone it was the only
 // one of the three drawn as a bare glyph: two outlined circles and then an
@@ -653,7 +659,14 @@ export function AnimalDialog({
               // on the content, which makes this fixed to the content box
               // rather than to the viewport, and that box is inset-0 either
               // way. What changes is that it no longer rides the scroll.
-              className="fixed top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background desktop-box:hidden"
+              //
+              // This one is the ghost variant, which fills nothing at rest, so
+              // the resting plate below survives the dark theme on its own.
+              // Its hover does not: ghost carries dark:hover:bg-muted/50, and
+              // that outranks the unprefixed hover here for the reason
+              // GALLERY_BUTTON_CLASS gives in photo-gallery.tsx, so a pointer
+              // on this disc took the plate off the photograph underneath.
+              className="fixed top-[max(0.5rem,env(safe-area-inset-top))] right-[max(0.5rem,env(safe-area-inset-right))] z-40 size-11 rounded-full bg-background/80 shadow-xs backdrop-blur-sm hover:bg-background dark:hover:bg-background desktop-box:hidden"
             >
               <XIcon aria-hidden />
               <span className="sr-only">{messages.close}</span>

@@ -45,8 +45,20 @@ import { cn } from "@/lib/utils";
 // meant to be seen. The dialog opens with its front print focused, and a
 // plain focus-within had the chevrons standing on the photograph of every
 // dialog a mouse opened, until the pointer left the fan.
+//
+// The plate is stated twice, once plain and once for dark, and every
+// translucent disc on this site that rides the outline variant has to do the
+// same. The variant carries dark:bg-input/30 and dark:hover:bg-input/50
+// (ui/button.tsx), the dark variant resolves to :is(:root:not(.light) *), and
+// that selector outranks an unprefixed bg-background/NN from a caller whatever
+// tailwind-merge does with the two. Without the dark halves these discs lose
+// their ground in the dark theme and stand on the photograph as white at 4.5%
+// alpha, which is no plate at all: measured on back-to-top, the glyph came to
+// 1.24:1 over a light photo (2026-09-17 audit). The same pair is on
+// OWN_BUTTON_CLASS and CARD_CHEVRON below, on the lightbox's discs
+// (photo-lightbox.tsx) and on the dialog's phone arrows.
 export const GALLERY_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! group-hover:opacity-100 group-hover:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/90 dark:hover:bg-background group-hover:opacity-100 group-hover:pointer-events-auto group-has-[:focus-visible]:opacity-100 group-has-[:focus-visible]:pointer-events-auto";
 
 // This component's own chevrons, which differ from the constant above in
 // three ways.
@@ -67,8 +79,11 @@ export const GALLERY_BUTTON_CLASS =
 // happens to carry `group`. Only the grid card ever had one, which left these
 // permanently invisible on the animal page and in the dialog's phone hero -
 // invisible and, until this change, still tappable.
+//
+// The dark half of the plate is there for the reason GALLERY_BUTTON_CLASS
+// above gives.
 const OWN_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/80 dark:hover:bg-background group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
 // What a grid card adds to the chevrons above. OWN_BUTTON_CLASS serves all
 // three surfaces this component is mounted on, and only the card's photo is
@@ -97,12 +112,17 @@ const OWN_BUTTON_CLASS =
 // rule in ui/button.tsx sizes a bare icon at 16px, which is what the plain
 // surface wants, and icon-xs takes it to 12px, which is a step small for a
 // chevron a thumb is aiming at.
+//
+// The step from 80% to 85% is restated for dark alongside the plain one, for
+// the reason GALLERY_BUTTON_CLASS above gives. The pair sorts the same way in
+// both themes, because Tailwind orders the two dark: rules against each other
+// exactly as it orders their unprefixed halves.
 const CARD_CHEVRON = {
   size: "icon-xs",
   icon: "size-3.5",
   previous: "left-2",
   next: "right-2",
-  className: `${OWN_BUTTON_CLASS} bg-background/85 shadow-none ring-1 ring-black/10`,
+  className: `${OWN_BUTTON_CLASS} bg-background/85 dark:bg-background/85 shadow-none ring-1 ring-black/10`,
 } as const;
 
 const PLAIN_CHEVRON = {

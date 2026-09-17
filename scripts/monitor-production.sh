@@ -62,8 +62,8 @@ delivery || delivery
 # The 3D cat's model is the one large asset no host compresses by itself:
 # Caddy's encode matches Content-Type and its default list has no model/* entry,
 # so cat.glb ships raw unless the siblings the build writes are served with
-# `precompressed br gzip` (docs/DEPLOY-HEADERS.md). Raw it is 2,134,152 bytes
-# against 1,137,222 brotli, and the page renders either way, which is the blind
+# `precompressed br gzip` (docs/DEPLOY-HEADERS.md). Raw it is 1,500,464 bytes
+# against 550,478 brotli, and the page renders either way, which is the blind
 # spot the two checks above exist for.
 #
 # HEAD, because a precompressed sibling's Content-Encoding is set before any

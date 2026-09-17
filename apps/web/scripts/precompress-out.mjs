@@ -5,7 +5,7 @@
 // in its default match list, so the 3D cat's cat.glb is served raw
 // (docs/DEPLOY-HEADERS.md). That file is meshopt-encoded geometry, which is
 // designed to be entropy-coded afterwards: measured on the September 2026
-// export, 2,134,152 bytes raw against 1,233,819 gzipped and 1,137,222 brotli.
+// export, 1,500,464 bytes raw against 624,978 gzipped and 550,478 brotli.
 // Almost half the transfer is left on the table.
 //
 // So the build writes the siblings and the host serves them, with Caddy's

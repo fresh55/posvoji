@@ -71,8 +71,8 @@ types and a long set of `application/*` document and font types
 `model/*` type is in it, so the model goes out raw.
 
 The file is meshopt-encoded geometry, which is built to be entropy-coded
-afterwards. Measured on the September 2026 export: 2,134,152 bytes raw,
-1,233,819 gzipped, 1,137,222 brotli at quality 11. The homepage, `/o-nas` and
+afterwards. Measured on the September 2026 export: 1,500,464 bytes raw,
+624,978 gzipped, 550,478 brotli at quality 11. The homepage, `/o-nas` and
 the gate page each load it, so that is close to a megabyte wasted per first
 visit, and, like the homepage, the cat appears either way. Nothing on the page
 points at the cost.
@@ -204,7 +204,7 @@ production host, in this order:
      grep -i 'content-encoding\|content-length'
    ```
 
-   `br` and a length near 1,137,222 rather than 2,134,152. Behind the launch
+   `br` and a length near 550,478 rather than 1,500,464. Behind the launch
    gate this answers `401`, so pass the credentials or run it after the gate
    comes off. From then on `scripts/monitor-production.sh` asserts the same
    header on every run with a `HEAD`, which carries the sidecar's headers and

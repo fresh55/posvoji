@@ -282,6 +282,7 @@ export function AnimalGrid({
   const { locale, messages, t } = useI18n();
   // The filter state a clear took away, while the row still offers it back.
   const [cleared, setCleared] = useState<Filters | null>(null);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const {
     filters,
     sort,
@@ -423,16 +424,19 @@ export function AnimalGrid({
   // Every other filter action undoes itself by being repeated. This one
   // cannot, so the row keeps a way back for a few seconds, and then drops it.
   //
-  // Time is the only thing that ends the offer. Picking a filter during the
-  // window hides it without cancelling it, because the row shows the offer
+  // The sheet keeps the offer until it closes, then starts a fresh seven
+  // seconds on the page. Expiring its focused Undo button would disable the
+  // same footer control under the visitor and drop focus into the drawer.
+  // Picking a filter during the window hides it without cancelling it,
+  // because the row shows the offer
   // only where the chips would be and chips win that space (filter-chips.tsx).
   // Undoing after that still restores the state that was cleared, which is
   // what the words promise, so there is nothing to guard against.
   useEffect(() => {
-    if (!cleared) return;
+    if (!cleared || filterSheetOpen) return;
     const timer = window.setTimeout(() => setCleared(null), UNDO_WINDOW_MS);
     return () => window.clearTimeout(timer);
-  }, [cleared]);
+  }, [cleared, filterSheetOpen]);
 
   // The species is put back as it is now, not as it was: the clear never
   // took it (use-animal-filters.ts), so a species pressed on the strip during
@@ -589,6 +593,7 @@ export function AnimalGrid({
             shelterSummaries={shelterSummaries}
             chips={chips}
             undo={cleared ? handleUndo : undefined}
+            onSheetOpenChange={setFilterSheetOpen}
             resultCount={visible.length}
             sort={sort}
             onSpeciesChange={setSpecies}

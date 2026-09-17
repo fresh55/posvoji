@@ -99,6 +99,7 @@ function renderFan(
   animal: Animal,
   options: {
     layout?: "phone" | "desktop";
+    locale?: "sl" | "en";
     initialIndex?: number;
     washProgress?: MotionValue<number>;
     holdFrontPrint?: boolean;
@@ -111,7 +112,7 @@ function renderFan(
   // nothing: the entrance below would be a print stuck at the opacity it
   // mounted with.
   const tree = (hold: boolean | undefined) => (
-    <I18nProvider locale="sl">
+    <I18nProvider locale={options.locale ?? "sl"}>
       <LazyMotion features={domAnimation}>
         <PhotoSpread
           animal={client}
@@ -472,7 +473,7 @@ describe("fan count control", () => {
   it("reaches past the mark, further where the pointer is coarse", () => {
     const { stage } = renderFan(gallery(7));
     const count = within(stage()).getByRole("button", {
-      name: "1 / 7 Vse fotografije",
+      name: "Foto 1 / 7 Vse fotografije",
     });
 
     // 8px a side over a 20px mark is 36px, which is a mouse; 14px is the 48px
@@ -491,7 +492,7 @@ describe("fan count control", () => {
     expect(count.className).toContain("bottom-1.5");
     expect(count.className).toContain("px-1.5");
     expect(count.className).toContain("text-2xs");
-    expect(count.textContent).toBe("1 / 7 Vse fotografije");
+    expect(count.textContent).toBe("Foto 1 / 7 Vse fotografije");
   });
 
   // The name used to be an aria-label reading "Vse fotografije (7)", which
@@ -501,7 +502,7 @@ describe("fan count control", () => {
   it("says what the count opens in its name and not in a hover title", () => {
     const { stage } = renderFan(gallery(7));
     const count = within(stage()).getByRole("button", {
-      name: "1 / 7 Vse fotografije",
+      name: "Foto 1 / 7 Vse fotografije",
     });
 
     // Said and not drawn: the words are in the name because they are in the
@@ -515,6 +516,19 @@ describe("fan count control", () => {
     // The name already says the same words, so the name is where it stays.
     expect(count.getAttribute("title")).toBeNull();
   });
+});
+
+it.each([
+  ["sl", "Foto", 2],
+  ["sl", "Foto", 7],
+  ["en", "Photos", 2],
+  ["en", "Photos", 7],
+] as const)("uses the %s label %s for a %i-photo gallery", (locale, label, total) => {
+  const { stage } = renderFan(gallery(total), { layout: "phone", locale });
+  const mark = stage().querySelector('[data-slot="badge"]') as HTMLElement;
+  expect(mark.textContent).toMatch(new RegExp(`^${label} 1 / ${total}`));
+  expect(mark.tagName).toBe(total < 6 ? "SPAN" : "BUTTON");
+  expect(mark.getAttribute("aria-hidden")).toBe(total < 6 ? "true" : null);
 });
 
 describe("useWheelStep", () => {

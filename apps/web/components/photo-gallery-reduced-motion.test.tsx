@@ -28,7 +28,6 @@ it("commits a reduced-motion touch swipe without moving the image or opening its
   expect(surface.style.transform).toBe("");
   pointer(surface, "pointerup", { x: 100, y: 80, time: 1300 });
   expect(container.querySelector('[data-slot="photo-position"]')?.textContent).toBe("Fotografija 2 od 2");
-  pointer(surface, "lostpointercapture", { x: 100, y: 80, time: 1301 });
   fireEvent.click(surface);
   expect(onNavigate).not.toHaveBeenCalled();
 });
@@ -50,12 +49,40 @@ it("blocks a swipe's compatibility click after capture release but accepts the n
   pointer(surface, "pointermove", { x: 100, y: 80, time: 1200 });
   pointer(surface, "pointerup", { x: 100, y: 80, time: 1300 });
   pointer(surface, "lostpointercapture", { x: 100, y: 80, time: 1301 });
-  fireEvent.click(surface);
+  fireEvent.click(surface, { detail: 1 });
   expect(onOpenPhoto).not.toHaveBeenCalled();
 
   pointer(surface, "pointerdown", { x: 150, y: 80, time: 1400 });
   pointer(surface, "pointerup", { x: 150, y: 80, time: 1460 });
   pointer(surface, "lostpointercapture", { x: 150, y: 80, time: 1461 });
-  fireEvent.click(surface);
+  fireEvent.click(surface, { detail: 1 });
+  expect(onOpenPhoto).toHaveBeenCalledOnce();
+});
+
+it("opens on the first keyboard activation after a touch swipe with no compatibility click", () => {
+  const onOpenPhoto = vi.fn();
+  const { getByRole } = render(
+    <I18nProvider locale="sl">
+      <PhotoGallery
+        images={[{ src: "/one.webp" }, { src: "/two.webp" }]}
+        name="Pika"
+        sizes="100vw"
+        onOpenPhoto={onOpenPhoto}
+        showCount
+      />
+    </I18nProvider>,
+  );
+  const group = getByRole("group", { name: "Fotografije: Pika" });
+  expect(group.querySelector('[data-slot="photo-dots"]')).not.toBeNull();
+  expect(group.querySelector('[data-slot="photo-count"]')?.textContent).toBe("1 / 2");
+  const surface = getByRole("button", { name: "Odpri fotografijo 1 čez cel zaslon" });
+  expect(surface.getAttribute("aria-keyshortcuts")).toBe("ArrowLeft ArrowRight Home End");
+  Object.defineProperty(surface, "clientWidth", { value: 300 });
+  pointer(surface, "pointerdown", { x: 250, y: 80, time: 1000 });
+  pointer(surface, "pointermove", { x: 100, y: 80, time: 1200 });
+  pointer(surface, "pointerup", { x: 100, y: 80, time: 1300 });
+  pointer(surface, "lostpointercapture", { x: 100, y: 80, time: 1301 });
+  // Enter-generated clicks have detail 0 and must not consume a touch guard.
+  fireEvent.click(surface, { detail: 0 });
   expect(onOpenPhoto).toHaveBeenCalledOnce();
 });

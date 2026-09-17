@@ -12,13 +12,12 @@ import {
 
 /**
  * The question the portal asks before something is thrown away: dropping
- * typed work, taking a listing off the site.
+ * typed work, queued photographs, or taking a listing off the site.
  *
  * An alert dialog and not a second Dialog: it asks a question with a
  * destructive answer, so it is announced as one, it cannot be dismissed by a
- * stray tap outside, and Radix opens it focused on the cancel. It is nested
- * inside the dialog it asks about, on purpose, so what the shelter is deciding
- * about stays behind it.
+ * stray tap outside, and Radix opens it focused on the cancel. The editor or
+ * list stays behind it while the shelter decides whether to discard its work.
  */
 export function ConfirmDialog({
   open,
@@ -58,8 +57,8 @@ export function ConfirmDialog({
         {/* Reversed, so the safe answer is both the rightmost button and the
             one the dialog opens focused on. */}
         <div className="flex flex-row-reverse gap-2">
-          <AlertDialogCancel variant="default" className="pointer-coarse:min-h-11">{keepLabel}</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirm} className="pointer-coarse:min-h-11">
+          <AlertDialogCancel variant="default" className="touch-manipulation pointer-coarse:min-h-11 pointer-coarse:min-w-11">{keepLabel}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm} className="touch-manipulation pointer-coarse:min-h-11 pointer-coarse:min-w-11">
             {confirmLabel}
           </AlertDialogAction>
         </div>

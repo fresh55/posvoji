@@ -278,6 +278,22 @@ export function draftIds(
   }
 }
 
+/** Whether signing out would discard this account's work in any shelter,
+ *  including a shelter no longer present in the refreshed session. */
+export function hasAccountDrafts(account: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const storage = window.sessionStorage;
+    for (let i = 0; i < storage.length; i++) {
+      const key = storage.key(i);
+      if (key !== null && parseDraftKey(key)?.account === account) return true;
+    }
+  } catch {
+    // Storage that cannot be read cannot reveal a draft to confirm.
+  }
+  return false;
+}
+
 /** Removes every draft of this account, across every shelter, on logout so
  *  the next signed-in account in this tab never sees a stranger's unsaved
  *  edits. Keys are collected before anything is removed: removing a key

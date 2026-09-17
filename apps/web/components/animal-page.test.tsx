@@ -152,7 +152,8 @@ describe("the animal page's hero", () => {
     const { container } = render(
       <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_WITH_PHOTO).animal} />,
     );
-    expect(container.querySelector('[data-slot="photo-count"]')?.textContent).toBe("1 / 1");
+    expect(container.querySelector('[data-slot="photo-count"]')).toBeNull();
+    expect(container.querySelector('[data-slot="photo-dots"]')).toBeNull();
     expect(container.querySelector('[data-slot="photo-frame"] img')?.getAttribute("src")).toContain("fant.jpg");
     expect(container.querySelector('img[src*="not-permitted"]')).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Deli" }));

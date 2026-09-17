@@ -1103,12 +1103,25 @@ describe("leaving with unsaved work", () => {
     await openNew();
     pick(jpeg("discard.jpg"));
     fireEvent.click(cancelButton());
+    expect(screen.getByRole("alertdialog").textContent).toContain(portalText.leaveNewPhotosLead);
     fireEvent.click(screen.getByRole("button", { name: portalText.discardChanges }));
     expect(photoDraftIds(ACCOUNT, "johanca")).toEqual([]);
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:discard.jpg");
     const unload = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(false);
+  });
+
+  it("names failed photos in an existing listing's discard prompt and keeps them on cancel", async () => {
+    vi.mocked(uploadListingPhoto).mockRejectedValue(new PortalError(500));
+    await open();
+    pick(jpeg("failed.jpg"));
+    await screen.findByRole("button", { name: portalText.photoRetry });
+    fireEvent.click(cancelButton());
+    expect(screen.getByRole("alertdialog").textContent).toContain(portalText.leavePhotosLead);
+    fireEvent.click(screen.getByRole("button", { name: portalText.keepEditing }));
+    expect(photoDraftIds(ACCOUNT, "johanca")).toEqual([ID]);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
   });
 
   it("holds Prekliči back and asks first", async () => {

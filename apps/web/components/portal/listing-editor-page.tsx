@@ -12,6 +12,7 @@ import {
 } from "@/components/portal/editor-chrome";
 import { Glyph } from "@/components/portal/glyph";
 import {
+  NEW_DRAFT_ID,
   birthDateFault,
   draftFrom,
   inputOf,
@@ -69,13 +70,6 @@ import type {
 import { ExternalLink } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
-
-/**
- * Where a new listing's typed work is filed. A listing id is a uuid, so
- * nothing that exists can collide with it, and the shelter can only be writing
- * one new animal at a time per shelter.
- */
-const NEW_DRAFT_ID = "nova";
 
 /**
  * One manual listing, edited on the same page frame a crawled animal is.
@@ -699,9 +693,11 @@ function ListingEditor({
         open={confirming}
         onOpenChange={setConfirming}
         title={portalText.leaveTitle}
-        // A listing that has never been saved has no status behind it, so the
-        // sentence that says the status was kept would not be true of it.
-        lead={listing ? portalText.leaveLead : portalText.leaveNewLead}
+        // Name the files that discard revokes as well as the typed fields.
+        // A new listing has no saved record to keep.
+        lead={pending.length > 0
+          ? (listing ? portalText.leavePhotosLead : portalText.leaveNewPhotosLead)
+          : (listing ? portalText.leaveLead : portalText.leaveNewLead)}
         keepLabel={portalText.keepEditing}
         confirmLabel={portalText.discardChanges}
         onConfirm={discard}

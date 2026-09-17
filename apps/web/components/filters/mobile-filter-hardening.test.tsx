@@ -310,6 +310,7 @@ describe("mobile filter hardening", () => {
     const mobileSort = within(mobileToolbar).getByRole("combobox");
     const sortClasses = mobileSort.className.split(" ");
     expect(sortClasses).toContain("max-md:hidden");
+    expect(sortClasses).toContain("short:hidden");
     expect(sortClasses).toContain("shrink-0");
     // The row only becomes a flex box at md. Below it the strip's -my-2/py-2
     // collapse through this block and hold the row at 44px; flex at every
@@ -464,8 +465,9 @@ describe("mobile filter hardening", () => {
     ).toBe(false);
   });
 
-  it("folds secondary sheet sections while keeping their selected values in the heading", async () => {
+  it("reveals initially active sheet sections and lets the visitor fold them", async () => {
     window.localStorage.clear();
+    window.localStorage.setItem("posvoji:filter-sections", JSON.stringify({ size: false }));
     resetFilterSectionsStore();
     renderSheet({
       filters: { ...EMPTY_FILTERS, size: ["small"] },
@@ -477,10 +479,13 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
     const dialog = await screen.findByRole("dialog");
     const section = within(dialog).getByRole("button", { name: /^Size/ });
+    expect(section.getAttribute("aria-expanded")).toBe("true");
+    expect(within(dialog).getByRole("button", { name: /^Small/ })).toBeTruthy();
+
+    fireEvent.click(section);
     expect(section.getAttribute("aria-expanded")).toBe("false");
     expect(section.textContent).toContain("Small");
-    expect(within(dialog).queryByRole("button", { name: /^Small/ })).toBeNull();
-
+    await waitFor(() => expect(within(dialog).queryByRole("button", { name: /^Small/ })).toBeNull());
     fireEvent.click(section);
     expect(section.getAttribute("aria-expanded")).toBe("true");
     expect(within(dialog).getByRole("button", { name: /^Small/ })).toBeTruthy();
@@ -500,9 +505,8 @@ describe("mobile filter hardening", () => {
   });
 
   it("keeps the sheet's sort row on short landscape screens where the toolbar scrolls away", async () => {
-    // Below md this row is the only way to change the order; from md the
-    // toolbar behind the sheet has 336px spare and carries the same control,
-    // and two triggers for one setting on one screen is one too many. jsdom
+    // Below md or on a short viewport the sheet is the only sort placement.
+    // From md in a taller viewport the sticky toolbar carries it instead. jsdom
     // resolves no breakpoint, so the band is asserted on the class.
     renderSheet();
 
@@ -761,6 +765,7 @@ describe("the sheet's surfaces", () => {
   // half of the change that has to stay put.
   it("keeps the sex and size options as tiles", async () => {
     renderSheet({
+      filters: { ...EMPTY_FILTERS, size: ["small"] },
       groups: [
         { group: "sex", options: [{ value: "male", label: "Male" }] },
         { group: "size", options: [{ value: "small", label: "Small" }] },

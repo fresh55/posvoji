@@ -386,6 +386,7 @@ describe("Kje row invitation", () => {
     const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
 
     expect(trigger.textContent).toContain("Izberi zavetišča");
+    expect(within(trigger).queryByText("Izberi", { exact: true })).toBeNull();
   });
 
   it("drops the invitation once a shelter is picked", () => {
@@ -396,7 +397,7 @@ describe("Kje row invitation", () => {
   });
 
   it("names what the press opens, beside the pin the chips already wear", () => {
-    render(sidebarElement([]));
+    render(sidebarElement(["jug"]));
     const trigger = screen.getByRole("button", { name: /Zavetišče:/ });
 
     const caption = within(trigger).getByText("Izberi");

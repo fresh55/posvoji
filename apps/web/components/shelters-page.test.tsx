@@ -50,9 +50,21 @@ describe("shelter directory context", () => {
     const census = screen.getByRole("list", { name: label });
     expect(within(census).getAllByRole("listitem").map(item => item.textContent)).toEqual(counts);
     expect(screen.getByRole("link", { name: lookup }).getAttribute("href")).toBe(href);
+  });
+
+  it.each([
+    { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti?", directory: "Zavetišča" },
+    { locale: "en" as const, invitation: "Would your shelter like to join?", directory: "Shelters" },
+  ])("offers one email invitation before the directory in $locale", ({ locale, invitation, directory }) => {
+    render(<SheltersPage locale={locale} />);
     const main = within(screen.getByRole("main"));
-    expect(main.getByRole("link", { name: "info@posvoji.si" }).getAttribute("href")).toBe("mailto:info@posvoji.si");
-    expect(main.queryByRole("link", { name: /GitHub/ })).toBeNull();
+    const links = main.getAllByRole("link", { name: "info@posvoji.si" });
+    expect(links).toHaveLength(1);
+    const link = links[0];
+    expect(link.getAttribute("href")).toBe("mailto:info@posvoji.si");
+    expect(link.closest("p")?.textContent).toContain(invitation);
+    expect(link.compareDocumentPosition(main.getByRole("region", { name: directory }))
+      & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it.each([null, { animals: [] }])("keeps the directory when no animal listings are available: %s", dataset => {

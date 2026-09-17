@@ -98,21 +98,15 @@ function Field({
         )}
         {own && (
           <RevertButton
-            className="max-lg:tap-target"
             field={label}
             onRevert={onRevert}
             disabled={disabled}
           />
         )}
       </div>
-      {/* Marked off from the label row so the field can be focused without
-          landing on its revert button.
-          The padding is for that button's tap-target overlay, which overhangs
-          its 24px drawing by 10px per side and would otherwise reach into this
-          control and take presses meant for it. space-y-1.5 leaves 6px, and
-          padding is what can add to that: the space-y rule outranks a margin
-          utility. Same 12px the card keeps. See globals.css. */}
-      <div data-field-control className={own ? "max-lg:pt-1.5" : undefined}>
+      {/* The revert button reserves its full touch target in the label row,
+          so the field below needs only the row's normal spacing. */}
+      <div data-field-control>
         {children}
       </div>
       {/* Under the control, not in a legend at the top: this is the one place

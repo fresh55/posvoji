@@ -65,15 +65,78 @@ test.describe("approved mobile filter regressions", () => {
     await page.goto("/?velikost=majhna");
     await filtriTrigger(page).click();
     const content = drawerContent(page);
+    await page.clock.install();
     await content.getByRole("button", { name: "Počisti filtre" }).click();
 
     const undo = content.getByRole("button", {
       name: "Razveljavi čiščenje filtrov",
     });
     await expect(undo).toBeInViewport();
+    await undo.focus();
+    await page.clock.fastForward(8_000);
+    await expect(undo).toBeEnabled();
+    await expect(undo).toBeFocused();
+
+    // Closing starts the page's window. Reopening pauses that existing offer
+    // too, instead of letting its old deadline disable the footer button.
+    await content.getByRole("button", { name: "Zapri", exact: true }).click();
+    await expect(content).toBeHidden();
+    await page.clock.fastForward(2_000);
+    await expect(page.locator('[data-slot="mobile-filter-row"]').getByRole("button", {
+      name: "Razveljavi čiščenje filtrov",
+    })).toBeVisible();
+    await filtriTrigger(page).click();
+    await expect(content).toBeVisible();
+    await expect(undo).toBeEnabled();
+    await undo.focus();
+    await page.clock.fastForward(8_000);
+    await expect(undo).toBeEnabled();
     await undo.click();
     await expect(page).toHaveURL(/velikost=majhna/);
     await expect(content).toBeVisible();
+  });
+
+  test("opens the section selected by a filtered link and keeps manual folding available", async ({ page }) => {
+    await page.goto("/?velikost=majhna");
+    await page.evaluate(() => localStorage.setItem("posvoji:filter-sections", JSON.stringify({ size: false })));
+    await page.reload();
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    const size = content.getByRole("button", { name: /^Velikost/ });
+    await expect(size).toHaveAttribute("aria-expanded", "true");
+    await expect(content.getByRole("button", { name: /^Majhna, / })).toBeVisible();
+    await size.click();
+    await expect(size).toHaveAttribute("aria-expanded", "false");
+    await expect(size).toContainText("Majhna");
+  });
+
+  test("offers sorting in exactly one placement across the phone and tablet boundaries", async ({ page }) => {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 767, height: 513 },
+      { width: 768, height: 513 },
+      { width: 768, height: 512 },
+      { width: 844, height: 390 },
+      { width: 820, height: 1180 },
+      { width: 1024, height: 512 },
+      { width: 1180, height: 820 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+      const sheetSort = viewport.width < 768 || viewport.height <= 512;
+      if (viewport.width < 1024) {
+        const toolbarSort = page.locator('[data-slot="mobile-toolbar"] [role="combobox"]');
+        await expect(toolbarSort).toBeVisible({ visible: !sheetSort });
+        await filtriTrigger(page).click();
+        await expect(drawerContent(page).locator('[role="combobox"]')).toBeVisible({ visible: sheetSort });
+        await drawerContent(page).getByRole("button", { name: "Zapri", exact: true }).click();
+        await expect(drawerContent(page)).toBeHidden();
+      } else {
+        await expect(filtriTrigger(page)).toBeHidden();
+        await expect(page.getByRole("combobox")).toHaveCount(1);
+        await expect(page.getByRole("combobox")).toBeVisible();
+      }
+    }
   });
 
   test("wraps active filters in flow without a second horizontal scroller", async ({ page }) => {

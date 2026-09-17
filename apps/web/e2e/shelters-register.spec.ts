@@ -64,6 +64,18 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     expect(errors).toEqual([]);
   });
 
+  test(`${indexPath}: one email invitation precedes the directory and reflows`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto(indexPath);
+    const invite = page.locator('main a[href="mailto:info@posvoji.si"]');
+    await expect(invite).toHaveCount(1);
+    const inviteBox = await invite.boundingBox();
+    const firstCardBox = await page.locator(CARD).first().boundingBox();
+    expect(inviteBox!.y + inviteBox!.height).toBeLessThan(firstCardBox!.y);
+    await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+    expect(await invite.evaluate(el => el.parentElement!.scrollWidth - el.parentElement!.clientWidth)).toBeLessThanOrEqual(1);
+  });
+
   test(`${indexPath}: keyboard users can skip the register`, async ({ page }) => {
     await page.goto(indexPath);
     const skip = page.locator('a[href="#za-zavetisci"]');
@@ -97,6 +109,22 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     expect(box!.x + box!.width).toBeLessThanOrEqual(320);
     expect(await email.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
     expect(box!.height).toBeGreaterThanOrEqual(44);
+  });
+
+  test(`${indexPath}: on-call contact and hours fit a narrow phone`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto(`${indexPath}/obalno`);
+    const onCall = page.locator('main a[data-contact="on-call"]');
+    await expect(onCall).toHaveAttribute("href", "tel:+38631726029");
+    await expect(page.locator("[data-shelter-hours]")).toBeVisible();
+    await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
+    expect(await onCall.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+    const box = await onCall.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+    expect(await page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )).toBeLessThanOrEqual(1);
   });
 }
 

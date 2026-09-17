@@ -314,12 +314,13 @@ export function Fan(props: FanProps) {
               variant="secondary"
               className={PHOTO_BADGE_CLASS}
             >
+              <span>{messages.photosShort}</span>{" "}
               {activeIndex + 1} / {count}
             </Badge>
           ) : (
             /* Its name leads with the mark. An aria-label of "Vse fotografije (13)"
           named what the control does, but it also replaced the only words on
-          it: a visitor who speaks to their machine reads "1 / 13" on the
+          it: a visitor who speaks to their machine reads "Foto 1 / 13" on the
           photograph and has nothing by that name to ask for, which is what
           WCAG 2.5.3 is about. The visible text is the name's first words now
           and "Vse fotografije" follows it, said to a reader and not drawn.
@@ -369,6 +370,7 @@ export function Fan(props: FanProps) {
                   );
                 }}
               >
+                <span>{messages.photosShort}</span>{" "}
                 {activeIndex + 1} / {count}{" "}
                 {/* The rest of the name, carried as text so the drawn words lead
                   it. sr-only and not aria-hidden: this is the half a reader

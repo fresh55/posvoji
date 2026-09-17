@@ -6,7 +6,7 @@ import { EditorSaveBar } from "./editor-chrome";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it("keeps footer clearance equal to the save bar including a wrapped error and clears it on unmount", () => {
+it("updates the shell's height variable when the save bar resizes and clears it on unmount", () => {
   let height = 69;
   let resized = () => {};
   const disconnect = vi.fn();

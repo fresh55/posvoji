@@ -39,9 +39,8 @@ const BODY_EASE = [0.16, 1, 0.3, 1] as const;
 // The fold runs 0.3s; the section is measured once it has settled.
 const FOLD_SETTLE_MS = 350;
 
-/** The folding half of a section. Without a collapse contract it renders its
-    children directly (open defaults true, no id to control), so the sheet
-    and plain lists stay as they were. */
+/** The folding half shared by sidebar and sheet. Without a collapse contract
+    the body stays open with no disclosure id, as plain lists require. */
 export function CollapsibleBody({
   collapse,
   children,

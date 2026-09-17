@@ -98,6 +98,8 @@ const sl = {
   previousPhoto: "Prejšnja fotografija",
   nextPhoto: "Naslednja fotografija",
   photoCount: "Fotografija {current} od {total}",
+  // The compact noun beside the fan's current / total count.
+  photosShort: "Foto",
   // The photograph's own text alternative, for a surface where the picture is
   // not already named by the control around it. The animal's name alone is not
   // one: it names the subject and reads the same for every photo in the set, so
@@ -316,6 +318,7 @@ const sl = {
   // The word beside the pin at the end of the scope row, naming what the press
   // opens.
   mapCaption: "Izberi",
+  viewShelters: "Poglej zavetišča",
   close: "Zapri",
   locationOutsideMap:
     "Tvoja lokacija je zunaj zemljevida. Seznam je vseeno razvrščen po bližini.",
@@ -660,6 +663,7 @@ const en: Messages = {
   previousPhoto: "Previous photo",
   nextPhoto: "Next photo",
   photoCount: "Photo {current} of {total}",
+  photosShort: "Photos",
   photoAlt: "Photo of {name}, {current} of {total}",
   photoAltSingle: "Photo of {name}",
   photoFanLabel: "Photos of {name}",
@@ -764,6 +768,7 @@ const en: Messages = {
   where: "Where",
   whereMapInvite: "Pick shelters",
   mapCaption: "Choose",
+  viewShelters: "View shelters",
   close: "Close",
   locationOutsideMap:
     "Your location is outside the map. The list is still sorted by distance.",

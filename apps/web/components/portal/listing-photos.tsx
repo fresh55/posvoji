@@ -48,7 +48,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
           role="group"
           aria-label={portalText.fieldPhotos}
           aria-describedby={hintId(uid, "photos")}
-          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+          className="grid grid-cols-3 gap-1.5 sm:grid-cols-4"
         >
           {panel.stored.map((photo, index) => {
             const confirm = panel.removing === photo.id;

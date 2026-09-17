@@ -90,6 +90,10 @@ export function clearAccountPhotoDrafts(account: string): void {
   }
 }
 
+export function hasAccountPhotoDrafts(account: string): boolean {
+  return [...drafts.values()].some(({ scope }) => scope.account === account);
+}
+
 export function photoDraftIds(account: string, shelter: string): string[] {
   return [...drafts.values()]
     .filter(({ scope }) => scope.account === account && scope.shelter === shelter)

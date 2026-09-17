@@ -1739,9 +1739,9 @@ describe("animal dialog", () => {
       // follows them, said in a span nobody sees. An aria-label of "Vse
       // fotografije (14)" replaced the only words on it, so a visitor speaking
       // to their machine could read "1 / 14" and ask for nothing by it.
-      name: "1 / 14 Vse fotografije",
+      name: "Foto 1 / 14 Vse fotografije",
     });
-    expect(control.textContent).toBe("1 / 14 Vse fotografije");
+    expect(control.textContent).toBe("Foto 1 / 14 Vse fotografije");
     expect(control.closest("button[data-print]")).toBeNull();
     // The mark stays 20px and the hit area grows past it, because a bigger
     // chip on the photograph is the wrong answer on a phone.

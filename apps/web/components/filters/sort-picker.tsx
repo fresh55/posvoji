@@ -53,7 +53,9 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  always reachable is the sheet behind the dock, so that is where sorting
  *  went, and a sheet has room for the same Select the desktop toolbar uses.
  *  From md the sticky toolbar has the room too (animal-filters.tsx), so the
- *  trigger goes back on the row there and the sheet's copy stands down.
+ *  trigger goes back on the row there and the sheet's copy stands down,
+ *  except in short viewports where the toolbar scrolls away. Below lg the
+ *  toolbar and sheet visibility conditions must remain exact complements.
  *  Three placements, one dress, one control, and a hand-rolled listbox less.
  *
  *  The phone keeps it in the sheet, and that is a decision rather than a gap.

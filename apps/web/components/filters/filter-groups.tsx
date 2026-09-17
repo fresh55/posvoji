@@ -441,7 +441,18 @@ export function FilterGroupList({
   /** Folds sections behind their headers, shared by the sidebar and sheet. */
   collapsible?: boolean;
 } & FilterActionContract) {
-  const { isOpen, toggleSection } = useFilterSections();
+  const { isOpen, toggleSection } = useFilterSections(
+    layout === "sheet" ? {
+      sex: filters.sex.length > 0,
+      age: filters.age.length > 0,
+      size: filters.size.length > 0,
+      energy: filters.energy.length > 0,
+      health: filters.toggles.length > 0,
+      goodWith: filters.goodWith.length > 0,
+      home: filters.home.length > 0,
+      care: filters.care.length > 0,
+    } : undefined,
+  );
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();

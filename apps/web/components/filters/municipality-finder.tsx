@@ -49,6 +49,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SOURCE_LINK } from "@/lib/link-styles";
 import { sheltersIndexPath } from "@/lib/shelter-path";
+import { MUTED_LINK } from "@/lib/link-styles";
 
 const LAW_URL =
   "https://www.uradni-list.si/glasilo-uradni-list-rs/vsebina/2025-01-2342/zakon-o-spremembah-in-dopolnitvah-zakona-o-zasciti-zivali-zzziv-g";
@@ -763,9 +764,9 @@ export function MunicipalityFinder({
         {noMatch && (
           <a
             href={sheltersIndexPath(locale)}
-            className="inline-flex min-h-11 items-center self-start text-sm underline underline-offset-4 hover:text-muted-foreground"
+            className={cn(MUTED_LINK, "self-start underline")}
           >
-            {messages.shelters}
+            {messages.viewShelters}
           </a>
         )}
 

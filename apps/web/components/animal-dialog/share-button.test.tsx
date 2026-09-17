@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -164,9 +165,37 @@ describe("on a phone", () => {
     const button = renderButton(2);
     fireEvent.click(button);
     const copy = await screen.findByRole("button", { name: "Kopiraj povezavo" });
-    expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo");
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo"));
     await act(async () => fireEvent.click(copy));
     expect(writeText).toHaveBeenCalledWith(`${PAGE}?foto=3`);
+  });
+
+  it("announces the failure after the fallback region mounts and retries native share after closing", async () => {
+    phone = true;
+    const share = vi.fn()
+      .mockRejectedValueOnce(new DOMException("unavailable", "NotAllowedError"))
+      .mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    const button = renderButton();
+    const announcements: string[] = [];
+    const observer = new MutationObserver(() => {
+      const status = screen.queryByRole("status");
+      if (status) announcements.push(status.textContent ?? "");
+    });
+    observer.observe(document.body, { childList: true, characterData: true, subtree: true });
+    try {
+      fireEvent.click(button);
+      await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo"));
+      expect(announcements[0]).toBe("");
+      expect(announcements.some((text) => text.includes("Deljenje ni uspelo"))).toBe(true);
+      fireEvent.keyDown(screen.getByRole("textbox", { name: "Povezava" }), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByText("Deli to žival")).toBeNull());
+      await act(async () => fireEvent.click(screen.getByRole("button", { name: "Deli" })));
+      expect(share).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText("Deli to žival")).toBeNull();
+    } finally {
+      observer.disconnect();
+    }
   });
 
   it("keeps a cancelled native share quiet", async () => {

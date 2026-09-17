@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import {
   Cat,
-  Clock,
   Dog,
   ExternalLink,
   Globe,
@@ -15,6 +14,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { Card } from "@/components/ui/card";
+import { ShelterHours } from "@/components/shelter-hours";
 import {
   contactName,
   mailtoHref,
@@ -141,9 +141,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
             not drawn. The number to dial outside them is a button above, not
             a row here: the card states each number once. */}
         {coverage.hours && (
-          <ContactRow icon={Clock} label={messages.muniHours}>
-            {coverage.hours}
-          </ContactRow>
+          <ShelterHours hours={coverage.hours} label={messages.muniHours} />
         )}
         {/* The two calls above need no channel in their names: muniCall and
             muniCallOnCall begin with the act, so their visible text is

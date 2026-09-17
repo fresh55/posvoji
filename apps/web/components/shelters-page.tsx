@@ -288,6 +288,12 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 </li>
               ))}
           </ul>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {text.join}{" "}
+            <a href={mailtoHref(CONTACT_EMAIL)} className={MUTED_LINK}>
+              {CONTACT_EMAIL}
+            </a>.
+          </p>
         </div>
       </div>
 
@@ -311,12 +317,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       {/* Keep publishing context beside the source so the introduction
           gets readers to the directory sooner, especially on phones. */}
       <div className="max-w-3xl space-y-2 text-sm leading-relaxed text-muted-foreground">
-        <p>
-          {text.join}{" "}
-          <a href={mailtoHref(CONTACT_EMAIL)} className={MUTED_LINK}>
-            {CONTACT_EMAIL}
-          </a>.
-        </p>
         <p>{text.permissionNote}</p>
         <p className="text-xs">
           {asOf ? `${text.source}, ${text.asOf} ${asOf}.` : `${text.source}.`}

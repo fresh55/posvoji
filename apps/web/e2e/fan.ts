@@ -170,7 +170,7 @@ export async function expectPhoto(
   // is a control, and the rest of its name is carried in a span inside it, so
   // "Vse fotografije" is in the text there and not on a shorter gallery.
   // Anchored, so 1 / 13 is not read off 11 / 13.
-  await expect(badge(fan)).toHaveText(new RegExp(`^${n} / ${total}\\b`));
+  await expect(badge(fan)).toHaveText(new RegExp(`^Foto ${n} / ${total}\\b`));
 }
 
 /**

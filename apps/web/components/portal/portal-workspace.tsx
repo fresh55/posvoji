@@ -22,6 +22,7 @@ import {
   type PortalListEntry,
 } from "@/components/portal/list-tools";
 import { PortalListingCard } from "@/components/portal/listing-card";
+import { NEW_DRAFT_ID } from "@/components/portal/listing-draft";
 import { PortalNotice, SessionError } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
@@ -288,7 +289,7 @@ export function PortalWorkspace() {
                       <p className="text-sm text-muted-foreground">
                         {animalCount(all.length, "sl")}
                       </p>
-                      <AddListing shelter={active} hasDraft={drafts.has("nova")} />
+                      <AddListing shelter={active} hasDraft={drafts.has(NEW_DRAFT_ID)} />
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -343,7 +344,7 @@ export function PortalWorkspace() {
                 <PortalNotice
                   icon={Inbox}
                   title={portalText.emptyTitle}
-                  action={<AddListing shelter={active} hasDraft={drafts.has("nova")} />}
+                  action={<AddListing shelter={active} hasDraft={drafts.has(NEW_DRAFT_ID)} />}
                 >
                   {portalText.listingsEmptyLead}
                 </PortalNotice>

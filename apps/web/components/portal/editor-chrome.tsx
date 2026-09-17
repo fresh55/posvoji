@@ -84,8 +84,8 @@ export function EditorBreadcrumb({
  * where the summary is at the top of a page the shelter has scrolled away
  * from.
  *
- * The bottom padding carries the phone's home indicator, and each page's own
- * max-lg:pb-28 keeps the last row clear of the bar.
+ * The bottom padding carries the phone's home indicator. PortalShell reserves
+ * the measured bar height after the footer so its links stay reachable too.
  *
  * A save that did not go through is said in the bar, above the buttons: it is
  * the one part of the page that is on screen wherever the shelter pressed
@@ -176,7 +176,7 @@ export function DraftResumedLine({
         disabled={disabled}
         aria-label={portalText.draftDiscardLabel}
         onClick={onDiscard}
-        className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground max-lg:tap-target hover:text-foreground"
+        className="h-6 gap-1 px-1.5 text-2xs font-normal text-muted-foreground hover:text-foreground"
       >
         <Undo2 aria-hidden />
         {portalText.draftDiscard}

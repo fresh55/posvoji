@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontal, Undo2, X } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-provider";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
@@ -62,11 +62,12 @@ export type ShelterScope = {
 // asked for once the drawer is gone rather than over the top of it.
 const DRAWER_CLOSE_MS = 500;
 
-/** From md the toolbar carries the order, except on short landscape screens
- *  where that toolbar scrolls away. The sheet keeps sorting reachable there.
- *  Its order-only trigger uses the same condition so the dock cannot hide the
- *  only remaining way to change the order. */
+/** Below lg exactly one placement offers sorting: the sheet below md or in a
+ *  short viewport, the sticky toolbar otherwise. Keep these complementary;
+ *  a short viewport lets the toolbar scroll away. The order-only trigger uses
+ *  the sheet's condition so the dock keeps the remaining way to sort. */
 export const SORT_ROW_HIDDEN = "md:not-short:hidden";
+export const SORT_TOOLBAR_HIDDEN = "max-md:hidden short:hidden";
 
 /** The caption over the sort row, and the row itself, each resolved once:
  *  every half is a constant, so there is one answer and no reason to ask cn
@@ -94,14 +95,14 @@ const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
  *  from. Three things can be inside, so there are three named answers and a
  *  section added below has one place to be counted.
  *
- *  Sorting is the reason the last two exist. Below md the sheet is where the
- *  order is changed, so a result set that no facet can narrow still has
+ *  Sorting is the reason the last two exist. Below md or in a short viewport
+ *  the sheet changes the order, so a result set that no facet can narrow has
  *  something to do in here, and so does a filtered-to-nothing one, which is
  *  where a visitor most needs the way back out.
  *
  *  A reason and not a yes, because one of the three is drawn at one width and
- *  not another: from md the toolbar carries the order itself and the sort row
- *  below stands down (SORT_ROW_HIDDEN), so a sheet held open by `order` alone
+ *  not another: from md in a taller viewport the toolbar carries the order
+ *  and the sheet row stands down (SORT_ROW_HIDDEN). A sheet for `order` alone
  *  opens there on a title, a footer, and a body holding the Kje row or
  *  nothing at all, depending on whether the dataset has shelters to choose
  *  between. The caller stands the trigger down at that width instead, in CSS
@@ -109,7 +110,7 @@ const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
  *
  *  `order` is tried last, and the order of the returns below is the contract
  *  rather than a style: a sheet with anything else in it keeps its trigger at
- *  every width, so only the answer that runs out at md may be the one given.
+ *  every width, so only the answer that follows SORT_ROW_HIDDEN may be given.
  *  A clause inserted above it changes which states lose their button. */
 type FilterSheetReason = "sections" | "undo" | "order";
 
@@ -165,6 +166,7 @@ export function FilterSheet({
   onToggleManyProperties,
   onClearAll,
   undo,
+  onOpenChange,
   className,
 }: {
   filters: Filters;
@@ -200,6 +202,8 @@ export function FilterSheet({
   onClearAll: () => void;
   /** The same timed offer as the page row, reachable while this sheet covers it. */
   undo?: () => void;
+  /** Keeps the page's Undo clock paused while the sheet owns that control. */
+  onOpenChange?: (open: boolean) => void;
   /** Merged onto the trigger, which is all this component draws until it is
    *  opened. The dock passes the width at which the sheet has nothing left in
    *  it (animal-filters.tsx); the content is portalled to <body> and takes
@@ -209,6 +213,12 @@ export function FilterSheet({
   const { locale, messages, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // Release the page's paused clock if this instance unmounts, and report the
+  // current state if its observer changes while it is already open.
+  useEffect(() => {
+    onOpenChange?.(open);
+    return () => onOpenChange?.(false);
+  }, [open, onOpenChange]);
   // The caption's id, which the sort trigger takes half of its accessible name
   // from. Generated rather than written out: nothing stops a page from
   // mounting two of these, and a duplicate id points aria-labelledby at
@@ -228,6 +238,7 @@ export function FilterSheet({
   // paints the stale divider before the effect clears it.
   const close = () => {
     setOpen(false);
+    onOpenChange?.(false);
     setScrolled(false);
   };
 
@@ -260,7 +271,12 @@ export function FilterSheet({
   return (
     <Drawer
       open={open}
-      onOpenChange={(next) => (next ? setOpen(true) : close())}
+      onOpenChange={(next) => {
+        if (next) {
+          setOpen(true);
+          onOpenChange?.(true);
+        } else close();
+      }}
     >
       <DrawerTrigger asChild>
         <Button
@@ -299,9 +315,9 @@ export function FilterSheet({
         closeLabel={messages.close}
         // 72dvh, down from a full 85dvh takeover: the sheet used to open the
         // visitor onto a blind list with the count in the footer as the only
-        // feedback on what narrowed. The lower cap leaves the top card row
-        // showing behind the sheet, so a choice still reads against the grid
-        // it changed. Vaul snap points were tried instead and dropped: they
+        // feedback on what narrowed. The lower cap leaves part of the page
+        // visible behind the sheet; whether cards are in that strip depends
+        // on the page's scroll position. Vaul snap points were dropped: they
         // translate the full-height content down, and the pinned footer with
         // the primary action goes below the fold at the lower snap.
         //
@@ -339,12 +355,11 @@ export function FilterSheet({
               no toolbar around it to imply the rest. The word alone is enough
               here because the control under it names the order in full.
 
-              From md the toolbar behind this sheet carries the order itself:
-              that row is 720px wide at 768 with the tabs ending at 384, so the
-              control is on screen and one tap away instead of three, and a
-              copy in here would be the same control twice on one screen. On
-              short landscape screens that toolbar scrolls away, so this row
-              remains available through the fixed dock. The
+              From md in a taller viewport the toolbar carries the order.
+              On short landscape screens that toolbar scrolls away, so it
+              gives the order back to this row through the fixed dock.
+              SORT_TOOLBAR_HIDDEN and SORT_ROW_HIDDEN are complements: the
+              control has one placement below lg, including at scroll zero. The
               header's own pb-3 is what sits under the title once the pair is
               gone. The sheet is only reachable below lg, so this is the
               md-to-lg band and nothing else.

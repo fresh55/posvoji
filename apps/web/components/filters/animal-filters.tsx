@@ -25,6 +25,7 @@ import {
   FilterSheet,
   filterSheetReason,
   SORT_ROW_HIDDEN,
+  SORT_TOOLBAR_HIDDEN,
 } from "@/components/filters/filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
@@ -126,6 +127,7 @@ export function AnimalFilters({
   shelterSummaries,
   chips,
   undo,
+  onSheetOpenChange,
   resultCount,
   sort,
   onSpeciesChange,
@@ -167,6 +169,7 @@ export function AnimalFilters({
   chips: Chip[];
   /** Present only during the few seconds a clear can still be taken back. */
   undo?: () => void;
+  onSheetOpenChange?: (open: boolean) => void;
   resultCount: number;
   sort: AnimalSort;
   onSpeciesChange: (species: SpeciesFilter) => void;
@@ -182,15 +185,16 @@ export function AnimalFilters({
   // Asked of the sheet rather than worked out here: what is inside it is its
   // own business, and this file only needs to know whether to hang a button
   // on the dock for it (filter-sheet.tsx).
-  const sheetReason = filterSheetReason({
-    groups,
-    toggles,
-    goodWith,
-    home,
-    care,
-    resultCount,
-    activeCount,
-  });
+  const sheetReason =
+    filterSheetReason({
+      groups,
+      toggles,
+      goodWith,
+      home,
+      care,
+      resultCount,
+      activeCount,
+    }) ?? (undo ? "undo" : undefined);
   // The picker's open state, held here because the sheet cannot hold it. Its
   // Kje row has to close the drawer before the dialog may open, and the two
   // are siblings under this component: the sheet asks, and the dock's picker
@@ -207,10 +211,10 @@ export function AnimalFilters({
   // nothing for an order to apply to.
   const canSort = !isEmpty && resultCount > 0;
   // The class the sheet's trigger wears, or nothing. `order` is the one reason
-  // that runs out at a width: from md the toolbar draws the order itself and
-  // the sheet's own sort row stands down with it, so a sheet the order alone
-  // holds open has nothing left behind its button there and the button goes
-  // too. The width is the sheet's to name, so it comes from there
+  // that runs out at a viewport: from md in a non-short viewport the sticky
+  // toolbar draws the order and the sheet's own sort row stands down, so a
+  // sheet the order alone holds open has nothing left behind its button there
+  // and the button goes too. The viewport is the sheet's to name, so it comes from there
   // (SORT_ROW_HIDDEN) rather than being written out again here.
   //
   // In CSS and not from a width read in JS: this page is statically exported,
@@ -355,10 +359,11 @@ export function AnimalFilters({
         >
           {speciesStrip}
 
-          {/* From md there is room for sorting beside the species strip.
-              The sheet also keeps a copy on short landscape screens, because
-              this toolbar scrolls away there. On the control itself rather
-              than a box around it: the trigger's own
+          {/* From md there is room for sorting beside the species strip,
+              except in a short viewport where this toolbar scrolls away.
+              SORT_TOOLBAR_HIDDEN complements the sheet's SORT_ROW_HIDDEN:
+              exactly one placement offers the order below lg. On the control
+              itself rather than a box around it: the trigger's own
               base is flex (ui/select.tsx), so a wrapper turning it back on at
               md with md:block would have flattened its icon, label and
               chevron into a stack. shrink-0 because the strip beside it is
@@ -367,7 +372,7 @@ export function AnimalFilters({
             <SortPicker
               value={sort}
               onChange={onSortChange}
-              className="shrink-0 max-md:hidden"
+              className={cn("shrink-0", SORT_TOOLBAR_HIDDEN)}
             />
           )}
         </div>
@@ -527,6 +532,7 @@ export function AnimalFilters({
               onToggleManyProperties={onToggleManyProperties}
               onClearAll={onClearAll}
               undo={undo}
+              onOpenChange={onSheetOpenChange}
             />
           )}
           {shelters && (

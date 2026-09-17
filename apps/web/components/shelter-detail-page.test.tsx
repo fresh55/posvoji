@@ -4,7 +4,7 @@
 // (motion/react), which reads window.matchMedia when it resolves the
 // reducedMotion="user" setting.
 
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterDetailPage } from "./shelter-detail-page";
 import { getMessages } from "@/lib/i18n";
@@ -48,6 +48,14 @@ const BARE = {
   city: "Celje",
 };
 
+// An on-call number alone must still make the contacts row visible.
+const ON_CALL = {
+  id: "on-call-shelter",
+  name: "Obalno zavetišče",
+  city: "Koper",
+  onCallPhone: "031 726 029",
+};
+
 const { ANIMALS } = vi.hoisted(() => ({
   ANIMALS: [1, 2, 3].map((n) => ({
     id: `test-shelter:${n}`,
@@ -83,7 +91,7 @@ const { ANIMALS } = vi.hoisted(() => ({
 vi.mock("@/lib/shelters", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/shelters")>()),
   getShelterBySlug: (slug: string) =>
-    [SHELTER, BARE].find((shelter) => shelter.id === slug),
+    [SHELTER, BARE, ON_CALL].find((shelter) => shelter.id === slug),
   shelterRegisterDate: () => "2026-01-01",
 }));
 // shelterAnimals is mocked beside loadDataset rather than left to derive
@@ -117,6 +125,15 @@ function hero(container: HTMLElement) {
 // (shelter-card.tsx), and a reader who scanned the card and then opened the
 // page meets the same three in the same order, named the same way.
 describe("the shelter page's contacts", () => {
+  it.each([
+    { locale: "sl" as const, label: "Dežurna 031 726 029" },
+    { locale: "en" as const, label: "On-call 031 726 029" },
+  ])("offers the recorded on-call number in $locale", ({ locale, label }) => {
+    render(<ShelterDetailPage locale={locale} slug={ON_CALL.id} />);
+    const call = screen.getByRole("link", { name: label });
+    expect(call.getAttribute("href")).toBe("tel:+38631726029");
+    expect(call.textContent).toBe(label);
+  });
   it.each(["sl", "en"] as const)("prints recorded hours, in their source language, for %s", (locale) => {
     const { container } = render(<ShelterDetailPage locale={locale} slug={SHELTER.id} />);
     const hours = container.querySelector("[data-shelter-hours]");

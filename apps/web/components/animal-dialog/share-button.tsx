@@ -126,6 +126,38 @@ function Target({
   );
 }
 
+function ShareStatus({
+  copied,
+  failed,
+  copiedText,
+  failedText,
+}: {
+  copied: boolean;
+  failed: boolean;
+  copiedText: string;
+  failedText: string;
+}) {
+  const [announceFailure, setAnnounceFailure] = useState(false);
+  useEffect(() => {
+    if (!failed) return;
+    // The popover and its live region must exist before the failure text
+    // arrives. A native failure can be the event that first mounts both.
+    const timer = window.setTimeout(() => setAnnounceFailure(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [failed]);
+
+  return (
+    <p
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="min-h-4 text-center text-xs text-brand-strong"
+    >
+      {copied ? copiedText : failed && announceFailure ? failedText : null}
+    </p>
+  );
+}
+
 /**
  * What gets shared is the animal's own page, not the address bar. Both open
  * the same animal, but only the page carries a link preview: a query on the
@@ -230,6 +262,13 @@ export function ShareButton({
     }
   }
 
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    // A transient native failure only needs a fallback for this attempt.
+    // Closing it restores the platform sheet for the next share.
+    if (!next) setNativeFailed(false);
+  }
+
   // size-11 under sm: icon-sm is 32px, which is under the 44px floor every
   // other control on the phone layout was already held to. The close button
   // beside this one carries the same override. The caller's classes come
@@ -254,7 +293,7 @@ export function ShareButton({
   if (phone && canShare && !nativeFailed) return trigger;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
         <p className="text-sm font-medium">{text.heading}</p>
@@ -315,14 +354,12 @@ export function ShareButton({
             to notice. It stays mounted but empty, because a live region has to
             be there before its text arrives, and keeps its line so the sheet
             does not jump. */}
-        <p
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="min-h-4 text-center text-xs text-brand-strong"
-        >
-          {copied ? messages.linkCopied : nativeFailed ? text.failed : null}
-        </p>
+        <ShareStatus
+          copied={copied}
+          failed={nativeFailed}
+          copiedText={messages.linkCopied}
+          failedText={text.failed}
+        />
       </PopoverContent>
     </Popover>
   );

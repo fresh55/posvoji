@@ -633,7 +633,12 @@ export function PhotoGallery({
     onPointerLeave: handlePointerLeave,
     onPointerUp: finishSwipe,
     onPointerCancel: handleSwipeCancel,
-    onLostPointerCapture: handleLostPointerCapture,
+    // Preserve the existing card-link gesture contract. Only the standalone
+    // viewer button needs this completed-swipe click guard.
+    onLostPointerCapture:
+      onOpenPhoto && href === undefined
+        ? handleLostPointerCapture
+        : handleSwipeCancel,
     className: surfaceClassName,
     style: {
       transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
@@ -757,6 +762,12 @@ export function PhotoGallery({
     // rectangle because the wrapper happens to have exactly one in-flow child.
     <div
       data-slot="photo-frame"
+      role={onOpenPhoto && image && !href ? "group" : undefined}
+      aria-label={
+        onOpenPhoto && image && !href
+          ? translate(locale, "photoFanLabel", { name: name ?? messages.unnamed })
+          : undefined
+      }
       className={cn("group/photo", className ?? DEFAULT_WRAPPER_CLASS)}
     >
       {href ? (
@@ -786,6 +797,7 @@ export function PhotoGallery({
         <button
           type="button"
           aria-label={translate(locale, "viewPhotoLarge", { n: imageIndex + 1 })}
+          aria-keyshortcuts={hasGallery ? "ArrowLeft ArrowRight Home End" : undefined}
           onKeyDown={stepPhoto}
           {...surface}
           className={cn(
@@ -793,7 +805,7 @@ export function PhotoGallery({
             "outline-none focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring",
           )}
           onClick={(event) => {
-            if (suppressImageLink.current) {
+            if (event.detail !== 0 && suppressImageLink.current) {
               suppressImageLink.current = false;
               return;
             }
@@ -897,8 +909,10 @@ export function PhotoGallery({
           >
             <ChevronRight className={chevron.icon} aria-hidden />
           </Button>
-          {/* The default marker uses dots capped at five with a sliding window,
-              so a 14-photo gallery does
+          {/* Dots, not a fraction. "1 / 13" is bookkeeping; a row of dots says
+              "there are more photos" and which one this is in a glance, and it
+              is the shape every photo carousel has trained a thumb to expect.
+              Capped at five with a sliding window, so a 14-photo gallery does
               not draw a ruler across the picture; the ends of a long gallery
               show as the window not moving any further.
 
@@ -906,9 +920,10 @@ export function PhotoGallery({
               photo's link, the way the fraction badge was. The sr-only line
               below still speaks the exact count.
 
-              Plain galleries can request the visible count below instead.
-              Inside a card, on a pointer that can hover,
-              they wait for it: see CARD_DOTS_CLASS for why the grid is the one
+              The standalone page adds an exact count beside this cue; it
+              does not replace the dots. Always visible on a plain gallery
+              and on a screen that cannot hover. Inside a card, on a pointer
+              that can hover, they wait for it: see CARD_DOTS_CLASS for why the grid is the one
               place a resting row is worth hiding, and why the condition is the
               card's rather than this photo's.
 
@@ -917,28 +932,26 @@ export function PhotoGallery({
               where the dots are drawn, inside hasGallery: a single-photo card
               has no row to carry and a pill with nothing in it is a mark on
               the photograph for no reason. */}
-          {!showCount && (
-            <div
-              data-slot="photo-dots"
-              aria-hidden
-              className={cn(
-                "pointer-events-none absolute z-10 flex gap-1",
-                dotPaint.container,
-              )}
-            >
-              {Array.from({ length: dots.count }, (_, dot) => (
-                <span
-                  key={dot}
-                  className={cn(
-                    dotPaint.dot,
-                    dots.start + dot === imageIndex
-                      ? dotPaint.current
-                      : dotPaint.rest,
-                  )}
-                />
-              ))}
-            </div>
-          )}
+          <div
+            data-slot="photo-dots"
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute z-10 flex gap-1",
+              dotPaint.container,
+            )}
+          >
+            {Array.from({ length: dots.count }, (_, dot) => (
+              <span
+                key={dot}
+                className={cn(
+                  dotPaint.dot,
+                  dots.start + dot === imageIndex
+                    ? dotPaint.current
+                    : dotPaint.rest,
+                )}
+              />
+            ))}
+          </div>
           <span
             // Named, because it is what says where the gallery is now that the
             // visible marker is dots with no text: the tests read this line,
@@ -960,7 +973,7 @@ export function PhotoGallery({
           </span>
         </>
       )}
-      {showCount && images.length > 0 && (
+      {showCount && hasGallery && (
         <span
           data-slot="photo-count"
           aria-hidden

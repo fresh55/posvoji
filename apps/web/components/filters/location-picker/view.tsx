@@ -58,8 +58,18 @@ export function LocationPickerView({
             className={cn(
               "justify-between gap-2 font-normal",
               deepLink === "mobile"
-                ?
-                  "gap-1.5 px-2"
+                ? // The dock's trigger, and on the dock the frame is the
+                  // whole of what says this is pressable: it stands on the
+                  // plate's own ground with no fill of its own, and the
+                  // outline variant's --border measured 1.26:1 light and
+                  // 1.47:1 dark against it, with the plate's edge over a
+                  // light card at 1.14:1. --control-border is the token for a
+                  // frame that is the affordance (3.66:1 light, 3.77:1 dark,
+                  // globals.css). The dark: term is not a repeat: the variant
+                  // ships `dark:border-input` of its own, and twMerge keeps a
+                  // dark:* border beside an unprefixed one, so without it the
+                  // washed frame survives in dark mode.
+                  "gap-1.5 border-control-border px-2 dark:border-control-border"
                 : cn(
                     QUIET_TRIGGER_CLASS,
                     "max-w-[14rem] aria-expanded:border-border",

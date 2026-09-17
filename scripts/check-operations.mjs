@@ -28,6 +28,11 @@ for (const name of [
 }
 console.log("operations checks: OK");
 const shell = process.platform === "win32" ? "powershell.exe" : "pwsh";
+const notifications = spawnSync(shell, [
+  "-NoProfile", "-NonInteractive", "-File", "scripts/crawl-notify.test.ps1",
+], { encoding: "utf8" });
+assert.equal(notifications.status, 0,
+  `crawl notification: ${notifications.error ?? ""}${notifications.stdout}${notifications.stderr}`);
 const freshness = spawnSync(
   shell,
   [

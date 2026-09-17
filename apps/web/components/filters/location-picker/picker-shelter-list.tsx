@@ -4,9 +4,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { filteredAnimalCount } from "@/lib/labels";
 import { ChevronRight } from "lucide-react";
 import type { LocationPickerController } from "./controller";
+import { pickerText } from "./model";
 
 export function PickerShelterList({ controller }: { controller: LocationPickerController }) {
-  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, placeOnly } = controller;
+  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, placeMode, placeOnly } = controller;
+  // The heading answers a name being typed. An empty field has nothing to
+  // head, a confirmed place leaves the list whole, and a place query that
+  // matched no name is answered by the row above the list.
+  const showHeading = query.trim() !== "" && !placeMode && !placeOnly;
   const offGroupList = (
     <ShelterRows
       rows={visibleOffRows.map((row) => ({
@@ -30,11 +35,18 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                   data-picker-list-scroll
                   className="mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 [scrollbar-width:thin]"
                 >
-                  {/* placeOnly: the query resolved to a place, and the row
-                      above the list is the answer to it. A postcode cannot
-                      have been a shelter's name, so an empty list is not news
-                      about it, and saying so here reads as "no such place"
-                      about the place just found. See the controller. */}
+                  {/* placeOnly: the query resolved to a place the postal
+                      table knows and matched no shelter's name, so the row
+                      above the list is the answer to it, and the roster below
+                      stays whole for that row to reorder (the controller says
+                      why). Both kinds of query land here and this block is
+                      wrong for both. "3000" could never have been a shelter's
+                      name, so a list with nothing in it is not news about the
+                      query. "Kranj" could have been, and what answers that is
+                      the roster staying on screen, not a line saying nothing
+                      was found about a place the dialog has just found. Drawn
+                      either way, the block reads as "no such place" and
+                      offers to clear the one input that worked. */}
                   {visibleRows.length === 0 &&
                   visibleOffRows.length === 0 &&
                   !placeOnly ? (
@@ -56,8 +68,24 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                     </div>
                   ) : (
                     <>
+                      {/* "Zavetišča", over the rows it names. It used to
+                          close the search block, from where it labelled the
+                          confirmed-origin button and the status line that sit
+                          between there and the first row. Only while the
+                          field holds a name: under a place query the list is
+                          the whole roster and not a set of matches, and the
+                          place row above already says what the typing did. */}
+                      {showHeading && (
+                        <p
+                          id={shelterGroupId}
+                          className="px-2 pb-2 text-xs font-medium text-muted-foreground"
+                        >
+                          {pickerText[locale].shelters}
+                        </p>
+                      )}
                       <ShelterRows
                         rows={visibleRows}
+                        labelledBy={showHeading ? shelterGroupId : undefined}
                         counts={counts}
                         selected={selected}
                         onToggle={onToggle}

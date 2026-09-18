@@ -4,7 +4,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { filteredAnimalCount } from "@/lib/labels";
 import { ChevronRight } from "lucide-react";
 import type { LocationPickerController } from "./controller";
-import { pickerText } from "./model";
 
 export function PickerShelterList({ controller }: { controller: LocationPickerController }) {
   const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, searching, placeOnly } = controller;
@@ -82,7 +81,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                           id={shelterGroupId}
                           className="px-2 pb-2 text-xs font-medium text-muted-foreground"
                         >
-                          {pickerText[locale].shelters}
+                          {messages.shelters}
                         </p>
                       )}
                       <ShelterRows

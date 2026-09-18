@@ -498,33 +498,6 @@ export function useLocationPickerController({
   const nameMatches = searching ? rows.filter(matchesQuery) : rows;
   const offNameMatches = searching ? offRows.filter(matchesQuery) : offRows;
 
-  // The hover the map is told about, and the row a marker hover brings into
-  // view. Both are gated on the row still being in the list: a query typed
-  // without moving the pointer unmounts the row under it, and no leave event
-  // fires, so an unfiltered value kept a marker and its region lit for a
-  // shelter the list no longer holds.
-  const onScreen = (value: string) =>
-    visibleRows.some((row) => row.value === value) ||
-    visibleOffRows.some((row) => row.value === value);
-  // Retired and not merely hidden, the same way the drop note retires above. A
-  // masked value comes back the moment the query is cleared, and the row it
-  // names lights up again under a pointer that has not moved since it was
-  // somewhere else entirely. Retiring it is also the only one of the two a
-  // reader can see: a set during render makes React drop the render and run
-  // it again, so a mask would never reach the screen anyway.
-  if (hoveredRowValue && !onScreen(hoveredRowValue)) setHoveredRowValue(null);
-  // Open details are an answer someone asked for, and asking outranks a
-  // pointer passing over the map: the hover still tints its row, but it stops
-  // scrolling the list, which used to carry the answer off the top of it.
-  // Worst on the shelters with nothing listed, whose rows sit at the very
-  // bottom under their own heading, so grazing one of those hollow circles
-  // threw the list all the way down to a row that cannot even be picked.
-  //
-  // Computed here rather than handed to the lists as a flag they each have to
-  // remember: both take this one value, and neither can forget a rule it is
-  // not carrying.
-  const hoveredMarkerRow = hoveredMarkerValues?.find(onScreen);
-  const hoverScrollTo = expandedShelter ? undefined : hoveredMarkerRow;
 
   // What typing just did to the list. Refiltering was silent: the count is
   // only readable off the rows themselves, and the "no matches" state is drawn
@@ -564,6 +537,34 @@ export function useLocationPickerController({
   // or not, is the answer to it.
   const visibleRows = placeOnly ? rows : nameMatches;
   const visibleOffRows = placeOnly ? offRows : offNameMatches;
+
+  // The hover the map is told about, and the row a marker hover brings into
+  // view. Both are gated on the row still being in the list: a query typed
+  // without moving the pointer unmounts the row under it, and no leave event
+  // fires, so an unfiltered value kept a marker and its region lit for a
+  // shelter the list no longer holds.
+  const onScreen = (value: string) =>
+    visibleRows.some((row) => row.value === value) ||
+    visibleOffRows.some((row) => row.value === value);
+  // Retired and not merely hidden, the same way the drop note retires above. A
+  // masked value comes back the moment the query is cleared, and the row it
+  // names lights up again under a pointer that has not moved since it was
+  // somewhere else entirely. Retiring it is also the only one of the two a
+  // reader can see: a set during render makes React drop the render and run
+  // it again, so a mask would never reach the screen anyway.
+  if (hoveredRowValue && !onScreen(hoveredRowValue)) setHoveredRowValue(null);
+  // Open details are an answer someone asked for, and asking outranks a
+  // pointer passing over the map: the hover still tints its row, but it stops
+  // scrolling the list, which used to carry the answer off the top of it.
+  // Worst on the shelters with nothing listed, whose rows sit at the very
+  // bottom under their own heading, so grazing one of those hollow circles
+  // threw the list all the way down to a row that cannot even be picked.
+  //
+  // Computed here rather than handed to the lists as a flag they each have to
+  // remember: both take this one value, and neither can forget a rule it is
+  // not carrying.
+  const hoveredMarkerRow = hoveredMarkerValues?.find(onScreen);
+  const hoverScrollTo = expandedShelter ? undefined : hoveredMarkerRow;
   const searchNews = searching
     ? matched === 0
       ? placeOnly

@@ -2141,6 +2141,78 @@ describe("animal dialog", () => {
     );
   });
 
+  it("scrolls the card before PageDown or PageUp can change the animal", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const card = slot(dialog, "animal-dialog-card");
+    Object.defineProperties(card, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 650 },
+    });
+
+    // Focus can be on a photo outside the scrollport or within the description.
+    fireEvent.keyDown(photoButton(dialog, "photo-spread", 1), { key: "PageDown" });
+    expect(card.scrollTop).toBe(200);
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
+    fireEvent.keyDown(card, { key: "PageDown" });
+    expect(card.scrollTop).toBe(400);
+    fireEvent.keyDown(card, { key: "PageDown" });
+    expect(card.scrollTop).toBe(450);
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
+
+    fireEvent.keyDown(card, { key: "PageDown" });
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(MURI, "sl")));
+    const nextCard = slot(animalDialog(), "animal-dialog-card");
+    expect(nextCard.scrollTop).toBe(0);
+
+    nextCard.scrollTop = 100;
+    fireEvent.keyDown(nextCard, { key: "PageUp" });
+    expect(nextCard.scrollTop).toBe(0);
+    expect(window.location.pathname).toBe(animalPath(MURI, "sl"));
+    fireEvent.keyDown(nextCard, { key: "PageUp" });
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(REX, "sl")));
+  });
+
+  it("resets the reused card and navigation offset when the next animal also overflows", async () => {
+    renderGrid();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+    const card = slot(dialog, "animal-dialog-card");
+    Object.defineProperties(card, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 650 },
+    });
+    card.scrollTop = 250;
+    fireEvent.scroll(card);
+    fireEvent.click(edgeNav(dialog, "Naslednja žival"));
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(MURI, "sl")));
+    expect(slot(animalDialog(), "animal-dialog-card")).toBe(card);
+    expect(card.scrollTop).toBe(0);
+    expect(slot(animalDialog(), "animal-dialog-frame").style.getPropertyValue("--nav-shift"))
+      .toBe("0px");
+  });
+
+  it("opens the card's selected photo in both the fan and the opening animation", async () => {
+    const geometry = vi.spyOn(Element.prototype, "getBoundingClientRect")
+      .mockReturnValue({ x: 0, y: 0, left: 0, top: 0, width: 200, height: 150,
+        right: 200, bottom: 150, toJSON: () => ({}) } as DOMRect);
+    try {
+      renderGrid();
+      const link = screen.getByRole("heading", { name: "Rex" }).closest("a")!;
+      fireEvent.keyDown(link, { key: "ArrowRight" });
+      fireEvent.click(link);
+      const dialog = await screen.findByRole("dialog");
+      expect(window.location.search).toBe("?foto=2");
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
+        .toBe("true");
+      const flyingPhoto = document.querySelector('[data-slot="photo-bloom"] img');
+      expect(flyingPhoto?.getAttribute("src")).toContain("rex-2");
+    } finally {
+      geometry.mockRestore();
+    }
+  });
+
   it("walks the list with the page keys and stops at the ends", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();

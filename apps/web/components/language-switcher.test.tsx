@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { LanguageSwitcher } from "./language-switcher";
 import { I18nProvider } from "@/components/i18n-provider";
+import { commitSearch } from "@/lib/location-search";
 
 // jsdom does not navigate, and following the link is not what is under test:
-// what the press leaves on the href is. Cancelled in the capture phase, which
+// the destination rendered before any press is. Cancelled in the capture phase, which
 // runs ahead of React's own handler, so the click still reaches the component.
 function swallowNavigation(event: Event) {
   event.preventDefault();
@@ -14,6 +15,7 @@ function swallowNavigation(event: Event) {
 
 function renderSwitcher() {
   document.addEventListener("click", swallowNavigation, true);
+  document.addEventListener("auxclick", swallowNavigation, true);
   return render(
     <I18nProvider locale="sl">
       <LanguageSwitcher />
@@ -24,6 +26,7 @@ function renderSwitcher() {
 afterEach(() => {
   cleanup();
   document.removeEventListener("click", swallowNavigation, true);
+  document.removeEventListener("auxclick", swallowNavigation, true);
   window.history.replaceState(null, "", "/");
 });
 
@@ -33,6 +36,7 @@ describe("the language switcher", () => {
     renderSwitcher();
 
     const english = screen.getByRole("link", { name: "English" });
+    expect(english.getAttribute("href")).toBe("/en?vrsta=pes");
     fireEvent.click(english);
 
     expect(english.getAttribute("href")).toBe("/en?vrsta=pes");
@@ -47,12 +51,7 @@ describe("the language switcher", () => {
     expect(english.getAttribute("href")).toBe("/en");
   });
 
-  it("states the query once when the same link is pressed twice", () => {
-    // A held modifier opens the destination in a new tab and leaves this page
-    // mounted, so the link the first press rewrote is still on screen for the
-    // second one. Appending to its own href, that press wrote
-    // /en?vrsta=pes?vrsta=macka: two query strings, and the filter the visitor
-    // was actually looking at lost to the one from the press before it.
+  it("updates the resting destination after filters change without another click", () => {
     window.history.replaceState(null, "", "/?vrsta=pes");
     renderSwitcher();
 
@@ -60,9 +59,25 @@ describe("the language switcher", () => {
     fireEvent.click(english, { ctrlKey: true });
     expect(english.getAttribute("href")).toBe("/en?vrsta=pes");
 
-    window.history.replaceState(null, "", "/?vrsta=macka");
-    fireEvent.click(english, { ctrlKey: true });
+    act(() => commitSearch("vrsta=macka", "replace"));
     expect(english.getAttribute("href")).toBe("/en?vrsta=macka");
+
+    fireEvent.contextMenu(english);
+    fireEvent(english, new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }));
+    expect(english.getAttribute("href")).toBe("/en?vrsta=macka");
+
+    act(() => commitSearch("", "replace"));
+    expect(english.getAttribute("href")).toBe("/en");
+  });
+
+  it("updates the destination on browser history navigation", () => {
+    renderSwitcher();
+    act(() => {
+      window.history.replaceState(null, "", "/?vrsta=pes&energija=miren");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.getByRole("link", { name: "English" }).getAttribute("href"))
+      .toBe("/en?vrsta=pes&energija=miren");
   });
 
   it("keeps a page's own translated path as the base", () => {

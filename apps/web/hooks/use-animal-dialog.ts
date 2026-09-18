@@ -120,12 +120,18 @@ export function useAnimalDialog({
   }, [animals, basePath, locale, openId]);
 
   const open = useCallback(
-    (id: string) => {
+    (id: string, photoIndex = 0) => {
       const animal = animals.find((candidate) => candidate.id === id);
       if (!animal) return;
       commitLocation(
         animalPath(animal, locale),
-        queryWithout(PHOTO_PARAM),
+        mergeOwnedParams(
+          window.location.search,
+          [PHOTO_PARAM],
+          Number.isInteger(photoIndex) && photoIndex > 0
+            ? `${PHOTO_PARAM}=${photoIndex + 1}`
+            : "",
+        ),
         "push",
         PUSHED_BY_DIALOG,
       );

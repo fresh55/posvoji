@@ -67,6 +67,25 @@ function at(location: string) {
 // it, or the next one opens on a picture nobody asked for, and a filter write
 // on the way is not this hook's to touch.
 describe("the photo a shared link named", () => {
+  it("opens the card's selected photo while preserving filter bytes", async () => {
+    const { result } = at("/?vrsta=pes&kraj=a+b&x=%41&foto=7");
+    await act(async () => result.current.open("rex", 1));
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
+    expect(window.location.search).toBe("?vrsta=pes&kraj=a+b&x=%41&foto=2");
+
+    await act(async () => result.current.swap("muri"));
+    expect(window.location.search).toBe("?vrsta=pes&kraj=a+b&x=%41");
+  });
+
+  it("leaves the list free of the card's photo when closing", async () => {
+    const { result } = at("/?vrsta=pes");
+    await act(async () => result.current.open("rex", 1));
+    expect(window.location.search).toBe("?vrsta=pes&foto=2");
+    await act(async () => result.current.close());
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(window.location.search).toBe("?vrsta=pes");
+  });
+
   it("is left behind when the dialog steps to the next animal", async () => {
     const { result } = at(`${animalPath(REX, "sl")}?foto=3&vrsta=pes`);
 

@@ -47,7 +47,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ClientAnimal } from "@/lib/animal";
-import { animalPath, photoFromSearch } from "@/lib/animal-path";
+import { animalPath, clampPhotoIndex, photoFromSearch } from "@/lib/animal-path";
 import { animalSubtitle } from "@/lib/labels";
 import {
   getSearchSnapshot,
@@ -67,7 +67,7 @@ export type DialogPhotoRect = {
 
 /**
  * Viewport coordinates of the card the dialog was opened from. The point is
- * what the zoom grows out of; the photo box is what the fan's first picture
+ * what the zoom grows out of; the photo box is what the selected picture
  * travels from, and is absent when there was no card to measure.
  */
 export type DialogOrigin = {
@@ -344,14 +344,11 @@ export function AnimalDialog({
     dragY.set(0);
   }, [animal, dragY]);
 
-  // A step to another animal keeps the card element, and with it whatever it
-  // was scrolled to. Nothing here sends it back to the top, so the shift is
-  // re-read from the card rather than assumed to be zero; a listing short
-  // enough for the browser to clamp the scroll is the case a scroll event
-  // alone cannot be relied on to report. Reading scrollTop settles the layout
-  // first, so the number is the clamped one.
+  // The reused card starts each animal at its heading, even when both
+  // descriptions overflow a short desktop viewport.
   useEffect(() => {
-    syncNavShift(cardRef.current?.scrollTop ?? 0);
+    if (cardRef.current) cardRef.current.scrollTop = 0;
+    syncNavShift(0);
   }, [animal, syncNavShift]);
 
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
@@ -366,16 +363,24 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
-  // The card shows an animal's first photo, and so does the fan on the way in,
-  // so that is the one the bloom carries across.
-  const firstPhoto = lastAnimal?.images[0];
+  // The URL carries the photo selected on a card or in a shared link. The
+  // opening animation and the fan must start with that same photograph.
+  const search = useSyncExternalStore(
+    subscribeToLocation,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
+  const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
+  const openingPhoto = lastAnimal?.images[
+    clampPhotoIndex(askedPhoto, lastAnimal.images.length)
+  ];
   // Whether a copy is about to set off at all, asked the way the copy itself
   // asks it: a card to leave from, a photograph to carry, and motion to carry
   // it with. Two spellings of that could disagree, and both ways round are a
   // defect, an empty front seat or the photograph drawn twice.
   const bloomOpening = bloomWillFly({
     from: origin?.photo,
-    photo: firstPhoto,
+    photo: openingPhoto,
     reduced: shouldReduceMotion,
   });
   // Radix announces the title on open and never again, so stepping to another
@@ -434,18 +439,6 @@ export function AnimalDialog({
     return () => shownPhoto.jump(0);
   }, [openedId, shownPhoto]);
 
-  // Which photo a shared link asked to open on. Read off the same store the
-  // dialog's own address comes from, whose server snapshot is "": nothing is
-  // open on the server, so the fan is first mounted once the location can be
-  // read, and it takes the number from there. Never read again after that, so
-  // stepping through the photos does not fight the parameter.
-  const search = useSyncExternalStore(
-    subscribeToLocation,
-    getSearchSnapshot,
-    getServerSearchSnapshot,
-  );
-  const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
-
   // Fired by the copy as its fade begins, and by the fail-safe below. Setting
   // it false when it already is one is a state update React drops, so the
   // second caller costs nothing.
@@ -492,9 +485,8 @@ export function AnimalDialog({
       ? siblingIds[place + 1]
       : undefined;
 
-  // Page keys walk animals. The arrows belong to the photos, and taking them
-  // here would fight the fan. At either end of the list the key is the
-  // browser's again, so the card can still scroll on it.
+  // Page keys scroll the detail card first, including when focus is on the
+  // photo above it. Only a key at the card's end steps to another animal.
   //
   // Only the keys pressed inside the dialog's own box. React bubbles a
   // portal's events up the component tree rather than the DOM one, so every
@@ -506,6 +498,20 @@ export function AnimalDialog({
     if (lightboxOpen.current) return;
     if (event.key !== "PageUp" && event.key !== "PageDown") return;
     if (!event.currentTarget.contains(event.target as Node)) return;
+    const card = cardRef.current;
+    const direction = event.key === "PageUp" ? -1 : 1;
+    if (card) {
+      const end = Math.max(0, card.scrollHeight - card.clientHeight);
+      const remaining = direction < 0 ? card.scrollTop : end - card.scrollTop;
+      if (remaining > 1) {
+        event.preventDefault();
+        card.scrollTop = Math.max(
+          0,
+          Math.min(end, card.scrollTop + direction * card.clientHeight),
+        );
+        return;
+      }
+    }
     const target = event.key === "PageUp" ? previousId : nextId;
     if (!target) return;
     event.preventDefault();
@@ -609,7 +615,7 @@ export function AnimalDialog({
             copy aimed at viewport coordinates cannot sit inside a transform. */}
         <PhotoBloom
           from={origin?.photo}
-          photo={firstPhoto}
+          photo={openingPhoto}
           onFlightEnd={endBloom}
         />
         <DialogPrimitive.Content

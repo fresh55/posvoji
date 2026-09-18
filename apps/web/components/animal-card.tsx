@@ -142,7 +142,7 @@ export function AnimalCard({
   species?: SpeciesFilter;
   /** Set on the first row, so the largest image on screen is not lazy. */
   eager?: boolean;
-  onOpen: (id: string, origin?: DialogOrigin) => void;
+  onOpen: (id: string, origin?: DialogOrigin, photoIndex?: number) => void;
   /** Draws the shelter line, which links to that shelter's own page. Opt-in,
    *  and it is what decides whether the line is drawn at all: a shelter's own
    *  page already names itself in its heading, so a line under every card
@@ -219,6 +219,7 @@ export function AnimalCard({
               : undefined,
           }
         : undefined,
+      photoIndex,
     );
   }
 

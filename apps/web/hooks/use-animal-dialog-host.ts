@@ -44,9 +44,9 @@ export function useAnimalDialogHost<T extends AnimalFields>({
   }, [close, openId, selected]);
 
   const handleOpen = useCallback(
-    (id: string, at?: DialogOrigin) => {
+    (id: string, at?: DialogOrigin, photoIndex?: number) => {
       setZoomFrom(at ? { id, at } : undefined);
-      open(id);
+      open(id, photoIndex);
     },
     [open],
   );

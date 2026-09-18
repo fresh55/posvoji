@@ -30,3 +30,32 @@ it("waits until all modal scroll locks are gone before returning to changed resu
   expect(scroll).toHaveBeenCalledTimes(1);
   vi.unstubAllGlobals();
 });
+
+it("finishes a nearby result scroll before Motion can capture an intermediate position", () => {
+  document.body.innerHTML = '<section aria-labelledby="rezultati"></section>';
+  let scrollY = 600;
+  vi.spyOn(window, "scrollY", "get").mockImplementation(() => scrollY);
+  vi.spyOn(document.querySelector("section")!, "getBoundingClientRect")
+    .mockImplementation(() => ({ top: 231 - scrollY }) as DOMRect);
+  vi.spyOn(window, "scrollTo").mockImplementation((options: number | ScrollToOptions = {}) => {
+    if (typeof options === "object" && options.behavior !== "smooth") {
+      scrollY = options.top ?? scrollY;
+    }
+  });
+
+  scrollToResults();
+  // Motion's measurement restores the position captured after the filter write.
+  const capturedPosition = window.scrollY;
+  window.scrollTo({ top: capturedPosition });
+  expect(scrollY).toBe(231);
+});
+
+it("does not move a visitor already above the result heading", () => {
+  document.body.innerHTML = '<section aria-labelledby="rezultati"></section>';
+  vi.spyOn(window, "scrollY", "get").mockReturnValue(0);
+  vi.spyOn(document.querySelector("section")!, "getBoundingClientRect")
+    .mockReturnValue({ top: 231 } as DOMRect);
+  const scroll = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  scrollToResults();
+  expect(scroll).not.toHaveBeenCalled();
+});

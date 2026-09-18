@@ -118,9 +118,8 @@ export function findAnimalBySlug<T extends AnimalFields>(
 // `zival`, and the same word in both languages: an address is one address
 // whichever language the page it names is read in.
 //
-// Written by the share sheet and nowhere else. Stepping through the photos
-// does not rewrite the address, so the parameter says where a visitor was
-// when they handed the link on rather than where they are now.
+// Written when sharing a photo or opening it from a card. Stepping through
+// the dialog's photos does not rewrite the address.
 export const PHOTO_PARAM = "foto";
 
 /**

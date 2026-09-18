@@ -21,11 +21,10 @@ import { homePath, shelterPath } from "@/lib/shelter-path";
 import { animalSubtitle } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-/** The alias opens this animal inside the finder, so the label must say so.
- *  The count still introduces the wider list to someone following a shared link. */
+/** The wider list, reached without reopening the animal being left. */
 const pageText = {
   sl: {
-    openInFinder: (count: number) => `Odpri v iskalniku živali (${count})`,
+    openInFinder: (count: number) => `Poglej vse živali (${count})`,
     /** The A4 sheet, for a notice board or a vet's waiting room. Drawn like
      *  the link above it and placed beside it, because it is the same kind of
      *  quiet way on: something a visitor may want after reading the page, not
@@ -33,7 +32,7 @@ const pageText = {
     printPoster: "Natisni plakat",
   },
   en: {
-    openInFinder: (count: number) => `Open in animal finder (${count})`,
+    openInFinder: (count: number) => `View all animals (${count})`,
     printPoster: "Print poster",
   },
 } satisfies Record<Locale, Record<string, string | ((count: number) => string)>>;
@@ -192,11 +191,6 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         </AnimalPagePhotoProvider>
       </div>
 
-      {/* ?zival= is how a page outside the list asks the list to open
-          an animal. The index swaps it for this page's own address as
-          soon as it has read it, so the two agree on where the animal
-          lives, and old links written before that address existed keep
-          working. */}
       {/* A link, not an outline button. The page has one call to
           action, on the shelter block above, and a second bordered
           control under it asked the visitor to choose between leaving
@@ -208,7 +202,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
           hold both. */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <a
-            href={`${indexHref}?zival=${encodeURIComponent(animal.id)}`}
+            href={indexHref}
             className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
           >
             {text.openInFinder(dataset.animals.length)}

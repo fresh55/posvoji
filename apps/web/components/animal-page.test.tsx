@@ -265,6 +265,14 @@ describe("the animal page's breadcrumb", () => {
 });
 
 describe("the animal page's way to a printed sheet", () => {
+  it("returns an English reader to the English collection without selecting an animal", () => {
+    render(
+      <AnimalPage locale="en" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+    expect(screen.getByRole("link", { name: /View all animals/ }).getAttribute("href"))
+      .toBe("/en");
+  });
+
   it("links to the animal's own poster, drawn like the link beside it", () => {
     render(
       <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
@@ -278,8 +286,8 @@ describe("the animal page's way to a printed sheet", () => {
     // The same quiet grammar as the finder link, down to the focus ring
     // and the tap target: this is a second way on, not a second call to
     // action. The one call to action is on the shelter block above.
-    const finder = screen.getByRole("link", { name: /Odpri v iskalniku živali/ });
-    expect(finder.getAttribute("href")).toBe("/?zival=zonzani%3A1");
+    const finder = screen.getByRole("link", { name: /Poglej vse živali/ });
+    expect(finder.getAttribute("href")).toBe("/");
     expect(poster.className).toBe(finder.className);
   });
 });

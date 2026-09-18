@@ -386,12 +386,16 @@ describe("fan entrance", () => {
   // so it is drawn at full strength in its first frame: an entrance under it
   // would be a second photograph fading in behind the one already landing.
   // Read before anything can have run, which is what says it never started at
-  // nothing; the side prints below are at zero in the same breath.
-  it("draws the front print without an entrance under a morph", () => {
+  // nothing.
+  //
+  // And it is the only print in the document, because the other four are drawn
+  // at nothing for the length of the lead and mounting them is what the commit
+  // the visitor is waiting on was mostly spent on.
+  it("commits the front print alone under a morph", () => {
     const { stage } = underMorph(() => renderFan(gallery(3)));
 
     expect(frontPrint(stage()).style.opacity).toBe("1");
-    expect(print(stage(), 2).style.opacity).toBe("0");
+    expect(printOrder(stage())).toEqual([1]);
   });
 
   // And the other mount, which is every mount with nothing travelling: a step
@@ -441,56 +445,78 @@ describe("fan entrance", () => {
   it("cascades the side prints in after the morph", async () => {
     const { stage } = underMorph(() => renderFan(gallery(3)));
 
-    expect(print(stage(), 2).style.opacity).toBe("0");
-
+    // They arrive when the lead is up, at nothing, and are drawn in from
+    // there: the whole set is on stage and the fan reads as it always did.
+    await waitFor(() => expect(printOrder(stage())).toEqual([3, 1, 2]), {
+      timeout: 3000,
+    });
     await waitFor(() => expect(print(stage(), 2).style.opacity).toBe("1"), {
       timeout: 3000,
     });
+    expect(frontPrint(stage()).style.opacity).toBe("1");
   });
 
-  // The numbers behind the two mounts above. The lead is the photograph's trip
-  // and belongs to the mount that has one; without it the front print would
-  // snap in at full strength and the side prints would stand out a third of a
-  // second beside it on an empty stage, which is what every step between
-  // animals and every deep link used to do.
+  // The numbers behind the phases above. The lead is the photograph's trip, so
+  // it belongs to the fan that has one; a fan with nothing travelling starts
+  // settled, where nothing is held back from a commit that would have drawn
+  // it.
   describe("printEntrance", () => {
-    const mounting = { entered: false, reduced: false, fresh: false };
+    const base = { reduced: false, fresh: false };
 
-    it("holds the side prints back for the photograph and draws the front one", () => {
+    it("draws the front print at once and nothing else", () => {
       expect(
-        printEntrance({ ...mounting, morphing: true, active: true, offset: 0 }),
+        printEntrance({ ...base, mount: "front", active: true, offset: 0 }),
       ).toBe(false);
-      expect(
-        printEntrance({ ...mounting, morphing: true, active: false, offset: 1 }),
-      ).toBeCloseTo(ENTRANCE_LEAD + ENTRANCE_STAGGER, 5);
-      expect(
-        printEntrance({ ...mounting, morphing: true, active: false, offset: -2 }),
-      ).toBeCloseTo(ENTRANCE_LEAD + 2 * ENTRANCE_STAGGER, 5);
     });
 
-    it("fades the whole fan in where nothing is being carried", () => {
+    it("cascades the sides when the lead is up, by the stagger alone", () => {
       expect(
-        printEntrance({ ...mounting, morphing: false, active: true, offset: 0 }),
-      ).toBe("fade");
+        printEntrance({ ...base, mount: "sides", active: false, offset: 1 }),
+      ).toBeCloseTo(ENTRANCE_STAGGER, 5);
       expect(
-        printEntrance({ ...mounting, morphing: false, active: false, offset: 2 }),
-      ).toBe("fade");
+        printEntrance({ ...base, mount: "sides", active: false, offset: -2 }),
+      ).toBeCloseTo(2 * ENTRANCE_STAGGER, 5);
+      // The lead is the timer that mounted them, not a delay on top of it.
+      expect(
+        printEntrance({ ...base, mount: "sides", active: false, offset: 2 }),
+      ).toBeLessThan(ENTRANCE_LEAD);
+      // The one in front is already standing there.
+      expect(
+        printEntrance({ ...base, mount: "sides", active: true, offset: 0 }),
+      ).toBe(false);
+    });
+
+    it("fades a fan with nothing travelling in, all of it at once", () => {
+      const settled = { ...base, mount: "settled" as const, fresh: true };
+      expect(printEntrance({ ...settled, active: true, offset: 0 })).toBe(
+        "fade",
+      );
+      expect(printEntrance({ ...settled, active: false, offset: 2 })).toBe(
+        "fade",
+      );
     });
 
     it("draws a print that arrives mid-walk as a plain fade, and the rest not at all", () => {
-      const walking = { ...mounting, entered: true, morphing: false };
-      expect(printEntrance({ ...walking, fresh: true, active: false, offset: 2 })).toBe(
-        "fade",
-      );
-      expect(printEntrance({ ...walking, active: false, offset: 1 })).toBe(false);
+      expect(
+        printEntrance({
+          ...base,
+          mount: "settled",
+          fresh: true,
+          active: false,
+          offset: 2,
+        }),
+      ).toBe("fade");
+      expect(
+        printEntrance({ ...base, mount: "settled", active: false, offset: 1 }),
+      ).toBe(false);
     });
 
     it("asks nothing of a visitor who wants less movement", () => {
       expect(
         printEntrance({
-          ...mounting,
+          ...base,
           reduced: true,
-          morphing: true,
+          mount: "sides",
           active: false,
           offset: 2,
         }),

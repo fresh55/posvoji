@@ -101,6 +101,15 @@ const IDLE_FALLBACK_MS = 2000;
 // changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
 
+// Their delays, written once. As an object built in the render, each of the
+// twelve was a new prop on every render of this grid, which is a card that
+// cannot be skipped however little has changed about it: the card is memoised
+// (animal-card.tsx) and this is the one prop that would defeat it, on the
+// twelve cards at the top of the page.
+const STAGGER_STYLE = Array.from({ length: STAGGERED_CARDS }, (_, ordinal) => ({
+  animationDelay: `${ordinal * 30}ms`,
+}));
+
 // Two columns is the narrowest the grid ever draws (CARD_GRID), so it is what
 // an unmeasurable grid is charged for: a miss makes the step short rather than
 // drawing rows nobody asked for.
@@ -708,7 +717,7 @@ export function AnimalGrid({
                   )}
                   style={
                     ordinal < STAGGERED_CARDS
-                      ? { animationDelay: `${ordinal * 30}ms` }
+                      ? STAGGER_STYLE[ordinal]
                       : undefined
                   }
                   // The tab already named the species, so the card's one fact

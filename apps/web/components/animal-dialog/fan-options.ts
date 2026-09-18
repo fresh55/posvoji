@@ -44,44 +44,47 @@ export const MOUNT_FADE: Transition = { duration: 0.15, ease: "easeOut" };
 export const NO_FADE: Transition = { duration: 0 };
 
 /**
- * How a print's arrival is drawn.
+ * Which of the fan's prints are drawn, and how they arrive.
  *
- * The cascade belongs to the fan's own mount, which is once per animal: the
- * first render reads `entered` false, and every render after it is a photo
- * being picked. A print that steps into the window later arrives mid-walk,
- * where a cascade delay would have it appear after the fan had already stopped
- * moving, so it is a plain fade. It used to be drawn at full opacity in one
- * frame, which on a gallery past the fan's reach was a photograph switching on
- * at the leading tier as the step landed.
+ * "front" is the commit the visitor is waiting on where the browser is
+ * carrying the card's photograph in: the print that photograph lands in, and
+ * nothing else. It is not drawn in at all, because what arrives there is the
+ * photograph and a fade under it would be a second photo appearing behind the
+ * one already landing. The four seats behind it are not drawn for the length
+ * of the lead, so they are not mounted either; mounting them was most of a
+ * synchronous commit that a mid-range phone spent half a second on, and what
+ * it bought was four motion elements standing invisible behind a photograph.
  *
- * `morphing` is the whole of what the lead is for. Where the browser is
- * carrying the card's photograph into the front seat, the front print is not
- * drawn in at all, because what arrives there is that photograph and a fade
- * under it would be a second photo appearing behind the one already landing;
- * the rest wait for the landing and then cascade, so that for the length of
- * the morph the only thing moving on the stage is the picture the visitor
- * pressed.
+ * "sides" is the lead being up. They cascade in where they always did, which
+ * is why the delay here is the stagger alone: the lead has already been waited
+ * out by the timer that moved the fan into this phase.
  *
- * With nothing travelling both of those are wrong. The front print would snap
- * in at full strength and the side prints would stand out the lead beside it
- * on an empty stage: a third of a second of nothing, on every step to the next
- * animal (the fan is keyed by the animal, so each step is a fresh mount), every
- * deep link, every animal with no photograph, every browser without the API and
- * every visitor who asked for less movement. Then the fan simply fades in.
+ * "settled" is the fan working: every print is mounted and a print that steps
+ * into the window arrives mid-walk, where a cascade delay would have it appear
+ * after the fan had already stopped moving, so it is a plain fade. It used to
+ * be drawn at full opacity in one frame, which on a gallery past the fan's
+ * reach was a photograph switching on at the leading tier as the step landed.
+ *
+ * It is also where a fan with nothing travelling starts, and that is the whole
+ * of what the lead is gated on. A step to the next animal (the fan is keyed by
+ * the animal, so each step is a fresh mount), a deep link, an animal with no
+ * photograph, a browser without the API and a visitor who asked for less
+ * movement all mount a fan nothing is being carried into: there the front
+ * print would snap in at full strength and the rest would stand out a third of
+ * a second beside it on an empty stage. They fade in together instead, and
+ * nothing is held back from a commit that would have drawn it.
  */
+export type FanMount = "front" | "sides" | "settled";
+
 export function printEntrance({
-  morphing,
+  mount,
   reduced,
-  entered,
   active,
   offset,
   fresh,
 }: {
-  /** Whether the card's photograph is being carried in as this fan mounts. */
-  morphing: boolean;
+  mount: FanMount;
   reduced: boolean;
-  /** Whether the fan has been through its own mount already. */
-  entered: boolean;
   /** Whether this is the print in front. */
   active: boolean;
   /** Its seat, counted from the front one. */
@@ -90,7 +93,9 @@ export function printEntrance({
   fresh: boolean;
 }): number | "fade" | false {
   if (reduced) return false;
-  if (entered) return fresh ? "fade" : false;
-  if (!morphing) return "fade";
-  return active ? false : ENTRANCE_LEAD + Math.abs(offset) * ENTRANCE_STAGGER;
+  if (mount === "front") return false;
+  if (mount === "sides") {
+    return active ? false : Math.abs(offset) * ENTRANCE_STAGGER;
+  }
+  return fresh ? "fade" : false;
 }

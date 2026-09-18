@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useId,
   useRef,
   useState,
@@ -125,7 +126,22 @@ const PHOTO_FRAME =
   " group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
-export function AnimalCard({
+/**
+ * One animal in the grid.
+ *
+ * Memoised, because the click that opens the dialog re-renders the grid around
+ * it: the open animal is an address (use-animal-dialog.ts), so the whole page
+ * renders again inside the same synchronous commit the view transition is
+ * holding, and at sixty cards that was most of the freeze between the tap and
+ * the first frame on a mid-range phone. Not one of them changes.
+ *
+ * Every prop both grids hand it is already stable: the animal comes out of a
+ * memoised sort, the reference date and the open handler are held by the host
+ * above, and the rest are strings and flags. The entrance delay the home grid
+ * gives its first dozen cards is a style object, which is why that one is
+ * written once per ordinal rather than per render (animal-grid.tsx).
+ */
+export const AnimalCard = memo(function AnimalCard({
   animal,
   reference,
   species = "all",
@@ -646,4 +662,4 @@ export function AnimalCard({
       )}
     </article>
   );
-}
+});

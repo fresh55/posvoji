@@ -14,6 +14,7 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AnimalDialog,
+  cardArrivesLate,
   cardRevealTransition,
 } from "@/components/animal-dialog/animal-dialog";
 import {
@@ -2105,6 +2106,64 @@ describe("animal dialog", () => {
     expect(plain.duration).toBe(carried.duration);
     // And where less movement was asked for, the card is simply there.
     expect(cardRevealTransition(true, true)).toEqual({ duration: 0 });
+
+    // The wait is counted from the open and not from the render that starts
+    // the fade, because on a phone the rest of the card is drawn in a render
+    // of its own: a tenth of a second spent getting there is a tenth of a
+    // second less to wait, not a tenth more.
+    expect(cardRevealTransition(false, true, 0.1).delay).toBeCloseTo(
+      (carried.delay ?? 0) - 0.1,
+      5,
+    );
+    // And a wait already spent is over.
+    expect(cardRevealTransition(false, true, 5).delay).toBe(0);
+  });
+
+  // What the click has to commit, and what it does not. The open is one
+  // synchronous commit, because the browser takes its new snapshot the moment
+  // the update returns, and on a phone that commit was the whole freeze
+  // between the tap and the first frame. The two blocks that wait are the two
+  // the visitor cannot see waiting: the card is at nothing for the first two
+  // thirds of the morph.
+  //
+  // Asked of the rule rather than of the document, because a test cannot see
+  // the render that is being deferred: act() flushes every scheduled render
+  // before it returns, transitions included, so by the time anything can be
+  // read the late render has landed. What the document can say is that it
+  // lands, which every other test in this file already reads it for.
+  it("holds the card back only where waiting cannot be seen", () => {
+    expect(cardArrivesLate(true, true)).toBe(true);
+    // The desktop box is centred and grows as the card fills, which would move
+    // the photograph the morph is carrying.
+    expect(cardArrivesLate(true, false)).toBe(false);
+    // And nothing is held back from an open that draws the card at once: a
+    // deep link, a step to another animal, a browser without the API.
+    expect(cardArrivesLate(false, true)).toBe(false);
+    expect(cardArrivesLate(false, false)).toBe(false);
+  });
+
+  it("draws the whole card for an open that carries a photograph in", async () => {
+    const settled = Promise.resolve();
+    document.startViewTransition = ((update: () => void) => {
+      update();
+      return {
+        finished: settled,
+        ready: settled,
+        updateCallbackDone: settled,
+      };
+    }) as typeof document.startViewTransition;
+
+    renderGrid();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+
+    // The name is what the dialog is announced by, so it is in the commit the
+    // click made whatever else waits.
+    expect(within(dialog).getByText("Rex")).toBeTruthy();
+    await waitFor(() =>
+      expect(dialog.querySelector('[data-slot="shelter-block"]')).toBeTruthy(),
+    );
+    expect(within(dialog).getByText("Starost: 2 leti")).toBeTruthy();
   });
 
   it("drains the wash for an animal whose adoption is over", async () => {

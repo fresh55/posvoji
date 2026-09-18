@@ -6,14 +6,16 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { morphInProgress } from "@/lib/view-transition";
 import { AnimatePresence } from "motion/react";
-import { useState, type DragEvent, type ReactNode } from "react";
+import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 import { frontPrintOf } from "./fan-focus";
 import { printBox } from "./fan-geometry";
 import {
+  ENTRANCE_LEAD,
   MOUNT_FADE,
   NO_FADE,
   printEntrance,
   TILT_NUDGE,
+  type FanMount,
 } from "./fan-options";
 import { FanPhoto } from "./fan-photo";
 import { PHOTO_BADGE_CLASS } from "./fan-photo-styles";
@@ -80,7 +82,6 @@ export function Fan(props: FanProps) {
     printAt,
     spoken,
     factors,
-    entered,
     progress,
     selectPhoto,
     step,
@@ -95,13 +96,37 @@ export function Fan(props: FanProps) {
     stage,
   } = useFanControls(props);
 
-  // Whether the card's photograph is being carried into this fan's front seat,
-  // which is what the entrance below is written around (printEntrance in
-  // fan-options.ts). Asked once, at the mount: the mark is on <html> from
-  // before the transition starts (lib/view-transition.ts), and this fan is
-  // mounted by the render inside it, so the mount is when the answer is there
-  // to be had. It is gone again before the cascade has finished.
-  const [morphing] = useState(() => morphInProgress() === "open");
+  // Which of the prints this fan is drawing, and how they arrive: the three
+  // phases are printEntrance's, in fan-options.ts, and so is the reasoning.
+  //
+  // Where the card's photograph is being carried in, the fan starts at the one
+  // print it is landing in. Asked once, at the mount: the mark is on <html>
+  // from before the transition starts (lib/view-transition.ts), and this fan
+  // is mounted by the render inside it, so the mount is when the answer is
+  // there to be had. It is gone again before the cascade has finished.
+  const [mount, setMount] = useState<FanMount>(() =>
+    morphInProgress() === "open" ? "front" : "settled",
+  );
+  useEffect(() => {
+    if (mount !== "front") return;
+    const timer = window.setTimeout(
+      () => setMount("sides"),
+      ENTRANCE_LEAD * 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [mount]);
+  useEffect(() => {
+    if (mount !== "sides") return;
+    // A task on, the cascade is spent: the prints are mounted and their
+    // entrance has started, so a print arriving after this is one that stepped
+    // into the window mid-walk, which is a plain fade.
+    const timer = window.setTimeout(() => setMount("settled"), 0);
+    return () => window.clearTimeout(timer);
+  }, [mount]);
+  // The four seats behind the front print are drawn at nothing until the
+  // photograph has landed, so until then they are not in the document either.
+  const drawn =
+    mount === "front" ? prints.filter((slot) => slot.offset === 0) : prints;
   const fade = shouldReduceMotion ? NO_FADE : MOUNT_FADE;
 
   return (
@@ -215,7 +240,7 @@ export function Fan(props: FanProps) {
           re-rendered their four motion elements each, for a commit that
           changes two of them. */}
       <AnimatePresence presenceAffectsLayout={false}>
-        {prints.map((slot) => {
+        {drawn.map((slot) => {
           const { index, offset } = slot;
           const active = offset === 0;
           // Three answers are read out of the fan here rather than passed as
@@ -241,9 +266,8 @@ export function Fan(props: FanProps) {
                 shouldReduceMotion ? 0 : TILT_NUDGE[index % TILT_NUDGE.length]
               }
               entrance={printEntrance({
-                morphing,
+                mount,
                 reduced: Boolean(shouldReduceMotion),
-                entered: entered.current,
                 active,
                 offset,
                 fresh,

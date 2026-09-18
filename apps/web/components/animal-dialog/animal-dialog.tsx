@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -233,6 +234,36 @@ const DRAG_CLOSE_PX = 140;
 // they cannot answer differently on the line between them.
 const PHONE_SHELL = PHONE_SHELL_QUERY;
 
+/** Whether this is the phone's full-screen shell rather than the desktop box. */
+function onPhoneShell(): boolean {
+  return window.matchMedia(PHONE_SHELL).matches;
+}
+
+/** Whether this open draws the card's facts and shelter block in a render of
+ *  its own rather than in the commit the click is holding.
+ *
+ *  Under a morph, because that is the only open where the card is invisible
+ *  for long enough to fill it without anyone seeing: the first two thirds of
+ *  the morph are the photograph travelling with nothing under it. A deep link,
+ *  a step to another animal, an animal with no photograph, a browser without
+ *  the API and a visitor who asked for less movement all draw the card
+ *  straight away, and nothing may be held back from a commit that would have
+ *  drawn it.
+ *
+ *  And on the phone, because that is where holding it back costs no layout.
+ *  The shell is anchored at the top of the screen with the photographs above
+ *  the card, so what the card holds cannot move them. The desktop box is
+ *  centred and as tall as its content, so it can: measured on the built export
+ *  at 1280x800, a card drawn without those two blocks stands its front print
+ *  162 to 171px lower, and the morph is aimed at where that print was when the
+ *  update returned. It is also the layout where the freeze is smallest. */
+export function cardArrivesLate(
+  morphing: boolean,
+  phoneShell: boolean,
+): boolean {
+  return morphing && phoneShell;
+}
+
 // When the card under the photographs arrives: the last third of the morph,
 // as one fade for the whole of it.
 //
@@ -257,13 +288,23 @@ const CARD_FADE = { ...CARD_REVEAL, delay: 0 } as const;
 const CARD_STILL = { duration: 0 } as const;
 
 /** How the card under the photographs arrives, which is a question about this
- *  open and not about the dialog: see CARD_REVEAL and CARD_FADE. */
+ *  open and not about the dialog: see CARD_REVEAL and CARD_FADE.
+ *
+ *  `spent` is how much of that wait has already gone by, in seconds. The card
+ *  is held at nothing until what is in it has been drawn (see `settled`
+ *  below), and on a phone that is a render of its own, some tens of
+ *  milliseconds after the open. Counted from the render that starts the fade
+ *  rather than from the open, those milliseconds would be added to the wait
+ *  instead of spent inside it, and the card would arrive after the photograph
+ *  had already landed. */
 export function cardRevealTransition(
   reduced: boolean,
   morphing: boolean,
+  spent = 0,
 ): Transition {
   if (reduced) return CARD_STILL;
-  return morphing ? CARD_REVEAL : CARD_FADE;
+  if (!morphing) return CARD_FADE;
+  return { ...CARD_REVEAL, delay: Math.max(0, CARD_REVEAL.delay - spent) };
 }
 
 /** Whether the box the close morph would aim at is somewhere it can land.
@@ -420,16 +461,65 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
-  // Whether this open is carrying the card's photograph in. The content below
-  // is mounted by the render inside the transition's update, so the mark is on
-  // <html> for that render and gone long before the card has finished fading
-  // (lib/view-transition.ts): the answer is kept rather than asked again.
-  // Adjusted during render the way lastAnimal above is, so the content mounts
-  // with it rather than a commit later.
-  const [opened, setOpened] = useState({ open, morph: false });
+  // What this open is, held for as long as it lasts.
+  //
+  // `morph` is whether the card's photograph is being carried in. The content
+  // below is mounted by the render inside the transition's update, so the mark
+  // is on <html> for that render and gone long before the card has finished
+  // fading (lib/view-transition.ts): the answer is kept rather than asked
+  // again. Adjusted during render the way lastAnimal above is, so the content
+  // mounts with it rather than a commit later.
+  //
+  // `settled` is whether the card's facts and shelter block have been drawn.
+  // The open is one synchronous commit, because the browser takes the new
+  // snapshot the moment it returns, and on a mid-range phone that commit is
+  // the whole of the freeze between the tap and the first frame: measured at
+  // 4x throttling on the built export, a 587ms task with nothing drawn for
+  // 698ms. What it has to hold is the shell, the front print and the title
+  // row; the rest arrives in a render of its own that nobody can see, and the
+  // card waits for it rather than fading in over a box with a name in it and
+  // nothing else. Which opens that applies to is cardArrivesLate above.
+  const [opened, setOpened] = useState({
+    open,
+    morph: false,
+    settled: true,
+    spent: 0,
+  });
   if (opened.open !== open) {
-    setOpened({ open, morph: open && morphInProgress() === "open" });
+    const morph = open && morphInProgress() === "open";
+    setOpened({
+      open,
+      morph,
+      settled: !cardArrivesLate(morph, onPhoneShell()),
+      spent: 0,
+    });
   }
+  // When it opened, which is what the wait below is counted from. Written by
+  // an effect and read by one: the clock is not a thing a render may ask.
+  const openedAt = useRef(0);
+  useEffect(() => {
+    if (open) openedAt.current = performance.now();
+  }, [open]);
+  // In a transition, so React may interrupt it for anything the visitor does:
+  // it is drawing what is still invisible, and a press on the close button or
+  // a swipe of the fan matters more than finishing it.
+  useEffect(() => {
+    if (opened.settled) return;
+    startTransition(() =>
+      setOpened((current) =>
+        current.settled
+          ? current
+          : {
+              ...current,
+              settled: true,
+              // Read where React runs the updater, which is the deferred
+              // render itself and not the moment it was asked for: what the
+              // card's fade has to know is how long getting here took.
+              spent: (performance.now() - openedAt.current) / 1000,
+            },
+      ),
+    );
+  }, [opened.settled]);
   // Radix announces the title on open and never again, so stepping to another
   // animal changed every word in the dialog in silence. The name goes through a
   // live region instead. Adjusted during render the way lastAnimal above is.
@@ -495,6 +585,7 @@ export function AnimalDialog({
   const cardReveal = cardRevealTransition(
     Boolean(shouldReduceMotion),
     opened.morph,
+    opened.spent,
   );
 
   // Whether the phone gets the sticky bar at the bottom of the dialog. There
@@ -788,7 +879,10 @@ export function AnimalDialog({
                   data-slot="animal-dialog-card"
                   className={cn(CARD_CLASS, DESCRIPTION_GUTTER)}
                   initial={shouldReduceMotion ? false : { opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                  // Held at nothing until what it holds has been drawn, so the
+                  // card never fades in around a box with a name in it and
+                  // nothing else.
+                  animate={{ opacity: opened.settled ? 1 : 0 }}
                   transition={cardReveal}
                   // The whole handler is one clamp and one custom property
                   // written on the frame above, so a scroll neither renders
@@ -947,28 +1041,38 @@ export function AnimalDialog({
                     <DialogDescription>{subtitle}</DialogDescription>
                   </div>
 
-                  <div>
-                    {/* Keyed, so the health row's expanded state starts over
-                        with each animal. */}
-                    <AnimalFacts
-                      key={lastAnimal.id}
-                      animal={lastAnimal}
-                      reference={reference}
-                    />
-                  </div>
+                  {/* The two blocks the open does not commit inside the
+                      click on a phone; see `settled` above. Everything the
+                      first frames need is above them: the name Radix
+                      announces, the badge beside it and the row of controls. */}
+                  {opened.settled && (
+                    <>
+                      <div>
+                        {/* Keyed, so the health row's expanded state starts
+                            over with each animal. */}
+                        <AnimalFacts
+                          key={lastAnimal.id}
+                          animal={lastAnimal}
+                          reference={reference}
+                        />
+                      </div>
 
-                  {/* Identity above, action below: the shelter box anchors the
-                      bottom of the card with a little extra air over it. */}
-                  <div className="mt-2">
-                    <ShelterBlock
-                      animal={lastAnimal}
-                      logos={logos}
-                      reference={reference}
-                      // The sticky bar below repeats this box's button on the
-                      // phone, so the box keeps its own for sm and up only.
-                      ctaMirrored
-                    />
-                  </div>
+                      {/* Identity above, action below: the shelter box anchors
+                          the bottom of the card with a little extra air over
+                          it. */}
+                      <div className="mt-2">
+                        <ShelterBlock
+                          animal={lastAnimal}
+                          logos={logos}
+                          reference={reference}
+                          // The sticky bar below repeats this box's button on
+                          // the phone, so the box keeps its own for sm and up
+                          // only.
+                          ctaMirrored
+                        />
+                      </div>
+                    </>
+                  )}
                 </m.div>
 
                 {/* Last in the card, though they are drawn at its edges.

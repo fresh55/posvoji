@@ -351,13 +351,6 @@ export function useFanControls({
   } | null>(null);
   const spoken = withheld?.front === activeIndex ? withheld.say : activeIndex;
 
-  // The cascade belongs to the mount, which is once per animal: the first
-  // render reads false, and every render after it is a photo being picked.
-  const entered = useRef(false);
-  useEffect(() => {
-    entered.current = true;
-  }, []);
-
   const progress = useMotionValue(0);
   const snap = useRef<ReturnType<typeof animate> | null>(null);
   // A snap that outlives the fan would keep a frame loop alive. Dropped as
@@ -981,7 +974,6 @@ export function useFanControls({
     printAt,
     spoken,
     factors,
-    entered,
     progress,
     selectPhoto,
     step,

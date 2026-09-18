@@ -147,6 +147,7 @@ export const AnimalCard = memo(function AnimalCard({
   species = "all",
   eager = false,
   onOpen,
+  dialogReady = false,
   showShelter = false,
   order,
   className,
@@ -160,6 +161,12 @@ export const AnimalCard = memo(function AnimalCard({
   /** Set on the first row, so the largest image on screen is not lazy. */
   eager?: boolean;
   onOpen: (id: string, origin?: DialogOrigin) => void;
+  /** Whether the dialog this card opens is already on the page. The home grid
+   *  mounts it on idle, so a press that beats the idle callback, or Safari's
+   *  two-second fallback, would start a morph into a state that has no dialog
+   *  in it yet: the photograph would leave the card and land nowhere. Such a
+   *  press gets the plain open, which is what it got before any of this. */
+  dialogReady?: boolean;
   /** Draws the shelter line, which links to that shelter's own page. Opt-in,
    *  and it is what decides whether the line is drawn at all: a shelter's own
    *  page already names itself in its heading, so a line under every card
@@ -225,9 +232,10 @@ export const AnimalCard = memo(function AnimalCard({
     const photo = cardRef.current?.querySelector<HTMLElement>(
       '[data-slot="photo-frame"]',
     );
-    // An animal with no photograph has nothing to carry, and a browser without
-    // the API or a visitor who asked for less movement gets the plain open.
-    if (!photo || photoCount === 0 || !canMorphPhoto()) {
+    // An animal with no photograph has nothing to carry, a dialog that is not
+    // on the page yet has nowhere to carry it, and a browser without the API
+    // or a visitor who asked for less movement gets the plain open.
+    if (!photo || photoCount === 0 || !dialogReady || !canMorphPhoto()) {
       onOpen(animal.id, origin);
       return;
     }

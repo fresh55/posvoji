@@ -712,8 +712,10 @@ describe("AnimalCard photo morph", () => {
 
   function stubViewTransition(started: Started[]) {
     let settle = () => undefined as void;
-    const finished = new Promise<void>((resolve) => {
+    let skip = () => undefined as void;
+    const finished = new Promise<void>((resolve, reject) => {
       settle = () => resolve();
+      skip = () => reject(new Error("the browser skipped it"));
     });
     const named = () =>
       document
@@ -728,7 +730,7 @@ describe("AnimalCard photo morph", () => {
       started.push({ beforeUpdate, afterUpdate: named() });
       return { finished, ready: finished, updateCallbackDone: finished };
     }) as typeof document.startViewTransition;
-    return { finished, settle };
+    return { finished, settle, skip };
   }
 
   function reduceMotion(reduced: boolean) {
@@ -748,13 +750,16 @@ describe("AnimalCard photo morph", () => {
     Reflect.deleteProperty(document, "startViewTransition");
   });
 
-  function renderCard(opened: string[]) {
+  function renderCard(opened: string[], dialogReady = true) {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
           animal={animal({ images: photos(2) })}
           reference={NOW}
           onOpen={(id) => opened.push(id)}
+          // The grid's answer, and true here for every test but the one that
+          // asks what a press before the dialog arrives does.
+          dialogReady={dialogReady}
         />
       </I18nProvider>,
     );
@@ -764,7 +769,7 @@ describe("AnimalCard photo morph", () => {
   it("names the photo, opens inside the transition, and clears the name", async () => {
     reduceMotion(false);
     const started: Started[] = [];
-    const { settle } = stubViewTransition(started);
+    const { skip } = stubViewTransition(started);
     const opened: string[] = [];
     const link = renderCard(opened);
 
@@ -781,9 +786,11 @@ describe("AnimalCard photo morph", () => {
     // it now.
     expect(started[0].afterUpdate).toBe("");
 
-    // The belt to that brace: a transition the browser skips still has to
-    // leave the card clean for the next press.
-    settle();
+    // The belt to that brace: a transition the browser skips rejects rather
+    // than settling, and it still has to leave the card clean for the next
+    // press.
+    skip();
+    await Promise.resolve();
     await Promise.resolve();
     const frame = document.querySelector<HTMLElement>(
       '[data-slot="photo-frame"]',
@@ -803,6 +810,27 @@ describe("AnimalCard photo morph", () => {
 
     fireEvent.click(link);
 
+    expect(opened).toEqual(["rex"]);
+    const frame = document.querySelector<HTMLElement>(
+      '[data-slot="photo-frame"]',
+    )!;
+    expect(frame.style.getPropertyValue("view-transition-name")).toBe("");
+  });
+
+  // The home grid mounts the dialog on idle, so a press can beat it there: a
+  // morph started then would take the photograph out of the card and capture a
+  // new state with no dialog in it, which is the photograph leaving and nothing
+  // arriving. The grid says when there is somewhere to carry it to.
+  it("opens plainly before the dialog is on the page", () => {
+    reduceMotion(false);
+    const started: Started[] = [];
+    stubViewTransition(started);
+    const opened: string[] = [];
+    const link = renderCard(opened, false);
+
+    fireEvent.click(link);
+
+    expect(started).toEqual([]);
     expect(opened).toEqual(["rex"]);
     const frame = document.querySelector<HTMLElement>(
       '[data-slot="photo-frame"]',

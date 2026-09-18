@@ -12,11 +12,11 @@ import {
 } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import {
-  AnimalDialog,
   cardArrivesLate,
   cardRevealTransition,
-} from "@/components/animal-dialog/animal-dialog";
+} from "@/components/animal-dialog/dialog-reveal";
 import {
   DESKTOP_DEPTHS,
   PHONE_DEPTHS,
@@ -382,6 +382,31 @@ function cardLink(name: string) {
   const link = heading.closest("a");
   if (!link) throw new Error(`no card link for ${name}`);
   return link;
+}
+
+/** A transition that runs its update in place and never settles, which is
+ *  what the browser does for the 320ms the morph takes. */
+function stubViewTransition() {
+  const started: (() => void)[] = [];
+  const pending = new Promise<void>(() => undefined);
+  document.startViewTransition = ((update: () => void) => {
+    started.push(update);
+    update();
+    return { finished: pending, ready: pending, updateCallbackDone: pending };
+  }) as typeof document.startViewTransition;
+  return started;
+}
+
+/** Waits for the grid's idle mount of the dialog, and for the lazy chunk it
+ *  asks for. A press before that carries no photograph (animal-card.tsx), so a
+ *  test about the morph has to be the press a visitor makes rather than one
+ *  that beats the page to it. Idle is a task here; see the shim above. */
+async function dialogOnPage() {
+  for (let tick = 0; tick < 3; tick++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
 }
 
 function openCard(name: string) {
@@ -2143,19 +2168,12 @@ describe("animal dialog", () => {
   });
 
   it("draws the whole card for an open that carries a photograph in", async () => {
-    const settled = Promise.resolve();
-    document.startViewTransition = ((update: () => void) => {
-      update();
-      return {
-        finished: settled,
-        ready: settled,
-        updateCallbackDone: settled,
-      };
-    }) as typeof document.startViewTransition;
-
+    const started = stubViewTransition();
     renderGrid();
+    await dialogOnPage();
     openCard("Rex");
     const dialog = await screen.findByRole("dialog");
+    expect(started).toHaveLength(1);
 
     // The name is what the dialog is announced by, so it is in the commit the
     // click made whatever else waits.
@@ -2164,6 +2182,74 @@ describe("animal dialog", () => {
       expect(dialog.querySelector('[data-slot="shelter-block"]')).toBeTruthy(),
     );
     expect(within(dialog).getByText("Starost: 2 leti")).toBeTruthy();
+  });
+
+  // The desktop box is centred and as tall as its content, so a card filled a
+  // render late would move the photograph the morph is carrying: there the
+  // whole card is drawn in the commit the click makes. The integration test
+  // above runs on the phone, because this file's media query answers for it.
+  it("draws the desktop card whole inside the click", async () => {
+    const phone = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation((media: string) => ({
+        matches: media === FAN_LAYOUT,
+        media,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+    stubViewTransition();
+    renderGrid();
+    await dialogOnPage();
+    openCard("Rex");
+
+    // Read with no await in between, so what is being pinned is the commit the
+    // click itself made.
+    const dialog = animalDialog();
+    expect(dialog.querySelector('[data-slot="shelter-block"]')).toBeTruthy();
+    expect(within(dialog).getByText("Starost: 2 leti")).toBeTruthy();
+
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: phone,
+    });
+  });
+
+  // A plain close while the opening morph is still running: Escape a moment
+  // after the dialog opened, with the card behind it out of the viewport. The
+  // photograph is not going anywhere, so focus lands on a card nobody can see
+  // unless the page scrolls to it. Asked of the close's own decision, which is
+  // the only thing that knows: the mark on <html> still says a morph is
+  // running, and it is the wrong morph.
+  it("scrolls the card back into view when the close carries nothing", async () => {
+    // jsdom lays nothing out and has no scrollIntoView of its own, so the card
+    // measures zero and the close takes the plain path, which is the case.
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      stubViewTransition();
+      renderGrid();
+      await dialogOnPage();
+      openCard("Rex");
+      const dialog = await screen.findByRole("dialog");
+      expect(document.documentElement.getAttribute("data-photo-morph")).toBe(
+        "open",
+      );
+
+      await act(async () => {
+        fireEvent.click(slot(dialog, "dialog-close-card"));
+      });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      expect(scrollIntoView).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+      document.documentElement.removeAttribute("data-photo-morph");
+    }
   });
 
   it("drains the wash for an animal whose adoption is over", async () => {

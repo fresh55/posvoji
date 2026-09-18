@@ -168,6 +168,78 @@ describe("morphPhoto", () => {
     expect(morphInProgress()).toBeNull();
     expect(named(card)).toBe("");
   });
+
+  // The same overlap with the card that is clicked during a close, which is
+  // the one that leaked: the close puts the name on the card inside its own
+  // update and nothing but its cleanup ever takes it off, and that cleanup is
+  // what the guard above stops from running. The name stayed on that card for
+  // the life of the page, which makes every later morph a transition the
+  // browser skips and lifts the card out of the next navigation's snapshot.
+  it("takes the name off the box the morph it took over from had named", async () => {
+    const card = box();
+    const other = box();
+    const started = stubTransitions(() => named(card));
+
+    morphPhoto({ photo: card, at: "new", direction: "close", update: () => undefined });
+    expect(named(card)).toBe(PHOTO_TRANSITION_NAME);
+
+    // Another card, pressed while the photograph is still on its way back.
+    morphPhoto({
+      photo: other,
+      at: "old",
+      direction: "open",
+      update: () => undefined,
+    });
+
+    expect(named(card)).toBe("");
+    started[0].skip();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(named(card)).toBe("");
+    expect(morphInProgress()).toBe("open");
+  });
+
+  // Nothing subscribes to a transition that was never started, so nothing
+  // would ever take the mark off: every fan mounted after it would hold its
+  // side prints for a morph that is not running, and the dialog would never
+  // zoom again.
+  it("leaves nothing behind when the transition cannot be started", () => {
+    const photo = box();
+    document.startViewTransition = (() => {
+      throw new Error("no transition here");
+    }) as typeof document.startViewTransition;
+
+    expect(() =>
+      morphPhoto({
+        photo,
+        at: "old",
+        direction: "open",
+        update: () => undefined,
+      }),
+    ).toThrow("no transition here");
+
+    expect(morphInProgress()).toBeNull();
+    expect(named(photo)).toBe("");
+  });
+
+  it("leaves nothing behind when the update throws", () => {
+    const photo = box();
+    stubTransitions(() => named(photo));
+
+    expect(() =>
+      morphPhoto({
+        photo,
+        at: "old",
+        direction: "open",
+        update: () => {
+          throw new Error("the render threw");
+        },
+      }),
+    ).toThrow("the render threw");
+
+    expect(morphInProgress()).toBeNull();
+    expect(named(photo)).toBe("");
+  });
 });
 
 describe("morphInProgress", () => {

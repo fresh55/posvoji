@@ -20,9 +20,12 @@ import {
   m,
   useMotionValue,
   useReducedMotion,
-  type Transition,
 } from "motion/react";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import {
+  cardArrivesLate,
+  cardRevealTransition,
+} from "@/components/animal-dialog/dialog-reveal";
 import { DialogShareButton } from "@/components/animal-dialog/dialog-share-button";
 import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
@@ -59,7 +62,6 @@ import {
   canMorphPhoto,
   morphInProgress,
   morphPhoto,
-  PHOTO_MORPH_MS,
 } from "@/lib/view-transition";
 
 /**
@@ -239,74 +241,6 @@ function onPhoneShell(): boolean {
   return window.matchMedia(PHONE_SHELL).matches;
 }
 
-/** Whether this open draws the card's facts and shelter block in a render of
- *  its own rather than in the commit the click is holding.
- *
- *  Under a morph, because that is the only open where the card is invisible
- *  for long enough to fill it without anyone seeing: the first two thirds of
- *  the morph are the photograph travelling with nothing under it. A deep link,
- *  a step to another animal, an animal with no photograph, a browser without
- *  the API and a visitor who asked for less movement all draw the card
- *  straight away, and nothing may be held back from a commit that would have
- *  drawn it.
- *
- *  And on the phone, because that is where holding it back costs no layout.
- *  The shell is anchored at the top of the screen with the photographs above
- *  the card, so what the card holds cannot move them. The desktop box is
- *  centred and as tall as its content, so it can: measured on the built export
- *  at 1280x800, a card drawn without those two blocks stands its front print
- *  162 to 171px lower, and the morph is aimed at where that print was when the
- *  update returned. It is also the layout where the freeze is smallest. */
-export function cardArrivesLate(
-  morphing: boolean,
-  phoneShell: boolean,
-): boolean {
-  return morphing && phoneShell;
-}
-
-// When the card under the photographs arrives: the last third of the morph,
-// as one fade for the whole of it.
-//
-// It used to be five children 40ms apart on a spring, which at the same moment
-// as a flying copy, a zooming box and a cascading fan read as a ripple through
-// the text rather than as a reveal. One subject at a time: for the length of
-// the morph only the photograph moves, and the words follow it in.
-const CARD_REVEAL = {
-  duration: 0.2,
-  delay: (PHOTO_MORPH_MS / 1000) * 0.66,
-  ease: "easeOut",
-} as const;
-
-// The same fade with nothing to wait for. The delay above is the photograph's
-// trip, so it belongs to the opens that have one: a deep link, an animal with
-// no photograph and a browser without the API all open with nothing
-// travelling, and there the delay is a fifth of a second of empty card under
-// the photos.
-const CARD_FADE = { ...CARD_REVEAL, delay: 0 } as const;
-
-// And where less movement was asked for, the card is simply there.
-const CARD_STILL = { duration: 0 } as const;
-
-/** How the card under the photographs arrives, which is a question about this
- *  open and not about the dialog: see CARD_REVEAL and CARD_FADE.
- *
- *  `spent` is how much of that wait has already gone by, in seconds. The card
- *  is held at nothing until what is in it has been drawn (see `settled`
- *  below), and on a phone that is a render of its own, some tens of
- *  milliseconds after the open. Counted from the render that starts the fade
- *  rather than from the open, those milliseconds would be added to the wait
- *  instead of spent inside it, and the card would arrive after the photograph
- *  had already landed. */
-export function cardRevealTransition(
-  reduced: boolean,
-  morphing: boolean,
-  spent = 0,
-): Transition {
-  if (reduced) return CARD_STILL;
-  if (!morphing) return CARD_FADE;
-  return { ...CARD_REVEAL, delay: Math.max(0, CARD_REVEAL.delay - spent) };
-}
-
 /** Whether the box the close morph would aim at is somewhere it can land.
  *
  *  Grid cards carry card-paint, which is `content-visibility: auto`, so a card
@@ -364,6 +298,7 @@ export function AnimalDialog({
   origin,
   siblingIds,
   reference,
+  onReady,
   onNavigate,
   onClose,
 }: {
@@ -376,11 +311,22 @@ export function AnimalDialog({
   siblingIds: string[];
   /** The dataset's build time, shared with the cards behind the dialog. */
   reference: Date;
+  /** Told once, as soon as this dialog is on the page and could take an open.
+   *  The grids hold the answer for their cards: a morph started before the
+   *  lazy chunk has resolved captures a new state with no front print in it,
+   *  so the card's photograph plays a lone exit while the page it left stands
+   *  still, and the dialog then arrives with the mark holding its own zoom
+   *  down. The plain open is the right one until this has been said. */
+  onReady?: () => void;
   onNavigate: (id: string) => void;
   onClose: () => void;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
+  // Said as soon as this component is on the page, whatever it is drawing:
+  // with no animal it draws nothing, and being there is the whole of what the
+  // cards have to know.
+  useEffect(() => onReady?.(), [onReady]);
   const open = animal !== undefined;
   const contentRef = useRef<HTMLDivElement>(null);
   // This dialog's own overlay. Held rather than looked up by its slot: the
@@ -457,6 +403,12 @@ export function AnimalDialog({
   const trackLightbox = useCallback((open: boolean) => {
     lightboxOpen.current = open;
   }, []);
+  // Whether this close is carrying the photograph back into a card, which is
+  // closeDialog's own decision and is asked again by the focus restore below.
+  // Not the mark on <html>: that says only that some morph is running, and an
+  // Escape a moment after opening is a plain close with the open's mark still
+  // up, which is exactly the close whose card may be off screen.
+  const closingWithMorph = useRef(false);
   // The closing animation still needs something to draw, and by then the
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
@@ -470,6 +422,10 @@ export function AnimalDialog({
   // again. Adjusted during render the way lastAnimal above is, so the content
   // mounts with it rather than a commit later.
   //
+  // `id` is the animal the answer belongs to. A step to the next animal inside
+  // the 320ms remounts the fan under it, and that fan has nothing travelling
+  // into it however open the morph still is.
+  //
   // `settled` is whether the card's facts and shelter block have been drawn.
   // The open is one synchronous commit, because the browser takes the new
   // snapshot the moment it returns, and on a mid-range phone that commit is
@@ -481,6 +437,7 @@ export function AnimalDialog({
   // nothing else. Which opens that applies to is cardArrivesLate above.
   const [opened, setOpened] = useState({
     open,
+    id: animal?.id,
     morph: false,
     settled: true,
     spent: 0,
@@ -489,6 +446,7 @@ export function AnimalDialog({
     const morph = open && morphInProgress() === "open";
     setOpened({
       open,
+      id: animal?.id,
       morph,
       settled: !cardArrivesLate(morph, onPhoneShell()),
       spent: 0,
@@ -651,12 +609,14 @@ export function AnimalDialog({
   // plain unmount.
   function closeDialog() {
     const photo = cardPhotoBehind(href);
+    closingWithMorph.current = false;
     if (
       photo &&
       withinViewport(photo) &&
       canMorphPhoto() &&
       frontPrintOf(contentRef.current)
     ) {
+      closingWithMorph.current = true;
       wrapNextPop((notify) =>
         morphPhoto({
           photo,
@@ -793,9 +753,10 @@ export function AnimalDialog({
             // the card, and the card may be a long way up the grid: focus
             // nobody can see is focus lost. The browser's own scroll is what
             // this puts back, and only where it costs no snapshot.
-            if (!morphInProgress()) {
+            if (!closingWithMorph.current) {
               target.scrollIntoView?.({ block: "nearest" });
             }
+            closingWithMorph.current = false;
           }}
         >
           {/* Mounted empty for as long as the dialog is open, so the name of
@@ -862,6 +823,7 @@ export function AnimalDialog({
                 <PhotoStage
                   animal={lastAnimal}
                   initialIndex={askedPhoto}
+                  morphing={opened.morph && opened.id === lastAnimal.id}
                   onIndexChange={reportPhoto}
                   onLightboxOpenChange={trackLightbox}
                 />

@@ -389,6 +389,12 @@ export function AnimalGrid({
   // clears would have nothing left to close with.
   const [dialogMounted, setDialogMounted] = useState(false);
   if (selected && !dialogMounted) setDialogMounted(true);
+  // And whether it has arrived, which is not the same question: the component
+  // is lazy, so the render that first asks for it draws nothing while the
+  // chunk is still in flight. The cards carry the photograph into the dialog
+  // themselves, and only once there is one to carry it into.
+  const [dialogReady, setDialogReady] = useState(false);
+  const handleDialogReady = useCallback(() => setDialogReady(true), []);
 
   const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
     useIncrementalGrid(sorted, selected !== undefined);
@@ -727,6 +733,7 @@ export function AnimalGrid({
                   // was queueing behind the bundle like the other 499.
                   eager={ordinal < 4}
                   onOpen={handleOpen}
+                  dialogReady={dialogReady}
                   // A shelter's own page renders these same cards and leaves
                   // this off, because there the line would be the page linking
                   // to itself under every animal on it.
@@ -857,6 +864,7 @@ export function AnimalGrid({
             origin={origin}
             siblingIds={shownIds}
             reference={reference}
+            onReady={handleDialogReady}
             onNavigate={handleNavigate}
             onClose={close}
           />

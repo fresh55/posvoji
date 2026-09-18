@@ -73,6 +73,17 @@ Object.defineProperty(window, "matchMedia", {
 // call goes to the virtual console as "Not implemented" and prints a stack over
 // the run. The dialog renders in this file now, which is what reaches that code
 // path, so the no-op belongs here rather than the noise.
+// The grid waits for an idle moment to mount the dialog, and jsdom ships no
+// requestIdleCallback: without this the mount waits out the two-second
+// fallback instead, which is longer than a test should sit still for.
+window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
+  window.setTimeout(
+    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
+    0,
+  )) as typeof window.requestIdleCallback;
+window.cancelIdleCallback ??= ((handle: number) =>
+  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
+
 Object.defineProperty(window, "scrollTo", {
   configurable: true,
   value: () => {},
@@ -117,6 +128,70 @@ const ANIMALS = [
 function query() {
   return window.location.search;
 }
+
+// The press that opens the dialog re-renders the whole grid: which animal is
+// open is an address, so every card renders again inside the one synchronous
+// commit the view transition is holding. At sixty cards that was most of the
+// freeze between the tap and the first frame on a phone, for a change that
+// touches none of them, so the card is memoised and the grid hands it nothing
+// that is rebuilt per render.
+//
+// Counted through the animal itself, the way the fan's own render tests count:
+// a getter on what only the card reads says whether that card rendered again.
+// The entrance delay is the prop that would defeat all of this, because it is
+// an object; it is written once per ordinal (STAGGER_STYLE) and both cards
+// here carry one.
+describe("animal grid renders", () => {
+  it("leaves the other cards alone when one of them opens", async () => {
+    const [first, second] = animalsForClient([
+      animal("dog-muri", "dog", "muri"),
+      animal("dog-tretje", "dog", "tretje"),
+    ]);
+    let reads = 0;
+    const counted = {
+      ...second,
+      get images() {
+        reads++;
+        return second.images;
+      },
+    };
+    render(
+      <I18nProvider locale="sl">
+        <AnimalGrid
+          animals={[first, counted]}
+          logos={{}}
+          referenceDate="2026-01-01"
+        />
+      </I18nProvider>,
+    );
+
+    // The grid mounts the dialog on idle and tells the cards when it is there,
+    // which is a prop of theirs and so a render of theirs: settled first, so
+    // what is counted below is the press and nothing else.
+    await import("@/components/animal-dialog/animal-dialog");
+    for (let tick = 0; tick < 3; tick++) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    }
+    const drawn = reads;
+    expect(drawn).toBeGreaterThan(0);
+
+    const link = screen
+      .getAllByRole("link")
+      .find((element) => element.textContent?.includes("dog-muri"));
+    await act(async () => {
+      fireEvent.click(link!);
+    });
+    await screen.findByRole("dialog");
+
+    // The grid rendered again, with the dialog in it and the address changed,
+    // and the card that has nothing to do with the animal being opened did
+    // not.
+    expect(window.location.pathname).not.toBe("/");
+    expect(reads).toBe(drawn);
+  });
+});
 
 describe("animal grid empty state", () => {
   it("names the shelter-species conflict and offers to drop only the shelter", () => {

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { morphInProgress } from "@/lib/view-transition";
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 import { frontPrintOf } from "./fan-focus";
@@ -67,6 +66,7 @@ export function Fan(props: FanProps) {
     images,
     name,
     activeIndex,
+    morphing = false,
     tempo,
     stageRef,
     onOpenLightbox,
@@ -99,14 +99,24 @@ export function Fan(props: FanProps) {
   // Which of the prints this fan is drawing, and how they arrive: the three
   // phases are printEntrance's, in fan-options.ts, and so is the reasoning.
   //
-  // Where the card's photograph is being carried in, the fan starts at the one
-  // print it is landing in. Asked once, at the mount: the mark is on <html>
-  // from before the transition starts (lib/view-transition.ts), and this fan
-  // is mounted by the render inside it, so the mount is when the answer is
-  // there to be had. It is gone again before the cascade has finished.
-  const [mount, setMount] = useState<FanMount>(() =>
-    morphInProgress() === "open" ? "front" : "settled",
-  );
+  // Where the card's photograph is being carried into this fan's front seat,
+  // it starts at that one print. Read once, at the mount, and from the prop
+  // rather than from the mark on <html>: the mark says a morph is running
+  // somewhere, and a step to the next animal within the 320ms remounts this
+  // fan while it is still up, so a fan nothing was being carried into held its
+  // side prints for a photograph that was never coming. The dialog knows which
+  // animal the morph belongs to and answers for it.
+  const [mount, setMount] = useState<FanMount>(morphing ? "front" : "settled");
+  // And it lasts only as long as the fan is standing where it was mounted.
+  // Focus is on the front print from the first frame, so the arrows, the
+  // chevrons and a swipe are all live during the lead: a walk re-seats the
+  // window, the print in front is a different photo, and drawn alone it would
+  // be a different element under a different key. React would unmount the one
+  // wearing the morph's name while AnimatePresence held it on stage to fade,
+  // which is two elements wearing it and a morph the browser abandons. Every
+  // print is drawn from that moment, so the walk re-seats them instead.
+  const [mountedOn] = useState(activeIndex);
+  if (mount === "front" && activeIndex !== mountedOn) setMount("sides");
   useEffect(() => {
     if (mount !== "front") return;
     const timer = window.setTimeout(
@@ -178,7 +188,13 @@ export function Fan(props: FanProps) {
         event.preventDefault();
         walkToIndex(event.key === "Home" ? 0 : count - 1, "keyboard");
       }}
-      onPointerDown={startSwipe}
+      onPointerDown={(event) => {
+        // A drag is a walk that has not committed yet. The prints behind the
+        // front one have to be there to be pulled across, and a gesture is the
+        // visitor overtaking the entrance rather than watching it.
+        if (mount === "front") setMount("sides");
+        startSwipe(event);
+      }}
       onPointerMove={moveSwipe}
       onPointerUp={endSwipe}
       onPointerCancel={cancelSwipe}

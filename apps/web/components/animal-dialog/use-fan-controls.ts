@@ -63,6 +63,10 @@ export type FanProps = {
   /** Whose photos these are, for the name the stage announces itself by. */
   name: string;
   activeIndex: number;
+  /** Whether the browser is carrying the card's photograph into this fan's
+   *  front seat as it mounts. What it decides is which prints the mounting
+   *  commit holds and how they arrive; see printEntrance in fan-options.ts. */
+  morphing?: boolean;
   tempo: FanTempo;
   /** The stage element, held above this component so the lightbox can ask the
    *  fan where to hand focus back to. */

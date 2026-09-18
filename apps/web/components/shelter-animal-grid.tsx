@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { GridLoadMore } from "@/components/grid-load-more";
@@ -67,6 +67,13 @@ export function ShelterAnimalGrid({
   const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
     useIncrementalGrid(sorted, selected !== undefined);
 
+  // The dialog is imported straight into this page rather than lazily, so it
+  // is here from the first render; the cards are still told rather than
+  // assuming it, because what they may not do is carry a photograph into a
+  // dialog that is not there (animal-card.tsx).
+  const [dialogReady, setDialogReady] = useState(false);
+  const handleDialogReady = useCallback(() => setDialogReady(true), []);
+
   return (
     <>
       {/* One tab stop per card and nothing after this grid but the footer,
@@ -105,6 +112,7 @@ export function ShelterAnimalGrid({
             // header is past, and on a desktop it is on the first screen.
             eager={ordinal < 4}
             onOpen={handleOpen}
+            dialogReady={dialogReady}
           />
         ))}
         <GridLoadMore
@@ -131,6 +139,7 @@ export function ShelterAnimalGrid({
         origin={origin}
         siblingIds={shownIds}
         reference={reference}
+        onReady={handleDialogReady}
         onNavigate={handleNavigate}
         onClose={close}
       />

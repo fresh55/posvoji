@@ -42,6 +42,18 @@ const MORPH_MARK = "data-photo-morph";
  *  rather than a counter, so there is nothing to reset. */
 let current: object | null = null;
 
+/** The element the last morph named, so a morph that takes over from another
+ *  can take that one's name off.
+ *
+ *  The guard above stops a superseded morph's cleanup from running, and on the
+ *  close that cleanup is the only thing that ever removes the name: it is put
+ *  on the card inside the update. A card clicked during the 320ms close
+ *  therefore left the name on the card the photograph had just gone back into,
+ *  for the life of the page. Two elements then wear it on the next open, which
+ *  is a transition the browser skips, and every one after it, and a real
+ *  navigation lifts that card out of the page's own snapshot. */
+let named: HTMLElement | null = null;
+
 /** Whether the photo can be carried at all: the API, and a visitor who has not
  *  asked for less movement. Everything else falls back to the dialog's own fade
  *  and zoom out of the card's centre. */
@@ -105,6 +117,13 @@ export function morphPhoto({
     }
   };
 
+  // Whatever the morph this one is taking over from left named, if that was
+  // some other element: its own cleanup will not run any more.
+  if (named && named !== photo) {
+    named.style.removeProperty("view-transition-name");
+  }
+  named = photo;
+
   root.setAttribute(MORPH_MARK, direction);
   if (at === "old") wear(true);
 
@@ -113,20 +132,31 @@ export function morphPhoto({
     // Only for the morph that is still the current one; see `current` above.
     if (current !== token) return;
     current = null;
+    named = null;
     wear(false);
     root.removeAttribute(MORPH_MARK);
   };
 
-  const transition = document.startViewTransition(() => {
-    // Named before the update and not after it. The old state was captured
-    // before this callback ran, so the card's own name has no job inside it,
-    // while the flush below is where the dialog's front print mounts wearing
-    // the same name and where Radix runs its autofocus and its scroll lock.
-    wear(at === "new");
-    flushSync(update);
-  });
-  // Both ways round. A transition the browser skips, or one a second gesture
-  // takes over, rejects this promise, and the name and the mark have to come
-  // off either way or the next morph is skipped too.
-  transition.finished.then(done, done);
+  try {
+    const transition = document.startViewTransition(() => {
+      // Named before the update and not after it. The old state was captured
+      // before this callback ran, so the card's own name has no job inside it,
+      // while the flush below is where the dialog's front print mounts wearing
+      // the same name and where Radix runs its autofocus and its scroll lock.
+      wear(at === "new");
+      flushSync(update);
+    });
+    // Both ways round. A transition the browser skips, or one a second gesture
+    // takes over, rejects this promise, and the name and the mark have to come
+    // off either way or the next morph is skipped too.
+    transition.finished.then(done, done);
+  } catch (error) {
+    // Nothing subscribed to `finished`, so nothing would ever take the mark
+    // off: every fan mounted after this would hold its side prints for a morph
+    // that is not running, the dialog would never zoom, and the print would
+    // keep its name across navigations. The update is the caller's own render,
+    // so it is their throw to see.
+    done();
+    throw error;
+  }
 }

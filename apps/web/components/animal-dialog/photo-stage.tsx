@@ -22,12 +22,16 @@ import type { ClientAnimal } from "@/lib/animal";
 export function PhotoStage({
   animal,
   initialIndex,
+  morphing,
   onIndexChange,
   onLightboxOpenChange,
 }: {
   animal: ClientAnimal;
   /** Which photo to open on. A shared link can name one. */
   initialIndex?: number;
+  /** Whether the card's photograph is being carried into this animal's fan.
+   *  The dialog's own answer; see PhotoSpread. */
+  morphing?: boolean;
   /** Reports the photo on show, so the share link can name it. */
   onIndexChange?: (index: number) => void;
   onLightboxOpenChange?: (open: boolean) => void;
@@ -57,6 +61,7 @@ export function PhotoStage({
         key={animal.id}
         animal={animal}
         initialIndex={initialIndex}
+        morphing={morphing}
         onIndexChange={onIndexChange}
         onLightboxOpenChange={onLightboxOpenChange}
         washProgress={washProgress}

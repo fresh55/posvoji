@@ -10,7 +10,6 @@ import {
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  ENTRANCE_LEAD,
   ENTRANCE_STAGGER,
   printEntrance,
 } from "@/components/animal-dialog/fan-options";
@@ -106,6 +105,12 @@ function renderFan(
     layout?: "phone" | "desktop";
     locale?: "sl" | "en";
     initialIndex?: number;
+    /** Mounts the fan the way the dialog mounts one the browser is carrying
+     *  the card's photograph into. The dialog answers this for the fan rather
+     *  than the fan reading the document, because the mark on <html> says only
+     *  that some morph is running: a step to the next animal inside one
+     *  remounts the fan with nothing travelling into it. */
+    morphing?: boolean;
     washProgress?: MotionValue<number>;
   } = {},
 ) {
@@ -121,6 +126,7 @@ function renderFan(
         <PhotoSpread
           animal={client}
           initialIndex={options.initialIndex}
+          morphing={options.morphing}
           washProgress={options.washProgress}
         />
       </LazyMotion>
@@ -142,23 +148,6 @@ function renderFan(
   return { view, stage };
 }
 
-/** Mounts a fan the way the site mounts one when the browser is carrying the
- *  card's photograph into it.
- *
- *  The mark on <html> is what says a morph is running (lib/view-transition.ts)
- *  and the fan reads it once, at its mount. There is no view transition in
- *  jsdom to write it, and it is taken off again straight away because on the
- *  site it is gone long before the cascade has finished: what the fan keeps is
- *  the answer it read, not the attribute. */
-function underMorph<T>(mount: () => T): T {
-  document.documentElement.setAttribute("data-photo-morph", "open");
-  try {
-    return mount();
-  } finally {
-    document.documentElement.removeAttribute("data-photo-morph");
-  }
-}
-
 /** The prints on stage, in the order the document holds them, by the photo
  *  each one is showing. Copies on their way out are left out: a print that
  *  wraps to the other side of the fan is drawn twice while the two cross over,
@@ -177,6 +166,20 @@ function print(stage: HTMLElement, n: number) {
   return within(stage).getByRole("button", {
     name: new RegExp(`fotografijo ${n}\\b`),
   });
+}
+
+/** The photos of every print wearing the morph's name. Only one element may
+ *  wear it at a time, whatever else is on the stage: two make the browser skip
+ *  the transition. */
+function namedPrints(stage: HTMLElement) {
+  return [...stage.querySelectorAll("button[data-print]")]
+    .filter((print) => print.className.includes("view-transition-name"))
+    .map((print) => {
+      const found = /fotografijo (\d+)/.exec(
+        print.getAttribute("aria-label") ?? "",
+      );
+      return Number(found?.[1]);
+    });
 }
 
 function frontPrint(stage: HTMLElement) {
@@ -392,7 +395,7 @@ describe("fan entrance", () => {
   // at nothing for the length of the lead and mounting them is what the commit
   // the visitor is waiting on was mostly spent on.
   it("commits the front print alone under a morph", () => {
-    const { stage } = underMorph(() => renderFan(gallery(3)));
+    const { stage } = renderFan(gallery(3), { morphing: true });
 
     expect(frontPrint(stage()).style.opacity).toBe("1");
     expect(printOrder(stage())).toEqual([1]);
@@ -443,7 +446,7 @@ describe("fan entrance", () => {
   // that for the length of the morph nothing on the stage moves but the
   // picture the visitor pressed. They still arrive.
   it("cascades the side prints in after the morph", async () => {
-    const { stage } = underMorph(() => renderFan(gallery(3)));
+    const { stage } = renderFan(gallery(3), { morphing: true });
 
     // They arrive when the lead is up, at nothing, and are drawn in from
     // there: the whole set is on stage and the fan reads as it always did.
@@ -454,6 +457,32 @@ describe("fan entrance", () => {
       timeout: 3000,
     });
     expect(frontPrint(stage()).style.opacity).toBe("1");
+  });
+
+  // Focus is on the front print from the first frame, so every way of walking
+  // the fan is live while the photograph is still arriving. Drawn alone, the
+  // print in front is the only element under a key, and a walk gave the new
+  // front print a key of its own: React unmounted the one wearing the morph's
+  // name, AnimatePresence kept it on stage to fade, and two elements wore the
+  // name at once, which is a morph the browser abandons. The old print also
+  // kept its aria-current, its tab stop and its presses for the length of that
+  // fade, because the fan's own commit does not count it as leaving.
+  it("draws the whole fan as soon as it is walked during the lead", async () => {
+    const { stage } = renderFan(gallery(3), { morphing: true });
+    expect(printOrder(stage())).toEqual([1]);
+
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+
+    // The whole window, and one print wearing the name: the one in front.
+    expect(printOrder(stage())).toEqual([1, 2, 3]);
+    expect(namedPrints(stage())).toEqual([2]);
+    // And nothing outside the window says it is the photo being looked at.
+    expect(
+      within(stage())
+        .getAllByRole("button", { name: /fotografijo \d/ })
+        .filter((print) => print.getAttribute("aria-current") === "true"),
+    ).toHaveLength(1);
   });
 
   // The numbers behind the phases above. The lead is the photograph's trip, so
@@ -479,7 +508,7 @@ describe("fan entrance", () => {
       // The lead is the timer that mounted them, not a delay on top of it.
       expect(
         printEntrance({ ...base, mount: "sides", active: false, offset: 2 }),
-      ).toBeLessThan(ENTRANCE_LEAD);
+      ).toBeCloseTo(2 * ENTRANCE_STAGGER, 5);
       // The one in front is already standing there.
       expect(
         printEntrance({ ...base, mount: "sides", active: true, offset: 0 }),

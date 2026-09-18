@@ -41,6 +41,18 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+// The grid mounts the dialog on idle and jsdom ships no requestIdleCallback,
+// so without this the mount waits out the two-second fallback. A task is the
+// nearest thing this environment has to idle, the same shim the dialog's own
+// suite installs.
+window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
+  window.setTimeout(
+    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
+    0,
+  )) as typeof window.requestIdleCallback;
+window.cancelIdleCallback ??= ((handle: number) =>
+  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
+
 class NoopResizeObserver {
   observe() {}
   unobserve() {}
@@ -195,7 +207,23 @@ function named(element: HTMLElement) {
   return element.style.getPropertyValue("view-transition-name");
 }
 
+/** Waits for the grid's idle mount of the dialog and for the lazy chunk it
+ *  asks for. A press that beats it there carries no photograph at all
+ *  (animal-card.tsx), which is a different test from any of these. */
+async function dialogOnPage() {
+  // The grid asks for the dialog as a lazy chunk. Loading the module here is
+  // what that import resolves to, so the idle mount below is a task and not
+  // however long the loader takes.
+  await import("@/components/animal-dialog/animal-dialog");
+  for (let tick = 0; tick < 3; tick++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
+
 async function openCard(name: string) {
+  await dialogOnPage();
   const link = card(name)?.querySelector('a[data-slot="card-link"]');
   if (!link) throw new Error(`no card link for ${name}`);
   await act(async () => {
@@ -315,6 +343,7 @@ describe("closing the animal dialog", () => {
     window.history.replaceState(null, "", "/?vrsta=pes&zival=mica");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
+    await dialogOnPage();
     expect(card("Mica")).toBeNull();
 
     await act(async () => {

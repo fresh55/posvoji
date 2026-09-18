@@ -10,6 +10,10 @@
 /** The same cutoff as globals.css's `short` variant. */
 export const SHORT_VIEWPORT_QUERY = "(max-height: 32rem)";
 
+/** Whether the visitor has asked for less movement, which is the question every
+ *  motion gate on the site starts with. */
+export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
 /**
  * The viewport that gets the phone shell: a narrow window, or a short one. A
  * phone held sideways is 844x390, wide enough for the desktop box and far too

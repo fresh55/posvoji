@@ -123,7 +123,6 @@
              dock do.
        z-50  a layer that takes the page away: dialog, drawer, popover, the
              overlays under them.
-       z-[55] the one thing that stands over an open dialog: the photo bloom.
 
      A new fixed or sticky thing belongs on a rung that already exists. If it
      needs one between two of these, the pair it lands between is the argument
@@ -1124,6 +1123,87 @@
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
+  }
+
+  /* The same API in its same-document form, for the card that opens the animal
+     dialog. One name on two boxes, the card's photo frame and the fan's front
+     print, and the browser morphs the first into the second on the compositor:
+     what a hand-measured copy flying between them could not do is the aspect,
+     because the card's photograph is square and the print is 4:3.
+
+     Scoped to the mark lib/view-transition.ts writes for the length of the
+     morph, and so is the name itself (fan-photo.tsx). Scoping these rules
+     alone was not enough: a name is what lifts an element out of a snapshot,
+     so a cross-document navigation out of an open dialog took the front print
+     out of the old page's snapshot whatever these rules said, and cross-faded
+     it on its own over a page it had left. Unmarked, nothing in the dialog is
+     named, and the whole of it goes with the rest of the page. */
+  :root[data-photo-morph]::view-transition-group(animal-photo) {
+    animation-duration: 320ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Both snapshots fill the box the morph is carrying, and crop rather than
+     stretch. The browser's own sizing keeps each snapshot's aspect, so the
+     square one and the 4:3 one stand at different heights in the same box and
+     the picture visibly changes shape as it travels.
+
+     And they cross over in the first tenth of a second rather than over the
+     whole trip. They are the same photograph but not the same picture: the
+     card's is cut square and carries the gallery's chevrons and its dots,
+     because the pointer was on it when it was pressed, and the print's is cut
+     4:3 and carries none of that. Crossfaded across the whole 320ms, the
+     card's controls were drawn at half strength over a photograph that has
+     none. Short, it reads as one photo the whole way. */
+  :root[data-photo-morph]::view-transition-old(animal-photo),
+  :root[data-photo-morph]::view-transition-new(animal-photo) {
+    height: 100%;
+    object-fit: cover;
+    animation-duration: 120ms;
+  }
+
+  /* No crossfade of the page under it on the way in. The overlay's own 100ms
+     fade and the dialog's are already in the document and run live inside the
+     new snapshot; a root crossfade on top of them is the same dim drawn
+     twice. */
+  :root[data-photo-morph="open"]::view-transition-old(root),
+  :root[data-photo-morph="open"]::view-transition-new(root) {
+    animation: none;
+  }
+
+  /* The way out keeps it, because there it is the only fade there is: the
+     dialog is taken out of the document inside the update, since Radix will
+     not release a closing one otherwise, so this crossfade is what carries the
+     overlay and the box away. The browser's own is 250ms; matched to the
+     photograph's trip, the dim lifts as the picture lands. */
+  :root[data-photo-morph="close"]::view-transition-old(root),
+  :root[data-photo-morph="close"]::view-transition-new(root) {
+    animation-duration: 320ms;
+  }
+
+  /* One subject. Under a morph the dialog's box does not also zoom up out of
+     the card, and on a phone it does not slide up either: the photograph is
+     what travels and the rest fades.
+
+     Written as the two variables tw-animate-css builds its enter keyframes
+     out of, rather than as a fight with data-open:zoom-in-95 over which rule
+     wins. The same trap the comment on DialogOverlay in ui/dialog.tsx
+     describes: those utilities compile to the same specificity in the same
+     layer and are emitted last. Setting what they feed leaves the fade alone
+     and takes out the scale and the lift.
+
+     Keyed on a class of the dialog's own (CONTENT_CLASS in animal-dialog.tsx)
+     rather than on its data-slot. Blink builds the descendant invalidation set
+     for the mark from the compound after the combinator, and [data-slot]
+     matches hundreds of elements on a grid page, several per card: written
+     that way, each set and removal of the mark scheduled a style recalc for
+     all of them, four times per open and close, the first inside the
+     transition's own capture. Nothing narrower was available, every class in
+     CONTENT_CLASS being a shared utility and [role="dialog"] catching the
+     lightbox too. */
+  :root[data-photo-morph] .morph-still {
+    --tw-enter-scale: 1;
+    --tw-enter-translate-y: 0;
   }
 }
 

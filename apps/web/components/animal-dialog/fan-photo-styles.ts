@@ -61,3 +61,24 @@ export const PHOTO_WELL_CLASS =
 // which for the five the fan draws is a fair price.
 export const PHOTO_SEAT_CLASS =
   "origin-bottom rounded-ui outline-none will-change-transform contain-layout focus-visible:ring-2 focus-visible:ring-ring";
+
+// What the browser morphs the card's photograph into on the way in, and back
+// out of on the way out. Worn by the seat and not by the picture inside it:
+// what a morph names is lifted out of the page for the length of it, so naming
+// the well alone left the print's paper standing empty at the far end, a white
+// card waiting for its photograph. Named here, the print arrives as one thing.
+//
+// The name and the mark are the ones in lib/photo-morph.ts, written out because
+// Tailwind reads the class and not the constant. Only the print in front wears
+// it, and only one element may wear it at a time: the card takes its own off
+// inside the same update that mounts this one, or the browser skips the morph.
+//
+// And only while a morph is running, which is what the mark on <html> says. A
+// named element is lifted out of the page snapshot for the length of any
+// transition, this document's own navigations included (@view-transition in
+// globals.css): worn permanently, this print was pulled out of the old snapshot
+// of a real anchor navigation out of an open dialog and cross-faded on its own,
+// over a page it had left. The mark is written before both the open and the
+// close capture, so both still find the name here.
+export const PHOTO_MORPH_CLASS =
+  "[[data-photo-morph]_&]:[view-transition-name:animal-photo]";

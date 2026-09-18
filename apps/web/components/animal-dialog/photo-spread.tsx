@@ -42,16 +42,21 @@ const WARM_FALLBACK_MS = 2000;
 export const PhotoSpread = memo(function PhotoSpread({
   animal,
   initialIndex = 0,
+  morphing = false,
   onIndexChange,
   washProgress,
   onWashWindow,
-  holdFrontPrint,
   onLightboxOpenChange,
 }: {
   animal: ClientAnimal;
   /** Which photo to open on. A shared link can name one; anything out of
    *  range falls back to the first, the same as no link at all. */
   initialIndex?: number;
+  /** Whether the browser is carrying the card's photograph into this fan as it
+   *  mounts, which is the dialog's answer and not this component's: the mark
+   *  on <html> says only that some morph is running, and a step to the next
+   *  animal inside one remounts this whole subtree. */
+  morphing?: boolean;
   /** Reports the photo on show, so the share link can name it. */
   onIndexChange?: (index: number) => void;
   /**
@@ -66,13 +71,6 @@ export const PhotoSpread = memo(function PhotoSpread({
    * one's.
    */
   onWashWindow?: (layers: WashLayer[]) => void;
-  /**
-   * True while the card's photo is still travelling into the front seat
-   * (the bloom in photo-bloom.tsx). The front print keeps its own entrance
-   * back until this turns false, so the same photograph is not drawn twice.
-   * Wired by the dialog; the fan answers it.
-   */
-  holdFrontPrint?: boolean;
   onLightboxOpenChange?: (open: boolean) => void;
 }) {
   const { messages } = useI18n();
@@ -255,9 +253,9 @@ export const PhotoSpread = memo(function PhotoSpread({
         images={images}
         name={animal.name ?? messages.unnamed}
         activeIndex={activeIndex}
+        morphing={morphing}
         tempo={tempo}
         washProgress={washProgress}
-        holdFrontPrint={holdFrontPrint}
         stageRef={stageRef}
         keptFocusRef={keptFocusRef}
         onSelect={setActiveIndex}

@@ -5,14 +5,16 @@ import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence } from "motion/react";
-import { type DragEvent, type ReactNode } from "react";
+import { useEffect, useState, type DragEvent, type ReactNode } from "react";
 import { frontPrintOf } from "./fan-focus";
 import { printBox } from "./fan-geometry";
 import {
-  ENTRANCE_STAGGER,
+  ENTRANCE_LEAD,
   MOUNT_FADE,
   NO_FADE,
+  printEntrance,
   TILT_NUDGE,
+  type FanMount,
 } from "./fan-options";
 import { FanPhoto } from "./fan-photo";
 import { PHOTO_BADGE_CLASS } from "./fan-photo-styles";
@@ -64,6 +66,7 @@ export function Fan(props: FanProps) {
     images,
     name,
     activeIndex,
+    morphing = false,
     tempo,
     stageRef,
     onOpenLightbox,
@@ -78,10 +81,7 @@ export function Fan(props: FanProps) {
     prints,
     printAt,
     spoken,
-    frontWasHeld,
-    holdFront,
     factors,
-    entered,
     progress,
     selectPhoto,
     step,
@@ -96,26 +96,46 @@ export function Fan(props: FanProps) {
     stage,
   } = useFanControls(props);
 
-  // How a print's arrival is drawn.
+  // Which of the prints this fan is drawing, and how they arrive: the three
+  // phases are printEntrance's, in fan-options.ts, and so is the reasoning.
   //
-  // The cascade belongs to the fan's own mount, which is once per animal: the
-  // first render reads false and every render after it is a photo being
-  // picked. A print that steps into the window later arrives mid-walk, where a
-  // cascade delay would have it appear after the fan had already stopped
-  // moving, so it is a plain fade instead. It used to be drawn at full opacity
-  // in one frame, which on a gallery past the fan's reach was a photograph
-  // switching on at the leading tier as the step landed.
-  //
-  // A front print held back for the bloom keeps its entrance offered after the
-  // cascade is over, because the fade it still owes is that entrance running
-  // late.
-  function entranceOf(active: boolean, offset: number, fresh: boolean) {
-    if (shouldReduceMotion) return false;
-    if (!entered.current || (active && frontWasHeld)) {
-      return Math.abs(offset) * ENTRANCE_STAGGER;
-    }
-    return fresh ? "fade" : false;
-  }
+  // Where the card's photograph is being carried into this fan's front seat,
+  // it starts at that one print. Read once, at the mount, and from the prop
+  // rather than from the mark on <html>: the mark says a morph is running
+  // somewhere, and a step to the next animal within the 320ms remounts this
+  // fan while it is still up, so a fan nothing was being carried into held its
+  // side prints for a photograph that was never coming. The dialog knows which
+  // animal the morph belongs to and answers for it.
+  const [mount, setMount] = useState<FanMount>(morphing ? "front" : "settled");
+  // And it lasts only as long as the fan is standing where it was mounted.
+  // Focus is on the front print from the first frame, so the arrows, the
+  // chevrons and a swipe are all live during the lead: a walk re-seats the
+  // window, the print in front is a different photo, and drawn alone it would
+  // be a different element under a different key. React would unmount the one
+  // wearing the morph's name while AnimatePresence held it on stage to fade,
+  // which is two elements wearing it and a morph the browser abandons. Every
+  // print is drawn from that moment, so the walk re-seats them instead.
+  const [mountedOn] = useState(activeIndex);
+  if (mount === "front" && activeIndex !== mountedOn) setMount("sides");
+  // The walk through the phases, which is one timer whichever leg it is on.
+  // "front" waits out the photograph's trip. "sides" waits a task, after which
+  // the cascade is spent: the prints are mounted and their entrance has
+  // started, so a print arriving later is one that stepped into the window
+  // mid-walk, which is a plain fade. "settled" is where it stops, and where a
+  // fan with nothing travelling starts.
+  useEffect(() => {
+    if (mount === "settled") return;
+    const [next, delay] =
+      mount === "front"
+        ? (["sides", ENTRANCE_LEAD * 1000] as const)
+        : (["settled", 0] as const);
+    const timer = window.setTimeout(() => setMount(next), delay);
+    return () => window.clearTimeout(timer);
+  }, [mount]);
+  // The four seats behind the front print are drawn at nothing until the
+  // photograph has landed, so until then they are not in the document either.
+  const drawn =
+    mount === "front" ? prints.filter((slot) => slot.offset === 0) : prints;
   const fade = shouldReduceMotion ? NO_FADE : MOUNT_FADE;
 
   return (
@@ -167,7 +187,13 @@ export function Fan(props: FanProps) {
         event.preventDefault();
         walkToIndex(event.key === "Home" ? 0 : count - 1, "keyboard");
       }}
-      onPointerDown={startSwipe}
+      onPointerDown={(event) => {
+        // A drag is a walk that has not committed yet. The prints behind the
+        // front one have to be there to be pulled across, and a gesture is the
+        // visitor overtaking the entrance rather than watching it.
+        if (mount === "front") setMount("sides");
+        startSwipe(event);
+      }}
       onPointerMove={moveSwipe}
       onPointerUp={endSwipe}
       onPointerCancel={cancelSwipe}
@@ -229,7 +255,7 @@ export function Fan(props: FanProps) {
           re-rendered their four motion elements each, for a commit that
           changes two of them. */}
       <AnimatePresence presenceAffectsLayout={false}>
-        {prints.map((slot) => {
+        {drawn.map((slot) => {
           const { index, offset } = slot;
           const active = offset === 0;
           // Three answers are read out of the fan here rather than passed as
@@ -254,13 +280,14 @@ export function Fan(props: FanProps) {
               nudge={
                 shouldReduceMotion ? 0 : TILT_NUDGE[index % TILT_NUDGE.length]
               }
-              entrance={entranceOf(active, offset, fresh)}
+              entrance={printEntrance({
+                mount,
+                reduced: Boolean(shouldReduceMotion),
+                active,
+                offset,
+                fresh,
+              })}
               fade={fade}
-              // Only the front print, and only its mount: a print that comes
-              // to the front later has nothing to wait for, because what the
-              // dialog is holding it against is the copy of the card's
-              // photograph flying into that seat as the dialog opens.
-              hold={active && holdFront}
               tempo={tempo}
               label={
                 active

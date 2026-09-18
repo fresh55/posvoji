@@ -57,10 +57,14 @@ import { useIncrementalGrid } from "./use-incremental-grid";
 
 // The dialog and everything under it: the photo fan, the lightbox, the share
 // sheet, the shelter block and the dialog's own motion, which is the largest
-// single thing this page used to load before anyone had asked for an animal.
-// The grid, the filters and the cards need none of it to draw. Measured with
+// single thing this page would otherwise put in the document. The grid, the
+// filters and the cards need none of it to draw. Measured with
 // scripts/measure-chunks.mjs: the home document asked for 397.3 KB of script
-// gzipped with it imported and 373.7 KB with it fetched.
+// gzipped with it imported and 373.7 KB with it fetched, so the chunk that
+// moved off the document is the 23.6 KB between them. Those numbers still
+// describe the document after the idle mount below, because the chunk is
+// still a fetch that happens after load; what changed is when it is asked
+// for, not who asks the document for it.
 //
 // ssr: false because there is nothing here to prerender. Which animal is open
 // is an address, the export has no server to read one with
@@ -70,8 +74,11 @@ import { useIncrementalGrid } from "./use-incremental-grid";
 //
 // loading is null for the same reason the empty state has no skeletons: until
 // an animal is chosen there is no surface here, and a placeholder over the
-// grid would be a promise of a dialog nobody opened. What a visitor who did
-// open one waits on is warmAnimalDialog below, not a fallback.
+// grid would be a promise of a dialog nobody opened. The fallback is also the
+// thing the idle mount below keeps out of the click: React holds a commit
+// that only resolves a Suspense fallback until 300ms after that fallback was
+// shown (FALLBACK_THROTTLE_MS in react-dom-client), so a dialog first mounted
+// inside the click waits out the rest of those 300ms before it draws.
 const AnimalDialog = dynamic(
   () =>
     import("@/components/animal-dialog/animal-dialog").then(
@@ -80,30 +87,29 @@ const AnimalDialog = dynamic(
   { ssr: false, loading: () => null },
 );
 
-// Fetches the dialog's chunk on the first sign that a card is about to be
-// opened, rather than on the click itself. It is the same import() the lazy
-// component resolves from, so the module cache is already filled by the time
-// the press lands and the dialog opens without a gap. Called on any pointer or
-// focus reaching the grid, which is as early as intent can be read, and
-// repeated calls cost nothing: a module is fetched once.
-function warmAnimalDialog() {
-  void import("@/components/animal-dialog/animal-dialog");
-}
-
 // How long a cleared filter state can still be taken back. Long enough to
 // read the row and reach for it, short enough that the offer is gone before
 // it becomes part of the furniture.
 export const UNDO_WINDOW_MS = 7000;
 
-// When a browser with no requestIdleCallback fetches the shelter descriptions
-// instead. Behind hydration and the first cards' photos, and well ahead of the
-// time it takes anyone to pick a card and open it.
-const DESCRIPTIONS_IDLE_MS = 2000;
+// When a browser with no requestIdleCallback does the idle work below
+// instead. Behind hydration and the first cards' photos, and well ahead of
+// the time it takes anyone to pick a card and open it.
+const IDLE_FALLBACK_MS = 2000;
 
 // How many cards play the entrance animation. Roughly the first three rows at
 // the widest layout, which is everything a visitor can see when the grid
 // changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
+
+// Their delays, written once. As an object built in the render, each of the
+// twelve was a new prop on every render of this grid, which is a card that
+// cannot be skipped however little has changed about it: the card is memoised
+// (animal-card.tsx) and this is the one prop that would defeat it, on the
+// twelve cards at the top of the page.
+const STAGGER_STYLE = Array.from({ length: STAGGERED_CARDS }, (_, ordinal) => ({
+  animationDelay: `${ordinal * 30}ms`,
+}));
 
 // Two columns is the narrowest the grid ever draws (CARD_GRID), so it is what
 // an unmeasurable grid is charged for: a miss makes the step short rather than
@@ -366,22 +372,37 @@ export function AnimalGrid({
   // as filtered and sorted on screen, in that order. Read here, above the
   // chunking, because the step below is one of the things that asks whether a
   // dialog is open.
-  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
-    useAnimalDialogHost({
-      animals,
-      shown: sorted,
-      basePath: locale === "sl" ? "/" : "/en",
-    });
+  //
+  // Whether the dialog has arrived is the hook's too, and it is not the same
+  // question as whether it is mounted: the component is lazy, so the render
+  // that first asks for it draws nothing while the chunk is still in flight.
+  // The cards carry the photograph into the dialog themselves, and only once
+  // there is one to carry it into, which is what isDialogReady answers for
+  // them and what the dialog reports through handleDialogReady.
+  const {
+    selected,
+    origin,
+    shownIds,
+    handleOpen,
+    isDialogReady,
+    handleDialogReady,
+    handleNavigate,
+    close,
+  } = useAnimalDialogHost({
+    animals,
+    shown: sorted,
+    basePath: locale === "sl" ? "/" : "/en",
+  });
 
-  // Whether the dialog is on the page at all. False until the first animal
-  // opens, which is what keeps its chunk off the visit of anyone who only
-  // reads the grid, and true from then on: the closing animation is drawn by
-  // the dialog itself out of the animal it last held (lastAnimal in
+  // Whether the dialog is on the page at all. False through the render that
+  // first draws the grid, and set from idle below, which is why the chunk is
+  // off the document itself. It is set here during render instead when the
+  // address already names an animal, so a link that arrives with one mounts
+  // the dialog in the same pass it is read in, the way the dialog itself
+  // tracks that animal. Once true it stays true: the closing animation is
+  // drawn by the dialog out of the animal it last held (lastAnimal in
   // animal-dialog.tsx), and a dialog taken off the page as the selection
-  // clears would have nothing left to close with. Adjusted during render
-  // rather than in an effect so a link that arrives with an animal already
-  // named mounts it in the same pass it is read in, the way the dialog itself
-  // tracks that animal.
+  // clears would have nothing left to close with.
   const [dialogMounted, setDialogMounted] = useState(false);
   if (selected && !dialogMounted) setDialogMounted(true);
 
@@ -398,25 +419,42 @@ export function AnimalGrid({
     delete document.documentElement.dataset[PREHYDRATION_DATASET_KEY];
   }, []);
 
+  // Two things the first open would otherwise wait on, both done on idle once
+  // the grid is on screen, and neither of them in the document: the visitor
+  // who opens no card at all is who that saving is for.
+  //
+  // The dialog is mounted here, before anyone has pressed a card. Without an
+  // animal it draws nothing, so the early mount costs a commit of null, and
+  // it is the only way to keep React's fallback throttle out of the first
+  // open. A lazy component suspends on its first render whatever is in the
+  // module cache, and the commit that resolves that fallback is held until
+  // 300ms after it was shown. Measured on the built export, desktop at full
+  // speed: the click handler finished at 17ms and the dialog reached the DOM
+  // at 350ms, against 40ms for every open after it. Fetching the chunk on
+  // pointerdown could not fix it, which is why that handler is gone: the warm
+  // import() compiled to its own chunk group, so a press loaded 3.6 KB the
+  // component never used, and the lazy suspended on the click all the same.
+  // The trade is that the chunk, the 23.6 KB gzipped the two numbers above
+  // differ by, now reaches every visitor who sees the grid rather than only
+  // the ones who open an animal.
+  //
   // The shelter descriptions no longer travel with the animals (see
   // animalsForClient in lib/dataset.ts and lib/animal-descriptions.ts), so the
-  // first dialog that wants one would open and wait. Idle time once the grid
-  // is on screen costs nothing, and the file usually lands long before anyone
-  // opens a card. It waits for idle rather than going in the document head
-  // because the visitor who opens no card at all is who the saving is for.
+  // first dialog that wants one would open and wait. The file usually lands
+  // long before anyone opens a card.
   useEffect(() => {
     if (animals.length === 0) return;
+    const onIdle = () => {
+      setDialogMounted(true);
+      void prefetchAnimalDescriptions();
+    };
     if (typeof window.requestIdleCallback === "function") {
-      const handle = window.requestIdleCallback(() => {
-        void prefetchAnimalDescriptions();
-      });
+      const handle = window.requestIdleCallback(onIdle);
       return () => window.cancelIdleCallback(handle);
     }
     // Safari has no requestIdleCallback. A plain timer, set late enough to be
     // behind hydration and the first cards' photos.
-    const timer = window.setTimeout(() => {
-      void prefetchAnimalDescriptions();
-    }, DESCRIPTIONS_IDLE_MS);
+    const timer = window.setTimeout(onIdle, IDLE_FALLBACK_MS);
     return () => window.clearTimeout(timer);
   }, [animals.length]);
 
@@ -657,12 +695,6 @@ export function AnimalGrid({
               // one class to CARD_GRID would have quietly cost the tests their
               // column count and left them charging the two-column fallback.
               data-card-grid
-              // Where the dialog's chunk is asked for. Capture rather than
-              // bubble so it runs before the card's own handlers, and both a
-              // pointer and a focus because the two ways into a card are a
-              // press and a Tab. Neither opens anything on its own.
-              onPointerDownCapture={warmAnimalDialog}
-              onFocusCapture={warmAnimalDialog}
               className={CARD_GRID}
             >
               {page.map((animal, ordinal) => (
@@ -700,11 +732,9 @@ export function AnimalGrid({
                     ordinal < STAGGERED_CARDS &&
                       "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none",
                   )}
-                  style={
-                    ordinal < STAGGERED_CARDS
-                      ? { animationDelay: `${ordinal * 30}ms` }
-                      : undefined
-                  }
+                  // Past the twelfth there is no delay written, and the index
+                  // is undefined there, which is what a settled card wants.
+                  style={STAGGER_STYLE[ordinal]}
                   // The tab already named the species, so the card's one fact
                   // line does not have to spend itself saying it again.
                   species={filters.species}
@@ -712,6 +742,7 @@ export function AnimalGrid({
                   // was queueing behind the bundle like the other 499.
                   eager={ordinal < 4}
                   onOpen={handleOpen}
+                  isDialogReady={isDialogReady}
                   // A shelter's own page renders these same cards and leaves
                   // this off, because there the line would be the page linking
                   // to itself under every animal on it.
@@ -842,6 +873,7 @@ export function AnimalGrid({
             origin={origin}
             siblingIds={shownIds}
             reference={reference}
+            onReady={handleDialogReady}
             onNavigate={handleNavigate}
             onClose={close}
           />

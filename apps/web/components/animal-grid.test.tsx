@@ -32,6 +32,7 @@ import {
   columnTracks,
   restoreGridColumns,
   stubGridColumns,
+  stubIdleCallback,
   stubIntersectionObserver,
 } from "@/test/grid-stubs";
 
@@ -54,6 +55,7 @@ function renderGrid(animals: Animal[], locale: "sl" | "en" = "sl") {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
 
@@ -66,6 +68,13 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: vi.fn(),
   })),
 });
+
+// The grid waits for an idle moment to mount the dialog, and jsdom ships no
+// requestIdleCallback: without this the mount waits out the two-second
+// fallback instead, which is longer than a test should sit still for. The
+// suite below that owns the moment of the mount stubs its own queue over this
+// one.
+stubIdleCallback();
 
 // motion measures a keyframe by reading the page's scroll position and putting
 // it back afterwards, and jsdom has no window.scrollTo to put it back with: the
@@ -116,6 +125,85 @@ const ANIMALS = [
 function query() {
   return window.location.search;
 }
+
+// The grid at rest with its dialog on the page. The mount is a state change,
+// and what it mounts is a lazy component whose chunk is fetched: the import is
+// awaited rather than a timer run, because it is the same module the lazy
+// resolves from. The two flushes after it are the retry React schedules once
+// that promise settles, and each is a macrotask so the idle callback the mount
+// is scheduled from gets its turn as well.
+async function settle() {
+  await act(async () => {
+    await import("@/components/animal-dialog/animal-dialog");
+  });
+  for (let flush = 0; flush < 2; flush++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
+
+// The press that opens the dialog re-renders the whole grid: which animal is
+// open is an address, so every card renders again inside the one synchronous
+// commit the view transition is holding. At sixty cards that was most of the
+// freeze between the tap and the first frame on a phone, for a change that
+// touches none of them, so the card is memoised and the grid hands it nothing
+// that is rebuilt per render.
+//
+// Counted through the animal itself, the way the fan's own render tests count:
+// a getter on what only the card reads says whether that card rendered again.
+// The entrance delay is the prop that would defeat all of this, because it is
+// an object; it is written once per ordinal (STAGGER_STYLE) and both cards
+// here carry one.
+describe("animal grid renders", () => {
+  it("leaves the other cards alone when one of them opens", async () => {
+    const [first, second] = animalsForClient([
+      animal("dog-muri", "dog", "muri"),
+      animal("dog-tretje", "dog", "tretje"),
+    ]);
+    let reads = 0;
+    const counted = {
+      ...second,
+      get images() {
+        reads++;
+        return second.images;
+      },
+    };
+    render(
+      <I18nProvider locale="sl">
+        <AnimalGrid
+          animals={[first, counted]}
+          logos={{}}
+          referenceDate="2026-01-01"
+        />
+      </I18nProvider>,
+    );
+
+    const drawn = reads;
+    expect(drawn).toBeGreaterThan(0);
+
+    // The grid mounts the dialog on idle, which renders the grid again, and
+    // the dialog reports that it is there, which used to be a prop of every
+    // card and so a render of every card. It is an accessor the host hook
+    // holds now (use-animal-dialog-host.ts), so the cards sit through both.
+    await settle();
+    expect(reads).toBe(drawn);
+
+    const link = screen
+      .getAllByRole("link")
+      .find((element) => element.textContent?.includes("dog-muri"));
+    await act(async () => {
+      fireEvent.click(link!);
+    });
+    await screen.findByRole("dialog");
+
+    // The grid rendered again, with the dialog in it and the address changed,
+    // and the card that has nothing to do with the animal being opened did
+    // not.
+    expect(window.location.pathname).not.toBe("/");
+    expect(reads).toBe(drawn);
+  });
+});
 
 describe("animal grid empty state", () => {
   it("names the shelter-species conflict and offers to drop only the shelter", () => {
@@ -1117,5 +1205,112 @@ describe("the long-stay mark in the grid", () => {
     renderGrid(WAITING);
 
     expect(screen.getAllByText(/Čaka/)).toHaveLength(WAITING.length);
+  });
+});
+
+describe("when the dialog reaches the page", () => {
+  // Every test here starts from a module registry of its own. The grid holds
+  // the lazy dialog in a module constant, and a lazy that any earlier test in
+  // this file resolved renders straight away for the rest of the run, which
+  // is exactly the difference these three are measuring. The provider is
+  // re-imported with the grid because a context is an identity: the grid from
+  // the new registry does not read the one the old registry's provider opens.
+  async function freshGrid() {
+    vi.resetModules();
+    const [{ AnimalGrid }, { I18nProvider: Provider }] = await Promise.all([
+      import("./animal-grid"),
+      import("@/components/i18n-provider"),
+    ]);
+    return (animals: Animal[]) =>
+      render(
+        <Provider locale="sl">
+          <AnimalGrid
+            animals={animalsForClient(animals)}
+            logos={{}}
+            referenceDate="2026-01-01"
+          />
+        </Provider>,
+      );
+  }
+
+  // jsdom ships no requestIdleCallback and the grid mounts the dialog from
+  // one. A queue the test drains by hand puts the grid on the path a browser
+  // takes and leaves the moment of the mount to the test, which is the one
+  // thing these have to control.
+  function idleQueue() {
+    const queued: IdleRequestCallback[] = [];
+    vi.stubGlobal("requestIdleCallback", (callback: IdleRequestCallback) => {
+      queued.push(callback);
+      return queued.length;
+    });
+    vi.stubGlobal("cancelIdleCallback", () => {});
+    return async function runIdle() {
+      const due = queued.splice(0);
+      await act(async () => {
+        for (const callback of due) {
+          callback({ didTimeout: false, timeRemaining: () => 50 });
+        }
+      });
+      await settle();
+    };
+  }
+
+  function firstCard() {
+    return document.querySelector<HTMLAnchorElement>(
+      '[data-card-grid] a[data-slot="card-link"]',
+    )!;
+  }
+
+  it("mounts it on idle, so the first open lands inside the click", async () => {
+    // The 300ms hole this closes, measured on the built export: a dialog
+    // first mounted by the click renders its Suspense fallback there, and
+    // React holds a commit that only resolves a fallback until 300ms after
+    // the fallback was shown. The first open took 350ms and every one after
+    // it 40ms. Mounted from idle there is no fallback left to resolve, and
+    // the dialog is in the document when the handler returns.
+    const runIdle = idleQueue();
+    const renderFresh = await freshGrid();
+    renderFresh(ANIMALS);
+    await runIdle();
+
+    act(() => {
+      fireEvent.click(firstCard());
+    });
+
+    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+  });
+
+  it("stays off the render that draws the grid", async () => {
+    // The chunk is still not in the document: it is asked for when the page
+    // has nothing better to do, behind hydration and the first photos, and
+    // the visitor who opens no animal at all is who that is for. With idle
+    // held back here, the click is left to mount the dialog itself, which is
+    // the slow path and not one the grid takes any more.
+    idleQueue();
+    const renderFresh = await freshGrid();
+    renderFresh(ANIMALS);
+
+    act(() => {
+      fireEvent.click(firstCard());
+    });
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await waitFor(() =>
+      expect(document.querySelector('[role="dialog"]')).toBeTruthy(),
+    );
+  });
+
+  it("mounts it in the first client render for a link naming an animal", async () => {
+    // A shared link cannot wait for idle, and here idle never comes: the
+    // animal is already chosen in the render that reads the address, so the
+    // mount is made in that render instead.
+    idleQueue();
+    window.history.replaceState(null, "", "/?zival=dog-muri");
+    const renderFresh = await freshGrid();
+    renderFresh(ANIMALS);
+
+    await settle();
+
+    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
   });
 });

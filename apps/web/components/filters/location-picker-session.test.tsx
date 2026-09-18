@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import {
   act,
-  cleanup,
   fireEvent,
   render,
   screen,
@@ -16,6 +15,12 @@ import {
 } from "@/hooks/use-nearby-origin";
 import { LocationPicker } from "./location-picker";
 import { SHELTER_SPOTLIGHT_EVENT } from "@/lib/shelter-spotlight";
+import { resetPickerSession, stubScrollIntoView } from "@/test/location-picker";
+
+// The matchMedia below is live and the geolocation stub answers on demand, so
+// this suite builds its own seams rather than taking the shared harness's
+// (test/location-picker.tsx): a picker that has to watch the breakpoint move
+// cannot use a stub that answers no to everything.
 
 let desktop = false;
 let change: EventTarget;
@@ -40,7 +45,7 @@ beforeEach(() => {
       },
     }),
   });
-  Element.prototype.scrollIntoView = vi.fn();
+  stubScrollIntoView();
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -51,8 +56,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
-  cleanup();
-  resetNearbyOriginStore();
+  resetPickerSession();
   history.replaceState(null, "", "/");
 });
 const options = [{ value: "jug", label: "Zavetišče Jug", city: "Ljubljana" }];
@@ -132,7 +136,7 @@ describe("responsive picker session", () => {
         .value,
     ).toBe("1000");
     expect(
-      screen.getByRole("button", { name: "Odstrani izhodišče" }).textContent,
+      screen.getByRole("button", { name: /^Odstrani izhodišče/ }).textContent,
     ).toContain("Ljubljana");
   });
   it("shares a confirmed place across breakpoints and clears it from either picker", async () => {
@@ -158,7 +162,7 @@ describe("responsive picker session", () => {
         .value,
     ).toBe("1000");
     fireEvent.click(
-      screen.getByRole("button", { name: "Odstrani izhodišče" }),
+      screen.getByRole("button", { name: /^Odstrani izhodišče/ }),
     );
     expect(screen.getByTestId("origin").textContent).toBe("none");
 
@@ -166,7 +170,7 @@ describe("responsive picker session", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
     expect(
-      screen.queryByRole("button", { name: "Odstrani izhodišče" }),
+      screen.queryByRole("button", { name: /^Odstrani izhodišče/ }),
     ).toBeNull();
     expect(
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { useState, type ComponentProps } from "react";
@@ -24,75 +23,25 @@ import { DENSITY_STEPS } from "@/lib/map-layout";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { LocationPicker } from "./location-picker";
 import { REGION_DWELL_MS, ShelterMap, type ShelterPin } from "./shelter-map";
+import {
+  choosePlace,
+  counts,
+  offSite,
+  openPicker,
+  options,
+  resetPickerSession,
+  rowOrder,
+  stubMatchMedia,
+  stubScrollIntoView,
+  type,
+} from "@/test/location-picker";
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+// The stubs, the roster and the door are shared with the picker's other three
+// suites; test/location-picker.tsx says why they cannot be imported from here.
+stubMatchMedia();
+stubScrollIntoView();
 
-// jsdom has no layout, so it has no scrollIntoView. The picker brings the
-// picked row and the card it just opened into view; neither is worth a layout
-// engine to assert.
-Element.prototype.scrollIntoView = vi.fn();
-
-afterEach(() => {
-  cleanup();
-  resetNearbyOriginStore();
-});
-
-// Alphabetical order puts Sever first, and Sever is the far one from
-// Ljubljana, so a nearest-first sort has to visibly move it.
-const options = [
-  { value: "sever", label: "Zavetišče Sever", city: "Maribor" },
-  { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
-];
-
-const counts = new Map([
-  ["sever", 4],
-  ["jug", 7],
-]);
-
-// Registry shelters with nothing to filter by. Celje places on the map, so
-// they also become the faint markers the legend explains.
-const offSite = [{ value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" }];
-
-// Stateful for the same reason the pick-card harness below is: the card
-// folds once nothing it stands for is selected, so toggles have to land in
-// the next render's `selected` the way animal-grid's real handlers land them.
-async function openPicker({
-  selected: initialSelected = [],
-  ...props
-}: Partial<ComponentProps<typeof LocationPicker>> = {}) {
-  function Harness() {
-    const [selected, setSelected] = useState<string[]>(initialSelected);
-    const toggleMany = (values: string[]) =>
-      setSelected((current) => toggleValues(current, values));
-    return (
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={options}
-          counts={counts}
-          selected={selected}
-          onToggle={(value) => toggleMany([value])}
-          onToggleMany={toggleMany}
-          resultCount={11}
-          {...props}
-        />
-      </I18nProvider>
-    );
-  }
-  render(<Harness />);
-
-  fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
-  await screen.findByRole("dialog");
-
-  return screen.getByLabelText("Kraj, pošta ali zavetišče");
-}
+afterEach(resetPickerSession);
 
 // The registry shelters with nothing listed sit behind a fold now, shut on
 // arrival: none of them is pickable, so their rows are scroll the picker would
@@ -104,29 +53,10 @@ function openOffGroup() {
   );
 }
 
-// Selection chips carry the same names, so read only the actual list toggles.
-function rowOrder(): string[] {
-  return Array.from(screen.getByRole("dialog").querySelectorAll("[data-shelter-row] button[aria-pressed]"))
-    .map((button) => button.textContent ?? "")
-    .filter(
-      (text) =>
-        text.includes("Zavetišče Sever") || text.includes("Zavetišče Jug"),
-    )
-    .map((text) => (text.includes("Sever") ? "sever" : "jug"));
-}
-
-function type(input: HTMLElement, value: string) {
-  fireEvent.change(input, { target: { value } });
-}
-
-function choosePlace() {
-  fireEvent.click(screen.getByRole("button", { name: /^V bližini / }));
-}
-
 // A region is named only once the pointer has settled on it (REGION_DWELL_MS
 // in shelter-map.tsx). Fake timers are installed for the dwell alone: opening
-// the dialog above is an async find, and it has no business running on a
-// frozen clock.
+// the dialog is an async find and a waited-for chunk, and neither has any
+// business running on a frozen clock.
 function hoverRegion(node: Element) {
   vi.useFakeTimers();
   // The move first: the plate ignores a hover from a pointer that has not
@@ -252,7 +182,7 @@ describe("LocationPicker typed location", () => {
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
-      screen.getByText("Izhodišče: Ajdovščina. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ajdovščina" }),
     ).toBeTruthy();
   });
 
@@ -347,7 +277,9 @@ describe("LocationPicker typed location", () => {
     type(input, "");
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
-    expect(screen.getByText(/Izhodišče: Ljubljana/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
   });
 
   it("removes a chosen origin explicitly and restores the unsorted list", async () => {
@@ -356,7 +288,7 @@ describe("LocationPicker typed location", () => {
     choosePlace();
     expect(rowOrder()).toEqual(["jug", "sever"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Odstrani izhodišče" }));
+    fireEvent.click(screen.getByRole("button", { name: /Odstrani izhodišče/ }));
 
     expect(rowOrder()).toEqual(["sever", "jug"]);
     expect((input as HTMLInputElement).value).toBe("");
@@ -390,7 +322,7 @@ describe("LocationPicker typed location", () => {
 
     expect(screen.queryByText("Brskalnik ne pozna lokacije.")).toBeNull();
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
   });
 
@@ -448,7 +380,7 @@ describe("LocationPicker most recent act", () => {
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
   });
@@ -467,7 +399,7 @@ describe("LocationPicker most recent act", () => {
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
   });
@@ -636,7 +568,7 @@ describe("LocationPicker merged field", () => {
     expect(rowOrder()).toEqual(["sever", "jug"]);
     expect(mode()).toBe("place");
     expect(
-      screen.getByText("Izhodišče: Maribor. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Maribor" }),
     ).toBeTruthy();
   });
 
@@ -661,14 +593,16 @@ describe("LocationPicker merged field", () => {
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(mode()).toBe("place");
     expect(
-      screen.getByText("Izhodišče: Ljubljana. Razvrščeno po bližini."),
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
     ).toBeTruthy();
 
     // Editing searches within the chosen origin instead of dropping it.
     type(input, "Lju");
     expect(rowOrder()).toEqual(["jug"]);
     expect(mode()).toBe("name");
-    expect(screen.getByText(/Izhodišče: Ljubljana/)).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
   });
 
   it("focuses the top name match on Enter without selecting it", async () => {
@@ -939,6 +873,81 @@ describe("LocationPicker off-site shelters", () => {
 
     expect(screen.getByRole("link", { name: /Zavetišče Vzhod/ })).toBeTruthy();
     expect(place).toBeTruthy();
+  });
+});
+
+// Enter and ArrowDown in the search box move focus to the first result, and
+// swallow the key only when they moved something. One state has a first result
+// that is not on the page: a query that matches live rows, all of them empty,
+// and an off-site row as well. The live find looks for a row with animals or a
+// pick and comes back with none, so the fallback names the off-site row; but
+// live rows exist, so that group is drawn as a folded Collapsible and its rows
+// are unmounted, which means the row registered no ref. A key that moved
+// nothing belongs to the browser, or Tab and Enter go dead in the one field
+// that has to keep working.
+describe("LocationPicker search keys", () => {
+  // Every live row empty, which is what a filter can leave behind: the rows
+  // stay in the list, greyed and unpickable.
+  const noCounts = new Map<string, number>();
+
+  it("reaches an off-site row from the search when only that row matches", async () => {
+    const input = await openPicker({ offSite });
+
+    // Nothing live matches, so the off-site group is the whole answer and
+    // stands open: the row is mounted and the fallback can reach it.
+    type(input, "Vzhod");
+    expect(rowOrder()).toEqual([]);
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(document.activeElement?.textContent).toContain("Zavetišče Vzhod");
+  });
+
+  it("leaves Enter to the browser when the search has nothing to move to", async () => {
+    const input = await openPicker();
+
+    type(input, "zzz");
+    input.focus();
+    const event = new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(input, event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("leaves the key alone when the only match is behind the fold", async () => {
+    const input = await openPicker({ offSite, counts: noCounts });
+
+    type(input, "Zavetišče");
+
+    // The premise: both live rows on screen, so the off-site group is a fold
+    // rather than the whole answer, and nothing inside it is mounted.
+    expect(rowOrder()).toEqual(["sever", "jug"]);
+    expect(screen.queryByRole("link", { name: /Zavetišče Vzhod/ })).toBeNull();
+
+    input.focus();
+    for (const key of ["Enter", "ArrowDown"]) {
+      // fireEvent returns false for a key the handler swallowed.
+      expect(fireEvent.keyDown(input, { key })).toBe(true);
+      expect(document.activeElement).toBe(input);
+    }
+  });
+
+  it("reaches the off-site row once the group is open", async () => {
+    const input = await openPicker({ offSite, counts: noCounts });
+
+    type(input, "Zavetišče");
+    openOffGroup();
+    input.focus();
+
+    // Same query, same empty live rows: the one thing that changed is that the
+    // row the fallback names is now mounted and has a ref to focus.
+    expect(fireEvent.keyDown(input, { key: "ArrowDown" })).toBe(false);
+    expect(document.activeElement).toBe(
+      screen.getByRole("link", { name: /Zavetišče Vzhod/ }),
+    );
   });
 });
 
@@ -2602,7 +2611,7 @@ describe("LocationPicker persistent footer", () => {
 
   it("widens shelter selection at zero when other shelters have matching animals", async () => {
     await openPicker({ selected: ["sever"], counts: new Map([["jug", 7]]), resultCount: 0 });
-    fireEvent.click(screen.getByRole("button", { name: "Vsa zavetišča" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pokaži vsa zavetišča" }));
     expect(screen.queryByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeNull();
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
@@ -2617,10 +2626,13 @@ describe("LocationPicker persistent footer", () => {
     fireEvent.click(dialog.querySelector("[data-picker-show-map]")!);
     expect(dialog.querySelector("[data-picker-panel]")?.contains(footer)).toBe(false);
     expect(footer.contains(pill)).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" }));
-    expect(screen.queryByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeTruthy();
-    expect(document.querySelector("[data-picker-trigger]")?.getAttribute("aria-label")).toContain("Zavetišče: Zavetišče Jug");
+    // Jug and not Sever, although Sever was picked first: the chip names the
+    // same shelter the summary beside it opens on, and that list reads in the
+    // panel's order rather than the URL's (footer.tsx).
+    fireEvent.click(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" }));
+    expect(screen.queryByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeTruthy();
+    expect(document.querySelector("[data-picker-trigger]")?.getAttribute("aria-label")).toContain("Zavetišče: Zavetišče Sever");
   });
 
   it("removes later selections from the summary and closes only that summary on Escape", async () => {
@@ -2640,7 +2652,9 @@ describe("LocationPicker persistent footer", () => {
     fireEvent.keyDown(summary, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Izbrano: 2" })).toBeNull());
     expect(screen.getByRole("dialog")).toBe(picker);
-    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Sever" })).toBeTruthy();
+    // The summary is gone; what is left on the footer is the chip, and it
+    // names the first of the two survivors in the panel's order.
+    expect(screen.getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeTruthy();
   });
 
   it("says the count once, on the button, and not again above the list", async () => {
@@ -3226,5 +3240,61 @@ describe("LocationPicker audit regressions", () => {
     fireEvent.click(fold);
     expect(document.activeElement).toBe(fold);
     expect(fold.getAttribute("aria-expanded")).toBe("false");
+  });
+  it("heads the narrowed list with its caption, and heads nothing with a postcode", async () => {
+    const input = await openPicker({ offSite });
+    expect(screen.queryByText("Zavetišča")).toBeNull();
+
+    // A postcode names a place and matches no shelter name, so the list under
+    // the caption would be empty and the caption would read as "no such
+    // place" about the place just found.
+    type(input, "1000");
+    expect(screen.queryByText("Zavetišča")).toBeNull();
+
+    type(input, "Sever");
+    expect(screen.getByText("Zavetišča")).toBeTruthy();
+
+    // An off-site match is still something for the caption to name.
+    type(input, "Vzhod");
+    expect(screen.getByText("Zavetišča")).toBeTruthy();
+  });
+  it("hands focus to the search field before the clear-selection button unmounts", async () => {
+    const input = await openPicker({ selected: ["jug"] });
+    const clear = screen.getByRole("button", { name: /Počisti izbor/ });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(screen.queryByRole("button", { name: /Počisti izbor/ })).toBeNull();
+    expect(document.activeElement).toBe(input);
+  });
+  it("names the place the origin chip shows in the chip's accessible name", async () => {
+    const input = await openPicker();
+    type(input, "1000");
+    choosePlace();
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
+  });
+  it("offers the selection popover from one shelter and lists it alphabetically", async () => {
+    await openPicker({ selected: ["sever", "jug"] });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pokaži izbrana zavetišča (2)" }),
+    );
+    const rows = within(screen.getByLabelText("Izbrano: 2"))
+      .getAllByRole("button", { name: /^Odstrani zavetišče: / })
+      .map((button) => button.getAttribute("aria-label"));
+    expect(rows).toEqual([
+      "Odstrani zavetišče: Zavetišče Jug",
+      "Odstrani zavetišče: Zavetišče Sever",
+    ]);
+    cleanup();
+
+    await openPicker({ selected: ["jug"] });
+    expect(
+      screen.getByRole("button", { name: "Pokaži izbrana zavetišča (1)" }),
+    ).toBeTruthy();
+  });
+  it("says nothing about matches when the roster is empty and nothing is typed", async () => {
+    await openPicker({ options: [], counts: new Map(), offSite: [] });
+    expect(screen.queryByText(/Ni zadetkov za/)).toBeNull();
   });
 });

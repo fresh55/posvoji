@@ -16,7 +16,7 @@ export function PickerFooter({ controller, hug = false }: {
    *  longer fills, it would sit under a band of nothing. */
   hug?: boolean;
 }) {
-  const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, onShowAllSpecies, resultCount, counts, doneLabel, locale } = controller;
+  const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, onShowAllSpecies, resultCount, counts, doneLabel, locale, messages } = controller;
   const copy = pickerText[locale];
   const [summaryOpen, setSummaryOpen] = useState(false);
   const firstSelectionRef = useRef<HTMLButtonElement>(null);
@@ -24,11 +24,27 @@ export function PickerFooter({ controller, hug = false }: {
   const summaryTriggerRef = useRef<HTMLButtonElement>(null);
   const summaryInteractedOutsideRef = useRef(false);
   const summaryRowsRef = useRef(new Map<string, HTMLButtonElement>());
-  const firstSelected = selectedRows[0];
+  // The panel above reads alphabetically; the selection arrives in URL order.
+  // Sorted once, so the chip, the rows and the index the removal focus walks
+  // are all the same list: the chip naming one shelter while the list a press
+  // away opened on another was the half of this the sort had not reached.
+  const summaryRows = [...selectedRows].sort((a, b) => a.label.localeCompare(b.label, locale));
+  const firstSelected = summaryRows[0];
   const summaryLabel = locale === "sl"
     ? `Pokaži izbrana zavetišča (${selectedRows.length})`
     : `Show selected shelters (${selectedRows.length})`;
   const canWidenShelters = selected.length > 0 && [...counts.values()].some((count) => count > 0);
+  // One way out of a zero, the nearest first: the shelters where something is,
+  // then the filters, then the species, which no clear touches
+  // (pickerRecoveryActions). Built once rather than spelled as three ladders,
+  // which is what let the label say one thing while the press did another.
+  const recovery = canWidenShelters
+    ? { run: () => onToggleMany(selected), label: copy.showAllShelters }
+    : onClearFilters
+      ? { run: onClearFilters, label: messages.clearFilters }
+      : onShowAllSpecies
+        ? { run: onShowAllSpecies, label: messages.showAllSpecies }
+        : null;
   return (
     <div
       data-picker-footer
@@ -43,7 +59,7 @@ export function PickerFooter({ controller, hug = false }: {
       {(selectedRows.length > 0 || resultCount === 0) && (
         <div className="flex min-w-0 flex-col gap-2 sm:flex-1">
           {firstSelected && (
-            <div aria-label={copy.selected} className="flex min-h-11 min-w-0 items-center gap-2">
+            <div role="group" aria-label={copy.selected} className="flex min-h-11 min-w-0 items-center gap-2">
               <Button
                 ref={firstSelectionRef}
                 type="button"
@@ -59,8 +75,10 @@ export function PickerFooter({ controller, hug = false }: {
                 <span className="max-w-64 truncate">{firstSelected.label}</span>
                 <X className="size-3.5 shrink-0" aria-hidden />
               </Button>
-              {(selectedRows.length > 1 || summaryOpen) && (
-                <Popover
+              {/* Offered from one selection, not two: at 320 a long name
+                  truncates in the chip, and title is nothing a finger can
+                  read. */}
+              <Popover
                   open={summaryOpen}
                   onOpenChange={(nextOpen) => {
                     if (nextOpen) summaryInteractedOutsideRef.current = false;
@@ -100,7 +118,7 @@ export function PickerFooter({ controller, hug = false }: {
                       {copy.selected}: {selectedRows.length}
                     </p>
                     <div className="max-h-[min(20rem,50dvh)] overflow-y-auto overscroll-contain">
-                      {selectedRows.map((row, index) => (
+                      {summaryRows.map((row, index) => (
                         <Button
                           key={row.value}
                           ref={(node) => {
@@ -110,7 +128,7 @@ export function PickerFooter({ controller, hug = false }: {
                           type="button"
                           variant="ghost"
                           onClick={() => {
-                            const next = selectedRows[index + 1] ?? selectedRows[index - 1];
+                            const next = summaryRows[index + 1] ?? summaryRows[index - 1];
                             if (!next) {
                               setSummaryOpen(false);
                               resultRef.current?.focus();
@@ -128,21 +146,20 @@ export function PickerFooter({ controller, hug = false }: {
                     </div>
                   </PopoverContent>
                 </Popover>
-              )}
             </div>
           )}
           {resultCount === 0 && (
-            <p role="status" className="text-sm leading-snug">
+            // No role="status" here: the dialog already has one live region
+            // (view.tsx) that carries the result count, and two regions
+            // announcing the same zero talked over each other.
+            <p className="text-sm leading-snug">
               <strong>{animalCount(0, locale)}.</strong> {copy.zeroMatches}
             </p>
           )}
         </div>
       )}
       <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
-        {/* One way out of a zero, the nearest first: the shelters where
-            something is, then the filters, then the species, which no clear
-            touches (pickerRecoveryActions). */}
-        {resultCount === 0 && (canWidenShelters || onClearFilters || onShowAllSpecies) && (
+        {resultCount === 0 && recovery && (
           <Button
             variant="outline"
             // The one control in this row that is a frame and nothing else:
@@ -154,19 +171,9 @@ export function PickerFooter({ controller, hug = false }: {
               "min-h-11 flex-1 shadow-none sm:flex-none",
               CONTROL_FRAME,
             )}
-            onClick={() =>
-              canWidenShelters
-                ? onToggleMany(selected)
-                : onClearFilters
-                  ? onClearFilters()
-                  : onShowAllSpecies?.()
-            }
+            onClick={recovery.run}
           >
-            {canWidenShelters
-              ? copy.allShelters
-              : onClearFilters
-                ? copy.clearFilters
-                : copy.allSpecies}
+            {recovery.label}
           </Button>
         )}
         <DialogClose asChild>

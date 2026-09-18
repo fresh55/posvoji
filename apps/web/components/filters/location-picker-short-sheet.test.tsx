@@ -1,70 +1,25 @@
 // @vitest-environment jsdom
 
-import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
-import { useState } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { toggleValues } from "@/lib/filters";
-import { I18nProvider } from "@/components/i18n-provider";
-import { LocationPicker } from "./location-picker";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  dialog,
+  openPicker,
+  resetPickerSession,
+  stubMatchMedia,
+  stubScrollIntoView,
+} from "@/test/location-picker";
 
 // jsdom cannot measure clipping at 320x568 or 844x390. These tests preserve
 // the structural protections: independent content views, scrollable content,
 // and persistent controls outside every scrolling or hidden area. Browser
 // checks cover the resulting dimensions and hit targets.
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+stubMatchMedia();
+stubScrollIntoView();
 
-Element.prototype.scrollIntoView = vi.fn();
+afterEach(resetPickerSession);
 
-afterEach(() => {
-  cleanup();
-  resetNearbyOriginStore();
-});
-
-const options = [
-  { value: "sever", label: "Zavetišče Sever", city: "Maribor" },
-  { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
-];
-
-const counts = new Map([
-  ["sever", 4],
-  ["jug", 7],
-]);
-
-async function openPicker() {
-  function Harness() {
-    const [selected, setSelected] = useState<string[]>([]);
-    const toggleMany = (values: string[]) =>
-      setSelected((current) => toggleValues(current, values));
-    return (
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={options}
-          counts={counts}
-          selected={selected}
-          onToggle={(value) => toggleMany([value])}
-          onToggleMany={toggleMany}
-          resultCount={11}
-        />
-      </I18nProvider>
-    );
-  }
-  render(<Harness />);
-
-  fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
-  await screen.findByRole("dialog");
-}
-
-const dialog = () => screen.getByRole("dialog");
 const ground = () =>
   dialog().querySelector<HTMLElement>("[data-picker-stage]")!;
 const stage = () => dialog().querySelector<HTMLElement>("[data-map-stage]")!;

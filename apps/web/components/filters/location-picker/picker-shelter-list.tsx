@@ -4,7 +4,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { filteredAnimalCount } from "@/lib/labels";
 import { ChevronRight } from "lucide-react";
 import type { LocationPickerController } from "./controller";
-import { pickerText } from "./model";
 
 export function PickerShelterList({ controller }: { controller: LocationPickerController }) {
   const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, searching, placeOnly } = controller;
@@ -12,6 +11,9 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
   // query in the field that is not a confirmed place (controller.ts). A place
   // query that matched no name is answered by the row above the list instead.
   const showHeading = searching && !placeOnly;
+  // The one question both halves of this list ask, asked once: the empty state
+  // is drawn when it is false, and the heading above the rows needs it too.
+  const hasRows = visibleRows.length > 0 || visibleOffRows.length > 0;
   const offGroupList = (
     <ShelterRows
       rows={visibleOffRows.map((row) => ({
@@ -26,6 +28,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
       onHoverRow={setHoveredRowValue}
       lessThanOneKm={messages.lessThanOneKm}
       labelledBy={offGroupId}
+      refs={rowRefs}
       className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
     />
   );
@@ -33,7 +36,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                 <div
                   ref={listRef}
                   data-picker-list-scroll
-                  className="mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 scrollbar-thin"
+                  className="mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 short:min-h-11 scrollbar-thin"
                 >
                   {/* placeOnly: the query resolved to a place the postal
                       table knows and matched no shelter's name, so the row
@@ -47,9 +50,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                       was found about a place the dialog has just found. Drawn
                       either way, the block reads as "no such place" and
                       offers to clear the one input that worked. */}
-                  {visibleRows.length === 0 &&
-                  visibleOffRows.length === 0 &&
-                  !placeOnly ? (
+                  {searching && !hasRows && !placeOnly ? (
                     <div className="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
                       <p className="text-sm text-muted-foreground">
                         {messages.noSheltersFound} »{query.trim()}«
@@ -80,7 +81,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                           id={shelterGroupId}
                           className="px-2 pb-2 text-xs font-medium text-muted-foreground"
                         >
-                          {pickerText[locale].shelters}
+                          {messages.shelters}
                         </p>
                       )}
                       <ShelterRows

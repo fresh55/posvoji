@@ -1,6 +1,10 @@
 "use client";
 
-import { memo, type CSSProperties } from "react";
+import {
+  memo,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { filteredAnimalCount, shelterCount } from "@/lib/labels";
 import {
@@ -110,22 +114,31 @@ const REGION_LOOK: Record<
     // rest is already heavier than any other region ever draws (idle tops out
     // at 1 on hover), and 1.8 on hover/highlighted keeps it the heaviest line
     // on the plate even against an idle region's own hover step.
-    rest: "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.9] [stroke-width:1.5] hover:[fill-opacity:1] hover:[stroke-width:1.8]",
+    rest: "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.9] [stroke-width:1.5] group-data-[pointer-asked]/plate:hover:[fill-opacity:1] group-data-[pointer-asked]/plate:hover:[stroke-width:1.8]",
     highlighted:
       "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:1] [stroke-width:1.8]",
   },
   // A partial choice outlines the region without striping every place inside
-  // it. The dashed boundary remains distinct from a fully selected region.
+  // it. The dashed brand boundary is the whole of the message, and it stays
+  // distinct from the solid one a fully selected region draws.
+  //
+  // The ground under it is the density ramp, unchanged: this is a region that
+  // is still partly on offer, and how much is in it is the fact the ramp
+  // carries. A flat selection tint here threw that rank away the moment one
+  // shelter was picked, and threw it away in the wrong direction — half-picked
+  // Savinjska, the busiest region in the country, composited lighter than the
+  // emptiest live one in light mode and darker than it in dark, landing within
+  // one ramp step of a region with no shelters at all.
   mixed: {
-    rest: "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.2] [stroke-width:1.2] [stroke-dasharray:3_2] hover:[fill-opacity:0.3] hover:[stroke-width:1.5]",
+    rest: "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] stroke-brand-strong [stroke-width:1.2] [stroke-dasharray:3_2] group-data-[pointer-asked]/plate:hover:[fill-opacity:var(--map-density-hover)] group-data-[pointer-asked]/plate:hover:[stroke-width:1.5]",
     highlighted:
-      "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:0.3] [stroke-width:1.5] [stroke-dasharray:3_2]",
+      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density-hover)] stroke-brand-strong [stroke-width:1.5] [stroke-dasharray:3_2]",
   },
   idle: {
     rest: cn(
-      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] [stroke-width:0.6] hover:[fill-opacity:var(--map-density-hover)] hover:[stroke-width:1]",
+      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] [stroke-width:0.6] group-data-[pointer-asked]/plate:hover:[fill-opacity:var(--map-density-hover)] group-data-[pointer-asked]/plate:hover:[stroke-width:1]",
       REGION_STROKE,
-      "hover:stroke-foreground/45",
+      "group-data-[pointer-asked]/plate:hover:stroke-foreground/45",
     ),
     highlighted:
       "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density-hover)] [stroke-width:1] stroke-foreground/45",
@@ -186,8 +199,16 @@ export const Region = memo(function Region({
   onPointerEnter: (regionId: number, stats: RegionStats) => void;
   /** The first move over this region, which is how the plate tells a pointer
    *  that came to it from one that it opened underneath. The map ignores the
-   *  hover until it arrives; see handleRegionPointerEnter in shelter-map.tsx. */
-  onPointerMove: (regionId: number, stats: RegionStats) => void;
+   *  hover until it arrives; see handleRegionPointerEnter in shelter-map.tsx.
+   *
+   *  The event goes with it because the plate asks what kind of pointer moved:
+   *  a finger dragging across the plate has moved, and draws no hover look for
+   *  it. See the gate on the hover classes below. */
+  onPointerMove: (
+    regionId: number,
+    stats: RegionStats,
+    event: ReactPointerEvent<SVGPathElement>,
+  ) => void;
   onPointerLeave: (regionId: number, stats: RegionStats) => void;
   /** A shelter in this region is hovered in the list, so it wears the same
    *  look pointer hover would give it. */
@@ -251,7 +272,9 @@ export const Region = memo(function Region({
           interactive ? () => onPointerEnter(region.id, stats) : undefined
         }
         onPointerMove={
-          interactive ? () => onPointerMove(region.id, stats) : undefined
+          interactive
+            ? (event) => onPointerMove(region.id, stats, event)
+            : undefined
         }
         onPointerLeave={
           interactive ? () => onPointerLeave(region.id, stats) : undefined
@@ -268,16 +291,48 @@ export const Region = memo(function Region({
           // region moves by on hover, so this is under half of that and lands
           // 13 points below DENSITY_STEPS[0]. The surface confirms it heard the
           // pointer without ever reading as "a few animals here".
-          interactive && "hover:fill-foreground/7",
+          // Gated on the plate having been pointed at by a pointer that can
+          // hover, like every other hover rule on a region: the dialog opens
+          // under a resting cursor, and a region that lights up for a hover
+          // nobody performed is the plate answering a question that was never
+          // asked. The argument is written down beside pointerAsked in
+          // shelter-map.tsx.
+          //
+          // Two gates there, and this is the stricter of them. The JS one asks
+          // whether any pointer has moved on the plate, and exempts a coarse
+          // pointer outright, because a tap is the only hover a finger has and
+          // the naming would be swallowed with it. This one asks whether the
+          // pointer can hover at all, so a finger never sets the attribute,
+          // tapping or dragging, and on touch a region draws no hover look.
+          // That is the state worth having: the tint a tap used to leave
+          // behind stayed until something else was touched, and a mark that
+          // outlives the finger reads as a selection rather than as a hover.
+          // Dark carries its own pair, because the rest value there is half of
+          // this one (see the fill below) and a hover that stayed at 7% would
+          // be three and a half times the resting tint rather than the barely
+          // there acknowledgement this is.
+          interactive &&
+            "group-data-[pointer-asked]/plate:hover:fill-foreground/7 dark:group-data-[pointer-asked]/plate:hover:fill-foreground/4",
           // Neutral foreground and not the ramp's green, on purpose: "no
           // shelters here" is a different statement from "few animals here",
-          // and a faint tint would have said the second. A full step of the
-          // ramp below DENSITY_STEPS[0] in weight, so an empty region cannot
-          // be mistaken for the quietest live one either. It stays above
+          // and a faint tint would have said the second. It stays above
           // --map-abroad by more than it is worth arguing about: the land
           // across the border is untinted, this is not, and the country
           // outline settles the rest.
-          "fill-foreground/4 [stroke-width:0.6]",
+          //
+          // Half the alpha in dark, and the reason is that the alphas are not
+          // comparable across the two inks. 4% against DENSITY_STEPS[0]'s 12%
+          // reads as a clear step on paper, but one is neutral foreground and
+          // the other is the ramp's green, and on a near-black ground the two
+          // composites landed on the same luminance: 1.02:1 between an empty
+          // region and the quietest live one, against 1.07 to 1.15 between
+          // neighbouring ramp steps. At 2% it measures 1.07:1, which is the
+          // ramp's own smallest step in dark.
+          //
+          // Light keeps 4%. It measures 1.03:1 there, which is the same
+          // complaint, but the ink is the only lever this class has and taking
+          // light down to 2% is a change to a mode nobody reported it in.
+          "fill-foreground/4 dark:fill-foreground/2 [stroke-width:0.6]",
           // The stroke never moves. A live region thickens its border on
           // hover; an empty one must not, or the two would answer alike.
           REGION_STROKE,
@@ -342,7 +397,9 @@ export const Region = memo(function Region({
         interactive ? () => onPointerEnter(region.id, stats) : undefined
       }
       onPointerMove={
-        interactive ? () => onPointerMove(region.id, stats) : undefined
+        interactive
+          ? (event) => onPointerMove(region.id, stats, event)
+          : undefined
       }
       onPointerLeave={
         interactive ? () => onPointerLeave(region.id, stats) : undefined
@@ -373,8 +430,12 @@ export const Region = memo(function Region({
             }
           : undefined
       }
+      // Every state but "picked whole" is drawn on the ramp, so a region keeps
+      // its rank for as long as there is anything left in it to pick. Only a
+      // fully selected region gives the ramp up, because the answer it is
+      // wearing has replaced the question the rank belonged to.
       style={
-        stats.state === false ? densityStyle(stats.density, dimmed) : undefined
+        stats.state === true ? undefined : densityStyle(stats.density, dimmed)
       }
       className={cn(
         // fill-opacity was already in the list and already animated a species

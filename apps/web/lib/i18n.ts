@@ -301,7 +301,7 @@ const sl = {
   // The Kje row's hint once an origin exists. The colon shape rather than
   // "Iz {place}": the slot takes a place name straight out of the postal
   // gazetteer, which carries nominatives only, and "Iz Ljubljana" is not a
-  // sentence. Same sidestep sortedByDistanceFrom makes below.
+  // sentence.
   originFrom: "Izhodišče: {place}",
   show: "Prikaži",
   removeFilter: "Odstrani filter {label}",
@@ -323,7 +323,6 @@ const sl = {
   locationOutsideMap:
     "Tvoja lokacija je zunaj zemljevida. Seznam je vseeno razvrščen po bližini.",
   sortedByDistance: "Seznam je razvrščen po bližini.",
-  sortedByDistanceFrom: "Izhodišče: {label}. Razvrščeno po bližini.",
   // The one box in the shelter picker, and it takes two kinds of answer: a
   // place to measure from and a shelter's name to narrow the list to. The
   // place comes first because it is what the box is for, and the shelter is
@@ -356,6 +355,11 @@ const sl = {
   mapInstructionsMobile: "Izberi regijo na zemljevidu",
   locating: "Iščem lokacijo…",
   nearestFirst: "Najbližje prvo",
+  // What the origin chip says when the origin came from the device rather
+  // than from a typed place, which has no name to show. Without it the chip
+  // fell back to nearestFirst and the panel drew two controls reading
+  // "Najbližje prvo", one removing the origin and one reporting it.
+  myLocation: "Tvoja lokacija",
   // The picker's way out, naming what is behind it rather than the press
   // itself. {count} arrives already formatted by animalCount, so the noun and
   // its agreement are decided in lib/labels.ts and this string only supplies
@@ -773,7 +777,6 @@ const en: Messages = {
   locationOutsideMap:
     "Your location is outside the map. The list is still sorted by distance.",
   sortedByDistance: "The list is sorted by distance.",
-  sortedByDistanceFrom: "From {label}. Sorted by distance.",
   placeOrShelter: "Town, postcode or shelter",
   postcodeNotFound: "No such postcode. Check the number.",
   clearField: "Clear input",
@@ -783,6 +786,7 @@ const en: Messages = {
   mapInstructionsMobile: "Pick a region on the map",
   locating: "Finding your location…",
   nearestFirst: "Nearest first",
+  myLocation: "Your location",
   showAnimals: "Show {count}",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",

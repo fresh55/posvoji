@@ -10,6 +10,44 @@ import { mapAvailabilityText } from "./map-availability";
 const LEGEND_SWATCH_GROUND =
   "color-mix(in oklch, var(--muted) 40%, var(--background))";
 
+/** One square of the map's density fill, at one step of the ramp.
+ *
+ *  Two layers, not one. A region's fill composites over the land it sits on,
+ *  not over whatever happens to be behind the legend; painting the ramp's alpha
+ *  straight onto this panel used its own near-black dark background as the
+ *  ground instead, which is darker than the land the map actually uses and
+ *  compressed all five steps into the same corner of the scale. The underlay is
+ *  LEGEND_SWATCH_GROUND, the opaque stand-in for that land; the map's own ink
+ *  and alpha ride on top of it unchanged, --map-density-fill at the given
+ *  opacity.
+ *
+ *  `className` is what each caller adds on its own account: the ramp's ring
+ *  while the legend is being pointed at, the mixed region's dashed boundary. */
+function DensitySwatch({
+  opacity,
+  className,
+}: {
+  opacity: number;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "relative block size-2.5 overflow-hidden rounded-[2px]",
+        className,
+      )}
+      style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 bg-[var(--map-density-fill)]"
+        style={{ opacity }}
+      />
+    </span>
+  );
+}
+
 /**
  * The key under the shelter map: the density ramp always, and one row for each
  * state the plate is currently in and only while it is in it, so the legend
@@ -82,29 +120,13 @@ export function MapLegend({
                   onHoverDensity(index);
                 }}
               >
-                {/* Two layers, not one. A region's fill composites over the
-                  land it sits on, not over whatever happens to be behind the
-                  legend; painting the ramp's alpha straight onto this panel
-                  used its own near-black dark background as the ground
-                  instead, which is darker than the land the map actually
-                  uses and compressed all five steps into the same corner of
-                  the scale. The underlay is LEGEND_SWATCH_GROUND, the
-                  opaque stand-in for that land; the map's own ink and alpha
-                  ride on top of it unchanged, --map-density-fill at the
-                  DENSITY_STEPS opacity. */}
-                <span
+                <DensitySwatch
+                  opacity={opacity}
                   className={cn(
-                    "relative block size-2.5 overflow-hidden rounded-[2px] transition-shadow",
+                    "transition-shadow",
                     highlightedDensity === index && "ring-1 ring-foreground/30",
                   )}
-                  style={{ backgroundColor: LEGEND_SWATCH_GROUND }}
-                >
-                  <span
-                    aria-hidden
-                    className="absolute inset-0 bg-[var(--map-density-fill)]"
-                    style={{ opacity }}
-                  />
-                </span>
+                />
               </span>
             ))}
           </span>
@@ -127,12 +149,16 @@ export function MapLegend({
         </span>
       )}
       {/* The dashed boundary distinguishes a partial choice without painting
-          a strong pattern across the whole region. */}
+          a strong pattern across the whole region. The ground under it is the
+          ramp, because that is what a partly picked region is still drawn on:
+          it keeps its rank until the last shelter in it is chosen. At a middle
+          step, since the swatch stands for whichever region happens to be half
+          picked. */}
       {hasMixedRegion && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <span
-            aria-hidden
-            className="size-2.5 shrink-0 rounded-[2px] border border-dashed border-brand-strong bg-[var(--map-selected-fill)]/20"
+          <DensitySwatch
+            opacity={DENSITY_STEPS[2]}
+            className="shrink-0 border border-dashed border-brand-strong"
           />
           {messages.mixedRegionLegend}
         </span>
@@ -149,16 +175,21 @@ export function MapLegend({
           guesses at it. max-md:hidden used to be what kept the row off a
           phone; it also kept it off a tablet that draws markers, and left it
           standing on a landscape phone that does not. */}
-      {hasEmptyMarker && (
+      {(hasEmptyMarker || hasFilteredMarker) && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
-          {mapAvailabilityText[locale].noListingsLegend}
-        </span>
-      )}
-      {hasFilteredMarker && (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <EmptyMarkerGlyph className="size-3.5 shrink-0" />
-          {mapAvailabilityText[locale].noMatchesLegend}
+          {/* One row, because the plate draws one mark. A shelter with nothing
+              published and a shelter whose animals the filter removed are the
+              same hollow circle (MarkerDisc's !selected && !live branch in
+              map-marker.tsx), so two captions beside two identical glyphs
+              promised a distinction the map cannot draw: fifteen hollow discs
+              and a key claiming some of them were one thing and some the
+              other. With both states on the plate the row takes the caption
+              that is true of every hollow circle, since the other one is only
+              true of half the circles it would be explaining. */}
+          {hasEmptyMarker
+            ? mapAvailabilityText[locale].noListingsLegend
+            : mapAvailabilityText[locale].noMatchesLegend}
         </span>
       )}
       {/* Only once there is a point to explain. The ring repeats the dashed

@@ -1,5 +1,5 @@
 import { REGION_SHAPES } from "@/lib/map-regions";
-import type { CalloutRect } from "./map-callout";
+import { intersectionArea, type CalloutRect } from "./map-callout";
 import { PLATE_MIN_SCALE } from "./map-marker";
 
 // Major regions orient the small country without labelling every narrow shape.
@@ -37,9 +37,6 @@ export function MapRegionNames({ scale, calloutRects }: {
   // the larger type no longer has room for.
   const fontSize = (scale < PLATE_MIN_SCALE ? 11.5 : 10.5) / scale;
   const placed: CalloutRect[] = [];
-  const overlaps = (a: CalloutRect, b: CalloutRect) =>
-    a.x < b.x + b.width && a.x + a.width > b.x &&
-    a.y < b.y + b.height && a.y + a.height > b.y;
 
   return (
     <g aria-hidden className="pointer-events-none" data-map-region-names>
@@ -48,7 +45,12 @@ export function MapRegionNames({ scale, calloutRects }: {
         const width = Math.max(...lines.map((line) => line.length)) * fontSize * 0.57;
         const box = { x: region.label[0] - width / 2, y: region.label[1] - fontSize,
           width, height: fontSize * lines.length * 1.2 };
-        if ([...placed, ...calloutRects].some((other) => overlaps(box, other))) return null;
+        // Any shared area at all drops the name: two of these read through
+        // each other long before one covers the other. The arithmetic is the
+        // annotation's own, and these rectangles are its own type.
+        if ([...placed, ...calloutRects].some((other) => intersectionArea(box, other) > 0)) {
+          return null;
+        }
         placed.push(box);
         return <text key={region.id} data-map-region-label={region.name}
           x={region.label[0]} y={region.label[1]} textAnchor="middle"

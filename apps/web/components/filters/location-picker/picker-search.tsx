@@ -8,19 +8,39 @@ import { pickerText } from "./model";
 export function PickerSearch({ controller }: { controller: LocationPickerController }) {
   const {
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
-    placeSuggestionRef, searchRef, rowRefs, visibleRows, counts, selected,
+    placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
   } = controller;
   const copy = pickerText[locale];
   // Spelled out rather than taken from the controller's placeOffered, which is
   // the same test: this one narrows typed, so the row below can name the place.
   const canChoosePlace = typed.status === "matched" && !placeMode;
-  const firstRow = visibleRows.find(
-    (row) => (counts.get(row.value) ?? 0) > 0 || selected.includes(row.value),
-  );
+  // The off-site rows are the fallback, not an afterthought: a query that only
+  // an off-site shelter matches draws that group as the whole answer, and
+  // without this Enter and ArrowDown had nowhere to go. Both lists register
+  // into the same rowRefs map, so one lookup reaches either kind of row.
+  const firstRow =
+    visibleRows.find(
+      (row) => (counts.get(row.value) ?? 0) > 0 || selected.includes(row.value),
+    ) ?? visibleOffRows[0];
+  // Reports whether it moved, so the key is only swallowed when it did
+  // something. With no place and no row, Tab has to keep working.
   const focusResult = () => {
-    if (canChoosePlace) placeSuggestionRef.current?.focus();
-    else if (firstRow) rowRefs.current.get(firstRow.value)?.focus();
+    if (canChoosePlace) {
+      placeSuggestionRef.current?.focus();
+      return true;
+    }
+    if (firstRow) {
+      // The ref and not the row: an off-site row is only in the map while its
+      // group is mounted, and the group is folded whenever any live row
+      // matched. Answering "yes" on a row whose ref is absent swallowed the
+      // key and moved nothing, which is the failure this return exists to
+      // prevent.
+      const node = rowRefs.current.get(firstRow.value);
+      node?.focus();
+      return Boolean(node);
+    }
+    return false;
   };
 
   return (
@@ -43,10 +63,11 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
           }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === "ArrowDown") {
-              event.preventDefault();
               // Enter never toggles an unseen first match. Move to the named
               // result so a second deliberate activation makes the choice.
-              focusResult();
+              // Swallow the key only when it moved; with nothing to move to,
+              // the key belongs to the browser again.
+              if (focusResult()) event.preventDefault();
             }
           }}
           onFocus={(event) => event.currentTarget.select()}
@@ -55,7 +76,12 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
           aria-label={messages.placeOrShelter}
           aria-describedby={statusId}
           className={cn(
-            "h-11 bg-background pl-9 pr-11 text-base shadow-none lg:text-sm",
+            "h-11 bg-background pl-9 pr-11 text-base shadow-none",
+            // md:text-base beats ui/input.tsx's own md:text-sm, which otherwise
+            // drops this field to 14px from 768 up and makes iOS zoom the page
+            // on focus across every touch tablet and landscape phone.
+            // lg:text-sm is where the 14px was meant to start.
+            "md:text-base lg:text-sm",
             // The frame is the whole of this control: one field in a dialog
             // with no label beside it and nothing else drawn around it.
             // ui/input.tsx ships border-input, which measures 1.26:1 on the
@@ -102,12 +128,15 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
           <Button
             type="button"
             variant="outline"
-            aria-label={copy.removeOrigin}
+            aria-label={`${copy.removeOrigin}: ${resolved.label ?? messages.myLocation}`}
             onClick={clearOrigin}
             className="h-11 max-w-full justify-start gap-2 bg-muted/30 px-3 text-left text-sm shadow-none"
           >
             <MapPin className="size-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{resolved.label ?? messages.nearestFirst}</span>
+            {/* A geolocated origin has no label of its own. It used to borrow
+                the "Najbližje prvo" toggle's words, which left two controls
+                80px apart reading the same thing and doing opposite things. */}
+            <span className="truncate">{resolved.label ?? messages.myLocation}</span>
             <X className="size-3.5 shrink-0" aria-hidden />
           </Button>
           <p className="text-xs leading-snug text-muted-foreground">{copy.distance}</p>

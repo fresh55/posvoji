@@ -8,8 +8,10 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import {
   distanceKm,
   formatKm,
@@ -255,6 +257,24 @@ export function ShelterMap({
   const contextFadeId = `map-context-fade-${uid}`;
   const hillshadeClipId = `map-hillshade-clip-${uid}`;
   const towns = useMemo(() => layoutTowns(pins), [pins]);
+  /** What every town paints, as a box each, keyed by the town so an annotation
+   *  can leave its own mark out.
+   *
+   *  reach and not r: a dominated town hangs satellite discs outside its coin,
+   *  and those are as much of the mark as the coin is. The annotations take
+   *  this as the list of things they should not be laid over when they have a
+   *  choice of side; see `avoid` in map-callout.tsx. */
+  const markerBoxes = useMemo(
+    () =>
+      towns.map((town) => ({
+        key: town.key,
+        x: town.x - town.reach,
+        y: town.y - town.reach,
+        width: town.reach * 2,
+        height: town.reach * 2,
+      })),
+    [towns],
+  );
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
   /** The single shelter under the pointer inside a cluster marker. A cluster
    *  answers per disc, so the callout and the list row follow the wedge rather
@@ -294,6 +314,21 @@ export function ShelterMap({
    *  did not perform names a region they never pointed at. See
    *  handleRegionPointerEnter. */
   const pointerAsked = useRef(false);
+  /** Whether a pointer that can hover has moved over the plate, which is the
+   *  stricter question and a different one. The plate has to answer it in the
+   *  markup, because the CSS hover rules on the regions are gated on it (see
+   *  data-pointer-asked on the svg below), and a finger has no hover to draw:
+   *  a drag across the plate is a pointer moving, so the ref above says yes to
+   *  it, and unlocking the hover look on the strength of that put the sticky
+   *  post-tap tint back on the map. The ref stays for the handlers, which read
+   *  it synchronously inside a pointerenter that has to decide before the next
+   *  render.
+   *
+   *  hoverAsked is the same answer once more, as a ref, so a move that has
+   *  nothing new to say costs a ref read rather than a setState React would
+   *  only bail out of. */
+  const [pointerHasAsked, setPointerHasAsked] = useState(false);
+  const hoverAsked = useRef(false);
   useEffect(
     () => () => {
       if (regionDwellRef.current !== null) clearTimeout(regionDwellRef.current);
@@ -320,6 +355,10 @@ export function ShelterMap({
   const [focusedTownKey, setFocusedTownKey] = useState<string | null>(null);
   const [calloutTownKey, setCalloutTownKey] = useState<string | null>(null);
   const townRefs = useRef(new Map<string, SVGGElement>());
+
+  // Why a blur on this plate waits a frame, and what each teardown owes in
+  // return: see useDeferredBlur. The coins use the same hook.
+  const deferAfterBlur = useDeferredBlur();
 
   const plateRef = useRef<SVGSVGElement>(null);
   /** How many pixels the plate draws one user unit at. The annotations set
@@ -639,13 +678,20 @@ export function ShelterMap({
     setNamedRegionId(regionId);
   }, []);
 
-  const handleRegionBlur = useCallback((regionId: number) => {
-    // Only if this region is still the one being named. A pointer that has
-    // since named another one is the more recent act, and a blur arriving
-    // after it must not take that answer down. Same shape as the pointer's own
-    // leave below, for the same reason.
-    setNamedRegionId((current) => (current === regionId ? null : current));
-  }, []);
+  const handleRegionBlur = useCallback(
+    (regionId: number) => {
+      // Only if this region is still the one being named. A pointer that has
+      // since named another one is the more recent act, and a blur arriving
+      // after it must not take that answer down. Same shape as the pointer's
+      // own leave below, for the same reason.
+      //
+      // Out of the focusout's own dispatch: see deferAfterBlur.
+      deferAfterBlur(() =>
+        setNamedRegionId((current) => (current === regionId ? null : current)),
+      );
+    },
+    [deferAfterBlur],
+  );
 
   const handleRegionPointerEnter = useCallback(
     (regionId: number, stats: RegionStats) => {
@@ -657,9 +703,12 @@ export function ShelterMap({
       // cannot catch it, because the pointer does rest there, and it rests
       // there for good.
       //
-      // Only asked of a pointer that can hover. A finger has no resting
-      // position and no move to give: on a coarse pointer the tap is the
-      // hover, and swallowing it would take the empty region's card with it.
+      // Not asked of a coarse pointer at all. A finger has no resting
+      // position: on a coarse pointer the tap is the hover, so an enter that
+      // waited for a move would swallow the empty region's card with it. This
+      // is the looser of the plate's two gates, and the only one that decides
+      // what the plate says. What it looks like is decided by the stricter
+      // one, which no finger ever opens; see handleRegionPointerMove.
       if (!pointerAsked.current && !window.matchMedia?.(NO_HOVER).matches) {
         return;
       }
@@ -690,10 +739,31 @@ export function ShelterMap({
 
   // The move that turns the guard above off, and the enter it stands in for:
   // the pointer is already inside the region it just moved in, so there is no
-  // second pointerenter coming to raise the name. Costs a ref read per move
-  // once the pointer has spoken.
+  // second pointerenter coming to raise the name. Costs two ref reads per move
+  // once the pointer has spoken, and nothing else.
+  //
+  // It also lets the plate say so in its markup, which is what unlocks the
+  // regions' own hover rules; see data-pointer-asked below. Two answers and
+  // not one, because the two questions are different: the ref asks whether a
+  // pointer has moved on the plate at all, which is what tells a cursor coming
+  // to the map from a map opening under a resting cursor, and a finger dragging
+  // across it has genuinely moved. The attribute asks whether the pointer can
+  // hover, and a finger cannot: a drag that unlocked the hover rules left the
+  // tint standing under the last thing touched, which reads as a selection.
   const handleRegionPointerMove = useCallback(
-    (regionId: number, stats: RegionStats) => {
+    (
+      regionId: number,
+      stats: RegionStats,
+      event: ReactPointerEvent<SVGPathElement>,
+    ) => {
+      // The event's own kind rather than the NO_HOVER media query: the query
+      // answers for the device's primary pointer, and a laptop with a
+      // touchscreen answers "hover" for the finger that is on the glass right
+      // now. Anything that is not a finger counts as able to hover; a pen can.
+      if (!hoverAsked.current && event.pointerType !== "touch") {
+        hoverAsked.current = true;
+        setPointerHasAsked(true);
+      }
       if (pointerAsked.current) return;
       pointerAsked.current = true;
       handleRegionPointerEnter(regionId, stats);
@@ -780,9 +850,16 @@ export function ShelterMap({
     setCalloutTownKey(town.key);
   }, []);
 
-  const handleTownBlur = useCallback((town: Town) => {
-    setCalloutTownKey((current) => (current === town.key ? null : current));
-  }, []);
+  // Deferred for the reason the region's blur is, and guarded the same way:
+  // see deferAfterBlur.
+  const handleTownBlur = useCallback(
+    (town: Town) => {
+      deferAfterBlur(() =>
+        setCalloutTownKey((current) => (current === town.key ? null : current)),
+      );
+    },
+    [deferAfterBlur],
+  );
 
   const handleTownMoveFocus = useCallback(
     (town: Town, key: RegionMoveKey) => {
@@ -970,6 +1047,17 @@ export function ShelterMap({
       // One listener for the whole plate, above every mark on it, so a tap is
       // read before the mark it landed on can act on it. See the handler.
       onClickCapture={interactive ? handlePlateClickCapture : undefined}
+      // Set by a pointer that can hover, once it has moved on the plate; see
+      // handleRegionPointerMove, which holds the rule. A region's hover look
+      // is written in CSS, and CSS has no way to tell a cursor that came to
+      // the plate from a plate that opened under a cursor: the picker's dialog
+      // arrives where the pointer already is, so whatever region lands under
+      // it paints its hover tint for a hover nobody performed (Goriška, at
+      // every desktop width). Nor can CSS tell a hover from a finger, which is
+      // the same tint left standing after a tap. The gate travels with the
+      // plate rather than with each region, so it is one attribute on one
+      // element and the eleven memoized regions do not redraw to learn it.
+      data-pointer-asked={interactive && pointerHasAsked ? "" : undefined}
       // A finger that moved is not a tap. The plate does not pan, so a drag
       // across it is the page or the sheet under it moving, and the mark the
       // finger started on is no longer the mark it is over.
@@ -987,7 +1075,10 @@ export function ShelterMap({
       // this dense zooms in on whatever was under the second tap rather than
       // picking it.
       className={cn(
-        "h-auto w-full shrink-0",
+        // group/plate: the regions' hover rules are written against the
+        // plate's own data-pointer-asked, which is what keeps a hover the
+        // visitor never performed off the map. See the attribute above.
+        "group/plate h-auto w-full shrink-0",
         interactive && "touch-manipulation",
         className,
       )}
@@ -1156,6 +1247,13 @@ export function ShelterMap({
                 // one name covers the site rather than one per town.
                 rectKey="town"
                 onRect={handleCalloutRect}
+                // Every coin but the one being named. The chip is opaque, so
+                // the side it takes is the side of the plate it deletes, and
+                // frame fit alone had it deleting the largest mark on the map
+                // (hovering Zavod Muri covered the Celje coin whole).
+                avoid={markerBoxes.filter(
+                  (box) => box.key !== activeTown.key,
+                )}
                 // A wedge under the pointer names its own shelter. Without that a
                 // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
                 // at, which is the one question the cluster cannot answer.
@@ -1184,6 +1282,10 @@ export function ShelterMap({
           // needs no region id in its name.
           rectKey="region"
           onRect={handleCalloutRect}
+          // A region's chip stands at the region's label point, which is
+          // routinely inside a cluster of coins, and it owns none of them: the
+          // same courtesy as the town chip above, with nothing to leave out.
+          avoid={markersVisible ? markerBoxes : undefined}
           title={hoveredRegion.region.name}
           action={armedRegion?.region.id === hoveredRegion.region.id ? armedAction : undefined}
           metadata={

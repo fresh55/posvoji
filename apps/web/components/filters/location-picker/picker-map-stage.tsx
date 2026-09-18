@@ -22,15 +22,20 @@ import type { LocationPickerController } from "./controller";
 // The stand-in is a skeleton and not nothing: the press has already opened the
 // dialog, the chunk is in flight, and this is the largest surface in the
 // frame. A skeleton is a promise that something is on its way, and here
-// something is. It fills the plate the way the plate's own contents do, a
-// flexible column against the stage's box, so nothing under it moves when the
-// map lands.
+// something is.
+//
+// It needs a height of its own. flex-1 is `flex: 1 1 0%`, which is 0 in a
+// column sized by its content, and below lg with the list put away the stage
+// is exactly that: the dialog painted as a header, a strip of padding and a
+// footer, then jumped to full height when the chunk landed. min-h-52 is 208px,
+// within two of the plate's own 210-unit viewBox at 1:1, and shrink lets it go
+// when the box is shorter than that, the same as the real map does.
 const PickerMapPlate = dynamic(
   () =>
     import("./picker-map-plate").then((module) => module.PickerMapPlate),
   {
     ssr: false,
-    loading: () => <Skeleton className="min-h-0 w-full flex-1" />,
+    loading: () => <Skeleton className="min-h-52 w-full flex-1 shrink" />,
   },
 );
 

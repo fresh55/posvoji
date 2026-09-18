@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import type { Locale } from "@/lib/i18n";
 import { filteredAnimalCount, shelterCount } from "@/lib/labels";
 import {
@@ -386,6 +387,16 @@ export const Marker = memo(function Marker({
    *  dominated town or overflow into a plain count disc, and an index into the
    *  marks that were there is not an index into the marks that are. */
   const [drilledIndex, setDrilledIndex] = useState<number | null>(null);
+  /** The same answer, written at the moment it changes rather than at the next
+   *  render, for the deferred blur teardown below: that one runs a frame late
+   *  and has to compare against what the coin is standing on now. Every write
+   *  goes through setDrilled, which is why nothing here calls setDrilledIndex
+   *  directly. */
+  const drilledIndexRef = useRef<number | null>(null);
+  const setDrilled = useCallback((index: number | null) => {
+    drilledIndexRef.current = index;
+    setDrilledIndex(index);
+  }, []);
   const drilled =
     drilledIndex !== null && drilledIndex < marks.length ? drilledIndex : null;
   const drilledMark = drilled !== null ? marks[drilled] : undefined;
@@ -428,13 +439,17 @@ export const Marker = memo(function Marker({
   // annotation names the shelter, its disc leans in and the list row tints,
   // because none of that ever asked which kind of pointing it was answering.
   const enterWedge = (index: number) => {
-    setDrilledIndex(index);
+    setDrilled(index);
     onHoverShelter(town, marks[index].value);
   };
   const leaveWedges = () => {
-    setDrilledIndex(null);
+    setDrilled(null);
     onHoverShelter(town, null);
   };
+
+  // Why the blur below hands its teardown to the next frame, and what it owes
+  // in return: see useDeferredBlur. The plate's own blurs use the same hook.
+  const deferAfterBlur = useDeferredBlur();
 
   // Escape, while a coin is drilled into, belongs to the coin and to nothing
   // else. It cannot be answered in onKeyDown below, and the reason is worth
@@ -459,13 +474,13 @@ export const Marker = memo(function Marker({
       if (event.key !== "Escape") return;
       event.preventDefault();
       event.stopPropagation();
-      setDrilledIndex(null);
+      setDrilled(null);
       onHoverShelter(town, null);
     };
     window.addEventListener("keydown", handleEscape, { capture: true });
     return () =>
       window.removeEventListener("keydown", handleEscape, { capture: true });
-  }, [drilled, interactive, onHoverShelter, town]);
+  }, [drilled, interactive, onHoverShelter, setDrilled, town]);
 
   // The pointer half of a cluster's per-shelter target, shared by the wedge
   // and by the disc circle painted over it.
@@ -550,7 +565,28 @@ export const Marker = memo(function Marker({
           ? () => {
               // Focus leaving the coin closes the drill outright, so a coin
               // the visitor comes back to is always found at coin level.
-              if (drilledIndex !== null) leaveWedges();
+              //
+              // On the next frame rather than inside the focusout, because
+              // closing the drill unmounts the wedge and its focus ring, and a
+              // node removed while focus is between two elements makes the
+              // dialog's FocusScope haul focus back to the dialog: forward Tab
+              // off the coin never reached the panel. The plate's own blurs
+              // wait for the same reason; see useDeferredBlur.
+              //
+              // And it closes the mark it was told to close, or nothing at
+              // all. The coin can be standing somewhere else by the time the
+              // frame arrives, the arrows being what walks it there, and
+              // closing whatever is open then would take down an answer given
+              // after the blur: the ring off the new mark, the tint off the
+              // list row it named. The plate's teardowns hold the same guard
+              // in their own shape; see useDeferredBlur.
+              if (drilledIndex !== null) {
+                const closing = drilledIndex;
+                deferAfterBlur(() => {
+                  if (drilledIndexRef.current !== closing) return;
+                  leaveWedges();
+                });
+              }
               onBlur(town);
             }
           : undefined

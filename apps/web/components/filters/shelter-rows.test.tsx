@@ -44,6 +44,26 @@ const detailSummaries: Map<string, ShelterSummary> = new Map([
 const rowTag = (html: string, label: string) =>
   html.split("data-shelter-row=").find((chunk) => chunk.includes(label)) ?? "";
 
+// The same row as a node, for the assertions that are about one part of it.
+// A chunk of markup answers "is this class anywhere in the row", which is the
+// wrong question for anything a row carries more than one of: the disabled
+// row's muting was pinned by an opacity the checkbox and the count pill each
+// wear, and the picked pill's brand tokens by the checkbox's own bg-brand.
+// Parsing lets an assertion name the element it is about.
+const rowNode = (html: string, value: string) =>
+  new DOMParser()
+    .parseFromString(html, "text/html")
+    .querySelector(`[data-shelter-row="${value}"]`)!;
+
+/** The control that answers a press on the row, and so the one carrying the
+ *  shelter's name and town. */
+const toggleOf = (html: string, value: string) =>
+  rowNode(html, value).querySelector<HTMLElement>("button[aria-pressed]")!;
+
+/** The row's count pill. */
+const pillOf = (html: string, value: string) =>
+  rowNode(html, value).querySelector<HTMLElement>('[data-slot="badge"]')!;
+
 describe("ShelterRows hover linking", () => {
   it("tints the row(s) named by the highlighted prop, not the others", () => {
     const html = renderToStaticMarkup(
@@ -149,10 +169,48 @@ describe("ShelterRows selection and counts", () => {
     );
 
     const dead = rowTag(html, "Sia in Lu");
-    expect(dead).toContain("opacity-40");
+    // Muted ink on the control that carries the name and the town, and no
+    // opacity on the row at all. At 40% that town line measured 1.77:1 on the
+    // light panel and could not be read; a shelter's name and town are
+    // information, not chrome. The fading that is left belongs to the checkbox
+    // and the pill, which is why this is read off the toggle rather than off
+    // the whole row: opacity-60 anywhere inside it satisfies a search of the
+    // chunk whatever the name is wearing.
+    expect(toggleOf(html, "sia-in-lu").className).toContain(
+      "text-muted-foreground",
+    );
+    expect(toggleOf(html, "macja-hisa").className).not.toContain(
+      "text-muted-foreground",
+    );
+    expect(dead).not.toContain("opacity-40");
     expect(dead).toContain("cursor-not-allowed");
     expect(dead).not.toContain("hover:bg-muted/50");
     expect(dead).toContain("disabled=");
+  });
+
+  it("gives a picked row's count pill the footer chip's own brand tokens", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={rows}
+        counts={counts}
+        selected={["sia-in-lu"]}
+        onToggle={() => undefined}
+      />,
+    );
+
+    // accent, the badge variant the footer's selection chip takes, so the
+    // picked pill and the picked chip are the same green rather than two
+    // greens a token apart. It is the third of the three signals the picker
+    // states for a picked row, and the only one a search of the row could not
+    // tell from the check beside it: that check carries bg-brand too.
+    const picked = pillOf(html, "sia-in-lu");
+    expect(picked.className).toContain("border-brand-border");
+    expect(picked.className).toContain("bg-brand");
+    expect(picked.className).toContain("text-brand-foreground");
+
+    // An unpicked row's pill stays the neutral badge every count wears, so the
+    // column still reads as one set of numbers to compare.
+    expect(pillOf(html, "macja-hisa").className).not.toContain("brand");
   });
 
   it("keeps the count in a neutral aligned badge after the shelter name", () => {

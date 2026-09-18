@@ -162,6 +162,60 @@ test.describe("desktop", () => {
     await expect(callout(dialog)).toHaveCount(0);
   });
 
+  // Forward Tab out of the plate, which was a keyboard trap.
+  //
+  // Every blur on the map takes an annotation down with it, and doing that
+  // inside the focusout meant React unmounted a node while the browser was
+  // still moving focus, with document.activeElement on the body for that
+  // moment. The dialog's focus scope watches for removed nodes and, finding
+  // focus nowhere, hauled it back to the dialog element: Tab from a region or
+  // a coin looped between the close button, the region and the dialog, and the
+  // search box, the list and the confirm button were unreachable from the map.
+  // The teardowns wait for the next frame now; see useDeferredBlur in
+  // hooks/use-deferred-blur.ts.
+  //
+  // Only a real browser can answer this. jsdom fires no focus rescue, because
+  // there is no focus scope and no observer running in it.
+  test("tabs from the map into the panel instead of trapping focus", async ({
+    page,
+  }) => {
+    const dialog = await openPicker(page);
+    const region = liveRegions(dialog).first();
+    await region.focus();
+    await expect(region).toBeFocused();
+
+    // The plate offers one region and one coin, each a single roving stop.
+    await page.keyboard.press("Tab");
+    await expect(dialog.locator("g[data-marker-key]:focus")).toHaveCount(1);
+
+    // And on out of the map. The walk is bounded because a trapped one never
+    // ends: the credits, the collapse control and the search box are the few
+    // stops between the coin and the panel.
+    const search = dialog.getByRole("textbox").first();
+    const walk: string[] = [];
+    let reached = false;
+    for (let step = 0; step < 24 && !reached; step += 1) {
+      await page.keyboard.press("Tab");
+      walk.push(
+        await page.evaluate(() => {
+          const element = document.activeElement;
+          if (!element) return "nothing";
+          if (element.getAttribute("role") === "dialog") return "dialog";
+          return element.tagName.toLowerCase();
+        }),
+      );
+      reached = await search.evaluate(
+        (element) => element === document.activeElement,
+      );
+    }
+
+    expect(walk, "focus was thrown back to the dialog").not.toContain("dialog");
+    expect(
+      reached,
+      `never reached the search field, walked ${walk.join(" -> ")}`,
+    ).toBe(true);
+  });
+
   test("clicking a region selects every shelter in it", async ({ page }) => {
     const dialog = await openPicker(page);
     const region = liveRegions(dialog).first();

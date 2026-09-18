@@ -220,6 +220,39 @@ export type CalloutRect = {
   height: number;
 };
 
+/** How much of `a` and `b` is the same piece of plate, in square user units.
+ *  Zero when they miss each other, and zero when they only meet along an edge.
+ *
+ *  The one rectangle test the map keeps. Everything the plate lays out is a
+ *  CalloutRect and everything it asks about them is this: the annotation asks
+ *  for the area, to choose the emptier side of a mark; the furniture and the
+ *  region names ask whether it is anything at all, to drop a name that would
+ *  be read through another. `> 0` is the same strict test those two wrote by
+ *  hand, edges included. */
+export function intersectionArea(a: CalloutRect, b: CalloutRect): number {
+  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  if (width <= 0) return 0;
+  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  if (height <= 0) return 0;
+  return width * height;
+}
+
+/** How much of `box` the rectangles in `others` cover, in square user units.
+ *
+ *  Area and not a count, because the question the side choice asks is how much
+ *  of the plate a chip would hide, and a chip clipping the edge of one coin is
+ *  not the same answer as one sitting on top of two. */
+function coveredArea(
+  box: CalloutRect,
+  others: readonly CalloutRect[],
+): number {
+  let total = 0;
+  for (const other of others) {
+    total += intersectionArea(box, other);
+  }
+  return total;
+}
+
 /** One annotation for markers and regions alike: a quiet popover chip set
  *  beside the thing it names, with a leader only when the frame has pushed it
  *  off that thing.
@@ -239,6 +272,7 @@ export function MapCallout({
   species,
   action,
   scale = DEFAULT_PLATE_SCALE,
+  avoid,
   rectKey = "",
   onRect,
 }: {
@@ -269,6 +303,24 @@ export function MapCallout({
    *  size below is divided by it, so the label renders at the same size on a
    *  tablet and on a wide desktop. */
   scale?: number;
+  /** Marks this chip must not be laid over if it has a choice: the painted
+   *  boxes of the other towns on the plate, in the map's own user units.
+   *
+   *  The chip is opaque by design, so whatever it lands on is gone while it is
+   *  up, and the side it took was decided by frame fit alone: hovering Zavod
+   *  Muri covered the Celje coin whole, the largest mark on the plate.
+   *
+   *  A preference and not a rule. The frame still decides first, and it decides
+   *  against the reserved column rather than against the words: where the
+   *  column does not fit the quieter side, the chip goes on the crowded one
+   *  anyway and can still cover a neighbour (Horjul's still covers Ljubljana).
+   *  Placing against the drawn chip would need its width, which only a layout
+   *  pass knows, and moving a chip after it is on screen is worse than the
+   *  thing it would fix.
+   *
+   *  Left out by a caller with nothing to protect, which is the same answer as
+   *  an empty list. */
+  avoid?: readonly CalloutRect[];
   /** Which annotation this is, among the ones the plate may be showing at
    *  once. More than one can stand at a time: a spotlight card is persistent
    *  while a hover raises a second one over another town, so the map keeps the
@@ -330,19 +382,34 @@ export function MapCallout({
 
   // Which side of the marker the chip belongs on, and where it would sit if
   // nothing were in the way.
-  const onRight = x + reach + labelGap + boxWidth <= MAP_WIDTH - FRAME_MARGIN;
-  const naturalX = onRight
-    ? x + reach + labelGap
-    : x - reach - labelGap - boxWidth;
+  //
+  // The frame decides first and decides alone: a side the chip does not fit on
+  // is not a side. Only when both fit does what is already painted there get a
+  // say, and then the quieter side wins. Ties go right, which is the side this
+  // read as before anything was avoided.
+  const rightX = x + reach + labelGap;
+  const leftX = x - reach - labelGap - boxWidth;
   const naturalY = y - boxHeight / 2;
-  const blockX = Math.min(
-    Math.max(naturalX, FRAME_MARGIN),
-    MAP_WIDTH - boxWidth - FRAME_MARGIN,
-  );
+  const clampX = (value: number) =>
+    Math.min(Math.max(value, FRAME_MARGIN), MAP_WIDTH - boxWidth - FRAME_MARGIN);
   const blockY = Math.min(
     Math.max(naturalY, FRAME_MARGIN),
     MAP_HEIGHT - boxHeight - FRAME_MARGIN,
   );
+  const rightFits = rightX + boxWidth <= MAP_WIDTH - FRAME_MARGIN;
+  const leftFits = leftX >= FRAME_MARGIN;
+  // Asked of the clamped position, which is where the chip actually lands: the
+  // unclamped one answers for a chip that is not there.
+  const hides = (boxX: number) =>
+    coveredArea(
+      { x: clampX(boxX), y: blockY, width: boxWidth, height: boxHeight },
+      avoid ?? [],
+    );
+  // A caller with nothing to avoid needs no arm of its own: both sides hide
+  // nothing, and a tie goes right, which is the answer it wants.
+  const onRight = rightFits && (!leftFits || hides(rightX) <= hides(leftX));
+  const naturalX = onRight ? rightX : leftX;
+  const blockX = clampX(naturalX);
 
   // The margin the foreignObject carries beyond the chip, so the shadow drawn
   // outside it is not sheared off along the object's own edge. Derived from

@@ -43,11 +43,23 @@ export function pickerRecoveryActions(
   };
 }
 
+// Search text with its accents taken off, so a keyboard without them finds
+// every name. NFD splits č ć š ž into a letter and a combining mark and the
+// mark is dropped; đ is its own letter with no decomposition, so it is named
+// here.
+//
+// Not the same function as lib/geo.ts cityKey, and not the same alphabet: that
+// one folds five letters by hand and never normalises, which is enough for the
+// town table it keys. Three more of these exist (shelter-initial.ts, the
+// slugify in animal-path.ts), no two spelled alike. One folder in lib/ would
+// be the right answer and is a change for its own pass, since the slug one
+// addresses animals.
 export function fold(text: string): string {
   return text
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/đ/g, "d");
 }
 
 export function visibleTrigger(): HTMLElement | null {
@@ -101,19 +113,20 @@ export const pickerText = {
     selected: "Izbrano",
     removeSelection: "Odstrani zavetišče",
     places: "Kraji",
-    shelters: "Zavetišča",
     near: "V bližini",
     removeOrigin: "Odstrani izhodišče",
     distance: "Približna zračna razdalja med kraji.",
     countsMatch: "Število živali upošteva izbrane filtre.",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
-    allShelters: "Vsa zavetišča",
-    clearFilters: "Počisti filtre",
-    allSpecies: "Pokaži vse živali",
+    // The footer's way out of an empty result, beside "Počisti filtre" and
+    // "Pokaži vse živali". Named for the press and not for the state, the same
+    // as those two, so it cannot be read as lib/labels.ts allShelters, which
+    // is what the panel head calls having nothing picked.
+    showAllShelters: "Pokaži vsa zavetišča",
     backToResults: "Nazaj k rezultatom",
+    showList: "Pokaži seznam",
     chooseShelters: "Izberi zavetišča",
     chooseSheltersHint: "Izberi eno ali več zavetišč.",
-    showList: "Pokaži seznam",
     showMap: "Pokaži zemljevid",
   },
   en: {
@@ -124,19 +137,19 @@ export const pickerText = {
     selected: "Selected",
     removeSelection: "Remove shelter",
     places: "Places",
-    shelters: "Shelters",
     near: "Near",
     removeOrigin: "Remove starting point",
     distance: "Approximate straight-line distance between towns.",
     countsMatch: "Animal counts reflect your current filters.",
     zeroMatches: "No published animals match your selection.",
-    allShelters: "All shelters",
-    clearFilters: "Clear filters",
-    allSpecies: "Show all animals",
+    showAllShelters: "Show all shelters",
     backToResults: "Back to results",
+    // Not i18n's expandPanel, which the desktop rail says as "Show the list".
+    // This names a view on a switch beside "Zemljevid", not a panel that
+    // unfolds, and the two should be free to read differently.
+    showList: "Show list",
     chooseShelters: "Choose shelters",
     chooseSheltersHint: "Select one or more shelters.",
-    showList: "Show list",
     showMap: "Show map",
   },
 } satisfies Record<Locale, Record<string, string>>;
@@ -156,7 +169,7 @@ export function locateAndSort(
     };
   });
   if (!origin) return located;
-  return [...located].sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+  return located.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
 }
 
 export function toPins(

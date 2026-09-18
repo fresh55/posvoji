@@ -30,7 +30,9 @@ import { DialogShareButton } from "@/components/animal-dialog/dialog-share-butto
 import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
+import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-provider";
+import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
 import { PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -100,8 +102,16 @@ export type DialogOrigin = {
 // had to be remembered together and a rule written as max-sm: alone was a
 // landscape bug nothing would catch. PHONE_SHELL below is the same boundary
 // for the places that have to ask rather than style.
+//
+// morph-still carries nothing of its own. It is the hook the one rule scoped
+// to a running morph is keyed on (globals.css): Blink builds the invalidation
+// set for `[data-photo-morph] X` from X alone, and that rule used to name
+// [data-slot], which every card wears several of, so each set and removal of
+// the mark scheduled a recalc for hundreds of elements, the first of them
+// inside the transition's own capture. A class only this box wears is a set of
+// one. It is not the content's own styling class and nothing else may use it.
 const CONTENT_CLASS =
-  "fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
+  "morph-still fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame. The pull up under
 // the photos is on the wrapper around it (CARD_FRAME_CLASS), so that the edge
@@ -274,13 +284,10 @@ function cardBehind(href: string) {
 
 /** And the photo box on it, which is where the dialog's front print goes back
  *  to. The same box the card names for itself on the way in
- *  (animal-card.tsx). */
+ *  (animal-card.tsx), found through the same helper, so a rename of the
+ *  marker cannot break the open loudly and this end silently. */
 function cardPhotoBehind(href: string) {
-  return (
-    cardBehind(href)
-      ?.closest("article")
-      ?.querySelector<HTMLElement>('[data-slot="photo-frame"]') ?? null
-  );
+  return cardPhoto(cardBehind(href)?.closest("article"));
 }
 
 // The desktop box is centered, so the card's viewport center reads as an
@@ -292,16 +299,7 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
   return `calc(50% + ${x}px) calc(50% + ${y}px)`;
 }
 
-export function AnimalDialog({
-  animal,
-  logos,
-  origin,
-  siblingIds,
-  reference,
-  onReady,
-  onNavigate,
-  onClose,
-}: {
+type AnimalDialogProps = {
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
   logos: ShelterLogos;
@@ -320,13 +318,53 @@ export function AnimalDialog({
   onReady?: () => void;
   onNavigate: (id: string) => void;
   onClose: () => void;
-}) {
-  const { locale, messages } = useI18n();
-  const shouldReduceMotion = useReducedMotion();
+};
+
+/**
+ * What the grids mount on idle, well before anyone opens a card.
+ *
+ * It holds a latch and nothing else, because whatever it holds is paid for by
+ * every visitor of the grid from that mount onwards, including those who never
+ * open anything. Two of OpenAnimalDialog's hooks are live subscriptions rather
+ * than allocations: the location store, which would carry one more subscriber
+ * to call on every filter, sort and location write and would re-render the
+ * dialog to return null whenever the search string changed, and motion's
+ * reduced-motion value. Split this way the idle mount costs the chunk and one
+ * commit of null, which is what animal-grid.tsx says it costs.
+ *
+ * A latch and not a pass-through: the inner half owns `lastAnimal`, the animal
+ * kept so the closing animation still has something to draw, so once an animal
+ * has arrived it has to stay mounted for good.
+ */
+export function AnimalDialog({ animal, onReady, ...rest }: AnimalDialogProps) {
   // Said as soon as this component is on the page, whatever it is drawing:
   // with no animal it draws nothing, and being there is the whole of what the
   // cards have to know.
   useEffect(() => onReady?.(), [onReady]);
+  // Adjusted during render rather than in an effect, so a deep link mounts the
+  // dialog in the first client render the way it always has.
+  const [firstAnimal, setFirstAnimal] = useState(animal);
+  if (animal && !firstAnimal) setFirstAnimal(animal);
+  if (!firstAnimal) return null;
+  return <OpenAnimalDialog animal={animal} first={firstAnimal} {...rest} />;
+}
+
+function OpenAnimalDialog({
+  animal,
+  first,
+  logos,
+  origin,
+  siblingIds,
+  reference,
+  onNavigate,
+  onClose,
+}: Omit<AnimalDialogProps, "onReady"> & {
+  /** The animal that mounted this, which is what the closing animation falls
+   *  back to before any step has happened. */
+  first: ClientAnimal;
+}) {
+  const { locale, messages } = useI18n();
+  const shouldReduceMotion = useReducedMotion();
   const open = animal !== undefined;
   const contentRef = useRef<HTMLDivElement>(null);
   // This dialog's own overlay. Held rather than looked up by its slot: the
@@ -403,15 +441,9 @@ export function AnimalDialog({
   const trackLightbox = useCallback((open: boolean) => {
     lightboxOpen.current = open;
   }, []);
-  // Whether this close is carrying the photograph back into a card, which is
-  // closeDialog's own decision and is asked again by the focus restore below.
-  // Not the mark on <html>: that says only that some morph is running, and an
-  // Escape a moment after opening is a plain close with the open's mark still
-  // up, which is exactly the close whose card may be off screen.
-  const closingWithMorph = useRef(false);
   // The closing animation still needs something to draw, and by then the
   // selection is already gone, so the last animal shown stays behind for it.
-  const [lastAnimal, setLastAnimal] = useState(animal);
+  const [lastAnimal, setLastAnimal] = useState(first);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
   // What this open is, held for as long as it lasts.
   //
@@ -444,11 +476,17 @@ export function AnimalDialog({
   });
   if (opened.open !== open) {
     const morph = open && morphInProgress() === "open";
+    // The phone is asked only under a morph. cardArrivesLate is `morphing &&
+    // phoneShell`, so every close, every step, every deep link and every
+    // visitor without the API or with less movement asked for threw the answer
+    // away, having built a MediaQueryList for it: on the morph open, inside
+    // the render inside the flush inside the transition's callback.
+    const late = morph && cardArrivesLate(morph, onPhoneShell());
     setOpened({
       open,
       id: animal?.id,
       morph,
-      settled: !cardArrivesLate(morph, onPhoneShell()),
+      settled: !late,
       spent: 0,
     });
   }
@@ -529,8 +567,6 @@ export function AnimalDialog({
   );
   const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
 
-  if (!lastAnimal) return null;
-
   const name = lastAnimal.name ?? messages.unnamed;
   // The address this animal has of its own, which is also what the card behind
   // the dialog links to, so it is how that card is found.
@@ -607,20 +643,23 @@ export function AnimalDialog({
   // a back press the dialog did not start, an animal with no card behind it,
   // and a card that is not somewhere the photograph can land, all keep the
   // plain unmount.
+  //
+  // Nothing below is measured unless this close will pop. A dialog standing on
+  // an entry nothing pushed closes by writing the list's address instead, and
+  // that write clears the arm on its way past (commitLocation), so the lookups,
+  // the forced layout and the media query were all spent on a morph that never
+  // ran. It is the same question use-animal-dialog.ts asks to pick the branch.
   function closeDialog() {
-    const photo = cardPhotoBehind(href);
-    closingWithMorph.current = false;
+    const photo = standsOnDialogEntry() ? cardPhotoBehind(href) : null;
     if (
       photo &&
       withinViewport(photo) &&
       canMorphPhoto() &&
       frontPrintOf(contentRef.current)
     ) {
-      closingWithMorph.current = true;
       wrapNextPop((notify) =>
         morphPhoto({
           photo,
-          at: "new",
           direction: "close",
           update: () => {
             // Radix keeps a closing dialog in the document until its own exit
@@ -659,8 +698,9 @@ export function AnimalDialog({
       return;
     }
     // The gesture belongs to the full-screen phone layout. On the desktop box
-    // the card scrolls instead, so the shell's scrollTop says nothing.
-    if (!window.matchMedia(PHONE_SHELL).matches) return;
+    // the card scrolls instead, so the shell's scrollTop says nothing. Through
+    // the helper, so the one boundary is not spelled two ways in one file.
+    if (!onPhoneShell()) return;
     if ((contentRef.current?.scrollTop ?? 0) > 0) return;
     drag.current = {
       pointerId: event.pointerId,
@@ -753,10 +793,14 @@ export function AnimalDialog({
             // the card, and the card may be a long way up the grid: focus
             // nobody can see is focus lost. The browser's own scroll is what
             // this puts back, and only where it costs no snapshot.
-            if (!closingWithMorph.current) {
+            //
+            // The session rather than a flag of closeDialog's own. This runs
+            // inside the update's flush, where the session is exact: a close
+            // that is carrying the photograph answers "close", and an Escape a
+            // moment after opening, which is a plain close, answers "open".
+            if (morphInProgress() !== "close") {
               target.scrollIntoView?.({ block: "nearest" });
             }
-            closingWithMorph.current = false;
           }}
         >
           {/* Mounted empty for as long as the dialog is open, so the name of

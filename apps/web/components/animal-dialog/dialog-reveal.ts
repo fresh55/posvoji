@@ -1,5 +1,6 @@
+import { PHOTO_MORPH_MS } from "@/lib/photo-morph";
 import type { Transition } from "motion/react";
-import { PHOTO_MORPH_MS } from "@/lib/view-transition";
+import { NO_FADE } from "./fan-options";
 
 /**
  * When the card under the photographs arrives, and what the opening commit
@@ -9,11 +10,6 @@ import { PHOTO_MORPH_MS } from "@/lib/view-transition";
  * fan: these are decisions about one open, they are read by the dialog and
  * pinned by its tests, and a component module marked "use client" is the wrong
  * place to reach into for either.
- *
- * Only constants may be taken from lib/view-transition.ts here. It is "use
- * client", and a server import of one would receive a client-reference proxy:
- * the delay below is computed at module scope, so it would throw while the
- * page is being built rather than in anything a test runs.
  */
 
 // The last third of the morph, as one fade for the whole of the card.
@@ -35,11 +31,10 @@ const CARD_REVEAL = {
 // the photos.
 const CARD_FADE = { ...CARD_REVEAL, delay: 0 } as const;
 
-// And where less movement was asked for, the card is simply there.
-const CARD_STILL = { duration: 0 } as const;
-
 /** How the card under the photographs arrives, which is a question about this
- *  open and not about the dialog: see CARD_REVEAL and CARD_FADE.
+ *  open and not about the dialog: see CARD_REVEAL and CARD_FADE. Where less
+ *  movement was asked for the card is simply there, which is the fan's NO_FADE:
+ *  one answer for everything this dialog mounts without drawing it in.
  *
  *  `spent` is how much of that wait has already gone by, in seconds. The card
  *  is held at nothing until what is in it has been drawn (see cardArrivesLate
@@ -53,7 +48,7 @@ export function cardRevealTransition(
   morphing: boolean,
   spent = 0,
 ): Transition {
-  if (reduced) return CARD_STILL;
+  if (reduced) return NO_FADE;
   if (!morphing) return CARD_FADE;
   return { ...CARD_REVEAL, delay: Math.max(0, CARD_REVEAL.delay - spent) };
 }

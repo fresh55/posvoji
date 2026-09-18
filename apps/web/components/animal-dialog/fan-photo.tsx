@@ -29,6 +29,7 @@ import {
 } from "./fan-geometry";
 import {
   PHOTO_FRAME_CLASS,
+  PHOTO_MORPH_CLASS,
   PHOTO_SEAT_CLASS,
   PHOTO_WELL_CLASS,
 } from "./fan-photo-styles";
@@ -333,28 +334,10 @@ export const FanPhoto = memo(function FanPhoto({
         // time and the stage's own rule cannot reach through it.
         active ? "cursor-zoom-in" : count > 1 && "cursor-grab",
         count > 1 && "group-data-dragging:cursor-grabbing",
-        // What the browser morphs the card's photograph into on the way in,
-        // and back out of on the way out. The whole seat and not the picture
-        // inside it: what the morph names is lifted out of the page for the
-        // length of it, so naming the well alone left this print's paper
-        // standing empty at the far end, a white card waiting for its
-        // photograph. Named here, the print arrives as one thing.
-        //
-        // The name is the one in lib/view-transition.ts, written out because
-        // Tailwind reads the class and not the constant. Only the print in
-        // front carries it, and only one element may carry it at a time: the
-        // card takes its own off inside the same update that mounts this one,
-        // or the browser skips the morph.
-        //
-        // And only while a morph is running, which is what the mark on <html>
-        // says. A named element is lifted out of the page snapshot for the
-        // length of any transition, this document's own navigations included
-        // (@view-transition in globals.css): worn permanently, this print was
-        // pulled out of the old snapshot of a real anchor navigation out of an
-        // open dialog and cross-faded on its own, over a page it had left. The
-        // mark is written before both the open and the close capture, so both
-        // still find the name here.
-        active && "[[data-photo-morph]_&]:[view-transition-name:animal-photo]",
+        // The box the card's photograph is morphed into, and only the print in
+        // front is it. See PHOTO_MORPH_CLASS for what the name costs when it is
+        // worn by anything else, or for longer than the morph.
+        active && PHOTO_MORPH_CLASS,
       )}
       initial={entrance === false ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}

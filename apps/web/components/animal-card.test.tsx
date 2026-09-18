@@ -7,11 +7,14 @@ import type { LucideIcon } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
+import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { animalsForClient } from "@/lib/dataset";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
+import { PHOTO_TRANSITION_NAME } from "@/lib/photo-morph";
+import { stubViewTransition } from "@/test/view-transition";
 
 afterEach(cleanup);
 
@@ -703,34 +706,16 @@ describe("AnimalCard photo morph", () => {
   // silent. A name left on this box when the dialog has mounted its own is two
   // elements wearing one name in the same state, which makes the browser skip
   // the morph and drop the visitor straight into the open dialog.
-  type Started = {
-    /** The name on the card's photo box while the old state is captured. */
-    beforeUpdate: string;
-    /** And after the update, which is the state the new snapshot is taken in. */
-    afterUpdate: string;
-  };
-
-  function stubViewTransition(started: Started[]) {
-    let settle = () => undefined as void;
-    let skip = () => undefined as void;
-    const finished = new Promise<void>((resolve, reject) => {
-      settle = () => resolve();
-      skip = () => reject(new Error("the browser skipped it"));
-    });
-    const named = () =>
-      document
-        .querySelector<HTMLElement>('[data-slot="photo-frame"]')!
-        .style.getPropertyValue("view-transition-name");
-    // Run in place rather than on the browser's own schedule: what is being
-    // checked is the order of what happens inside the callback, not when the
-    // browser gets round to it.
-    document.startViewTransition = ((update: () => void) => {
-      const beforeUpdate = named();
-      update();
-      started.push({ beforeUpdate, afterUpdate: named() });
-      return { finished, ready: finished, updateCallbackDone: finished };
-    }) as typeof document.startViewTransition;
-    return { finished, settle, skip };
+  // The name on the card's photo box, which is all these read: the box is
+  // found the way both ends of the morph find it (cardPhoto), and the answer
+  // is a plain string so the shared stub can sample it either side of the
+  // update. Empty where nothing is named, which is what a card at rest says.
+  function nameOnFrame() {
+    return (
+      cardPhoto(document.body)?.style.getPropertyValue(
+        "view-transition-name",
+      ) ?? ""
+    );
   }
 
   function reduceMotion(reduced: boolean) {
@@ -750,16 +735,19 @@ describe("AnimalCard photo morph", () => {
     Reflect.deleteProperty(document, "startViewTransition");
   });
 
-  function renderCard(opened: string[], dialogReady = true) {
+  function renderCard(
+    opened: string[],
+    { ready = true, images = 2 }: { ready?: boolean; images?: number } = {},
+  ) {
     render(
       <I18nProvider locale="sl">
         <AnimalCard
-          animal={animal({ images: photos(2) })}
+          animal={animal({ images: photos(images) })}
           reference={NOW}
           onOpen={(id) => opened.push(id)}
           // The grid's answer, and true here for every test but the one that
           // asks what a press before the dialog arrives does.
-          dialogReady={dialogReady}
+          isDialogReady={() => ready}
         />
       </I18nProvider>,
     );
@@ -768,8 +756,7 @@ describe("AnimalCard photo morph", () => {
 
   it("names the photo, opens inside the transition, and clears the name", async () => {
     reduceMotion(false);
-    const started: Started[] = [];
-    const { skip } = stubViewTransition(started);
+    const started = stubViewTransition(nameOnFrame);
     const opened: string[] = [];
     const link = renderCard(opened);
 
@@ -777,25 +764,25 @@ describe("AnimalCard photo morph", () => {
 
     expect(started).toHaveLength(1);
     // Named for the old state, which is the box the morph leaves from.
-    expect(started[0].beforeUpdate).toBe("animal-photo");
+    expect(started[0].before).toBe(PHOTO_TRANSITION_NAME);
     // The dialog is open by the time the callback returns, because the new
     // snapshot is taken then: a render React has not committed is a state the
     // morph never sees.
     expect(opened).toEqual(["rex"]);
     // And the name is off again, because the dialog's front print is wearing
     // it now.
-    expect(started[0].afterUpdate).toBe("");
+    expect(started[0].after).toBe("");
+    // The document says which way the photograph is going for as long as the
+    // update runs, which is what the dialog's own zoom stands aside for.
+    expect(started[0].mark).toBe("open");
 
     // The belt to that brace: a transition the browser skips rejects rather
     // than settling, and it still has to leave the card clean for the next
     // press.
-    skip();
+    started[0].skip();
     await Promise.resolve();
     await Promise.resolve();
-    const frame = document.querySelector<HTMLElement>(
-      '[data-slot="photo-frame"]',
-    )!;
-    expect(frame.style.getPropertyValue("view-transition-name")).toBe("");
+    expect(nameOnFrame()).toBe("");
   });
 
   it("opens plainly where the browser has no view transitions", () => {
@@ -811,10 +798,7 @@ describe("AnimalCard photo morph", () => {
     fireEvent.click(link);
 
     expect(opened).toEqual(["rex"]);
-    const frame = document.querySelector<HTMLElement>(
-      '[data-slot="photo-frame"]',
-    )!;
-    expect(frame.style.getPropertyValue("view-transition-name")).toBe("");
+    expect(nameOnFrame()).toBe("");
   });
 
   // The home grid mounts the dialog on idle, so a press can beat it there: a
@@ -823,25 +807,20 @@ describe("AnimalCard photo morph", () => {
   // arriving. The grid says when there is somewhere to carry it to.
   it("opens plainly before the dialog is on the page", () => {
     reduceMotion(false);
-    const started: Started[] = [];
-    stubViewTransition(started);
+    const started = stubViewTransition(nameOnFrame);
     const opened: string[] = [];
-    const link = renderCard(opened, false);
+    const link = renderCard(opened, { ready: false });
 
     fireEvent.click(link);
 
     expect(started).toEqual([]);
     expect(opened).toEqual(["rex"]);
-    const frame = document.querySelector<HTMLElement>(
-      '[data-slot="photo-frame"]',
-    )!;
-    expect(frame.style.getPropertyValue("view-transition-name")).toBe("");
+    expect(nameOnFrame()).toBe("");
   });
 
   it("opens plainly for a visitor who asked for less movement", () => {
     reduceMotion(true);
-    const started: Started[] = [];
-    stubViewTransition(started);
+    const started = stubViewTransition(nameOnFrame);
     const opened: string[] = [];
     const link = renderCard(opened);
 
@@ -853,20 +832,11 @@ describe("AnimalCard photo morph", () => {
 
   it("opens plainly for an animal with no photograph", () => {
     reduceMotion(false);
-    const started: Started[] = [];
-    stubViewTransition(started);
+    const started = stubViewTransition(nameOnFrame);
     const opened: string[] = [];
-    render(
-      <I18nProvider locale="sl">
-        <AnimalCard
-          animal={animal({ images: [] })}
-          reference={NOW}
-          onOpen={(id) => opened.push(id)}
-        />
-      </I18nProvider>,
-    );
+    const link = renderCard(opened, { images: 0 });
 
-    fireEvent.click(document.querySelector('[data-slot="card-link"]')!);
+    fireEvent.click(link);
 
     expect(started).toEqual([]);
     expect(opened).toEqual(["rex"]);

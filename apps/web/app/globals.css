@@ -123,7 +123,6 @@
              dock do.
        z-50  a layer that takes the page away: dialog, drawer, popover, the
              overlays under them.
-       z-[55] the one thing that stands over an open dialog: the photo bloom.
 
      A new fixed or sticky thing belongs on a rung that already exists. If it
      needs one between two of these, the pair it lands between is the argument
@@ -1191,8 +1190,18 @@
      wins. The same trap the comment on DialogOverlay in ui/dialog.tsx
      describes: those utilities compile to the same specificity in the same
      layer and are emitted last. Setting what they feed leaves the fade alone
-     and takes out the scale and the lift. */
-  :root[data-photo-morph] [data-slot="animal-dialog"] {
+     and takes out the scale and the lift.
+
+     Keyed on a class of the dialog's own (CONTENT_CLASS in animal-dialog.tsx)
+     rather than on its data-slot. Blink builds the descendant invalidation set
+     for the mark from the compound after the combinator, and [data-slot]
+     matches hundreds of elements on a grid page, several per card: written
+     that way, each set and removal of the mark scheduled a style recalc for
+     all of them, four times per open and close, the first inside the
+     transition's own capture. Nothing narrower was available, every class in
+     CONTENT_CLASS being a shared utility and [role="dialog"] catching the
+     lightbox too. */
+  :root[data-photo-morph] .morph-still {
     --tw-enter-scale: 1;
     --tw-enter-translate-y: 0;
   }

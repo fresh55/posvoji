@@ -60,7 +60,8 @@ import { useIncrementalGrid } from "./use-incremental-grid";
 // single thing this page would otherwise put in the document. The grid, the
 // filters and the cards need none of it to draw. Measured with
 // scripts/measure-chunks.mjs: the home document asked for 397.3 KB of script
-// gzipped with it imported and 373.7 KB with it fetched. Those numbers still
+// gzipped with it imported and 373.7 KB with it fetched, so the chunk that
+// moved off the document is the 23.6 KB between them. Those numbers still
 // describe the document after the idle mount below, because the chunk is
 // still a fetch that happens after load; what changed is when it is asked
 // for, not who asks the document for it.
@@ -371,12 +372,27 @@ export function AnimalGrid({
   // as filtered and sorted on screen, in that order. Read here, above the
   // chunking, because the step below is one of the things that asks whether a
   // dialog is open.
-  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
-    useAnimalDialogHost({
-      animals,
-      shown: sorted,
-      basePath: locale === "sl" ? "/" : "/en",
-    });
+  //
+  // Whether the dialog has arrived is the hook's too, and it is not the same
+  // question as whether it is mounted: the component is lazy, so the render
+  // that first asks for it draws nothing while the chunk is still in flight.
+  // The cards carry the photograph into the dialog themselves, and only once
+  // there is one to carry it into, which is what isDialogReady answers for
+  // them and what the dialog reports through handleDialogReady.
+  const {
+    selected,
+    origin,
+    shownIds,
+    handleOpen,
+    isDialogReady,
+    handleDialogReady,
+    handleNavigate,
+    close,
+  } = useAnimalDialogHost({
+    animals,
+    shown: sorted,
+    basePath: locale === "sl" ? "/" : "/en",
+  });
 
   // Whether the dialog is on the page at all. False through the render that
   // first draws the grid, and set from idle below, which is why the chunk is
@@ -389,12 +405,6 @@ export function AnimalGrid({
   // clears would have nothing left to close with.
   const [dialogMounted, setDialogMounted] = useState(false);
   if (selected && !dialogMounted) setDialogMounted(true);
-  // And whether it has arrived, which is not the same question: the component
-  // is lazy, so the render that first asks for it draws nothing while the
-  // chunk is still in flight. The cards carry the photograph into the dialog
-  // themselves, and only once there is one to carry it into.
-  const [dialogReady, setDialogReady] = useState(false);
-  const handleDialogReady = useCallback(() => setDialogReady(true), []);
 
   const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
     useIncrementalGrid(sorted, selected !== undefined);
@@ -424,8 +434,9 @@ export function AnimalGrid({
   // pointerdown could not fix it, which is why that handler is gone: the warm
   // import() compiled to its own chunk group, so a press loaded 3.6 KB the
   // component never used, and the lazy suspended on the click all the same.
-  // The trade is that the chunk, about 15 KB gzipped, now reaches every
-  // visitor who sees the grid rather than only the ones who open an animal.
+  // The trade is that the chunk, the 23.6 KB gzipped the two numbers above
+  // differ by, now reaches every visitor who sees the grid rather than only
+  // the ones who open an animal.
   //
   // The shelter descriptions no longer travel with the animals (see
   // animalsForClient in lib/dataset.ts and lib/animal-descriptions.ts), so the
@@ -721,11 +732,9 @@ export function AnimalGrid({
                     ordinal < STAGGERED_CARDS &&
                       "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none",
                   )}
-                  style={
-                    ordinal < STAGGERED_CARDS
-                      ? STAGGER_STYLE[ordinal]
-                      : undefined
-                  }
+                  // Past the twelfth there is no delay written, and the index
+                  // is undefined there, which is what a settled card wants.
+                  style={STAGGER_STYLE[ordinal]}
                   // The tab already named the species, so the card's one fact
                   // line does not have to spend itself saying it again.
                   species={filters.species}
@@ -733,7 +742,7 @@ export function AnimalGrid({
                   // was queueing behind the bundle like the other 499.
                   eager={ordinal < 4}
                   onOpen={handleOpen}
-                  dialogReady={dialogReady}
+                  isDialogReady={isDialogReady}
                   // A shelter's own page renders these same cards and leaves
                   // this off, because there the line would be the page linking
                   // to itself under every animal on it.

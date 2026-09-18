@@ -1,16 +1,11 @@
+import { PHOTO_MORPH_MS } from "@/lib/photo-morph";
 import type { Transition } from "motion/react";
-import { PHOTO_MORPH_MS } from "@/lib/view-transition";
-
-// Only constants may be taken from that module here. It is "use client", and a
-// server import of one would receive a client-reference proxy: the lead below
-// is computed at module scope, so it would throw while the page is being
-// built rather than in anything a test runs.
 
 export const ENTRANCE_STAGGER = 0.04;
 
 // What the whole cascade waits for: the browser carrying the card's
 // photograph into the front seat, which is PHOTO_MORPH_MS long
-// (lib/view-transition.ts). The side prints used to come in under it, so at
+// (lib/photo-morph.ts). The side prints used to come in under it, so at
 // the moment the visitor was watching one photograph land, four more were
 // sliding out from behind it. They arrive after it instead.
 //

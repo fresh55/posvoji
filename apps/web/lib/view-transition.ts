@@ -1,5 +1,7 @@
 "use client";
 
+import { PHOTO_MORPH_MARK, PHOTO_TRANSITION_NAME } from "@/lib/photo-morph";
+import { REDUCED_MOTION_QUERY } from "@/lib/viewport-queries";
 import { flushSync } from "react-dom";
 
 /**
@@ -8,51 +10,38 @@ import { flushSync } from "react-dom";
  * The browser does the carrying. Both boxes wear one view-transition-name, and
  * between the old state and the new one the platform morphs the first box into
  * the second on the compositor, the aspect included. What this file owns is the
- * name, the mark the stylesheet reads, and the rule that the update has to be
- * flushed before the callback returns.
+ * running morph and the rule that the update has to be flushed before the
+ * callback returns; the name, the duration and the mark are in
+ * lib/photo-morph.ts, which the plain modules beside the dialog read too.
  */
 
-/** The name the two boxes share. The card's photo frame wears it for the
- *  moment the dialog opens, the fan's front print wears it for as long as it is
- *  the front print (fan-photo.tsx), and the card wears it again on the way
- *  back. Two elements wearing it in the same state make the browser skip the
- *  transition, which is why every caller here takes it off. */
-export const PHOTO_TRANSITION_NAME = "animal-photo";
+// Handed on from there, so a client module that runs a morph and states its
+// length has one import rather than two.
+export {
+  PHOTO_MORPH_MARK,
+  PHOTO_MORPH_MS,
+  PHOTO_TRANSITION_NAME,
+} from "@/lib/photo-morph";
 
-/** How long the morph runs. globals.css states the same number, which is the
- *  one that draws; this is what everything waiting for the photo to land is
- *  timed against. */
-export const PHOTO_MORPH_MS = 320;
-
-/** Marks the document while a morph is running, so the dialog's own zoom and
- *  the root crossfade can stand aside for it (globals.css). The value says
- *  which way the photo is going, because only the close needs the root to
- *  crossfade. */
-const MORPH_MARK = "data-photo-morph";
-
-/** The morph this module started last, and the only one whose cleanup may run.
+/** The morph this module started last: the box it named and which way the
+ *  photograph is going. One record, because nothing sets either without the
+ *  other and `done` is the only thing that clears them.
  *
  *  A press during a morph starts a second one: the pseudo-elements take no
- *  pointer events and the grid underneath is live, so a card clicked during
- *  the 320ms close, or an Escape during the open, is an ordinary gesture. The
- *  browser then rejects the first transition's `finished`, and that rejection
- *  used to run the first morph's cleanup over the second morph's state: the
- *  mark and the inline name came off the transition that had just started, and
- *  the open ran unscoped with the dialog zooming out of the card. Identity
- *  rather than a counter, so there is nothing to reset. */
-let current: object | null = null;
-
-/** The element the last morph named, so a morph that takes over from another
- *  can take that one's name off.
- *
- *  The guard above stops a superseded morph's cleanup from running, and on the
- *  close that cleanup is the only thing that ever removes the name: it is put
- *  on the card inside the update. A card clicked during the 320ms close
- *  therefore left the name on the card the photograph had just gone back into,
+ *  pointer events and the grid underneath is live, so a card clicked during the
+ *  320ms close, or an Escape during the open, is an ordinary gesture. Two
+ *  things follow from that. The browser rejects the first transition, and that
+ *  rejection used to run the first morph's cleanup over the second morph's
+ *  state, leaving the open unscoped with the dialog zooming out of the card;
+ *  `done` compares identities to stop it, and an identity rather than a counter
+ *  means there is nothing to reset. And the morph being taken over may have
+ *  named a box nothing will clean up any more: the close puts the name on the
+ *  card inside its own update and that cleanup is the only thing that ever
+ *  removes it, so the card the photograph had just gone back into kept the name
  *  for the life of the page. Two elements then wear it on the next open, which
  *  is a transition the browser skips, and every one after it, and a real
  *  navigation lifts that card out of the page's own snapshot. */
-let named: HTMLElement | null = null;
+let current: { photo: HTMLElement; direction: "open" | "close" } | null = null;
 
 /** Whether the photo can be carried at all: the API, and a visitor who has not
  *  asked for less movement. Everything else falls back to the dialog's own fade
@@ -61,37 +50,37 @@ export function canMorphPhoto(): boolean {
   return (
     typeof document !== "undefined" &&
     typeof document.startViewTransition === "function" &&
-    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    !window.matchMedia(REDUCED_MOTION_QUERY).matches
   );
 }
 
 /** Which way a morph is going at this moment, or null while none is running.
  *
- *  The mark is written before the transition starts and taken off when it has
- *  finished, so anything mounted by the render inside the update can ask
- *  whether its own arrival is being carried by one. Two things wait on the
- *  photograph and must not wait on anything else: the fan holds its side
- *  prints back until it has landed (fan-options.ts), and the dialog's card
- *  fades in behind it (animal-dialog.tsx). A step to the next animal, a deep
- *  link, an animal with no photograph, a browser without the API and a visitor
- *  who asked for less movement all mount the same components with nothing
- *  travelling, and there both waits are a third of a second of empty stage.
+ *  The session above and not the mark on the document. This is asked from
+ *  inside the transition's own flush, where the session is live, and a render
+ *  has no business reading the document to find out what it is being mounted
+ *  by.
  *
- *  Asked once, at the mount. The mark is gone before either wait is over. */
+ *  Two callers. The dialog's `opened` record asks at the mount, because a morph
+ *  is the only open where the card stands invisible for long enough to be
+ *  filled out of sight (dialog-reveal.ts). And the close's focus restore asks
+ *  whether the photograph is on its way back to the card it is about to focus,
+ *  because a close with nothing travelling has to scroll that card into view
+ *  and one with a morph must not, the scroll being a state the snapshot either
+ *  side of the update would carry. */
 export function morphInProgress(): "open" | "close" | null {
-  if (typeof document === "undefined") return null;
-  const mark = document.documentElement.getAttribute(MORPH_MARK);
-  return mark === "open" || mark === "close" ? mark : null;
+  return current?.direction ?? null;
 }
 
 /**
  * Runs `update` as a view transition with `photo` named as the box that
  * travels.
  *
- * `at` says which half of the morph that box is. "old" is the box the photo
- * leaves from, named before the update and cleared inside it, because by then
- * the dialog's own front print is wearing the name. "new" is the box it lands
- * in, named inside the update for the same reason from the other end.
+ * Which half of the morph that box is follows from `direction`, and no other
+ * pairing works. On the way in it is the box the photograph leaves from, named
+ * before the update and cleared inside it, because by then the dialog's own
+ * front print is wearing the name. On the way out it is the box the photograph
+ * lands in, named inside the update for the same reason from the other end.
  *
  * The update is flushed rather than scheduled: the browser takes the new
  * snapshot the moment this callback returns, so a render React has not
@@ -99,15 +88,14 @@ export function morphInProgress(): "open" | "close" | null {
  */
 export function morphPhoto({
   photo,
-  at,
   direction,
   update,
 }: {
   photo: HTMLElement;
-  at: "old" | "new";
   direction: "open" | "close";
   update: () => void;
 }): void {
+  const at = direction === "open" ? "old" : "new";
   const root = document.documentElement;
   const wear = (on: boolean) => {
     if (on) {
@@ -119,22 +107,20 @@ export function morphPhoto({
 
   // Whatever the morph this one is taking over from left named, if that was
   // some other element: its own cleanup will not run any more.
-  if (named && named !== photo) {
-    named.style.removeProperty("view-transition-name");
+  if (current && current.photo !== photo) {
+    current.photo.style.removeProperty("view-transition-name");
   }
-  named = photo;
 
-  root.setAttribute(MORPH_MARK, direction);
+  root.setAttribute(PHOTO_MORPH_MARK, direction);
   if (at === "old") wear(true);
 
-  const token = (current = {});
+  const token = (current = { photo, direction });
   const done = () => {
     // Only for the morph that is still the current one; see `current` above.
     if (current !== token) return;
     current = null;
-    named = null;
     wear(false);
-    root.removeAttribute(MORPH_MARK);
+    root.removeAttribute(PHOTO_MORPH_MARK);
   };
 
   try {
@@ -151,11 +137,13 @@ export function morphPhoto({
     // off either way or the next morph is skipped too.
     transition.finished.then(done, done);
   } catch (error) {
-    // Nothing subscribed to `finished`, so nothing would ever take the mark
-    // off: every fan mounted after this would hold its side prints for a morph
-    // that is not running, the dialog would never zoom, and the print would
-    // keep its name across navigations. The update is the caller's own render,
-    // so it is their throw to see.
+    // Only a synchronous throw from startViewTransition itself, since the
+    // browser calls the update on its own schedule: a throw from inside the
+    // update rejects `finished`, and the handler above cleans up. Under a stub
+    // that runs the update in place it covers that throw as well. Either way
+    // nothing would be subscribed to take the mark off: the dialog would never
+    // zoom again and the print would keep its name across navigations. The
+    // update is the caller's own render, so it is their throw to see.
     done();
     throw error;
   }

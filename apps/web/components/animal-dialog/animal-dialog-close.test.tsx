@@ -9,11 +9,19 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalGrid } from "@/components/animal-grid";
+import { cardPhoto as photoFrame } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
-import { PHOTO_TRANSITION_NAME } from "@/lib/view-transition";
+import {
+  PHOTO_MORPH_MARK,
+  PHOTO_TRANSITION_NAME,
+} from "@/lib/view-transition";
+import { REFERENCE, animal, dialogOnPage, stubMatchMedia } from "@/test/animal-dialog";
+import { stubIdleCallback } from "@/test/grid-stubs";
+import { slot } from "@/test/pointer";
+import { stubViewTransition } from "@/test/view-transition";
 import { DESKTOP_FAN_QUERY, PHONE_SHELL_QUERY } from "./fan-layout";
 
 // Closing is the opening played backwards: the front print goes back into the
@@ -26,32 +34,15 @@ import { DESKTOP_FAN_QUERY, PHONE_SHELL_QUERY } from "./fan-layout";
 // The pop the morph runs inside is jsdom's own. lib/location-search.test.ts
 // holds the wrapper on its own; this is the end that arms it.
 
-const MARK = "data-photo-morph";
-
-// Copied from animal-dialog.test.tsx rather than shared, the way the other
-// files beside it copy them: the dismiss gesture asks for the phone and the
-// fan asks for the desktop, and every assertion here reads the desktop stage.
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: media === PHONE_SHELL_QUERY || media === DESKTOP_FAN_QUERY,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+// The dismiss gesture asks for the phone and the fan asks for the desktop, and
+// every assertion here reads the desktop stage.
+stubMatchMedia(
+  (media) => media === PHONE_SHELL_QUERY || media === DESKTOP_FAN_QUERY,
+);
 
 // The grid mounts the dialog on idle and jsdom ships no requestIdleCallback,
-// so without this the mount waits out the two-second fallback. A task is the
-// nearest thing this environment has to idle, the same shim the dialog's own
-// suite installs.
-window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
-  window.setTimeout(
-    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
-    0,
-  )) as typeof window.requestIdleCallback;
-window.cancelIdleCallback ??= ((handle: number) =>
-  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
+// so without this the mount waits out the two-second fallback.
+stubIdleCallback();
 
 class NoopResizeObserver {
   observe() {}
@@ -61,53 +52,33 @@ class NoopResizeObserver {
 globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
 
+// jsdom has no scrollIntoView of its own, and whether the close calls it is
+// the other half of what these tests are about: a close that carries the
+// photograph must not scroll, because the scroll is a state the two snapshots
+// either side of the update would slide the whole page through, and a close
+// that carries nothing must, because focus nobody can see is focus lost.
+const scrollIntoView = vi.fn();
+Object.defineProperty(Element.prototype, "scrollIntoView", {
+  configurable: true,
+  value: scrollIntoView,
+});
+
+beforeEach(() => {
+  scrollIntoView.mockClear();
+});
+
 afterEach(() => {
   cleanup();
   Reflect.deleteProperty(document, "startViewTransition");
-  document.documentElement.removeAttribute(MARK);
+  document.documentElement.removeAttribute(PHOTO_MORPH_MARK);
   window.history.replaceState(null, "", "/");
   vi.restoreAllMocks();
 });
 
-function photos(id: string, count: number): Animal["images"] {
-  return Array.from({ length: count }, (_, index) => ({
-    sourceUrl: `https://example.test/${id}-${index + 1}.jpg`,
-    cachedUrl: `/media/animals/${id}-${index + 1}.webp`,
-    width: 640,
-    height: 480,
-    widths: [320, 480, 640],
-    blurDataURL: "data:image/webp;base64,UklGRg==",
-    rights: "cache-permitted" as const,
-  }));
-}
-
-function animal(id: string, name: string, rest: Partial<Animal> = {}): Animal {
-  return {
-    id,
-    source: {
-      providerId: "test-shelter",
-      sourceAnimalId: id,
-      sourceUrl: `https://example.test/animals/${id}`,
-      fetchedAt: "2026-01-01T00:00:00.000Z",
-      firstSeenAt: "2026-01-01T00:00:00.000Z",
-      lastSeenAt: "2026-01-01T00:00:00.000Z",
-    },
-    shelter: { id: "test-shelter", name: "Zavetišče Test", city: "Ljubljana" },
-    name,
-    species: "dog",
-    status: "available",
-    images: photos(id, 2),
-    attribution: "Foto: Zavetišče Test",
-    ...rest,
-  };
-}
-
-const REX = animal("rex", "Rex");
+const REX = animal("rex", "Rex", 2);
 // A cat, so a filtered link can leave it with no card in the grid behind the
 // dialog: an animal this visitor's filters hide is still reachable by link.
-const MICA = animal("mica", "Mica", { species: "cat" });
-
-const REFERENCE = "2026-08-18T00:00:00.000Z";
+const MICA = animal("mica", "Mica", 2, { species: "cat" });
 
 function renderGrid(animals: Animal[] = [REX, MICA]) {
   return render(
@@ -121,43 +92,12 @@ function renderGrid(animals: Animal[] = [REX, MICA]) {
   );
 }
 
-type Started = {
-  /** The mark the stylesheet scopes the morph to, while the update ran. */
-  mark: string | null;
-  /** Whether the dialog was still in the document when the update began, and
-   *  whether it was gone when it returned. The browser takes the new snapshot
-   *  the moment the callback returns, so a dialog React has not let go of by
-   *  then is a state the morph would have carried the photograph out of. */
-  dialogBefore: boolean;
-  dialogAfter: boolean;
-  settle: () => void;
-  skip: () => void;
-};
-
-/** Every transition the page starts, run in place: what is under test is what
- *  the update does and what is cleaned up afterwards, not the browser's
- *  schedule. */
-function stubTransitions(): Started[] {
-  const started: Started[] = [];
-  document.startViewTransition = ((update: () => void) => {
-    let settle = () => undefined as void;
-    let skip = () => undefined as void;
-    const finished = new Promise<void>((resolve, reject) => {
-      settle = () => resolve();
-      skip = () => reject(new Error("the browser skipped it"));
-    });
-    const dialogBefore = openDialog() !== null;
-    update();
-    started.push({
-      mark: document.documentElement.getAttribute(MARK),
-      dialogBefore,
-      dialogAfter: openDialog() !== null,
-      settle,
-      skip,
-    });
-    return { finished, ready: finished, updateCallbackDone: finished };
-  }) as typeof document.startViewTransition;
-  return started;
+/** Every transition the page starts, sampled for whether the dialog was still
+ *  in the document. The browser takes the new snapshot the moment the update
+ *  returns, so a dialog React has not let go of by then is a state the morph
+ *  would have carried the photograph out of. */
+function stubTransitions() {
+  return stubViewTransition(() => openDialog() !== null);
 }
 
 function openDialog() {
@@ -179,9 +119,9 @@ function card(name: string) {
 
 /** The card's photo box, which is the box the morph aims at. */
 function cardPhoto(name: string) {
-  const found = card(name)?.querySelector<HTMLElement>(
-    '[data-slot="photo-frame"]',
-  );
+  // Through the helper both ends of the morph read, so this suite cannot go on
+  // passing while a rename has taken the box away from the dialog.
+  const found = photoFrame(card(name));
   if (!found) throw new Error(`no photo box on ${name}'s card`);
   return found;
 }
@@ -207,20 +147,6 @@ function named(element: HTMLElement) {
   return element.style.getPropertyValue("view-transition-name");
 }
 
-/** Waits for the grid's idle mount of the dialog and for the lazy chunk it
- *  asks for. A press that beats it there carries no photograph at all
- *  (animal-card.tsx), which is a different test from any of these. */
-async function dialogOnPage() {
-  // The grid asks for the dialog as a lazy chunk. Loading the module here is
-  // what that import resolves to, so the idle mount below is a task and not
-  // however long the loader takes.
-  await import("@/components/animal-dialog/animal-dialog");
-  for (let tick = 0; tick < 3; tick++) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
-}
 
 async function openCard(name: string) {
   await dialogOnPage();
@@ -232,22 +158,21 @@ async function openCard(name: string) {
   return await screen.findByRole("dialog");
 }
 
-function closeButton(dialog: HTMLElement) {
-  const found = dialog.querySelector<HTMLElement>(
-    '[data-slot="dialog-close-card"]',
-  );
-  if (!found) throw new Error("no close button");
-  return found;
+/** What every close below stands on: the transitions stubbed, the grid drawn,
+ *  a card opened, and the open's own morph settled the way the browser settles
+ *  it. The one test that opens by link says so itself. */
+async function openRex() {
+  const started = stubTransitions();
+  renderGrid();
+  const dialog = await openCard("Rex");
+  expect(started).toHaveLength(1);
+  started[0].settle();
+  return { started, dialog };
 }
 
 describe("closing the animal dialog", () => {
   it("carries the front print back into the card the dialog is standing on", async () => {
-    const started = stubTransitions();
-    renderGrid();
-    const dialog = await openCard("Rex");
-    // The open's own morph, settled the way the browser settles it.
-    expect(started).toHaveLength(1);
-    started[0].settle();
+    const { started, dialog } = await openRex();
     const photo = cardPhoto("Rex");
     place(photo, 120);
     const overlay = document.querySelector<HTMLElement>(
@@ -255,7 +180,7 @@ describe("closing the animal dialog", () => {
     );
 
     await act(async () => {
-      fireEvent.click(closeButton(dialog));
+      fireEvent.click(slot(dialog, "dialog-close-card"));
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
@@ -264,10 +189,14 @@ describe("closing the animal dialog", () => {
     // it returned, which is the state the new snapshot is taken in.
     expect(started).toHaveLength(2);
     expect(started[1].mark).toBe("close");
-    expect(started[1].dialogBefore).toBe(true);
-    expect(started[1].dialogAfter).toBe(false);
+    expect(started[1].before).toBe(true);
+    expect(started[1].after).toBe(false);
     // The card's photo box is the box the photograph lands in.
     expect(named(photo)).toBe(PHOTO_TRANSITION_NAME);
+    // And nothing scrolled. The focus restore runs inside the update, between
+    // the two snapshots, so a scroll there would slide the whole page under
+    // the photograph on its way back.
+    expect(scrollIntoView).not.toHaveBeenCalled();
     // Radix keeps a closing dialog until its own exit animation has ended, and
     // a synchronous flush cannot wait for one: both layers are told there is
     // nothing to wait for, so what carries them away is the root's crossfade.
@@ -276,19 +205,16 @@ describe("closing the animal dialog", () => {
 
     started[1].settle();
     await waitFor(() => expect(named(photo)).toBe(""));
-    expect(document.documentElement.hasAttribute(MARK)).toBe(false);
+    expect(document.documentElement.hasAttribute(PHOTO_MORPH_MARK)).toBe(false);
   });
 
   it("clears the name and the mark when the browser skips the close", async () => {
-    const started = stubTransitions();
-    renderGrid();
-    const dialog = await openCard("Rex");
-    started[0].settle();
+    const { started, dialog } = await openRex();
     const photo = cardPhoto("Rex");
     place(photo, 120);
 
     await act(async () => {
-      fireEvent.click(closeButton(dialog));
+      fireEvent.click(slot(dialog, "dialog-close-card"));
     });
     await waitFor(() => expect(started).toHaveLength(2));
 
@@ -297,39 +223,36 @@ describe("closing the animal dialog", () => {
     // The name and the mark have to come off either way, or the next morph is
     // skipped too.
     await waitFor(() => expect(named(photo)).toBe(""));
-    expect(document.documentElement.hasAttribute(MARK)).toBe(false);
+    expect(document.documentElement.hasAttribute(PHOTO_MORPH_MARK)).toBe(false);
   });
 
   it("closes plainly when the card behind is scrolled off the screen", async () => {
-    const started = stubTransitions();
-    renderGrid();
-    const dialog = await openCard("Rex");
-    started[0].settle();
+    const { started, dialog } = await openRex();
     // Above the viewport, which after a step through the list is where the
     // card behind the dialog usually is. A morph aimed there sends the
     // photograph off the top of the screen.
     place(cardPhoto("Rex"), -600);
 
     await act(async () => {
-      fireEvent.click(closeButton(dialog));
+      fireEvent.click(slot(dialog, "dialog-close-card"));
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
     expect(started).toHaveLength(1);
-    expect(document.documentElement.hasAttribute(MARK)).toBe(false);
+    expect(document.documentElement.hasAttribute(PHOTO_MORPH_MARK)).toBe(false);
+    // The other half of the rule above: with nothing travelling, the card the
+    // focus went back to is brought into view, because it is off the screen.
+    expect(scrollIntoView).toHaveBeenCalled();
   });
 
   it("closes plainly when the browser has not laid the card out", async () => {
-    const started = stubTransitions();
-    renderGrid();
-    const dialog = await openCard("Rex");
-    started[0].settle();
+    const { started, dialog } = await openRex();
     // Grid cards carry card-paint, so a card scrolled far away is skipped and
     // has no box at all. jsdom reports exactly that on its own, which is what
     // this leaves unstubbed.
 
     await act(async () => {
-      fireEvent.click(closeButton(dialog));
+      fireEvent.click(slot(dialog, "dialog-close-card"));
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
@@ -347,7 +270,7 @@ describe("closing the animal dialog", () => {
     expect(card("Mica")).toBeNull();
 
     await act(async () => {
-      fireEvent.click(closeButton(dialog));
+      fireEvent.click(slot(dialog, "dialog-close-card"));
     });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 

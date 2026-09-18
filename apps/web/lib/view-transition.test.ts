@@ -1,31 +1,18 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it } from "vitest";
+import { PHOTO_MORPH_MARK } from "@/lib/photo-morph";
 import {
   morphInProgress,
   morphPhoto,
   PHOTO_TRANSITION_NAME,
 } from "@/lib/view-transition";
+import { stubViewTransition } from "@/test/view-transition";
 
 // The contract around one name and one mark, which is the whole of what this
 // module owns. Getting it wrong is silent: a name left on an element makes the
 // browser skip the next morph, and a mark left on <html> leaves the stylesheet
 // scoping a transition that is over.
-
-const MARK = "data-photo-morph";
-
-type Started = {
-  /** The name on the box this morph carries, as the old state was captured. */
-  before: string;
-  /** And as the new one is: the browser takes it the moment the update
-   *  returns. */
-  after: string;
-  /** The mark the stylesheet reads, while the update ran. */
-  mark: string | null;
-  /** The transition ending well, and the browser taking it away. */
-  settle: () => void;
-  skip: () => void;
-};
 
 function box() {
   const element = document.createElement("div");
@@ -37,40 +24,9 @@ function named(element: HTMLElement) {
   return element.style.getPropertyValue("view-transition-name");
 }
 
-/** Every transition this module starts, run in place rather than on the
- *  browser's own schedule: what is under test is the order of what happens
- *  around the update and who is allowed to clean up afterwards, not when the
- *  browser gets round to any of it. */
-function stubTransitions(read: () => string): Started[] {
-  const started: Started[] = [];
-  document.startViewTransition = ((update: () => void) => {
-    let settle = () => undefined as void;
-    let skip = () => undefined as void;
-    const finished = new Promise<void>((resolve, reject) => {
-      settle = () => resolve();
-      skip = () => reject(new Error("the browser skipped it"));
-    });
-    const before = read();
-    update();
-    started.push({
-      before,
-      after: read(),
-      mark: document.documentElement.getAttribute(MARK),
-      settle,
-      skip,
-    });
-    return {
-      finished,
-      ready: finished,
-      updateCallbackDone: finished,
-    };
-  }) as typeof document.startViewTransition;
-  return started;
-}
-
 afterEach(() => {
   Reflect.deleteProperty(document, "startViewTransition");
-  document.documentElement.removeAttribute(MARK);
+  document.documentElement.removeAttribute(PHOTO_MORPH_MARK);
   document.body.replaceChildren();
 });
 
@@ -78,11 +34,10 @@ describe("morphPhoto", () => {
   it("hands the name over inside the update on the way in", () => {
     const photo = box();
     const inside: string[] = [];
-    const started = stubTransitions(() => named(photo));
+    const started = stubViewTransition(() => named(photo));
 
     morphPhoto({
       photo,
-      at: "old",
       direction: "open",
       update: () => inside.push(named(photo)),
     });
@@ -100,11 +55,10 @@ describe("morphPhoto", () => {
   it("names the box the photograph lands in before the update runs", () => {
     const photo = box();
     const inside: string[] = [];
-    const started = stubTransitions(() => named(photo));
+    const started = stubViewTransition(() => named(photo));
 
     morphPhoto({
       photo,
-      at: "new",
       direction: "close",
       update: () => inside.push(named(photo)),
     });
@@ -117,9 +71,9 @@ describe("morphPhoto", () => {
 
   it("clears the name and the mark when the morph is over", async () => {
     const photo = box();
-    const started = stubTransitions(() => named(photo));
+    const started = stubViewTransition(() => named(photo));
 
-    morphPhoto({ photo, at: "new", direction: "close", update: () => undefined });
+    morphPhoto({ photo, direction: "close", update: () => undefined });
     started[0].settle();
     await Promise.resolve();
 
@@ -129,9 +83,9 @@ describe("morphPhoto", () => {
 
   it("clears them when the browser skips the morph", async () => {
     const photo = box();
-    const started = stubTransitions(() => named(photo));
+    const started = stubViewTransition(() => named(photo));
 
-    morphPhoto({ photo, at: "new", direction: "close", update: () => undefined });
+    morphPhoto({ photo, direction: "close", update: () => undefined });
     started[0].skip();
     await Promise.resolve();
     await Promise.resolve();
@@ -150,10 +104,10 @@ describe("morphPhoto", () => {
   // the document, so the morph on screen finished unscoped.
   it("leaves the morph now running alone when the one it took over ends", async () => {
     const card = box();
-    const started = stubTransitions(() => named(card));
+    const started = stubViewTransition(() => named(card));
 
-    morphPhoto({ photo: card, at: "old", direction: "open", update: () => undefined });
-    morphPhoto({ photo: card, at: "new", direction: "close", update: () => undefined });
+    morphPhoto({ photo: card, direction: "open", update: () => undefined });
+    morphPhoto({ photo: card, direction: "close", update: () => undefined });
 
     started[0].skip();
     await Promise.resolve();
@@ -178,15 +132,14 @@ describe("morphPhoto", () => {
   it("takes the name off the box the morph it took over from had named", async () => {
     const card = box();
     const other = box();
-    const started = stubTransitions(() => named(card));
+    const started = stubViewTransition(() => named(card));
 
-    morphPhoto({ photo: card, at: "new", direction: "close", update: () => undefined });
+    morphPhoto({ photo: card, direction: "close", update: () => undefined });
     expect(named(card)).toBe(PHOTO_TRANSITION_NAME);
 
     // Another card, pressed while the photograph is still on its way back.
     morphPhoto({
       photo: other,
-      at: "old",
       direction: "open",
       update: () => undefined,
     });
@@ -199,10 +152,9 @@ describe("morphPhoto", () => {
     expect(morphInProgress()).toBe("open");
   });
 
-  // Nothing subscribes to a transition that was never started, so nothing
-  // would ever take the mark off: every fan mounted after it would hold its
-  // side prints for a morph that is not running, and the dialog would never
-  // zoom again.
+  // A transition that was never started has no `finished` to subscribe to, so
+  // nothing would ever take the mark off: the dialog would never zoom again
+  // and the print would keep its name across navigations.
   it("leaves nothing behind when the transition cannot be started", () => {
     const photo = box();
     document.startViewTransition = (() => {
@@ -212,7 +164,6 @@ describe("morphPhoto", () => {
     expect(() =>
       morphPhoto({
         photo,
-        at: "old",
         direction: "open",
         update: () => undefined,
       }),
@@ -222,14 +173,16 @@ describe("morphPhoto", () => {
     expect(named(photo)).toBe("");
   });
 
+  // A real browser calls the update on its own, so a throw from inside it
+  // rejects `finished` and the cleanup runs from there. Here the stub runs it
+  // in place, which is the other half of the same guard.
   it("leaves nothing behind when the update throws", () => {
     const photo = box();
-    stubTransitions(() => named(photo));
+    stubViewTransition(() => named(photo));
 
     expect(() =>
       morphPhoto({
         photo,
-        at: "old",
         direction: "open",
         update: () => {
           throw new Error("the render threw");
@@ -250,15 +203,14 @@ describe("morphInProgress", () => {
   it("says which way the photograph is going, for as long as it is going", () => {
     const photo = box();
     const seen: (string | null)[] = [];
-    stubTransitions(() => named(photo));
+    stubViewTransition(() => named(photo));
 
     morphPhoto({
       photo,
-      at: "old",
       direction: "open",
       // Everything the dialog mounts is mounted by this render, and this is
-      // the question it asks: the fan holds its side prints back for the
-      // photograph, and the card fades in behind it.
+      // the question it asks: the card under the photographs fades in behind
+      // the photograph rather than standing there waiting for it.
       update: () => seen.push(morphInProgress()),
     });
 

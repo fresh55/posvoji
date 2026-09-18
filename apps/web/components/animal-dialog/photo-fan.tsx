@@ -117,20 +117,19 @@ export function Fan(props: FanProps) {
   // print is drawn from that moment, so the walk re-seats them instead.
   const [mountedOn] = useState(activeIndex);
   if (mount === "front" && activeIndex !== mountedOn) setMount("sides");
+  // The walk through the phases, which is one timer whichever leg it is on.
+  // "front" waits out the photograph's trip. "sides" waits a task, after which
+  // the cascade is spent: the prints are mounted and their entrance has
+  // started, so a print arriving later is one that stepped into the window
+  // mid-walk, which is a plain fade. "settled" is where it stops, and where a
+  // fan with nothing travelling starts.
   useEffect(() => {
-    if (mount !== "front") return;
-    const timer = window.setTimeout(
-      () => setMount("sides"),
-      ENTRANCE_LEAD * 1000,
-    );
-    return () => window.clearTimeout(timer);
-  }, [mount]);
-  useEffect(() => {
-    if (mount !== "sides") return;
-    // A task on, the cascade is spent: the prints are mounted and their
-    // entrance has started, so a print arriving after this is one that stepped
-    // into the window mid-walk, which is a plain fade.
-    const timer = window.setTimeout(() => setMount("settled"), 0);
+    if (mount === "settled") return;
+    const [next, delay] =
+      mount === "front"
+        ? (["sides", ENTRANCE_LEAD * 1000] as const)
+        : (["settled", 0] as const);
+    const timer = window.setTimeout(() => setMount(next), delay);
     return () => window.clearTimeout(timer);
   }, [mount]);
   // The four seats behind the front print are drawn at nothing until the

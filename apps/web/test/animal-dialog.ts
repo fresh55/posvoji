@@ -13,6 +13,7 @@
  */
 
 import type { Animal } from "@posvoji/schema";
+import { act } from "@testing-library/react";
 import { vi } from "vitest";
 
 /** The dataset's build time, which the dialog measures its freshness line
@@ -23,10 +24,20 @@ export const REFERENCE = "2026-08-18T00:00:00.000Z";
  * One animal with `count` cached photographs.
  *
  * Cached rather than display-permitted, because that is what the fan draws
- * from: a ladder to pick a rung off and a placeholder to paint while the file
- * is on its way.
+ * from: a ladder to pick a rung off, an AVIF sibling for the first photo and a
+ * placeholder to paint while the file is on its way. Anything less leaves a
+ * suite exercising the fallback path while the site runs the other one.
+ *
+ * `rest` is whatever this animal differs in: a species the visitor's filters
+ * hide, a status that is over, a date. It is written over the record, so a
+ * suite can replace the images too.
  */
-export function animal(id: string, name: string, count = 1): Animal {
+export function animal(
+  id: string,
+  name: string,
+  count = 1,
+  rest: Partial<Animal> = {},
+): Animal {
   return {
     id,
     source: {
@@ -47,10 +58,12 @@ export function animal(id: string, name: string, count = 1): Animal {
       width: 640,
       height: 480,
       widths: [320, 480, 640],
+      ...(index === 0 ? { avif: true } : {}),
       blurDataURL: "data:image/webp;base64,UklGRg==",
       rights: "cache-permitted" as const,
     })),
     attribution: "Foto: Zavetišče Test",
+    ...rest,
   };
 }
 
@@ -75,4 +88,27 @@ export function stubMatchMedia(
       removeEventListener: vi.fn(),
     })),
   });
+}
+
+/**
+ * Waits for the grid's idle mount of the dialog, and for the lazy chunk it
+ * asks for.
+ *
+ * A press before that carries no photograph (animal-card.tsx), so a test about
+ * the morph has to be the press a visitor makes rather than one that beats the
+ * page to it. Importing the module here is what the grid's own lazy import
+ * resolves to, so the wait is a task rather than however long the loader takes,
+ * and idle is a task too (stubIdleCallback in test/grid-stubs.ts).
+ *
+ * Three ticks because the chain is longer than one commit: the idle callback
+ * mounts the dialog, the lazy boundary commits it, and the readiness it
+ * reports lands in the grid after that.
+ */
+export async function dialogOnPage() {
+  await import("@/components/animal-dialog/animal-dialog");
+  for (let tick = 0; tick < 3; tick++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
 }

@@ -32,6 +32,7 @@ import {
   columnTracks,
   restoreGridColumns,
   stubGridColumns,
+  stubIdleCallback,
   stubIntersectionObserver,
 } from "@/test/grid-stubs";
 
@@ -68,22 +69,18 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+// The grid waits for an idle moment to mount the dialog, and jsdom ships no
+// requestIdleCallback: without this the mount waits out the two-second
+// fallback instead, which is longer than a test should sit still for. The
+// suite below that owns the moment of the mount stubs its own queue over this
+// one.
+stubIdleCallback();
+
 // motion measures a keyframe by reading the page's scroll position and putting
 // it back afterwards, and jsdom has no window.scrollTo to put it back with: the
 // call goes to the virtual console as "Not implemented" and prints a stack over
 // the run. The dialog renders in this file now, which is what reaches that code
 // path, so the no-op belongs here rather than the noise.
-// The grid waits for an idle moment to mount the dialog, and jsdom ships no
-// requestIdleCallback: without this the mount waits out the two-second
-// fallback instead, which is longer than a test should sit still for.
-window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
-  window.setTimeout(
-    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
-    0,
-  )) as typeof window.requestIdleCallback;
-window.cancelIdleCallback ??= ((handle: number) =>
-  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
-
 Object.defineProperty(window, "scrollTo", {
   configurable: true,
   value: () => {},
@@ -129,6 +126,23 @@ function query() {
   return window.location.search;
 }
 
+// The grid at rest with its dialog on the page. The mount is a state change,
+// and what it mounts is a lazy component whose chunk is fetched: the import is
+// awaited rather than a timer run, because it is the same module the lazy
+// resolves from. The two flushes after it are the retry React schedules once
+// that promise settles, and each is a macrotask so the idle callback the mount
+// is scheduled from gets its turn as well.
+async function settle() {
+  await act(async () => {
+    await import("@/components/animal-dialog/animal-dialog");
+  });
+  for (let flush = 0; flush < 2; flush++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  }
+}
+
 // The press that opens the dialog re-renders the whole grid: which animal is
 // open is an address, so every card renders again inside the one synchronous
 // commit the view transition is holding. At sixty cards that was most of the
@@ -165,17 +179,15 @@ describe("animal grid renders", () => {
       </I18nProvider>,
     );
 
-    // The grid mounts the dialog on idle and tells the cards when it is there,
-    // which is a prop of theirs and so a render of theirs: settled first, so
-    // what is counted below is the press and nothing else.
-    await import("@/components/animal-dialog/animal-dialog");
-    for (let tick = 0; tick < 3; tick++) {
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
-    }
     const drawn = reads;
     expect(drawn).toBeGreaterThan(0);
+
+    // The grid mounts the dialog on idle, which renders the grid again, and
+    // the dialog reports that it is there, which used to be a prop of every
+    // card and so a render of every card. It is an accessor the host hook
+    // holds now (use-animal-dialog-host.ts), so the cards sit through both.
+    await settle();
+    expect(reads).toBe(drawn);
 
     const link = screen
       .getAllByRole("link")
@@ -1241,18 +1253,6 @@ describe("when the dialog reaches the page", () => {
       });
       await settle();
     };
-  }
-
-  // The mount is a state change, and what it mounts is a lazy component whose
-  // chunk is fetched. The import is awaited rather than a timer run, because
-  // it is the same module the lazy resolves from; the empty flushes after it
-  // are the retry React schedules once that promise settles.
-  async function settle() {
-    await act(async () => {
-      await import("@/components/animal-dialog/animal-dialog");
-    });
-    await act(async () => {});
-    await act(async () => {});
   }
 
   function firstCard() {

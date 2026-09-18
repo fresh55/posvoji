@@ -13,6 +13,7 @@ import {
   ENTRANCE_STAGGER,
   printEntrance,
 } from "@/components/animal-dialog/fan-options";
+import { PHOTO_MORPH_CLASS } from "@/components/animal-dialog/fan-photo-styles";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -148,18 +149,24 @@ function renderFan(
   return { view, stage };
 }
 
-/** The prints on stage, in the order the document holds them, by the photo
- *  each one is showing. Copies on their way out are left out: a print that
- *  wraps to the other side of the fan is drawn twice while the two cross over,
- *  and the one that is leaving takes no tab. */
-function printOrder(stage: HTMLElement) {
+/** Which photo a print is showing, off the name it says it by. */
+function photoNumber(print: Element) {
+  const found = /fotografijo (\d+)/.exec(print.getAttribute("aria-label") ?? "");
+  return Number(found?.[1]);
+}
+
+/** The prints on stage, in the order the document holds them. Copies on their
+ *  way out are left out: a print that wraps to the other side of the fan is
+ *  drawn twice while the two cross over, and the one that is leaving takes no
+ *  tab. */
+function prints(stage: HTMLElement) {
   return within(stage)
     .getAllByRole("button", { name: /fotografijo \d/ })
-    .filter((button) => button.dataset.leaving !== "true")
-    .map((button) => {
-      const found = /fotografijo (\d+)/.exec(button.getAttribute("aria-label") ?? "");
-      return Number(found?.[1]);
-    });
+    .filter((button) => button.dataset.leaving !== "true");
+}
+
+function printOrder(stage: HTMLElement) {
+  return prints(stage).map(photoNumber);
 }
 
 function print(stage: HTMLElement, n: number) {
@@ -170,16 +177,14 @@ function print(stage: HTMLElement, n: number) {
 
 /** The photos of every print wearing the morph's name. Only one element may
  *  wear it at a time, whatever else is on the stage: two make the browser skip
- *  the transition. */
+ *  the transition.
+ *
+ *  The same list printOrder walks, so a copy on its way out is not counted as a
+ *  print here and a print there. */
 function namedPrints(stage: HTMLElement) {
-  return [...stage.querySelectorAll("button[data-print]")]
+  return prints(stage)
     .filter((print) => print.className.includes("view-transition-name"))
-    .map((print) => {
-      const found = /fotografijo (\d+)/.exec(
-        print.getAttribute("aria-label") ?? "",
-      );
-      return Number(found?.[1]);
-    });
+    .map(photoNumber);
 }
 
 function frontPrint(stage: HTMLElement) {
@@ -426,9 +431,7 @@ describe("fan entrance", () => {
     // And under the mark, so the name is only worn while a morph of ours is
     // running: a named element is lifted out of the snapshot of any
     // transition, a real navigation out of the dialog included.
-    expect(named(frontPrint(stage()))).toContain(
-      "[[data-photo-morph]_&]:[view-transition-name:animal-photo]",
-    );
+    expect(named(frontPrint(stage()))).toContain(PHOTO_MORPH_CLASS);
     expect(named(print(stage(), 2))).not.toContain("view-transition-name");
 
     // And it travels with the front seat rather than staying where it started:

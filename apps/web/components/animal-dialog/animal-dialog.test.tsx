@@ -32,7 +32,11 @@ import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
+import { PHOTO_MORPH_MARK } from "@/lib/view-transition";
+import { stubIdleCallback } from "@/test/grid-stubs";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
+import { stubViewTransition } from "@/test/view-transition";
+import { dialogOnPage } from "@/test/animal-dialog";
 import {
   DESKTOP_FAN_QUERY,
   PHONE_SHELL_QUERY,
@@ -82,21 +86,18 @@ globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
 
 // The fan waits for an idle moment before it warms the tier a step would bring
-// in, and jsdom ships no requestIdleCallback. A task is the nearest thing this
-// environment has to one, and it puts the tests on the path a browser takes
-// rather than on the timeout the fan falls back to without it.
-window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
-  window.setTimeout(
-    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
-    0,
-  )) as typeof window.requestIdleCallback;
-window.cancelIdleCallback ??= ((handle: number) =>
-  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
+// in, and the grid waits for one before it mounts this dialog. jsdom ships no
+// requestIdleCallback.
+stubIdleCallback();
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   Reflect.deleteProperty(document, "startViewTransition");
+  // The stub runs the update and never settles, which is the 320ms of a real
+  // morph, so nothing ever takes the mark off: the next test would read it as
+  // a morph of its own.
+  document.documentElement.removeAttribute(PHOTO_MORPH_MARK);
   fanLayout("desktop");
   window.history.replaceState(null, "", "/");
   // The description store caches its one fetch for the life of the module, so
@@ -384,30 +385,6 @@ function cardLink(name: string) {
   return link;
 }
 
-/** A transition that runs its update in place and never settles, which is
- *  what the browser does for the 320ms the morph takes. */
-function stubViewTransition() {
-  const started: (() => void)[] = [];
-  const pending = new Promise<void>(() => undefined);
-  document.startViewTransition = ((update: () => void) => {
-    started.push(update);
-    update();
-    return { finished: pending, ready: pending, updateCallbackDone: pending };
-  }) as typeof document.startViewTransition;
-  return started;
-}
-
-/** Waits for the grid's idle mount of the dialog, and for the lazy chunk it
- *  asks for. A press before that carries no photograph (animal-card.tsx), so a
- *  test about the morph has to be the press a visitor makes rather than one
- *  that beats the page to it. Idle is a task here; see the shim above. */
-async function dialogOnPage() {
-  for (let tick = 0; tick < 3; tick++) {
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
-}
 
 function openCard(name: string) {
   const link = cardLink(name);
@@ -2096,13 +2073,7 @@ describe("animal dialog", () => {
   // falls back to the zoom it always had rather than carrying a photograph in
   // from nowhere.
   it("carries no photo across when the dialog was opened by link", async () => {
-    const started: (() => void)[] = [];
-    const settled = Promise.resolve();
-    document.startViewTransition = ((update: () => void) => {
-      started.push(update);
-      update();
-      return { finished: settled, ready: settled, updateCallbackDone: settled };
-    }) as typeof document.startViewTransition;
+    const started = stubViewTransition();
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
@@ -2113,9 +2084,7 @@ describe("animal dialog", () => {
     // travelling: the fan fades in rather than holding its side prints back
     // for a photograph that is not coming (fan-options.ts).
     expect(started).toEqual([]);
-    expect(document.documentElement.hasAttribute("data-photo-morph")).toBe(
-      false,
-    );
+    expect(document.documentElement.hasAttribute(PHOTO_MORPH_MARK)).toBe(false);
   });
 
   // The other half of the same rule, on the card under the photographs: it
@@ -2219,9 +2188,9 @@ describe("animal dialog", () => {
   // A plain close while the opening morph is still running: Escape a moment
   // after the dialog opened, with the card behind it out of the viewport. The
   // photograph is not going anywhere, so focus lands on a card nobody can see
-  // unless the page scrolls to it. Asked of the close's own decision, which is
-  // the only thing that knows: the mark on <html> still says a morph is
-  // running, and it is the wrong morph.
+  // unless the page scrolls to it. The close asks which way the morph in flight
+  // is going, and this one answers "open", which is not this close's: a flag
+  // saying only that something was running would hold the scroll back here.
   it("scrolls the card back into view when the close carries nothing", async () => {
     // jsdom lays nothing out and has no scrollIntoView of its own, so the card
     // measures zero and the close takes the plain path, which is the case.
@@ -2236,7 +2205,7 @@ describe("animal dialog", () => {
       await dialogOnPage();
       openCard("Rex");
       const dialog = await screen.findByRole("dialog");
-      expect(document.documentElement.getAttribute("data-photo-morph")).toBe(
+      expect(document.documentElement.getAttribute(PHOTO_MORPH_MARK)).toBe(
         "open",
       );
 
@@ -2248,7 +2217,6 @@ describe("animal dialog", () => {
       expect(scrollIntoView).toHaveBeenCalled();
     } finally {
       Reflect.deleteProperty(Element.prototype, "scrollIntoView");
-      document.documentElement.removeAttribute("data-photo-morph");
     }
   });
 

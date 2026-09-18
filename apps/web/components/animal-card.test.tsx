@@ -793,6 +793,11 @@ describe("AnimalCard photo morph", () => {
 
   it("opens plainly where the browser has no view transitions", () => {
     reduceMotion(false);
+    // Stated here rather than inherited from whatever ran before this: the
+    // afterEach above deletes the stub, so this test used to be asserting the
+    // plain path only for as long as it stood after one that installed one.
+    Reflect.deleteProperty(document, "startViewTransition");
+    expect(document.startViewTransition).toBeUndefined();
     const opened: string[] = [];
     const link = renderCard(opened);
 

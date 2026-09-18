@@ -4,15 +4,15 @@ import { Button } from "@/components/ui/button";
 import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { morphInProgress } from "@/lib/view-transition";
 import { AnimatePresence } from "motion/react";
-import { type DragEvent, type ReactNode } from "react";
+import { useState, type DragEvent, type ReactNode } from "react";
 import { frontPrintOf } from "./fan-focus";
 import { printBox } from "./fan-geometry";
 import {
-  ENTRANCE_LEAD,
-  ENTRANCE_STAGGER,
   MOUNT_FADE,
   NO_FADE,
+  printEntrance,
   TILT_NUDGE,
 } from "./fan-options";
 import { FanPhoto } from "./fan-photo";
@@ -95,29 +95,13 @@ export function Fan(props: FanProps) {
     stage,
   } = useFanControls(props);
 
-  // How a print's arrival is drawn.
-  //
-  // The cascade belongs to the fan's own mount, which is once per animal: the
-  // first render reads false and every render after it is a photo being
-  // picked. A print that steps into the window later arrives mid-walk, where a
-  // cascade delay would have it appear after the fan had already stopped
-  // moving, so it is a plain fade instead. It used to be drawn at full opacity
-  // in one frame, which on a gallery past the fan's reach was a photograph
-  // switching on at the leading tier as the step landed.
-  //
-  // The front print is not drawn in at all. It is the box the browser carries
-  // the card's photograph into, and what arrives there is that photograph: a
-  // fade under it would be a second photo appearing behind the one already
-  // landing. The rest wait for the landing and then cascade, so that for the
-  // length of the morph the only thing moving on the stage is the picture the
-  // visitor pressed (ENTRANCE_LEAD).
-  function entranceOf(active: boolean, offset: number, fresh: boolean) {
-    if (shouldReduceMotion) return false;
-    if (!entered.current) {
-      return active ? false : ENTRANCE_LEAD + Math.abs(offset) * ENTRANCE_STAGGER;
-    }
-    return fresh ? "fade" : false;
-  }
+  // Whether the card's photograph is being carried into this fan's front seat,
+  // which is what the entrance below is written around (printEntrance in
+  // fan-options.ts). Asked once, at the mount: the mark is on <html> from
+  // before the transition starts (lib/view-transition.ts), and this fan is
+  // mounted by the render inside it, so the mount is when the answer is there
+  // to be had. It is gone again before the cascade has finished.
+  const [morphing] = useState(() => morphInProgress() === "open");
   const fade = shouldReduceMotion ? NO_FADE : MOUNT_FADE;
 
   return (
@@ -256,7 +240,14 @@ export function Fan(props: FanProps) {
               nudge={
                 shouldReduceMotion ? 0 : TILT_NUDGE[index % TILT_NUDGE.length]
               }
-              entrance={entranceOf(active, offset, fresh)}
+              entrance={printEntrance({
+                morphing,
+                reduced: Boolean(shouldReduceMotion),
+                entered: entered.current,
+                active,
+                offset,
+                fresh,
+              })}
               fade={fade}
               tempo={tempo}
               label={

@@ -9,6 +9,11 @@ import {
 } from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  ENTRANCE_LEAD,
+  ENTRANCE_STAGGER,
+  printEntrance,
+} from "@/components/animal-dialog/fan-options";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -135,6 +140,23 @@ function renderFan(
     return found;
   }
   return { view, stage };
+}
+
+/** Mounts a fan the way the site mounts one when the browser is carrying the
+ *  card's photograph into it.
+ *
+ *  The mark on <html> is what says a morph is running (lib/view-transition.ts)
+ *  and the fan reads it once, at its mount. There is no view transition in
+ *  jsdom to write it, and it is taken off again straight away because on the
+ *  site it is gone long before the cascade has finished: what the fan keeps is
+ *  the answer it read, not the attribute. */
+function underMorph<T>(mount: () => T): T {
+  document.documentElement.setAttribute("data-photo-morph", "open");
+  try {
+    return mount();
+  } finally {
+    document.documentElement.removeAttribute("data-photo-morph");
+  }
 }
 
 /** The prints on stage, in the order the document holds them, by the photo
@@ -365,10 +387,21 @@ describe("fan entrance", () => {
   // would be a second photograph fading in behind the one already landing.
   // Read before anything can have run, which is what says it never started at
   // nothing; the side prints below are at zero in the same breath.
-  it("draws the front print without an entrance", () => {
-    const { stage } = renderFan(gallery(3));
+  it("draws the front print without an entrance under a morph", () => {
+    const { stage } = underMorph(() => renderFan(gallery(3)));
 
     expect(frontPrint(stage()).style.opacity).toBe("1");
+    expect(print(stage(), 2).style.opacity).toBe("0");
+  });
+
+  // And the other mount, which is every mount with nothing travelling: a step
+  // to the next animal, a deep link, a browser without the API. Nothing is
+  // landing in the front seat, so the front print has no reason to be there
+  // already and the rest have nothing to wait for. The fan fades in.
+  it("fades the front print in where nothing is being carried in", () => {
+    const { stage } = renderFan(gallery(3));
+
+    expect(frontPrint(stage()).style.opacity).toBe("0");
     expect(print(stage(), 2).style.opacity).toBe("0");
   });
 
@@ -383,8 +416,11 @@ describe("fan entrance", () => {
     // left the print's paper standing empty at the far end.
     const named = (print: HTMLElement) => print.className;
 
+    // And under the mark, so the name is only worn while a morph of ours is
+    // running: a named element is lifted out of the snapshot of any
+    // transition, a real navigation out of the dialog included.
     expect(named(frontPrint(stage()))).toContain(
-      "[view-transition-name:animal-photo]",
+      "[[data-photo-morph]_&]:[view-transition-name:animal-photo]",
     );
     expect(named(print(stage(), 2))).not.toContain("view-transition-name");
 
@@ -403,12 +439,62 @@ describe("fan entrance", () => {
   // that for the length of the morph nothing on the stage moves but the
   // picture the visitor pressed. They still arrive.
   it("cascades the side prints in after the morph", async () => {
-    const { stage } = renderFan(gallery(3));
+    const { stage } = underMorph(() => renderFan(gallery(3)));
 
     expect(print(stage(), 2).style.opacity).toBe("0");
 
     await waitFor(() => expect(print(stage(), 2).style.opacity).toBe("1"), {
       timeout: 3000,
+    });
+  });
+
+  // The numbers behind the two mounts above. The lead is the photograph's trip
+  // and belongs to the mount that has one; without it the front print would
+  // snap in at full strength and the side prints would stand out a third of a
+  // second beside it on an empty stage, which is what every step between
+  // animals and every deep link used to do.
+  describe("printEntrance", () => {
+    const mounting = { entered: false, reduced: false, fresh: false };
+
+    it("holds the side prints back for the photograph and draws the front one", () => {
+      expect(
+        printEntrance({ ...mounting, morphing: true, active: true, offset: 0 }),
+      ).toBe(false);
+      expect(
+        printEntrance({ ...mounting, morphing: true, active: false, offset: 1 }),
+      ).toBeCloseTo(ENTRANCE_LEAD + ENTRANCE_STAGGER, 5);
+      expect(
+        printEntrance({ ...mounting, morphing: true, active: false, offset: -2 }),
+      ).toBeCloseTo(ENTRANCE_LEAD + 2 * ENTRANCE_STAGGER, 5);
+    });
+
+    it("fades the whole fan in where nothing is being carried", () => {
+      expect(
+        printEntrance({ ...mounting, morphing: false, active: true, offset: 0 }),
+      ).toBe("fade");
+      expect(
+        printEntrance({ ...mounting, morphing: false, active: false, offset: 2 }),
+      ).toBe("fade");
+    });
+
+    it("draws a print that arrives mid-walk as a plain fade, and the rest not at all", () => {
+      const walking = { ...mounting, entered: true, morphing: false };
+      expect(printEntrance({ ...walking, fresh: true, active: false, offset: 2 })).toBe(
+        "fade",
+      );
+      expect(printEntrance({ ...walking, active: false, offset: 1 })).toBe(false);
+    });
+
+    it("asks nothing of a visitor who wants less movement", () => {
+      expect(
+        printEntrance({
+          ...mounting,
+          reduced: true,
+          morphing: true,
+          active: false,
+          offset: 2,
+        }),
+      ).toBe(false);
     });
   });
 });

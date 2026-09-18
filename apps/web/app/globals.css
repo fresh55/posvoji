@@ -1133,11 +1133,12 @@
      because the card's photograph is square and the print is 4:3.
 
      Scoped to the mark lib/view-transition.ts writes for the length of the
-     morph. The front print wears its name for as long as it is the front
-     print, so without the scope a cross-document navigation out of an open
-     dialog would pull the photograph out of the page snapshot and run these
-     rules on it. Unmarked, it keeps the browser's own fade and goes with the
-     rest of the page. */
+     morph, and so is the name itself (fan-photo.tsx). Scoping these rules
+     alone was not enough: a name is what lifts an element out of a snapshot,
+     so a cross-document navigation out of an open dialog took the front print
+     out of the old page's snapshot whatever these rules said, and cross-faded
+     it on its own over a page it had left. Unmarked, nothing in the dialog is
+     named, and the whole of it goes with the rest of the page. */
   :root[data-photo-morph]::view-transition-group(animal-photo) {
     animation-duration: 320ms;
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);

@@ -12,7 +12,10 @@ import {
 } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
+import {
+  AnimalDialog,
+  cardRevealTransition,
+} from "@/components/animal-dialog/animal-dialog";
 import {
   DESKTOP_DEPTHS,
   PHONE_DEPTHS,
@@ -92,6 +95,7 @@ window.cancelIdleCallback ??= ((handle: number) =>
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  Reflect.deleteProperty(document, "startViewTransition");
   fanLayout("desktop");
   window.history.replaceState(null, "", "/");
   // The description store caches its one fetch for the life of the module, so
@@ -2063,15 +2067,44 @@ describe("animal dialog", () => {
   });
 
   // A link straight to an animal has no card to grow out of, so the dialog
-  // falls back to the zoom it always had rather than flying a photo in from
-  // nowhere.
+  // falls back to the zoom it always had rather than carrying a photograph in
+  // from nowhere.
   it("carries no photo across when the dialog was opened by link", async () => {
+    const started: (() => void)[] = [];
+    const settled = Promise.resolve();
+    document.startViewTransition = ((update: () => void) => {
+      started.push(update);
+      update();
+      return { finished: settled, ready: settled, updateCallbackDone: settled };
+    }) as typeof document.startViewTransition;
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
 
     expect(dialog).toBeTruthy();
-    expect(document.querySelector('[data-slot="photo-bloom"]')).toBeNull();
+    // No transition was started, so the document carries no mark, and
+    // everything inside that reads it mounts the way it does with nothing
+    // travelling: the fan fades in rather than holding its side prints back
+    // for a photograph that is not coming (fan-options.ts).
+    expect(started).toEqual([]);
+    expect(document.documentElement.hasAttribute("data-photo-morph")).toBe(
+      false,
+    );
+  });
+
+  // The other half of the same rule, on the card under the photographs: it
+  // arrives in the last third of the morph, which is a wait only an open that
+  // carries a photograph has anything to wait for. On every other open the
+  // delay was a fifth of a second of empty card.
+  it("delays the card's fade for the morph and for nothing else", () => {
+    const carried = cardRevealTransition(false, true);
+    const plain = cardRevealTransition(false, false);
+
+    expect(carried.delay).toBeGreaterThan(0.2);
+    expect(plain.delay).toBe(0);
+    expect(plain.duration).toBe(carried.duration);
+    // And where less movement was asked for, the card is simply there.
+    expect(cardRevealTransition(true, true)).toEqual({ duration: 0 });
   });
 
   it("drains the wash for an animal whose adoption is over", async () => {

@@ -345,7 +345,16 @@ export const FanPhoto = memo(function FanPhoto({
         // front carries it, and only one element may carry it at a time: the
         // card takes its own off inside the same update that mounts this one,
         // or the browser skips the morph.
-        active && "[view-transition-name:animal-photo]",
+        //
+        // And only while a morph is running, which is what the mark on <html>
+        // says. A named element is lifted out of the page snapshot for the
+        // length of any transition, this document's own navigations included
+        // (@view-transition in globals.css): worn permanently, this print was
+        // pulled out of the old snapshot of a real anchor navigation out of an
+        // open dialog and cross-faded on its own, over a page it had left. The
+        // mark is written before both the open and the close capture, so both
+        // still find the name here.
+        active && "[[data-photo-morph]_&]:[view-transition-name:animal-photo]",
       )}
       initial={entrance === false ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}

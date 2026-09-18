@@ -23,8 +23,19 @@ let popWrapper: ((notify: () => void) => void) | null = null;
 
 /** Runs the next pop's notification inside `wrap`. What needs this is a view
  *  transition: the browser takes its new snapshot the moment the update
- *  returns, so every subscriber has to have rendered by then and not one
- *  commit later. */
+ *  returns, so the subscribers have to have rendered by then and not one
+ *  commit later, which is why the notification is handed over rather than run
+ *  here.
+ *
+ *  It is not run on the pop itself. `startViewTransition` calls its update
+ *  callback asynchronously, so between the pop and `notify()` there is at
+ *  least a frame in which `getLocationSnapshot()` already reports the new
+ *  address and nothing has been told. Anything that renders in that window for
+ *  its own reasons reads the address the pop left and closes the dialog
+ *  outside the transition, which costs the morph and nothing else: the dialog
+ *  still closes, on the fade it has without one. Accepted rather than guarded,
+ *  because the window is a frame long and nothing on the page renders on a
+ *  clock. */
 export function wrapNextPop(wrap: (notify: () => void) => void): void {
   popWrapper = wrap;
 }

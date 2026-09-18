@@ -30,6 +30,18 @@ export const PHOTO_MORPH_MS = 320;
  *  crossfade. */
 const MORPH_MARK = "data-photo-morph";
 
+/** The morph this module started last, and the only one whose cleanup may run.
+ *
+ *  A press during a morph starts a second one: the pseudo-elements take no
+ *  pointer events and the grid underneath is live, so a card clicked during
+ *  the 320ms close, or an Escape during the open, is an ordinary gesture. The
+ *  browser then rejects the first transition's `finished`, and that rejection
+ *  used to run the first morph's cleanup over the second morph's state: the
+ *  mark and the inline name came off the transition that had just started, and
+ *  the open ran unscoped with the dialog zooming out of the card. Identity
+ *  rather than a counter, so there is nothing to reset. */
+let current: object | null = null;
+
 /** Whether the photo can be carried at all: the API, and a visitor who has not
  *  asked for less movement. Everything else falls back to the dialog's own fade
  *  and zoom out of the card's centre. */
@@ -39,6 +51,25 @@ export function canMorphPhoto(): boolean {
     typeof document.startViewTransition === "function" &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+}
+
+/** Which way a morph is going at this moment, or null while none is running.
+ *
+ *  The mark is written before the transition starts and taken off when it has
+ *  finished, so anything mounted by the render inside the update can ask
+ *  whether its own arrival is being carried by one. Two things wait on the
+ *  photograph and must not wait on anything else: the fan holds its side
+ *  prints back until it has landed (fan-options.ts), and the dialog's card
+ *  fades in behind it (animal-dialog.tsx). A step to the next animal, a deep
+ *  link, an animal with no photograph, a browser without the API and a visitor
+ *  who asked for less movement all mount the same components with nothing
+ *  travelling, and there both waits are a third of a second of empty stage.
+ *
+ *  Asked once, at the mount. The mark is gone before either wait is over. */
+export function morphInProgress(): "open" | "close" | null {
+  if (typeof document === "undefined") return null;
+  const mark = document.documentElement.getAttribute(MORPH_MARK);
+  return mark === "open" || mark === "close" ? mark : null;
 }
 
 /**
@@ -77,14 +108,22 @@ export function morphPhoto({
   root.setAttribute(MORPH_MARK, direction);
   if (at === "old") wear(true);
 
+  const token = (current = {});
   const done = () => {
+    // Only for the morph that is still the current one; see `current` above.
+    if (current !== token) return;
+    current = null;
     wear(false);
     root.removeAttribute(MORPH_MARK);
   };
 
   const transition = document.startViewTransition(() => {
-    flushSync(update);
+    // Named before the update and not after it. The old state was captured
+    // before this callback ran, so the card's own name has no job inside it,
+    // while the flush below is where the dialog's front print mounts wearing
+    // the same name and where Radix runs its autofocus and its scroll lock.
     wear(at === "new");
+    flushSync(update);
   });
   // Both ways round. A transition the browser skips, or one a second gesture
   // takes over, rejects this promise, and the name and the mark have to come

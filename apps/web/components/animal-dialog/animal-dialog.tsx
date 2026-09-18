@@ -19,6 +19,7 @@ import {
   m,
   useMotionValue,
   useReducedMotion,
+  type Transition,
 } from "motion/react";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import { DialogShareButton } from "@/components/animal-dialog/dialog-share-button";
@@ -55,6 +56,7 @@ import type { ShelterLogos } from "@/lib/shelter-logos";
 import { cn } from "@/lib/utils";
 import {
   canMorphPhoto,
+  morphInProgress,
   morphPhoto,
   PHOTO_MORPH_MS,
 } from "@/lib/view-transition";
@@ -244,6 +246,46 @@ const CARD_REVEAL = {
   ease: "easeOut",
 } as const;
 
+// The same fade with nothing to wait for. The delay above is the photograph's
+// trip, so it belongs to the opens that have one: a deep link, an animal with
+// no photograph and a browser without the API all open with nothing
+// travelling, and there the delay is a fifth of a second of empty card under
+// the photos.
+const CARD_FADE = { ...CARD_REVEAL, delay: 0 } as const;
+
+// And where less movement was asked for, the card is simply there.
+const CARD_STILL = { duration: 0 } as const;
+
+/** How the card under the photographs arrives, which is a question about this
+ *  open and not about the dialog: see CARD_REVEAL and CARD_FADE. */
+export function cardRevealTransition(
+  reduced: boolean,
+  morphing: boolean,
+): Transition {
+  if (reduced) return CARD_STILL;
+  return morphing ? CARD_REVEAL : CARD_FADE;
+}
+
+/** Whether the box the close morph would aim at is somewhere it can land.
+ *
+ *  Grid cards carry card-paint, which is `content-visibility: auto`, so a card
+ *  the browser has skipped has no box at all: the name on it is ignored and
+ *  the print vanishes at the end of the morph instead of going back. A card
+ *  that is laid out but scrolled away is worse, because the print does travel,
+ *  off the edge of the screen. Neither is unusual: after a step through the
+ *  list the card behind the dialog is any card in the grid, not the one that
+ *  was pressed. */
+function withinViewport(element: HTMLElement): boolean {
+  const box = element.getBoundingClientRect();
+  if (box.width === 0 || box.height === 0) return false;
+  return (
+    box.bottom > 0 &&
+    box.right > 0 &&
+    box.top < window.innerHeight &&
+    box.left < window.innerWidth
+  );
+}
+
 /** The grid card standing behind the dialog for the animal it is showing, by
  *  the address that card links to. After a step through the list it is not the
  *  card the dialog opened from, and after a shared link there may be none: an
@@ -300,6 +342,11 @@ export function AnimalDialog({
   const shouldReduceMotion = useReducedMotion();
   const open = animal !== undefined;
   const contentRef = useRef<HTMLDivElement>(null);
+  // This dialog's own overlay. Held rather than looked up by its slot: the
+  // lightbox opens over this dialog and its overlay carries the same slot
+  // name, so a query would silence whichever of the two the document held
+  // first.
+  const overlayRef = useRef<HTMLDivElement>(null);
   // The card, which is the scrollport from sm up, and the frame around it,
   // which is what the edge arrows are absolute against.
   const cardRef = useRef<HTMLDivElement>(null);
@@ -373,6 +420,16 @@ export function AnimalDialog({
   // selection is already gone, so the last animal shown stays behind for it.
   const [lastAnimal, setLastAnimal] = useState(animal);
   if (animal && animal !== lastAnimal) setLastAnimal(animal);
+  // Whether this open is carrying the card's photograph in. The content below
+  // is mounted by the render inside the transition's update, so the mark is on
+  // <html> for that render and gone long before the card has finished fading
+  // (lib/view-transition.ts): the answer is kept rather than asked again.
+  // Adjusted during render the way lastAnimal above is, so the content mounts
+  // with it rather than a commit later.
+  const [opened, setOpened] = useState({ open, morph: false });
+  if (opened.open !== open) {
+    setOpened({ open, morph: open && morphInProgress() === "open" });
+  }
   // Radix announces the title on open and never again, so stepping to another
   // animal changed every word in the dialog in silence. The name goes through a
   // live region instead. Adjusted during render the way lastAnimal above is.
@@ -435,7 +492,10 @@ export function AnimalDialog({
   // badges, and the two "10 let" read as a mistake. The words come from
   // labels.ts, where the animal's own page reads the same line.
   const subtitle = animalSubtitle(lastAnimal, locale);
-  const cardReveal = shouldReduceMotion ? { duration: 0 } : CARD_REVEAL;
+  const cardReveal = cardRevealTransition(
+    Boolean(shouldReduceMotion),
+    opened.morph,
+  );
 
   // Whether the phone gets the sticky bar at the bottom of the dialog. There
   // has to be a button in the card for it to be a mirror of, and an adopted
@@ -495,11 +555,17 @@ export function AnimalDialog({
   // Armed here rather than in the hook that owns the address, because this is
   // the end that knows there is a print to carry and which card it belongs to.
   // The pop it arms is the one close() is about to ask for, and only that one:
-  // a back press the dialog did not start, and an animal with no card behind
-  // it, both keep the plain unmount.
+  // a back press the dialog did not start, an animal with no card behind it,
+  // and a card that is not somewhere the photograph can land, all keep the
+  // plain unmount.
   function closeDialog() {
     const photo = cardPhotoBehind(href);
-    if (photo && canMorphPhoto() && frontPrintOf(contentRef.current)) {
+    if (
+      photo &&
+      withinViewport(photo) &&
+      canMorphPhoto() &&
+      frontPrintOf(contentRef.current)
+    ) {
       wrapNextPop((notify) =>
         morphPhoto({
           photo,
@@ -514,12 +580,7 @@ export function AnimalDialog({
             // wait for, Radix lets go inside the flush, and what carries the
             // overlay and the box away is the root's own crossfade
             // (globals.css).
-            for (const layer of [
-              contentRef.current,
-              document.querySelector<HTMLElement>(
-                '[data-slot="dialog-overlay"]',
-              ),
-            ]) {
+            for (const layer of [contentRef.current, overlayRef.current]) {
               if (layer) layer.style.animationName = "none";
             }
             notify();
@@ -609,7 +670,7 @@ export function AnimalDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && closeDialog()}>
       <DialogPortal>
-        <DialogOverlay />
+        <DialogOverlay ref={overlayRef} />
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"
@@ -632,7 +693,18 @@ export function AnimalDialog({
             const target = card ?? (saved?.isConnected ? saved : null);
             if (!target) return;
             event.preventDefault();
-            target.focus();
+            // This runs inside the synchronous unmount inside the transition's
+            // update callback, and the two snapshots are taken either side of
+            // it: a grid that scrolls here slides the whole page under the
+            // photograph on its way back. Focus alone, then.
+            target.focus({ preventScroll: true });
+            // Without a morph there is nothing carrying the visitor's eye to
+            // the card, and the card may be a long way up the grid: focus
+            // nobody can see is focus lost. The browser's own scroll is what
+            // this puts back, and only where it costs no snapshot.
+            if (!morphInProgress()) {
+              target.scrollIntoView?.({ block: "nearest" });
+            }
           }}
         >
           {/* Mounted empty for as long as the dialog is open, so the name of

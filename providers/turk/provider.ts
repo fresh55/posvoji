@@ -202,6 +202,9 @@ export function parseList(body: string): SourceAnimalRef[] {
 // digits after the separator turns "stara 1,5 leta" into five years, and the
 // lookbehind is what stops the pattern from starting mid-number.
 const AGE_COUNT = "(?<![\\d,.])(\\d+(?:[.,]\\d+)?)";
+// Do not select an endpoint when the description gives an age range.
+const AGE_RANGE =
+  /\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mesec\w*|let\w*)\b/iu;
 
 const AGE_PATTERNS = [
   // "stara cca 1 leto", "Star je cca 2 leti", "Ocenjena starost je 6 let"
@@ -214,8 +217,7 @@ const AGE_PATTERNS = [
 ];
 
 export function parseApproximateAgeMonths(value: string): number | undefined {
-  // Do not select an endpoint when the description gives an age range.
-  if (/\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mesec\w*|let\w*)\b/iu.test(value)) return undefined;
+  if (AGE_RANGE.test(value)) return undefined;
   const normalized = value.normalize("NFC").replace(/\s+/g, " ");
   for (const pattern of AGE_PATTERNS) {
     const match = normalized.match(pattern);

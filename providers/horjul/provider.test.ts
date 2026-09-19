@@ -109,9 +109,9 @@ describe("parseVeterinaryCare", () => {
 
 describe("parseDetail", () => {
   it.each([
-    "<html><h1>Maintenance</h1></html>",
-    loadFixture(import.meta.url, "list.html"),
-  ])("rejects a page with no animal", (html) => {
+    ["maintenance page", "<html><h1>Maintenance</h1></html>"],
+    ["list page", loadFixture(import.meta.url, "list.html")],
+  ])("rejects a %s with no animal detail", (_, html) => {
     expect(() => parseDetail(html)).toThrow(/animal detail/);
   });
 

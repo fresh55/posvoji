@@ -46,9 +46,9 @@ describe("parseList", () => {
 
 describe("detail facts", () => {
   it.each([
-    "<html><h1>Maintenance</h1></html>",
-    listHtml,
-  ])("rejects a page with no animal", (html) => {
+    ["maintenance page", "<html><h1>Maintenance</h1></html>"],
+    ["list page", listHtml],
+  ])("rejects a %s with no animal detail", (_, html) => {
     expect(() => parseDetail(html)).toThrow(/animal detail/);
   });
 

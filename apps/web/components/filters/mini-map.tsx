@@ -14,10 +14,11 @@ import {
   type ShelterPin,
 } from "@/lib/map-layout-core";
 import miniMapData from "@/lib/mini-map-data.json";
+import { cn } from "@/lib/utils";
+
 const MINI_OUTLINE_PATH = miniMapData.outline;
 const MINI_REGION_PATHS = new Map(miniMapData.regions.map(r => [r.id, r.path]));
 const CITY_REGIONS: Record<string, number | undefined> = miniMapData.cityRegions;
-import { cn } from "@/lib/utils";
 
 // A live preview of the real map, drawn at trigger-icon size (roughly 20-28px
 // wide) by the toolbar and the picker's own trigger, and as a full-width strip

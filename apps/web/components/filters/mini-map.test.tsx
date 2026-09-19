@@ -313,3 +313,15 @@ describe("MiniMap celebration pulse", () => {
   // mirrors the same useReducedMotion() guard every other filter celebration
   // in this codebase uses (SizePawCards, AgeGrowthControl).
 });
+
+
+it("keeps the generated thumbnail aligned with every supported town and the full map", async () => {
+  const [{ CITIES, project }, { MINI_OUTLINE_PATH, MINI_REGION_PATHS, regionAt }, { default: data }] = await Promise.all([
+    import("@/lib/geo"), import("@/lib/map-regions"), import("@/lib/mini-map-data.json"),
+  ]);
+  expect(data.outline).toBe(MINI_OUTLINE_PATH);
+  expect(data.regions).toEqual([...MINI_REGION_PATHS].map(([id, path]) => ({ id, path })));
+  for (const at of Object.values(CITIES)) {
+    expect((data.cityRegions as Record<string, number>)[`${at.lat},${at.lon}`]).toBe(regionAt(project(at))?.id);
+  }
+});

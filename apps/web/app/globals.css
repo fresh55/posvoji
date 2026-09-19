@@ -1200,32 +1200,42 @@
     view-transition-name: site-header;
   }
 
-  :root:not([data-photo-morph])::view-transition-group(site-header) {
+  /* The rules below carry no scope of their own. The line above is the only
+     thing in the stylesheet that assigns the name, so under the mark nothing
+     wears it, no site-header group is built, and they select nothing whatever
+     they were to say. */
+  ::view-transition-group(site-header) {
     animation: none;
     z-index: 1;
   }
 
-  :root:not([data-photo-morph])::view-transition-old(site-header) {
+  /* Both documents drew the band, so the old one is taken out of the tree
+     rather than faded: two headers are never on screen at once, and the new
+     one stands still.
+
+     Stated positively, with the one-snapshot case overriding below, and not
+     as :not(:only-child) on these two. The inverted form was written, built
+     and measured, and Chromium matched neither half of it: the old band was
+     never hidden and the language switch went back to printing both navs
+     over each other. :only-child on its own does match, which is what the
+     override below rests on. */
+  ::view-transition-old(site-header) {
     display: none;
   }
 
-  :root:not([data-photo-morph])::view-transition-new(site-header) {
+  ::view-transition-new(site-header) {
     animation: none;
   }
 
-  /* When only one of the two documents has the band. The poster sheets, the
-     gate and the portal draw no site chrome, so a navigation to or from one
-     of them gives the group a single snapshot, and the rules above would drop
-     the band on frame one on the way out and print it at full strength over
-     a page still at zero on the way back. An only child instead fades with
-     the page it belongs to, on the same clock as the root handover below. */
-  :root:not([data-photo-morph])::view-transition-old(site-header):only-child {
+  /* The other case is a page that draws no site chrome at all, which is the
+     poster sheets, the gate and the portal. There the group has one snapshot,
+     and it belongs to the page it came with rather than to a band that
+     survives the navigation, so it stays in the tree and fades on the root's
+     clock. The fade itself is the handover's own rule further down, which a
+     lone band joins: it and the page around it move together because they
+     are one rule, not because two rules agree. */
+  ::view-transition-old(site-header):only-child {
     display: block;
-    animation: 90ms cubic-bezier(0.4, 0, 1, 1) both page-fade-out;
-  }
-
-  :root:not([data-photo-morph])::view-transition-new(site-header):only-child {
-    animation: 180ms cubic-bezier(0, 0, 0.2, 1) 90ms both page-fade-in;
   }
 
   /* And the page under it changes one way round rather than both at once. A
@@ -1266,11 +1276,13 @@
     }
   }
 
-  :root:not([data-photo-morph])::view-transition-old(root) {
+  :root:not([data-photo-morph])::view-transition-old(root),
+  ::view-transition-old(site-header):only-child {
     animation: 90ms cubic-bezier(0.4, 0, 1, 1) both page-fade-out;
   }
 
-  :root:not([data-photo-morph])::view-transition-new(root) {
+  :root:not([data-photo-morph])::view-transition-new(root),
+  ::view-transition-new(site-header):only-child {
     animation: 180ms cubic-bezier(0, 0, 0.2, 1) 90ms both page-fade-in;
   }
 

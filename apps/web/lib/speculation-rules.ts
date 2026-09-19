@@ -8,11 +8,17 @@
 // pointerdown, not on load, so a phone on a metered connection only pays for
 // what the visitor is reaching towards.
 
+import { POSTER_SEGMENT } from "@/lib/animal-path";
+import { GATE_PATHS } from "@/lib/demo-gate";
+import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
+import { serializeScriptJson } from "@/lib/script-json";
+import { SHELTER_INDEX_PATHS } from "@/lib/shelter-path";
+import { RESOURCES_PATHS } from "@/lib/site-links";
+
 export type SpeculationCondition =
   | { href_matches: string | readonly string[] }
   | { selector_matches: string | readonly string[] }
   | { and: readonly SpeculationCondition[] }
-  | { or: readonly SpeculationCondition[] }
   | { not: SpeculationCondition };
 
 export type SpeculationRule = {
@@ -29,6 +35,16 @@ export type SpeculationRuleSet = {
 // and therefore restricts every rule to same-origin links. A `*` in a pathname
 // pattern spans separators, so the prefetch rule's `/*` also covers
 // `/o-nas/srecko/plakat` and the print pages have to be excluded by name below.
+//
+// The addresses come from the modules that own them rather than being written
+// out again here. site-links.ts states the reason on RESOURCES_PATHS, and
+// app/sitemap.ts is the other reader that keeps to it: a page renamed in one
+// place and not the other would go on being prefetched and quietly stop being
+// prerendered, with nothing to fail. Only the three that no module owns are
+// literals: the portal's prefix, /dev, and the poster wildcard, which is a
+// pattern rather than an address.
+const withChildren = (paths: Record<string, string>): string[] =>
+  Object.values(paths).flatMap((path) => [path, `${path}/*`]);
 
 /**
  * Pages small enough to hold in memory before the click. The home page is not
@@ -39,16 +55,11 @@ export type SpeculationRuleSet = {
  * page (components/about-cat.tsx), so prerendering it would download the
  * model on every hover over the nav. Those pages are prefetched like the rest.
  */
-export const PRERENDER_PATTERNS = [
-  "/zavetisca",
-  "/zavetisca/*",
-  "/najdena-zival",
-  "/viri",
-  "/en/shelters",
-  "/en/shelters/*",
-  "/en/found-animal",
-  "/en/resources",
-] as const;
+export const PRERENDER_PATTERNS: readonly string[] = [
+  ...withChildren(SHELTER_INDEX_PATHS),
+  ...Object.values(FOUND_ANIMAL_PATHS),
+  ...Object.values(RESOURCES_PATHS),
+];
 
 /**
  * Never speculated at all. The portal is a logged-in Django client and the
@@ -56,54 +67,52 @@ export const PRERENDER_PATTERNS = [
  * useless and a request the visitor did not make. `/dev` is not in the build.
  * The poster routes are print pages nobody reads on screen.
  */
-export const NEVER_PATTERNS = [
+export const NEVER_PATTERNS: readonly string[] = [
   "/portal*",
-  "/vstop",
-  "/en/enter",
+  ...Object.values(GATE_PATHS),
   "/dev/*",
-  "/*/plakat",
-  "/*/poster",
-] as const;
+  ...Object.values(POSTER_SEGMENT).map((segment) => `/*/${segment}`),
+];
 
 /** The per-link opt-out. `rel="nofollow"` is the one the spec's examples use. */
 export const OPT_OUT_SELECTORS = ["[rel~=\"nofollow\"]", "[data-no-speculate]"] as const;
 
-const notExcluded: readonly SpeculationCondition[] = [
-  { not: { href_matches: NEVER_PATTERNS } },
-  { not: { selector_matches: OPT_OUT_SELECTORS } },
-];
+/**
+ * A rule for the links `match` claims, less the ones nothing may speculate.
+ * Both rules are built here so the exclusions and the eagerness are written
+ * once: a page added to the never list is out of both without being spelled
+ * in both.
+ */
+function speculate(...match: readonly SpeculationCondition[]): SpeculationRule {
+  return {
+    where: {
+      and: [
+        ...match,
+        { not: { href_matches: NEVER_PATTERNS } },
+        { not: { selector_matches: OPT_OUT_SELECTORS } },
+      ],
+    },
+    eagerness: "moderate",
+  };
+}
 
 export const SPECULATION_RULES: SpeculationRuleSet = {
-  prerender: [
-    {
-      where: { and: [{ href_matches: PRERENDER_PATTERNS }, ...notExcluded] },
-      eagerness: "moderate",
-    },
-  ],
+  prerender: [speculate({ href_matches: PRERENDER_PATTERNS })],
+  // Everything else same-origin, the home page and the animal pages included.
+  // The prerendered set is subtracted so a link is claimed by one rule only:
+  // the spec does not say which rule wins when both match.
   prefetch: [
-    {
-      // Everything else same-origin, the home page and the animal pages
-      // included. The prerendered set is excluded so a link is claimed by one
-      // rule only.
-      where: {
-        and: [
-          { href_matches: "/*" },
-          { not: { href_matches: PRERENDER_PATTERNS } },
-          ...notExcluded,
-        ],
-      },
-      eagerness: "moderate",
-    },
+    speculate({ href_matches: "/*" }, { not: { href_matches: PRERENDER_PATTERNS } }),
   ],
 };
 
 /**
- * The rule set as the script body. Every `<` leaves as its JSON escape, so a
- * pattern added later cannot close the script element early. The argument is
- * there for the test; the site always serializes the set above.
+ * The rule set as the script body, escaped so a pattern added later cannot
+ * close the script element early (lib/script-json.ts). The argument is there
+ * for the test; the site always serializes the set above.
  */
 export function serializeSpeculationRules(
   rules: SpeculationRuleSet = SPECULATION_RULES,
 ): string {
-  return JSON.stringify(rules).replaceAll("<", "\\u003c");
+  return serializeScriptJson(rules);
 }

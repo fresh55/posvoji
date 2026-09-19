@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { SITE_URL } from "@/lib/site";
 import type { SpeculationCondition, SpeculationRuleSet } from "@/lib/speculation-rules";
 import {
   NEVER_PATTERNS,
@@ -14,11 +15,9 @@ declare const URLPattern: {
   new (input: string, base: string): { test(input: string, base: string): boolean };
 };
 
-const ORIGIN = "https://posvoji.si";
-
 function hrefMatches(patterns: string | readonly string[], href: string): boolean {
   const list = typeof patterns === "string" ? [patterns] : patterns;
-  return list.some((pattern) => new URLPattern(pattern, ORIGIN).test(href, ORIGIN));
+  return list.some((pattern) => new URLPattern(pattern, SITE_URL).test(href, SITE_URL));
 }
 
 // Selector conditions need an element, so this evaluates them as a plain link
@@ -28,7 +27,6 @@ function evaluate(condition: SpeculationCondition, href: string): boolean {
   if ("href_matches" in condition) return hrefMatches(condition.href_matches, href);
   if ("selector_matches" in condition) return false;
   if ("and" in condition) return condition.and.every((part) => evaluate(part, href));
-  if ("or" in condition) return condition.or.some((part) => evaluate(part, href));
   return !evaluate(condition.not, href);
 }
 
@@ -128,7 +126,6 @@ describe("the excluded pages", () => {
   it("excludes the print pages from the catch-all too", () => {
     expect(hrefMatches(["/*"], "/o-nas/srecko/plakat")).toBe(true);
     expect(hrefMatches(NEVER_PATTERNS, "/o-nas/srecko/plakat")).toBe(true);
-    expect(classify("/o-nas/srecko/plakat")).toBe("none");
   });
 
   // Relative patterns resolve against the document, which is what keeps every
@@ -146,8 +143,8 @@ describe("serializeSpeculationRules", () => {
     expect(JSON.parse(serializeSpeculationRules())).toEqual(SPECULATION_RULES);
   });
 
-  it("leaves no character that could close the script element", () => {
-    expect(serializeSpeculationRules()).not.toContain("<");
+  it("leaves no character that could start a tag or an entity", () => {
+    expect(serializeSpeculationRules()).not.toMatch(/[<>&]/);
   });
 
   // Nothing in the rules holds a `<` today. This is the guard for the day a

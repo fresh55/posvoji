@@ -27,12 +27,12 @@
    place, different content". A direction would claim a hierarchy the portal
    does not have. The portal's own header and footer are not wrapped and do
    not move: they are drawn by the layout, which persists across a client
-   navigation, so only the page body is ever mounted or unmounted. */
+   navigation, so only the page body is ever mounted or unmounted.
 
-/* The overlay the browser paints the transition on takes no pointer events,
-   so a tap on a save button during the fade reaches the live page. That rule
-   is globals.css's, written once for every transition on the site, and it
-   loads here too. */
+   What is not here is the rule that takes pointer events off the overlay, so
+   that a tap on a save button during the fade reaches the live page. That one
+   is written once for the whole site in globals.css, which these pages load
+   as well. */
 
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(.portal-exit) {

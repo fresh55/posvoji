@@ -1,5 +1,6 @@
 import { telNumber } from "@/lib/contact-links";
 import { getMessages, type Locale } from "@/lib/i18n";
+import { serializeScriptJson } from "@/lib/script-json";
 import { homePath, shelterPath, sheltersIndexPath } from "@/lib/shelter-path";
 import type { ShelterRegistryEntry } from "@/lib/shelters";
 import { REPO_URL, SITE_URL } from "@/lib/site";
@@ -186,15 +187,9 @@ export function shelterJsonLd(
 /**
  * A node as the text of a <script type="application/ld+json">.
  *
- * JSON.stringify alone is not enough inside an HTML element: a "</script>" in
- * any string value would close the tag and everything after it would parse as
- * markup. Escaping the three characters that can start a tag or an entity
- * leaves valid JSON, because < and friends are ordinary JSON escapes that
- * any parser reads back as the original characters.
+ * The escaping this needs is every JSON script's (lib/script-json.ts); what is
+ * here is the type that says which script.
  */
 export function serializeJsonLd(node: JsonLdNode): string {
-  return JSON.stringify(node)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026");
+  return serializeScriptJson(node);
 }

@@ -13,6 +13,8 @@
 // (globals.css), so a marked old document would be captured without either
 // while the new one has both. pageswap fires before the old snapshot is taken,
 // which makes it the one place to put the mark right.
+import { PHOTO_MORPH_MARK } from "@/lib/photo-morph";
+
 export const VIEW_TRANSITION_SCRIPT = `(()=>{
   function observe(event) {
     if (!event.viewTransition) return;
@@ -21,7 +23,7 @@ export const VIEW_TRANSITION_SCRIPT = `(()=>{
     });
   }
   window.addEventListener("pageswap", event => {
-    document.documentElement.removeAttribute("data-photo-morph");
+    document.documentElement.removeAttribute("${PHOTO_MORPH_MARK}");
     observe(event);
   });
   window.addEventListener("pagereveal", observe);

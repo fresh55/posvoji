@@ -9,19 +9,34 @@ Edit `apps/web/lib/srecko.ts`. Use only facts confirmed by his owner.
 
 - `SRECKO.memory` accepts a short, genuine memory in Slovenian and English.
   Leave it undefined until the owner supplies one.
-- `SRECKO.timeline` accepts YYYY, YYYY-MM or YYYY-MM-DD dates. Undated and
-  invalid milestones are omitted. Time at home is shown as the supplied date
-  range, preserving its precision; no exact duration is inferred from a year.
+- `SRECKO.timeline` accepts YYYY, YYYY-MM or YYYY-MM-DD dates for the memorial
+  poster. Undated and invalid milestones are omitted. The memorial page keeps
+  the focus on his story and photographs, without a separate timeline or
+  medical-facts disclosure. Recorded facts remain available in the source.
 - `SRECKO.photos` holds approved local photographs. Obtain permission,
   remove EXIF, resize the longest edge to at most 1600px, and inspect the
   background for personal information before adding a file under public/.
   Supply width, height and meaningful alt text in both languages.
 - The first photograph becomes the main memorial image and the poster image.
-  The gallery presents the first photograph at full width.
+  The gallery presents the first photograph at full width and the remaining
+  photographs in a three-column row, including on phones.
 - `SRECKO_TEXT` holds the shared memorial, poster and preview wording.
 
 Do not infer personality, medical history, dates, or historical site rankings.
 The illustration is the fallback if the approved photograph list is empty.
+The cats link follows the story and the site's purpose, with an explicit
+label describing its destination. It opens the cat-filtered index in the
+current language. The poster remains available as a secondary link.
+
+## Memorial poster
+
+The A4 poster uses `components/poster/srecko-poster.css`, separate from the
+adoption sheets' layout. It puts the uncropped portrait first, followed by
+the owner's memory, shelter and recorded date. The footer has one invitation,
+a readable, clickable address and a 32mm QR symbol with its built-in white
+quiet zone. There is no repeated dedication or shaded advertising band.
+Both languages must stay on one A4 page. Keep the photograph credit and the
+credited illustration fallback; do not invent detail in the source photograph.
 
 ## Recorded sources
 

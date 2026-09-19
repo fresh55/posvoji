@@ -17,7 +17,8 @@ describe("memorial poster", () => {
     expect(container.querySelector(".poster-timeline")?.textContent).toBe(locale === "sl" ? "Prišel domov: 17. 3. 2023" : "Came home: 17 March 2023");
     expect(container.querySelector(".poster-memorial-story")?.textContent).toContain(SRECKO.memory![locale]);
     expect(screen.getByText(SRECKO_TEXT[locale].scan)).toBeTruthy();
-    expect(screen.getByText(SRECKO_TEXT[locale].dedication)).toBeTruthy();
+    expect(screen.queryByText(SRECKO_TEXT[locale].dedication)).toBeNull();
+    expect(screen.getByRole("link", { name: SRECKO_TEXT[locale].story }).getAttribute("href")).toBe(`${SITE_URL}${SRECKO_PATHS[locale]}`);
     expect(container.querySelector('svg[role="img"] path')?.getAttribute("d")).toBe(qrSymbol(`${SITE_URL}${SRECKO_PATHS[locale]}`).path);
     expect(container.querySelector(".poster-url")?.textContent).toBe(`posvoji.si${SRECKO_PATHS[locale]}`);
     expect(container.querySelector(".poster-credit")?.textContent).toBe(SRECKO_TEXT[locale].photoCredit);

@@ -34,15 +34,18 @@ from ..security import require_shelter
 router = Router()
 
 
-def _live(shelter: Shelter, listing_id: UUID) -> Listing:
+def _live(shelter: Shelter, listing_id: UUID, *, for_update: bool = False) -> Listing:
     """This shelter's unarchived listing, or 404.
 
     An archived listing is the shelter's delete. It stays in the table so its
     uuid is never handed out again, and it is gone as far as the API goes.
     """
-    listing = Listing.objects.filter(
+    listings = Listing.objects.filter(
         shelter=shelter, id=listing_id, archived_at__isnull=True
-    ).first()
+    )
+    if for_update:
+        listings = listings.select_for_update()
+    listing = listings.first()
     if listing is None:
         raise HttpError(404, "listing not found")
     return listing
@@ -92,8 +95,8 @@ def create_listing(request, slug: str, payload: ListingIn):
         created_by=request.user,
         updated_by=request.user,
     )
+    apply_payload(listing, payload)
     with serialized_write():
-        apply_payload(listing, payload)
         listing.save()
     return Status(201, listing_out(listing))
 
@@ -149,12 +152,9 @@ def add_photo(
     stored_name = listing_photo_name(listing.id, encoded.name)
     with serialized_write():
         # Encoding stays outside the write lock. The listing may have been
-        # archived while it ran, so check again before touching storage.
-        listing = _live(shelter, listing_id)
-        # The read-modify-write of the position is one write. Two uploads that
-        # read the same highest position would otherwise collide on the unique
-        # constraint instead of queueing behind each other.
-        Listing.objects.select_for_update().filter(pk=listing.pk).first()
+        # archived while it ran. Lock and recheck it in one query before
+        # deduplicating or assigning a position to the photo.
+        listing = _live(shelter, listing_id, for_update=True)
         already = ListingPhoto.objects.filter(
             listing=listing, image=stored_name
         ).first()

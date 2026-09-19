@@ -69,9 +69,8 @@ def upload(
 
 @pytest.mark.django_db
 def test_interleaved_duplicate_upload_is_idempotent(
-    member_client, manual_shelter, monkeypatch, settings
+    add, listing, monkeypatch, settings
 ):
-    created = create(member_client, manual_shelter.slug)
     raw = image_bytes()
     original_write = listing_api.serialized_write
     interleaved = False
@@ -83,17 +82,17 @@ def test_interleaved_duplicate_upload_is_idempotent(
         if not interleaved:
             interleaved = True
             # A competing upload finishes just before this one takes the lock.
-            second = upload(member_client, manual_shelter.slug, created["id"], raw)
+            second = add(raw)
             assert second.status_code == 201
             second_photo = second.json()
         with original_write():
             yield
 
     monkeypatch.setattr(listing_api, "serialized_write", write_after_second_upload)
-    first = upload(member_client, manual_shelter.slug, created["id"], raw)
+    first = add(raw)
     assert first.status_code == 200
     assert first.json() == second_photo
-    assert ListingPhoto.objects.filter(listing_id=created["id"]).count() == 1
+    assert ListingPhoto.objects.filter(listing_id=listing["id"]).count() == 1
     assert len(list(Path(settings.MEDIA_ROOT).rglob("*.jpg"))) == 1
 
 
@@ -119,14 +118,9 @@ def test_upload_cannot_add_a_photo_after_archive_during_encoding(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("fmt,cut", [("JPEG", 20), ("PNG", 80), ("WEBP", 20)])
-def test_truncated_photo_is_a_client_error(
-    member_client, manual_shelter, settings, fmt, cut
-):
-    created = create(member_client, manual_shelter.slug)
+def test_truncated_photo_is_a_client_error(add, member_client, settings, fmt, cut):
     member_client.raise_request_exception = False
-    response = upload(
-        member_client, manual_shelter.slug, created["id"], image_bytes(fmt)[:-cut]
-    )
+    response = add(image_bytes(fmt)[:-cut])
     assert response.status_code == 400
     assert response.json()["detail"] == "the image file is damaged"
     assert not ListingPhoto.objects.exists()

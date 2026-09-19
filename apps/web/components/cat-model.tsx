@@ -10,48 +10,27 @@ import { type CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
-// No head preload, although React would hoist one from the tree below.
-// Measured on the gate over throttled 4G a link in the head started the
-// download at 60ms instead of 1.5s and still finished only 0.3s sooner (0.8s
-// on slow 4G): from there it is bandwidth-bound against the hydration chunks,
-// on every visit to a page that may never show him. That was revision 26, at
-// 1.1MB on the wire; revision 27 is 632KB of the same shape. The link start()
-// inserts is a different thing. It begins the same download at the moment the
-// stage has already decided to fetch him, so the only chunk it competes with
-// is the renderer it is waiting for, and it never runs where he is not wanted.
+// Preload only when start() requests the model, to avoid competing with page content.
 const MODEL = "/models/our-cat/cat.glb?v=27";
 
-// The meshopt decoder, in one place: the viewer is pointed at it in start()
-// and the hint below has to name the same path, or the browser keeps the
-// preload and fetches the file a second time.
+// The preload and viewer must use the same decoder URL.
 const DECODER = "/models/our-cat/meshopt-decoder.js";
 const SLOW_LOAD_MS = 10_000;
 
-// What the viewer asks for once its chunk has evaluated, asked for at the same
-// moment as the chunk instead of after it: the model, which used to wait for
-// the element to exist, and the decoder it cannot read the model without. Each
-// link has to describe the request the viewer will make, for the same reason.
-// The model goes through three's FileLoader, a fetch in cors mode with
-// same-origin credentials, which is what crossorigin says here; the decoder
-// arrives on a plain async <script>, which is as="script" and no crossorigin.
-// Traced on the built page: one request each, and the model's is the link's.
+// Match the viewer request modes so preloads are reused.
 const HINTS = [
   { href: MODEL, as: "fetch", crossOrigin: "anonymous" },
   { href: DECODER, as: "script" },
 ];
 
-/** A camera and the still rendered from it: the poster is the model's own
- *  first frame at that framing, so he does not jump when WebGL takes over. */
+/** Camera settings and their matching still, to prevent a jump when WebGL starts. */
 export type CatFraming = { orbit: string; target: string; poster: string };
 
-// One transparent pixel, and the only thing a caller that gates its poster
-// draws where the gate does not match. A <picture> has to end in an <img>,
-// and whatever that <img> points at is what the browser fetches when no
-// <source> matches, so it has to be something that costs nothing.
+// A picture requires an img fallback; this avoids a request when no source matches.
 const BLANK_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
-/** The about page's and the gate's framing; see the note on camera-orbit. */
+/** Default framing for About and the demo gate. */
 const CAT_FRAMING: CatFraming = {
   orbit: "-19deg 81deg 1.45m",
   target: "0m 0.25m 0m",
@@ -77,38 +56,13 @@ const copy = {
 
 type Status = "loading" | "revealing" | "ready" | "failed";
 
-/** What a page can ask of the cat once he is on screen. */
+/** Controls exposed after the model loads. */
 export type CatModelHandle = {
-  /**
-   * Plays one authored reaction if the cat is awake and free.
-   *
-   * Ask during handover to take precedence over the stage's own greeting for
-   * a visitor who touched the poster while it loaded. That only holds while
-   * the call is synchronous: deferring it to an effect or a microtask loses
-   * the race, because by then the greeting is playing and this returns false.
-   */
+  /** Play a reaction when available. Call synchronously during handover to override the queued greeting. */
   react: (name: CatReaction) => boolean;
 };
 
-/**
- * Srečko in 3D, with the still render underneath until WebGL takes over.
- *
- * The about page shows him below a caption, the demo gate above a password
- * field. Both want the same model, camera and touch controller, so it lives
- * here once and each page wraps it in its own figure. The box takes its
- * height from className.
- *
- * Nothing tells a visitor that the cat they are touching is a picture: the
- * wait measured 1.3s on a fast desktop and about 5.6s from the stage coming
- * into view on a throttled phone (1.6Mbps, 150ms RTT, 4x CPU), where before
- * this branch it was 10.5s. Only the visitor who reaches for him is told.
- * Most never touch him, on the gate they came to type a password, and a
- * picture that quietly comes alive is a better moment than one a spinner
- * announces.
- *
- * memo, because the gate re-renders on every keystroke and this subtree
- * holds a live WebGL canvas.
- */
+/** Shared model with a still-image fallback. Memoized to avoid updates when the demo password changes. */
 export const CatModel = memo(function CatModel({
   locale,
   className,
@@ -123,81 +77,30 @@ export const CatModel = memo(function CatModel({
   className?: string;
   /** The poster's sizes attribute, matching the box className draws. */
   sizes: string;
-  /**
-   * Whether the poster is the page's largest paint. It is on the gate, where
-   * the cat is the first thing above the fold and the only thing that paints
-   * while the model arrives (632KB gzipped, 550KB with brotli, and the
-   * renderer chunk behind it); it is not on the about page, where he sits
-   * below the fold and is often never fetched at all.
-   */
+  /** Prioritize the still when it is the page's largest visible image. */
   posterPriority?: boolean;
-  /**
-   * The media condition under which the poster is worth downloading, for a
-   * caller whose figure is not drawn at every viewport. The still is the
-   * first thing this stage paints, so it cannot be lazy or gated in script:
-   * a `display:none` figure fetches it all the same (measured). A <picture>
-   * is the one gate a static export can express in markup, and below it the
-   * browser picks a transparent pixel and asks for nothing.
-   *
-   * Left unset the poster loads everywhere, which is what a figure that is
-   * always drawn wants.
-   */
+  /** Load the still only in matching viewports. CSS display:none alone does not prevent image requests. */
   posterMedia?: string;
-  /**
-   * A closer framing than the default, for a stage too short to show him
-   * at 1.45m. The default never cuts him at any heading; a closer camera
-   * trades that for size, and the caller owns the trade and the poster.
-   * The camera is an input of the WebGL effect below, the poster is not.
-   */
+  /** Override the camera and provide a matching still. */
   framing?: CatFraming;
-  /**
-   * Fetch the model and the renderer on the visitor's first reach for the
-   * stage rather than as soon as it is on screen. For a stage that is on
-   * screen from the first paint of a page whose first seconds belong to
-   * something else.
-   *
-   * This was the page's load event plus an idle callback, and an idle moment
-   * is not a free one: on a fast connection load fires around 150ms, so the
-   * idle callback ran at about half a second, which is where the visitor is
-   * reaching for whatever the page came to show them. Decoding him holds the
-   * main thread for the better part of a second and there is no dividing that
-   * into frames from here. A reach is the one moment at which that second is
-   * his to take, and it is already the moment the stage starts speaking: the
-   * progress cursor and the loading label wait for the same reach.
-   *
-   * A reach is a pointer entering the stage or keyboard focus arriving
-   * anywhere in the box the page put the stage in, so a visitor who never
-   * touches a pointer meets him on the Tab that reaches his corner.
-   *
-   * Left unset he starts as soon as he is on screen, which is what a stage
-   * the visitor scrolled to wants.
-   */
+  /** Wait for pointer entry or parent keyboard focus before loading; otherwise load when visible. */
   startOnReach?: boolean;
   onHandle?: (handle: CatModelHandle | null) => void;
 }) {
   const text = copy[locale];
   const host = useRef<HTMLDivElement>(null);
-  // The stage itself, for the one thing the effect needs that is outside it:
-  // the box the page put it in, which is where a keyboard reach lands.
+  // Observe parent focus so the caption link can trigger model loading.
   const stage = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [slow, setSlow] = useState(false);
-  // What the stage still owes the visitor, and empty once it owes nothing.
-  // One expression, so the label's text, its box and whether it is drawn
-  // cannot fall out of step.
-  // The ready/not-ready split, named once; status also distinguishes the
-  // reveal from a request still on the wire and from a failed attempt.
   const ready = status === "ready";
   const loading = status === "loading" || status === "revealing";
   const waiting = ready ? "" : status === "failed" ? text.unavailable : slow ? text.slow : text.loading;
-  // Whether the visitor has reached for him before he was there. The label
-  // is drawn from then on, and stays until he is, rather than following the
-  // pointer in and out.
+  // Keep loading feedback visible after the first interaction until ready.
   const [reached, setReached] = useState(false);
-  // A touch the poster took while he was still loading, for him to answer.
+  // Replay a touch received while the poster was loading.
   const touched = useRef(false);
-  // Read from inside the one long-lived effect below, so it is kept current
-  // here without restarting it.
+  // Update the callback without restarting the WebGL effect.
   const handOver = useRef(onHandle);
   useEffect(() => {
     handOver.current = onHandle;
@@ -208,16 +111,10 @@ export const CatModel = memo(function CatModel({
     // playback in transitionend can run ahead of that DOM commit.
     if (ready) activate.current();
   }, [ready]);
-  // The other way round: the reach reaching into the effect. He is fetched
-  // from inside it, so the reach has to be told to it rather than made a
-  // dependency of it, which would restart it and take the observer, and on a
-  // stage already running the viewer, down with it. It is a no-op both where
-  // nothing waits for a reach and once he is under way.
+  // Trigger loading without restarting the effect or replacing the viewer.
   const wake = useRef(() => {});
 
-  // What the label answers, and what the cat answers after it. A hover only
-  // asks the question; a touch is the one he owes a glance, and only while
-  // there is still something to wait for.
+  // Hover reveals loading feedback; a touch also queues a reaction.
   const reach = (touch: boolean) => {
     if (status === "ready") return;
     setReached(true);
@@ -243,8 +140,6 @@ export const CatModel = memo(function CatModel({
     let attempt = 0;
     let slowTimer: ReturnType<typeof setTimeout> | undefined;
     let revealFrame: number | undefined;
-    // Whether anyone wants him yet. On screen is the answer everywhere but a
-    // stage that waits for a reach, where the reach below is.
     let wanted = !startOnReach;
     const canAnimate = () => ready && visible && !disposed && !document.hidden && !motion.matches;
 
@@ -253,22 +148,7 @@ export const CatModel = memo(function CatModel({
       if (!viewer || !ready || disposed) return;
       interaction?.syncPlayback();
     };
-    // The precomputed picking regions. Nothing can be picked before there is
-    // a cat, so the picker itself is built on the load event; the chunk that
-    // builds it is asked for earlier, as soon as the viewer's own chunk has
-    // evaluated.
-    //
-    // It has to be here by the time he is. The chunk is 153,890 bytes raw,
-    // about 32KB brotli or 51KB gzip on the wire, and without it the
-    // controller cannot tell a nose tap or a paw from the rest of him: CatPick
-    // carries `leg` and `nose` (lib/cat-picking.ts) that the public-API
-    // fallback in start() never fills, and cat-interaction.ts gates "Nose
-    // sniff" and the four "Paw withdraw" reactions on them. Asking for it when
-    // the viewer's chunk lands lets it ride the tail of the model's download
-    // rather than delay its start, and it is not awaited on the way to the
-    // element. In the window before it arrives a nose or paw tap falls through
-    // to the generic body answer, which is the coarser thing the fallback
-    // still answers.
+    // Load precise picking alongside the viewer; use material picking until it is ready.
     const buildPicker = () => {
       if (disposed || !loaded || !viewer || !makePicker) return;
       picker?.dispose();
@@ -282,7 +162,7 @@ export const CatModel = memo(function CatModel({
         (module) => {
           if (disposed) return;
           makePicker = module.createViewerCatPicker;
-          // The cat can be here already: this is the later of the two chunks.
+          // The model may finish loading before this import.
           if (loaded) buildPicker();
         },
         () => {},
@@ -294,8 +174,7 @@ export const CatModel = memo(function CatModel({
       syncPlayback();
       const controller = interaction;
       if (controller) handOver.current?.({ react: (name) => controller.react(name) });
-      // The page's own request, if it made one on handover, comes first; his
-      // glance at whoever reached for the poster gives way to it.
+      // A synchronous handover reaction takes precedence over the queued touch.
       if (touched.current) {
         touched.current = false;
         controller?.react("Notice");
@@ -356,53 +235,24 @@ export const CatModel = memo(function CatModel({
       setStatus("failed");
     };
 
-    // The two requests the viewer will make, asked for in the same tick as its
-    // chunk. Called from start() and nowhere else, so start()'s gate is the
-    // whole gate: a route that never shows him, a stage still waiting for a
-    // reach and a hidden tab ask for nothing.
+    // Start model and decoder downloads alongside the viewer import, after the loading gate.
     const askForHim = (modelUrl: string) => {
       if (hints.length) return;
       hints = HINTS.map(({ href, as, crossOrigin }) => {
         const link = document.createElement("link");
         link.setAttribute("rel", "preload");
         link.setAttribute("as", as);
-        // Low, on both. On the gate this stage is above the fold and its
-        // poster is the page's largest paint; on no page does anything the
-        // model could draw paint before that poster, so the model is the one
-        // of the two that can wait.
-        //
-        // It costs nothing to say so and it is not worth much either.
-        // Measured on the built gate page at 390x844 over 1.6Mbps with 150ms
-        // RTT, six paired runs with the arms alternating: LCP 630ms against
-        // 646ms at the default priority, the model's last byte 7.46s against
-        // 7.47s. Both differences sit inside the run-to-run spread, because
-        // the download only starts once the page has hydrated, about 1.6s
-        // after the poster has already painted. Neither number is worse, and
-        // low is what the hint honestly means.
+        // Keep the static poster and other page content ahead of these downloads.
         link.setAttribute("fetchpriority", "low");
         if (crossOrigin) link.setAttribute("crossorigin", crossOrigin);
-        // Last, so the request goes out with the rest already on the element.
+        // Set the URL after the request attributes.
         link.setAttribute("href", href === MODEL ? modelUrl : href);
         document.head.append(link);
         return link;
       });
     };
 
-    // Importing the custom element on the server would access browser globals.
-    // The model and renderer also stay out of other routes and offscreen loads.
-    //
-    // The model's download used to begin only after the chunk had arrived and
-    // evaluated and the element had been created, which on a throttled phone
-    // (1.6Mbps, 150ms RTT, 4x CPU) put its first byte 2.4s after the stage
-    // came into view. The links above start it with the chunk instead, so the
-    // three share the wire rather than queue behind one another.
-    //
-    // Measured on the merged build of this branch, which also carries the
-    // re-encoded model and the precompressed siblings the host serves: on that
-    // phone profile the stage goes from coming into view to the load event in
-    // 5.6s, against 10.5s before, with 632KB of model on the wire. The element
-    // appears later than it used to for it, because the chunk now waits on the
-    // model for bandwidth, and nothing is drawn before the model in any case.
+    // Import client-side only, when visible and requested; the module accesses browser globals.
     const start = async () => {
       if (!wanted || started || disposed || !visible || document.hidden) return;
       started = true;
@@ -418,9 +268,7 @@ export const CatModel = memo(function CatModel({
       try {
         const { ModelViewerElement: Viewer } = await import("@google/model-viewer");
         if (disposed) return;
-        // The visitor may have scrolled away or hidden the tab during the
-        // wait. Keep the chunk and whatever the links have already pulled
-        // down, but postpone WebGL setup.
+        // Postpone WebGL setup if the viewport or tab changed during the import.
         if (!visible || document.hidden) { started = false; return; }
         askForPicker();
         Viewer.meshoptDecoderLocation = DECODER;
@@ -434,21 +282,7 @@ export const CatModel = memo(function CatModel({
           "disable-tap": "",
           "touch-action": "pan-y",
           "interaction-prompt": "none",
-          // 1.45m, not the 1.15m this was framed at. The canvas draws nothing
-          // outside itself, so a pose that reaches past the element edge is
-          // cut there, and the visitor can orbit freely: measured at 1280,
-          // 65 of 216 sampled angle-and-time combinations lost part of the
-          // cat, the worst of them 39px of ear and haunch. It is not a band
-          // that can be fenced off either. Sampling every 30 degrees, the
-          // clipped headings alternate with clean ones (-120 and -90 bad, -60
-          // clean, -30 bad, 0 clean, 30 and 60 bad), because what reaches the
-          // edge depends on the pose as much as the heading.
-          //
-          // Pulling back is the one move that answers all of them at once. At
-          // 1.45m nothing touches an edge at any heading, at either end of the
-          // 55-95deg tilt, anywhere in the clip, at 1280, 1024 or 375. The cat
-          // draws about a fifth smaller for it, which is the price of never
-          // cutting him.
+          // The default camera leaves room for the animation at every allowed orbit.
           "camera-orbit": framing.orbit,
           "camera-target": framing.target,
           "min-camera-orbit": "auto 55deg 0.65m",
@@ -486,9 +320,7 @@ export const CatModel = memo(function CatModel({
         viewer.addEventListener("load", onLoad);
         viewer.addEventListener("error", onError);
         const element = viewer;
-        // The picker, once it has landed, and the viewer's own picking until
-        // then. The controller asks this on every touch, so it reads the
-        // current answer rather than the one that held when it was built.
+        // Use the precise picker when ready; material picking is the loading fallback.
         interaction = createCatInteraction(viewer, canAnimate, (x, y) => {
           if (picker) return picker.pick(x, y);
           const material = element.materialFromPoint(x, y)?.name;
@@ -501,19 +333,13 @@ export const CatModel = memo(function CatModel({
         if (!disposed) onError();
       }
     };
-    // The reach a gated stage was waiting for. The pointer's arrives through
-    // the handler above; the keyboard's through the corner below.
     const takeReach = () => {
       wanted = true;
       void start();
     };
     wake.current = takeReach;
 
-    // A Tab into the corner is a reach too. Until he loads there is nothing
-    // inside the stage for focus to land on, so the corner is the box the
-    // page put the stage in: on the home page that box is the figure, and the
-    // one thing a Tab can reach in it is his caption link, right under him.
-    // Without this a visitor who never touches a pointer never meets him.
+    // Include caption focus: the stage has no focusable viewer until loading finishes.
     const corner = startOnReach ? stage.current?.parentElement : null;
     const onCornerFocus = () => {
       setReached(true);
@@ -565,56 +391,28 @@ export const CatModel = memo(function CatModel({
       onPointerEnter={() => reach(false)}
       onPointerDown={() => reach(true)}
     >
-      {/* The source is what the browser downloads wherever posterMedia
-          matches; the img under it is the fallback and carries everything
-          else, so an ungated caller renders the same element it always did
-          inside a wrapper that draws nothing. */}
+      {/* The transparent fallback prevents downloads outside posterMedia. */}
       <picture>
         {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
         <Image
           src={posterMedia ? BLANK_PIXEL : framing.poster}
           alt={ready ? "" : text.alt}
           fill
-          // Load the fallback immediately. Where WebGL can replace it before
-          // it paints, don't speculatively preload it either (React skips
-          // low); where it is the largest paint, put it at the front instead.
+          // Load the still eagerly; only prioritize it when it is the largest visible image.
           loading="eager"
           {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
           sizes={sizes}
           className={`object-contain ${ready ? "invisible" : ""}`}
         />
       </picture>
-      {/* inert alongside aria-hidden, and not aria-hidden alone.
-          <model-viewer> is appended into this host as soon as the module
-          arrives, which is long before `ready`, and its shadow root keeps a
-          focusable poster button at the host's full size. aria-hidden prunes
-          that button from the accessibility tree without taking it out of the
-          tab order, which is the aria-hidden-focus failure exactly: measured
-          on /o-nas under slow-4G throttling, a plain Tab walk from the top of
-          the document stopped on a 448x496 element that announced nothing,
-          between the contact address and Srečko's link. opacity-0 does not
-          help, because an element at zero opacity is still focusable.
-
-          Not a transient state either. Where WebGL never comes up or the .glb
-          never arrives, `ready` never happens and the dead stop is permanent.
-
-          inert is the half that removes it from the tab order; aria-hidden
-          stays because it is what the older browsers in this audience read,
-          and the two say the same thing. Both come off together at `ready`,
-          where the viewer is a real image with a real name and belongs in
-          both trees. */}
+      {/* inert removes the loading viewer from tab order; aria-hidden also hides it from assistive technology. */}
       <div
         ref={host}
         inert={!ready}
         aria-hidden={!ready}
         className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
       />
-      {/* The one thing ever drawn over the stage, and only while there is
-          no cat to touch and someone has tried. It sits at the foot, on the
-          floor shadow, where no pose reaches. Screen readers have the text
-          from the start; the eyes get it on the first reach. The spinner
-          waits for that reach too, or it would turn unseen for the whole
-          life of an about page nobody scrolled down. */}
+      {/* Announce loading status immediately; show visual feedback after interaction. */}
       <div
         data-slot="cat-status"
         role="status"

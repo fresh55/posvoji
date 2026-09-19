@@ -11,7 +11,6 @@ import { staticPageMetadata } from "@/lib/site-metadata";
 export const metadata: Metadata = staticPageMetadata({
   locale: "sl",
   paths: SRECKO_PATHS,
-  // His name, the way the h1 and the last crumb say it.
   title: SRECKO.name,
   description: SRECKO_TEXT.sl.intro,
   image: sreckoShareImage("sl", "memorial"),

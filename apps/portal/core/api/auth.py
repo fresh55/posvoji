@@ -29,7 +29,7 @@ router = Router()
 
 # Markers an operator greps the journal for. The endpoint answers 204 either
 # way, so the log is the only place a failed or suppressed send is visible.
-# Host-specific alert configuration is maintained outside Git.
+# docs/DEPLOY-PORTAL.md has the alert recipe.
 DELIVERY_FAILED = "portal.mail.delivery_failed"
 ADDRESS_THROTTLED = "portal.mail.address_throttled"
 

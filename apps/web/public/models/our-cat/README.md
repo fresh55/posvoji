@@ -323,8 +323,8 @@ outside release, blur, pausing, errors and disposal clear interaction safely.
 
 The dedicated `pnpm --filter web test:e2e:cat` suite covers desktop Chromium,
 mobile Chromium and WebKit behaviour, plus eight reviewed desktop pose snapshots.
-Run that suite for the current behaviour checks. Internal measurements and
-device review notes are maintained outside the repository.
+See [the hardening report](../../../../../docs/CAT-HARDENING.md) for measurements,
+test procedures and remaining physical-device and mesh-picking limits.
 
 ## Affection, attention and sleep, revision 19
 

@@ -128,11 +128,12 @@ release date. Explain a blocker before adding `status: blocked`.
 
 ## Public documentation and private reports
 
-Keep public setup instructions, API contracts, data policy and attribution in
-the repository. Internal audits, deployment runbooks, incident notes and
-private correspondence belong outside Git. The `docs/` allowlist in
-`scripts/check-public-docs.mjs` is checked in CI; additions need explicit review.
-Ignoring or deleting a file does not remove it from earlier Git history.
+Keep setup instructions, API contracts, deployment runbooks, data policy and
+permission records versioned with the code. Use portable example paths rather
+than a particular contributor's home directory. Keep credentials and private
+correspondence out of Git. If a document needs restricted access, maintain it
+in a separate private repository with a clear reference from the relevant
+code. Ignoring or deleting a file does not remove it from earlier Git history.
 
 Do not post credentials or personal data in issues, commits or screenshots.
 Follow [SECURITY.md](SECURITY.md) for vulnerabilities and other private reports.

@@ -128,7 +128,7 @@ const expected = {
 
 assert.doesNotThrow(() => validateLayout(configFor(), expected));
 
-// The demo gate is a basic_auth with a matcher, placed
+// The demo gate (docs/DEMO-GATE.md) is a basic_auth with a matcher, placed
 // before the public routes. Its expression and not-path matchers are unknown
 // to this scanner and are treated as possibly matching; that is harmless
 // because authentication responds to nothing, so the probes pass through to

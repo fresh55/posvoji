@@ -9,8 +9,8 @@
 #
 # Media is not part of the release. It lives once at /srv/posvoji/media and
 # Caddy serves /media/* from there with handle_path, so a release directory
-# never contains a media/ tree. The order matters:
-# a release that goes live before its photos land
+# never contains a media/ tree. See docs/DEPLOY-MEDIA.md for why the order
+# below is the order it is: a release that goes live before its photos land
 # renders blank heroes, and nothing in the build or the test suite catches it.
 #
 # Release layout. There are two, and the host decides which one it gets:
@@ -27,11 +27,11 @@
 # operator creates on the host as the last step of the migration, after the
 # docroot has moved and the site has been seen to answer from the new path. It
 # is a marker rather than a flag here because this script runs unattended from
-# the scheduled crawl every 12 hours: shipping the
+# the scheduled crawl every 12 hours (docs/CRAWL-SCHEDULING.md): shipping the
 # new layout before the docroot moves would 404 the whole site, and shipping
 # private files under today's docroot would publish the datasets. With the
 # marker absent this deploys exactly today's layout and ships no private
-# artifacts at all, printing a warning to consult the private runbook.
+# artifacts at all, printing a warning and the authoritative runbook path.
 #
 # Runs from Git Bash on Windows and from a POSIX shell on Linux or macOS. It
 # needs git, tar, ssh and pnpm on PATH. Windows additionally needs cmd.exe to
@@ -184,7 +184,7 @@ JSON inputs and every referenced media byte. Layout v2 additionally checks the
 three generatedAt fields before carrying that generation id into its private
 publication.json. The checks run before anything is uploaded.
 
-Host-specific deployment procedures are maintained in the private runbook.
+Docs: docs/DEPLOY-MEDIA.md
 USAGE
 }
 
@@ -778,7 +778,7 @@ stage "Artifact"
 # exactly two, cat.glb.br and cat.glb.gz, because Caddy's `encode` matches
 # responses by Content-Type and no `model/*` type is in its default list, so
 # the 3D model is the one large asset a host cannot compress on the fly
-# (apps/web/scripts/precompress-out.mjs). They have to
+# (apps/web/scripts/precompress-out.mjs, docs/DEPLOY-HEADERS.md). They have to
 # reach the release for `precompressed br gzip` to have anything to serve.
 #
 # Text siblings still must not. `next build` emits none, so the ~10500 in the
@@ -1182,7 +1182,7 @@ else
   echo "  !! Layout v2 migration is an operator procedure, not a deploy step."
   echo "  !! Pause the scheduled crawl and follow the single authoritative runbook:"
   echo "  !!"
-  echo "  !!   Consult the private layout-v2 migration runbook."
+  echo "  !!   docs/DEPLOY-MEDIA.md#moving-the-host-onto-layout-v2"
   echo "  !!"
   echo "  !! It covers the release self-links, Caddy docroot, layout marker,"
   echo "  !! fail-closed structural and HTTP checks, the atomic rollback drill,"

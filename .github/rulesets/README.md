@@ -7,9 +7,13 @@ verify their enforcement on the default branch.
 - `owner-merges.json` restricts updates to repository admins through pull
   requests only. In this personal repository, the owner `@fresh55` is the
   only admin. Reassess that assumption before transferring to an organization.
-- `main-quality.json` requires the GitHub Actions `checks` job on an up-to-date
-  branch, resolved review conversations and a squash pull request. It blocks
-  deletion and force pushes, with no bypass actors, including the owner.
+- `main-quality.json` requires the GitHub Actions `checks` and `pr-title` jobs
+  on an up-to-date branch, resolved review conversations and a squash pull
+  request. It blocks deletion and force pushes, with no bypass actors,
+  including the owner.
+
+Title and body edits rerun only the small `pr-title` workflow. The full CI
+workflow runs for code updates and keeps a separate run for every main push.
 
 The two rulesets are separate so permission to merge does not bypass checks.
 There is no mandatory second reviewer: a sole maintainer cannot approve their

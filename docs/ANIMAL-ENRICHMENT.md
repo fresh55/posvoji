@@ -86,6 +86,8 @@ means no confirmed matching records, not proof that no animal has that property.
 Species-specific rules remain: feline tests apply to cats, and cat size does not
 become an available filter just to fill the panel.
 
-`--republish` applies the current manifest to saved source data without implying
-a fresh source check. Deployment procedures and operational review reports are
-maintained privately outside this repository.
+Use the normal committed-code production promotion procedure in
+[PRODUCTION-OPERATIONS.md](PRODUCTION-OPERATIONS.md). The production host should
+export from its own current input authority after promotion; do not replace it
+with a local snapshot or reset its generation sequence. `--republish` applies
+the current manifest to saved source data without implying a fresh source check.

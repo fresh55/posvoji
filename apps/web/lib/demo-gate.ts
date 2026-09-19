@@ -5,8 +5,7 @@
  * every page with 401 unless the request carries this cookie with the agreed
  * value, and renders the gate page as the body of that 401. The page puts the
  * typed password in the cookie and reloads; Caddy does the comparing. Nothing
- * in the export knows the password. The server contract fixture is
- * scripts/fixtures/demo-gate.caddy; production configuration stays outside Git.
+ * in the export knows the password. See docs/DEMO-GATE.md for the server half.
  */
 export const DEMO_COOKIE = "posvoji_demo";
 

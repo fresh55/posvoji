@@ -35,7 +35,8 @@ check || check
 # them the homepage's.
 cp -- "$scratch/headers" "$scratch/home-headers"
 # A browser always sends Accept-Encoding, so a server that stopped compressing
-# looks exactly like one that did not and nothing else here would notice.
+# looks exactly like one that did not and nothing else here would notice. See
+# docs/DEPLOY-HEADERS.md for what the site costs uncompressed.
 encoded() {
   fetch "$1" "$2" || return 1
   grep -qi '^content-encoding:' "$scratch/headers" || { echo "no Content-Encoding for $1" >&2; return 1; }
@@ -59,7 +60,7 @@ delivery() {
 # The same release switch as above takes the hashed chunk with it. Retry once.
 delivery || delivery
 # out/404.html only reaches a visitor if the server is wired to serve it
-# correctly. Assert the status and the page's own words, so the
+# (docs/DEPLOY-HEADERS.md). Assert the status and the page's own words, so the
 # server and the export cannot drift apart unnoticed.
 status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani)
 [[ "$status" = 404 ]] || { echo "unexpected HTTP status for a missing path: $status" >&2; exit 1; }
@@ -67,14 +68,14 @@ grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path d
 # The 3D cat's model is the one large asset no host compresses by itself:
 # Caddy's encode matches Content-Type and its default list has no model/* entry,
 # so cat.glb ships raw unless the siblings the build writes are served with
-# `precompressed br gzip`. Raw it is 1,500,464 bytes
+# `precompressed br gzip` (docs/DEPLOY-HEADERS.md). Raw it is 1,500,464 bytes
 # against 550,478 brotli.
 #
 # Opt-in, because the host is not wired for those siblings yet and nothing in
 # this repository can wire it: until the directive lands the answer here is
 # correctly "no Content-Encoding", and a red light on every run for a thing
-# the site works without is a red light nobody reads. Enable the check only
-# after the host serves those compressed siblings.
+# the site works without is a red light nobody reads. docs/DEPLOY-HEADERS.md
+# turns it on as the last of its host steps.
 #
 # HEAD, because a precompressed sibling's Content-Encoding is set before any
 # body is written: a bodyless 200 carries it and the megabyte stays off the

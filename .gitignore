@@ -46,7 +46,7 @@ playwright-report/
 .env.*
 !.env.example
 # The production template, which holds no secrets: every value that is one is
-# left blank with the command to generate it.
+# left blank with the command to generate it. See docs/DEPLOY-PORTAL.md.
 !.env.production.example
 
 # editor / tooling
@@ -56,18 +56,6 @@ playwright-report/
 
 # review runs and other generated write-ups that live beside the tree
 outputs/
-
-# Public contributor guides only. Keep internal notes outside Git.
-/docs/*
-!/docs/ADDING-A-PROVIDER.md
-!/docs/ANIMAL-ENRICHMENT.md
-!/docs/COMMIT-CONVENTION.md
-!/docs/DATA-POLICY.md
-!/docs/MANUAL-LISTINGS.md
-!/docs/assets/
-/docs/assets/*
-!/docs/assets/logo.svg
-!/docs/assets/logo-dark.svg
 
 # misc
 __pycache__/

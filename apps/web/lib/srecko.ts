@@ -6,7 +6,7 @@ export type SreckoPhoto = {
   /** Local public/ path: permission-cleared, EXIF-free, longest edge <= 1600px. */
   src: string; width: number; height: number; alt: Record<Locale, string>;
 };
-/** Confirmed facts only; the maintainer retains the provenance privately. */
+/** Confirmed facts only; provenance is recorded in docs/SRECKO.md. */
 export const SRECKO = {
   name: "Srečko", species: "cat", sex: "male", felv: "positive", eyes: "one",
   shelter: { name: "Mačja hiša", from: { sl: "iz Mačje hiše", en: "from Mačja hiša" } },

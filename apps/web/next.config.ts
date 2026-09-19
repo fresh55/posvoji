@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
   // The schema package ships TypeScript source, not a build.
   transpilePackages: ["@posvoji/schema"],
   experimental: {
+    // Put styles on the first response's critical path. See DEPLOY-HEADERS.md
+    // for the repeat-navigation cost of duplicating CSS in HTML and flight.
+    inlineCss: true,
     // The app has two root layouts, (sl) and (en)/en, and no shared one
     // above them: see app/global-not-found.tsx. Without this flag there is
     // no root layout left for a plain app/not-found.tsx to render inside,

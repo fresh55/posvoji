@@ -1,6 +1,7 @@
 "use client";
 
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { domAnimation, m, useReducedMotion } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import {
   CountRoll,
   DEAD_OPTION_CLASS,

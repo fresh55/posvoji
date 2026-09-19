@@ -188,6 +188,10 @@ test.describe("under real touch points", () => {
     const next = phoneNav(page, "next");
     await expect(next).toBeVisible();
 
+    // The title can now paint before the card's view transition finishes.
+    // Wait for hit-testing to reach this button before dispatching raw points.
+    await next.click({ trial: true });
+
     // Hit-tested rather than aimed: a point the button does not answer for is
     // a tap on whatever is standing over it, and the tap would pass either
     // way. The same check the fan's own touch targets get.

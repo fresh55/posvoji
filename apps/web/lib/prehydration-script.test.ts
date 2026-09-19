@@ -21,7 +21,7 @@ function marks(search: string): boolean {
 describe("the pre-hydration filter script", () => {
   // The script arms a timer that outlives every case here. Fake timers keep
   // the self-clearing case deterministic and stop the rest from leaving live
-  // six-second timers behind them.
+  // ten-second timers behind them.
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -55,7 +55,9 @@ describe("the pre-hydration filter script", () => {
     const dataset = runScript("?vrsta=pes");
     expect("filtering" in dataset).toBe(true);
 
-    vi.advanceTimersByTime(PREHYDRATION_CLEAR_MS);
+    vi.advanceTimersByTime(6000);
+    expect("filtering" in dataset).toBe(true);
+    vi.advanceTimersByTime(PREHYDRATION_CLEAR_MS - 6000);
     expect("filtering" in dataset).toBe(false);
   });
 });

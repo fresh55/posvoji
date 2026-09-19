@@ -6,8 +6,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { pointer } from "@/test/pointer";
 
-vi.mock("motion/react", async (importOriginal) => ({
-  ...await importOriginal<typeof import("motion/react")>(),
+vi.mock("@/hooks/use-reduced-motion", () => ({
   useReducedMotion: () => true,
 }));
 

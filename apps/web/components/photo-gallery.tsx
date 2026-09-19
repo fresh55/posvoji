@@ -8,8 +8,9 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
-import { useReducedMotion } from "motion/react";
+import type { LucideIcon } from "lucide-react";
+import { Chevron } from "@/components/chevron";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ import { cn } from "@/lib/utils";
 // re-sample and re-blur what it stands over each of those frames on a real
 // GPU. The extra 10% of opacity is what the blur was there for: to keep a
 // chevron legible over a photograph of any colour. The card's own chevrons
-// below keep theirs, because their photo stands still.
+// below use the same ground, avoiding layers for invisible controls.
 //
 // Shown for a hover and for keyboard focus, but only the kind of focus that is
 // meant to be seen. The dialog opens with its front print focused, and a
@@ -82,7 +83,7 @@ export const GALLERY_BUTTON_CLASS =
 // The dark half of the plate is there for the reason GALLERY_BUTTON_CLASS
 // above gives.
 const OWN_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs group-hover/photo:backdrop-blur-sm group-focus-within/photo:backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/80 dark:hover:bg-background group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/90 opacity-0 pointer-events-none shadow-xs transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/90 dark:hover:bg-background group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
 // What a grid card adds to the chevrons above. OWN_BUTTON_CLASS serves all
 // three surfaces this component is mounted on, and only the card's photo is
@@ -97,9 +98,7 @@ const OWN_BUTTON_CLASS =
 // a photograph can be any colour, and shadow-xs is tuned to lift a control off
 // a known surface. Black at low alpha draws the disc's own edge on a light
 // photo and disappears into a dark one, where a near-white disc needs no help.
-// The blur stays: the card's photo stands still, so there is nothing to
-// re-sample every frame, and it is what keeps a chevron legible over a busy
-// picture at this size.
+// A near-solid plate keeps the glyph legible without a backdrop layer.
 //
 // Behaviour is untouched. Everything the card changes here is paint: the
 // opacity and pointer-events gating, the press exemption and the aria come
@@ -107,26 +106,20 @@ const OWN_BUTTON_CLASS =
 //
 // Two whole descriptions rather than five questions asked one after another,
 // so what a chevron looks like on either surface is one thing to read. The
-// icon size is stated only where it departs from the button's own: the base
-// rule in ui/button.tsx sizes a bare icon at 16px, which is what the plain
-// surface wants, and icon-xs takes it to 12px, which is a step small for a
-// chevron a thumb is aiming at.
+// mask size is explicit on both surfaces: 16px on the plain gallery and 14px
+// on a card.
 //
-// The step from 80% to 85% is restated for dark alongside the plain one, for
-// the reason GALLERY_BUTTON_CLASS above gives. The pair sorts the same way in
-// both themes, because Tailwind orders the two dark: rules against each other
-// exactly as it orders their unprefixed halves.
 const CARD_CHEVRON = {
   size: "icon-xs",
   icon: "size-3.5",
   previous: "left-2",
   next: "right-2",
-  className: `${OWN_BUTTON_CLASS} bg-background/85 dark:bg-background/85 shadow-none ring-1 ring-black/10`,
+  className: `${OWN_BUTTON_CLASS} shadow-none ring-1 ring-black/10`,
 } as const;
 
 const PLAIN_CHEVRON = {
   size: "icon-sm",
-  icon: undefined,
+  icon: "size-4",
   previous: "left-1.5",
   next: "right-1.5",
   className: OWN_BUTTON_CLASS,
@@ -289,6 +282,8 @@ type PhotoGalleryProps = {
    *  (see animalsForClient); a server-rendered page resolves its own with
    *  permittedPhotos. Either way the rights are settled before this. */
   images: PermittedPhoto[];
+  imageCount?: number;
+  onRequestImages?: () => void;
   /** The animal's, for the alt text on a surface that is not a link. */
   name?: string | null;
   sizes: string;
@@ -354,6 +349,8 @@ type PhotoGalleryProps = {
 
 export function PhotoGallery({
   images,
+  imageCount = images.length,
+  onRequestImages,
   name,
   sizes,
   warmSizes,
@@ -407,8 +404,8 @@ export function PhotoGallery({
   // between the swipeable photo and the thumbnails under it.
   const imageIndex = index ?? ownIndex;
   const image = images[imageIndex];
-  const hasGallery = images.length > 1;
-  const dots = photoDotWindow(images.length, imageIndex);
+  const hasGallery = imageCount > 1;
+  const dots = photoDotWindow(imageCount, imageIndex);
   // The card's own paint rules, and nothing else's. This used to read the
   // href, which the grid card happens to be the only caller to pass: true
   // today, and a trap for the first caller with a good reason to link a photo
@@ -484,7 +481,7 @@ export function PhotoGallery({
   }
 
   function changeImage(direction: -1 | 1) {
-    goToImage((imageIndex + direction + images.length) % images.length);
+    goToImage((imageIndex + direction + imageCount) % imageCount);
   }
 
   // Home and End as well as the arrows: the longest gallery in the register
@@ -494,7 +491,7 @@ export function PhotoGallery({
     if (event.key === "ArrowLeft") changeImage(-1);
     else if (event.key === "ArrowRight") changeImage(1);
     else if (event.key === "Home") goToImage(0);
-    else if (event.key === "End") goToImage(images.length - 1);
+    else if (event.key === "End") goToImage(imageCount - 1);
     else return;
     // The page must not scroll out from under the visitor stepping photos.
     event.preventDefault();
@@ -509,6 +506,7 @@ export function PhotoGallery({
   }
 
   function startSwipe(event: PointerEvent<HTMLElement>) {
+    onRequestImages?.();
     // Cleared before any early return. It used to be cleared after them, so a
     // swipe whose compatibility click never arrived left the flag set, and the
     // next mouse click or Enter on the same photo was swallowed instead.
@@ -609,6 +607,7 @@ export function PhotoGallery({
     // is somebody reading this gallery, not somebody about to open the surface
     // behind it, and those paths keep to this gallery's own sizes.
     preloadTimer.current = window.setTimeout(() => {
+      onRequestImages?.();
       preloadAdjacent(imageIndex);
       preloadWarm();
     }, PRELOAD_DWELL_MS);
@@ -729,7 +728,7 @@ export function PhotoGallery({
               {
                 name: name ?? messages.unnamed,
                 current: imageIndex + 1,
-                total: images.length,
+                total: imageCount,
               },
             )
       }
@@ -931,7 +930,7 @@ export function PhotoGallery({
             aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${chevron.className} ${chevron.previous}`}
           >
-            <ChevronLeft className={chevron.icon} aria-hidden />
+            <Chevron left className={chevron.icon} />
           </Button>
           <Button
             type="button"
@@ -944,7 +943,7 @@ export function PhotoGallery({
             aria-hidden={keyboardGallery ? undefined : "true"}
             className={`${chevron.className} ${chevron.next}`}
           >
-            <ChevronRight className={chevron.icon} aria-hidden />
+            <Chevron className={chevron.icon} />
           </Button>
           {/* Dots, not a fraction. "1 / 13" is bookkeeping; a row of dots says
               "there are more photos" and which one this is in a glance, and it
@@ -1021,7 +1020,7 @@ export function PhotoGallery({
           >
             {t("photoCount", {
               current: imageIndex + 1,
-              total: images.length,
+              total: imageCount,
             })}
           </span>
         </>
@@ -1032,7 +1031,7 @@ export function PhotoGallery({
           aria-hidden
           className="pointer-events-none absolute right-2 bottom-2 rounded-ui bg-foreground/90 px-2 py-1 text-xs text-background tabular-nums group-has-[img[data-broken]]/photo:hidden"
         >
-          {imageIndex + 1} / {images.length}
+          {imageIndex + 1} / {imageCount}
         </span>
       )}
     </div>

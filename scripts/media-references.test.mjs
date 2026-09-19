@@ -27,7 +27,7 @@ const snapshot = collectMediaReferences(
     ],
   },
   { entries: { "shelter:rex": { files: ["rex-sl.png", "rex-en.png"] } } },
-  { entries: { shelter: { file: "shelter.svg" } } },
+  { entries: { shelter: { file: "shelter.svg", variants: [{ file: "small.webp", width: 96, height: 48 }] } } },
 );
 
 assert.deepEqual([...snapshot.referenced.keys()].sort(), [
@@ -38,6 +38,7 @@ assert.deepEqual([...snapshot.referenced.keys()].sort(), [
   "share/rex-en.png",
   "share/rex-sl.png",
   "shelter-logos/shelter.svg",
+  "shelter-logos/small.webp",
 ]);
 assert.equal(snapshot.photos, 2);
 assert.equal(snapshot.shareCards, 1);

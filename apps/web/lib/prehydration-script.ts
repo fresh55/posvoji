@@ -43,10 +43,10 @@ export const RESULTS_PENDING_SLOT = "results-pending";
 /** How long the mark may stand before the script takes it off itself. The
  *  unfiltered grid is the worse answer only for as long as hydration is still
  *  plausible: past that a readable wrong page beats an empty right one, and the
- *  visitor can narrow it by hand. Six seconds is well clear of hydration on a
- *  slow phone and short of the point where a page showing only placeholders
- *  reads as broken. Exported because the test pins it. */
-export const PREHYDRATION_CLEAR_MS = 6000;
+ *  visitor can narrow it by hand. Mobile measurements put hydration near
+ *  5.2 seconds on slow 4G, so allow ten seconds before the failure fallback.
+ *  Successful hydration still clears the mark immediately. */
+export const PREHYDRATION_CLEAR_MS = 10_000;
 
 // The timer is the only thing that answers the client render that never comes:
 // a chunk that fails to arrive, a browser that runs no modules, a hydration

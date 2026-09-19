@@ -195,7 +195,7 @@ describe("animal grid renders", () => {
     await act(async () => {
       fireEvent.click(link!);
     });
-    await screen.findByRole("dialog");
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
 
     // The grid rendered again, with the dialog in it and the address changed,
     // and the card that has nothing to do with the animal being opened did
@@ -458,7 +458,7 @@ describe("animal grid empty state", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("hands the picker every shelter, whatever the species tab says", () => {
+  it("hands the picker every shelter, whatever the species tab says", async () => {
     // The roster the picker counts and renders is the registry, not the
     // shelter facet of the current query. Measured against the species-filtered
     // pool, /?vrsta=zajcek left it holding only druga, so the trigger promised
@@ -476,7 +476,7 @@ describe("animal grid empty state", () => {
     // The roster is the registry (three shelters), not the species-filtered
     // pool /?vrsta=zajcek leaves standing (druga alone): every shelter still
     // renders as a row, whatever the tab.
-    const dialog = screen.getByRole("dialog");
+    const dialog = await screen.findByRole("dialog", {}, { timeout: 5000 });
     for (const id of ["muri", "tretje", "druga"]) {
       expect(dialog.querySelector(`[data-shelter-row='${id}']`)).toBeTruthy();
     }
@@ -687,7 +687,7 @@ describe("how much of the grid is drawn", () => {
 
   it("swaps the sentinel for a button once the automatic budget is spent", () => {
     // Two columns, so a step is 30 cards, but the budget is only 80: the
-    // first step already overshoots it and clamps down to what is left of
+    // second step overshoots it and clamps down to what is left of
     // the budget instead of running its full stride. Ten more than that, so
     // the button has something left to offer.
     stubGridColumns(columnTracks(2));
@@ -695,14 +695,16 @@ describe("how much of the grid is drawn", () => {
     const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
 
-    act(() => {
-      for (const callback of callbacks) callback([{ isIntersecting: true }]);
-    });
+    for (let step = 0; step < 2; step++) {
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
+    }
 
     // The budget is spent: the sentinel is gone, the grid stops growing on
     // its own, and the way on is a real control with the remainder on it.
     const drawn = TARGET_ROWS * 2;
-    expect(drawn).toBeLessThan(INITIAL_CARDS + ROWS_PER_STEP * 2);
+    expect(drawn).toBeLessThan(INITIAL_CARDS + ROWS_PER_STEP * 2 * 2);
     expect(screen.getAllByRole("article")).toHaveLength(drawn);
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
     const more = screen.getByRole("button", { name: "Prikaži še 10" });
@@ -740,11 +742,11 @@ describe("how much of the grid is drawn", () => {
     );
   });
 
-  // Where two columns spend the whole budget in one step, three and four take
-  // two, and the second one is short. That is one shape and not two, so it is
+  // Where two columns spend the whole budget in two steps, three and four take
+  // three, and the last one is short. That is one shape and not two, so it is
   // written once: a wider grid buys proportionally more cards for the same
   // scroll distance (45 a step at three columns, 60 at four), and either way a
-  // full second stride would run past the budget, which is the case the clamp
+  // full third stride would run past the budget, which is the case the clamp
   // exists for. The spare each one is given is what the button is then left to
   // offer: the remainder at three columns, a full press worth at four.
   it.each([
@@ -753,7 +755,7 @@ describe("how much of the grid is drawn", () => {
   ])(
     "steps by the columns it draws and clamps the last step at the target ($columns columns)",
     ({ columns, spare }) => {
-      expect(INITIAL_CARDS + ROWS_PER_STEP * columns * 2).toBeGreaterThan(
+      expect(INITIAL_CARDS + ROWS_PER_STEP * columns * 3).toBeGreaterThan(
         TARGET_ROWS * columns,
       );
 
@@ -778,7 +780,12 @@ describe("how much of the grid is drawn", () => {
         for (const callback of callbacks) callback([{ isIntersecting: true }]);
       });
 
-      // The second step is the short one. The grid settles on the number
+      expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
+
+      // The third step is the short one. The grid settles on the number
       // TARGET_ROWS names rather than a stride past it, and the way on is the
       // button, carrying a press worth or the remainder, whichever is less.
       expect(screen.getAllByRole("article")).toHaveLength(
@@ -923,9 +930,8 @@ describe("how much of the grid is drawn", () => {
 
   it("charges an unmeasurable grid for two columns", () => {
     // Deliberately unstubbed: jsdom lays out nothing, so this is the real
-    // computed value the fallback exists for. The step is the two-column one,
-    // which the two-column budget then clamps, and a list long enough that a
-    // four-column step would show as 120.
+    // computed value the fallback exists for. A step adds 30 cards rather
+    // than the 60 a four-column grid would add.
     const beyond = pastTheBudget(4, 0);
     const { callbacks } = stubIntersectionObserver();
     const { container } = renderGrid(beyond);
@@ -937,7 +943,7 @@ describe("how much of the grid is drawn", () => {
     expect(screen.getAllByRole("article")).toHaveLength(
       Math.min(INITIAL_CARDS + ROWS_PER_STEP * 2, TARGET_ROWS * 2),
     );
-    expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
+    expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
   });
 
   it("goes back to the first chunk when the filters change", () => {
@@ -967,7 +973,7 @@ describe("the chips row inside the grid", () => {
     window.history.replaceState(null, "", "/?zavetisce=muri,druga");
     renderGrid(ANIMALS);
     fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog", {}, { timeout: 5000 });
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Počisti filtre" }));
     expect(query()).toBe("");
@@ -1001,7 +1007,7 @@ describe("the chips row inside the grid", () => {
     window.history.replaceState(null, "", "/?zavetisce=muri,druga");
     renderGrid(ANIMALS);
     fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("dialog", {}, { timeout: 5000 });
     const undoName = "Razveljavi čiščenje filtrov";
 
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });

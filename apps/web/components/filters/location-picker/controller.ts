@@ -56,6 +56,7 @@ export function useLocationPickerController({
   onClearFilters,
   onShowAllSpecies,
   municipalities,
+  municipalitiesUrl,
   offSite,
   summaries,
   deepLink,
@@ -65,6 +66,7 @@ export function useLocationPickerController({
 }: LocationPickerProps) {
   const { locale, messages, t } = useI18n();
   const [selfOpen, setSelfOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const open = controlledOpen ?? selfOpen;
   // Where an open goes, kept in a ref so the setter below can be stable. The
   // spotlight effect calls it and holds no dependency on it: a setter whose
@@ -678,6 +680,7 @@ export function useLocationPickerController({
       : pickerText[locale].backToResults;
 
   return {
+    triggerRef,
     options,
     counts,
     selected,
@@ -688,6 +691,7 @@ export function useLocationPickerController({
     onClearFilters,
     onShowAllSpecies,
     municipalities,
+    municipalitiesUrl,
     offSite,
     summaries,
     deepLink,

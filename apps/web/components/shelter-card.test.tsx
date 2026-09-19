@@ -159,6 +159,7 @@ describe("the shelter card", () => {
         shelter={shelter({
           logo: {
             url: "/media/shelter-logos/abc.webp",
+            srcSet: "/media/shelter-logos/small.webp 96w, /media/shelter-logos/abc.webp 300w",
             chipOnLight: false,
             chipOnDark: true,
             opaque: false,
@@ -174,6 +175,8 @@ describe("the shelter card", () => {
     // second reading of it is noise.
     const logo = document.querySelector("img");
     expect(logo?.getAttribute("alt")).toBe("");
+    expect(logo?.getAttribute("srcset")).toContain("small.webp 96w");
+    expect(logo?.getAttribute("sizes")).toBe(logo?.style.width);
   });
 
   it("draws a portrait mark tall and a wordmark wide rather than both at one height", () => {

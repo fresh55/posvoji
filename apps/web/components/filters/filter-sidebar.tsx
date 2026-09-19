@@ -1,6 +1,7 @@
 "use client";
 
-import { LazyMotion, domAnimation } from "motion/react";
+import { domAnimation } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { CountRoll } from "@/components/filters/filter-card";
 import {
   FilterGroupList,
@@ -38,6 +39,7 @@ export type SidebarScope = {
   options: FilterOption[];
   counts: Map<string, number>;
   municipalities?: LookupEntry[];
+  municipalitiesUrl?: string;
   offSite?: FilterOption[];
   summaries?: Map<string, ShelterSummary>;
   resultCount: number;
@@ -173,6 +175,7 @@ export function FilterSidebar({
           filterSummary={pickerFilterSummary(filters, locale)}
           {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
           municipalities={scope.municipalities}
+          municipalitiesUrl={scope.municipalitiesUrl}
           offSite={scope.offSite}
           summaries={scope.summaries}
           deepLink="desktop"

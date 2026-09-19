@@ -504,10 +504,11 @@ test("opens the contact sheet from the count, which is a control of its own", as
   // there is no aria-label on the count to name it by any more.
   const box = await count.boundingBox();
   if (!box) throw new Error("the count has no box to measure");
-  // And the second half of the name is said rather than drawn: the chip is
-  // 45px across, which is the mark, and the words would take it past a
-  // hundred.
-  expect(box.width).toBeLessThan(60);
+  // The visible "Foto 1 / 13" fits a compact chip; the second half of the
+  // accessible name remains clipped rather than widening the mark.
+  expect(box.width).toBeLessThan(100);
+  await expect(count.locator(".sr-only")).toHaveCSS("position", "absolute");
+  await expect(count.locator(".sr-only")).toHaveCSS("width", "1px");
   const reach = await page.evaluate(
     ([x, y]) =>
       document.elementFromPoint(x, y)?.closest("button")?.dataset.slot ?? null,

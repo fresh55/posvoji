@@ -9,7 +9,9 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
-import { ChevronRight } from "lucide-react";
+import { Chevron } from "@/components/chevron";
+import { useAnimalPhotos } from "@/hooks/use-animal-photos";
+import { DeferredStatus } from "@/components/deferred-status";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-context";
@@ -204,7 +206,22 @@ export const AnimalCard = memo(function AnimalCard({
   const [announcePhotoChanges, setAnnouncePhotoChanges] = useState(false);
   // Every photo here is one the card may draw: the projection that built this
   // animal dropped the rest.
-  const photoCount = animal.images.length;
+  const photos = useAnimalPhotos(animal);
+  const photoCount = photos.count;
+  const pendingIndex = useRef(0);
+  function selectPhoto(next: number) {
+    pendingIndex.current = next;
+    if (photos.ready) {
+      setPhotoIndex(next);
+      return;
+    }
+    void photos
+      .load()
+      .then(() => {
+        if (cardRef.current?.isConnected) setPhotoIndex(pendingIndex.current);
+      })
+      .catch(() => {});
+  }
   const waitMonths = longStayMonths(animal, reference);
   // The animal's own page, which is also what the dialog writes to the
   // address bar when this card is clicked. Filters are deliberately left out:
@@ -272,7 +289,7 @@ export const AnimalCard = memo(function AnimalCard({
     if (direction === 0) return;
     event.preventDefault();
     setAnnouncePhotoChanges(true);
-    setPhotoIndex((current) => (current + direction + photoCount) % photoCount);
+    selectPhoto((photoIndex + direction + photoCount) % photoCount);
   }
 
   return (
@@ -342,7 +359,11 @@ export const AnimalCard = memo(function AnimalCard({
       style={style}
     >
       <PhotoGallery
-        images={animal.images}
+        images={photos.images}
+        imageCount={photoCount}
+        onRequestImages={() => {
+          void photos.load().catch(() => {});
+        }}
         name={animal.name}
         className={PHOTO_FRAME}
         sizes={CARD_PHOTO_SIZES}
@@ -389,10 +410,18 @@ export const AnimalCard = memo(function AnimalCard({
         href={href}
         onNavigate={openDialog}
         index={photoIndex}
-        onIndexChange={setPhotoIndex}
+        onIndexChange={selectPhoto}
         announceChanges={announcePhotoChanges}
         eager={eager}
       />
+      {(photos.pending || photos.error) && (
+        <div className="absolute inset-x-2 top-2 z-30">
+          <DeferredStatus
+            error={photos.error}
+            retry={() => selectPhoto(pendingIndex.current)}
+          />
+        </div>
+      )}
       <a
         // The card's own link, and the one thing in the article that names
         // the animal. animal-grid.tsx looks for this after "show more" so
@@ -597,10 +626,7 @@ export const AnimalCard = memo(function AnimalCard({
               another page while everything above it opens the animal. The
               same 60% the hover draws, so it is one mark in two places rather
               than a phone treatment of its own. */}
-          <ChevronRight
-            aria-hidden
-            className="ml-auto mt-0.5 size-3 shrink-0 opacity-0 transition-opacity pointer-coarse:opacity-60 group-hover/card:opacity-60 group-focus-within/card:opacity-60"
-          />
+          <Chevron className="ml-auto mt-0.5 size-3 shrink-0 opacity-0 transition-opacity pointer-coarse:opacity-60 group-hover/card:opacity-60 group-focus-within/card:opacity-60" />
         </a>
       ) : (
         // A shelter's own page names itself in its heading, so the line has
@@ -675,10 +701,7 @@ export const AnimalCard = memo(function AnimalCard({
         //
         // Top right, opposite the status. The bottom edge belongs to the
         // gallery dots now, and on a phone card the two met in the middle.
-        <Badge
-          variant="overlay-quiet"
-          className="absolute right-2 top-2"
-        >
+        <Badge variant="overlay-quiet" className="absolute right-2 top-2">
           {t("longStayMark", { duration: ageLabel(waitMonths, locale) })}
         </Badge>
       )}

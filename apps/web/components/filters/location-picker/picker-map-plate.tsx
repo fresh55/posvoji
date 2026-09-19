@@ -6,6 +6,9 @@ import { useMemo } from "react";
 import type { LocationPickerController } from "./controller";
 import regionShelterNamesData from "@/lib/region-shelter-names.json";
 import { shelterNamesByRegion } from "./municipality-places";
+import { useClientPayload } from "@/hooks/use-client-payload";
+import { DeferredStatus } from "@/components/deferred-status";
+import type { LookupEntry } from "@/lib/municipality-coverage";
 
 // What the stage puts on its plate: the country map, its credit, the line that
 // says how to work it, and the legend under it. Split from the box it stands
@@ -54,15 +57,18 @@ export function PickerMapPlate({
   // table already knows who, so the map can say it instead of stopping at "no
   // shelters here". How a municipality is placed in a region is with the
   // helper, in municipality-places.ts, which the found-animal page shares.
+  const coverage = useClientPayload<LookupEntry[]>(controller.municipalitiesUrl, true);
+  const entries = municipalities ?? coverage.data;
   const regionShelterNames = useMemo(
-    () => municipalities
-      ? shelterNamesByRegion(municipalities)
+    () => entries
+      ? shelterNamesByRegion(entries)
       : new Map(regionShelterNamesData as [number, string[]][]),
-    [municipalities],
+    [entries],
   );
 
   return (
     <>
+      {controller.municipalitiesUrl && !entries && <DeferredStatus error={coverage.error} retry={coverage.retry} />}
       {/* flex-col so the map's height is its main size and shrinking it is
           what gives way when the box runs out (a landscape phone, or a
           portrait one with the keyboard up). As a row this column was the

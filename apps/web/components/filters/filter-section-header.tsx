@@ -3,11 +3,11 @@
 import { ChevronDown, Info } from "lucide-react";
 import {
   AnimatePresence,
-  LazyMotion,
   domAnimation,
   m,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {

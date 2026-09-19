@@ -2,7 +2,6 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { interpolate } from "@/lib/i18n-format";
-import { MotionConfig } from "motion/react";
 import {
   type Messages,
   type Locale,
@@ -36,7 +35,7 @@ export function ClientI18nProvider({
   };
   return (
     <I18nContext value={value}>
-      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+      {children}
     </I18nContext>
   );
 }

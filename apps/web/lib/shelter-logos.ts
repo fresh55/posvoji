@@ -14,6 +14,7 @@ const manifestPath = join(
 
 export interface ShelterLogo {
   url: string;
+  srcSet?: string;
   // Whether the mark needs something to sit on, measured against each card
   // background at fetch time. Two answers rather than one reading of the ink,
   // because a mark can need a chip on one card and be perfectly legible on
@@ -136,6 +137,29 @@ export function logosFromEntries(entries: Record<string, unknown>): ShelterLogos
       width,
       height,
     };
+    if (Array.isArray(entry.variants)) {
+      const candidates = entry.variants.filter(
+        (variant): variant is { file: string; width: number; height: number } =>
+          variant !== null &&
+          typeof variant === "object" &&
+          typeof variant.file === "string" &&
+          /^[a-z0-9][a-z0-9._-]*$/i.test(variant.file) &&
+          Number.isSafeInteger(variant.width) &&
+          variant.width > 0 &&
+          variant.width < width &&
+          Number.isSafeInteger(variant.height) &&
+          variant.height > 0 &&
+          variant.height <= height,
+      );
+      if (candidates.length) {
+        logos[id].srcSet = [...candidates, { file, width }]
+          .sort((a, b) => a.width - b.width)
+          .map(
+            (candidate) => `/media/shelter-logos/${candidate.file} ${candidate.width}w`,
+          )
+          .join(", ");
+      }
+    }
   }
   return logos;
 }

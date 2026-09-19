@@ -782,3 +782,45 @@ describe("useWheelStep", () => {
     vi.useRealTimers();
   });
 });
+
+
+it("keeps a shared secondary photo selection while gallery metadata loads", async () => {
+  const source = gallery(3);
+  const client = animalsForClient([source], { deferPhotos: true })[0];
+  const change = vi.fn();
+  let finish!: (value: unknown) => void;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    ),
+  );
+  try {
+    render(
+      <I18nProvider locale="sl">
+        <LazyMotion features={domAnimation}>
+          <PhotoSpread
+            animal={client}
+            initialIndex={2}
+            onIndexChange={change}
+          />
+        </LazyMotion>
+      </I18nProvider>,
+    );
+    expect(change).not.toHaveBeenCalled();
+    expect(screen.getByRole("status").textContent).toContain("Nalaganje");
+    await act(async () => {
+      finish({
+        ok: true,
+        json: async () => animalsForClient([source])[0].images,
+      });
+    });
+    await waitFor(() => expect(change).toHaveBeenLastCalledWith(2));
+    expect(screen.queryByText("Nalaganje …")).toBeNull();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

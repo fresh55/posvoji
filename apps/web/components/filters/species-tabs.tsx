@@ -2,13 +2,13 @@
 
 import type { TargetAndTransition, Transition } from "motion/react";
 import {
-  LazyMotion,
   animate,
   domAnimation,
   m,
   useMotionValue,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import {
   useCallback,
   useEffect,

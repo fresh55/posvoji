@@ -3,11 +3,11 @@
 import { Leaf } from "lucide-react";
 import {
   AnimatePresence,
-  LazyMotion,
   domAnimation,
   m,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import {
   AgeStageIcon,

@@ -822,9 +822,10 @@ describe("photo gallery controls", () => {
       expect(button.className).toContain("size-6");
       expect(button.className).toContain("ring-1");
       expect(button.className).not.toContain("shadow-xs");
-      // The blur stays: the card's photo stands still, and it is what keeps a
-      // chevron legible over a busy picture this small.
-      expect(button.className).toContain("backdrop-blur-sm");
+      // A near-solid plate stays legible without a composited backdrop layer
+      // for every invisible control in the grid.
+      expect(button.className).not.toContain("backdrop-blur");
+      expect(button.className).toContain("bg-background/90");
       // Paint only. The gating and the press exemption are untouched.
       expect(button.className).toContain("pointer-events-none");
       expect(button.className).toContain("active:translate-y-0!");

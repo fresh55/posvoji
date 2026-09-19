@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { AnimatePresence, LazyMotion, domAnimation, m } from "motion/react";
+import { AnimatePresence, domAnimation, m } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";

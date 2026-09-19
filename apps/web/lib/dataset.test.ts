@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import { animalsForClient } from "./dataset";
+import { INITIAL_CARDS } from "@/components/grid-rendering";
+import { sortAnimals } from "./sort";
+import { galleryPayload } from "./client-payload";
 
 const BLUR = "data:image/webp;base64,UklGRg==";
 
@@ -65,7 +68,11 @@ function complete(): Animal {
     goodWith: { kids: "yes", dogs: "unknown", cats: "yes" },
     apartmentOk: "yes",
     specialNeeds: false,
-    adoptionRequirements: { indoorOnly: true, bondedPair: true, ongoingCare: false },
+    adoptionRequirements: {
+      indoorOnly: true,
+      bondedPair: true,
+      ongoingCare: false,
+    },
     images: [
       {
         sourceUrl: "https://shelter.example/luna-1.jpg",
@@ -80,6 +87,59 @@ function complete(): Animal {
 }
 
 describe("animalsForClient", () => {
+  it("defers permitted secondary photos to the same versioned payload the generator writes", () => {
+    const source = complete();
+    source.images.push(
+      { sourceUrl: "https://shelter.example/private.jpg", rights: "unknown" },
+      {
+        sourceUrl: "https://shelter.example/second.jpg",
+        rights: "display-permitted",
+      },
+    );
+    const client = animalsForClient([source], { deferPhotos: true })[0];
+    const payload = galleryPayload(source);
+    expect(client.images).toHaveLength(1);
+    expect(client.images[0].blurDataURL).toBe(BLUR);
+    expect(client.gallery).toEqual({ url: payload.url, count: 2 });
+    expect(JSON.parse(payload.json)).toEqual([
+      { src: "/media/animals/luna-1.webp" },
+      { src: "https://shelter.example/second.jpg" },
+    ]);
+    source.images[2].sourceUrl = "https://shelter.example/replaced.jpg";
+    expect(galleryPayload(source).url).not.toBe(payload.url);
+  });
+  it("keeps blur only on prerendered cards in default sort order without mutating the dataset", () => {
+    const sources = Array.from({ length: INITIAL_CARDS + 5 }, (_, index) => ({
+      ...complete(),
+      id: `macja-hisa:${index.toString().padStart(3, "0")}`,
+      // Reverse the intake order, and leave one date unknown, to distinguish
+      // displayed order from input order and exercise the undated tail.
+      intakeDate:
+        index === 0
+          ? undefined
+          : `2022-01-${String(30 - index).padStart(2, "0")}`,
+    }));
+    const expectedIds = new Set(
+      sortAnimals(sources)
+        .slice(0, INITIAL_CARDS)
+        .map(({ id }) => id),
+    );
+    const projected = animalsForClient(sources);
+    expect(projected.map(({ id }) => id)).toEqual(sources.map(({ id }) => id));
+    for (const item of projected) {
+      expect("blurDataURL" in item.images[0]!).toBe(expectedIds.has(item.id));
+    }
+    expect(sources.every((item) => item.images[0]!.blurDataURL === BLUR)).toBe(
+      true,
+    );
+    // A shelter page gets its own initial window, even if those animals
+    // would have been below the fold in the full index.
+    expect(
+      animalsForClient(sources.slice(0, 3)).every(
+        (item) => item.images[0]!.blurDataURL === BLUR,
+      ),
+    ).toBe(true);
+  });
   it("ships the fields a client component reads and no others", () => {
     const source = complete();
     const [projected] = animalsForClient([source]);
@@ -123,7 +183,9 @@ describe("animalsForClient", () => {
     expect(projected!.intakeDate).toBe("2022-01-15");
     expect(projected!.birthDate).toBe("2021-04-01");
     expect(projected!.approximateAgeMonths).toBe(52);
-    expect(projected!.adoptionRequirements).toEqual(source.adoptionRequirements);
+    expect(projected!.adoptionRequirements).toEqual(
+      source.adoptionRequirements,
+    );
 
     // The dataset animal is left as ingest wrote it. app/sitemap.ts still
     // reads lastSeenAt off one of these on the server.

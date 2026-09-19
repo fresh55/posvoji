@@ -91,6 +91,7 @@ describe("responsive picker session", () => {
   it("shares the granted toggle, closes on breakpoint change, and opens only one spotlight", async () => {
     render(<Pair />);
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
     fireEvent.click(screen.getByRole("button", { name: "Najbližje prvo" }));
     act(() =>
       success({
@@ -108,7 +109,7 @@ describe("responsive picker session", () => {
         }),
       ),
     );
-    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(await screen.findAllByRole("dialog", {}, { timeout: 5000 })).toHaveLength(1);
     expect(
       screen
         .getByRole("button", { name: "Najbližje prvo" })
@@ -120,6 +121,7 @@ describe("responsive picker session", () => {
   it("retains a confirmed place when the sidebar disappears for a sparse species", async () => {
     const view = render(<Pair />);
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[0]);
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
     fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {
       target: { value: "1000" },
     });
@@ -131,6 +133,7 @@ describe("responsive picker session", () => {
     view.rerender(<Pair showDesktop={false} />);
     expect(screen.getByTestId("origin").textContent).toBe("typed");
     fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
     expect(
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
         .value,
@@ -142,6 +145,7 @@ describe("responsive picker session", () => {
   it("shares a confirmed place across breakpoints and clears it from either picker", async () => {
     render(<Pair />);
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
     fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {
       target: { value: "1000" },
     });
@@ -157,6 +161,7 @@ describe("responsive picker session", () => {
     resize(true);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[0]);
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
     expect(
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
         .value,
@@ -169,6 +174,7 @@ describe("responsive picker session", () => {
     resize(false);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[1]);
+    await screen.findByRole("dialog", {}, { timeout: 5000 });
     expect(
       screen.queryByRole("button", { name: /^Odstrani izhodišče/ }),
     ).toBeNull();

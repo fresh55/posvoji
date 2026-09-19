@@ -1,6 +1,8 @@
 "use client";
 
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
+import { useAnimalPhotos } from "@/hooks/use-animal-photos";
+import { DeferredStatus } from "@/components/deferred-status";
 import { type WashLayer } from "@/components/animal-dialog/photo-wash";
 import { useI18n } from "@/components/i18n-context";
 import { PhotoGallery } from "@/components/photo-gallery";
@@ -75,13 +77,19 @@ export const PhotoSpread = memo(function PhotoSpread({
 }) {
   const { messages } = useI18n();
   // Already resolved and already filtered to what may be drawn.
-  const images = animal.images;
+  const photos = useAnimalPhotos(animal, true);
+  const images = photos.images;
+  const [appliedInitial, setAppliedInitial] = useState(photos.ready);
   const [activeIndex, setActiveIndex] = useState(() =>
     clampPhotoIndex(initialIndex, images.length),
   );
+  if (photos.ready && !appliedInitial) {
+    setAppliedInitial(true);
+    setActiveIndex(clampPhotoIndex(initialIndex, images.length));
+  }
   useEffect(() => {
-    onIndexChange?.(activeIndex);
-  }, [onIndexChange, activeIndex]);
+    if (appliedInitial) onIndexChange?.(activeIndex);
+  }, [onIndexChange, activeIndex, appliedInitial]);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const changeLightboxOpen = useCallback(
     (open: boolean) => {
@@ -208,7 +216,9 @@ export const PhotoSpread = memo(function PhotoSpread({
       pendingWarm.current = () => window.clearTimeout(timer);
       return;
     }
-    const handle = window.requestIdleCallback(warm, { timeout: WARM_TIMEOUT_MS });
+    const handle = window.requestIdleCallback(warm, {
+      timeout: WARM_TIMEOUT_MS,
+    });
     pendingWarm.current = () => window.cancelIdleCallback(handle);
   }, [images, activeIndex]);
   // Only on the way out. Anything still waiting when the dialog closes has
@@ -247,6 +257,11 @@ export const PhotoSpread = memo(function PhotoSpread({
           fan rather than re-seating five prints under a new set of numbers.
           The entrance cascade replays when that happens, which is accepted;
           the photo on show does not change, because the index is held here. */}
+      {!photos.ready && (
+        <div className="absolute inset-x-4 top-2 z-30 mx-auto max-w-sm">
+          <DeferredStatus error={photos.error} retry={photos.retry} />
+        </div>
+      )}
       <Fan
         key={geometry.slot}
         geometry={geometry}

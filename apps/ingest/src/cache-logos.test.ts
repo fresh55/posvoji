@@ -481,6 +481,38 @@ describe("cacheLogos", () => {
 
   const logosDir = () => join(dir, "files");
 
+  it("backfills responsive copies offline and retains them for one retired generation", async () => {
+    mkdirSync(logosDir(), { recursive: true });
+    const master = await processLogo(await pngBytes(600));
+    writeFileSync(join(logosDir(), master.file), master.data);
+    const entry = {
+      file: master.file, width: master.width, height: master.height,
+      chipOnLight: master.chipOnLight, chipOnDark: master.chipOnDark, opaque: master.opaque,
+      sourceUrl: "https://shelter.example/logo.png", fetchedAt: new Date().toISOString(),
+    };
+    writeFileSync(manifestPath, JSON.stringify({ entries: { test: entry } }));
+    const client = new StubClient(new Map(), new Map());
+    const options = { logosDir: logosDir(), manifestPath };
+    const targets = [{ providerId: "test", homeUrl: "https://shelter.example", logoUrl: entry.sourceUrl }];
+    const first = await cacheLogos(targets, client, options);
+    const variants = first.manifest.entries.test!.variants!;
+    expect(variants.map(({ width, height }) => [width, height])).toEqual([[96, 96], [192, 192]]);
+    for (const variant of variants) {
+      const metadata = await sharp(readFileSync(join(logosDir(), variant.file))).metadata();
+      expect([metadata.width, metadata.height]).toEqual([variant.width, variant.height]);
+    }
+    // Repair a missing rung without fetching or changing the content address.
+    rmSync(join(logosDir(), variants[0]!.file));
+    const second = await cacheLogos(targets, client, options);
+    expect(second.manifest).toEqual(first.manifest);
+    expect(existsSync(join(logosDir(), variants[0]!.file))).toBe(true);
+    expect(client.files).toEqual([]);
+    expect(client.pages).toEqual([]);
+    expect((await cacheLogos([], client, options)).deleted).toBe(0);
+    expect((await cacheLogos([], client, options)).deleted).toBe(3);
+    expect(readdirSync(logosDir())).toEqual([]);
+  });
+
   // A shelter with no site to fetch from sends the artwork instead, and the
   // file travels with the repository. Nothing about that turn touches the
   // network: no home page, no logo request, no discovery.

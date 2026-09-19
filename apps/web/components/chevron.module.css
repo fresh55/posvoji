@@ -1,0 +1,12 @@
+.chevron {
+  display: inline-block;
+  flex-shrink: 0;
+  background: currentColor;
+  /* Keep the foreground mask visible when forced colors replace backgrounds. */
+  forced-color-adjust: none;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 18 6-6-6-6' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.left {
+  rotate: 180deg;
+}

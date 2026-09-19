@@ -15,6 +15,20 @@ vi.mock("node:fs", () => ({
 describe("reading the shelter logo manifest", () => {
   const entry = { file: "abc.webp", width: 128, height: 40 };
 
+  it("exposes valid responsive copies and the master, tolerating old manifests", () => {
+    const logo = logosFromEntries({ test: {
+      ...entry, chipOnLight: false, chipOnDark: false,
+      variants: [
+        { file: "small.webp", width: 96, height: 30 },
+        { file: "../unsafe.webp", width: 48, height: 15 },
+        { file: "invalid.webp", width: 0, height: 0 },
+        null,
+      ],
+    } }).test!;
+    expect(logo.srcSet).toBe("/media/shelter-logos/small.webp 96w, /media/shelter-logos/abc.webp 128w");
+    expect(logosFromEntries({ test: { ...entry, chipOnLight: false, chipOnDark: false } }).test!.srcSet).toBeUndefined();
+  });
+
   it("takes the measured chip flags", () => {
     const logos = logosFromEntries({
       horjul: { ...entry, chipOnLight: true, chipOnDark: false },

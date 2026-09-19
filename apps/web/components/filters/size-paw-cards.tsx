@@ -2,7 +2,8 @@
 
 import { PawPrint } from "lucide-react";
 import type { TargetAndTransition, Transition } from "motion/react";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { domAnimation, m, useReducedMotion } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { useState, type ReactNode } from "react";
 import {
   CountRoll,

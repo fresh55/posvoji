@@ -5,6 +5,9 @@ import { type Animal, Dataset } from "@posvoji/schema";
 import type { ClientAnimal } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { displayName } from "@/lib/animal-name";
+import { INITIAL_CARDS } from "@/components/grid-rendering";
+import { sortAnimals } from "@/lib/sort";
+import { galleryPayload } from "@/lib/client-payload";
 
 const datasetPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -80,7 +83,8 @@ export function loadDataset(): Dataset | null {
         parsed.error.issues
           .slice(0, 10)
           .map(
-            (issue) => `  ${issue.path.join(".") || "(root)"}: ${issue.message}`,
+            (issue) =>
+              `  ${issue.path.join(".") || "(root)"}: ${issue.message}`,
           )
           .join("\n") +
         (parsed.error.issues.length > 10
@@ -128,68 +132,45 @@ export function shelterAnimals(shelterId: string): Animal[] {
   );
 }
 
-/**
- * The same animals, with every photo resolved to the file a surface draws it
- * from and nothing else on the wire.
- *
- * The grid and its dialog are client components, so every animal handed to
- * them is serialized into the page's flight payload whether or not a card for
- * it is ever drawn. What was paid for there and never read:
- *
- * The blur placeholders. Ingest derives one per photo, the grid draws sixty
- * cards, and both the card and the dialog only ever blur the photo they open
- * on, which is the animal's first drawable one. Measured, on the mobile home
- * page: 1294 of the dataset's 1782 placeholders were never rendered, and
- * inlining them cost about 160KB of data URLs in index.html, roughly 100KB of
- * it after gzip. That is more than the responsive width ladder those same
- * photos save (~95KB of image bytes), and it showed up as about 600ms of LCP
- * and FCP on the grid. The ladder pays; shipping a placeholder for a photo
- * nobody looks at does not.
- *
- * `sourceUrl`, the shelter's own file, which is dead weight for every photo we
- * hold a cached copy of, and `rights`, which decides whether a photo may be
- * drawn at all and which file it is drawn from. That decision has no client
- * half: permittedPhotos answers it here, once, at build time, and what crosses
- * the boundary is the answer.
- *
- * A photo without a placeholder renders straight onto its frame's own
- * background, which is the path animal-photo.tsx already takes for a hotlinked
- * image that never had one.
- *
- * Source identity and first/last-seen bookkeeping remain on the server.
- * The listing URL and fetchedAt ride with the deferred descriptions, so the
- * dialog can link to the source and show when it was verified.
- *
- * `shortDescription`, the shelter's own words. One component renders it,
- * AnimalFacts, for the one animal a dialog is open on, and it is the longest
- * field an animal has. Shipping five hundred of them so that at most one is
- * read is the whole of the home page's weight problem: it alone is a third of
- * the payload. AnimalFacts fetches the text it needs when a dialog opens, so
- * the field stays optional on the type and simply goes unset here.
- *
- * Measured on the built home page, out/index.txt at 503 animals, gzip level 6:
- * 148,363 bytes down to 82,043, of which the bookkeeping is 13,420 and
- * shortDescription 53,918. Raw, 814,650 down to 576,334.
- *
- * Only for what crosses into a client component. Server-rendered surfaces read
- * loadDataset directly and resolve their own photos through permittedPhotos,
- * keeping every placeholder: the animal page carries one animal, and its
- * gallery blurs whichever photo the visitor steps to.
+/** Client projection: permitted photos, with descriptions and source details deferred.
+ * Blur is kept only for the first photo of each initially rendered card.
+ * Grids can defer the remaining photos to a generated gallery payload;
+ * standalone animal pages resolve their full gallery on the server.
  */
-export function animalsForClient(animals: Animal[]): ClientAnimal[] {
-  return animals.map(
+export function animalsForClient(
+  animals: Animal[],
+  { deferPhotos = false }: { deferPhotos?: boolean } = {},
+): ClientAnimal[] {
+  // Select placeholders by display order without reordering the input.
+  const initiallyDrawn = new Set(
+    sortAnimals(animals)
+      .slice(0, INITIAL_CARDS)
+      .map((animal) => animal.id),
+  );
+  const projected = animals.map(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
     ({ source, shortDescription, ...animal }) => ({
       ...animal,
-      // permittedPhotos has already dropped the images no surface may draw, so
-      // the first photo left is the one that leads: what a card shows and what
-      // a dialog opens on.
       images: permittedPhotos(animal.images).map((photo, index) => {
-        if (index === 0 || photo.blurDataURL === undefined) return photo;
+        if (
+          (index === 0 && initiallyDrawn.has(animal.id)) ||
+          photo.blurDataURL === undefined
+        )
+          return photo;
         const stripped = { ...photo };
         delete stripped.blurDataURL;
         return stripped;
       }),
     }),
   );
+  if (!deferPhotos) return projected;
+  return projected.map((animal, index) => {
+    if (animal.images.length < 2) return animal;
+    const { url, count } = galleryPayload(animals[index]);
+    return {
+      ...animal,
+      images: animal.images.slice(0, 1),
+      gallery: { url, count },
+    };
+  });
 }

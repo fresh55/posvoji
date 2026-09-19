@@ -6,12 +6,14 @@ what the portal writes instead.
 
 import hashlib
 import io
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import ExifTags, Image
 
+from core.api import listings as listing_api
 from core.models import Listing, ListingPhoto
 
 from .test_listings import create, listings_url
@@ -63,6 +65,72 @@ def upload(
         photos_url(slug, listing_id),
         {"file": SimpleUploadedFile(filename, content, content_type=ctype)},
     )
+
+
+@pytest.mark.django_db
+def test_interleaved_duplicate_upload_is_idempotent(
+    member_client, manual_shelter, monkeypatch, settings
+):
+    created = create(member_client, manual_shelter.slug)
+    raw = image_bytes()
+    original_write = listing_api.serialized_write
+    interleaved = False
+    second_photo = None
+
+    @contextmanager
+    def write_after_second_upload():
+        nonlocal interleaved, second_photo
+        if not interleaved:
+            interleaved = True
+            # A competing upload finishes just before this one takes the lock.
+            second = upload(member_client, manual_shelter.slug, created["id"], raw)
+            assert second.status_code == 201
+            second_photo = second.json()
+        with original_write():
+            yield
+
+    monkeypatch.setattr(listing_api, "serialized_write", write_after_second_upload)
+    first = upload(member_client, manual_shelter.slug, created["id"], raw)
+    assert first.status_code == 200
+    assert first.json() == second_photo
+    assert ListingPhoto.objects.filter(listing_id=created["id"]).count() == 1
+    assert len(list(Path(settings.MEDIA_ROOT).rglob("*.jpg"))) == 1
+
+
+@pytest.mark.django_db
+def test_upload_cannot_add_a_photo_after_archive_during_encoding(
+    member_client, manual_shelter, monkeypatch, settings
+):
+    created = create(member_client, manual_shelter.slug)
+    original_encode = listing_api.encode_upload
+
+    def encode_then_archive(file):
+        encoded = original_encode(file)
+        url = f"{listings_url(manual_shelter.slug)}/{created['id']}"
+        assert member_client.delete(url).status_code == 204
+        return encoded
+
+    monkeypatch.setattr(listing_api, "encode_upload", encode_then_archive)
+    response = upload(member_client, manual_shelter.slug, created["id"], image_bytes())
+    assert response.status_code == 404
+    assert not ListingPhoto.objects.exists()
+    assert not list(Path(settings.MEDIA_ROOT).rglob("*.jpg"))
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("fmt,cut", [("JPEG", 20), ("PNG", 80), ("WEBP", 20)])
+def test_truncated_photo_is_a_client_error(
+    member_client, manual_shelter, settings, fmt, cut
+):
+    created = create(member_client, manual_shelter.slug)
+    member_client.raise_request_exception = False
+    response = upload(
+        member_client, manual_shelter.slug, created["id"], image_bytes(fmt)[:-cut]
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "the image file is damaged"
+    assert not ListingPhoto.objects.exists()
+    assert not list(Path(settings.MEDIA_ROOT).rglob("*.jpg"))
 
 
 @pytest.fixture

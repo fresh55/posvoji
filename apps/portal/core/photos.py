@@ -90,6 +90,8 @@ def encode(raw: bytes) -> EncodedPhoto:
         raise PhotoRejected(NOT_AN_ACCEPTED_FORMAT) from error
     except Image.DecompressionBombError as error:
         raise PhotoRejected(TOO_MANY_PIXELS) from error
+    except OSError as error:
+        raise PhotoRejected("the image file is damaged") from error
 
     # thumbnail only ever shrinks, so a photograph smaller than the cap is
     # left at its own size.

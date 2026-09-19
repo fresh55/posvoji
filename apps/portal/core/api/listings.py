@@ -92,33 +92,36 @@ def create_listing(request, slug: str, payload: ListingIn):
         created_by=request.user,
         updated_by=request.user,
     )
-    apply_payload(listing, payload)
-    listing.save()
+    with serialized_write():
+        apply_payload(listing, payload)
+        listing.save()
     return Status(201, listing_out(listing))
 
 
 @router.put("/shelters/{slug}/listings/{listing_id}", response=ListingOut)
 def replace_listing(request, slug: str, listing_id: UUID, payload: ListingIn):
     shelter = require_shelter(request, slug, ingestion="manual")
-    listing = _live(shelter, listing_id)
-    apply_payload(listing, payload)
-    listing.updated_by = request.user
-    listing.save()
-    return listing_out(listing)
+    with serialized_write():
+        listing = _live(shelter, listing_id)
+        apply_payload(listing, payload)
+        listing.updated_by = request.user
+        listing.save()
+        return listing_out(listing)
 
 
 @router.delete("/shelters/{slug}/listings/{listing_id}", response={204: None})
 def archive_listing(request, slug: str, listing_id: UUID):
     shelter = require_shelter(request, slug, ingestion="manual")
-    listing = Listing.objects.filter(shelter=shelter, id=listing_id).first()
-    if listing is None:
-        raise HttpError(404, "listing not found")
-    # Archiving twice is the same answer as archiving once. The shelter asked
-    # for the listing to be gone and it is.
-    if listing.archived_at is None:
-        listing.archived_at = timezone.now()
-        listing.updated_by = request.user
-        listing.save()
+    with serialized_write():
+        listing = Listing.objects.filter(shelter=shelter, id=listing_id).first()
+        if listing is None:
+            raise HttpError(404, "listing not found")
+        # Archiving twice is the same answer as archiving once. The shelter asked
+        # for the listing to be gone and it is.
+        if listing.archived_at is None:
+            listing.archived_at = timezone.now()
+            listing.updated_by = request.user
+            listing.save()
     return Status(204, None)
 
 
@@ -144,15 +147,19 @@ def add_photo(
     # a second copy of it reaches the disk. 200 rather than 201 because
     # nothing was created.
     stored_name = listing_photo_name(listing.id, encoded.name)
-    already = ListingPhoto.objects.filter(listing=listing, image=stored_name).first()
-    if already is not None:
-        return Status(200, photo_out(already))
-
     with serialized_write():
+        # Encoding stays outside the write lock. The listing may have been
+        # archived while it ran, so check again before touching storage.
+        listing = _live(shelter, listing_id)
         # The read-modify-write of the position is one write. Two uploads that
         # read the same highest position would otherwise collide on the unique
         # constraint instead of queueing behind each other.
         Listing.objects.select_for_update().filter(pk=listing.pk).first()
+        already = ListingPhoto.objects.filter(
+            listing=listing, image=stored_name
+        ).first()
+        if already is not None:
+            return Status(200, photo_out(already))
         highest = ListingPhoto.objects.filter(listing=listing).aggregate(
             highest=Max("position")
         )["highest"]
@@ -175,12 +182,13 @@ def add_photo(
 )
 def remove_photo(request, slug: str, listing_id: UUID, photo_id: int):
     shelter = require_shelter(request, slug, ingestion="manual")
-    listing = _live(shelter, listing_id)
-    photo = ListingPhoto.objects.filter(listing=listing, pk=photo_id).first()
-    if photo is None:
-        raise HttpError(404, "photo not found")
-    # The stored copy goes with the row. Storage gives a second upload of the
-    # same bytes a name of its own, so no other row points at this file.
-    photo.image.delete(save=False)
-    photo.delete()
+    with serialized_write():
+        listing = _live(shelter, listing_id)
+        photo = ListingPhoto.objects.filter(listing=listing, pk=photo_id).first()
+        if photo is None:
+            raise HttpError(404, "photo not found")
+        # The stored copy goes with the row. Storage gives a second upload of the
+        # same bytes a name of its own, so no other row points at this file.
+        photo.image.delete(save=False)
+        photo.delete()
     return Status(204, None)

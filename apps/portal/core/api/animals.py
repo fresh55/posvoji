@@ -16,6 +16,7 @@ from ninja.errors import HttpError
 from pydantic import ValidationError
 
 from ..dataset import (
+    animal_index,
     animals_for_shelter,
     crawled_values,
     find_animal,
@@ -39,6 +40,7 @@ def list_animals(request, slug: str):
         override.animal_id: override
         for override in AnimalOverride.objects.filter(shelter=shelter)
     }
+    crawled = animal_index(crawled=True)
     items = []
     for animal in animals_for_shelter(shelter.slug):
         # Ninja validates the response as a whole, so one record the schema
@@ -49,7 +51,11 @@ def list_animals(request, slug: str):
         if not isinstance(animal_id, str):
             logger.warning("skipping a record of %s that has no id", shelter.slug)
             continue
-        item = merge_animal(animal, overrides.get(animal_id))
+        item = merge_animal(
+            animal,
+            overrides.get(animal_id),
+            crawled=crawled.get((shelter.slug, animal_id)),
+        )
         try:
             AnimalOut.model_validate(item)
         except ValidationError as error:
@@ -84,10 +90,9 @@ def upsert_override(
     # The animal may not be in the dataset yet: the shelter can be ahead of
     # the crawl, and the override still has to stick.
     #
-    # Two readings of it. The merged record is what the shelter sees and what
-    # the response is built from; the crawled one is what the baseline
-    # records. Read off the merged file, the baseline of an override the last
-    # run already applied would be that override's own value.
+    # Keep the published thumbnail, but use crawled facts for the baseline
+    # and for fields whose override is cleared. The merged file may already
+    # contain the previous export's correction.
     animal = find_animal(shelter.slug, animal_id)
     crawled_animal = find_animal(shelter.slug, animal_id, crawled=True)
     crawled = crawled_values(crawled_animal) if crawled_animal is not None else None
@@ -136,4 +141,4 @@ def upsert_override(
             override.updated_by = request.user
             override.save()
 
-    return merge_animal(animal or {"id": animal_id}, override)
+    return merge_animal(animal or {"id": animal_id}, override, crawled=crawled_animal)

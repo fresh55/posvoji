@@ -1,10 +1,15 @@
 """Listings written in the portal by a shelter that publishes no catalogue."""
 
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connections
+from django.test import Client
 
+from core.api import listings as listing_api
 from core.models import IngestionMode, Listing
 
 from .test_csrf import csrf_headers, strict_client
@@ -36,6 +41,62 @@ def create(client, slug, **fields) -> dict:
     response = post(client, slug, {**LUNA, **fields})
     assert response.status_code == 201, response.content
     return response.json()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_edit_cannot_undo_an_interleaved_archive(
+    member_client, manual_shelter, member, monkeypatch
+):
+    created = create(member_client, manual_shelter.slug)
+    url = f"{listings_url(manual_shelter.slug)}/{created['id']}"
+    archive_client = Client()
+    archive_client.force_login(member)
+    read = threading.Event()
+    archive_started = threading.Event()
+    archived = threading.Event()
+    original_live = listing_api._live
+
+    def live_then_wait(shelter, listing_id):
+        listing = original_live(shelter, listing_id)
+        read.set()
+        assert archive_started.wait(timeout=10)
+        # Without the lock DELETE completes after PUT's read and before its
+        # save. With the lock DELETE waits; the bounded pause lets PUT finish.
+        archived.wait(timeout=1)
+        return listing
+
+    monkeypatch.setattr(listing_api, "_live", live_then_wait)
+
+    def edit():
+        try:
+            return put(
+                member_client,
+                manual_shelter.slug,
+                created["id"],
+                {"name": "Edited fixture", "species": "cat"},
+            ).status_code
+        finally:
+            connections.close_all()
+
+    def archive():
+        try:
+            assert read.wait(timeout=10)
+            archive_started.set()
+            response = archive_client.delete(url)
+            archived.set()
+            return response.status_code
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        editing = pool.submit(edit)
+        archiving = pool.submit(archive)
+        assert editing.result(timeout=15) == 200
+        assert archiving.result(timeout=15) == 204
+
+    listing = Listing.objects.get(pk=created["id"])
+    assert listing.archived_at is not None
+    assert listing.name == "Edited fixture"
 
 
 @pytest.mark.django_db

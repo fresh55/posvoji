@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { MapFacts } from "@/components/filters/shelter-map";
 import type { ShelterRow } from "@/components/filters/shelter-rows";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import {
   DESKTOP_QUERY,
   useDesktopBreakpointClose,

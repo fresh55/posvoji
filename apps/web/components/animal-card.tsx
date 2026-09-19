@@ -12,7 +12,7 @@ import {
 import { ChevronRight } from "lucide-react";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { cardPhoto } from "@/components/grid-rendering";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";

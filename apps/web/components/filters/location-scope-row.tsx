@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import { MiniMap } from "@/components/filters/mini-map";
 import { useOneShotCelebration } from "@/components/filters/use-filter-motion";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { FilterOption } from "@/lib/filters";
 import { cityAt } from "@/lib/geo";

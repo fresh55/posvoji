@@ -7,7 +7,7 @@ import {
   TOOLBAR_ROW_HEIGHT,
 } from "@/components/filters/animal-filters";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { GridLoadMore } from "@/components/grid-load-more";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";

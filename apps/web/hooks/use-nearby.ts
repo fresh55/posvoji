@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import type { LatLon } from "@/lib/geo";
 import type { TypedLocation } from "@/lib/origin";
 

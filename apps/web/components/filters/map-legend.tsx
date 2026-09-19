@@ -4,7 +4,7 @@ import type { LatLon } from "@/lib/geo";
 import type { Messages } from "@/lib/i18n";
 import { DENSITY_STEPS } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { mapAvailabilityText } from "./map-availability";
 
 const LEGEND_SWATCH_GROUND =

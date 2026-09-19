@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { PawPrint } from "lucide-react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import type { Locale } from "@/lib/i18n";
 import { filteredAnimalCount, shelterCount } from "@/lib/labels";

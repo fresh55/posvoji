@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarClock, ExternalLink, Heart, Hourglass } from "lucide-react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import type { AnimalFields } from "@/lib/animal";
 import type { ShelterLogos } from "@/lib/shelter-logos";

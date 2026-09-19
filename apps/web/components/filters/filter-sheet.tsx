@@ -3,7 +3,7 @@
 import { SlidersHorizontal, Undo2, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
 import {
   FilterGroupList,

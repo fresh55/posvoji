@@ -21,7 +21,7 @@ import {
   useFilterCardHover,
   useOneShotCelebration,
 } from "@/components/filters/use-filter-motion";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import type { FilterOption } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";

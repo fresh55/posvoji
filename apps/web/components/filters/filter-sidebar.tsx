@@ -16,7 +16,7 @@ import {
   pickerRecoveryActions,
 } from "@/components/filters/location-picker/model";
 import { Badge } from "@/components/ui/badge";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
 import type {

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Ref } from "react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
 import { CARDS_PER_CLICK } from "@/components/grid-rendering";
 import { COARSE_ACTION } from "@/lib/link-styles";

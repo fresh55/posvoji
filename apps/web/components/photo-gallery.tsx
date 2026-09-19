@@ -11,14 +11,13 @@ import {
 import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { AnimalPhoto } from "@/components/animal-photo";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
 import {
   adjacentImages,
   photoDotWindow,
   type PermittedPhoto,
 } from "@/lib/animal-images";
-import { translate } from "@/lib/i18n";
 import { preloadPhotos } from "@/lib/preload-photos";
 import { declareAxis, swipeVerdict } from "@/lib/swipe";
 import { cn } from "@/lib/utils";
@@ -396,7 +395,7 @@ export function PhotoGallery({
   // opened.
   const axis = useRef<"x" | "y" | null>(null);
   const preloadTimer = useRef<number | undefined>(undefined);
-  const { locale, messages } = useI18n();
+  const { messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   // The finger's own position while dragging, so the photo moves with it
   // rather than waiting for release to react at all. Reduced motion skips
@@ -726,9 +725,7 @@ export function PhotoGallery({
       alt={
         href
           ? ""
-          : translate(
-              locale,
-              images.length > 1 ? "photoAlt" : "photoAltSingle",
+          : t(images.length > 1 ? "photoAlt" : "photoAltSingle",
               {
                 name: name ?? messages.unnamed,
                 current: imageIndex + 1,
@@ -807,7 +804,7 @@ export function PhotoGallery({
       role={onOpenPhoto && image && !href ? "group" : undefined}
       aria-label={
         onOpenPhoto && image && !href
-          ? translate(locale, "photoFanLabel", { name: name ?? messages.unnamed })
+          ? t("photoFanLabel", { name: name ?? messages.unnamed })
           : undefined
       }
       className={cn("group/photo", className ?? DEFAULT_WRAPPER_CLASS)}
@@ -838,7 +835,7 @@ export function PhotoGallery({
       ) : onOpenPhoto && image ? (
         <button
           type="button"
-          aria-label={translate(locale, "viewPhotoLarge", { n: imageIndex + 1 })}
+          aria-label={t("viewPhotoLarge", { n: imageIndex + 1 })}
           aria-keyshortcuts={hasGallery ? "ArrowLeft ArrowRight Home End" : undefined}
           onKeyDown={stepPhoto}
           {...surface}
@@ -870,9 +867,7 @@ export function PhotoGallery({
           // photoAltSingle is one picture's text alternative, so a gallery of
           // ten announced itself as "Fotografija: Nala". A gallery of one
           // keeps that string, because there it is what the group holds.
-          aria-label={translate(
-            locale,
-            images.length > 1 ? "photoFanLabel" : "photoAltSingle",
+          aria-label={t(images.length > 1 ? "photoFanLabel" : "photoAltSingle",
             { name: name ?? messages.unnamed },
           )}
           aria-keyshortcuts="ArrowLeft ArrowRight Home End"
@@ -1024,7 +1019,7 @@ export function PhotoGallery({
               announceChanges || announceOwnChanges ? "true" : undefined
             }
           >
-            {translate(locale, "photoCount", {
+            {t("photoCount", {
               current: imageIndex + 1,
               total: images.length,
             })}

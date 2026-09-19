@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { AnimalSize, Sex, TestResult } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import {
   Popover,
   PopoverContent,
@@ -33,7 +33,8 @@ import {
   type GoodWithKey,
   type ToggleKey,
 } from "@/lib/filters";
-import { quotedLang, type TranslationKey } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
+import { quotedLang } from "@/lib/i18n-format";
 import { ADOPTION_REQUIREMENT_LABELS } from "@/lib/filters/metadata";
 import { ageLabel, sexLabel, sizeLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";

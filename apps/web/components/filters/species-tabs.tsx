@@ -20,7 +20,7 @@ import {
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
 import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import {
   SPECIES_GLYPHS,
   SpeciesGlyphIcon,

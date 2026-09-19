@@ -9,7 +9,7 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import {
   Tooltip,
   TooltipContent,

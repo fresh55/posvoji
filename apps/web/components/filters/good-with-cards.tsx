@@ -25,7 +25,7 @@ import {
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { GOOD_WITH_KEYS, type GoodWithKey } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";

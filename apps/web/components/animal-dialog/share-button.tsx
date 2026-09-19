@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Check, Copy, Mail, MoreHorizontal, Share2 } from "lucide-react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
 import {
   Popover,

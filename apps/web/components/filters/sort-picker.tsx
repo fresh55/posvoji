@@ -10,7 +10,7 @@ import {
   TreeDeciduous,
   type LucideIcon,
 } from "lucide-react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import {
   Select,
   SelectContent,

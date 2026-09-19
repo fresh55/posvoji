@@ -14,7 +14,7 @@ import {
   type Chip,
 } from "@/components/filters/filter-chips";
 import { ResultCount } from "@/components/filters/result-count";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import type {
   CardGroup,
   CareSection,

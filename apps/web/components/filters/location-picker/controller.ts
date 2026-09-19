@@ -26,8 +26,9 @@ import {
   sheltersMissingFromMap,
 } from "@/lib/labels";
 import type { ShelterPin } from "@/lib/map-layout";
-import { readTypedLocation, resolveOrigin } from "@/lib/origin";
-import { looksLikePostcode } from "@/lib/postal-lookup";
+import { resolveOrigin } from "@/lib/resolved-origin";
+import { useTypedLocation } from "@/hooks/use-typed-location";
+import { looksLikePostcode } from "@/lib/postcode-input";
 import {
   SHELTER_SPOTLIGHT_EVENT,
   type ShelterSpotlightDetail,
@@ -243,7 +244,7 @@ export function useLocationPickerController({
   // The point the list sorts from, and where it came from. Memoized because
   // the row sort below takes it as a dependency, and a fresh object every
   // render would re-sort every render.
-  const typed = useMemo(() => readTypedLocation(query), [query]);
+  const typed = useTypedLocation(query);
   const resolved = useMemo(
     () => resolveOrigin(geolocated, chosenPlace?.location ?? { status: "empty" }),
     [geolocated, chosenPlace],

@@ -85,19 +85,9 @@ function findByKey(key: string): PostalDistrict | undefined {
 // three, so they are what we read, and the rest is left alone. Anything that is
 // not exactly four digits long is not a postcode and falls through to the name
 // lookup.
-const POSTCODE = /(?:^|\D)(\d{4})(?:\D|$)/;
+import { postcodeIn } from "./postcode-input";
+export { looksLikePostcode } from "./postcode-input";
 
-function postcodeIn(text: string): string | undefined {
-  const stripped = text.replace(/^si[-\s]?/i, "");
-  return POSTCODE.exec(stripped)?.[1];
-}
-
-/** Whether the input reads as an attempt at a postcode at all. The picker uses
- *  it to choose which "not found" it says, so a wrong number is not answered
- *  with advice to try a number. */
-export function looksLikePostcode(input: string): boolean {
-  return postcodeIn(input.trim()) !== undefined;
-}
 
 /** Whether some district name starts with, but is longer than, what is typed.
  *  Half a name is not a mistake, it is a name in progress. */

@@ -163,21 +163,6 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
   const links = siteLinks(locale, messages);
   const quiet = links.filter((link) => link.quiet);
   const loud = links.filter((link) => !link.quiet);
-  // What the header already says out loud beside this button, so the menu does
-  // not say it again. Below lg this is the one door to the portal, which is
-  // why it has always carried the login; from lg the outline button in the
-  // corner draws it (ShelterLogin above), and this menu can now open at that
-  // width too, where the row folded for room. The same word twice, a hand's
-  // width apart, is the header asking the question twice.
-  //
-  // Keyed on the link and not on `quiet`, which means de-emphasised and could
-  // one day be true of something the corner does not draw. A plain media query
-  // and not the row's container query, because this content is portalled out
-  // of the header and cannot see the header's container, and lg is exactly the
-  // condition the button it would repeat turns on.
-  const alsoInTheHeader = quiet
-    .filter((link) => link.key === "portal")
-    .map((link) => link.key);
 
   return (
     <DropdownMenu>
@@ -214,12 +199,12 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
             </DropdownMenuItem>
           );
         })}
-        {/* The rule stays for as long as it has something under it to
-            separate. */}
+        {/* ShelterLogin replaces the portal item at lg. Hide the separator
+            there too if no other quiet links remain. */}
         {quiet.length > 0 && (
           <DropdownMenuSeparator
             className={cn(
-              alsoInTheHeader.length === quiet.length && "lg:hidden",
+              quiet.every((link) => link.key === "portal") && "lg:hidden",
             )}
           />
         )}
@@ -229,7 +214,7 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
             asChild
             className={cn(
               "min-h-11 text-muted-foreground",
-              alsoInTheHeader.includes(link.key) && "lg:hidden",
+              link.key === "portal" && "lg:hidden",
             )}
           >
             <a href={link.href} hrefLang={link.hrefLang}>{link.label}</a>

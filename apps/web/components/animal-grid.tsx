@@ -51,7 +51,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CARDS_PER_CLICK } from "./grid-rendering";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 import { useIncrementalGrid } from "./use-incremental-grid";
 

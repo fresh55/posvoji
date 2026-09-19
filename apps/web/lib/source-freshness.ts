@@ -10,19 +10,8 @@ export function verificationTime(value: string, locale: Locale): string {
   return Number.isFinite(date.getTime()) ? `${formats[locale].format(date)} (Ljubljana)` : "—";
 }
 
-// The date alone, for the animal's footnote and the home hero. The minute and
-// the timezone are the list's provenance, and the footer still prints them
-// with verificationTime above; on one animal the question is whether the
-// listing was seen today, which a date answers and an hour only lengthens,
-// and in the hero the hour cost a second line on every phone (site-page.tsx).
-//
-// Numeric in Slovenian for the reason lib/date-label.ts gives: Intl has no
-// genitive month, so a named month in a Slovenian sentence comes out in the
-// wrong case. This line reads "Foto: Zavetišče Horjul · Preverjeno 5. 9. 2026"
-// and a numeric date has no case to get wrong. English keeps the medium form.
-//
-// Built once, like the pair above: the export formats this for every animal in
-// both locales, and constructing the formatter is the expensive half.
+// Cache formatters for the animal footnote and home hero. Numeric Slovenian
+// dates avoid the month-case limitation described in lib/date-label.ts.
 const dateFormats: Record<Locale, Intl.DateTimeFormat> = {
   sl: new Intl.DateTimeFormat("sl-SI", {
     day: "numeric",
@@ -41,30 +30,29 @@ export function verificationDate(value: string, locale: Locale): string {
   return Number.isFinite(date.getTime()) ? dateFormats[locale].format(date) : "—";
 }
 
-function sourceAge(value: string | undefined, now: number): number | null {
-  const time = value === undefined ? NaN : Date.parse(value);
-  return !Number.isFinite(time) || time > now + 300000
-    ? null
-    : Math.max(0, now - time);
-}
-
-export function sourceIsOld(value: string | undefined, now: number): boolean {
-  const age = sourceAge(value, now);
-  return age === null || age > 30 * 3600000;
-}
-
 const relativeFormats: Record<Locale, Intl.RelativeTimeFormat> = {
   sl: new Intl.RelativeTimeFormat("sl-SI", { numeric: "always" }),
   en: new Intl.RelativeTimeFormat("en-GB", { numeric: "always" }),
 };
 
-export function verificationAge(value: string | undefined, locale: Locale, now: number): string | null {
-  const age = sourceAge(value, now);
-  if (age === null) return null;
+export function sourceFreshness(
+  value: string | undefined,
+  locale: Locale,
+  now: number,
+): { isOld: boolean; age: string | null } {
+  const time = value === undefined ? NaN : Date.parse(value);
+  // Allow minor clock skew, but treat missing or unreliable checks as unknown.
+  if (!Number.isFinite(time) || time > now + 300000) {
+    return { isOld: true, age: null };
+  }
+  const elapsed = Math.max(0, now - time);
   // Keep hours through the first two days so a 31-hour check is distinct
   // from one a full two days old. Longer gaps use completed days.
-  const hours = Math.floor(age / 3600000);
-  return hours < 48
-    ? relativeFormats[locale].format(-hours, "hour")
-    : relativeFormats[locale].format(-Math.floor(hours / 24), "day");
+  const hours = Math.floor(elapsed / 3600000);
+  return {
+    isOld: elapsed > 30 * 3600000,
+    age: hours < 48
+      ? relativeFormats[locale].format(-hours, "hour")
+      : relativeFormats[locale].format(-Math.floor(hours / 24), "day"),
+  };
 }

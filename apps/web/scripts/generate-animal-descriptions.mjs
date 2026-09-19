@@ -35,12 +35,17 @@ const details = {};
 const descriptions = {};
 for (const animal of animals) {
   if (typeof animal.id !== "string") continue;
-  const description = typeof animal.shortDescription === "string" && animal.shortDescription.length > 0
-    ? animal.shortDescription : undefined;
+  const description =
+    typeof animal.shortDescription === "string" && animal.shortDescription.length > 0
+      ? animal.shortDescription
+      : undefined;
   if (description) descriptions[animal.id] = description;
   details[animal.id] = {
     description,
-    source: { sourceUrl: animal.source.sourceUrl, fetchedAt: animal.source.fetchedAt },
+    source: {
+      sourceUrl: animal.source.sourceUrl,
+      fetchedAt: animal.source.fetchedAt
+    },
   };
 }
 

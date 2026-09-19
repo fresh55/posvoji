@@ -16,8 +16,12 @@ export function useTypedLocation(query: string, open: boolean): TypedLocation {
       .then(({ readTypedLocation }) => {
         if (!cancelled) setRead(() => readTypedLocation);
       })
-      .catch(() => { /* Shelter-name search remains available offline. */ });
-    return () => { cancelled = true; };
+      .catch(() => {
+        // Shelter-name search remains available if the postal chunk cannot load.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [open, read]);
   return useMemo(() => (read ? read(query) : EMPTY), [query, read]);
 }

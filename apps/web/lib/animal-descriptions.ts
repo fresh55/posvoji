@@ -66,7 +66,9 @@ export function useAnimalDescription(id: string | undefined): string | undefined
   return useAnimalDetail(id)?.description;
 }
 
-export function useAnimalSource(id: string | undefined): ClientAnimalSource | undefined {
+export function useAnimalSource(
+  id: string | undefined,
+): ClientAnimalSource | undefined {
   return useAnimalDetail(id)?.source;
 }
 

@@ -1,8 +1,6 @@
 # Desktop performance pass — 20 September 2026
 
-Implemented on `codex/desktop-performance` in separate conventional commits.
-
-| Document-referenced assets, gzip level 6 | Saved baseline export | Current export |
+| Document-referenced assets, gzip level 6 | Saved baseline export | Measured export |
 | --- | ---: | ---: |
 | JavaScript | 385,940 B | 343,317 B |
 | HTML | 114,307 B | 105,512 B |
@@ -14,7 +12,7 @@ idle-loaded chunks, images and fonts; it is not a repeat of the original
 the new timing run, so its timings and total transferred bytes are unsuitable
 for an apples-to-apples comparison.
 
-The current export's separate three-run desktop profile (1440×900, 10 Mbps,
+The optimized export's three-run desktop profile (1440×900, 10 Mbps,
 40 ms RTT, 1× CPU) measured median FCP 364 ms, LCP 696 ms, load 708 ms,
 CLS 0 and TBT 0. This does not establish a latency improvement over the earlier
 audit. Local profiles and screenshots are in ignored `outputs/perf/`.
@@ -50,7 +48,3 @@ Host follow-up: authenticated production responses have no Cache-Control on
 sampled /_next/static JavaScript, CSS or fonts. Compression works (zstd).
 Apply the immutable policy in [DEPLOY-HEADERS.md](DEPLOY-HEADERS.md) on the host;
 this pass made no production configuration changes.
-
-Cleanup: the source-mapped worktree was unregistered, but some scratch files
-remain. Automatic approval review blocked their final deletion ("blocked by
-policy"). The original performance harness remains in its scratchpad.

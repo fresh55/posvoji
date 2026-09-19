@@ -133,11 +133,18 @@ describe("useAnimalDescription", () => {
 
 describe("deferred source details", () => {
   it("shares one request with descriptions and changes source when the animal changes", async () => {
-    const source = { sourceUrl: "https://shelter.example/animals/1", fetchedAt: "2026-09-19T00:00:00Z" };
+    const source = {
+      sourceUrl: "https://shelter.example/animals/1",
+      fetchedAt: "2026-09-19T00:00:00Z",
+    };
     const fetch = serving({ "shelter:1": { description: "Shelter text", source } });
-    const view = renderHook(({ id }) => ({
-      description: useAnimalDescription(id), source: useAnimalSource(id),
-    }), { initialProps: { id: "shelter:1" } });
+    const view = renderHook(
+      ({ id }) => ({
+        description: useAnimalDescription(id),
+        source: useAnimalSource(id),
+      }),
+      { initialProps: { id: "shelter:1" } },
+    );
     expect(view.result.current.source).toBeUndefined();
     await waitFor(() => expect(view.result.current.source).toEqual(source));
     expect(view.result.current.description).toBe("Shelter text");

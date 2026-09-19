@@ -9,7 +9,10 @@ const latin = localFont({
   style: "normal",
   display: "swap",
   adjustFontFallback: false,
-  declarations: [{ prop: "unicode-range", value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD" }],
+  declarations: [{
+    prop: "unicode-range",
+    value: "U+??,U+131,U+152-153,U+2BB-2BC,U+2C6,U+2DA,U+2DC,U+304,U+308,U+329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD"
+  }],
 });
 const slovenian = localFont({
   src: "./fonts/inter-slovenian-subset.woff2",
@@ -17,7 +20,10 @@ const slovenian = localFont({
   style: "normal",
   display: "swap",
   adjustFontFallback: false,
-  declarations: [{ prop: "unicode-range", value: "U+010C-010D,U+0110-0111,U+0160-0161,U+017D-017E" }],
+  declarations: [{
+    prop: "unicode-range",
+    value: "U+010C-010D,U+0110-0111,U+0160-0161,U+017D-017E"
+  }],
 });
 
 export const fontStack =

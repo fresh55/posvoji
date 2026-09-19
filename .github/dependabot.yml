@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    cooldown:
+      default-days: 7
     schedule:
       interval: weekly
     open-pull-requests-limit: 2
@@ -13,6 +15,8 @@ updates:
         patterns: ["*"]
   - package-ecosystem: npm
     directory: /
+    cooldown:
+      default-days: 7
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
@@ -25,6 +29,8 @@ updates:
         update-types: [minor, patch]
   - package-ecosystem: uv
     directory: /apps/portal
+    cooldown:
+      default-days: 7
     schedule:
       interval: weekly
     open-pull-requests-limit: 3

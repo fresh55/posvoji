@@ -36,6 +36,10 @@
   run has a previous dataset to diff against and carry records from. Refused
   if the target already has content.
 
+.PARAMETER GitBash
+  Full path to Git for Windows bash.exe. Defaults to the Git installation
+  under ProgramFiles; use this for a custom or per-user installation.
+
 .PARAMETER SeedMediaDir
   Optional path to an existing apps/web/public/media to copy in, so the first
   deploy does not have to re-fetch 270 MB of shelter photos. Refused if the
@@ -54,12 +58,13 @@
 
 .EXAMPLE
   .\setup-crawl-task.ps1 `
-    -SeedDataDir C:\Users\bruno\source\repos\posvoji.si\data\dist `
-    -SeedMediaDir C:\Users\bruno\source\repos\posvoji.si\apps\web\public\media
+    -SeedDataDir (Join-Path $env:USERPROFILE 'source\repos\posvoji.si\data\dist') `
+    -SeedMediaDir (Join-Path $env:USERPROFILE 'source\repos\posvoji.si\apps\web\public\media')
 #>
 [CmdletBinding()]
 param(
-  [string]$CloneDir = 'C:\Users\bruno\source\repos\posvoji-crawl',
+  [string]$CloneDir = (Join-Path ([Environment]::GetFolderPath('UserProfile')) 'source\repos\posvoji-crawl'),
+  [string]$GitBash = (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
   [string]$RepoUrl = 'https://github.com/fresh55/posvoji.git',
   [string]$SeedDataDir = '',
   [string]$SeedMediaDir = '',
@@ -74,7 +79,6 @@ $ErrorActionPreference = 'Stop'
 
 # Absolute, never the bare name. `bash` on this machine resolves to WSL,
 # which has no access to the Windows clone and none of the toolchain.
-$GitBash = 'C:\Program Files\Git\bin\bash.exe'
 $PowerShellExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
 $TaskPath = '\Posvoji\'
@@ -133,8 +137,8 @@ Write-Stage 'Preflight'
 if ($DryRun) { Write-Info 'dry run: nothing will be cloned, copied or registered' }
 
 if (-not (Test-Path -LiteralPath $GitBash)) {
-  Stop-Setup ("no Git Bash at $GitBash. Install Git for Windows, or edit " +
-    '$GitBash in this script and in scripts/scheduled-crawl.sh. Do not ' +
+  Stop-Setup ("no Git Bash at $GitBash. Install Git for Windows, or pass " +
+    '-GitBash with the full path to its bash.exe. Do not ' +
     "substitute a bare 'bash', which is WSL here and cannot run this pipeline.")
 }
 Write-Info "git bash: $GitBash"

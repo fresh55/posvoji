@@ -25,6 +25,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Lint GitHub Actions workflows
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          curl --fail --silent --show-error --location \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          printf '%s  %s\n' '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' "$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
+          "$RUNNER_TEMP/actionlint/actionlint" -shellcheck= -pyflakes=
+
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7

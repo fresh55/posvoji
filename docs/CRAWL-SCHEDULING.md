@@ -53,11 +53,14 @@ running out of a dedicated clone at `$env:USERPROFILE\source\repos\posvoji-crawl
 That clone exists so a crawl never runs against a working copy somebody is
 editing, and so a deploy is always of committed code.
 
-1. **Pin the environment.** Task Scheduler hands a task the environment as it
-   was cached at logon, and that copy can be stale or wrong (KB 2968540). The
-   script sets `HOME`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA` and the temp
-   directory itself, and prepends the absolute locations of Node, the npm
-   global bin where pnpm lives, Git's own binaries and System32 to `PATH`.
+1. **Resolve the environment.** The script uses the task owner's Windows
+   profile and inherited app-data and temp directories. Missing app-data and
+   temp settings fall back to that profile. Node defaults to `ProgramFiles`,
+   pnpm to the user's npm bin, and Git tools to the running Git Bash install.
+   Set `POSVOJI_NODE_DIR` or `PNPM_HOME` in the task owner's environment for
+   custom tool locations; pass `-GitBash` to setup for a custom Git install.
+   Task Scheduler can cache the environment at logon, so log out and back in
+   after changing these settings.
    `HOME` matters more than it looks: `deploy.sh` finds the SSH key under it,
    and the portal's credentials are read from `$HOME/.posvoji-crawl.env` when
    that file exists. It sits beside the clone rather than in it because step 3

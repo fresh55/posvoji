@@ -137,3 +137,15 @@ code. Ignoring or deleting a file does not remove it from earlier Git history.
 
 Do not post credentials or personal data in issues, commits or screenshots.
 Follow [SECURITY.md](SECURITY.md) for vulnerabilities and other private reports.
+
+`pnpm lint` checks provider fixtures for email addresses and phone numbers.
+Use reserved example domains for synthetic email addresses. Any necessary
+institutional contact or synthetic phone example needs an exact fixture entry
+and a reason in `scripts/fixture-contact-allowlist.json`. This check supplements
+human review; it does not detect every kind of personal information.
+
+New dependency versions wait seven days before routine installation or a
+Dependabot version-update PR. Dependabot security updates bypass its cooldown.
+For an urgent pnpm security update, review the upstream release and use a
+temporary command-line `--minimum-release-age=0` override for that update;
+do not lower the repository-wide setting or broaden lifecycle-script approval.

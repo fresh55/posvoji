@@ -14,6 +14,7 @@ import {
   animalSlugFromPath,
   findAnimalBySlug,
   PHOTO_PARAM,
+  photoQuery,
 } from "@/lib/animal-path";
 import {
   commitLocation,
@@ -128,9 +129,7 @@ export function useAnimalDialog({
         mergeOwnedParams(
           window.location.search,
           [PHOTO_PARAM],
-          Number.isInteger(photoIndex) && photoIndex > 0
-            ? `${PHOTO_PARAM}=${photoIndex + 1}`
-            : "",
+          photoQuery(photoIndex),
         ),
         "push",
         PUSHED_BY_DIALOG,

@@ -164,6 +164,12 @@ export function clampPhotoIndex(
  * one people read out loud.
  */
 export function pathWithPhoto(path: string, index: number | undefined): string {
-  if (index === undefined || !Number.isInteger(index) || index < 1) return path;
-  return `${path}?${PHOTO_PARAM}=${index + 1}`;
+  const query = photoQuery(index);
+  return query ? `${path}?${query}` : path;
+}
+
+/** The photo parameter shared by standalone links and filtered dialog opens. */
+export function photoQuery(index: number | undefined): string {
+  if (index === undefined || !Number.isInteger(index) || index < 1) return "";
+  return `${PHOTO_PARAM}=${index + 1}`;
 }

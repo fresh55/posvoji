@@ -299,6 +299,18 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
   return `calc(50% + ${x}px) calc(50% + ${y}px)`;
 }
 
+/** Scroll one page if content remains; return whether the card consumed it. */
+function scrollCardPage(card: HTMLElement | null, direction: -1 | 1): boolean {
+  if (!card) return false;
+  const { clientHeight, scrollHeight, scrollTop } = card;
+  const end = Math.max(0, scrollHeight - clientHeight);
+  const remaining = direction < 0 ? scrollTop : end - scrollTop;
+  // Allow for fractional scroll offsets at the boundary.
+  if (remaining <= 1) return false;
+  card.scrollTop = Math.max(0, Math.min(end, scrollTop + direction * clientHeight));
+  return true;
+}
+
 type AnimalDialogProps = {
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
@@ -611,19 +623,10 @@ function OpenAnimalDialog({
     if (lightboxOpen.current) return;
     if (event.key !== "PageUp" && event.key !== "PageDown") return;
     if (!event.currentTarget.contains(event.target as Node)) return;
-    const card = cardRef.current;
     const direction = event.key === "PageUp" ? -1 : 1;
-    if (card) {
-      const end = Math.max(0, card.scrollHeight - card.clientHeight);
-      const remaining = direction < 0 ? card.scrollTop : end - card.scrollTop;
-      if (remaining > 1) {
-        event.preventDefault();
-        card.scrollTop = Math.max(
-          0,
-          Math.min(end, card.scrollTop + direction * card.clientHeight),
-        );
-        return;
-      }
+    if (scrollCardPage(cardRef.current, direction)) {
+      event.preventDefault();
+      return;
     }
     const target = event.key === "PageUp" ? previousId : nextId;
     if (!target) return;

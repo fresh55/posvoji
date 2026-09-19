@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 /** The wider list, reached without reopening the animal being left. */
 const pageText = {
   sl: {
-    openInFinder: (count: number) => `Poglej vse živali (${count})`,
+    viewAll: (count: number) => `Poglej vse živali (${count})`,
     /** The A4 sheet, for a notice board or a vet's waiting room. Drawn like
      *  the link above it and placed beside it, because it is the same kind of
      *  quiet way on: something a visitor may want after reading the page, not
@@ -32,7 +32,7 @@ const pageText = {
     printPoster: "Natisni plakat",
   },
   en: {
-    openInFinder: (count: number) => `View all animals (${count})`,
+    viewAll: (count: number) => `View all animals (${count})`,
     printPoster: "Print poster",
   },
 } satisfies Record<Locale, Record<string, string | ((count: number) => string)>>;
@@ -205,7 +205,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
             href={indexHref}
             className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
           >
-            {text.openInFinder(dataset.animals.length)}
+            {text.viewAll(dataset.animals.length)}
             <ArrowRight className="size-4 shrink-0" aria-hidden />
           </a>
 

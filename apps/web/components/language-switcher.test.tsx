@@ -1,21 +1,22 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LanguageSwitcher } from "./language-switcher";
 import { I18nProvider } from "@/components/i18n-provider";
 import { commitSearch } from "@/lib/location-search";
 
-// jsdom does not navigate, and following the link is not what is under test:
-// the destination rendered before any press is. Cancelled in the capture phase, which
-// runs ahead of React's own handler, so the click still reaches the component.
+// jsdom cannot navigate. Inspect the destination without following the link.
 function swallowNavigation(event: Event) {
   event.preventDefault();
 }
 
-function renderSwitcher() {
+beforeEach(() => {
   document.addEventListener("click", swallowNavigation, true);
   document.addEventListener("auxclick", swallowNavigation, true);
+});
+
+function renderSwitcher() {
   return render(
     <I18nProvider locale="sl">
       <LanguageSwitcher />
@@ -84,7 +85,6 @@ describe("the language switcher", () => {
     // A shelter's page hands the switcher the two paths that are the same
     // page in each language, and the query still rides on top of them.
     window.history.replaceState(null, "", "/zavetisce/muri?vrsta=pes");
-    document.addEventListener("click", swallowNavigation, true);
     render(
       <I18nProvider locale="sl">
         <LanguageSwitcher

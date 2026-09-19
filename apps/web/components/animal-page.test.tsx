@@ -264,13 +264,16 @@ describe("the animal page's breadcrumb", () => {
   });
 });
 
-describe("the animal page's way to a printed sheet", () => {
-  it("returns an English reader to the English collection without selecting an animal", () => {
+describe("the animal page's onward links", () => {
+  it.each([
+    { locale: "sl" as const, label: /Poglej vse živali/, href: "/" },
+    { locale: "en" as const, label: /View all animals/, href: "/en" },
+  ])("returns to the $locale collection without selecting an animal", ({ locale, label, href }) => {
     render(
-      <AnimalPage locale="en" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+      <AnimalPage locale={locale} slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
     );
-    expect(screen.getByRole("link", { name: /View all animals/ }).getAttribute("href"))
-      .toBe("/en");
+    expect(screen.getByRole("link", { name: label }).getAttribute("href"))
+      .toBe(href);
   });
 
   it("links to the animal's own poster, drawn like the link beside it", () => {
@@ -283,12 +286,11 @@ describe("the animal page's way to a printed sheet", () => {
       posterPath(ANIMAL_NO_PHOTO, "sl"),
     );
 
-    // The same quiet grammar as the finder link, down to the focus ring
+    // The same quiet grammar as the collection link, down to the focus ring
     // and the tap target: this is a second way on, not a second call to
     // action. The one call to action is on the shelter block above.
-    const finder = screen.getByRole("link", { name: /Poglej vse živali/ });
-    expect(finder.getAttribute("href")).toBe("/");
-    expect(poster.className).toBe(finder.className);
+    const collection = screen.getByRole("link", { name: /Poglej vse živali/ });
+    expect(poster.className).toBe(collection.className);
   });
 });
 

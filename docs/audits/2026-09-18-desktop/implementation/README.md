@@ -39,3 +39,19 @@ The local check log is retained as ignored `check.log`; it is not part of the po
 ## Remaining scope
 
 This is the first navigation and continuity batch, not completion of the full audit. All other findings retain their decisions in the [reconciled plan](../README.md). D11, D22 and D28 remain product decisions; D15, D18 and D23 remain withdrawn. The five upstream fixes remain verify-only. The standalone photo count and enlarge control were observed during D03 verification, but a full verification of those upstream items is still pending.
+
+## Quality review, 19 September 2026
+
+Reviewed the first batch for reuse, simpler control flow, repeated work and clear responsibilities. No additional audit findings were implemented.
+
+- Integrated `main` at `6e94362` to resolve conflicts with its native card-to-dialog photo transition. The selected photo now passes through both native and fallback opening paths. The obsolete PhotoBloom assertion was replaced with integration coverage of the image captured before and after the native transition update.
+- Shared photo-query validation and formatting between standalone sharing links and dialog opens. Each caller still owns its own path and filter handling.
+- Isolated detail-card paging from keyboard navigation. Scroll dimensions are read once, and the handler now expresses the choice between reading more content and changing animals.
+- Renamed the internal view-all label to match its behavior and grouped its locale tests with the page's onward links.
+- Simplified the scroll test to assert the immediate browser request, removed an unused media-query stub, and centralized language-test navigation suppression.
+
+The screenshots and measurements above remain the evidence from 18 September. The opening-animation implementation described there was superseded by the integrated native transition.
+
+Validation: `corepack pnpm check` passed after integration and cleanup: 3,746 JavaScript/TypeScript tests (2,709 web), 364 portal tests with 4 skipped, type checking, lint, policy validation and the 2,009-page production build. The existing `CARDS_PER_CLICK` lint warning remains. The ignored local log is `quality-check.log`.
+
+A browser smoke check at 1280x720 confirmed that Ficko's second card photo opened as photo 2 with the same image source and `?foto=2`; closing returned to `/` with no dialog. Native transition capture and fallback behavior are covered by the updated integration tests.

@@ -57,8 +57,9 @@ describe("the photo a link names", () => {
       "/zival/luna-abc123/ljubljana/horjul?foto=3",
     );
     // The page opens on its first photo without being told to.
-    expect(pathWithPhoto("/zival/luna", 0)).toBe("/zival/luna");
-    expect(pathWithPhoto("/zival/luna", undefined)).toBe("/zival/luna");
+    for (const index of [0, undefined, -1, 1.5, NaN, Infinity]) {
+      expect(pathWithPhoto("/zival/luna", index)).toBe("/zival/luna");
+    }
   });
 
   it("round-trips what it wrote", () => {

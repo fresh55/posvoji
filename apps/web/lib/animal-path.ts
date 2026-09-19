@@ -75,7 +75,7 @@ export function animalPath(animal: AnimalFields, locale: Locale): string {
 // animal page, and the sheet is a different document from the one a visitor
 // browses. It is named in the reader's language for the same reason the rest
 // of the path is.
-const POSTER_SEGMENT: Record<Locale, string> = {
+export const POSTER_SEGMENT: Record<Locale, string> = {
   sl: "plakat",
   en: "poster",
 };

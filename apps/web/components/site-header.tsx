@@ -33,7 +33,19 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
        row inside it is the page frame, so the brand and the controls line up
        with the main below (site-shell.tsx). It used to bleed out of the
        frame instead, and the rule stopped where the frame did. */
-    <header className="border-b">
+    /* What globals.css hangs the band's view-transition-name on, so the
+       header stands still while a navigation carries the page under it. A
+       class and not an inline style: the name is one half of a contract
+       whose other half is a stylesheet rule and a set of pseudo-elements, and
+       splitting it across two files would leave neither readable.
+
+       The name has to be unique per document, which is why the stylesheet
+       keys on this class rather than on the element: the portal draws a
+       header of its own (portal/portal-shell.tsx) and a bare element selector
+       would name that one too. site-shell.tsx is the only caller of this
+       component, and the demo gate, the error boundaries and the poster
+       sheets draw no site chrome at all. */
+    <header className="site-header border-b">
     {/* A size container, named so the nav can ask this row how much room it
         has rather than ask the window how wide it is (site-menu.tsx reads it,
         --container-nav-room in globals.css holds the figure).

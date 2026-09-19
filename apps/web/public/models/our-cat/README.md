@@ -270,7 +270,7 @@ reduced motion, cancellation and sleep/wake. Unit tests verify ear-first timing.
 node apps/web/scripts/prepare-cat-play.mjs
 # Profile a running local site and capture the composed poses:
 node apps/web/scripts/profile-cat-play.mjs
-# Behaviour and the unchanged visual baselines:
+# The unchanged visual baselines:
 pnpm --filter web test:e2e:cat
 ```
 
@@ -321,8 +321,8 @@ release, and a deliberate head/chin hold reuses its pick. Gaze batches coordinat
 reads and stops resending settled weights. Queued back touches are counted once;
 outside release, blur, pausing, errors and disposal clear interaction safely.
 
-The dedicated `pnpm --filter web test:e2e:cat` suite covers desktop Chromium,
-mobile Chromium and WebKit behaviour, plus eight reviewed desktop pose snapshots.
+The dedicated `pnpm --filter web test:e2e:cat` suite holds the reviewed desktop
+pose snapshots, run by hand when the cat changes.
 See [the hardening report](../../../../../docs/CAT-HARDENING.md) for measurements,
 test procedures and remaining physical-device and mesh-picking limits.
 

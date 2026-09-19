@@ -5,11 +5,13 @@ import { VIEW_TRANSITION_SCRIPT } from "./view-transition-script";
 function setup() {
   const listeners = new Map<string, (event: { viewTransition?: { ready: Promise<void> } | null }) => void>();
   const error = vi.fn();
+  const removeAttribute = vi.fn();
   runInNewContext(VIEW_TRANSITION_SCRIPT, {
     window: { addEventListener: (name: string, listener: (event: object) => void) => listeners.set(name, listener) },
+    document: { documentElement: { removeAttribute } },
     console: { error },
   });
-  return { listeners, error };
+  return { listeners, error, removeAttribute };
 }
 
 describe("cross-document transition cancellation", () => {
@@ -42,5 +44,23 @@ describe("cross-document transition cancellation", () => {
     observe({ viewTransition: { ready: Promise.resolve() } });
     await Promise.resolve();
     expect(error).not.toHaveBeenCalled();
+  });
+});
+
+describe("the photo-morph mark at pageswap", () => {
+  // The old document is captured after pageswap. A link pressed during the
+  // dialog's close leaves with the mark still on the root, and a marked root
+  // names no header and runs no handover (globals.css), so the swap has to
+  // take it off first, with or without a transition to observe.
+  it("is taken off the root before the old document is captured", () => {
+    const { listeners, removeAttribute } = setup();
+    listeners.get("pageswap")!({ viewTransition: null });
+    expect(removeAttribute).toHaveBeenCalledExactlyOnceWith("data-photo-morph");
+  });
+
+  it("is left alone at pagereveal, where a fresh document has never carried it", () => {
+    const { listeners, removeAttribute } = setup();
+    listeners.get("pagereveal")!({ viewTransition: null });
+    expect(removeAttribute).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { LoaderCircle } from "lucide-react";
 import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
+import { PortalPageTransition } from "@/components/portal/portal-transition";
 import { portalText } from "@/components/portal/portal-text";
 
 export const metadata: Metadata = {
@@ -17,17 +18,25 @@ export const metadata: Metadata = {
 // useSearchParams therefore has to sit inside a Suspense boundary, or the
 // build refuses to prerender the page at all. What the boundary shows is the
 // same line the portal uses everywhere else while it is still reading.
+//
+// The crossfade wraps the boundary and not what is inside it, so whichever of
+// the two the page has at the moment it arrives, the waiting line or the
+// form, is what fades in. Inside the wrapper the swap from one to the other
+// is an update, and default="none" leaves updates alone: the line does not
+// fade out again once the animal is there.
 export default function PortalAnimal() {
   return (
-    <Suspense
-      fallback={
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <LoaderCircle className="size-4 animate-spin" aria-hidden />
-          {portalText.loading}
-        </p>
-      }
-    >
-      <AnimalEditorPage />
-    </Suspense>
+    <PortalPageTransition>
+      <Suspense
+        fallback={
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            {portalText.loading}
+          </p>
+        }
+      >
+        <AnimalEditorPage />
+      </Suspense>
+    </PortalPageTransition>
   );
 }

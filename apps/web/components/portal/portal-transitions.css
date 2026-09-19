@@ -1,0 +1,84 @@
+/* The step between the portal's two pages.
+
+   The public site is a static export that navigates with plain anchors, and
+   the browser cross-fades those documents itself (the @view-transition rule
+   in globals.css). The portal's signed-in half is the one part of the site
+   that navigates with next/link, so the browser never leaves the document
+   and none of that applies: nothing at all happens between the list of
+   animals and the page one animal is edited on. React's <ViewTransition>
+   covers this half. A route navigation is a transition, so the wrapper each
+   page body carries runs its exit and enter animation on the way through.
+
+   A stylesheet of its own, loaded from the portal's own layout. In the
+   built export its chunk is referenced by portal.html and portal/zival.html
+   and by no other page; were Next ever to fold it into a shared sheet, the
+   reduce block below would reach pages whose motion is already gated on
+   no-preference, which is the same swap it asks for. The class names are the
+   ones portal-transition.tsx hands React.
+
+   Asymmetric, in the shape the rest of the site's motion has. The page that
+   is leaving goes quickly so it does not compete with what is arriving; what
+   arrives takes a little longer and waits for the old page to be gone first.
+   90ms out, then 180ms in, 270ms altogether, which is inside the quarter of
+   a second a step between two pages of one workspace is allowed to take.
+
+   What is deliberately not here: no slide and no shared element. Opening a
+   row is a step within one workspace, and a crossfade is what says "the same
+   place, different content". A direction would claim a hierarchy the portal
+   does not have. The portal's own header and footer are not wrapped and do
+   not move: they are drawn by the layout, which persists across a client
+   navigation, so only the page body is ever mounted or unmounted.
+
+   What is not here is the rule that takes pointer events off the overlay, so
+   that a tap on a save button during the fade reaches the live page. That one
+   is written once for the whole site in globals.css, which these pages load
+   as well. */
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(.portal-exit) {
+    animation: 90ms ease-in both portal-page-out;
+  }
+
+  /* The delay is the exit's whole length: the new page starts drawing once
+     the old one has finished leaving, rather than the two being visible over
+     each other at half strength. The lift is small enough to be read as the
+     page settling rather than as it travelling. */
+  ::view-transition-new(.portal-enter) {
+    animation:
+      180ms ease-out 90ms both portal-page-in,
+      180ms ease-out 90ms both portal-page-lift;
+  }
+}
+
+/* Asked for less motion, the swap is instant, which is what the browser does
+   without a view transition at all. Nulling the durations rather than the
+   wrapper is what it takes: React still names the two page bodies, so the
+   browser still runs a transition, and its own default for a named element
+   that appears or disappears is a 250ms cross-fade these rules never wrote.
+   The wildcard is for that default, which no class of ours selects. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
+
+@keyframes portal-page-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes portal-page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes portal-page-lift {
+  from {
+    translate: 0 7px;
+  }
+}

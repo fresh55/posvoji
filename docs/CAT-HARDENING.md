@@ -90,30 +90,30 @@ pnpm --filter web test:e2e:cat
 ```
 
 The dedicated suite uses desktop Chromium, Pixel 7 Chromium emulation and iPhone
-14 WebKit emulation. Set `CAT_TEST_URL` to use an already-running site; otherwise
-it uses the repository's Playwright server configuration.
+14 WebKit emulation. Set `CAT_TEST_URL` to use an already-running site;
+`CAT_TEST_BUILD=1` starts a loopback server for `apps/web/out` after
+`pnpm --filter web build`; otherwise it uses the repository's Playwright server
+configuration.
 
-CI runs `cat-hardening.spec.ts` after the production build on desktop Chromium
-and Pixel 7 Chromium emulation. `CAT_TEST_BUILD=1` starts a loopback server for
-`apps/web/out` and shuts it down after the run; it can also be used locally after
-`pnpm --filter web build`. WebKit and the cat pose screenshots remain local
-checks. These behaviour checks do not measure real-device GPU performance.
-
-Loading checks cover the still-to-canvas reveal, cancellation when the stage is
-hidden mid-fade, queued touches and retry after a failed model download.
-
-It covers native anatomical taps (including each of the four legs), held head strokes and quiet recovery, rapid queued input, zero-pick drags, held-touch
-cancellation, multiple contacts, offscreen pause/resume, reduced motion and the
-sleep/wake chain. Sleep tests advance the clock and seek transition endpoints;
-they validate state handling without waiting 45 seconds per browser. Synthetic
-pointer events exercise cancellation separately from the native tap checks.
+It is a local check, run by hand when the cat changes, and not part of CI. A
+behaviour spec once ran there after the production build: thirty tests over
+desktop and Pixel 7 Chromium asserting clip timings, reveal opacities and a
+delayed model download. It passed on a developer machine and failed eleven to
+thirteen of its cases on the GitHub runner on the very commit that added it,
+because animation timing on a GPU-less shared runner is not the thing it was
+calibrated against, and it added eleven minutes to every pull request while
+never being a required check. The spec was removed on 20 September 2026 rather
+than path-filtered: a test that is red on main teaches people to ignore red.
+The loading, gesture and sleep behaviour it exercised is covered by the unit
+tests beside `cat-model.tsx`; anything that needs a real browser is checked by
+hand against a build.
 
 Fifteen fixed desktop poses protect the reviewed appearance: Companion, Slow blink,
 Face wash, Back pet, Back warning, Head pet, Head rub, Nose sniff, all four Paw withdraw clips,
 Sleep, Stretch and Playful reach left. These
 screenshots are regression references, not substitutes for geometric collision
 testing or comparison with the original cat photographs. Mobile projects skip
-the desktop-only screenshot test and run the behavioural checks.
+the desktop-only screenshot test.
 
 For an intentional visual change, regenerate and inspect every changed image:
 

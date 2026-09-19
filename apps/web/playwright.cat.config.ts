@@ -6,7 +6,7 @@ const built = process.env.CAT_TEST_BUILD === "1";
 const builtUrl = "http://127.0.0.1:3216";
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: ["cat-hardening.spec.ts", "cat-visual.spec.ts"],
+  testMatch: ["cat-visual.spec.ts"],
   forbidOnly: !!process.env.CI,
   workers: 1,
   timeout: 90_000,

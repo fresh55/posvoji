@@ -7,7 +7,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import sharp from "sharp";
+import sharp, { type OutputInfo, type ResizeOptions } from "sharp";
 import type {
   GetBytesOptions,
   PoliteBytesResponse,
@@ -297,7 +297,7 @@ export async function processImage(
   width: number;
   height: number;
 }> {
-  let result: { data: Buffer; info: sharp.OutputInfo };
+  let result: { data: Buffer; info: OutputInfo };
   try {
     result = await encodeMaster(sharp(source));
   } catch (strictError) {
@@ -389,7 +389,7 @@ export async function deriveVariants(
         return false;
       }
     };
-    const webp = (resize: sharp.ResizeOptions, quality = WEBP_QUALITY) =>
+    const webp = (resize: ResizeOptions, quality = WEBP_QUALITY) =>
       pipeline()
         .clone()
         .resize(resize)

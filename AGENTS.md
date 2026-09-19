@@ -6,7 +6,7 @@ Instructions for coding agents working in this repo. Humans want
 ## What this is
 
 Posvoji.si is an open index of animals waiting for a home in Slovenian
-shelters. The static index is a pnpm workspace on Node 22+; the optional
+shelters. The static index is a pnpm workspace on Node 24; the optional
 shelter self-service portal is a Django app on Python 3.12 managed with uv.
 Everything, including the whole test suite, runs offline from fixtures.
 

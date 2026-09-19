@@ -658,6 +658,10 @@ export function PhotoGallery({
   // that also carries the pointer handlers and their refs.
   const surfaceClassName = cn(
     "absolute inset-0 touch-pan-y touch-pinch-zoom",
+    // Let CSS read the preference: useReducedMotion differs between the
+    // server and the first client render, which would change the inline style.
+    !dragging &&
+      "motion-safe:transition-transform motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
     tone,
   );
   const surface = {
@@ -676,10 +680,6 @@ export function PhotoGallery({
     className: surfaceClassName,
     style: {
       transform: dragOffset ? `translateX(${dragOffset}px)` : undefined,
-      transition:
-        dragging || shouldReduceMotion
-          ? undefined
-          : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
     },
   };
 

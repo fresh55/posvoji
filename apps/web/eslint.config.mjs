@@ -1,10 +1,12 @@
 import { defineConfig, globalIgnores } from "eslint/config";
+import { fixupConfigRules } from "@eslint/compat";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
+  // Next's React, import and accessibility plugins still use rule APIs removed
+  // in ESLint 10. Keep their rules enabled through ESLint's official adapter.
+  ...fixupConfigRules([...nextVitals, ...nextTs]),
   {
     // eslint-config-next registers eslint-plugin-jsx-a11y and turns on six of
     // its rules. This is not one of them, and it is the one that names the

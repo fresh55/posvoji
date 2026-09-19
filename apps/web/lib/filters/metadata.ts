@@ -237,8 +237,8 @@ export const FILTER_METADATA = {
       value: "patient",
       slug: "potrpezljiv",
       labels: {
-        sl: "Potrebuje potrpežljivega človeka",
-        en: "Needs a patient person",
+        sl: "Potrpežljiv človek",
+        en: "Patient person",
       },
     },
     {
@@ -254,7 +254,8 @@ export const FILTER_METADATA = {
     {
       value: "ongoing-care",
       slug: "potrebuje-redno-oskrbo",
-      labels: ADOPTION_REQUIREMENT_LABELS.ongoingCare,
+      // The filter names the need; the animal's facts keep the full sentence.
+      labels: { ...ADOPTION_REQUIREMENT_LABELS.ongoingCare, sl: "Redna oskrba" },
     },
   ],
 } as const satisfies {

@@ -74,6 +74,11 @@ function canonicalRequestUrl(
   return target.href;
 }
 
+function isInSection(path: string, section: string): boolean {
+  const base = section.endsWith("/") ? section.slice(0, -1) : section;
+  return path === base || path.startsWith(`${base}/`);
+}
+
 // excludePaths entries name sections, with or without a trailing slash. The
 // comparison is on the decoded pathname so a percent-encoded link to an
 // excluded section is caught too.
@@ -94,10 +99,7 @@ export function excludedPathFor(
   } catch {
     // A malformed escape stays as it is and is compared raw.
   }
-  return excludePaths.find((excluded) => {
-    const base = excluded.endsWith("/") ? excluded.slice(0, -1) : excluded;
-    return decoded === base || decoded.startsWith(`${base}/`);
-  });
+  return excludePaths.find((excluded) => isInSection(decoded, excluded));
 }
 
 function decodedCrawlPath(url: string): string | undefined {
@@ -119,10 +121,7 @@ export function isAllowedPath(url: string, allowPaths: readonly string[] | undef
   if (allowPaths === undefined) return true;
   const path = decodedCrawlPath(url);
   if (path === undefined) return false;
-  return allowPaths.some((allowed) => {
-    const base = allowed.endsWith("/") ? allowed.slice(0, -1) : allowed;
-    return path === base || path.startsWith(`${base}/`);
-  });
+  return allowPaths.some((allowed) => isInSection(path, allowed));
 }
 
 // Retaining a discovered permalink for publication grants no request access.

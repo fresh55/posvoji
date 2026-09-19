@@ -93,6 +93,12 @@ describe("parseList", () => {
 
 describe("parseApproximateAgeMonths", () => {
   it.each([
+    ["Star je 2-3 leta.", undefined],
+    ["Stara je 5–6 mesecev.", undefined],
+    ["Star je 1,5-2,5 leta.", undefined],
+    ["Star je 1.5–2.5 leta.", undefined],
+    ["Stara je 2-3 letna.", undefined],
+    ["Star je 3 leta.", 36],
     ["stara cca 1 leto išče dom", 12],
     // The trailing half of "1,5 leta" is not the age.
     ["Ocenjena starost je 1,5 leta", 18],
@@ -146,6 +152,10 @@ describe("parseSize", () => {
 
 describe("parseMedical", () => {
   it.each([
+    ["Ni kastriran.", undefined],
+    ["Še ni kastriran.", undefined],
+    ["Kastriran je.", { neutered: true }],
+    ["Kastriran, ni pa čipiran.", undefined],
     ["Mešanka stara 3 leta, sterilizirana", { neutered: true }],
     ["Star je cca 2 leti, je kastriran", { neutered: true }],
     ["Veterinarsko urejena, vodljiva", undefined],

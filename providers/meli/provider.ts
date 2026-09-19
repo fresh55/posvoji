@@ -82,6 +82,8 @@ function ageCount(raw: string | undefined): number {
 export function parseApproximateAgeMonths(
   value: string,
 ): number | undefined {
+  // A range is not a single age, including decimals and adjective forms.
+  if (/\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*-?\s*(?:mesec(?:a|e|ev)?|let(?:o|i|a|ni|na|en|nega)?)\b/iu.test(value)) return undefined;
   const normalized = value.normalize("NFC").replace(/\s+/g, " ");
   const months = normalized.match(
     new RegExp(`${AGE_COUNT}\\s*(?:mesecev|mesece|meseca|mesec)\\b`, "iu"),
@@ -159,6 +161,7 @@ function sameSiteImage(value: string | undefined): string | undefined {
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const article = $("article.portfolio-single").first();
+  if (article.length === 0) throw new Error("meli: missing animal detail container");
   const description = parseDescription($);
   const imageUrls: string[] = [];
   const addImage = (value: string | undefined) => {

@@ -95,6 +95,8 @@ function ageCount(raw: string | undefined): number {
 
 export function parseApproximateAgeMonths(value: string | undefined): number | undefined {
   if (!value) return undefined;
+  // A range is not a single age, including decimal endpoints.
+  if (/\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mesec(?:a|e|ev)?|let(?:o|i|a)?)\b/iu.test(value)) return undefined;
   const years = value.match(
     new RegExp(`${AGE_COUNT}\\s*(?:leto|leti|leta|let)\\b`, "i"),
   );
@@ -165,6 +167,9 @@ function parseMedical($: cheerio.CheerioAPI): AnimalMedical | undefined {
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
+  if ($(".jhmb-detail-container").length === 0) {
+    throw new Error("maribor: missing animal detail container");
+  }
   const imageUrls: string[] = [];
   const addImage = (value: string | undefined) => {
     const url = sameSiteImage(value);

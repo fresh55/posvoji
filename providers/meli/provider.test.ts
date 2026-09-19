@@ -44,6 +44,13 @@ describe("parseList", () => {
 
 describe("parseApproximateAgeMonths", () => {
   it.each([
+    ["2-3 leta", undefined],
+    ["5–6 mesecev", undefined],
+    ["1,5-2,5 leta", undefined],
+    ["1.5–2.5 leta", undefined],
+    ["2-3 letna", undefined],
+    ["2–3-letni mešanček", undefined],
+    ["3 leta", 36],
     ["približno leto dni stara", 12],
     ["6-letni mešanček", 72],
     ["star 3 leta", 36],
@@ -61,6 +68,13 @@ describe("parseApproximateAgeMonths", () => {
 });
 
 describe("parseDetail", () => {
+  it.each([
+    "<html><h1>Maintenance</h1></html>",
+    loadFixture(import.meta.url, "list.html"),
+  ])("rejects a page with no animal", (html) => {
+    expect(() => parseDetail(html)).toThrow(/animal detail/);
+  });
+
   it("parses a dog and stops before contact boilerplate", () => {
     expect(parseDetail(loadFixture(import.meta.url, "detail-dog.html"))).toEqual({
       name: "LINA",

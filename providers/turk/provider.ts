@@ -214,6 +214,8 @@ const AGE_PATTERNS = [
 ];
 
 export function parseApproximateAgeMonths(value: string): number | undefined {
+  // Do not select an endpoint when the description gives an age range.
+  if (/\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mesec\w*|let\w*)\b/iu.test(value)) return undefined;
   const normalized = value.normalize("NFC").replace(/\s+/g, " ");
   for (const pattern of AGE_PATTERNS) {
     const match = normalized.match(pattern);
@@ -277,7 +279,7 @@ export function parseMedical(value: string): AnimalMedical | undefined {
   const neutered = normalized.match(
     /[^.!?…]*\b(?:steriliziran[ao]?|kastriran[ao]?)\b[^.!?…]*/u,
   );
-  if (neutered && !/\b(?:čaka|še\s+ni|bo|pred)\b/u.test(neutered[0])) {
+  if (neutered && !/\b(?:ni|čaka|bo|pred)\b/u.test(neutered[0])) {
     medical.neutered = true;
   }
 

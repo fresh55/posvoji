@@ -7,7 +7,9 @@ const latin = localFont({
   src: "./fonts/inter-latin.woff2",
   weight: "100 900",
   style: "normal",
-  display: "optional",
+  // Match the Slovenian subset: optional can leave Latin in Arial for the
+  // entire visit while accented letters render in Inter.
+  display: "swap",
   preload: false,
   adjustFontFallback: false,
   declarations: [

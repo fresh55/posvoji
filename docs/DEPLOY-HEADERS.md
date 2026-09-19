@@ -56,9 +56,11 @@ path. Next also includes the styles in the RSC payload, so compression remains
 essential: the September mobile experiment added about 42 KB compressed per
 document while removing a 27 KB stylesheet request. A repeat document visit
 pays that CSS cost again; client navigation can still request CSS chunks, so
-keep their existing cache headers. Fonts are not preloaded: doing so competed
-with the document on slow 4G. The Latin face uses `font-display: optional` to
-avoid a late fallback-font swap on a cold, slow visit.
+keep their existing cache headers. Latin Inter is not preloaded: doing so
+competed with the document on slow 4G. Only the small Slovenian subset is
+preloaded. Both use `font-display: swap` so a cold visit settles on consistent
+Inter typography; Latin-only `optional` could leave Arial mixed with Inter
+accents for the visit.
 
 The exported site is text, and it is large. Measured on the September 2026
 export: `out/index.html` is 1,475,957 bytes raw against 180,899 gzipped, and

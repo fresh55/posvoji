@@ -12,7 +12,7 @@ import { useEffect, useSyncExternalStore } from "react";
  * ever read: the animal whose dialog the visitor opens, if they open one. So
  * lib/dataset.ts leaves the field behind and the text is fetched from a static
  * file instead. A visitor who never opens a dialog never downloads it, which
- * is the saving; the grid asks for it on idle so that the visitor who does
+ * is the saving; the grid asks for it on interaction so that the visitor who does
  * open one is usually not waiting on anything.
  *
  * The animal's own page does not come here at all. It is server-rendered from
@@ -70,7 +70,7 @@ async function load(): Promise<AnimalDescriptions> {
 
 /** Start the one fetch, or hand back the one already running or done. Called
  *  by the first dialog that needs a description and, before that, by the grid
- *  on idle. */
+ *  on first interaction. */
 export function prefetchAnimalDescriptions(): Promise<AnimalDescriptions> {
   if (inFlight) return inFlight;
   inFlight = load().then((descriptions) => {

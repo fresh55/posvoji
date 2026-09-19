@@ -400,13 +400,12 @@ export function AnimalGrid({
   //
   // The shelter descriptions no longer travel with the animals (see
   // animalsForClient in lib/dataset.ts and lib/animal-descriptions.ts), so the
-  // first dialog that wants one would open and wait. The file usually lands
-  // long before anyone opens a card.
+  // first pointer entry, keyboard focus or touch on the grid warms the file.
+  // Idle visitors do not download descriptions.
   useEffect(() => {
     if (animals.length === 0) return;
     const onIdle = () => {
       setDialogMounted(true);
-      void prefetchAnimalDescriptions();
     };
     if (typeof window.requestIdleCallback === "function") {
       const handle = window.requestIdleCallback(onIdle);
@@ -644,6 +643,9 @@ export function AnimalGrid({
               // one class to CARD_GRID would have quietly cost the tests their
               // column count and left them charging the two-column fallback.
               data-card-grid
+              onPointerEnter={() => { void prefetchAnimalDescriptions(); }}
+              onFocusCapture={() => { void prefetchAnimalDescriptions(); }}
+              onTouchStart={() => { void prefetchAnimalDescriptions(); }}
               className={CARD_GRID}
             >
               {page.map((animal, ordinal) => (

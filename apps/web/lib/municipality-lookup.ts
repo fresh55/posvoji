@@ -17,6 +17,8 @@ export type MunicipalityGuess = {
   code: string;
   /** Largest share first. One entry is an answer, several are a question. */
   municipalities: string[];
+  /** A coarse device fix is a suggestion even when only one name matches. */
+  requiresConfirmation?: boolean;
 };
 
 const BY_CODE = new Map(
@@ -39,10 +41,15 @@ export function municipalitiesForInput(
   return guessFor(match.code, match.label);
 }
 
-/** The device's position, resolved through the nearest postal district. Exact
- *  boundaries are not needed here: the nearest district's municipalities are
- *  the shortlist, and the reader confirms which one. */
-export function municipalitiesNear(at: LatLon): MunicipalityGuess | undefined {
+// Postal centroids are not municipal boundaries. These limits reject distant
+// fixes and keep coarse ones tentative, without changing typed-place lookup.
+const MAX_POSTAL_DISTANCE_KM = 20;
+const MAX_DEVICE_ACCURACY_METERS = 1000;
+
+/** The device's position, resolved through a nearby postal district. */
+export function municipalitiesNear(at: LatLon, accuracy = Infinity): MunicipalityGuess | undefined {
+  if (!Number.isFinite(at.lat) || !Number.isFinite(at.lon) ||
+      Math.abs(at.lat) > 90 || Math.abs(at.lon) > 180) return undefined;
   let best: { code: string; name: string; km: number } | undefined;
   for (const district of POSTAL_DISTRICTS) {
     const km = distanceKm(at, { lat: district.lat, lon: district.lon });
@@ -50,6 +57,11 @@ export function municipalitiesNear(at: LatLon): MunicipalityGuess | undefined {
       best = { code: district.code, name: district.name, km };
     }
   }
-  if (!best) return undefined;
-  return guessFor(best.code, best.name);
+  if (!best || best.km > MAX_POSTAL_DISTANCE_KM) return undefined;
+  const guess = guessFor(best.code, best.name);
+  return guess && {
+    ...guess,
+    requiresConfirmation: !Number.isFinite(accuracy) || accuracy < 0 ||
+      accuracy > MAX_DEVICE_ACCURACY_METERS,
+  };
 }

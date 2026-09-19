@@ -76,4 +76,24 @@ describe("postcode to municipality", () => {
     const guess = municipalitiesNear({ lat: 46.0569, lon: 14.5058 });
     expect(guess?.municipalities).toContain("Ljubljana");
   });
+
+  it.each([
+    [50, false], [1000, false], [1001, true], [5000, true],
+    [Infinity, true], [NaN, true], [-1, true],
+  ])("qualifies a device accuracy of %s metres", (accuracy, requiresConfirmation) => {
+    expect(municipalitiesNear({ lat: 46.0569, lon: 14.5058 }, accuracy)?.requiresConfirmation)
+      .toBe(requiresConfirmation);
+  });
+
+  it.each([
+    ["London", 51.5074, -0.1278],
+    ["Vienna", 48.2082, 16.3738],
+    ["Zagreb", 45.815, 15.9819],
+    ["New York", 40.7128, -74.006],
+    ["invalid latitude", NaN, 14.5],
+    ["invalid longitude", 46, Infinity],
+    ["out-of-bounds latitude", 100, 14.5],
+  ])("does not assign a Slovenian municipality to %s", (_name, lat, lon) => {
+    expect(municipalitiesNear({ lat: Number(lat), lon: Number(lon) }, 50)).toBeUndefined();
+  });
 });

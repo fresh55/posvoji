@@ -306,7 +306,7 @@ export function MunicipalityFinder({
   // answered with wherever the reader happened to be standing.
   const guess: MunicipalityGuess | undefined = useMemo(() => {
     if (query.trim()) return municipalitiesForInput(query);
-    if (state.status === "on") return municipalitiesNear(state.at);
+    if (state.status === "on") return municipalitiesNear(state.at, state.accuracy);
     return undefined;
   }, [query, state]);
 
@@ -351,10 +351,10 @@ export function MunicipalityFinder({
 
   const active =
     (picked ? byName.get(picked) : undefined) ??
-    (matches.length === 1 ? matches[0] : undefined);
+    (matches.length === 1 && !guess?.requiresConfirmation ? matches[0] : undefined);
 
   const suggestions = matches.slice(0, MAX_MATCHES);
-  const showSuggestions = !dismissed && !active && matches.length > 1;
+  const showSuggestions = !dismissed && !active && matches.length > 0;
   const highlightedIndex = suggestions.findIndex(
     (entry) => entry.name === highlighted,
   );
@@ -371,7 +371,9 @@ export function MunicipalityFinder({
       ? looksLikePostcode(query) || /^\d+$/.test(query.trim())
         ? messages.muniPostcodeNotFound
         : `${messages.muniNoMatch} »${query.trim()}«`
-      : "";
+      : state.status === "on" && !guess
+        ? messages.muniLocationUnmatched
+        : "";
 
   // The current answer travels with reloads, copied links and language
   // changes. Replace both legacy place keys, preserving unrelated params.
@@ -511,7 +513,7 @@ export function MunicipalityFinder({
               if (event.nativeEvent.isComposing) return;
               if (
                 !active &&
-                suggestions.length > 1 &&
+                suggestions.length > 0 &&
                 (event.key === "ArrowDown" || event.key === "ArrowUp")
               ) {
                 const direction = event.key === "ArrowDown" ? 1 : -1;
@@ -801,7 +803,7 @@ export function MunicipalityFinder({
           <div className="space-y-1.5">
             {guess && (
               <p className="text-sm text-muted-foreground">
-                {messages.muniWhichOne}
+                {guess.requiresConfirmation ? messages.muniLocationConfirm : messages.muniWhichOne}
               </p>
             )}
             <ul

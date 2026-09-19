@@ -8,7 +8,7 @@ import type { TypedLocation } from "@/lib/origin";
 export type NearbyState =
   | { status: "off" }
   | { status: "locating" }
-  | { status: "on"; at: LatLon }
+  | { status: "on"; at: LatLon; accuracy: number }
   | { status: "error"; message: string };
 
 export type NearbyChosenPlace = {
@@ -110,6 +110,7 @@ export function useNearby() {
         setState({
           status: "on",
           at: { lat: coords.latitude, lon: coords.longitude },
+          accuracy: coords.accuracy,
         });
       },
       (error) =>

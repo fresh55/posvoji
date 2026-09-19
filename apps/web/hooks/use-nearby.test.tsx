@@ -30,7 +30,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 const succeed = () =>
-  success({ coords: { latitude: 46, longitude: 15 } } as GeolocationPosition);
+  success({ coords: { latitude: 46, longitude: 15, accuracy: 5000 } } as GeolocationPosition);
 describe("page-session geolocation", () => {
   it.each([1, 2, 3])("handles browser error %s and can retry", (code) => {
     const { result } = renderHook(useNearby, { wrapper });
@@ -69,6 +69,7 @@ describe("page-session geolocation", () => {
     expect(second.result.current.state).toEqual({
       status: "on",
       at: { lat: 46, lon: 15 },
+      accuracy: 5000,
     });
     act(() => second.result.current.turnOff());
     expect(second.result.current.state.status).toBe("off");

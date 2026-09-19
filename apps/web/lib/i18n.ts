@@ -407,6 +407,8 @@ const sl = {
     "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
+  muniLocationConfirm: "Lokacija je približna. Potrdi predlagano občino ali vpiši kraj, kjer je bila žival najdena.",
+  muniLocationUnmatched: "Lokacije ni mogoče povezati z bližnjo slovensko pošto. Vpiši občino ali poštno številko kraja, kjer je bila žival najdena.",
   // The finder's own version of postcodeNotFound. The shared one tells the
   // reader to check what they typed, which on this page is a dead end for
   // somebody standing over an animal with the right number and a table that
@@ -807,6 +809,8 @@ const en: Messages = {
     "Or type the postcode of the place where the animal was found.",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
+  muniLocationConfirm: "The location is approximate. Confirm the suggested municipality or type where the animal was found.",
+  muniLocationUnmatched: "The location could not be matched to a nearby Slovenian postal district. Type the municipality or postcode where the animal was found.",
   muniPostcodeNotFound:
     "No such postcode. Type the municipality or use your location.",
   muniNoMatch: "No municipality named",

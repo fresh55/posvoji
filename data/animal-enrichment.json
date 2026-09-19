@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-13T21:05:58.888Z",
+  "reviewedAt": "2026-09-19T16:28:00.845Z",
   "records": [
     {
       "animalId": "horjul:1028",
@@ -47,44 +47,66 @@
       ]
     },
     {
-      "animalId": "ljubljana:92dd9e05-45cf-440f-8ffd-56d745d0b41f",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cezar-25010006",
-      "descriptionSha256": "fe0be6d5942765f1a172e918fab3d2e8cbad46e51905e2ce0611cca440c8e0bb",
+      "animalId": "horjul:1965",
+      "providerId": "horjul",
+      "sourceUrl": "https://www.zavetisce-horjul.net/quill/",
+      "descriptionSha256": "7deed42f7e26a53bc990ddc130ebb19a44220cdc3c20a3d1c162019256a14870",
       "claims": [
         {
-          "field": "breed",
-          "value": "American Staffordshire Terrier",
+          "field": "status",
+          "value": "available",
+          "replaces": "unknown",
           "evidence": {
-            "start": 20,
-            "end": 47,
-            "sha256": "fb91ee13b6958c36f64f30bf0dee056c355a09dd9f85ba56f518815cf82d7dbc"
+            "start": 174,
+            "end": 186,
+            "sha256": "c66a6589ec325c7556dca1f8d32ea4f939010dfc4735985241a862f1065940aa"
           },
           "reviewedBy": [
-            "/root/manual_02",
-            "/root/manual_01",
+            "/root/luna_review_001_033",
             "/root"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:ac5e20c4-7e3e-46fd-b5bc-84ea3f51f348",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/stela-25010343",
-      "descriptionSha256": "f45ee051f8da5792f3b8d01755e036a902289f373f8637f019b4449c549d3858",
+      "animalId": "horjul:6913",
+      "providerId": "horjul",
+      "sourceUrl": "https://www.zavetisce-horjul.net/timon/",
+      "descriptionSha256": "0fb78cfbcefd6958fd0fd74cf2d65af98b404a5a25f102a6dcc1e29d529cdae8",
       "claims": [
         {
-          "field": "breed",
-          "value": "Kangal type",
+          "field": "status",
+          "value": "available",
+          "replaces": "unknown",
           "evidence": {
-            "start": 27,
-            "end": 41,
-            "sha256": "cb8739bedbdf6e76a4ba28e7fe057a9647a45353bc2818f0b6ac1e3c90ca0f1a"
+            "start": 252,
+            "end": 274,
+            "sha256": "94e8c40444d900f4962ad30be71c1b4367183885cc6382c459f92b2eaa8ed341"
           },
           "reviewedBy": [
-            "/root/manual_02",
-            "/root/manual_01",
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "horjul:6915",
+      "providerId": "horjul",
+      "sourceUrl": "https://www.zavetisce-horjul.net/pumba/",
+      "descriptionSha256": "0fb78cfbcefd6958fd0fd74cf2d65af98b404a5a25f102a6dcc1e29d529cdae8",
+      "claims": [
+        {
+          "field": "status",
+          "value": "available",
+          "replaces": "unknown",
+          "evidence": {
+            "start": 252,
+            "end": 274,
+            "sha256": "94e8c40444d900f4962ad30be71c1b4367183885cc6382c459f92b2eaa8ed341"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
             "/root"
           ]
         }
@@ -1496,53 +1518,6 @@
       ]
     },
     {
-      "animalId": "macja-hisa:4132",
-      "providerId": "macja-hisa",
-      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4132",
-      "descriptionSha256": "952f9b5d1833c0a68fcf52626b529d6eb6b8530c665ffd8fb937384689761584",
-      "claims": [
-        {
-          "field": "goodWith.cats",
-          "value": "yes",
-          "evidence": {
-            "start": 46,
-            "end": 86,
-            "sha256": "991f7736ab5a71e485b8160f546c4e37d915c691605e22be15d5a16838cab6a4"
-          },
-          "reviewedBy": [
-            "/root",
-            "/root/manual_02"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "yes",
-          "evidence": {
-            "start": 46,
-            "end": 86,
-            "sha256": "991f7736ab5a71e485b8160f546c4e37d915c691605e22be15d5a16838cab6a4"
-          },
-          "reviewedBy": [
-            "/root",
-            "/root/manual_02"
-          ]
-        },
-        {
-          "field": "originMunicipality",
-          "value": "Celje",
-          "evidence": {
-            "start": 153,
-            "end": 187,
-            "sha256": "0b9bff66af7c431dcdb2ac95297c710feb275d8d10f725f0b770ed5b96080638"
-          },
-          "reviewedBy": [
-            "/root",
-            "/root/manual_02"
-          ]
-        }
-      ]
-    },
-    {
       "animalId": "macja-hisa:4150",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4150",
@@ -1829,6 +1804,19 @@
       "descriptionSha256": "11013f13f78d21d3182f0571f7b5f9b7aed51bb6bab9feb80059212f743a5426",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 35,
+            "end": 66,
+            "sha256": "4128043e2c43ecefba72dab144232bfbb41c8803e56a8b071f315613f1c354e1"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Celje",
           "evidence": {
@@ -1885,6 +1873,19 @@
       "descriptionSha256": "d3f6b5d985f07882e51d4af3fccc0af500bf04e61d6482ed33535885bc276cd8",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 32,
+            "end": 64,
+            "sha256": "5abc5153329038c8e1b4d62d2864d53b62e0d947bca674da2ad8de90db4cff48"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Zadobrova",
           "evidence": {
@@ -1926,6 +1927,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4275",
       "descriptionSha256": "7524c2ffc508cdfe39ada190627bb0766c7e1d85ee8c68cba9f72f36e4d0bf2a",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 55,
+            "end": 89,
+            "sha256": "5bdae61e8a5a76762e9f616dae36fd8e8fadffcc87c875e7ef497d4bea48df27"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Celje",
@@ -1969,6 +1983,19 @@
       "descriptionSha256": "91296bc9846186b6812768c2390aa04ad9917b4eadccc3c19652beaa10e95009",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 45,
+            "end": 66,
+            "sha256": "c1952db8f85d0a090caffe3e01e119d98e325d24448d979e9421bf3acc8a7133"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Šmartno v Rožni dolini",
           "evidence": {
@@ -1989,6 +2016,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4302",
       "descriptionSha256": "34594138d996e8dbbe7d9c02f49348b4d7fd5012acad3d8bbd7d86b2af874b1e",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 34,
+            "end": 52,
+            "sha256": "5f5d7ff33679a2e854361065e3692197d5795d0e620430a05bc20af618532595"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Šmartno v Rožni dolini",
@@ -2577,6 +2617,19 @@
       "descriptionSha256": "38a841d353bfde95aee13ce1bc9454b828534dab730016e04aa550bf38a551b4",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 31,
+            "end": 88,
+            "sha256": "b65a1ea358ad285417a6bede3d3571963928c432d4ebd2dd52f9343a52678f7c"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Trnovlje",
           "evidence": {
@@ -2745,6 +2798,19 @@
           ]
         },
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 39,
+            "end": 70,
+            "sha256": "ad833ea76363c097341d472825be795717189477d8c46e6752e40dc472dc55bc"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Celje",
           "evidence": {
@@ -2787,6 +2853,19 @@
       "descriptionSha256": "035c441554cd6ccb81677f0ea2ef739537786fc8bf108512ed113824f223e87f",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 65,
+            "end": 101,
+            "sha256": "58979dd2c047e0d6de4823902fb663eea81701d0c6b32e7feb32884117ca066d"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "goodWith.dogs",
           "value": "yes",
           "evidence": {
@@ -2822,6 +2901,19 @@
       "descriptionSha256": "1fbf8bf143fc5db55a1ada74aab965802ec930f5de1265a6116b8ecf3d8de57d",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 101,
+            "end": 135,
+            "sha256": "59ffadbd063002f7d62af068d5d354aab4316554f594891435f3bd17ad6e013b"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Zadobrova",
           "evidence": {
@@ -2843,6 +2935,19 @@
       "descriptionSha256": "5c5b7a440ee5b0b12886b8ff4b4cfd0eb7640b50097d2a1a45c93e1b65984e5d",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 106,
+            "end": 126,
+            "sha256": "266e6a70efa3e4293f7929a8d4fa057c761db32dd7317ed95fa4b992feb77197"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Začret",
           "evidence": {
@@ -2863,6 +2968,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4569",
       "descriptionSha256": "06ec4d1435b9fcc1736ed665728a6307622ee06feb522cf2333cd552aa9af63f",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 46,
+            "end": 81,
+            "sha256": "90edba86bbe477ce8ddbefb230b3fdcf36d79ec2e1da092ed7f70e5da8670eac"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Začret",
@@ -2951,6 +3069,19 @@
           "reviewedBy": [
             "/root",
             "/root/review_wave_a"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 599,
+            "end": 647,
+            "sha256": "9334f4f2d18ca323622a3392c6835e415313b2c12ed547dad32e3504fb9b1c3d"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
           ]
         },
         {
@@ -3695,6 +3826,19 @@
       "descriptionSha256": "4198f30454e18ef8be27d4df9bfde08a1e9053de5ebc406c01de70baf79e117e",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 74,
+            "end": 107,
+            "sha256": "f3ce02e20a55687eba63bc1442732793852138e63e1e384b7b0070566564881a"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Ljubečna",
           "evidence": {
@@ -3726,6 +3870,19 @@
           "reviewedBy": [
             "/root/manual_01",
             "/root/review_wave_a",
+            "/root"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 43,
+            "end": 90,
+            "sha256": "48895d566759e382e5e6a41a1c5f8db0633e729633378521159bbbc6a128b6b6"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
             "/root"
           ]
         },
@@ -3800,6 +3957,19 @@
           ]
         },
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 89,
+            "end": 139,
+            "sha256": "84bf2bbd4f9e13c747ce70992bbef528ca53c5bd75db44a1b4730deca926438c"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Šmartinsko jezero",
           "evidence": {
@@ -3821,6 +3991,19 @@
       "descriptionSha256": "b709071faab424a1f57fde1908dc20577842062de0b4eac2a55e1553b4c3826a",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 68,
+            "end": 103,
+            "sha256": "db13b714ab94676904a567daf9768a504685f00178b0a1517b6b47ed164a7832"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Celje",
           "evidence": {
@@ -3841,6 +4024,45 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4801",
       "descriptionSha256": "a3d7c06a4b80aaaf0cc53790ac2c11337e17e07b1764918905dd761964a2796a",
       "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 164,
+            "end": 180,
+            "sha256": "468b9f6e6a35181d0eb3aafc34c7c6cab0f0d9df438902eb2d79fdabe21d5cbb"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 34,
+            "end": 86,
+            "sha256": "6c1cbaf479111329b2de3e74686c463ebe8c56a85d2d1280b2c5c60f1b699238"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "yes",
+          "evidence": {
+            "start": 34,
+            "end": 86,
+            "sha256": "6c1cbaf479111329b2de3e74686c463ebe8c56a85d2d1280b2c5c60f1b699238"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Vransko",
@@ -3884,6 +4106,19 @@
       "descriptionSha256": "4d018409fb2beb3e87d9d6bec407e12dda81c367d402cd9942f9b0c152b9b646",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 34,
+            "end": 55,
+            "sha256": "62ecb173159fc81351cc0156279c3a0aecd456b85da48db7ee24bfb06916babf"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Celje",
           "evidence": {
@@ -3916,6 +4151,19 @@
             "luna-a",
             "luna-b",
             "lead"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 146,
+            "end": 187,
+            "sha256": "c8cbc68fbfc746a4a851f34a33d052d80d1d7246d697bbaa7edcaea671c28439"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
           ]
         }
       ]
@@ -4469,41 +4717,6 @@
       ]
     },
     {
-      "animalId": "macja-hisa:4881",
-      "providerId": "macja-hisa",
-      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4881",
-      "descriptionSha256": "08c78a8b0d53487bf76db4f05dcbc22458ef852d195b5d0a5531e50bfd7c16be",
-      "claims": [
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 55,
-            "end": 79,
-            "sha256": "507e5afb221eb508ac17855c117c63eef7cb1907dd841de3f133fbca2afa8cdd"
-          },
-          "reviewedBy": [
-            "/root/review_wave_a",
-            "/root/manual_02",
-            "/root"
-          ]
-        },
-        {
-          "field": "originMunicipality",
-          "value": "Celje",
-          "evidence": {
-            "start": 82,
-            "end": 121,
-            "sha256": "75a329716c9437bef7b2592db06259681dd0564a43a0a5fc1ffbec7096f00c5e"
-          },
-          "reviewedBy": [
-            "/root",
-            "/root/manual_02"
-          ]
-        }
-      ]
-    },
-    {
       "animalId": "macja-hisa:4889",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4889",
@@ -4637,6 +4850,19 @@
       "descriptionSha256": "c6784307864b9f01a38f3ec7930bd2b24296f3c7df95bd7af57bc6006fee3c7c",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 53,
+            "end": 82,
+            "sha256": "9a7050a9889a6c9102bb7c75da2f98e6ff693087d25b35102bfc19749d119931"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Teharje",
           "evidence": {
@@ -4678,6 +4904,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4912",
       "descriptionSha256": "2e61b77233ef98bdfc096d6e830d16460f343ec4ebbb28c00e9ebe03b52972c7",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 51,
+            "end": 82,
+            "sha256": "4128043e2c43ecefba72dab144232bfbb41c8803e56a8b071f315613f1c354e1"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Zagorje ob Savi",
@@ -4777,6 +5016,19 @@
           ]
         },
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 61,
+            "end": 82,
+            "sha256": "697e202555b1eda1adf9b9e275ea25cb83531bc606a536ce03e0078948396fac"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Pečovnik",
           "evidence": {
@@ -4818,6 +5070,32 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4939",
       "descriptionSha256": "705fae4749ac5ea645f788dc9dc0d9fc24aed25c21b3a12208dbc3ecabde13ff",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 43,
+            "end": 93,
+            "sha256": "94b7d3c23d9825221a474dfe97f9a9b65f2ae1c342be367182c526e5b13de3cc"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "yes",
+          "evidence": {
+            "start": 43,
+            "end": 93,
+            "sha256": "94b7d3c23d9825221a474dfe97f9a9b65f2ae1c342be367182c526e5b13de3cc"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Celje",
@@ -5120,6 +5398,19 @@
           ]
         },
         {
+          "field": "goodWith.dogs",
+          "value": "yes",
+          "evidence": {
+            "start": 53,
+            "end": 88,
+            "sha256": "b2fef608a8ec675d27255eca1debd9cbd6e0f7ee3040ae4ec8a1661cedfe6282"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Vrhe",
           "evidence": {
@@ -5177,32 +5468,24 @@
       ]
     },
     {
-      "animalId": "macja-hisa:4955",
-      "providerId": "macja-hisa",
-      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4955",
-      "descriptionSha256": "30fae1b60eaf9fd329448ed0b6d65a7459caf6cfb4646ed77d5cf2932f1ce18a",
-      "claims": [
-        {
-          "field": "originMunicipality",
-          "value": "Zalog pri Šempetru",
-          "evidence": {
-            "start": 125,
-            "end": 205,
-            "sha256": "5d537c24031ceec80f6668a06c85e3e5dc7184f0fa1c3ef94a0ac2d8e71a1901"
-          },
-          "reviewedBy": [
-            "/root",
-            "/root/manual_02"
-          ]
-        }
-      ]
-    },
-    {
       "animalId": "macja-hisa:4957",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4957",
       "descriptionSha256": "d81af35a092fdd859fd729a9610d6d400c1b3cecd6584a848b6a4377f55ce67b",
       "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 33,
+            "end": 48,
+            "sha256": "36e391c1605e82727e524702816131ceb30cf39c1460f4d1007c5604ecb2022b"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Celje",
@@ -5224,6 +5507,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4958",
       "descriptionSha256": "1043ee078403f427049043fb89c87d0d0832d58e0ebc12cc4ed8020c9c515264",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 40,
+            "end": 83,
+            "sha256": "f067907217f71a218102e3a0ff6dd40e7edbb80f8a6d4a5a1095b749a9dac9ec"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Celje",
@@ -5267,6 +5563,19 @@
       "descriptionSha256": "f4ff581eb5d5606011cc776355f9b6dd4d20c37b619c251f3fba933eba6626c6",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 26,
+            "end": 52,
+            "sha256": "69c7d3a57cf6289e0e75b2f761b67a2639e75243012bdf32a28d4ec0b7a892ba"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Celje",
           "evidence": {
@@ -5282,22 +5591,69 @@
       ]
     },
     {
+      "animalId": "macja-hisa:4966",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4966",
+      "descriptionSha256": "75d3e8f988ed67cf5c46abeb1e46bbfbd971b78d847645148125725788dd7ae8",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 32,
+            "end": 53,
+            "sha256": "a692f7ead23c762f7ab2b2a94c0480ed73fa8e7be407362e726ec8b4f43fa980"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 55,
+            "end": 77,
+            "sha256": "ff883f38cffde59364e6dd7859a6fe22c752d3ba359ad8c679e7debab4f299cf"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
       "animalId": "macja-hisa:4968",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4968",
-      "descriptionSha256": "8f8be2fe3eae8172ecb80342ddb6b8f118a1148f32c4befd09ae54d1432e5ca4",
+      "descriptionSha256": "5d7f7ad0230e54e5683655c47f933f2201cb1dc5e8a894a179d641706cd11b38",
       "claims": [
         {
-          "field": "originMunicipality",
-          "value": "Zalog pri Šempetru",
+          "field": "adoptionRequirements.indoorOnly",
+          "value": true,
           "evidence": {
-            "start": 0,
-            "end": 333,
-            "sha256": "8f8be2fe3eae8172ecb80342ddb6b8f118a1148f32c4befd09ae54d1432e5ca4"
+            "start": 221,
+            "end": 260,
+            "sha256": "904ca289c24d97b785c2733d63e542e5ec5fceac75479a73397db625722f1a7c"
           },
           "reviewedBy": [
-            "/root",
-            "/root/manual_02"
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 587,
+            "end": 608,
+            "sha256": "a86b261668a39e4c291023b70421bbdc8a1b368fd6d80a3a3258346bb309f17e"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
           ]
         }
       ]
@@ -5343,6 +5699,19 @@
       "descriptionSha256": "fcfd52b2df6f043d4341a29f9aef32918ef6460a39f2ee03d8a802a1414b9b1a",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 275,
+            "end": 309,
+            "sha256": "0bb69d37d587f6fbcc526b29e5400672016492d894f3aab42cfb68de992a1e17"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Celje",
           "evidence": {
@@ -5363,6 +5732,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4973",
       "descriptionSha256": "a397a83009202a1600ede9cbc6f36e6ee768a04d2f8fadf45b2371e0a7bcb69b",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 51,
+            "end": 82,
+            "sha256": "8b18750adbab72e1881ed501bc06dfaf5a1e8ce4af86f1a3c7e9edbbbb89a1af"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Zagorje ob Savi",
@@ -5385,6 +5767,19 @@
       "descriptionSha256": "235ba2f7e42c65bc2cd0d74dcb2ef50566dac45c12bfce0b992a26a1263121df",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 72,
+            "end": 98,
+            "sha256": "f0ded9e9688e267d488fbe6956f8515695386111c2cd7ba3d865250ccc72004b"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Zagorje ob Savi",
           "evidence": {
@@ -5405,6 +5800,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4975",
       "descriptionSha256": "a8e01132ac276f4c236bf35c720860af4a493b3bca367af299666034cb0c60bd",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 293,
+            "end": 311,
+            "sha256": "c5b44a3d46164f39d1d2cc1cb1525044846e06bb57cd479a66ade7ba1e086a96"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Hramše",
@@ -5448,6 +5856,19 @@
       "descriptionSha256": "cbe96d4035fbdec5537f0aef765773ab87a841aa19a13ae6d7f8db74e8e7528f",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 27,
+            "end": 75,
+            "sha256": "65251044130d223225fbf58ff984a4f46983018f2519b562d336ae512a1f84c4"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Trnovlje",
           "evidence": {
@@ -5482,6 +5903,19 @@
           ]
         },
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 183,
+            "end": 202,
+            "sha256": "73bc64fc7b64b1b1da9b069941dfa9c92ca935efc30bd6518eaddd84f2445f03"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Zalog pri Šempetru",
           "evidence": {
@@ -5502,6 +5936,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4981",
       "descriptionSha256": "881700b401915260710e8f06e90c6a20429fc98c7c5baf944a662cbe99dc0a9b",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 73,
+            "end": 94,
+            "sha256": "6fe4f5a8c923cd611db5142d6c8c84f79176595ce0d3b6e62548f7e361dfb39e"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Griže",
@@ -5539,6 +5986,184 @@
       ]
     },
     {
+      "animalId": "macja-hisa:4985",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4985",
+      "descriptionSha256": "c4cc9b7a80a3463c2c4927296f6305d0d3d2bd134f914aa611961fdbc6a36b4c",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 33,
+            "end": 59,
+            "sha256": "b8192682612d170039cfa3f13da022c2e46b92f6db1ab51c98e0914cdc28a022"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Arja vas",
+          "evidence": {
+            "start": 61,
+            "end": 91,
+            "sha256": "a0f8c9a0c49afdccd73d4013213401418798706bb17334a2ea6277f62b074db3"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4986",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4986",
+      "descriptionSha256": "99d40e13259c193c0fb01e4974a27f29a1ade312e2d8f4d89eb49f4b1d00033c",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 44,
+            "end": 70,
+            "sha256": "a2a8c786916ef777bceb969cefeb9900f7c8bcab987e24a810a231cdb7a6e187"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 72,
+            "end": 100,
+            "sha256": "15f1b1bace74bcbbcb2242c34d6625b1a0e3864e96b194ad6201a158067531a6"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4987",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4987",
+      "descriptionSha256": "28d731fdfc5fb894c1bb1cc5e1fb91bcbccadb85df6706814b45cb79d0210750",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 27,
+            "end": 49,
+            "sha256": "8cabdb3b83b9d1491dfc308c5b0ca24e54b3f6fa58df5816519c764f1a02ccb7"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Polule",
+          "evidence": {
+            "start": 49,
+            "end": 80,
+            "sha256": "9fda0cbe6929ee03e3240006650bcc827db3320d538810bfb6addc7fd9ec186d"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macji-dol:1560",
+      "providerId": "macji-dol",
+      "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/amelija/",
+      "descriptionSha256": "7a9c0b750d7296ef92d6cc0e4e550140d10e4a6b0241e8cc71b0aec89aca239b",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 229,
+            "end": 278,
+            "sha256": "4ae6745586621f015d0537c190951d186b21b23e6464fb77ab266b24cabb53d0"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macji-dol:1561",
+      "providerId": "macji-dol",
+      "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/__trashed/",
+      "descriptionSha256": "875af4bc7fc345cbb63ccf4d5f7abe37951e0c761aa1744f8ef48dbd722d7ca4",
+      "claims": [
+        {
+          "field": "adoptionRequirements.bondedPair",
+          "value": true,
+          "evidence": {
+            "start": 916,
+            "end": 958,
+            "sha256": "e92bbd460b906e0f347c39fd37746393fea1ea27ce2e304530ed9fe601aee8a8"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "medical.felv",
+          "value": "positive",
+          "evidence": {
+            "start": 125,
+            "end": 163,
+            "sha256": "b195a705939ae6c5ca16f90960f02500bf64c69b5e31f08b84600d5db71536f6"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macji-dol:1565",
+      "providerId": "macji-dol",
+      "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/__trashed-5/",
+      "descriptionSha256": "17d62f57eaddb09a1320e16969675900730340828415362b13b5116155dc6606",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 271,
+            "end": 301,
+            "sha256": "9170f5be5ddc04fedee8d0f2eef65c0b61ac36ab41e33b2aaf46dd1fa11c190a"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
       "animalId": "macji-dol:2628",
       "providerId": "macji-dol",
       "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/vojko/",
@@ -5567,6 +6192,19 @@
       "descriptionSha256": "a5d3a95a555b9e6800afee851fd29365c6e242d8c5ed71c3d84580383790cf0c",
       "claims": [
         {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 494,
+            "end": 597,
+            "sha256": "990aa12b820202a9a4eb13a9d980d17e4b4d69ea7ab8ed0de98cc3bd5a7815b5"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
           "field": "energy",
           "value": "calm",
           "evidence": {
@@ -5577,6 +6215,200 @@
           "reviewedBy": [
             "/root/manual_02",
             "/root/manual_01",
+            "/root"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 494,
+            "end": 597,
+            "sha256": "990aa12b820202a9a4eb13a9d980d17e4b4d69ea7ab8ed0de98cc3bd5a7815b5"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macji-dol:2727",
+      "providerId": "macji-dol",
+      "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/paco/",
+      "descriptionSha256": "94a10bae9c085d48bc98d9e62a8ec53dc909926a24ff3e3f285a6cfd12cf6535",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 74,
+            "end": 102,
+            "sha256": "6db99a7c552a81f9a523ee0c9e0e2f7207e80f94d9425a2e0b4bed6070019434"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macji-dol:3014",
+      "providerId": "macji-dol",
+      "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/mira-jr/",
+      "descriptionSha256": "6275f03c53c0068e332ea5848a97950195d81fca8fbc527a65b7e9c821b22f72",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 76,
+            "end": 92,
+            "sha256": "5067af1be545e2d9aacc448fab7b85ddca841c67e0c96f72c42c032ef7abf211"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macji-dol:409",
+      "providerId": "macji-dol",
+      "sourceUrl": "https://www.macji-dol.si/mucki-iscejo-dom/mojca/",
+      "descriptionSha256": "dfc0d29e9e6bd603f3c5d0bc4261350f0c4d0b5c94d10554d4267c1ffdcce268",
+      "claims": [
+        {
+          "field": "adoptionRequirements.bondedPair",
+          "value": true,
+          "evidence": {
+            "start": 368,
+            "end": 437,
+            "sha256": "3a1002d5a963c377048e7ea86e2f208b1ec00d0b9585997fc83e9b574931ee38"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "mala-hisa:958",
+      "providerId": "mala-hisa",
+      "sourceUrl": "https://zavetisce-malahisa.si/psi_za_oddajo/rocky/",
+      "descriptionSha256": "8f35cba3bc1c7e3338efc5c6c41a0616ad9f4476aedb8ad6f5e025bab2f0f9f6",
+      "claims": [
+        {
+          "field": "breed",
+          "value": "kavkaški ovčar",
+          "evidence": {
+            "start": 38,
+            "end": 56,
+            "sha256": "3992ee7752d238d239cd75063934864b3c6f75d2f8d182ba2200e059de4dcd1b"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        },
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 124,
+            "end": 134,
+            "sha256": "b7b37ff396ff322bddfd3e0f4b1a498c26b5a6545604f3d21dda0ad1ca5d3fd2"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:100",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=100",
+      "descriptionSha256": "ec1bfd33145c23149d17778f18046baa92771b37ac60ceb7c7e78d012a7c19e2",
+      "claims": [
+        {
+          "field": "breed",
+          "value": "pitbull",
+          "evidence": {
+            "start": 20,
+            "end": 27,
+            "sha256": "1c567a2ff1b9397ded28f921f1241db838cc2c1eda306341bde38977701e2852"
+          },
+          "reviewedBy": [
+            "/root/luna_review_034_066",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:113",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=113",
+      "descriptionSha256": "cfd35fb48d0ac2bb25279bf2f262efd5297744458524eedf8aa0da933e4596d3",
+      "claims": [
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 7,
+            "end": 24,
+            "sha256": "d2e198af9624febda485664217974fbffd1577ed0c3bc11af660faf2fb954e7d"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:116",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=116",
+      "descriptionSha256": "e87978e37fecf6c1a4e715133a22f5c357925fc9cc3870a7ef1727c11ecddaf4",
+      "claims": [
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 7,
+            "end": 24,
+            "sha256": "d2e198af9624febda485664217974fbffd1577ed0c3bc11af660faf2fb954e7d"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:25",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=25",
+      "descriptionSha256": "4d6da22ce810d7624b0d29546decd82f444a567f49fa64f7f4b49749ada7a196",
+      "claims": [
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 60,
+            "end": 72,
+            "sha256": "86ed215eb5bdf5963d607da6193e402cb9faeb2ac22f4506b05749015602b2ad"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
             "/root"
           ]
         }
@@ -5814,6 +6646,32 @@
           "reviewedBy": [
             "/root/manual_02",
             "/root/manual_01",
+            "/root"
+          ]
+        },
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 605,
+            "end": 618,
+            "sha256": "b99fd86b3286366b34636a57a7c9e9f40c6c2014cd323bc6b9a1277a06b5d62a"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 132,
+            "end": 151,
+            "sha256": "27ebff86a188e37f95df2002fc5fef19b668d2754304a78d6162ecdd2a55315f"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
             "/root"
           ]
         }
@@ -6218,6 +7076,19 @@
             "luna-b",
             "lead"
           ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 849,
+            "end": 876,
+            "sha256": "f5e220cd862ba1f75520d8ce109fb166348567e3e3c81eb29cb83a9710251c86"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
         }
       ]
     },
@@ -6264,6 +7135,19 @@
       "descriptionSha256": "268cf6a25f0790e3b61cca985ce3843d01fb2a687e70134c019cfdb14c5991fa",
       "claims": [
         {
+          "field": "apartmentOk",
+          "value": "yes",
+          "evidence": {
+            "start": 554,
+            "end": 580,
+            "sha256": "3ac70e1d19281e3510c5693dbf8a17319dba24a58a26b2511179fb5c1327bbd0"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
           "field": "energy",
           "value": "lively",
           "evidence": {
@@ -6274,6 +7158,32 @@
           "reviewedBy": [
             "/root",
             "/root/review_wave_a"
+          ]
+        },
+        {
+          "field": "medical.neutered",
+          "value": true,
+          "evidence": {
+            "start": 152,
+            "end": 162,
+            "sha256": "8bfed7abe1964e78e5c85a7fa02dd8a3a4ad8755803fd71c066b0febb7574005"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 8,
+            "sha256": "0c4be9efe5e433891fa360cf3a0574173d20ae12d7108d123887cab9d5057bde"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
           ]
         }
       ]
@@ -6306,6 +7216,19 @@
       "descriptionSha256": "1ea19d92a91eb6c97e1c24a97d4537a65c9eb013d1ac73704437c1f8720909ae",
       "claims": [
         {
+          "field": "adoptionRequirements.experiencedCarer",
+          "value": true,
+          "evidence": {
+            "start": 547,
+            "end": 596,
+            "sha256": "3caa63340495c0cbec0c9122e623beb173a0ac9f1cbabc717c417049afe5d3e0"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
           "field": "goodWith.cats",
           "value": "yes",
           "evidence": {
@@ -6316,6 +7239,87 @@
           "reviewedBy": [
             "/root/manual_01",
             "/root/review_wave_a",
+            "/root"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "no",
+          "evidence": {
+            "start": 601,
+            "end": 634,
+            "sha256": "2ac22ac53c2298b689055c74a583ed0c4922197d7bb45cc4f48fcde614b5ca20"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 8,
+            "end": 32,
+            "sha256": "0afce0a6e6f7c0e5b300a9b1c95c4c47f6e705175b6c6c98e6c10e151dae300c"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17546",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/raffaelo-2",
+      "descriptionSha256": "905ed303367b4ad338b3f67ba1a6c25e607136319816cfcf87f3224a6e2b627b",
+      "claims": [
+        {
+          "field": "medical.felv",
+          "value": "positive",
+          "evidence": {
+            "start": 105,
+            "end": 119,
+            "sha256": "dd82671c03f1674cbfeb3bf12c71edd08ff150117282cdfffe205654475e07d7"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 449,
+            "end": 459,
+            "sha256": "a2a0df3cc12f96c4de2293caa5fdd9eb72d5f2eaafac5e7db7877058ad91a77d"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17551",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/dusty-2",
+      "descriptionSha256": "c156628ab944436c25932f88c6f00a4971865c40bcee2a3578d866ff18230f0a",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 967,
+            "end": 988,
+            "sha256": "5a7800016e7fcc071119ce43a55dde84f3b791ca052645e430f08e636f1e44a6"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
             "/root"
           ]
         }
@@ -6339,6 +7343,27 @@
             "luna-a",
             "luna-b",
             "lead"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:17798",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/romeo",
+      "descriptionSha256": "d0b5596ed7609b7f6a7b8500d10a65a88e206fcc01016d18cd16dd5a9aecddcc",
+      "claims": [
+        {
+          "field": "goodWith.kids",
+          "value": "no",
+          "evidence": {
+            "start": 575,
+            "end": 608,
+            "sha256": "10dc7e8e47603a5fd71a31b79758c8a52ba95129428abdb661241c8e4e6f3ed8"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
           ]
         }
       ]
@@ -6446,6 +7471,98 @@
       ]
     },
     {
+      "animalId": "muri:18053",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/mama-meti",
+      "descriptionSha256": "5537f0620d2da32beb918de725e26de9e962b2d9d58fbf0dec365435a94c1d60",
+      "claims": [
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 951,
+            "end": 988,
+            "sha256": "321ab7df2353f175bd355a206106fe3965af20fa52249db8800c72d0d3a71f30"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18057",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/komarcek",
+      "descriptionSha256": "560d519afec31a95bd8ecd800e5164b17d12861e10d7e7566908ee67e61d2eba",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 266,
+            "end": 288,
+            "sha256": "83e7a0f2db09bc33ae85be563f4f0b542b7ec38328543cbba6dfc772305a8f11"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 821,
+            "end": 858,
+            "sha256": "321ab7df2353f175bd355a206106fe3965af20fa52249db8800c72d0d3a71f30"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18060",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/timijan",
+      "descriptionSha256": "231f71d5aaf07ce8c930ee451d76e4903e2789c1f0d60089a134966935cd2fd1",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 264,
+            "end": 286,
+            "sha256": "83e7a0f2db09bc33ae85be563f4f0b542b7ec38328543cbba6dfc772305a8f11"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 818,
+            "end": 855,
+            "sha256": "321ab7df2353f175bd355a206106fe3965af20fa52249db8800c72d0d3a71f30"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
       "animalId": "muri:18063",
       "providerId": "muri",
       "sourceUrl": "https://zavodmuri.si/Project/bazilika",
@@ -6463,6 +7580,20 @@
             "luna-a",
             "luna-b",
             "lead"
+          ]
+        },
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 831,
+            "end": 868,
+            "sha256": "321ab7df2353f175bd355a206106fe3965af20fa52249db8800c72d0d3a71f30"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
           ]
         }
       ]
@@ -6486,6 +7617,20 @@
             "luna-b",
             "lead"
           ]
+        },
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 822,
+            "end": 859,
+            "sha256": "321ab7df2353f175bd355a206106fe3965af20fa52249db8800c72d0d3a71f30"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
         }
       ]
     },
@@ -6507,6 +7652,20 @@
             "luna-a",
             "luna-b",
             "lead"
+          ]
+        },
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 825,
+            "end": 862,
+            "sha256": "321ab7df2353f175bd355a206106fe3965af20fa52249db8800c72d0d3a71f30"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
           ]
         }
       ]
@@ -6866,6 +8025,69 @@
       ]
     },
     {
+      "animalId": "turk:2687",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2023/03/01/trina/",
+      "descriptionSha256": "3d86cffff0d78003cfc753714a9d16432809b1053ec7cd4081f8d488363fc2c5",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 52,
+            "end": 189,
+            "sha256": "3f0e966bc09a4c2bc770eeaaeb37b4457ec1037c22e6582b935ee4270f89dc5a"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:2692",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2023/01/01/pupa/",
+      "descriptionSha256": "6c79c781042b336525072ad595a017ef9e9f4c48e47cc6b5d0f86e5b0e0b6c1a",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 137,
+            "end": 166,
+            "sha256": "4e449a3c412600e3d9f0b29a5772639b259611b2469542faedbea4eb0592134d"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:2704",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2023/01/01/penelope/",
+      "descriptionSha256": "611df4858cd69c87bdde4a1d7454a1c6ff56b90c454a1da1ad886190896ab81c",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 141,
+            "end": 255,
+            "sha256": "65eeea9e737d6aaae39fbf29cbddd2b1b8157c1dff9e0aa1110ac0071a0cbe69"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
       "animalId": "turk:3326",
       "providerId": "turk",
       "sourceUrl": "https://zavetisceturk.com/index.php/2023/09/24/biba/",
@@ -6920,6 +8142,40 @@
             "/root/manual_02",
             "/root"
           ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 31,
+            "end": 112,
+            "sha256": "117937f5e08bf0692707e8736c02a31e01a0b39b93e768940f73a6e0a3ec5fbe"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:3747",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2025/03/01/snofka/",
+      "descriptionSha256": "03d718812c67ae098bc908097691af9b3ad03e594646966d5e069d5f3653dad4",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 138,
+            "sha256": "ae388a69721e6991f77cccf9e02fb480264f203e95a627e15f427b2add3fa306"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
         }
       ]
     },
@@ -6940,6 +8196,116 @@
           "reviewedBy": [
             "/root/review_wave_a",
             "/root/manual_02",
+            "/root"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 116,
+            "end": 212,
+            "sha256": "2868f1402037f3c4365c5d84727b861ee49357ea08af0feaa3e820b213b8206f"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:3850",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2025/07/16/cruz/",
+      "descriptionSha256": "95aad99ad9d9fc91f8676ac923a24b4f292d75d1cd5c9029e88d0905384da2d7",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 93,
+            "end": 160,
+            "sha256": "93da0e8f529ec4227e89fde030c1002b08da1cea2cc4905b8a3ecacf3d123167"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:3889",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2025/07/27/rui/",
+      "descriptionSha256": "f57dc0f6474d721243776ed3238479601341e6ff9f7381355e6d59614a66325b",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 191,
+            "end": 283,
+            "sha256": "f56504ec000d0f8e532e67a536319aa415542bc15351a81a2b71ddc51ce35180"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:4130",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2026/02/20/max-2/",
+      "descriptionSha256": "a4901c2efad26aaa564a1a0b2629c21f911b26bdc296d765f2fba99ffe051d4e",
+      "claims": [
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 21,
+            "end": 40,
+            "sha256": "29976918a871e30ce9732473ad6f106e22e382ac5c07acc67f59edb42cec0830"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "turk:4194",
+      "providerId": "turk",
+      "sourceUrl": "https://zavetisceturk.com/index.php/2026/08/23/don/",
+      "descriptionSha256": "689d25f02ad22ee0747046a364b747e7ed52c46be21c12c62c5bcefbd5565eca",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 84,
+            "end": 131,
+            "sha256": "f07ecaf16a850ef730b395b7c137aba7ab664235c12f05bcdcb75df6336743ff"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
+            "/root"
+          ]
+        },
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 14,
+            "end": 27,
+            "sha256": "0366235078633fcacd37f8808e617056f8729d360053f998079b4045222154f6"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
             "/root"
           ]
         }

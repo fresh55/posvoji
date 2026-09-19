@@ -61,6 +61,13 @@ audit record, not an instruction to populate unknown values or impersonate
 shelter staff. Its known/unknown field lists reflect the resulting permitted
 dataset. The enrichment manifest remains the only publication input.
 
+Photo reviews in that audit identify the reviewer and the inspected images by
+source URL and SHA-256 of the permitted cached bytes. A photo can corroborate
+visible species or flag an identity mismatch; it does not establish breed,
+precise age, sex, health, temperament or compatibility. A listing with no usable
+photo is recorded as unavailable, not visually verified. The review uses up to
+two representative photos per listing and records exactly those images.
+
 `overrides.json.enrichment` records applied fields and skipped claims; reasons
 include changed evidence, source changes, permission, an existing answer and a
 shelter correction. `crawl-manifest.json.enrichmentRevision` binds the reviewed
@@ -80,6 +87,13 @@ Run `pnpm check` before release. Enrichment tests cover stale evidence, permissi
 existing answers, species constraints, raw snapshot separation and portal
 precedence. Filter tests cover explicit true versus absent/false, real counts,
 shared URL filters and zero-result controls that remain removable.
+
+Publication regression tests also serialize the raw snapshot and review input,
+then verify a carried run and a fresh crawl both reapply reviewed additions and
+explicit corrections. A changed description withdraws stale claims on the next
+crawl, and a later carried run cannot resurrect them. Persistence means that
+routine crawls do not erase valid reviews; it does not freeze a fact after the
+shelter changes its evidence, permissions or correction.
 
 The public filters show all applicable options with their real counts. A zero
 means no confirmed matching records, not proof that no animal has that property.

@@ -175,4 +175,61 @@ describe("reviewed description enrichment", () => {
     expect(publish({ energy: "lively" }).overridden[0]?.energy).toBe("lively");
     expect(publish({ shortDescription: "Revised by shelter." }).overridden[0]?.energy).toBeUndefined();
   });
+
+  it("reapplies reviewed facts and corrections after saved carry-over and a fresh crawl", () => {
+    const reviewed = manifest();
+    reviewed.records[0]!.claims.push({
+      ...reviewed.records[0]!.claims[0]!,
+      field: "goodWith.cats", value: "yes", replaces: "unknown",
+      evidence: { start: 15, end: description.length, sha256: evidenceHash(description.slice(15)) },
+    });
+    function publish(crawled: Animal[], previousAnimals: Animal[], fresh: boolean) {
+      return preparePublication({
+        crawled, previousAnimals, listingAnimals: [],
+        policies: [{ dir: "fixture", policy }], policyById: policies,
+        portalPayload: null, enrichment: EnrichmentManifest.parse(JSON.parse(JSON.stringify(reviewed))),
+        crawledProviderIds: new Set(fresh ? ["fixture"] : []),
+        logger: { log() {}, warn() {} },
+      });
+    }
+    const first = publish([animal({ goodWith: { cats: "unknown" } })], [], true);
+    // The next process reads the saved raw snapshot, never its enriched output.
+    const saved: Animal[] = JSON.parse(JSON.stringify(first.crawledSnapshot));
+    const carried = publish([], saved, false);
+    const later = "2026-09-20T10:00:00.000Z";
+    const fresh = publish([animal({
+      goodWith: { cats: "unknown" },
+      source: { ...animal().source, fetchedAt: later, lastSeenAt: later },
+    })], carried.crawledSnapshot, true);
+    for (const result of [first, carried, fresh]) {
+      expect(result.overridden[0]?.energy).toBe("calm");
+      expect(result.overridden[0]?.goodWith?.cats).toBe("yes");
+      expect(result.crawledSnapshot[0]?.energy).toBeUndefined();
+      expect(result.crawledSnapshot[0]?.goodWith?.cats).toBe("unknown");
+      expect(result.enrichmentResult?.issues).toEqual([]);
+    }
+    expect(carried.overridden[0]?.source.fetchedAt).toBe(NOW);
+    expect(fresh.overridden[0]?.source.fetchedAt).toBe(later);
+    expect(fresh.overridden[0]?.source.firstSeenAt).toBe(NOW);
+  });
+
+  it("withdraws a stale reviewed fact on the next crawl and does not carry it back", () => {
+    function publish(crawled: Animal[], previousAnimals: Animal[], fresh: boolean) {
+      return preparePublication({
+        crawled, previousAnimals, listingAnimals: [],
+        policies: [{ dir: "fixture", policy }], policyById: policies,
+        portalPayload: null, enrichment: manifest(),
+        crawledProviderIds: new Set(fresh ? ["fixture"] : []),
+        logger: { log() {}, warn() {} },
+      });
+    }
+    const first = publish([animal()], [], true);
+    expect(first.overridden[0]?.energy).toBe("calm");
+    const changed = publish([animal({ shortDescription: "Novi opis: potrebuje veliko gibanja." })], first.crawledSnapshot, true);
+    const carried = publish([], JSON.parse(JSON.stringify(changed.crawledSnapshot)), false);
+    for (const result of [changed, carried]) {
+      expect(result.overridden[0]?.energy).toBeUndefined();
+      expect(result.enrichmentResult?.issues).toEqual([{ animalId: "fixture:1", reason: "source-changed" }]);
+    }
+  });
 });

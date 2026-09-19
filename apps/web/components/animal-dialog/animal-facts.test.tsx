@@ -14,7 +14,7 @@ import type { Locale } from "@/lib/i18n";
 // The dialog fetches the shelter's text for an animal that arrived without
 // one, so every render here has a file to read. Empty by default: a test that
 // wants the fallback says so.
-function serving(descriptions: Record<string, string> = {}) {
+function serving(descriptions: Record<string, { description: string }> = {}) {
   const fetch = vi.fn(async () => ({
     ok: true,
     json: async () => descriptions,
@@ -479,7 +479,7 @@ describe("the shelter's own description", () => {
   // The animal's own page is server-rendered from a whole dataset animal, so
   // the text is already in the markup and there is nothing to go and get.
   it("prints the animal's own description without fetching", () => {
-    const fetch = serving({ a1: "Kar je prišlo iz datoteke." });
+    const fetch = serving({ a1: { description: "Kar je prišlo iz datoteke." } });
 
     renderFacts({ shortDescription: DESCRIPTION });
 
@@ -490,7 +490,7 @@ describe("the shelter's own description", () => {
   // The grid's dialog, where the home page no longer ships 503 descriptions
   // to print at most one. See lib/animal-descriptions.ts.
   it("fetches the text for an animal that arrived without one", async () => {
-    serving({ a1: DESCRIPTION });
+    serving({ a1: { description: DESCRIPTION } });
 
     renderFacts();
 
@@ -499,7 +499,7 @@ describe("the shelter's own description", () => {
   });
 
   it("draws no paragraph when neither the animal nor the file has one", async () => {
-    serving({ a2: DESCRIPTION });
+    serving({ a2: { description: DESCRIPTION } });
 
     renderFacts();
     // Awaited, so this is the answer after the file landed and not the same
@@ -515,7 +515,7 @@ describe("the shelter's own description", () => {
   // The clamp measures whatever is on screen, wherever it came from.
   it("clamps a long fetched description the same as an inline one", async () => {
     const long = "Zelo prijazna muca. ".repeat(20).trim();
-    serving({ a1: long });
+    serving({ a1: { description: long } });
 
     renderFacts();
 

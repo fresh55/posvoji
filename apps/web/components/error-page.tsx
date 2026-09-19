@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { getMessages, type Locale } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { labelMessages } from "@/lib/label-messages";
 import { MUTED_LINK } from "@/lib/link-styles";
 import { homePath } from "@/lib/shelter-path";
 import { CONTENT_ID } from "@/lib/skip-link";
@@ -43,7 +44,7 @@ export function ErrorPage({
     console.error(error);
   }, [error]);
 
-  const messages = getMessages(locale);
+  const messages = labelMessages[locale];
 
   return (
     // The same frame as every other page, spelled out here rather than drawn

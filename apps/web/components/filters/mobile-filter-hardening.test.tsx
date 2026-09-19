@@ -140,7 +140,7 @@ const SEX_GROUP: FiltersProps = {
 };
 
 describe("mobile filter hardening", () => {
-  it("spans the 320px viewport and shares the dock between both actions", () => {
+  it("spans the 320px viewport and shares the dock between both actions", async () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
       value: 320,
@@ -153,7 +153,7 @@ describe("mobile filter hardening", () => {
     const dock = container.querySelector('[data-slot="mobile-filter-dock"]');
     expect(dock).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Filters, 1 active" }),
+      await screen.findByRole("button", { name: "Filters, 1 active" }),
     ).toBeTruthy();
 
     // Both actions are in the dock, and each is a direct child, which is what
@@ -290,7 +290,7 @@ describe("mobile filter hardening", () => {
     ) as HTMLElement;
     expect(within(mobileToolbar).queryByRole("combobox")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filters, 1 active" }));
 
     expect(await screen.findByRole("combobox")).toBeTruthy();
   });
@@ -500,7 +500,7 @@ describe("mobile filter hardening", () => {
       activeCount: 1,
       resultCount: 3,
     });
-    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filters, 1 active" }));
     const dialog = await screen.findByRole("dialog");
     const section = within(dialog).getByRole("button", { name: /^Size/ });
     expect(section.getAttribute("aria-expanded")).toBe("true");
@@ -608,7 +608,7 @@ describe("mobile filter hardening", () => {
     });
 
     // The trigger names its count once a filter is on (filtersWithCount).
-    fireEvent.click(screen.getByRole("button", { name: "Filters, 1 active" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Filters, 1 active" }));
 
     const dialog = await screen.findByRole("dialog");
     // The premise: the pill is on screen beside the footer being argued about.

@@ -3,6 +3,9 @@
 // into coordinates, using the postal-district table in lib/postal-districts.ts.
 import { cityKey, type LatLon } from "./geo";
 import { POSTAL_DISTRICTS, type PostalDistrict } from "./postal-districts";
+import { postcodeIn } from "./postcode-input";
+
+export { looksLikePostcode } from "./postcode-input";
 
 export type PostalMatch = { at: LatLon; label: string; code: string };
 
@@ -78,25 +81,6 @@ function findByKey(key: string): PostalDistrict | undefined {
 
   const districts = new Set(prefixed.map((entry) => entry.district));
   return districts.size === 1 ? prefixed[0].district : undefined;
-}
-
-// A pasted address carries its postcode next to the town: "1000 Ljubljana",
-// "Ljubljana 1000", "SI-1000". The four digits are the precise half of all
-// three, so they are what we read, and the rest is left alone. Anything that is
-// not exactly four digits long is not a postcode and falls through to the name
-// lookup.
-const POSTCODE = /(?:^|\D)(\d{4})(?:\D|$)/;
-
-function postcodeIn(text: string): string | undefined {
-  const stripped = text.replace(/^si[-\s]?/i, "");
-  return POSTCODE.exec(stripped)?.[1];
-}
-
-/** Whether the input reads as an attempt at a postcode at all. The picker uses
- *  it to choose which "not found" it says, so a wrong number is not answered
- *  with advice to try a number. */
-export function looksLikePostcode(input: string): boolean {
-  return postcodeIn(input.trim()) !== undefined;
 }
 
 /** Whether some district name starts with, but is longer than, what is typed.

@@ -6,7 +6,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import { Badge } from "@/components/ui/badge";
 import type { Locale } from "@/lib/i18n";
-import { type CatReaction, createCatInteraction } from "@/lib/cat-interaction";
+import type { CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
@@ -266,7 +266,10 @@ export const CatModel = memo(function CatModel({
       const modelUrl = attempt ? `${MODEL}&retry=${attempt}` : MODEL;
       askForHim(modelUrl);
       try {
-        const { ModelViewerElement: Viewer } = await import("@google/model-viewer");
+        const [{ ModelViewerElement: Viewer }, { createCatInteraction }] = await Promise.all([
+          import("@google/model-viewer"),
+          import("@/lib/cat-interaction"),
+        ]);
         if (disposed) return;
         // Postpone WebGL setup if the viewport or tab changed during the import.
         if (!visible || document.hidden) { started = false; return; }

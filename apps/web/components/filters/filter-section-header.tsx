@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { cn } from "@/lib/utils";
 
 /** Everything a section needs to fold: whether it is open, how to flip that,

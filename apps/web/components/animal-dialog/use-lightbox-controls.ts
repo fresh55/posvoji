@@ -1,5 +1,5 @@
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import type { PermittedPhoto } from "@/lib/animal-images";
 import {
   MIN_SWIPE_PX,

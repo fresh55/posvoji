@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Hourglass } from "lucide-react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { thumbnailUrl } from "@/lib/animal-images";
 import { speciesLabel } from "@/lib/labels";

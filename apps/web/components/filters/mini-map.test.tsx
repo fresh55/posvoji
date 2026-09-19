@@ -9,7 +9,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Celebration } from "@/components/filters/use-filter-motion";
-import { cityAt } from "@/lib/geo";
+import { CITIES, cityAt, project } from "@/lib/geo";
+import { MINI_OUTLINE_PATH, MINI_REGION_PATHS, regionAt } from "@/lib/map-regions";
+import data from "@/lib/mini-map-data.json";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
   groupTownsByRegion,
@@ -312,4 +314,13 @@ describe("MiniMap celebration pulse", () => {
   // late to change what the hook already latched onto. The gate itself
   // mirrors the same useReducedMotion() guard every other filter celebration
   // in this codebase uses (SizePawCards, AgeGrowthControl).
+});
+
+
+it("keeps the generated thumbnail aligned with every supported town and the full map", () => {
+  expect(data.outline).toBe(MINI_OUTLINE_PATH);
+  expect(data.regions).toEqual([...MINI_REGION_PATHS].map(([id, path]) => ({ id, path })));
+  for (const at of Object.values(CITIES)) {
+    expect((data.cityRegions as Record<string, number>)[`${at.lat},${at.lon}`]).toBe(regionAt(project(at))?.id);
+  }
 });

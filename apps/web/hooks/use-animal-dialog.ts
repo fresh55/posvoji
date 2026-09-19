@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { AnimalFields } from "@/lib/animal";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import {
   animalPath,
   animalSlugFromPath,

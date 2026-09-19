@@ -1,6 +1,9 @@
+import { labelMessages } from "./label-messages";
+import { interpolate } from "./i18n-format";
 export type Locale = "sl" | "en";
 
 const sl = {
+  ...labelMessages.sl,
   metadataDescription:
     "Odprt indeks živali iz slovenskih zavetišč, ki iščejo dom. Vsaka žival z jasnim virom in povezavo na zavetišče.",
   githubTitle: "Cepljena, sterilizirana, brez znanih napak.",
@@ -80,11 +83,11 @@ const sl = {
   backToTop: "Na vrh strani",
   /** The root crumb. The site root is the animal grid, so the trail names it
    *  as the place it is rather than as an abstract "home". */
-  allAnimals: "Vse živali",
+
   notFoundTitle: "Stran ne obstaja",
   notFoundBody: "Povezava je morda napačna ali stran ni več na voljo.",
-  errorTitle: "Nekaj je šlo narobe",
-  tryAgain: "Poskusi znova",
+
+
   resources: "Strokovno preverjeni viri",
   shelters: "Zavetišča",
   about: "O nas",
@@ -138,25 +141,23 @@ const sl = {
   // grid whose default order is the longest wait first was read as the wait,
   // and the wait mark stays off under that very sort, so the word is what
   // says which of the two numbers this is.
-  cardAge: "starost {age}",
-  factStayValue: "V zavetišču: {duration}",
+
+
   // The name in front turns a statistic into one animal's wait. "Čaka" is
   // third person singular and carries no gender, so it fits any name without
   // the sentence having to know the animal's sex.
-  longStay: "{name} v zavetišču čaka že {duration}.",
+
   // "Brez imena v zavetišču čaka" reads as a phrase, not as a subject, so an
   // animal the shelter left unnamed keeps the sentence it had.
-  longStayUnnamed: "V zavetišču čaka že {duration}.",
+
   // For an animal that came in before its first birthday, the age fact and
   // the plea print the same number. Both name themselves now, so the repeat
   // no longer reads as a bug; the tail says the thing the two numbers only
   // imply. "Skoraj", because the gate is an arrival age under a year, not a
   // birth in the shelter. stayStatement in lib/labels.ts picks between these
   // four.
-  longStayWholeLife:
-    "{name} v zavetišču čaka že {duration}, skoraj vse svoje življenje.",
-  longStayWholeLifeUnnamed:
-    "V zavetišču čaka že {duration}, skoraj vse svoje življenje.",
+
+
   // A label, not a plea. The dialog's longStay above is the plea, and it has a
   // sentence, the animal's name and the listing button beside it: that is
   // where it can do something. On a card the same words repeat twenty times a
@@ -194,7 +195,7 @@ const sl = {
   hintBrezFiv:
     "Testirana negativno na mačji virus imunske pomanjkljivosti (FIV).",
   hintBrezFelv: "Testirana negativno na virus mačje levkemije (FeLV).",
-  statusAvailable: "na voljo",
+
   // Neuter impersonal, not masculine adjectives. filters.ts states the rule for
   // the toggles ("Slovenian would force a gender on 'cepljen' that 'živali'
   // doesn't share") and these three were the place it was not applied, on a
@@ -203,11 +204,11 @@ const sl = {
   //
   // statusHold loses "trenutno": at 11px the old string was wider than a phone
   // card's whole content box, and the shorter one says the same thing.
-  statusReserved: "rezervirano",
-  statusAdopted: "posvojeno",
-  statusHold: "ni za posvojitev",
-  lessThanMonth: "manj kot mesec",
-  unnamed: "Brez imena",
+
+
+
+
+
   animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
   resultsHeading: "Živali",
   skipResults: "Preskoči seznam živali",
@@ -593,9 +594,9 @@ const sl = {
   goodWithTailDogs: "psi",
   goodWithTailCats: "mačkami",
   goodWithJoiner: "in",
-  goodWithChipKids: "Doma: otroci",
-  goodWithChipDogs: "Doma: pes",
-  goodWithChipCats: "Doma: mačka",
+
+
+
   goodWithYesKids: "Se razume z otroki",
   goodWithYesDogs: "Se razume s psi",
   goodWithYesCats: "Se razume z mačkami",
@@ -638,6 +639,7 @@ const sl = {
 export type Messages = { [Key in keyof typeof sl]: string };
 
 const en: Messages = {
+  ...labelMessages.en,
   metadataDescription:
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
@@ -664,11 +666,11 @@ const en: Messages = {
   skipToContent: "Skip to content",
   breadcrumbNav: "Breadcrumb",
   backToTop: "Back to top",
-  allAnimals: "All animals",
+
   notFoundTitle: "Page not found",
   notFoundBody: "The link may be wrong, or the page is no longer here.",
-  errorTitle: "Something went wrong",
-  tryAgain: "Try again",
+
+
   resources: "Trusted animal-care resources",
   shelters: "Shelters",
   about: "About",
@@ -702,14 +704,12 @@ const en: Messages = {
   factSize: "Size",
   factTimeInShelter: "In the shelter",
   factAgeValue: "Age: {age}",
-  cardAge: "{age} old",
-  factStayValue: "In the shelter: {duration}",
-  longStay: "{name} has been waiting in the shelter for {duration}.",
-  longStayUnnamed: "At the shelter for {duration} now.",
-  longStayWholeLife:
-    "{name} has been waiting in the shelter for {duration}, almost its whole life.",
-  longStayWholeLifeUnnamed:
-    "At the shelter for {duration} now, almost its whole life.",
+
+
+
+
+
+
   longStayMark: "Waiting {duration}",
   healthAllClear: "Vet care complete",
   healthUnknownFivFelv: "No data on FIV and FeLV",
@@ -723,12 +723,12 @@ const en: Messages = {
   hintCip: "The animal is microchipped.",
   hintBrezFiv: "Tested negative for feline immunodeficiency virus (FIV).",
   hintBrezFelv: "Tested negative for feline leukemia virus (FeLV).",
-  statusAvailable: "available",
-  statusReserved: "reserved",
-  statusAdopted: "adopted",
-  statusHold: "not available",
-  lessThanMonth: "less than a month",
-  unnamed: "Unnamed",
+
+
+
+
+
+
   animalsComingSoon: "Animals will appear here when the first shelters join.",
   resultsHeading: "Animals",
   skipResults: "Skip the list of animals",
@@ -912,9 +912,9 @@ const en: Messages = {
   goodWithTailDogs: "dogs",
   goodWithTailCats: "cats",
   goodWithJoiner: "and",
-  goodWithChipKids: "Home: kids",
-  goodWithChipDogs: "Home: dog",
-  goodWithChipCats: "Home: cat",
+
+
+
   goodWithYesKids: "Good with kids",
   goodWithYesDogs: "Good with dogs",
   goodWithYesCats: "Good with cats",
@@ -953,38 +953,7 @@ export function getMessages(locale: Locale): Messages {
   return messages[locale];
 }
 
-/**
- * The `lang` a quoted string needs, or nothing when the page already says it.
- *
- * The site prints text it did not write in either language: a shelter's own
- * description and attribution, which are always Slovenian and appear on the
- * English pages too, and the resource titles, which are mostly English and sit
- * on a Slovenian page. Unmarked, a screen reader voices all of it with the
- * page's phonemes, which for a paragraph of Slovenian read as English is not
- * an accent but an unintelligible one.
- *
- * Marked only where it says something. `lang` on every one of them would
- * repeat what `<html lang>` already states, and an attribute that is always
- * there is one nobody notices is wrong.
- */
-export function quotedLang(
-  textLocale: Locale,
-  pageLocale: Locale,
-): Locale | undefined {
-  return textLocale === pageLocale ? undefined : textLocale;
-}
-
-// Fills {name} placeholders. Exported because the portal keeps its own
-// Slovenian-only strings outside Messages but writes placeholders the same way.
-export function interpolate(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
-    template,
-  );
-}
+export { quotedLang, interpolate } from "./i18n-format";
 
 export function translate(
   locale: Locale,

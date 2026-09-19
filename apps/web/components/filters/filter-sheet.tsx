@@ -3,7 +3,7 @@
 import { SlidersHorizontal, Undo2, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { ResultCount } from "@/components/filters/result-count";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { RemovableChips, type Chip } from "@/components/filters/filter-chips";
 import {
   FilterGroupList,
@@ -66,8 +66,8 @@ const DRAWER_CLOSE_MS = 500;
  *  short viewport, the sticky toolbar otherwise. Keep these complementary;
  *  a short viewport lets the toolbar scroll away. The order-only trigger uses
  *  the sheet's condition so the dock keeps the remaining way to sort. */
-export const SORT_ROW_HIDDEN = "md:not-short:hidden";
-export const SORT_TOOLBAR_HIDDEN = "max-md:hidden short:hidden";
+import { SORT_ROW_HIDDEN } from "./filter-sheet-policy";
+export { SORT_ROW_HIDDEN, SORT_TOOLBAR_HIDDEN, filterSheetReason } from "./filter-sheet-policy";
 
 /** The caption over the sort row, and the row itself, each resolved once:
  *  every half is a constant, so there is one answer and no reason to ask cn
@@ -146,38 +146,6 @@ const SHEET_BLOCK_CHILDREN_CLASS =
  *  rather than a style: a sheet with anything else in it keeps its trigger at
  *  every size, so only the answer that runs out may be the one given. A clause
  *  inserted above it changes which states lose their button. */
-type FilterSheetReason = "sections" | "undo" | "order";
-
-export function filterSheetReason({
-  groups,
-  toggles,
-  goodWith,
-  home,
-  care,
-  resultCount,
-  activeCount,
-}: {
-  groups: { group: CardGroup; options: FilterOption[] }[];
-  toggles: ToggleDef[];
-  goodWith?: GoodWithSection;
-  home?: HomeSection;
-  care?: CareSection;
-  resultCount: number;
-  activeCount: number;
-}): FilterSheetReason | undefined {
-  const hasSections =
-    groups.length > 0 ||
-    toggles.length > 0 ||
-    (goodWith?.options.length ?? 0) > 0 ||
-    (home?.options.length ?? 0) > 0 ||
-    (care?.options.length ?? 0) > 0;
-  if (hasSections) return "sections";
-  // Values and not sections: a picked shelter has no section in here but it
-  // has the Kje row, and every active value has the footer's clear.
-  if (activeCount > 0) return "undo";
-  if (resultCount > 1) return "order";
-  return undefined;
-}
 
 export function FilterSheet({
   filters,

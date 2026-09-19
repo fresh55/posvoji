@@ -29,7 +29,7 @@ import {
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import { useFilterCardHover } from "@/components/filters/use-filter-motion";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { LazyMotion, domAnimation } from "motion/react";
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
 import { useAnimalPagePhoto } from "@/components/animal-page-photo-state";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { PhotoGallery } from "@/components/photo-gallery";
 import type { PermittedPhoto } from "@/lib/animal-images";
 

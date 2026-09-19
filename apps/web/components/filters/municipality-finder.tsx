@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { fold } from "@/components/filters/location-picker/model";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { telHref } from "@/lib/contact-links";
 import { CoverageCard } from "@/components/municipality-coverage-card";
 import { Button } from "@/components/ui/button";

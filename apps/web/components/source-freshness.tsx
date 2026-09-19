@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useI18n } from "@/components/i18n-provider";
-import { quotedLang } from "@/lib/i18n";
+import { useI18n } from "@/components/i18n-context";
+import { quotedLang } from "@/lib/i18n-format";
 import { sourceFreshness, verificationDate } from "@/lib/source-freshness";
 
 export function SourceFreshness({

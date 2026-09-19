@@ -57,7 +57,7 @@ export function onMap(at: LatLon): boolean {
 // Every town in data/shelters.yaml, plus the larger municipal centres a new
 // shelter is most likely to appear in. A town missing from here costs its
 // shelter a marker, never its row in the list.
-const CITIES: Record<string, LatLon> = {
+export const CITIES: Record<string, LatLon> = {
   Ajdovščina: { lat: 45.8878, lon: 13.9078 },
   Bled: { lat: 46.3683, lon: 14.1147 },
   Brežice: { lat: 45.9044, lon: 15.5919 },

@@ -31,7 +31,8 @@ import { frontPrintOf } from "@/components/animal-dialog/photo-spread";
 import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { cardPhoto } from "@/components/grid-rendering";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
+import { useAnimalSource } from "@/lib/animal-descriptions";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
 import { PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
 import { StatusBadge } from "@/components/status-badge";
@@ -576,6 +577,8 @@ function OpenAnimalDialog({
   );
   const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
 
+  const deferredSource = useAnimalSource(lastAnimal.source ? undefined : lastAnimal.id);
+  const source = lastAnimal.source ?? deferredSource;
   const name = lastAnimal.name ?? messages.unnamed;
   // The address this animal has of its own, which is also what the card behind
   // the dialog links to, so it is how that card is found.
@@ -1189,11 +1192,11 @@ function OpenAnimalDialog({
                 >
                   <Button asChild size="sm" className="h-11 w-full">
                     <a
-                      href={lastAnimal.source.sourceUrl}
+                      href={source?.sourceUrl ?? href}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {messages.viewOriginalListing}
+                      {source ? messages.viewOriginalListing : messages.animalDetails}
                       <ExternalLink aria-hidden />
                     </a>
                   </Button>

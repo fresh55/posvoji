@@ -117,7 +117,7 @@ describe("responsive picker session", () => {
     resize(false);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
-  it("retains a confirmed place when the sidebar disappears for a sparse species", () => {
+  it("retains a confirmed place when the sidebar disappears for a sparse species", async () => {
     const view = render(<Pair />);
     fireEvent.click(screen.getAllByRole("button", { name: /Zavetišče:/ })[0]);
     fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {
@@ -125,7 +125,7 @@ describe("responsive picker session", () => {
     });
     expect(screen.getByTestId("origin").textContent).toBe("none");
     fireEvent.click(
-      screen.getByRole("button", { name: /^V bližini Ljubljana/ }),
+      await screen.findByRole("button", { name: /^V bližini Ljubljana/ }),
     );
     expect(screen.getByTestId("origin").textContent).toBe("typed");
     view.rerender(<Pair showDesktop={false} />);
@@ -146,7 +146,7 @@ describe("responsive picker session", () => {
       target: { value: "1000" },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: /^V bližini Ljubljana/ }),
+      await screen.findByRole("button", { name: /^V bližini Ljubljana/ }),
     );
     // A shelter-name search must not silently replace the chosen origin.
     fireEvent.change(screen.getByLabelText("Kraj, pošta ali zavetišče"), {

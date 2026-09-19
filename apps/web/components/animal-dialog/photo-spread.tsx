@@ -2,7 +2,7 @@
 
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
 import { type WashLayer } from "@/components/animal-dialog/photo-wash";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { PhotoGallery } from "@/components/photo-gallery";
 import type { ClientAnimal } from "@/lib/animal";
 import { FAN_SIDE_PHOTO_SIZES, type PermittedPhoto } from "@/lib/animal-images";

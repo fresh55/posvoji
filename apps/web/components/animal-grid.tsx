@@ -7,7 +7,7 @@ import {
   TOOLBAR_ROW_HEIGHT,
 } from "@/components/filters/animal-filters";
 import { FilterSidebar } from "@/components/filters/filter-sidebar";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { GridLoadMore } from "@/components/grid-load-more";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -379,34 +379,12 @@ export function AnimalGrid({
     delete document.documentElement.dataset[PREHYDRATION_DATASET_KEY];
   }, []);
 
-  // Two things the first open would otherwise wait on, both done on idle once
-  // the grid is on screen, and neither of them in the document: the visitor
-  // who opens no card at all is who that saving is for.
-  //
-  // The dialog is mounted here, before anyone has pressed a card. Without an
-  // animal it draws nothing, so the early mount costs a commit of null, and
-  // it is the only way to keep React's fallback throttle out of the first
-  // open. A lazy component suspends on its first render whatever is in the
-  // module cache, and the commit that resolves that fallback is held until
-  // 300ms after it was shown. Measured on the built export, desktop at full
-  // speed: the click handler finished at 17ms and the dialog reached the DOM
-  // at 350ms, against 40ms for every open after it. Fetching the chunk on
-  // pointerdown could not fix it, which is why that handler is gone: the warm
-  // import() compiled to its own chunk group, so a press loaded 3.6 KB the
-  // component never used, and the lazy suspended on the click all the same.
-  // The trade is that the chunk, the 23.6 KB gzipped the two numbers above
-  // differ by, now reaches every visitor who sees the grid rather than only
-  // the ones who open an animal.
-  //
-  // The shelter descriptions no longer travel with the animals (see
-  // animalsForClient in lib/dataset.ts and lib/animal-descriptions.ts), so the
-  // first dialog that wants one would open and wait. The file usually lands
-  // long before anyone opens a card.
+  // Mount the empty dialog on idle to avoid a Suspense delay on first open.
+  // Descriptions stay deferred until grid interaction.
   useEffect(() => {
     if (animals.length === 0) return;
     const onIdle = () => {
       setDialogMounted(true);
-      void prefetchAnimalDescriptions();
     };
     if (typeof window.requestIdleCallback === "function") {
       const handle = window.requestIdleCallback(onIdle);
@@ -644,6 +622,9 @@ export function AnimalGrid({
               // one class to CARD_GRID would have quietly cost the tests their
               // column count and left them charging the two-column fallback.
               data-card-grid
+              onPointerEnter={() => { void prefetchAnimalDescriptions(); }}
+              onFocusCapture={() => { void prefetchAnimalDescriptions(); }}
+              onTouchStart={() => { void prefetchAnimalDescriptions(); }}
               className={CARD_GRID}
             >
               {page.map((animal, ordinal) => (

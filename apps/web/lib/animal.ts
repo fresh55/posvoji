@@ -34,7 +34,7 @@ export type ClientAnimalSource = Pick<AnimalSource, "sourceUrl"> &
  *  bookkeeping takes an `Animal` instead; app/sitemap.ts is the only one that
  *  does. */
 export type AnimalFields = Omit<Animal, "images" | "source"> & {
-  source: ClientAnimalSource;
+  source?: ClientAnimalSource;
 };
 
 /** An animal as a client component receives it: photos already resolved to

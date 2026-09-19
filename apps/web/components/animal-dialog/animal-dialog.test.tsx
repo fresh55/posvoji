@@ -30,8 +30,17 @@ import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
-import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
-import { animalsForClient } from "@/lib/dataset";
+import {
+  prefetchAnimalDescriptions,
+  resetAnimalDescriptionsStore,
+} from "@/lib/animal-descriptions";
+import { animalsForClient as projectAnimals } from "@/lib/dataset";
+
+// These interaction tests start with source metadata already available. The
+// deferred-source contract has its own loading/failure tests.
+function animalsForClient(animals: Animal[]) {
+  return projectAnimals(animals).map((animal, index) => ({ ...animal, source: animals[index].source }));
+}
 import { PHOTO_MORPH_MARK, PHOTO_TRANSITION_NAME } from "@/lib/view-transition";
 import { stubIdleCallback } from "@/test/grid-stubs";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
@@ -632,7 +641,7 @@ describe("animal dialog", () => {
     // public/generated.
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => ({ tia: text }) })),
+      vi.fn(async () => ({ ok: true, json: async () => ({ tia: { description: text } }) })),
     );
     window.history.replaceState(null, "", "/?zival=tia");
     renderGrid([chatty]);
@@ -3228,5 +3237,56 @@ describe("fan tempo", () => {
       balanced.spring.stiffness,
     );
     expect(fanTempo("lively").overshoot).toBeGreaterThan(balanced.overshoot);
+  });
+});
+
+
+describe("grid source details", () => {
+  it("keeps the animal page reachable while loading, then shows the verified original listing", async () => {
+    let finish!: (value: unknown) => void;
+    const body = new Promise(resolve => {
+      finish = resolve;
+    });
+    const fetch = vi.fn(async () => ({ ok: true, json: () => body }));
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <I18nProvider locale="sl">
+        <AnimalGrid
+          animals={projectAnimals([REX])}
+          logos={{}}
+          referenceDate={REFERENCE}
+        />
+      </I18nProvider>,
+    );
+    openCard("Rex");
+    const fallback = screen.getAllByRole("link", { name: "Podrobnosti o živali" });
+    expect(fallback[0].getAttribute("href")).toBe(animalPath(REX, "sl"));
+    await act(async () => {
+      finish({ rex: { description: REX.shortDescription, source: REX.source } });
+    });
+    const links = await screen.findAllByRole("link", { name: /Odpri objavo pri zavetišču/ });
+    expect(links.every(link => link.getAttribute("href") === REX.source.sourceUrl)).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains the animal-page fallback when deferred details fail", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("offline");
+    }));
+    render(
+      <I18nProvider locale="sl">
+        <AnimalGrid
+          animals={projectAnimals([REX])}
+          logos={{}}
+          referenceDate={REFERENCE}
+        />
+      </I18nProvider>,
+    );
+    openCard("Rex");
+    await act(async () => {
+      await prefetchAnimalDescriptions();
+    });
+    expect(screen.queryByRole("link", { name: /Odpri objavo pri zavetišču/ })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Podrobnosti o živali" })[0].getAttribute("href")).toBe(animalPath(REX, "sl"));
   });
 });

@@ -10,7 +10,7 @@ import {
   MapPin,
   Phone,
 } from "lucide-react";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { Card } from "@/components/ui/card";

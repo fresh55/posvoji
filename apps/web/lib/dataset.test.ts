@@ -106,7 +106,6 @@ describe("animalsForClient", () => {
       "sex",
       "shelter",
       "size",
-      "source",
       "specialNeeds",
       "species",
       "status",
@@ -114,9 +113,7 @@ describe("animalsForClient", () => {
 
     // The shelter's own listing, which the dialog and the shelter block link
     // to, and none of the crawl's bookkeeping.
-    expect(Object.keys(projected!.source)).toEqual(["sourceUrl", "fetchedAt"]);
-    expect(projected!.source.fetchedAt).toBe(source.source.fetchedAt);
-    expect(projected!.source.sourceUrl).toBe(source.source.sourceUrl);
+    expect(projected!.source).toBeUndefined();
 
     // Dropped, not blanked: an explicit undefined still ships as a key.
     // AnimalFacts fetches the shelter's words when a dialog opens.
@@ -160,7 +157,6 @@ describe("animalsForClient", () => {
       "id",
       "images",
       "shelter",
-      "source",
       "species",
       "status",
     ]);

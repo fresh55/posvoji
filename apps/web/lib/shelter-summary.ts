@@ -1,7 +1,7 @@
 import type { Species } from "@posvoji/schema";
 import type { AnimalFields, ClientAnimal } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
-import { translate } from "@/lib/i18n";
+import { translateLabel as translate } from "@/lib/label-messages";
 import { ageLabel, monthsInShelter } from "@/lib/labels";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import { SPECIES_ORDER } from "@/lib/species";

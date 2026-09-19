@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { AnimalCard } from "@/components/animal-card";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { GridLoadMore } from "@/components/grid-load-more";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { useIncrementalGrid } from "@/components/use-incremental-grid";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import type { ClientAnimal } from "@/lib/animal";

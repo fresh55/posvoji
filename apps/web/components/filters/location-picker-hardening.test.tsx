@@ -69,7 +69,7 @@ describe("LocationPicker hover ends with the visit", () => {
     // Typing without moving the pointer: the row unmounts under it and no
     // leave event fires, so the marker and its region used to stay lit for a
     // shelter the list no longer held.
-    type(input, "Jug");
+    await type(input, "Jug");
     expect(rowOrder()).toEqual(["jug"]);
     expect(dialog().querySelector("[data-marker-highlighted]")).toBeNull();
   });
@@ -113,7 +113,7 @@ describe("LocationPicker search reads a query as words", () => {
 
     // "Zavetišče Maribor (Snaga)": the two words the visitor typed have a
     // bracket between them, which one raw substring could never match.
-    type(input, "maribor snaga");
+    await type(input, "maribor snaga");
 
     expect(rowOrder()).toEqual(["maribor"]);
   });
@@ -121,7 +121,7 @@ describe("LocationPicker search reads a query as words", () => {
   it("finds a row whose words the visitor typed in the other order", async () => {
     const input = await search();
 
-    type(input, "ljubljana zavetisce");
+    await type(input, "ljubljana zavetisce");
 
     expect(rowOrder()).toEqual(["jug"]);
   });
@@ -129,7 +129,7 @@ describe("LocationPicker search reads a query as words", () => {
   it("ignores the space a visitor typed twice", async () => {
     const input = await search();
 
-    type(input, "zavetisce  maribor");
+    await type(input, "zavetisce  maribor");
 
     expect(rowOrder()).toEqual(["maribor"]);
   });
@@ -137,7 +137,7 @@ describe("LocationPicker search reads a query as words", () => {
   it("still narrows to a single word the way it always did", async () => {
     const input = await search();
 
-    type(input, "Snaga");
+    await type(input, "Snaga");
 
     expect(rowOrder()).toEqual(["maribor"]);
   });
@@ -159,7 +159,7 @@ describe("LocationPicker live region", () => {
 
   it("says each fact in its own node", async () => {
     const input = await openPicker();
-    type(input, "Sever");
+    await type(input, "Sever");
 
     // One text node meant every keystroke replaced the whole string, so a
     // search re-announced the selection and the running total with it.
@@ -179,7 +179,7 @@ describe("LocationPicker status line", () => {
   it("leaves a chosen place to the chip that already names it", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
 
     // The chip above this line reads "Ljubljana" and every row carries its

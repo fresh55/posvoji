@@ -1,7 +1,8 @@
+import type { LabelKey } from "@/lib/label-messages";
 import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
 import type { AnimalFields } from "@/lib/animal";
-import type { Locale, TranslationKey } from "@/lib/i18n";
-import { translate } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
+import { translateLabel as translate } from "@/lib/label-messages";
 import {
   ageInMonths,
   FILTER_METADATA,
@@ -516,7 +517,7 @@ export function stayStatement(
 
 const STATUS_KEYS: Record<
   Exclude<AdoptionStatus, "unknown">,
-  TranslationKey
+  LabelKey
 > = {
   available: "statusAvailable",
   reserved: "statusReserved",
@@ -562,7 +563,7 @@ export function sexLabel(
 // A chip names the household, not the card. The card label answers the section
 // heading ("Doma imam: Psa"), but a chip stands on its own in a row next to the
 // species chips, where "Psa" would read as a list of dogs.
-const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, TranslationKey> = {
+const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, LabelKey> = {
   kids: "goodWithChipKids",
   dogs: "goodWithChipDogs",
   cats: "goodWithChipCats",

@@ -8,7 +8,7 @@ import {
 } from "@/components/filters/municipality-finder";
 import { MUNICIPALITY_AT } from "@/components/filters/location-picker/municipality-places";
 import { ShelterMap } from "@/components/filters/shelter-map";
-import { useI18n } from "@/components/i18n-provider";
+import { useI18n } from "@/components/i18n-context";
 import { RenderBoundary } from "@/components/render-boundary";
 import type { ShelterPin } from "@/lib/map-layout";
 import type { LookupEntry } from "@/lib/municipality-coverage";

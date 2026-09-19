@@ -11,185 +11,77 @@ import type { Species } from "@posvoji/schema";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { MAP_HEIGHT, MAP_WIDTH, project, type LatLon } from "@/lib/geo";
 import { cn } from "@/lib/utils";
+import {
+  avoidCalloutOverlap,
+  coveredArea,
+  type CalloutRect,
+} from "./map-callout-layout";
 
-// The label's type, written in the pixels it is meant to be read at rather
-// than in the map's own units. The plate is drawn anywhere from a phone-width
-// stage to a fourteen-hundred-pixel desktop one, and a size set in user units
-// swings with it: the 5.5 units this used to carry came out twelve pixels on a
-// tablet and twenty-odd on a wide desktop, which is not one size, it is two.
-// ShelterMap measures the plate and the division below turns these back into
-// user units.
-// A hierarchy and not two sizes a point apart: the title leads on weight and
-// on size together, and the muted lines under it are clearly the answer to it
-// rather than more of it. shadcn's own card sets a semibold heading over muted
-// body copy, which is the same relationship at a larger size.
-// text-xs, the size the site's own tooltips set. 13 was a step that belongs to
-// nothing: the scale runs 11, 12, 14, and a name half a pixel off text-xs is
-// not a different rank, it is a different answer to the same question.
-//
-// Down and not up to text-sm, because this chip is drawn on the country it is
-// naming. Everything else in this file exists to keep a label from covering
-// the place it labels: BLOCK_PX is the column the words wrap in and
-// MAX_BLOCK_SHARE caps that column at 55% of the map, so a larger title buys
-// its extra legibility in wrapped lines and chip height, which is the one
-// currency here that is not free. MIN_TITLE_PX still floors what it renders
-// at.
+// Screen-pixel sizes, converted to SVG units by calloutType.
 const TITLE_PX = 12;
 const META_PX = 11;
-// Relaxed, the way a card is set and a label is not. At 1.15 three stacked
-// facts read as one compressed block; this is what makes them three lines.
 const LEADING = 1.35;
-// Between the title and the muted lines under it. Written here rather than as
-// a fraction of the type, because it is the gap the eye reads as "a new line
-// of this card", not a property of the letters on either side of it.
 const LINE_GAP_PX = 4;
-// Above the species row, which is a different kind of fact from the words over
-// it and needs to be seen as one: glyphs and counts, not a sentence.
 const SPECIES_GAP_PX = 7;
-// The knockout radius for the plate's one piece of SVG text, the kilometre
-// label on the origin line, which is set straight on the country and has a
-// dashed line running through it. The annotation itself carries a surface now
-// and needs none of this; see the chip's own geometry below.
+// Text halo for the distance label drawn directly over the map.
 const HALO_PX = 1.7;
 
-// The chip the annotation sits on, written in the pixels it is meant to be
-// seen at like the type above it, and divided by the plate's scale in
-// calloutType. Tooltip register throughout: this is the site's popover, drawn
-// small on a map, not a panel.
-//
-// A halo was tried first and rejected on sight: with no surface at all the
-// type has to be read against whatever the region under it happens to be, and
-// strengthening the knockout until that worked turned the names into sticker
-// lettering. A real surface makes the contrast a matter of tokens instead of
-// luck.
-
-// Card padding, not label padding. A chip carrying a name, a count and a row
-// of species is a small hover card and wants a hover card's room; at nine by
-// six the three lines sat against the corners and the whole thing read square.
 const PAD_X_PX = 12;
-// py-2 against the px-3 beside it. 9 sat between the two steps Tailwind's
-// spacing scale offers here and matched no other padded surface on the site.
 const PAD_Y_PX = 8;
-// A callout with nothing under its title is not a card at all, it is a
-// tooltip, and it keeps a tooltip's tighter vertical padding: nine points of
-// air over and under a single word is a plaque. The horizontal padding does
-// not change with it, so every chip on the plate keeps one left edge.
+// Title-only labels use tighter vertical padding.
 const PAD_Y_TIGHT_PX = 6;
-// The corner that reads as rounded at that padding. --radius-ui is 0.625rem,
-// which is tuned for a dialog and looks barely turned on a box this small, so
-// the chip takes the popover end of the family instead.
-// --radius, which is 0.625rem and so 10px: the same corner rounded-ui draws on
-// every other surface the site has. 8 was the one radius in the product that
-// belonged to a single component.
 const RADIUS_PX = 10;
-// The hairline around the chip, drawn as the first layer of the box-shadow
-// rather than as a border. A border cannot be a hairline here: this type is
-// laid out in user units and scaled up by the plate, so the width that comes
-// out to one screen pixel is a fraction of a unit, and Chrome floors any
-// positive border-width to a used value of 1 unit before the transform. At a
-// plate drawn 2.63 pixels to the unit that turned a 0.38-unit specification
-// into a 2.6-pixel frame: a widget border where a map wants a hairline.
-// Measured in the browser; getComputedStyle reports the flooring outright.
-// box-shadow spreads honour the fraction, so the ring is one.
+// Use a shadow spread for fractional SVG-unit widths. Chrome rounds a
+// CSS border up to one unit, making it thicker when the map is scaled.
 const RING_PX = 1;
-// The lift the old card had, in the same register: a hairline shadow, not a
-// drop. Dark mode drops it entirely, the way the coins do (COIN_SHADOW in
-// map-marker.tsx), because black on a near-black plate is only mud.
 const SHADOW_Y_PX = 1;
 const SHADOW_BLUR_PX = 2;
 const SHADOW_ALPHA = 0.18;
-// How far off the mark's own reach a chip sits when nothing displaces it, and
-// how far short of the chip the leader stops. In pixels and divided by the
-// plate's scale, like the rest of the chip: written in user units this gap was
-// five rendered pixels on a phone plate and eighteen on a wide desktop one,
-// and the distance between a mark and the thing naming it is a reading
-// distance, so it is one distance.
 const LABEL_GAP_PX = 12;
 const LEADER_GAP_PX = 3;
-// A box-shadow is drawn outside the element and a foreignObject clips at its
-// own box, so the object carries exactly the shadow's reach as a margin and
-// the chip is inset back into place.
+// Reserve space around the foreignObject so it does not clip the shadow.
 const BLEED_PX = SHADOW_Y_PX + SHADOW_BLUR_PX;
-// The column the text wraps inside. The card was 108 units wide and the picker
-// draws the plate near 2.2 pixels a unit, so this is that same column, held to
-// the same rendered width whatever size the plate is drawn at.
 const BLOCK_PX = 238;
-// One line of title over one of metadata, at this leading and with the gap
-// between them. Used until the real content is measured, and as the floor
-// after.
+// Initial content height: one title line and one metadata line.
 const MIN_BLOCK_PX = Math.round(
   TITLE_PX * LEADING + LINE_GAP_PX + META_PX * LEADING,
 );
 
-// What one rendered pixel is worth in user units. Clamped at both ends,
-// because past them the honest division stops being the right answer: below,
-// the name comes out smaller than the town anchors it stands among; above, it
-// grows large enough to cover the region it names.
+// Limit scaling so labels stay legible without covering the map.
 const MIN_UNITS_PER_PX = 0.26;
 const MAX_UNITS_PER_PX = 0.6;
 
-// The size the title is never set under, in rendered pixels. The upper clamp
-// above is written in user units, so on a small plate it did the one thing
-// this file exists to prevent: a phone draws about 1.12 pixels to the unit,
-// where 0.6 units per pixel put the name out at eight pixels. The clamp is
-// still the right shape, it just cannot be the last word, so the rendered size
-// is checked in the units it is read in and the clamp gives way to it.
+// Rendered title size takes precedence over the unit clamp on small maps.
 const MIN_TITLE_PX = 11;
 
-// How much of the country's width one block of type may take, whatever the
-// clamp above did to the unit. On a phone plate the honest column comes out
-// near two thirds of the map, which is a label that has stopped naming a place
-// and started covering one.
 const MAX_BLOCK_SHARE = 0.55;
 
-/** How many pixels the plate draws one user unit at, before anything has
- *  measured it. Roughly what the picker draws the map at on a tablet, which is
- *  the size this type was tuned against. Server rendering and the first client
- *  paint both take it, and a hover cannot land before the observer has
- *  answered, so nobody sees the guess. */
+/** Initial pixels per SVG unit, used until ShelterMap measures the map. */
 export const DEFAULT_PLATE_SCALE = 2.2;
 
-/** Every size the annotation sets, in user units, for a plate drawn at `scale`
- *  pixels to the unit. Exported because the map sets one more piece of type in
- *  this register, the kilometre label on the origin line, and it has to come
- *  out the same size as the metadata it stands beside. */
+/** Callout dimensions in SVG units for a map rendered at `scale` pixels per unit. */
 export function calloutType(scale: number) {
   const px = scale > 0 ? scale : DEFAULT_PLATE_SCALE;
   const clamped = Math.min(
     Math.max(1 / px, MIN_UNITS_PER_PX),
     MAX_UNITS_PER_PX,
   );
-  // The upper clamp cuts the unit down, and cutting the unit down is cutting
-  // the rendered type down with it. Whatever it just did, the title comes back
-  // up to a size that can be read.
   const unit = Math.max(clamped, MIN_TITLE_PX / (TITLE_PX * px));
   return {
     unit,
     title: TITLE_PX * unit,
     metadata: META_PX * unit,
     halo: HALO_PX * unit,
-    /** The chip's own outer width, and so the width the plate reserves for an
-     *  annotation whatever the words turn out to be. The type wraps inside it
-     *  less the padding; a chip with less to say draws narrower than this (see
-     *  w-fit below) but is still laid out and reported against it. The share
-     *  of the map above is the ceiling a narrow plate imposes, because a
-     *  column held to its rendered width covers a phone's map rather than
-     *  labelling it. */
+    /** Reserve the full column for layout; short labels can render narrower. */
     width: Math.min(BLOCK_PX * unit, MAP_WIDTH * MAX_BLOCK_SHARE),
     floor: MIN_BLOCK_PX * unit,
-    /** Unitless, so it is the one thing here the plate's scale does not
-     *  divide: leading is a ratio of the type it is set on. */
     leading: LEADING,
     padX: PAD_X_PX * unit,
-    /** A card's vertical padding, and a tooltip's. Which one a chip wears is
-     *  decided by how much it has to say; see `dense` below. */
     padY: PAD_Y_PX * unit,
     padYTight: PAD_Y_TIGHT_PX * unit,
     lineGap: LINE_GAP_PX * unit,
     speciesGap: SPECIES_GAP_PX * unit,
     radius: RADIUS_PX * unit,
-    /** The hairline's width. Named for what draws it, because what draws it is
-     *  a shadow spread and not a border: see RING_PX. */
     ring: RING_PX * unit,
     shadowY: SHADOW_Y_PX * unit,
     shadowBlur: SHADOW_BLUR_PX * unit,
@@ -199,69 +91,12 @@ export function calloutType(scale: number) {
   };
 }
 
-// Under this much displacement, no leader. An atlas draws one only when the
-// label has left the place it belongs to, and a unit or two of clamping at the
-// frame is not that.
+// Do not draw a leader for minor adjustments at the map edge.
 const LEADER_SLACK = 3;
 const LEADER_WIDTH = 0.5;
-// The frame margin the block keeps, the same one the plate's furniture keeps.
 const FRAME_MARGIN = 2;
 
-/** Where an annotation's block of type has landed, in the map's own user
- *  units. The plate needs it to get its own furniture out of the way: an
- *  annotation with no card under it interleaves with any town anchor it is
- *  drawn across, and the older convention is that the name answering a
- *  question outranks the name that was only ever furniture. See the anchor
- *  suppression in shelter-map.tsx. */
-export type CalloutRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-/** How much of `a` and `b` is the same piece of plate, in square user units.
- *  Zero when they miss each other, and zero when they only meet along an edge.
- *
- *  The one rectangle test the map keeps. Everything the plate lays out is a
- *  CalloutRect and everything it asks about them is this: the annotation asks
- *  for the area, to choose the emptier side of a mark; the furniture and the
- *  region names ask whether it is anything at all, to drop a name that would
- *  be read through another. `> 0` is the same strict test those two wrote by
- *  hand, edges included. */
-export function intersectionArea(a: CalloutRect, b: CalloutRect): number {
-  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
-  if (width <= 0) return 0;
-  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
-  if (height <= 0) return 0;
-  return width * height;
-}
-
-/** How much of `box` the rectangles in `others` cover, in square user units.
- *
- *  Area and not a count, because the question the side choice asks is how much
- *  of the plate a chip would hide, and a chip clipping the edge of one coin is
- *  not the same answer as one sitting on top of two. */
-function coveredArea(
-  box: CalloutRect,
-  others: readonly CalloutRect[],
-): number {
-  let total = 0;
-  for (const other of others) {
-    total += intersectionArea(box, other);
-  }
-  return total;
-}
-
-/** One annotation for markers and regions alike: a quiet popover chip set
- *  beside the thing it names, with a leader only when the frame has pushed it
- *  off that thing.
- *
- *  Type laid straight on the country was tried and failed here: the plate's
- *  ground is a density ramp, so contrast depended on which region happened to
- *  be underneath. The chip makes it a matter of tokens. A native <title>
- *  before all of it, which waited half a second and came in the browser's own
- *  colours. */
+/** Marker or region label, with a leader when displaced from its natural position. */
 export function MapCallout({
   x,
   y,
@@ -275,87 +110,43 @@ export function MapCallout({
   avoid,
   rectKey = "",
   onRect,
+  earlierCallouts,
 }: {
   x: number;
   y: number;
   reach: number;
   title: string;
-  /** The line under the title. Optional, and leaving it out is a real state,
-   *  not an oversight: with no note and no species line either, the annotation
-   *  draws as the dense one-line label rather than as a card. See `dense`
-   *  below. */
+  /** Omit metadata, note, species and action for a compact title-only label. */
   metadata?: string;
-  /** A second metadata line, for an annotation with a second thing to say. An
-   *  empty region uses it to name the shelters answering for the municipalities
-   *  inside it: the first line says there are none here, and this one says who
-   *  to call anyway. Its own line rather than a longer first one, because they
-   *  are two statements and a middot between them would read as one, and
-   *  because the names are long enough to wrap on their own. */
+  /** Optional second metadata line, such as the shelters covering an empty region. */
   note?: string;
-  /** Who lives there, when the annotation is about one shelter. A third line
-   *  of the site's own species glyphs with their counts. Absent for towns,
-   *  clusters and regions, which answer for more than one house and would be
-   *  summing up strangers. */
+  /** Species counts for an individual shelter. */
   species?: { species: Species; count: number }[];
   /** An explicit touch choice; passive hover annotations omit it. */
-  action?: { label: string; onClick: () => void; onFocusChange?: (focused: boolean) => void };
-  /** Pixels the plate draws one user unit at, measured by ShelterMap. Every
-   *  size below is divided by it, so the label renders at the same size on a
-   *  tablet and on a wide desktop. */
+  action?: {
+    label: string;
+    onClick: () => void;
+    onFocusChange?: (focused: boolean) => void;
+  };
+  /** Pixels per SVG unit, measured by ShelterMap. */
   scale?: number;
-  /** Marks this chip must not be laid over if it has a choice: the painted
-   *  boxes of the other towns on the plate, in the map's own user units.
-   *
-   *  The chip is opaque by design, so whatever it lands on is gone while it is
-   *  up, and the side it took was decided by frame fit alone: hovering Zavod
-   *  Muri covered the Celje coin whole, the largest mark on the plate.
-   *
-   *  A preference and not a rule. The frame still decides first, and it decides
-   *  against the reserved column rather than against the words: where the
-   *  column does not fit the quieter side, the chip goes on the crowded one
-   *  anyway and can still cover a neighbour (Horjul's still covers Ljubljana).
-   *  Placing against the drawn chip would need its width, which only a layout
-   *  pass knows, and moving a chip after it is on screen is worse than the
-   *  thing it would fix.
-   *
-   *  Left out by a caller with nothing to protect, which is the same answer as
-   *  an empty list. */
+  /** Marker rectangles to avoid when choosing a side. Staying inside the map takes priority. */
   avoid?: readonly CalloutRect[];
-  /** Which annotation this is, among the ones the plate may be showing at
-   *  once. More than one can stand at a time: a spotlight card is persistent
-   *  while a hover raises a second one over another town, so the map keeps the
-   *  rectangles keyed rather than keeping whichever spoke last. The default is
-   *  a good enough name for a plate drawing only one. */
+  /** Stable identifier for the map to track simultaneous callouts. */
   rectKey?: string;
-  /** Where this annotation's type has landed, and null once it is gone.
-   *  Reported from a layout effect, so the map holds the rectangle before the
-   *  browser paints and no anchor is ever drawn for one frame under a name
-   *  about to cover it.
-   *
-   *  Has to keep its identity across renders (a useCallback in the map),
-   *  because it is a dependency of the effect that reports: a callback built
-   *  fresh every render would report on every render. */
+  /** Reports bounds before paint, or null on removal. Keep the callback identity stable. */
   onRect?: (key: string, rect: CalloutRect | null) => void;
+  /** Earlier persistent spotlight labels. The one-way ordering keeps layout
+   * stable while each label measures and reports its actual height. */
+  earlierCallouts?: readonly CalloutRect[];
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const type = calloutType(scale);
   const [height, setHeight] = useState(type.floor);
 
-  // The block's real height depends on how many lines the title and metadata
-  // wrap to, which depends on their text and now on the plate's scale as well,
-  // so it can only be known after a layout pass. Grow or shrink to fit once
-  // measured, rather than estimating line counts from character widths
-  // (fragile with break-words on proportional fonts).
-  //
-  // contentRef sits on the title/metadata block itself, not on the div that
-  // wears h-full: that div's own box is pinned to the current height state, so
-  // its scrollHeight could never report less than what is already set and the
-  // block could grow but never shrink. The unbound inner block reports its own
-  // natural height every time, whichever way it just changed.
-  //
-  // The species line joins the dependencies as a string of its own contents,
-  // not as the array: the map builds a fresh array on every render and the
-  // effect would then run on every render for nothing.
+  // Measure the unconstrained content so labels can shrink as well as grow.
+  // Measuring the h-full wrapper would prevent shrinking.
+  // Use a content key for species because callers may recreate the array.
   const speciesKey = species
     ?.map((entry) => `${entry.species}:${entry.count}`)
     .join(",");
@@ -366,65 +157,52 @@ export function MapCallout({
     if (needed !== height) setHeight(needed);
   }, [title, metadata, note, speciesKey, action?.label, type.floor, height]);
 
-  // A chip with a title and nothing under it is a tooltip and is padded like
-  // one; anything with a second line is a card. The species row counts, since
-  // it is a line of the card whether or not it is made of words.
   const dense = !metadata && !note && !species?.length && !action;
   const padY = dense ? type.padYTight : type.padY;
 
-  // The chip's own box: the reserved column, and the measured type plus the
-  // padding around it. Everything below places and reports this box rather
-  // than the type inside it, which is what keeps the chip's edge, the leader's
-  // end and the rectangle the plate suppresses anchors against all one thing.
+  // Use the same padded box for placement, leader endpoints and overlap reports.
   const boxWidth = type.width;
   const boxHeight = height + padY * 2;
   const { labelGap, leaderGap } = type;
 
-  // Which side of the marker the chip belongs on, and where it would sit if
-  // nothing were in the way.
-  //
-  // The frame decides first and decides alone: a side the chip does not fit on
-  // is not a side. Only when both fit does what is already painted there get a
-  // say, and then the quieter side wins. Ties go right, which is the side this
-  // read as before anything was avoided.
+  // Choose a side that fits the frame, then prefer less overlap with markers.
+  // Ties go right.
   const rightX = x + reach + labelGap;
   const leftX = x - reach - labelGap - boxWidth;
   const naturalY = y - boxHeight / 2;
   const clampX = (value: number) =>
     Math.min(Math.max(value, FRAME_MARGIN), MAP_WIDTH - boxWidth - FRAME_MARGIN);
-  const blockY = Math.min(
+  const boundedY = Math.min(
     Math.max(naturalY, FRAME_MARGIN),
     MAP_HEIGHT - boxHeight - FRAME_MARGIN,
   );
   const rightFits = rightX + boxWidth <= MAP_WIDTH - FRAME_MARGIN;
   const leftFits = leftX >= FRAME_MARGIN;
-  // Asked of the clamped position, which is where the chip actually lands: the
-  // unclamped one answers for a chip that is not there.
+  // Compare overlap at the actual, clamped positions.
   const hides = (boxX: number) =>
     coveredArea(
-      { x: clampX(boxX), y: blockY, width: boxWidth, height: boxHeight },
+      { x: clampX(boxX), y: boundedY, width: boxWidth, height: boxHeight },
       avoid ?? [],
     );
-  // A caller with nothing to avoid needs no arm of its own: both sides hide
-  // nothing, and a tie goes right, which is the answer it wants.
   const onRight = rightFits && (!leftFits || hides(rightX) <= hides(leftX));
   const naturalX = onRight ? rightX : leftX;
   const blockX = clampX(naturalX);
+  // Preserve the quieter side, then separate persistent labels vertically.
+  // Only earlier labels reserve space, so reports cannot move one another
+  // back and forth as their rendered heights settle.
+  const blockY = earlierCallouts?.length
+    ? avoidCalloutOverlap(
+        { x: blockX, y: boundedY, width: boxWidth, height: boxHeight },
+        earlierCallouts,
+        { height: MAP_HEIGHT, margin: FRAME_MARGIN, gap: type.unit * 8 },
+      ).y
+    : boundedY;
 
-  // The margin the foreignObject carries beyond the chip, so the shadow drawn
-  // outside it is not sheared off along the object's own edge. Derived from
-  // the shadow's reach rather than written as a number here.
   const pad = type.bleed;
 
-  // A leader is drawn for a displaced label and for no other. The measure is
-  // how far the frame pushed the block off the position it asked for, which is
-  // the only thing that can move it: everything else about the placement is
-  // decided above.
   const displaced =
     Math.hypot(blockX - naturalX, blockY - naturalY) > LEADER_SLACK;
-  // The label's own end of the line: the chip's edge that faces the marker, a
-  // hair short of the surface rather than under the type, level with the
-  // middle of the chip.
+  // Stop the leader just outside the edge facing the marker.
   const leaderX = onRight
     ? blockX - leaderGap
     : blockX + boxWidth + leaderGap;
@@ -433,22 +211,8 @@ export function MapCallout({
   const dy = leaderY - y;
   const span = Math.hypot(dx, dy) || 1;
 
-  // The block's own rectangle, out to whoever asked for it. A second effect
-  // and not a line inside the measuring one above, on purpose: the rectangle
-  // moves whenever x, y or the plate's scale move, and that effect is keyed on
-  // the words, so folding the report into it would miss an annotation that
-  // changed place without changing a letter.
-  //
-  // It cannot loop with the measuring effect either. The dependencies are the
-  // four numbers being reported and nothing else, all of them settled during
-  // render, and what the map does with them (drops a town anchor that was
-  // going to be read through this one) changes none of them. The report fires
-  // once per rectangle and stops.
-  //
-  // The cleanup covers the annotation going away and the annotation moving
-  // alike. On a move it runs in the same commit as the report that replaces
-  // it, before the browser paints, so the two land together and no anchor
-  // flashes back in between.
+  // Report position separately from content measurement: a label can move
+  // without changing its text. Layout effects update the reserved area before paint.
   useLayoutEffect(() => {
     if (!onRect) return;
     onRect(rectKey, { x: blockX, y: blockY, width: boxWidth, height: boxHeight });
@@ -456,20 +220,12 @@ export function MapCallout({
   }, [onRect, rectKey, blockX, blockY, boxWidth, boxHeight]);
 
   return (
-    // aria-hidden and not inert: inert is an HTML attribute and an SVG
-    // element ignores it, so the pair this annotation keeps has to stay the
-    // aria one. What holds it correct is that the only focusable thing it
-    // can contain is the action button, drawn from the same `action` this
-    // attribute is read off, so a hidden subtree has no button in it to
-    // hide. The sweep in e2e/reach.ts is what says so if that stops being
-    // true.
+    // Only callouts with an action contain a focusable control.
     <g
       aria-hidden={action ? undefined : true}
       data-map-callout
       className={cn(
-        // motion-reduce:duration-0, not motion-reduce:animate-none: see the
-        // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
-        // guard does not actually take effect here either.
+        // Use duration-0 for reduced motion; see ui/dialog.tsx for the animation override.
         "pointer-events-none animate-in fade-in duration-150 motion-reduce:duration-0",
         onRight ? "slide-in-from-left-0.5" : "slide-in-from-right-0.5",
       )}
@@ -493,10 +249,7 @@ export function MapCallout({
         width={boxWidth + pad * 2}
         height={boxHeight + pad * 2}
       >
-        {/* The bleed, and nothing else: the chip below is the box, and this
-            wrapper only holds the room its shadow needs. A chip to the left of
-            its marker is pushed against the edge the leader leaves from, so
-            the two always meet. */}
+        {/* Align the chip with its leader while leaving room for the shadow. */}
         <div
           className={cn("flex h-full w-full", !onRight && "justify-end")}
           style={{ padding: pad }}
@@ -505,36 +258,11 @@ export function MapCallout({
             data-callout-chip
             className={cn(
               "flex flex-col justify-center",
-              // The surface, and the same one every popover on the site
-              // draws. It was bg-popover/95, defended on the grounds that a
-              // chip that translucent "never has to be read against" the
-              // country under it — which is the argument for opacity, not for
-              // 95% of it. It was also the only see-through surface in the
-              // product. Not a backdrop-filter either: filters inside a
-              // foreignObject are unreliable across browsers.
-              //
-              // Light, and deliberately not the inverted chip TooltipContent
-              // draws. The two are different things in shadcn's own grammar
-              // and should stay different here: a tooltip is one line naming a
-              // control, a hover card carries a heading, metadata and marks.
-              // This is the second, so it takes the popover surface.
+              // An opaque surface keeps contrast independent of the terrain underneath.
               "rounded-ui bg-popover text-popover-foreground",
-              // Two layers, and two variables, because they answer to
-              // different things: the ring is the chip's edge and belongs in
-              // both themes, the lift is a light-mode shadow the way the coins
-              // have one (COIN_SHADOW in map-marker.tsx), since black on a
-              // near-black plate is only mud. Both carry offsets in plate
-              // units, which only this render knows, so the numbers arrive as
-              // variables and the utilities compose them.
+              // Keep the outline in both themes; omit the drop shadow in dark mode.
               "shadow-[var(--callout-ring),var(--callout-lift)] dark:shadow-[var(--callout-ring)]",
-              // As wide as the words need and never wider than the column the
-              // plate reserved: a one-word region name is a chip, not a
-              // plaque. The type still wraps at the column, because that is
-              // what the height was measured against.
               "w-fit max-w-full",
-              // A chip to the left of its marker sets ragged-left, so the
-              // type ends where the leader starts instead of trailing off
-              // away from the thing it names.
               !onRight && "text-right",
             )}
             style={
@@ -542,26 +270,14 @@ export function MapCallout({
                 borderRadius: type.radius,
                 paddingBlock: padY,
                 paddingInline: type.padX,
-                // A spread ring and no offset or blur, which is a border in
-                // everything but the property it is set on. It paints just
-                // outside the box rather than just inside it, so the chip
-                // draws one screen pixel larger on each side than a border
-                // would have: that is well inside the bleed the object
-                // already carries for the shadow, and immaterial against the
-                // twelve pixels the chip stands off its mark.
                 "--callout-ring": `0 0 0 ${type.ring.toFixed(3)}px var(--border)`,
                 "--callout-lift": `0 ${type.shadowY.toFixed(3)}px ${type.shadowBlur.toFixed(3)}px rgb(0 0 0 / ${SHADOW_ALPHA})`,
               } as CSSProperties
             }
           >
-            {/* Measured, not the padded chip around it: see the effect's own
-                comment for why the ref has to sit here. */}
             <div ref={contentRef} className="w-full">
               <span
                 data-callout-title
-                // Semibold and not medium: the title has to lead on weight as
-                // well as on size, or a two-point difference between two greys
-                // reads as one paragraph in two sizes.
                 className="block w-full break-words font-semibold"
                 style={{ fontSize: type.title, lineHeight: type.leading }}
               >
@@ -580,8 +296,6 @@ export function MapCallout({
                   {metadata}
                 </span>
               )}
-              {/* Same size and same ink as the line above it: this is the
-                  other half of one answer, not a footnote to it. */}
               {note && (
                 <span
                   data-callout-note
@@ -619,12 +333,7 @@ export function MapCallout({
                   style={{
                     fontSize: type.metadata,
                     lineHeight: type.leading,
-                    // More air than between the lines of words above it: this
-                    // is a different kind of fact and has to be seen arriving.
                     marginTop: type.speciesGap,
-                    // Wide enough that two species read as two facts. At two
-                    // thirds of the type they ran together into one number
-                    // with pictures in it.
                     columnGap: type.metadata * 0.9,
                     rowGap: type.metadata * 0.35,
                   }}
@@ -653,9 +362,7 @@ export function MapCallout({
   );
 }
 
-// The mark's own geometry, in the map's user units. Named because the legend
-// draws the same mark from the same numbers, so the ring on the country and
-// the ring in the key cannot drift apart.
+// Shared geometry keeps the map origin and its legend symbol consistent.
 const ORIGIN_RING_RADIUS = 5;
 const ORIGIN_RING_STROKE = 1;
 const ORIGIN_RING_DASH = 2;
@@ -663,13 +370,10 @@ const ORIGIN_DOT_RADIUS = 1.75;
 const ORIGIN_RING_CLASS = "fill-none stroke-foreground opacity-70";
 const ORIGIN_DOT_CLASS = "fill-foreground";
 
-/** The ring's outer edge, which is where anything drawn away from the origin
- *  has to start. Exported so the distance line leaves the mark alone rather
- *  than being drawn across it. */
+/** Outer edge of the origin ring, where the distance line starts. */
 export const ORIGIN_REACH = ORIGIN_RING_RADIUS + ORIGIN_RING_STROKE / 2;
 
-/** The dashes the origin wears, for the one other line on the plate that is
- *  drawn from it. Shared so the two cannot drift into two dashed languages. */
+/** Shared dash pattern for the origin ring and distance line. */
 export const ORIGIN_DASH = `${ORIGIN_RING_DASH} ${ORIGIN_RING_DASH}`;
 
 // Dashed, so it reads as "you" rather than as one more shelter.
@@ -690,17 +394,10 @@ export function Origin({ at }: { at: LatLon }) {
   );
 }
 
-// The legend's box, and how much larger the mark is drawn inside it than on
-// the country. 1.2 is what fills a 16-unit box with the ring while leaving
-// room for its own stroke, and it is applied to every radius alike, so the
-// dashes, the ring and the dot keep exactly the proportions they have on the
-// map.
+// Scale the origin uniformly to fit the legend box, including its stroke.
 const ORIGIN_GLYPH_BOX = 16;
 const ORIGIN_GLYPH_SCALE = 1.2;
 
-// The same mark at legend size, the way EmptyMarkerGlyph is the same hollow
-// disc at legend size: the key repeats the component, not a lookalike drawn
-// from hand-converted radii.
 export function OriginGlyph({ className }: { className?: string }) {
   const centre = ORIGIN_GLYPH_BOX / 2;
   const dash = ORIGIN_RING_DASH * ORIGIN_GLYPH_SCALE;

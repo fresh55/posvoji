@@ -122,9 +122,9 @@ describe("the found-animal atlas", () => {
       ),
     ).toBeNull();
     expect(screen.getByRole("combobox")).toBeTruthy();
-    // Nothing on the plate but the map and the credit its boundaries are
-    // licensed under: no instruction chip, and no legend, because the regions
-    // are flat here and there is no ramp to read.
+    // Explain why the graphic's markers do not behave like filter controls.
+    expect(screen.getByText(/Zemljevid prikazuje zavetišča/)).toBeTruthy();
+    // The regions are flat, so there is no density legend to interpret.
     expect(document.querySelector('[data-slot="map-attribution"]')).toBeTruthy();
     expect(document.querySelector("[data-map-legend]")).toBeNull();
     const densities = [...map.querySelectorAll("[data-region-density]")].map(
@@ -148,14 +148,14 @@ describe("the found-animal atlas", () => {
     const { container } = renderAtlas();
 
     const plate = container.querySelector('[data-slot="map-plate"]')!;
-    expect(plate.className).toContain("max-lg:hidden");
+    expect(plate.className).toContain("@max-[60rem]/atlas:hidden");
 
     fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "Ljubljana" },
     });
     fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
 
-    expect(plate.className).not.toContain("max-lg:hidden");
+    expect(plate.className).not.toContain("@max-[60rem]/atlas:hidden");
   });
 
   // PLATE_TOO_SMALL (map-marker.tsx) is a container query, and a container
@@ -221,7 +221,7 @@ describe("the found-animal atlas", () => {
     expect(rings[0].getAttribute("data-map-spotlight")).toContain("maribor");
     expect(
       container.querySelector("[data-callout-metadata]")?.textContent,
-    ).toBe("najbližje zavetišče");
+    ).toBe("najbližje zavetišče s telefonom");
     expect(
       container.querySelector("[data-callout-title]")?.textContent,
     ).toContain("Zavetišče Maribor");

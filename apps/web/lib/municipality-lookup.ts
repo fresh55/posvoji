@@ -1,6 +1,6 @@
 // Resolve typed places or device coordinates through postal districts.
 // Districts can cover multiple municipalities, so the user may need to choose.
-import { distanceKm, type LatLon } from "./geo";
+import { distanceKm, onMap, type LatLon } from "./geo";
 import { POSTAL_DISTRICTS } from "./postal-districts";
 import { POSTCODE_MUNICIPALITIES } from "./postcode-municipalities";
 import { lookupPostal } from "./postal-lookup";
@@ -40,14 +40,16 @@ export function municipalitiesForInput(
 const MAX_POSTAL_DISTANCE_KM = 20;
 const MAX_DEVICE_ACCURACY_METERS = 1000;
 
-/** The device's position, resolved through a nearby postal district. */
+/** The device's position suggests nearby municipalities; it never establishes
+ * responsibility. The caller must ask the reader to confirm the municipality.
+ * Keep fixes outside the supported map area from snapping across continents. */
 export function municipalitiesNear(
   at: LatLon,
   accuracy = Infinity,
 ): MunicipalityGuess | undefined {
   if (
     !Number.isFinite(at.lat) || !Number.isFinite(at.lon) ||
-    Math.abs(at.lat) > 90 || Math.abs(at.lon) > 180
+    Math.abs(at.lat) > 90 || Math.abs(at.lon) > 180 || !onMap(at)
   ) {
     return undefined;
   }

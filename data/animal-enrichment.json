@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-19T16:28:00.845Z",
+  "reviewedAt": "2026-09-19T16:40:05.815Z",
   "records": [
     {
       "animalId": "horjul:1028",
@@ -162,6 +162,19 @@
       "descriptionSha256": "4aae39701442548c8f006a20fa3e76f76e4229da344727bdf4a336a6e3691662",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 90,
+            "end": 124,
+            "sha256": "3fba600f0001e2ba7613a696878b35dd115feb5b4643d6a0f6b918d51c9600a9"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Viševek",
           "evidence": {
@@ -183,6 +196,19 @@
       "descriptionSha256": "c501d2bcd47c490d1973be62861967dc837e54d74ddf7575ae2f50ce7256801e",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 42,
+            "end": 80,
+            "sha256": "14edec9bcb573697075ec919adc848cc3ef0ffe9fe7d5e41f3b91a62367d9963"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Ložnica pri Žalcu",
           "evidence": {
@@ -203,6 +229,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/3371",
       "descriptionSha256": "47bc54fb7298dea71ab6056bdef2c42ab89258151fd58ca5753d7ab57c3615b1",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 132,
+            "end": 150,
+            "sha256": "5f5d7ff33679a2e854361065e3692197d5795d0e620430a05bc20af618532595"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Celje",
@@ -245,6 +284,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/3500",
       "descriptionSha256": "5d71e8763163031a151988975885ac493c07479ce98cdcf56a5db9736ce1d57f",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 132,
+            "end": 151,
+            "sha256": "a13e4fb375d61dad2ad9052f3f0925bf39095b842ba8ec1bb27623d9334d2cc0"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Gotovlje",
@@ -975,6 +1027,19 @@
             "/root",
             "/root/manual_02"
           ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 34,
+            "end": 99,
+            "sha256": "4cd5090c0dca985f5c84fc7b6caed55dd1e79f4b3d81115dac8debb223735526"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
         }
       ]
     },
@@ -984,6 +1049,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/3953",
       "descriptionSha256": "0f5416340c8c412c890a0eec9e420e4de214154c4ccaf36bc6a90ba351657eb5",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 30,
+            "end": 71,
+            "sha256": "7f3c50f5962767010feffbf44df53048d9be527878b5534c494af556cf1de67f"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Škofljica",
@@ -1069,6 +1147,19 @@
       "descriptionSha256": "892e874b5501c6d112f7320fd571660c130450f381d528813cae015499a2f2cc",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 32,
+            "end": 63,
+            "sha256": "7f44eb7fc393d6f9b5ffcdf2b90d442fb69481026a9420f062bdb59f428e473f"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Kasaze",
           "evidence": {
@@ -1089,6 +1180,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/3987",
       "descriptionSha256": "0bbc96f64fc52da2e7902e384082d82aa46e25f0fb76bf1886676cb54b35ccc7",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 73,
+            "end": 107,
+            "sha256": "5bdae61e8a5a76762e9f616dae36fd8e8fadffcc87c875e7ef497d4bea48df27"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Kasaze",
@@ -1111,6 +1215,19 @@
       "descriptionSha256": "13434fd11917830617dbc32902bdbe0bdc8976dbaf53e392794db62e666db049",
       "claims": [
         {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 102,
+            "end": 142,
+            "sha256": "2266eb5ad3657048d773357c1e0990db41cc1093234e3808cac8de1fd1b47a92"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
+        {
           "field": "originMunicipality",
           "value": "Lovrenc na Pohorju",
           "evidence": {
@@ -1131,6 +1248,19 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4008",
       "descriptionSha256": "07408ebeafe7a507e98bdeaa65e8d4fb5bcd8cf0f459ce4ff006a439e128c85e",
       "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 40,
+            "end": 92,
+            "sha256": "5fbae23c6fbae17046651ad412d763bc5fef5207aa7631cb836313ae8e68326e"
+          },
+          "reviewedBy": [
+            "/root/luna_review_001_033",
+            "/root"
+          ]
+        },
         {
           "field": "originMunicipality",
           "value": "Lovrenc na Pohorju",
@@ -7983,6 +8113,28 @@
           "reviewedBy": [
             "/root/manual_01",
             "/root/review_wave_a",
+            "/root"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18362",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/albert-e",
+      "descriptionSha256": "478135ed4928e9bc8d83bb9f7592720edca3d427cf066b13be47a848c58ed10f",
+      "claims": [
+        {
+          "field": "status",
+          "value": "hold",
+          "replaces": "available",
+          "evidence": {
+            "start": 245,
+            "end": 309,
+            "sha256": "3907d5a6c258c391ecac29584c5c061fb2d1bbe8ac6ebd03cfd727074859e704"
+          },
+          "reviewedBy": [
+            "/root/luna_persistence",
             "/root"
           ]
         }

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-19T16:28:00.845Z",
+  "reviewedAt": "2026-09-19T16:40:05.815Z",
   "snapshotGeneratedAt": "2026-09-19T15:21:19.405Z",
   "fields": [
     "name",
@@ -6717,7 +6717,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -6727,7 +6728,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -6736,6 +6736,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -6776,7 +6777,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -6786,7 +6788,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -6795,6 +6796,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -6835,7 +6837,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -6845,7 +6848,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -6854,6 +6856,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -6953,7 +6956,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -6963,7 +6967,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -6972,6 +6975,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -8155,6 +8159,7 @@
         "medical.microchipped",
         "medical.fiv",
         "medical.felv",
+        "specialNeeds",
         "adoptionRequirements.ongoingCare"
       ],
       "unknownFields": [
@@ -8167,14 +8172,14 @@
         "goodWith.dogs",
         "goodWith.cats",
         "apartmentOk",
-        "specialNeeds",
         "adoptionRequirements.indoorOnly",
         "adoptionRequirements.bondedPair",
         "adoptionRequirements.experiencedCarer"
       ],
       "updatedFields": [
         "adoptionRequirements.ongoingCare",
-        "originMunicipality"
+        "originMunicipality",
+        "specialNeeds"
       ]
     },
     {
@@ -8214,7 +8219,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -8224,7 +8230,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -8233,6 +8238,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -8450,7 +8456,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -8460,7 +8467,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -8469,6 +8475,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -8509,7 +8516,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -8519,7 +8527,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -8528,6 +8535,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -8568,7 +8576,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -8578,7 +8587,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -8587,6 +8595,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -8627,7 +8636,8 @@
         "medical.neutered",
         "medical.microchipped",
         "medical.fiv",
-        "medical.felv"
+        "medical.felv",
+        "goodWith.cats"
       ],
       "unknownFields": [
         "breed",
@@ -8637,7 +8647,6 @@
         "foundDate",
         "goodWith.kids",
         "goodWith.dogs",
-        "goodWith.cats",
         "apartmentOk",
         "specialNeeds",
         "adoptionRequirements.indoorOnly",
@@ -8646,6 +8655,7 @@
         "adoptionRequirements.ongoingCare"
       ],
       "updatedFields": [
+        "goodWith.cats",
         "originMunicipality"
       ]
     },
@@ -24260,7 +24270,9 @@
         "adoptionRequirements.experiencedCarer",
         "adoptionRequirements.ongoingCare"
       ],
-      "updatedFields": []
+      "updatedFields": [
+        "status"
+      ]
     },
     {
       "animalId": "obalno:ami",

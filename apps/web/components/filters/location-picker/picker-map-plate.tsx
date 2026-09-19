@@ -4,6 +4,7 @@ import { ShelterMap } from "@/components/filters/shelter-map";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import type { LocationPickerController } from "./controller";
+import regionShelterNamesData from "@/lib/region-shelter-names.json";
 import { shelterNamesByRegion } from "./municipality-places";
 
 // What the stage puts on its plate: the country map, its credit, the line that
@@ -54,7 +55,9 @@ export function PickerMapPlate({
   // shelters here". How a municipality is placed in a region is with the
   // helper, in municipality-places.ts, which the found-animal page shares.
   const regionShelterNames = useMemo(
-    () => shelterNamesByRegion(municipalities ?? []),
+    () => municipalities
+      ? shelterNamesByRegion(municipalities)
+      : new Map(regionShelterNamesData as [number, string[]][]),
     [municipalities],
   );
 

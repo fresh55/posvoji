@@ -4,8 +4,8 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "scripts": {
-    "dev": "node scripts/generate-animal-descriptions.mjs && next dev",
-    "build": "node scripts/generate-animal-descriptions.mjs && pnpm generate:srecko-share && next build && node scripts/drop-dev-output.mjs && node scripts/precompress-out.mjs",
+    "dev": "node scripts/generate-animal-descriptions.mjs && tsx scripts/generate-picker-data.ts && next dev",
+    "build": "node scripts/generate-animal-descriptions.mjs && tsx scripts/generate-picker-data.ts && pnpm generate:srecko-share && next build && node scripts/drop-dev-output.mjs && node scripts/precompress-out.mjs",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",

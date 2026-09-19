@@ -160,7 +160,6 @@ export function SitePage({ locale }: { locale: Locale }) {
         animals={animalsForClient(animals)}
         logos={getShelterLogos()}
         referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
-        municipalities={municipalities}
         offSiteShelters={offSiteShelters}
       />
     </SiteShell>

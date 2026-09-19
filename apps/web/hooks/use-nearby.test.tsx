@@ -32,6 +32,30 @@ afterEach(() => {
 const succeed = () =>
   success({ coords: { latitude: 46, longitude: 15, accuracy: 5000 } } as GeolocationPosition);
 describe("page-session geolocation", () => {
+  it("handles a synchronous browser failure and clears its deadline", () => {
+    vi.mocked(navigator.geolocation.getCurrentPosition).mockImplementationOnce(() => {
+      throw new DOMException("Location blocked", "SecurityError");
+    });
+    const { result } = renderHook(useNearby, { wrapper });
+    expect(() => act(() => result.current.toggle())).not.toThrow();
+    expect(result.current.state.status).toBe("error");
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => result.current.toggle());
+    act(succeed);
+    expect(result.current.state.status).toBe("on");
+  });
+  it.each([
+    { latitude: Number.NaN, longitude: 15 },
+    { latitude: 46, longitude: Number.POSITIVE_INFINITY },
+    { latitude: 91, longitude: 15 },
+    { latitude: 46, longitude: -181 },
+  ])("rejects invalid browser coordinates: %j", (coords) => {
+    const { result } = renderHook(useNearby, { wrapper });
+    act(() => result.current.toggle());
+    act(() => success({ coords } as GeolocationPosition));
+    expect(result.current.state.status).toBe("error");
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it.each([1, 2, 3])("handles browser error %s and can retry", (code) => {
     const { result } = renderHook(useNearby, { wrapper });
     act(() => result.current.toggle());

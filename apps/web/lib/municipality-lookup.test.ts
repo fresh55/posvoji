@@ -90,6 +90,8 @@ describe("postcode to municipality", () => {
     ["Vienna", 48.2082, 16.3738],
     ["Zagreb", 45.815, 15.9819],
     ["New York", 40.7128, -74.006],
+    ["Null Island", 0, 0],
+    ["just outside the map near Sečovlje", 45.399, 13.62],
     ["invalid latitude", NaN, 14.5],
     ["invalid longitude", 46, Infinity],
     ["out-of-bounds latitude", 100, 14.5],

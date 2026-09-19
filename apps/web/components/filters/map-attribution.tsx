@@ -1,29 +1,24 @@
 import type { Messages } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
-/**
- * The boundaries credit, and the one place the source URL is written.
- *
- * CC BY 4.0 asks for the creator, the licence and a link wherever the
- * boundaries are drawn, and they are drawn on three plates now: the picker's,
- * the found-animal page's and the shelter page's locator. The sentence around
- * these three words differs per plate, so each caller writes its own; the
- * three themselves are here, because a licence that has to be changed in three
- * places is a licence that will end up saying three things.
- *
- * pointer-events-auto because the plate that floats this credit turns them off
- * on the paragraph, so a credit cannot eat a region's taps; on a plate that
- * does not, it changes nothing.
- */
-export function BoundariesCredit() {
+/** Shared creator, licence and source link for every map using these boundaries. */
+export function BoundariesCredit({
+  className,
+  newWindow,
+}: {
+  className?: string;
+  newWindow?: string;
+} = {}) {
   return (
     <>
       <a
         href="https://www.gov.si/drzavni-organi/organi-v-sestavi/geodetska-uprava/"
-        className="pointer-events-auto underline underline-offset-2 hover:text-foreground"
+        className={cn("pointer-events-auto underline underline-offset-2 hover:text-foreground", className)}
         target="_blank"
         rel="noreferrer"
       >
         GURS
+        {newWindow && <span className="sr-only"> {newWindow}</span>}
       </a>
       , CC BY 4.0.
     </>
@@ -31,59 +26,42 @@ export function BoundariesCredit() {
 }
 
 /**
- * The map's data credit, floated on the plate's bottom-left corner.
- *
- * CC BY 4.0 requires it visible wherever the boundaries are drawn, and the
- * boundaries are drawn in two places: the homepage picker dialog and the
- * found-animal page. One component, so the licence has one home and the two
- * plates cannot drift into crediting differently.
- *
- * Opaque, unlike the /80 the dialog's title chip and close button wear. Those
- * are chrome and can afford to let the map through. This is 10px type that
- * has to clear 4.5:1, and the ratio the size was chosen against was measured
- * on the paper; over a hillshade that varies underneath it the ratio would
- * vary with it, so the paper travels with the text.
- *
- * bg-card and not bg-background, because the paper has to be the paper of the
- * surface this box stands on rather than the page's. Inside the picker that
- * surface is the dialog, which is --popover, and --card resolves to the same
- * value in both themes; on the found-animal page the plate is a card too. With
- * --background the box painted a black pill across the Koper coast in dark
- * mode, 1.14:1 darker than the map beside it and 1.27:1 against the sea above
- * it, which is a hole in the plate rather than a credit on it. In light both
- * tokens are white, so nothing there moves.
- *
- * pointer-events-none on the paragraph and auto on the links alone: the box
- * sits over a corner of the country that can be picked, and a credit is not
- * allowed to eat a region's taps. Bottom-left because that is the emptiest
- * corner the plate has, sea and the Italian border, and because it is where
- * the letterbox leaves bare paper when the viewBox does not fill the row.
- *
- * The prose halves are description, not licence. CC BY 4.0 asks for the
- * creator, the licence and a link, and those three stay at every width; the
- * sentence they sit in is what a phone can do without. Hidden by CSS rather
- * than dropped from the tree, so the markup is one paragraph.
+ * Keep source names and licences visible at every width. The opaque card
+ * background keeps small text readable over terrain in both themes.
+ * In overlay mode, only the links intercept taps; the map stays interactive.
  */
 export function MapAttribution({
   messages,
+  inFlow = false,
 }: {
-  messages: Pick<Messages, "regionBoundaries" | "reliefSource">;
+  messages: Pick<Messages, "regionBoundaries" | "reliefSource" | "newWindow">;
+  /** Place credits below the map with larger text and touch targets. */
+  inFlow?: boolean;
 }) {
+  const linkClassName = inFlow
+    ? "inline-flex min-h-6 items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+    : undefined;
   return (
     <p
       data-slot="map-attribution"
-      className="pointer-events-none absolute bottom-0 left-0 max-w-[26rem] rounded-ui bg-card px-1.5 py-0.5 text-3xs leading-tight text-muted-foreground"
+      className={cn(
+        "rounded-ui bg-card text-muted-foreground",
+        inFlow
+          ? "relative mt-2 border-t px-2 py-1 text-xs leading-relaxed"
+          : "pointer-events-none absolute bottom-0 left-0 max-w-[26rem] px-1.5 py-0.5 text-3xs leading-tight",
+      )}
     >
       <span className="max-lg:hidden">{messages.regionBoundaries}: </span>
-      <BoundariesCredit />{" "}
+      <BoundariesCredit className={linkClassName} newWindow={messages.newWindow} />{" "}
       <span className="max-lg:hidden">{messages.reliefSource}: </span>
       <a
         href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
-        className="pointer-events-auto underline underline-offset-2 hover:text-foreground"
+        className={cn("pointer-events-auto underline underline-offset-2 hover:text-foreground", linkClassName)}
         target="_blank"
         rel="noreferrer"
       >
         Terrain Tiles
+        <span className="sr-only"> {messages.newWindow}</span>
       </a>
       <span className="max-lg:hidden"> (AWS Open Data)</span>, SRTM / NASA.
     </p>

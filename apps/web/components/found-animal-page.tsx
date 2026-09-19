@@ -10,38 +10,17 @@ import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { shelterCensus } from "@/lib/shelter-census";
 import { loadShelters } from "@/lib/shelters";
+import { sheltersIndexPath } from "@/lib/shelter-path";
+import { SOURCE_LINK } from "@/lib/link-styles";
 
-// The found-animal flow as a page with a URL, which it never had. It lived
-// only inside the homepage map dialog behind /?najdena -- a query parameter
-// on a page whose title, description and OG card all say "adopt an animal".
-// The person this flow exists for does not start from this site's homepage:
-// they are standing over a stray, searching "našel sem psa kaj narediti" or
-// the name of the nearest shelter, or reading a link someone pasted into a
-// Facebook group. A dialog with no URL cannot be ranked for that search,
-// cannot be linked from an občina's website in a form anyone would publish,
-// and pastes into a group chat as an adoption ad. A route can.
-//
-// This page is the whole of the flow now. The dialog went back to picking
-// shelters, and /?najdena lands here instead of opening it
-// (found-animal-redirect.tsx), so the municipality websites that published
-// that address keep working. The page used to be the finder alone, which was
-// the smallest change that gave the flow a URL and left the map, the better
-// half of the answer, behind in the dialog.
-//
-// Keep the actionable guidance inside the finder so it is available before
-// and after a municipality is named, ahead of the map on phones.
 export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
   const animals = dataset?.animals ?? [];
   const entries = buildMunicipalityEntries(locale, animals);
   const messages = getMessages(locale);
 
-  // Every registered shelter on the map, on the register's own names. The
-  // dialog draws the ones with a list from the filter options and the rest
-  // from the register; this page has no filter, so the register is the one
-  // source for all seventeen and the count says which of them share a list.
-  // A shelter whose town the atlas cannot place is left off, as the dialog
-  // leaves it off: a marker roughly in the right place is worse than none.
+  // Include registered shelters even without listings. toPins omits shelters
+  // whose towns cannot be located rather than estimating their positions.
   const shelters = loadShelters();
   const census = shelterCensus(shelters, animals);
   const pins = toPins(
@@ -61,18 +40,8 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={FOUND_ANIMAL_PATHS}
-      // Full width, where the finder alone took max-w-xl: the map wants the
-      // room, and the finder keeps to its own 24rem column beside it at lg
-      // (see the atlas).
       mainClassName="flex w-full flex-1 flex-col gap-6 py-page-y"
-      // The one footer that does not link to the found-animal page, because
-      // it is on it, and the one that says nothing about the listings. The
-      // provenance sentence is about adopting an animal, which is the other
-      // task; the date under it is the animal export's, and printed below an
-      // answer that has just said the responsible shelter is not verified it
-      // reads as the day somebody checked the responsibility. So the page
-      // passes the dataset off as well as the note: the links, the address
-      // for a correction and the code are what a reader here is still owed.
+      // Omit the listings' export date: it does not date the coverage records.
       footer={
         <SiteFooter
           locale={locale}
@@ -86,8 +55,19 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
         <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
           {messages.muniPromptTitle}
         </h1>
+        <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+          {messages.muniIntro}
+        </p>
       </div>
 
+      <noscript>
+        <p className="max-w-2xl rounded-ui border p-4 text-sm leading-relaxed">
+          {messages.muniNoScript}{" "}
+          <a href={sheltersIndexPath(locale)} className={`${SOURCE_LINK} underline`}>
+            {messages.shelters}
+          </a>
+        </p>
+      </noscript>
       <FoundAnimalAtlas entries={entries} pins={pins} />
     </SiteShell>
   );

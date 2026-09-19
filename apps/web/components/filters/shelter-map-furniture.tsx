@@ -1,7 +1,7 @@
 import { cityAt, project } from "@/lib/geo";
 import type { Town } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
-import { intersectionArea, type CalloutRect } from "./map-callout";
+import { intersectionArea, type CalloutRect } from "./map-callout-layout";
 import { PLATE_TOO_SMALL } from "./map-marker";
 
 // The plate's own type, the part a printed atlas carries and a chart does not:

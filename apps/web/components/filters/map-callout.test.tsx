@@ -14,8 +14,8 @@ import {
   calloutType,
   DEFAULT_PLATE_SCALE,
   MapCallout,
-  type CalloutRect,
 } from "./map-callout";
+import type { CalloutRect } from "./map-callout-layout";
 
 afterEach(() => cleanup());
 
@@ -600,7 +600,11 @@ describe("MapCallout side choice", () => {
   // Where the chip actually landed, read off the report rather than off the
   // classes: this is the same rectangle the plate suppresses town anchors
   // against, and it is the only place the side choice is visible as a number.
-  function placed(x: number, avoid?: readonly CalloutRect[]): CalloutRect {
+  function placed(
+    x: number,
+    avoid?: readonly CalloutRect[],
+    earlier?: readonly CalloutRect[],
+  ): CalloutRect {
     const onRect = vi.fn();
     render(
       <svg>
@@ -612,6 +616,7 @@ describe("MapCallout side choice", () => {
           metadata="12 živali"
           rectKey="town"
           avoid={avoid}
+          earlierCallouts={earlier}
           onRect={onRect}
         />
       </svg>,
@@ -686,6 +691,20 @@ describe("MapCallout side choice", () => {
     // avoided, so a plate crowded evenly on both sides draws what it always
     // drew.
     expect(placed(x, marks).x).toBeCloseTo(rightOf(x), 5);
+  });
+
+  it("keeps the quieter side while separating an earlier persistent label", () => {
+    const x = 160;
+    const right = placed(x);
+    const marker = { x: right.x + 1, y: right.y + 1, width: 6, height: 6 };
+    const earlier = placed(x, [marker]);
+
+    const separated = placed(x, [marker], [earlier]);
+    expect(separated.x).toBeCloseTo(leftOf(x), 5);
+    expect(
+      separated.y + separated.height <= earlier.y ||
+      earlier.y + earlier.height <= separated.y,
+    ).toBe(true);
   });
 });
 

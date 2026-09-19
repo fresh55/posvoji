@@ -1,5 +1,5 @@
 import { REGION_SHAPES } from "@/lib/map-regions";
-import { intersectionArea, type CalloutRect } from "./map-callout";
+import { intersectionArea, type CalloutRect } from "./map-callout-layout";
 import { PLATE_MIN_SCALE } from "./map-marker";
 
 // Major regions orient the small country without labelling every narrow shape.

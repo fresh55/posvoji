@@ -41,11 +41,11 @@ import {
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 import {
-  type CalloutRect,
   DEFAULT_PLATE_SCALE,
   MapCallout,
   Origin,
 } from "./map-callout";
+import type { CalloutRect } from "./map-callout-layout";
 import {
   COUNTRY_OUTLINE,
   ContextFade,
@@ -1375,7 +1375,7 @@ export function ShelterMap({
           />
         </g>
       ))}
-      {spotlightTowns.map((town) => (
+      {spotlightTowns.map((town, index) => (
         <MapCallout
           key={`spot-callout-${town.key}`}
           x={town.x}
@@ -1388,6 +1388,10 @@ export function ShelterMap({
           // other's rectangle.
           rectKey={`spotlight-${town.key}`}
           onRect={handleCalloutRect}
+          earlierCallouts={spotlightTowns.slice(0, index).flatMap((earlier) => {
+            const rect = calloutRects[`spotlight-${earlier.key}`];
+            return rect ? [rect] : [];
+          })}
           // The spotlighted shelter by name, not its town: in a shared town
           // the answer is one of the discs, and the card must say which.
           title={

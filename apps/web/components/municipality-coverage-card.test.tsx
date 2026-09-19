@@ -4,7 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { telHref } from "@/lib/contact-links";
-import { getMessages } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import type { LookupCoverage } from "@/lib/municipality-coverage";
 import { CoverageCard } from "./municipality-coverage-card";
 
@@ -30,9 +30,9 @@ const OBALNO: LookupCoverage = {
 
 const messages = getMessages("sl");
 
-function renderCard(coverage: LookupCoverage = OBALNO) {
+function renderCard(coverage: LookupCoverage = OBALNO, locale: Locale = "sl") {
   return render(
-    <I18nProvider locale="sl">
+    <I18nProvider locale={locale}>
       <CoverageCard coverage={coverage} />
     </I18nProvider>,
   );
@@ -84,8 +84,30 @@ describe("the municipality coverage card", () => {
 
     const onCall = screen.getByRole("link", { name: "Dežurna 031 726 029" });
     expect(onCall.getAttribute("href")).toBe(telHref("031 726 029"));
+    expect(onCall.getAttribute("data-variant")).toBe("default");
     expect(screen.queryByText(/^Pokliči /)).toBeNull();
   });
+
+  it.each(["sl", "en"] as const)(
+    "offers a way to check contacts when neither phone is published (%s)",
+    (locale) => {
+      const copy = getMessages(locale);
+      const { container } = renderCard(
+        { ...OBALNO, phone: undefined, onCallPhone: undefined },
+        locale,
+      );
+
+      expect(screen.getByText(copy.muniPhoneUnavailable)).toBeTruthy();
+      expect(
+        screen
+          .getByRole("link", { name: copy.muniContactDetails })
+          .getAttribute("href"),
+      ).toBe(OBALNO.detailHref);
+      expect(container.querySelector('a[href^="tel:"]')).toBeNull();
+      // Remaining published contacts remain available in the fallback.
+      expect(container.querySelector('a[href="mailto:zavetisce@example.si"]')).not.toBeNull();
+    },
+  );
 
   // The contact links on this card are read by somebody standing over a found
   // animal, which is the highest-stakes surface the site has, so they are
@@ -97,8 +119,7 @@ describe("the municipality coverage card", () => {
       name: `${messages.contactEmail}: zavetisce@example.si`,
     });
     expect(email.getAttribute("href")).toBe("mailto:zavetisce@example.si");
-    // Both rows truncate, so the value a long address loses to an ellipsis is
-    // reachable by a mouse as well as by a screen reader.
+    // The full address is also available as a tooltip.
     expect(email.getAttribute("title")).toBe("zavetisce@example.si");
   });
 
@@ -150,7 +171,7 @@ describe("the municipality coverage card", () => {
     renderCard(OBALNO);
 
     for (const call of screen.getAllByRole("link", { name: /^Pokliči/ })) {
-      expect(call.className).toContain("pointer-coarse:h-11");
+      expect(call.className).toContain("pointer-coarse:min-h-11");
       expect(call.className).not.toContain("max-lg:h-11");
     }
   });

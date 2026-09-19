@@ -206,6 +206,13 @@ describe("MunicipalityFinder deep link", () => {
 });
 
 describe("MunicipalityFinder empty state", () => {
+  it("keeps a visible, associated field label after text is entered", () => {
+    renderFinder();
+    const search = screen.getByRole("combobox", { name: "Občina ali poštna številka" });
+    fireEvent.change(search, { target: { value: "Maribor" } });
+    expect(screen.getByLabelText("Občina ali poštna številka")).toBe(search);
+    expect(screen.getByText("Občina ali poštna številka").tagName).toBe("LABEL");
+  });
   it("puts the box first and the guidance under it, with no example towns", () => {
     renderFinder();
 
@@ -224,7 +231,7 @@ describe("MunicipalityFinder empty state", () => {
     expect(screen.queryByRole("link", { name: "112" })).toBeNull();
     expect(screen.queryByRole("link", { name: "113" })).toBeNull();
     expect(screen.getByText(/Odlov in oskrbo plača občina/)).toBeTruthy();
-    // No label over the box: the page's h1 has asked the question.
+    // The field label describes its accepted input without repeating the h1.
     expect(screen.queryByText("Kje si našel žival?")).toBeNull();
   });
 
@@ -233,11 +240,7 @@ describe("MunicipalityFinder empty state", () => {
   it("heads the guidance, before the first sentence and without an answer", () => {
     renderFinder();
 
-    const heading = screen.getByText("Do prihoda pomoči");
-    // A p and not a heading: the answer card above is headed by a p as well,
-    // and one h2 on a page whose answer has none misstates the outline.
-    expect(heading.tagName).toBe("P");
-    expect(screen.queryByRole("heading", { name: "Do prihoda pomoči" })).toBeNull();
+    const heading = screen.getByRole("heading", { name: "Do prihoda pomoči", level: 2 });
     expect(heading.className).toContain("font-medium");
 
     const first = screen.getByText(/Poškodovane živali ne premikaj/);
@@ -298,9 +301,7 @@ describe("MunicipalityFinder empty state", () => {
     // The box is 196px wide inside its padding on a 360px phone, which the
     // full name of the field does not fit in; it is spoken instead.
     expect(search.getAttribute("placeholder")).toBe("Občina ali pošta");
-    expect(search.getAttribute("aria-label")).toBe(
-      "Občina ali poštna številka …",
-    );
+    expect(screen.getByLabelText("Občina ali poštna številka")).toBe(search);
   });
 
   it("names the location button in the field while the box is empty", () => {
@@ -598,6 +599,16 @@ describe("MunicipalityFinder focus after a pick", () => {
 });
 
 describe("MunicipalityFinder search feedback", () => {
+  it("bounds both a shared query and newly entered text", () => {
+    window.history.replaceState({}, "", `/najdena-zival?posta=${"x".repeat(1000)}`);
+    renderFinder();
+    const search = screen.getByRole("combobox") as HTMLInputElement;
+    expect(search.value).toHaveLength(120);
+    expect(search.maxLength).toBe(120);
+    fireEvent.change(search, { target: { value: "y".repeat(1000) } });
+    expect(search.value).toHaveLength(120);
+    expect(new URLSearchParams(window.location.search).get("posta")).toHaveLength(120);
+  });
   it.each(["9999", "999", "10000", "SI-9999"])("announces an invalid postcode: %s", (query) => {
     renderFinder();
     const status = document.querySelectorAll('[aria-live="polite"]')[1];
@@ -615,6 +626,7 @@ describe("MunicipalityFinder search feedback", () => {
     fireEvent.change(search, { target: { value: "zzzz" } });
     expect(status.textContent).toBe("Ni občine z imenom »zzzz«");
     expect(screen.getByRole("link", { name: "Poglej zavetišča" }).getAttribute("href")).toBe("/zavetisca");
+    expect(screen.getByText("Preveri zapis, vpiši poštno številko ali uporabi svojo lokacijo.")).toBeTruthy();
     fireEvent.change(search, { target: { value: "1000" } });
     expect(status.textContent).toBe("Ljubljana · pristojno zavetišče");
     expect(screen.queryByRole("link", { name: "Poglej zavetišča" })).toBeNull();
@@ -696,21 +708,26 @@ afterEach(() => {
 });
 
 describe("MunicipalityFinder typed text against the device position", () => {
-  it("keeps a coarse singleton tentative until a keyboard confirmation", () => {
+  it("keeps a coarse singleton tentative and lets the keyboard reach its confirmation", () => {
     stubGeolocationAt(46.0569, 14.5058, 5000);
     const onAnswer = vi.fn();
     render(<I18nProvider locale="sl"><MunicipalityFinder entries={ENTRIES} onAnswer={onAnswer} /></I18nProvider>);
     fireEvent.click(screen.getByRole("button", { name: LOCATE }));
 
     expect(screen.getByText(/^Lokacija je približna/)).toBeTruthy();
-    expect(screen.getByRole("option", { name: /Ljubljana/ })).toBeTruthy();
+    const confirmation = screen.getByRole("button", { name: "Ljubljana" });
+    expect(confirmation.getAttribute("data-variant")).toBe("outline");
     expect(onAnswer).toHaveBeenLastCalledWith(null);
     expect(new URLSearchParams(window.location.search).has("kraj")).toBe(false);
 
     const input = screen.getByRole("combobox");
-    fireEvent.keyDown(input, { key: "ArrowDown" });
-    expect(input.getAttribute("aria-activedescendant")).toBeTruthy();
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAnswer).toHaveBeenLastCalledWith(null);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(confirmation);
+    expect(input.getAttribute("aria-activedescendant")).toBeNull();
+    // Native button activation is the same click for pointer and keyboard.
+    fireEvent.click(confirmation);
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(onAnswer).toHaveBeenLastCalledWith(expect.objectContaining({ municipality: "Ljubljana" }));
     expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Ljubljana");
@@ -730,13 +747,35 @@ describe("MunicipalityFinder typed text against the device position", () => {
     stubGeolocationAt(45.815, 15.9819);
     renderFinder();
     fireEvent.click(screen.getByRole("button", { name: LOCATE }));
-    expect(screen.getByText(/^Lokacije ni mogoče povezati/)).toBeTruthy();
+    expect(screen.getByText(/^Lokacije ne moremo povezati/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Poglej zavetišča" }).getAttribute("href")).toBe("/zavetisca");
     expect(screen.queryByRole("listbox")).toBeNull();
     expect(window.location.search).toBe("");
     fireEvent.change(screen.getByRole("combobox"), { target: { value: "1000" } });
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
   });
 
+  it("announces location progress and ignores a response after a typed search", () => {
+    let deliver: PositionCallback | undefined;
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: { getCurrentPosition: vi.fn((callback) => { deliver = callback; }) },
+    });
+    const search = renderReal();
+    const locate = screen.getByRole("button", { name: "Moja lokacija" });
+    fireEvent.click(locate);
+    const progress = document.querySelector('[aria-live="polite"]');
+    expect(progress?.textContent).toBe("Iščem lokacijo…");
+    expect(screen.getByRole("button", { name: "Moja lokacija" })).toBe(locate);
+    expect(locate.textContent).toContain("Moja lokacija");
+    fireEvent.focus(locate);
+    expect(screen.getByRole("tooltip").textContent).toBe("Moja lokacija");
+    fireEvent.change(search, { target: { value: "Maribor" } });
+    act(() => deliver?.({ coords: { latitude: 46.0569, longitude: 14.5058 } } as GeolocationPosition));
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Ljubljana" })).toBeNull();
+    expect(progress?.textContent).toBe("");
+  });
   it("stops answering with the fix as soon as something is typed", () => {
     // Somebody in Ljubljana presses the location button, then types the občina
     // the animal was actually found in. 26 občine, Kungota among them, have no
@@ -750,6 +789,7 @@ describe("MunicipalityFinder typed text against the device position", () => {
     fireEvent.click(
       screen.getByRole("button", { name: LOCATE }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Ljubljana" }));
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
 
     fireEvent.change(search, { target: { value: "Kungota" } });
@@ -761,7 +801,7 @@ describe("MunicipalityFinder typed text against the device position", () => {
     expect(screen.queryByText(/Pošta 1000/)).toBeNull();
   });
 
-  it("keeps using the fix while the box is empty", () => {
+  it("asks for explicit confirmation before using even a single GPS suggestion", () => {
     stubGeolocationAt(46.0569, 14.5058);
     renderReal();
 
@@ -769,8 +809,29 @@ describe("MunicipalityFinder typed text against the device position", () => {
       screen.getByRole("button", { name: LOCATE }),
     );
 
+    expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
+    expect(screen.getByText(/Lokacija je približna/)).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBeNull();
+    const confirmation = screen.getByRole("button", { name: "Ljubljana" });
+    expect(confirmation.tabIndex).toBe(0);
+    expect(confirmation.getAttribute("data-slot")).toBe("button");
+    expect(confirmation.getAttribute("data-variant")).toBe("outline");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    fireEvent.click(confirmation);
     expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Ljubljana");
+  });
+
+  it("offers manual recovery for a fix outside the supported area", () => {
+    stubGeolocationAt(51.5074, -0.1278);
+    const search = renderReal();
+    fireEvent.click(screen.getByRole("button", { name: LOCATE }));
+    expect(screen.getByText(/Lokacije ne moremo povezati s slovensko občino/)).toBeTruthy();
+    expect(screen.queryByText(/pristojno zavetišče/)).toBeNull();
+    expect(window.location.search).toBe("");
+    fireEvent.change(search, { target: { value: "Maribor" } });
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(screen.queryByText(/Lokacije ne moremo povezati/)).toBeNull();
   });
 
   it("does not resurrect a device result after typing and clearing", () => {
@@ -802,7 +863,7 @@ describe("MunicipalityFinder typed text against the device position", () => {
     renderReal();
     const locate = screen.getByRole("button", { name: LOCATE });
     fireEvent.click(locate);
-    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ljubljana" })).toBeTruthy();
     fireEvent.click(locate);
     expect(locate.getAttribute("aria-pressed")).toBe("false");
     expect(screen.queryByText("Zavetišče Ljubljana")).toBeNull();
@@ -1059,6 +1120,23 @@ describe("MunicipalityFinder without a verified shelter", () => {
     const row = screen.getByRole("link", { name: "Dežurna 041 609 240" });
     expect(row.getAttribute("href")).toMatch(/^tel:/);
     expect(screen.queryByText("brez objavljene številke")).toBeNull();
+  });
+
+  it("uses an on-call-only shelter as the first call when it is nearest", () => {
+    const [maribor, malaHisa, zonzani] = CIRKULANE.nearest;
+    const onAnswer = renderCirkulane([
+      { ...malaHisa, onCallPhone: "041 609 240" },
+      maribor,
+      zonzani,
+    ]);
+    expect(screen.getByText("Najprej pokliči")).toBeTruthy();
+    const primary = screen.getByRole("link", { name: "Dežurna 041 609 240" });
+    expect(primary.getAttribute("href")).toBe("tel:+38641609240");
+    expect(primary.getAttribute("data-variant")).toBe("default");
+    expect(follows(primary, screen.getByText("Če se ne oglasijo"))).toBe(true);
+    expect(onAnswer).toHaveBeenLastCalledWith(expect.objectContaining({
+      spotlight: ["mala-hisa"],
+    }));
   });
 
   // Bovec, from the real register: Johanca is the nearest shelter and has no

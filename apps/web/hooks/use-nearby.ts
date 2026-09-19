@@ -103,26 +103,41 @@ export function useNearby() {
     // The browser timeout excludes time waiting for permission. Bound that
     // wait too, and invalidate late callbacks after timeout or cancellation.
     deadline = setTimeout(() => fail(messages.geolocationTimeout), TIMEOUT_MS);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        if (current !== attempt) return;
-        cancel();
-        setState({
-          status: "on",
-          at: { lat: coords.latitude, lon: coords.longitude },
-          accuracy: coords.accuracy,
-        });
-      },
-      (error) =>
-        fail(
-          {
-            1: messages.geolocationDenied,
-            2: messages.geolocationUnavailable,
-            3: messages.geolocationTimeout,
-          }[error.code] ?? messages.geolocationUnavailable,
-        ),
-      { timeout: TIMEOUT_MS, maximumAge: MAX_AGE_MS },
-    );
+    try {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          if (current !== attempt) return;
+          if (
+            !Number.isFinite(coords.latitude) ||
+            !Number.isFinite(coords.longitude) ||
+            Math.abs(coords.latitude) > 90 ||
+            Math.abs(coords.longitude) > 180
+          ) {
+            fail(messages.geolocationUnavailable);
+            return;
+          }
+          cancel();
+          setState({
+            status: "on",
+            at: { lat: coords.latitude, lon: coords.longitude },
+            accuracy: coords.accuracy,
+          });
+        },
+        (error) =>
+          fail(
+            {
+              1: messages.geolocationDenied,
+              2: messages.geolocationUnavailable,
+              3: messages.geolocationTimeout,
+            }[error.code] ?? messages.geolocationUnavailable,
+          ),
+        { timeout: TIMEOUT_MS, maximumAge: MAX_AGE_MS },
+      );
+    } catch {
+      // Restricted/embedded browsers may throw before invoking either
+      // callback. Keep the manual location input available in that case.
+      fail(messages.geolocationUnavailable);
+    }
   }, [messages]);
   const dismissError = useCallback(() => {
     if (state.status === "error") setState(OFF);

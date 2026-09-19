@@ -109,11 +109,8 @@ export function buildMunicipalityEntries(
       }));
   }
 
-  return municipalities.map((municipality) => ({
-    name: municipality.name,
-    nearest:
-      municipality.coverage.length === 0 ? nearestTo(municipality.name) : [],
-    coverage: municipality.coverage.flatMap((coverage) => {
+  return municipalities.map((municipality) => {
+    const coverage = municipality.coverage.flatMap((coverage) => {
       const shelter = shelters.get(coverage.shelter);
       const source = sources[coverage.source];
       // A coverage row pointing at an unknown shelter or source is a data
@@ -138,6 +135,13 @@ export function buildMunicipalityEntries(
           confirmed: source.confirmed,
         },
       ];
-    }),
-  }));
+    });
+    return {
+      name: municipality.name,
+      coverage,
+      // A broken source or shelter reference can remove every coverage row.
+      // Decide from the usable answer so that degradation still offers help.
+      nearest: coverage.length === 0 ? nearestTo(municipality.name) : [],
+    };
+  });
 }

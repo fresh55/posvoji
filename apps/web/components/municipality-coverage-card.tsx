@@ -23,6 +23,11 @@ import {
   websiteName,
 } from "@/lib/contact-links";
 import { SOURCE_LINK } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
+
+// Size the links themselves; invisible tap targets would overlap adjacent rows.
+const CONTACT_LINK =
+  "flex min-h-6 items-center underline underline-offset-4 hover:text-foreground pointer-coarse:min-h-11";
 
 function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   const { messages } = useI18n();
@@ -36,121 +41,88 @@ function SpeciesTag({ species }: { species: LookupCoverage["species"] }) {
   );
 }
 
-/** One line of contact detail: a glyph, an optional spoken label, and the
- *  fact.
- *
- *  A label is never drawn. Every row here names itself to a reader who can
- *  see the glyph, so the label exists for the one who cannot. The rows that
- *  hold a link name it on the anchor instead, where it reaches the link's own
- *  accessible name; this label is a sibling of the fact and would not.
- *
- *  items-start throughout: opening hours are free text from a shelter's own
- *  site and wrap to two lines on a phone, and a glyph centred against two
- *  lines sits in the gap between them. */
+/** Align icons and text vertically within the larger touch targets. */
 function ContactRow({
   icon: Icon,
-  label,
   children,
 }: {
   icon: typeof MapPin;
-  label?: string;
   children: ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-2">
-      <Icon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-      <span className="min-w-0">
-        {label && <span className="sr-only">{label}: </span>}
+    <li className="flex items-start gap-2 pointer-coarse:min-h-11 pointer-coarse:items-center">
+      <Icon className="mt-0.5 size-3.5 shrink-0 pointer-coarse:mt-0" aria-hidden />
+      <span className="min-w-0 [overflow-wrap:anywhere]">
         {children}
       </span>
     </li>
   );
 }
 
-// One shelter's answer to "who takes the animal found in my municipality".
-// The flow ends in a phone call, so the number is the primary control rather
-// than one more line of contact details. The name links to the shelter's own
-// page, which is where its animals and the rest of its details already are;
-// the card used to add a "lost your animal?" link to the same page, which was
-// a second question asked of somebody who came with the first.
-//
-// Its text comes from the i18n hook and not from a prop bag. The bag was
-// copied from the server components that draw shelter cards, which cannot
-// call the hook; this card is "use client" and so is its only caller, so the
-// bag only meant every new line of text had to be threaded through three
-// files.
 export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
   const { messages, t } = useI18n();
   const host = coverage.website ? websiteHost(coverage.website) : undefined;
   return (
-    <Card className="space-y-3 p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {/* The invisible 44px layer below lg: a line of text is under the
-            24px a target needs, and the nearest-shelter card's names carry
-            the same. */}
+    <Card className="min-w-0 space-y-3 p-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <a
           href={coverage.detailHref}
-          className={SOURCE_LINK}
+          className={`${SOURCE_LINK} min-w-0 [overflow-wrap:anywhere]`}
         >
           {coverage.shelterName}
         </a>
         <SpeciesTag species={coverage.species} />
       </div>
 
-      {/* 44px tall below lg: the call is the card, and a phone borrowed to
-          make it is held in one hand. The same height as the call on the
-          nearest-shelter card, so the two states share one shape.
-
-          The dežurna številka is the same act at a different hour, so it is
-          the same control in the quieter variant rather than a line of text
-          among the addresses below. It was one: on Koper's card the number
-          to ring during office hours was a 44px button and the one to ring at
-          night was a 17px link, which is the wrong way round for the call
-          that is made in the dark over an animal by a road. */}
-      {(coverage.phone || coverage.onCallPhone) && (
+      {coverage.phone || coverage.onCallPhone ? (
         <div className="space-y-2">
           {coverage.phone && (
-            <Button asChild className="w-full pointer-coarse:h-11">
+            <Button asChild size="wrap" className="w-full">
               <a href={telHref(coverage.phone)} className="select-text">
                 <Phone className="size-4 shrink-0" aria-hidden />
-                {t("muniCall", { phone: coverage.phone })}
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  {t("muniCall", { phone: coverage.phone })}
+                </span>
               </a>
             </Button>
           )}
           {coverage.onCallPhone && (
             <Button
               asChild
-              variant="outline"
-              className="w-full pointer-coarse:h-11"
+              variant={coverage.phone ? "outline" : "default"}
+              size="wrap"
+              className="w-full"
             >
               <a href={telHref(coverage.onCallPhone)} className="select-text">
                 <Phone className="size-4 shrink-0" aria-hidden />
-                {t("muniCallOnCall", { phone: coverage.onCallPhone })}
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  {t("muniCallOnCall", { phone: coverage.onCallPhone })}
+                </span>
               </a>
             </Button>
           )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            {messages.muniPhoneUnavailable}
+          </p>
+          <Button
+            asChild
+            variant="outline"
+            size="wrap"
+            className="w-full"
+          >
+            <a href={coverage.detailHref}>{messages.muniContactDetails}</a>
+          </Button>
         </div>
       )}
 
       <ul className="space-y-1.5 text-sm text-muted-foreground">
         <ContactRow icon={MapPin}>{coverage.city}</ContactRow>
-        {/* When the number above is answered. It comes before the email and
-            the website, which are for daytime, because it is what says
-            whether the call being made now will be picked up. The hours name
-            themselves ("Pon-pet 8.00-12.00"), so their label is spoken and
-            not drawn. The number to dial outside them is a button above, not
-            a row here: the card states each number once. */}
         {coverage.hours && (
           <ShelterHours hours={coverage.hours} label={messages.muniHours} />
         )}
-        {/* The two calls above need no channel in their names: muniCall and
-            muniCallOnCall begin with the act, so their visible text is
-            already the announcement. These two rows print a bare value, so
-            contactName and websiteName put the channel in front of it.
-
-            title carries what a mouse cannot otherwise read: both rows
-            truncate, and a long address that ends in an ellipsis is left
-            only in the accessible name. */}
         {coverage.email && (
           <ContactRow icon={Mail}>
             <a
@@ -158,17 +130,13 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
               data-contact="email"
               aria-label={contactName(messages.contactEmail, coverage.email)}
               title={coverage.email}
-              className="block truncate underline-offset-4 hover:text-foreground hover:underline"
+              className={CONTACT_LINK}
             >
               {coverage.email}
             </a>
           </ContactRow>
         )}
         {coverage.website && (
-          // The only contact here that leaves the site. target="_blank" says
-          // so to nobody, so the name says it and the mark says it to
-          // everyone else: this card is read standing over a found animal,
-          // on a phone, where a title is a hover that never happens.
           <ContactRow icon={Globe}>
             <a
               href={coverage.website}
@@ -181,39 +149,39 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
                 messages.newWindow,
               )}
               title={host}
-              className="flex items-center gap-1 underline-offset-4 hover:text-foreground"
+              className={cn(CONTACT_LINK, "gap-1")}
             >
-              <span className="truncate hover:underline">{host}</span>
-              <ExternalLink className="size-3 shrink-0" aria-hidden data-external />
+              <span className="min-w-0 [overflow-wrap:anywhere]">{host}</span>
+              <ExternalLink
+                className="size-3 shrink-0"
+                aria-hidden
+                data-external
+              />
             </a>
           </ContactRow>
         )}
       </ul>
 
-      <p className="text-xs leading-snug text-muted-foreground">
-        {messages.muniSource}{" "}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-1 text-xs leading-snug text-muted-foreground [overflow-wrap:anywhere]">
+        <span>{messages.muniSource}</span>
         {coverage.sourceUrl ? (
           <a
             href={coverage.sourceUrl}
             target="_blank"
             rel="noreferrer"
-            className="underline underline-offset-2 hover:text-foreground"
+            className="flex min-h-6 min-w-0 items-center underline underline-offset-2 hover:text-foreground pointer-coarse:min-h-11"
           >
-            {coverage.sourceLabel}
-            {/* The card's second outbound link, and the citation rather than
-                a contact, so it says so the footer's way: a spoken sentence
-                after the label, with no mark drawn into a line of small
-                print. */}
+            <span className="min-w-0">{coverage.sourceLabel}</span>
             <span className="sr-only"> {messages.newWindow}</span>
           </a>
         ) : (
-          coverage.sourceLabel
-        )}{" "}
-        {/* One piece, or a phone breaks the date after its hyphen and the
-            credit line reads "(2026-" / "08)." */}
-        <span className="whitespace-nowrap">({coverage.sourceDate}).</span>
-        {!coverage.confirmed && <> {messages.muniDatedSource}</>}
-      </p>
+          <span>{coverage.sourceLabel}</span>
+        )}
+        <span className="col-start-2 whitespace-nowrap">({coverage.sourceDate}).</span>
+        {!coverage.confirmed && (
+          <p className="col-span-2 mt-1">{messages.muniDatedSource}</p>
+        )}
+      </div>
     </Card>
   );
 }

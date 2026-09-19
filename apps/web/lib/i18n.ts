@@ -385,6 +385,17 @@ const sl = {
   // and that one is neutral.
   foundAnimalLink: "Si našel žival?",
   muniPromptTitle: "Kje si našel žival?",
+  muniIntro: "Vpiši kraj, kjer je bila žival najdena, in poišči zavetišče za pomoč. Pred obiskom pokliči.",
+  muniSearchLabel: "Občina ali poštna številka",
+  muniNoMatchAdvice: "Preveri zapis, vpiši poštno številko ali uporabi svojo lokacijo.",
+  muniLocationConfirm: "Lokacija je približna. Potrdi občino, kjer je bila žival najdena, ali jo vpiši.",
+  muniLocationNoMatch: "Lokacije ne moremo povezati s slovensko občino. Vpiši občino ali poštno številko.",
+  muniMapHelp: "Zemljevid prikazuje zavetišča. Za podatke o pristojnosti uporabi iskanje.",
+  muniMapUnavailable: "Zemljevida ni mogoče prikazati. Iskanje zavetišč in kontaktni podatki so še vedno na voljo.",
+  muniNearestCallable: "najbližje zavetišče s telefonom",
+  muniNoScript: "Za iskanje po občini omogoči JavaScript ali poišči kontakt v seznamu zavetišč.",
+  muniPhoneUnavailable: "Telefonska številka ni objavljena.",
+  muniContactDetails: "Preveri kontakte zavetišča",
   muniTab: "Najdena žival",
   // The field's name, said in full, and the hint drawn inside it. They are
   // two keys because the box is 196px wide inside its padding on a 360px
@@ -393,7 +404,6 @@ const sl = {
   // things the field takes and drops the words that only make them formal;
   // English says "town" for the same reason the shelter picker's own field
   // does, which is that a postal town is what most people can name.
-  muniSearch: "Občina ali poštna številka …",
   muniSearchPlaceholder: "Občina ali pošta",
   muniHere: "Uporabi mojo lokacijo",
   // Two things at once: the field's placeholder while the device's position
@@ -407,8 +417,6 @@ const sl = {
     "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
-  muniLocationConfirm: "Lokacija je približna. Potrdi predlagano občino ali vpiši kraj, kjer je bila žival najdena.",
-  muniLocationUnmatched: "Lokacije ni mogoče povezati z bližnjo slovensko pošto. Vpiši občino ali poštno številko kraja, kjer je bila žival najdena.",
   // The finder's own version of postcodeNotFound. The shared one tells the
   // reader to check what they typed, which on this page is a dead end for
   // somebody standing over an animal with the right number and a table that
@@ -799,8 +807,18 @@ const en: Messages = {
   clearSearch: "Clear search",
   foundAnimalLink: "Found an animal?",
   muniPromptTitle: "Where did you find the animal?",
+  muniIntro: "Enter where the animal was found to find a shelter that can help. Call before visiting.",
+  muniSearchLabel: "Municipality or postcode",
+  muniNoMatchAdvice: "Check the spelling, enter a postcode, or use your location.",
+  muniLocationConfirm: "This location is approximate. Confirm the municipality where the animal was found, or enter it.",
+  muniLocationNoMatch: "We could not match this location to a Slovenian municipality. Enter a municipality or postcode.",
+  muniMapHelp: "The map shows shelters. Use the search to find the responsible shelter.",
+  muniMapUnavailable: "The map could not be displayed. Shelter search and contact details are still available.",
+  muniNearestCallable: "nearest shelter with a phone number",
+  muniNoScript: "Enable JavaScript to search by municipality, or find contact details in the shelter directory.",
+  muniPhoneUnavailable: "No phone number is published.",
+  muniContactDetails: "Check shelter contact details",
   muniTab: "Found an animal",
-  muniSearch: "Municipality or postcode …",
   muniSearchPlaceholder: "Town or postcode",
   muniHere: "Use my location",
   muniHereActive: "My location",
@@ -809,8 +827,6 @@ const en: Messages = {
     "Or type the postcode of the place where the animal was found.",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
-  muniLocationConfirm: "The location is approximate. Confirm the suggested municipality or type where the animal was found.",
-  muniLocationUnmatched: "The location could not be matched to a nearby Slovenian postal district. Type the municipality or postcode where the animal was found.",
   muniPostcodeNotFound:
     "No such postcode. Type the municipality or use your location.",
   muniNoMatch: "No municipality named",

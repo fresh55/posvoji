@@ -147,5 +147,5 @@ human review; it does not detect every kind of personal information.
 New dependency versions wait seven days before routine installation or a
 Dependabot version-update PR. Dependabot security updates bypass its cooldown.
 For an urgent pnpm security update, review the upstream release and use a
-temporary command-line `--minimum-release-age=0` override for that update;
+temporary command-line `--config.minimumReleaseAge=0` override for that update;
 do not lower the repository-wide setting or broaden lifecycle-script approval.

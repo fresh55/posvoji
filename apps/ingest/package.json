@@ -29,10 +29,10 @@
     "@posvoji/provider-zonzani": "workspace:*",
     "@posvoji/schema": "workspace:*",
     "onnxruntime-node": "1.29.0",
-    "sharp": "^0.34.4",
-    "tsx": "^4.23.12",
-    "yaml": "^2.9.0",
-    "zod": "^4.4.3"
+    "sharp": "^0.35.4",
+    "tsx": "^4.23.13",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.2"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

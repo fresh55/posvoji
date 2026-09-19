@@ -15,7 +15,7 @@
     "@posvoji/schema": "workspace:*",
     "cheerio": "^1.2.0",
     "robots-parser": "^3.0.1",
-    "undici": "^8.10.0"
+    "undici": "^8.10.2"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

@@ -94,3 +94,26 @@ export function columnTracks(columns: number) {
 export function restoreGridColumns() {
   window.getComputedStyle = realComputedStyle;
 }
+
+/**
+ * The idle callback jsdom does not ship, as a task.
+ *
+ * The grid waits for an idle moment to mount the dialog and the fan waits for
+ * one before it warms the tier a step would bring in. Without this both fall
+ * back to their timeouts, and the grid's is two seconds: the suite that misses
+ * it sits out the fallback instead of failing, which is the sort of slowness
+ * nobody goes looking for. A task is the nearest thing this environment has to
+ * idle and it puts the tests on the path a browser takes.
+ *
+ * Installed only where there is nothing there already, so a suite that drains
+ * an idle queue of its own keeps it.
+ */
+export function stubIdleCallback() {
+  window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
+    window.setTimeout(
+      () => callback({ didTimeout: false, timeRemaining: () => 50 }),
+      0,
+    )) as typeof window.requestIdleCallback;
+  window.cancelIdleCallback ??= ((handle: number) =>
+    window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
+}

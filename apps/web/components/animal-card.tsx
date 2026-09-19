@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  memo,
   useId,
   useRef,
   useState,
@@ -10,6 +11,7 @@ import {
 } from "react";
 import { ChevronRight } from "lucide-react";
 import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
+import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-provider";
 import { PhotoGallery } from "@/components/photo-gallery";
 import { StatusBadge } from "@/components/status-badge";
@@ -36,6 +38,7 @@ import {
 import { shelterPath } from "@/lib/shelter-path";
 import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
+import { canMorphPhoto, morphPhoto } from "@/lib/view-transition";
 
 // Adopted and hold are over, and the photo says so quietly: about a fifth of
 // the light and two fifths of the colour come off it.
@@ -124,12 +127,38 @@ const PHOTO_FRAME =
   " group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]" +
   " group-has-[a:focus-visible]/card:after:ring-3 group-has-[a:focus-visible]/card:after:ring-inset group-has-[a:focus-visible]/card:after:ring-ring";
 
-export function AnimalCard({
+// What a card with no dialog behind it answers: the dev gallery draws these
+// cards on their own, and a press there has nowhere to carry a photograph.
+// Written once rather than defaulted inline, so the answer is the same
+// function every render.
+const NO_DIALOG = () => false;
+
+/**
+ * One animal in the grid.
+ *
+ * Memoised, because the click that opens the dialog re-renders the grid around
+ * it: the open animal is an address (use-animal-dialog.ts), so the whole page
+ * renders again inside the same synchronous commit the view transition is
+ * holding, and at sixty cards that was most of the freeze between the tap and
+ * the first frame on a mid-range phone. Not one of them changes.
+ *
+ * Every prop both grids hand it is already stable: the animal comes out of a
+ * memoised sort, the reference date and both callbacks are held by the host
+ * above, and the rest are strings and flags that only a filter change moves.
+ * The entrance delay the home grid gives its first dozen cards is a style
+ * object, which is why that one is written once per ordinal rather than per
+ * render (animal-grid.tsx). Whether the dialog has arrived is a fact about the
+ * page that flips once, which is why it arrives as the accessor below rather
+ * than as the flag it used to be: as a value it re-rendered every drawn card
+ * at the flip, from the same idle callback that prefetches the descriptions.
+ */
+export const AnimalCard = memo(function AnimalCard({
   animal,
   reference,
   species = "all",
   eager = false,
   onOpen,
+  isDialogReady = NO_DIALOG,
   showShelter = false,
   order,
   className,
@@ -143,6 +172,17 @@ export function AnimalCard({
   /** Set on the first row, so the largest image on screen is not lazy. */
   eager?: boolean;
   onOpen: (id: string, origin?: DialogOrigin, photoIndex?: number) => void;
+  /** Asks whether the dialog this card opens is already on the page. The home
+   *  grid mounts it on idle, so a press that beats the idle callback, or
+   *  Safari's two-second fallback, would start a morph into a state that has no
+   *  dialog in it yet: the photograph would leave the card and land nowhere.
+   *  Such a press gets the plain open, which is what it got before any of this.
+   *
+   *  Asked at the press rather than handed over as a flag, so the answer
+   *  changing is not sixty cards rendering again; see the memo above. Left off
+   *  by a caller with no dialog behind it, and then no card carries a photo
+   *  anywhere. */
+  isDialogReady?: () => boolean;
   /** Draws the shelter line, which links to that shelter's own page. Opt-in,
    *  and it is what decides whether the line is drawn at all: a shelter's own
    *  page already names itself in its heading, so a line under every card
@@ -183,7 +223,7 @@ export function AnimalCard({
   const href = animalPath(animal, locale);
   // The href is a real deep link, so a middle click or a held modifier gets
   // the tab it asked for. A plain click stays on the page and opens the
-  // dialog, and hands over where it came from for the zoom to grow out of.
+  // dialog, and carries this card's photograph into it.
   function openDialog(event: MouseEvent<HTMLAnchorElement>) {
     if (
       event.metaKey ||
@@ -196,31 +236,29 @@ export function AnimalCard({
     }
     event.preventDefault();
     const rect = cardRef.current?.getBoundingClientRect();
-    // The photo as the visitor sees it, which is what the dialog carries into
-    // the fan. Found by name rather than by walking to the first child, so
-    // anything added above or beside the photo cannot silently send the zoom
-    // off from the wrong rectangle.
-    const photo = cardRef.current
-      ?.querySelector('[data-slot="photo-frame"]')
-      ?.getBoundingClientRect();
-    onOpen(
-      animal.id,
-      rect
-        ? {
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2,
-            photo: photo?.width
-              ? {
-                  left: photo.left,
-                  top: photo.top,
-                  width: photo.width,
-                  height: photo.height,
-                }
-              : undefined,
-          }
-        : undefined,
-      photoIndex,
-    );
+    // Where the dialog grows from when nothing carries the photo: the card's
+    // own centre, which is the fallback zoom's origin.
+    const origin = rect
+      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      : undefined;
+    // The photo as the visitor sees it, which is the box the browser morphs
+    // into the dialog's front print. Found through the helper both ends of the
+    // morph share (grid-rendering.ts): the dialog finds this same box again on
+    // the card behind it when it closes, and spelled separately the two failed
+    // apart.
+    const photo = cardPhoto(cardRef.current);
+    // An animal with no photograph has nothing to carry, a dialog that is not
+    // on the page yet has nowhere to carry it, and a browser without the API
+    // or a visitor who asked for less movement gets the plain open.
+    if (!photo || photoCount === 0 || !isDialogReady() || !canMorphPhoto()) {
+      onOpen(animal.id, origin, photoIndex);
+      return;
+    }
+    morphPhoto({
+      photo,
+      direction: "open",
+      update: () => onOpen(animal.id, origin, photoIndex),
+    });
   }
 
   // The keyboard's way through the gallery. The chevrons are pointer
@@ -646,4 +684,4 @@ export function AnimalCard({
       )}
     </article>
   );
-}
+});

@@ -14,6 +14,10 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import {
+  cardArrivesLate,
+  cardRevealTransition,
+} from "@/components/animal-dialog/dialog-reveal";
+import {
   DESKTOP_DEPTHS,
   PHONE_DEPTHS,
   PhotoSpread,
@@ -28,7 +32,12 @@ import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
+import { PHOTO_MORPH_MARK, PHOTO_TRANSITION_NAME } from "@/lib/view-transition";
+import { stubIdleCallback } from "@/test/grid-stubs";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
+import { stubViewTransition } from "@/test/view-transition";
+import { PHOTO_MORPH_CLASS } from "./fan-photo-styles";
+import { dialogOnPage } from "@/test/animal-dialog";
 import {
   DESKTOP_FAN_QUERY,
   PHONE_SHELL_QUERY,
@@ -78,20 +87,18 @@ globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
 
 // The fan waits for an idle moment before it warms the tier a step would bring
-// in, and jsdom ships no requestIdleCallback. A task is the nearest thing this
-// environment has to one, and it puts the tests on the path a browser takes
-// rather than on the timeout the fan falls back to without it.
-window.requestIdleCallback ??= ((callback: IdleRequestCallback) =>
-  window.setTimeout(
-    () => callback({ didTimeout: false, timeRemaining: () => 50 }),
-    0,
-  )) as typeof window.requestIdleCallback;
-window.cancelIdleCallback ??= ((handle: number) =>
-  window.clearTimeout(handle)) as typeof window.cancelIdleCallback;
+// in, and the grid waits for one before it mounts this dialog. jsdom ships no
+// requestIdleCallback.
+stubIdleCallback();
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  Reflect.deleteProperty(document, "startViewTransition");
+  // The stub runs the update and never settles, which is the 320ms of a real
+  // morph, so nothing ever takes the mark off: the next test would read it as
+  // a morph of its own.
+  document.documentElement.removeAttribute(PHOTO_MORPH_MARK);
   fanLayout("desktop");
   window.history.replaceState(null, "", "/");
   // The description store caches its one fetch for the life of the module, so
@@ -378,6 +385,7 @@ function cardLink(name: string) {
   if (!link) throw new Error(`no card link for ${name}`);
   return link;
 }
+
 
 function openCard(name: string) {
   const link = cardLink(name);
@@ -2063,15 +2071,154 @@ describe("animal dialog", () => {
   });
 
   // A link straight to an animal has no card to grow out of, so the dialog
-  // falls back to the zoom it always had rather than flying a photo in from
-  // nowhere.
+  // falls back to the zoom it always had rather than carrying a photograph in
+  // from nowhere.
   it("carries no photo across when the dialog was opened by link", async () => {
+    const started = stubViewTransition();
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
     const dialog = await screen.findByRole("dialog");
 
     expect(dialog).toBeTruthy();
-    expect(document.querySelector('[data-slot="photo-bloom"]')).toBeNull();
+    // No transition was started, so the document carries no mark, and
+    // everything inside that reads it mounts the way it does with nothing
+    // travelling: the fan fades in rather than holding its side prints back
+    // for a photograph that is not coming (fan-options.ts).
+    expect(started).toEqual([]);
+    expect(document.documentElement.hasAttribute(PHOTO_MORPH_MARK)).toBe(false);
+  });
+
+  // The other half of the same rule, on the card under the photographs: it
+  // arrives in the last third of the morph, which is a wait only an open that
+  // carries a photograph has anything to wait for. On every other open the
+  // delay was a fifth of a second of empty card.
+  it("delays the card's fade for the morph and for nothing else", () => {
+    const carried = cardRevealTransition(false, true);
+    const plain = cardRevealTransition(false, false);
+
+    expect(carried.delay).toBeGreaterThan(0.2);
+    expect(plain.delay).toBe(0);
+    expect(plain.duration).toBe(carried.duration);
+    // And where less movement was asked for, the card is simply there.
+    expect(cardRevealTransition(true, true)).toEqual({ duration: 0 });
+
+    // The wait is counted from the open and not from the render that starts
+    // the fade, because on a phone the rest of the card is drawn in a render
+    // of its own: a tenth of a second spent getting there is a tenth of a
+    // second less to wait, not a tenth more.
+    expect(cardRevealTransition(false, true, 0.1).delay).toBeCloseTo(
+      (carried.delay ?? 0) - 0.1,
+      5,
+    );
+    // And a wait already spent is over.
+    expect(cardRevealTransition(false, true, 5).delay).toBe(0);
+  });
+
+  // What the click has to commit, and what it does not. The open is one
+  // synchronous commit, because the browser takes its new snapshot the moment
+  // the update returns, and on a phone that commit was the whole freeze
+  // between the tap and the first frame. The two blocks that wait are the two
+  // the visitor cannot see waiting: the card is at nothing for the first two
+  // thirds of the morph.
+  //
+  // Asked of the rule rather than of the document, because a test cannot see
+  // the render that is being deferred: act() flushes every scheduled render
+  // before it returns, transitions included, so by the time anything can be
+  // read the late render has landed. What the document can say is that it
+  // lands, which every other test in this file already reads it for.
+  it("holds the card back only where waiting cannot be seen", () => {
+    expect(cardArrivesLate(true, true)).toBe(true);
+    // The desktop box is centred and grows as the card fills, which would move
+    // the photograph the morph is carrying.
+    expect(cardArrivesLate(true, false)).toBe(false);
+    // And nothing is held back from an open that draws the card at once: a
+    // deep link, a step to another animal, a browser without the API.
+    expect(cardArrivesLate(false, true)).toBe(false);
+    expect(cardArrivesLate(false, false)).toBe(false);
+  });
+
+  it("draws the whole card for an open that carries a photograph in", async () => {
+    const started = stubViewTransition();
+    renderGrid();
+    await dialogOnPage();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+    expect(started).toHaveLength(1);
+
+    // The name is what the dialog is announced by, so it is in the commit the
+    // click made whatever else waits.
+    expect(within(dialog).getByText("Rex")).toBeTruthy();
+    await waitFor(() =>
+      expect(dialog.querySelector('[data-slot="shelter-block"]')).toBeTruthy(),
+    );
+    expect(within(dialog).getByText("Starost: 2 leti")).toBeTruthy();
+  });
+
+  // The desktop box is centred and as tall as its content, so a card filled a
+  // render late would move the photograph the morph is carrying: there the
+  // whole card is drawn in the commit the click makes. The integration test
+  // above runs on the phone, because this file's media query answers for it.
+  it("draws the desktop card whole inside the click", async () => {
+    const phone = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: vi.fn().mockImplementation((media: string) => ({
+        matches: media === FAN_LAYOUT,
+        media,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+    stubViewTransition();
+    renderGrid();
+    await dialogOnPage();
+    openCard("Rex");
+
+    // Read with no await in between, so what is being pinned is the commit the
+    // click itself made.
+    const dialog = animalDialog();
+    expect(dialog.querySelector('[data-slot="shelter-block"]')).toBeTruthy();
+    expect(within(dialog).getByText("Starost: 2 leti")).toBeTruthy();
+
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: phone,
+    });
+  });
+
+  // A plain close while the opening morph is still running: Escape a moment
+  // after the dialog opened, with the card behind it out of the viewport. The
+  // photograph is not going anywhere, so focus lands on a card nobody can see
+  // unless the page scrolls to it. The close asks which way the morph in flight
+  // is going, and this one answers "open", which is not this close's: a flag
+  // saying only that something was running would hold the scroll back here.
+  it("scrolls the card back into view when the close carries nothing", async () => {
+    // jsdom lays nothing out and has no scrollIntoView of its own, so the card
+    // measures zero and the close takes the plain path, which is the case.
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      stubViewTransition();
+      renderGrid();
+      await dialogOnPage();
+      openCard("Rex");
+      const dialog = await screen.findByRole("dialog");
+      expect(document.documentElement.getAttribute(PHOTO_MORPH_MARK)).toBe(
+        "open",
+      );
+
+      await act(async () => {
+        fireEvent.click(slot(dialog, "dialog-close-card"));
+      });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      expect(scrollIntoView).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    }
   });
 
   it("drains the wash for an animal whose adoption is over", async () => {
@@ -2193,12 +2340,21 @@ describe("animal dialog", () => {
       .toBe("0px");
   });
 
-  it("opens the card's selected photo in both the fan and the opening animation", async () => {
-    const geometry = vi.spyOn(Element.prototype, "getBoundingClientRect")
-      .mockReturnValue({ x: 0, y: 0, left: 0, top: 0, width: 200, height: 150,
-        right: 200, bottom: 150, toJSON: () => ({}) } as DOMRect);
-    try {
+  it.each([false, true])(
+    "opens the selected photo with native transitions available: %s",
+    async (nativeTransition) => {
+      const started = nativeTransition
+        ? stubViewTransition(() => {
+            const frame = Array.from(document.querySelectorAll<HTMLElement>("[style]"))
+              .find((element) =>
+                element.style.viewTransitionName === PHOTO_TRANSITION_NAME ||
+                element.classList.contains(PHOTO_MORPH_CLASS),
+              );
+            return frame?.querySelector("img")?.getAttribute("src");
+          })
+        : [];
       renderGrid();
+      await dialogOnPage();
       const link = screen.getByRole("heading", { name: "Rex" }).closest("a")!;
       fireEvent.keyDown(link, { key: "ArrowRight" });
       fireEvent.click(link);
@@ -2206,12 +2362,13 @@ describe("animal dialog", () => {
       expect(window.location.search).toBe("?foto=2");
       expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
         .toBe("true");
-      const flyingPhoto = document.querySelector('[data-slot="photo-bloom"] img');
-      expect(flyingPhoto?.getAttribute("src")).toContain("rex-2");
-    } finally {
-      geometry.mockRestore();
-    }
-  });
+      if (nativeTransition) {
+        expect(started).toHaveLength(1);
+        expect(started[0].before).toContain("rex-2");
+        expect(started[0].after).toContain("rex-2");
+      }
+    },
+  );
 
   it("walks the list with the page keys and stops at the ends", async () => {
     window.history.replaceState(null, "", "/?zival=rex");

@@ -53,8 +53,27 @@ export function ShelterAnimalGrid({
   // whole list and not the drawn part of it: the arrows walk the animals, and
   // a shared link opens the one it names whether or not its card is on the
   // page yet. Both resolve against `animals`, the same as on the home grid.
-  const { selected, origin, shownIds, handleOpen, handleNavigate, close } =
-    useAnimalDialogHost({ animals, shown: sorted, basePath });
+  //
+  // dialogOnPage because this grid imports the dialog rather than loading it
+  // lazily, so it is here from the first render and a card may carry its
+  // photograph into it from the first press. The home grid's cards have to
+  // wait for the chunk; here there is nothing to wait for, and the readiness
+  // this page used to report through onReady was false for one commit and true
+  // for the rest of the visit.
+  const {
+    selected,
+    origin,
+    shownIds,
+    handleOpen,
+    isDialogReady,
+    handleNavigate,
+    close,
+  } = useAnimalDialogHost({
+    animals,
+    shown: sorted,
+    basePath,
+    dialogOnPage: true,
+  });
 
   // Drawn in steps, the same steps as the home grid and by the same hook. This
   // grid used to mount its whole list at once, and the largest shelter in the
@@ -105,6 +124,7 @@ export function ShelterAnimalGrid({
             // header is past, and on a desktop it is on the first screen.
             eager={ordinal < 4}
             onOpen={handleOpen}
+            isDialogReady={isDialogReady}
           />
         ))}
         <GridLoadMore

@@ -9,6 +9,11 @@ import {
 } from "motion/react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  ENTRANCE_STAGGER,
+  printEntrance,
+} from "@/components/animal-dialog/fan-options";
+import { PHOTO_MORPH_CLASS } from "@/components/animal-dialog/fan-photo-styles";
 import { PhotoSpread } from "@/components/animal-dialog/photo-spread";
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -101,8 +106,13 @@ function renderFan(
     layout?: "phone" | "desktop";
     locale?: "sl" | "en";
     initialIndex?: number;
+    /** Mounts the fan the way the dialog mounts one the browser is carrying
+     *  the card's photograph into. The dialog answers this for the fan rather
+     *  than the fan reading the document, because the mark on <html> says only
+     *  that some morph is running: a step to the next animal inside one
+     *  remounts the fan with nothing travelling into it. */
+    morphing?: boolean;
     washProgress?: MotionValue<number>;
-    holdFrontPrint?: boolean;
   } = {},
 ) {
   fanLayout(options.layout ?? "desktop");
@@ -111,19 +121,18 @@ function renderFan(
   // element with no features above it renders its styles and animates
   // nothing: the entrance below would be a print stuck at the opacity it
   // mounted with.
-  const tree = (hold: boolean | undefined) => (
+  const view = render(
     <I18nProvider locale={options.locale ?? "sl"}>
       <LazyMotion features={domAnimation}>
         <PhotoSpread
           animal={client}
           initialIndex={options.initialIndex}
+          morphing={options.morphing}
           washProgress={options.washProgress}
-          holdFrontPrint={hold}
         />
       </LazyMotion>
-    </I18nProvider>
+    </I18nProvider>,
   );
-  const view = render(tree(options.holdFrontPrint));
   // Read fresh every time: the breakpoint remounts the fan, and the stage the
   // test was holding goes with the layout it belonged to.
   function stage() {
@@ -137,33 +146,45 @@ function renderFan(
     });
     return found;
   }
-  /** What the dialog does when the copy of the card's photograph lands. */
-  async function releaseHold() {
-    await act(async () => {
-      view.rerender(tree(false));
-    });
-  }
-  return { view, stage, releaseHold };
+  return { view, stage };
 }
 
-/** The prints on stage, in the order the document holds them, by the photo
- *  each one is showing. Copies on their way out are left out: a print that
- *  wraps to the other side of the fan is drawn twice while the two cross over,
- *  and the one that is leaving takes no tab. */
-function printOrder(stage: HTMLElement) {
+/** Which photo a print is showing, off the name it says it by. */
+function photoNumber(print: Element) {
+  const found = /fotografijo (\d+)/.exec(print.getAttribute("aria-label") ?? "");
+  return Number(found?.[1]);
+}
+
+/** The prints on stage, in the order the document holds them. Copies on their
+ *  way out are left out: a print that wraps to the other side of the fan is
+ *  drawn twice while the two cross over, and the one that is leaving takes no
+ *  tab. */
+function prints(stage: HTMLElement) {
   return within(stage)
     .getAllByRole("button", { name: /fotografijo \d/ })
-    .filter((button) => button.dataset.leaving !== "true")
-    .map((button) => {
-      const found = /fotografijo (\d+)/.exec(button.getAttribute("aria-label") ?? "");
-      return Number(found?.[1]);
-    });
+    .filter((button) => button.dataset.leaving !== "true");
+}
+
+function printOrder(stage: HTMLElement) {
+  return prints(stage).map(photoNumber);
 }
 
 function print(stage: HTMLElement, n: number) {
   return within(stage).getByRole("button", {
     name: new RegExp(`fotografijo ${n}\\b`),
   });
+}
+
+/** The photos of every print wearing the morph's name. Only one element may
+ *  wear it at a time, whatever else is on the stage: two make the browser skip
+ *  the transition.
+ *
+ *  The same list printOrder walks, so a copy on its way out is not counted as a
+ *  print here and a print there. */
+function namedPrints(stage: HTMLElement) {
+  return prints(stage)
+    .filter((print) => print.className.includes("view-transition-name"))
+    .map(photoNumber);
 }
 
 function frontPrint(stage: HTMLElement) {
@@ -369,38 +390,170 @@ describe("fan tab order", () => {
 });
 
 describe("fan entrance", () => {
-  // The dialog flies a copy of the card's photograph into the front seat when
-  // it opens, and the front print used to cascade in under it: the same
-  // photograph on screen twice, with the copy still travelling 200ms after the
-  // print had gone fully opaque. The print waits at nothing instead, and takes
-  // the entrance it is owed when the copy lands.
-  it("holds the front print back until the card's photo has landed", async () => {
-    const { stage, releaseHold } = renderFan(gallery(3), {
-      holdFrontPrint: true,
-    });
+  // The front print is the box the browser carries the card's photograph into,
+  // so it is drawn at full strength in its first frame: an entrance under it
+  // would be a second photograph fading in behind the one already landing.
+  // Read before anything can have run, which is what says it never started at
+  // nothing.
+  //
+  // And it is the only print in the document, because the other four are drawn
+  // at nothing for the length of the lead and mounting them is what the commit
+  // the visitor is waiting on was mostly spent on.
+  it("commits the front print alone under a morph", () => {
+    const { stage } = renderFan(gallery(3), { morphing: true });
 
-    expect(frontPrint(stage()).style.opacity).toBe("0");
-    // The rest of the fan cascades in as it always does. It is the one seat
-    // the copy is flying to that has to keep out of its way.
-    await waitFor(() => expect(print(stage(), 2).style.opacity).toBe("1"));
-    expect(frontPrint(stage()).style.opacity).toBe("0");
-
-    await releaseHold();
-
-    await waitFor(() => expect(frontPrint(stage()).style.opacity).toBe("1"));
+    expect(frontPrint(stage()).style.opacity).toBe("1");
+    expect(printOrder(stage())).toEqual([1]);
   });
 
-  // Reduced motion is not tested here: motion reads the query once per module
-  // and answers every hook from that, so the first fan rendered in this file
-  // settles it for all of them. Both ends of the seam gate on it, the dialog
-  // where the copy is set flying and the fan where the print is held.
-
-  // The seam is optional, and a dialog that never sets it opens the fan
-  // exactly as it did before there was one.
-  it("cascades the whole fan in when nothing is held", async () => {
+  // And the other mount, which is every mount with nothing travelling: a step
+  // to the next animal, a deep link, a browser without the API. Nothing is
+  // landing in the front seat, so the front print has no reason to be there
+  // already and the rest have nothing to wait for. The fan fades in.
+  it("fades the front print in where nothing is being carried in", () => {
     const { stage } = renderFan(gallery(3));
 
-    await waitFor(() => expect(frontPrint(stage()).style.opacity).toBe("1"));
+    expect(frontPrint(stage()).style.opacity).toBe("0");
+    expect(print(stage(), 2).style.opacity).toBe("0");
+  });
+
+  // The one box the morph is aimed at, and only while it is the one in front.
+  // Two elements wearing the name in the same state make the browser skip the
+  // morph, which is the failure this guards: the card takes its own off inside
+  // the update that mounts this print.
+  it("names only the print in front for the morph", async () => {
+    const { stage } = renderFan(gallery(3));
+    // The whole seat, not the picture inside it: what the morph names is
+    // lifted out of the page for the length of it, and naming the well alone
+    // left the print's paper standing empty at the far end.
+    const named = (print: HTMLElement) => print.className;
+
+    // And under the mark, so the name is only worn while a morph of ours is
+    // running: a named element is lifted out of the snapshot of any
+    // transition, a real navigation out of the dialog included.
+    expect(named(frontPrint(stage()))).toContain(PHOTO_MORPH_CLASS);
+    expect(named(print(stage(), 2))).not.toContain("view-transition-name");
+
+    // And it travels with the front seat rather than staying where it started:
+    // stepping through the photos starts no transition, the name simply moves.
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+
+    expect(named(frontPrint(stage()))).toContain(
+      "[view-transition-name:animal-photo]",
+    );
+    expect(named(print(stage(), 1))).not.toContain("view-transition-name");
+  });
+
+  // The rest of the fan waits for the photograph to land and then cascades, so
+  // that for the length of the morph nothing on the stage moves but the
+  // picture the visitor pressed. They still arrive.
+  it("cascades the side prints in after the morph", async () => {
+    const { stage } = renderFan(gallery(3), { morphing: true });
+
+    // They arrive when the lead is up, at nothing, and are drawn in from
+    // there: the whole set is on stage and the fan reads as it always did.
+    await waitFor(() => expect(printOrder(stage())).toEqual([3, 1, 2]), {
+      timeout: 3000,
+    });
+    await waitFor(() => expect(print(stage(), 2).style.opacity).toBe("1"), {
+      timeout: 3000,
+    });
+    expect(frontPrint(stage()).style.opacity).toBe("1");
+  });
+
+  // Focus is on the front print from the first frame, so every way of walking
+  // the fan is live while the photograph is still arriving. Drawn alone, the
+  // print in front is the only element under a key, and a walk gave the new
+  // front print a key of its own: React unmounted the one wearing the morph's
+  // name, AnimatePresence kept it on stage to fade, and two elements wore the
+  // name at once, which is a morph the browser abandons. The old print also
+  // kept its aria-current, its tab stop and its presses for the length of that
+  // fade, because the fan's own commit does not count it as leaving.
+  it("draws the whole fan as soon as it is walked during the lead", async () => {
+    const { stage } = renderFan(gallery(3), { morphing: true });
+    expect(printOrder(stage())).toEqual([1]);
+
+    fireEvent.keyDown(stage(), { key: "ArrowRight" });
+    await expectFront(stage, 2);
+
+    // The whole window, and one print wearing the name: the one in front.
+    expect(printOrder(stage())).toEqual([1, 2, 3]);
+    expect(namedPrints(stage())).toEqual([2]);
+    // And nothing outside the window says it is the photo being looked at.
+    expect(
+      within(stage())
+        .getAllByRole("button", { name: /fotografijo \d/ })
+        .filter((print) => print.getAttribute("aria-current") === "true"),
+    ).toHaveLength(1);
+  });
+
+  // The numbers behind the phases above. The lead is the photograph's trip, so
+  // it belongs to the fan that has one; a fan with nothing travelling starts
+  // settled, where nothing is held back from a commit that would have drawn
+  // it.
+  describe("printEntrance", () => {
+    const base = { reduced: false, fresh: false };
+
+    it("draws the front print at once and nothing else", () => {
+      expect(
+        printEntrance({ ...base, mount: "front", active: true, offset: 0 }),
+      ).toBe(false);
+    });
+
+    it("cascades the sides when the lead is up, by the stagger alone", () => {
+      expect(
+        printEntrance({ ...base, mount: "sides", active: false, offset: 1 }),
+      ).toBeCloseTo(ENTRANCE_STAGGER, 5);
+      expect(
+        printEntrance({ ...base, mount: "sides", active: false, offset: -2 }),
+      ).toBeCloseTo(2 * ENTRANCE_STAGGER, 5);
+      // The lead is the timer that mounted them, not a delay on top of it.
+      expect(
+        printEntrance({ ...base, mount: "sides", active: false, offset: 2 }),
+      ).toBeCloseTo(2 * ENTRANCE_STAGGER, 5);
+      // The one in front is already standing there.
+      expect(
+        printEntrance({ ...base, mount: "sides", active: true, offset: 0 }),
+      ).toBe(false);
+    });
+
+    it("fades a fan with nothing travelling in, all of it at once", () => {
+      const settled = { ...base, mount: "settled" as const, fresh: true };
+      expect(printEntrance({ ...settled, active: true, offset: 0 })).toBe(
+        "fade",
+      );
+      expect(printEntrance({ ...settled, active: false, offset: 2 })).toBe(
+        "fade",
+      );
+    });
+
+    it("draws a print that arrives mid-walk as a plain fade, and the rest not at all", () => {
+      expect(
+        printEntrance({
+          ...base,
+          mount: "settled",
+          fresh: true,
+          active: false,
+          offset: 2,
+        }),
+      ).toBe("fade");
+      expect(
+        printEntrance({ ...base, mount: "settled", active: false, offset: 1 }),
+      ).toBe(false);
+    });
+
+    it("asks nothing of a visitor who wants less movement", () => {
+      expect(
+        printEntrance({
+          ...base,
+          reduced: true,
+          mount: "sides",
+          active: false,
+          offset: 2,
+        }),
+      ).toBe(false);
+    });
   });
 });
 

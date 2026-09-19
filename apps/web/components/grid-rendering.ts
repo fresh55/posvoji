@@ -109,4 +109,18 @@ export function cardLink(card: Element | undefined): HTMLAnchorElement | null {
   );
 }
 
+// The box the card's photograph fills, which is the box the dialog's morph
+// leaves from and comes back to (lib/view-transition.ts). photo-gallery.tsx
+// writes the marker.
+//
+// Both ends of that contract read it: the card names this box when it opens
+// the dialog, and the dialog finds it again on the card behind it when it
+// closes. Spelled separately they failed apart. A rename would break the open
+// loudly, with a card that no longer morphs, and the close silently, because a
+// close that cannot find the box is also how a card scrolled off the screen is
+// handled, and that is a path nothing would flag.
+export function cardPhoto(card: Element | null | undefined): HTMLElement | null {
+  return card?.querySelector<HTMLElement>('[data-slot="photo-frame"]') ?? null;
+}
+
 const FALLBACK_COLUMNS = 2;

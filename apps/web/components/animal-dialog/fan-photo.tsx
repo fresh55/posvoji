@@ -29,6 +29,7 @@ import {
 } from "./fan-geometry";
 import {
   PHOTO_FRAME_CLASS,
+  PHOTO_MORPH_CLASS,
   PHOTO_SEAT_CLASS,
   PHOTO_WELL_CLASS,
 } from "./fan-photo-styles";
@@ -102,7 +103,6 @@ export const FanPhoto = memo(function FanPhoto({
   nudge,
   entrance,
   fade,
-  hold,
   tempo,
   label,
   active,
@@ -139,12 +139,6 @@ export const FanPhoto = memo(function FanPhoto({
   /** The tween a print arrives and leaves on when it is not part of the
    *  opening cascade. Zero where motion was asked for none. */
   fade: Transition;
-  /** Whether this print's mount is still being held back, because the same
-   *  photograph is on screen somewhere else: the copy the dialog flies from
-   *  the card it was opened from. The print waits at nothing rather than
-   *  cascading in, and fades in on the entrance it is owed when this turns
-   *  false. Only ever true of the print at the front, and only at its mount. */
-  hold?: boolean;
   tempo: FanTempo;
   label: string;
   active: boolean;
@@ -340,9 +334,13 @@ export const FanPhoto = memo(function FanPhoto({
         // time and the stage's own rule cannot reach through it.
         active ? "cursor-zoom-in" : count > 1 && "cursor-grab",
         count > 1 && "group-data-dragging:cursor-grabbing",
+        // The box the card's photograph is morphed into, and only the print in
+        // front is it. See PHOTO_MORPH_CLASS for what the name costs when it is
+        // worn by anything else, or for longer than the morph.
+        active && PHOTO_MORPH_CLASS,
       )}
       initial={entrance === false ? false : { opacity: 0 }}
-      animate={{ opacity: hold ? 0 : 1 }}
+      animate={{ opacity: 1 }}
       // A print leaves the window in two ways. One walks off the trailing edge,
       // where the seats are clamped and there is nothing left of it to see, and
       // one is the copy of a print that has wrapped round to the other side of

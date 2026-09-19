@@ -22,17 +22,18 @@ import type { ClientAnimal } from "@/lib/animal";
 export function PhotoStage({
   animal,
   initialIndex,
+  morphing,
   onIndexChange,
-  holdFrontPrint,
   onLightboxOpenChange,
 }: {
   animal: ClientAnimal;
   /** Which photo to open on. A shared link can name one. */
   initialIndex?: number;
+  /** Whether the card's photograph is being carried into this animal's fan.
+   *  The dialog's own answer; see PhotoSpread. */
+  morphing?: boolean;
   /** Reports the photo on show, so the share link can name it. */
   onIndexChange?: (index: number) => void;
-  /** Passed through to the fan: see PhotoSpread. */
-  holdFrontPrint?: boolean;
   onLightboxOpenChange?: (open: boolean) => void;
 }) {
   // The fan's walk, held above the fan rather than inside it: the wash is
@@ -60,8 +61,8 @@ export function PhotoStage({
         key={animal.id}
         animal={animal}
         initialIndex={initialIndex}
+        morphing={morphing}
         onIndexChange={onIndexChange}
-        holdFrontPrint={holdFrontPrint}
         onLightboxOpenChange={onLightboxOpenChange}
         washProgress={washProgress}
         onWashWindow={setWashLayers}

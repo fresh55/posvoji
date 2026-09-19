@@ -108,9 +108,8 @@ export type ShelterCardText = {
 const CONTACT_ROW =
   "relative z-10 flex min-h-9 pointer-coarse:min-h-11 items-center gap-2.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-hidden hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring";
 
-// Everything the card is, apart from how its sections sit below sm. The two
-// phone layouts are the constants under it, and which one a card gets depends
-// on whether it has a mark to draw.
+// Everything the card is, apart from how its sections sit below sm. The phone
+// column is the constant under it, shared by cards with and without a mark.
 //
 // scroll-mt-4, which is where a link to the card's anchor lands it: 16px of
 // air above its edge, the same as the gutter beside it. It was 96px, left
@@ -118,66 +117,18 @@ const CONTACT_ROW =
 // page is sticky now: the header scrolls away, so a jump put the card a
 // quarter of the screen down under a band of nothing. The invite cell carries
 // the same value for the same reason (shelters-atlas.tsx).
+//
+// The name leads at every width. Pinning content before media from sm up
+// keeps that reading order while the shared tracks still align the media,
+// counts and contacts. Keep these overrides local to the shelter directory;
+// other consumers of Item's subgrid layout need not use this order.
 const CARD =
-  "group relative scroll-mt-4 max-sm:p-4 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring";
+  "group relative scroll-mt-4 max-sm:p-4 sm:[&>[data-slot=item-content]]:row-start-1 sm:[&>[data-slot=item-media]]:row-start-2 transition-[border-color,box-shadow] hover:border-foreground/40 hover:shadow-sm focus-within:border-foreground/40 focus-within:shadow-sm has-[[data-card-link]:focus-visible]:border-ring has-[[data-card-link]:focus-visible]:ring-3 has-[[data-card-link]:focus-visible]:ring-ring";
 
-/** With a mark: three stacked sections, the name and town first. */
+// Even without a logo, the status gets its own line. Folding the longer
+// "Brez objav na Posvoji.si" beside a name squeezed it at 375px while the
+// same name had more room at 320px, where the status wrapped underneath.
 const CARD_PHONE_STACK = "max-sm:flex max-sm:flex-col max-sm:gap-3";
-
-/**
- * Without a mark: the media row folds onto the town's line.
- *
- * A shelter with no logo draws nothing on the left of that row, so below sm
- * the row is a line of its own holding one count pill or one "Brez objav" on
- * the right, under the town. A whole line for one short phrase reads as a
- * third section of the card rather than as a fact about the shelter.
- *
- * Folded in CSS with the DOM left alone, and both halves of that are forced.
- * The count has to stay inside the media slot, because from sm up that slot is
- * a subgrid track of the row and the column of counts down the grid is the
- * point of it (see the ItemMedia comment below). And it cannot be drawn twice
- * behind a breakpoint either: data-animals and data-no-list are counted once
- * per card by the browser suite, which adds them against the census line.
- *
- * So the card is a wrapping flex row here instead of a column. The content
- * grows from a fixed basis (CONTENT_FOLD below), so it shares the first line
- * with the media whatever the name's length: left at its own width, a long
- * name's max-content claimed the whole line and pushed the count onto a line
- * of its own again, which is what happened to "Veterinarska bolnica Brežice"
- * at 390. The media is pushed to the right edge and aligned to the bottom of
- * the content, which is the town's line, and the contacts are given a full
- * basis so they keep a line of their own under both. The gap is the column's
- * own 12px, now read in both axes: 12px between the town and the count, and
- * 12px above the contacts.
- *
- * content-start because the card can be handed more height than it asked for,
- * and a wrapping row spreads its lines into slack where a column left it at
- * the bottom. Slack under the contacts is what the column did and what the
- * subgrid band above does, so this keeps one answer for all three.
- *
- * What it costs is the name's width on those cards: the name now ends where
- * the count begins, so a long one wraps a little sooner than it did. The name
- * keeps the whole width on every card that has a mark, which is most of them.
- */
-const CARD_PHONE_FOLD =
-  "max-sm:flex max-sm:flex-wrap max-sm:content-start max-sm:gap-3";
-/** The content's half of the fold: grow to whatever the media leaves on the
- *  first line, from a 9rem basis, so the name wraps inside that width instead
- *  of taking the line for itself. Only on a card without a mark; with one, the
- *  column layout gives the name the whole width.
- *
- *  9rem and not zero. From zero the row could shrink the name block to
- *  nothing, and at 200% text it did: the town under the name came out as
- *  "Br…" beside a "Brez objav" that kept its own width, which is the sort key
- *  cut to two letters on the card that most needs it. The basis is what a
- *  wrapping row places its lines by, so it is where the floor belongs. At the
- *  default size it is 144px, which with the widest media (a 92px count pill
- *  and the 12px gap) fits the narrowest card the register draws, 256px inside
- *  the padding at a 320px viewport, so the fold holds at 100%. At 200% the
- *  same basis is 288px on the same card, the line cannot hold both, and the
- *  media wraps under the town onto a line of its own, which is the stacked
- *  card's layout and loses nothing. */
-const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-36";
 
 /**
  * One shelter, as a card.
@@ -206,25 +157,31 @@ const CONTENT_FOLD = "max-sm:flex-1 max-sm:basis-36";
  * order the sections are written: the name and the town first, the mark and
  * the count under them, the contacts last. The logo band was the card's
  * header and on a phone that meant the first thing on a card about a
- * shelter's name was not the name. Measured at 375: the name is the first
- * line, and every count pill still lands 95px down its card, which keeps it in
- * the same glance. At 320 the one name that wraps pushes its pill to 120.
+ * shelter's name was not the name. When this phone order was introduced,
+ * measured at 375: the name was the first line, and every count pill still
+ * landed 95px down its card, which kept it in the same glance. At 320 the one
+ * name that wrapped pushed its pill to 120.
  *
  * That is also the document order, and so the order a screen reader hears
  * and the order a reader without CSS gets. The media row used to be written
  * first, because auto-placement handed it the first subgrid track that way,
  * and it cost every reader who is not looking at the band: a heading rotor
  * stepping card to card heard "186 živali" after the previous shelter's
- * contacts and before this one's name. Item's subgrid layout now pins each
- * slot to its track by name (ui/item.tsx), so from sm up the band still draws
- * media, content, footer, and the sections can be written as they are read.
+ * contacts and before this one's name. Item's subgrid layout pins each slot
+ * to its track by name (ui/item.tsx), so the sections can be written as they
+ * are read. The directory now overrides those track positions in CARD to draw
+ * content, media, footer from sm up as well.
  *
- * What the reorder costs is the counts sitting at one offset on every card.
- * See the ItemMedia comment below.
+ * The name leads at every width because it is the identity a reader scans
+ * for, whether the shelter has a logo or not. The former media-first desktop
+ * order put a blank header above six names. Moving the shared media track
+ * below the name and town leaves that air under the identity instead, while
+ * the counts and no-list statements still line up with their neighbours and
+ * the contacts keep their shared start. No logo needs to shrink beside a
+ * name, and no name has to give up width to make room for its status.
  *
- * A card with no mark has nothing to draw in that middle section but the count
- * or the line that stands in for it, so below sm it folds onto the town's line
- * rather than taking one of its own. CARD_PHONE_FOLD carries the reasoning.
+ * On phones, what the reorder costs is the counts sitting at one offset on
+ * every card. See the ItemMedia comment below.
  */
 export function ShelterCard({
   shelter,
@@ -239,11 +196,6 @@ export function ShelterCard({
   // boolean beside the original field, because the mark and the count pill
   // have to be drawn on the same test and the pill still needs the number.
   const animals = publishedCount(shelter.animals);
-  // The contacts keep a line of their own under the folded row, because in a
-  // wrapping flex row a full basis is what makes the wrap happen. Nothing on a
-  // card with a mark, which is a column below sm and wraps nothing. See
-  // CARD_PHONE_FOLD.
-  const footerLine = shelter.logo ? undefined : "max-sm:basis-full";
 
   return (
     <Item asChild variant="outline" layout="subgrid">
@@ -264,16 +216,12 @@ export function ShelterCard({
         // rather than scans, and none of it is taken from anything printed:
         // the text is larger here than it was, not smaller.
         //
-        // The phone layout depends on the mark, and only on the mark: see
-        // CARD_PHONE_STACK and CARD_PHONE_FOLD above. Everything either of
-        // them says is max-sm, so the subgrid band from sm up is one layout
-        // for all seventeen cards.
-        className={`${CARD} ${shelter.logo ? CARD_PHONE_STACK : CARD_PHONE_FOLD}`}
+        className={`${CARD} ${CARD_PHONE_STACK}`}
       >
         {/* The name and the town, written first because they are read first;
-            the subgrid places this in the second track from sm up. See the
-            phone paragraph on ShelterCard. */}
-        <ItemContent className={shelter.logo ? undefined : CONTENT_FOLD}>
+            the directory's subgrid overrides place this in the first track
+            from sm up too. See the reading-order paragraphs on ShelterCard. */}
+        <ItemContent>
           {/* No reserved second line here any more.
 
               A sm:max-xl:min-h-[2lh] used to sit on this title, because in the
@@ -368,21 +316,26 @@ export function ShelterCard({
         </ItemContent>
 
         {/* The mark on the left, the count on the right, on one line of their
-            own: above the name from sm up, under the name and its town below
-            it, and on the town's own line below sm where there is no mark to
-            hold the left of the row.
+            own under the name and its town at every width.
 
-            The count sits here rather than under the town, where it began,
-            because it is the one thing on the card that only some shelters
-            have. Under the town it was part of the text stack, so the eleven
+            The count has to stay inside the media slot, because from sm up
+            that slot is a subgrid track of the row and the column of counts
+            down the grid is the point of it. And it cannot be drawn twice
+            behind a breakpoint either: data-animals and data-no-list are
+            counted once per card by the browser suite, which adds them
+            against the census line.
+
+            The count sits here rather than in the name-and-town text stack,
+            where it began, because it is the one thing on the card that only
+            some shelters have. As another line under the town, the eleven
             cards carrying it pushed their contacts a line below the six that
             do not: at 1440px the first row's phones sat at 575, 603 and 575.
             The subgrid would line those rows up now whatever the count did to
             them, but it would do it by growing the content track on every card
             in the row, which is a band of air under the six shorter names to
-            pay for a line on the eleven. Up here it shares a row every card
-            draws at the row's fixed height whatever else is true, and costs
-            nothing.
+            pay for a line on the eleven. Here it shares the media row every
+            card draws at the row's fixed height whatever else is true, and
+            costs nothing.
 
             It reads better for the scan, too. Ranged right on a fixed row, the
             counts form a column the eye can run down to find the shelters
@@ -392,31 +345,14 @@ export function ShelterCard({
             That last part is what the phone order gives up, and it is worth
             saying plainly: below sm the row sits under the name, so a card
             whose name takes two lines carries its count 25px lower than its
-            neighbour's. Measured over the eleven cards that have a count: at
-            375 all eleven sit at 95px, and at 320 ten of them do and Obalno
-            zavetišče, the one name that wraps there, sits at 120. The counts
-            are still ranged right and still on a line of their own, so the
-            eye has an edge to run down; what it no longer has is one y. Paid
-            for the name reaching the reader first, which is the thing the
-            page is a list of.
-
-            Those heights are the stacked card's, and the stacked card is now
-            the one with a mark. Where there is none the row folds onto the
-            town's line (CARD_PHONE_FOLD), so the count sits a line higher
-            again. It costs the column nothing that the paragraph above has
-            not already given up. */}
-        {/* The fold, from the phone's side: with no mark on the left this row
-            is pushed to the right edge of the card and set against the bottom
-            of the name and its town, so its one line lands beside the town
-            rather than under it. Both rules are max-sm and both are off on a
-            card that has a mark. See CARD_PHONE_FOLD. */}
-        <ItemMedia
-          className={
-            shelter.logo
-              ? "justify-between gap-3"
-              : "justify-between gap-3 max-sm:ml-auto max-sm:self-end"
-          }
-        >
+            neighbour's. Measured when this phone order was introduced, over
+            the eleven cards that have a count: at 375 all eleven sat at 95px,
+            and at 320 ten of them did and Obalno zavetišče, the one name that
+            wrapped there, sat at 120. The counts are still ranged right and
+            still on a line of their own, so the eye has an edge to run down;
+            what it no longer has is one y. Paid for the name reaching the
+            reader first, which is the thing the page is a list of. */}
+        <ItemMedia className="justify-between gap-3">
           {/* "register" rather than "sm": this is the one place the whole set
               of logos is drawn side by side, so it is the one place one mark's
               drawn size is read against another's. See WIDTH_FALLOFF.
@@ -431,9 +367,9 @@ export function ShelterCard({
               logos the six discs read as the cards that were not finished.
               With nothing on the left the row still holds its place in the
               subgrid, and the count or the no-list line below keeps the
-              right edge, so the column the eye runs down is unchanged. That
-              is the sm-and-up half of it; below sm the empty left is what
-              lets the row fold onto the town's line. See CARD_PHONE_FOLD. */}
+              right edge, so the column the eye runs down is unchanged. Below
+              sm the status keeps its own line without reserving a logo's
+              height, and the name above it keeps the card's full width. */}
           {shelter.logo && (
             <ShelterAvatar
               name={shelter.name}
@@ -522,7 +458,7 @@ export function ShelterCard({
             the track, and a card that renders an empty one does that without
             being asked to remember. */}
         {shelter.phone || shelter.email || shelter.website ? (
-          <ItemFooter asChild className={footerLine}>
+          <ItemFooter asChild>
             {/* gap-0.5 for a pointer, none at all for a thumb. Nothing is
                 drawn at a row's edge, so what is read here is the space
                 between two lines of text, and that is 18px at a 36px row: the
@@ -602,7 +538,7 @@ export function ShelterCard({
             </ul>
           </ItemFooter>
         ) : (
-          <ItemFooter className={footerLine} />
+          <ItemFooter />
         )}
       </li>
     </Item>

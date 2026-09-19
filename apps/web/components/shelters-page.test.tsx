@@ -55,7 +55,7 @@ describe("shelter directory context", () => {
   it.each([
     { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti?", directory: "Zavetišča" },
     { locale: "en" as const, invitation: "Would your shelter like to join?", directory: "Shelters" },
-  ])("offers one email invitation before the directory in $locale", ({ locale, invitation, directory }) => {
+  ])("offers one email invitation after the directory in $locale", ({ locale, invitation, directory }) => {
     render(<SheltersPage locale={locale} />);
     const main = within(screen.getByRole("main"));
     const links = main.getAllByRole("link", { name: "info@posvoji.si" });
@@ -63,7 +63,7 @@ describe("shelter directory context", () => {
     const link = links[0];
     expect(link.getAttribute("href")).toBe("mailto:info@posvoji.si");
     expect(link.closest("p")?.textContent).toContain(invitation);
-    expect(link.compareDocumentPosition(main.getByRole("region", { name: directory }))
+    expect(main.getByRole("region", { name: directory }).compareDocumentPosition(link)
       & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

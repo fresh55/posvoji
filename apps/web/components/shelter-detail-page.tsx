@@ -6,6 +6,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  SlidersHorizontal,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -29,7 +30,6 @@ import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
-import { MUTED_LINK } from "@/lib/link-styles";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -45,7 +45,7 @@ const pageText = {
     registryNotice:
       "Za to zavetišče na Posvoji.si trenutno ni objav živali. To ne pomeni, da v zavetišču ni živali za posvojitev. Za več informacij se obrni neposredno na zavetišče.",
     mapLabel: "Lega zavetišča na zemljevidu Slovenije",
-    openInSearch: "Odpri v iskalniku živali",
+    filterAnimals: "Filtriraj živali tega zavetišča",
     source: "Vir: UVHVVR — register zavetišč (gov.si)",
     asOf: "stanje",
   },
@@ -54,7 +54,7 @@ const pageText = {
     registryNotice:
       "There are currently no animal listings from this shelter on Posvoji.si. This does not mean the shelter has no animals for adoption. Contact the shelter directly for more information.",
     mapLabel: "The shelter's location on a map of Slovenia",
-    openInSearch: "Open in the animal search",
+    filterAnimals: "Filter this shelter’s animals",
     source: "Source: UVHVVR — shelter registry (gov.si)",
     asOf: "as of",
   },
@@ -389,12 +389,17 @@ export function ShelterDetailPage({
                 The home grid reads the shelter off the address, so this
                 hands the same animals to the sex, age and size controls
                 that only live there. */}
-            <a
-              href={shelterAnimalsPath(shelter.id, locale)}
-              className={MUTED_LINK}
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className={CONTACT_BUTTON}
             >
-              {text.openInSearch}
-            </a>
+              <a href={shelterAnimalsPath(shelter.id, locale)}>
+                <SlidersHorizontal aria-hidden />
+                {text.filterAnimals}
+              </a>
+            </Button>
           </div>
           <ShelterAnimalGrid
             // The same cards and the same dialog as the home page, so the

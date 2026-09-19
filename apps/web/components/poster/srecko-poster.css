@@ -1,5 +1,4 @@
-/* A quiet memorial on the shared A4 sheet. All measurements use the same
-   screen/print unit as the adoption posters; none of their rules change. */
+/* Uses the shared A4 screen/print unit. */
 .poster-sheet--memorial {
   /* Preserve the paper proportions inside the stage's phone scroller. */
   flex: none;
@@ -28,9 +27,7 @@
   letter-spacing: -0.055em;
 }
 
-/* A frame matching the supplied portrait's ratio. No crop, artificial
-   detail or coloured letterbox. The illustration fallback also stays whole.
-   The picture can yield height for translated or missing optional copy. */
+/* Fit the full portrait; allow less height if text wraps. */
 .poster-sheet--memorial .poster-photo {
   width: 100%;
   height: calc(149 * var(--u));
@@ -107,8 +104,7 @@
   text-decoration: none;
 }
 
-/* The symbol includes a four-module white quiet zone. At 32mm it is still
-   easy to scan, but no longer competes with his portrait. */
+/* The 32mm symbol includes its four-module quiet zone. */
 .memorial-qr {
   display: block;
   flex: none;

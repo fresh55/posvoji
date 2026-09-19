@@ -1,15 +1,10 @@
 import { CatModel } from "@/components/cat-model";
 import { SreckoLink } from "@/components/srecko-link";
 import type { Locale } from "@/lib/i18n";
-import { SRECKO_TEXT } from "@/lib/srecko";
+import {
+  SRECKO_TEXT,
+} from "@/lib/srecko";
 
-/**
- * The cat on the about page: the shared model under his introduction.
- *
- * The model, its camera and its touch controller live in cat-model.tsx,
- * because the demo gate shows the same cat. No posterPriority here: he sits
- * below the fold on this page and is often never fetched at all.
- */
 export function AboutCat({ locale }: { locale: Locale }) {
   const memorial = SRECKO_TEXT[locale];
 

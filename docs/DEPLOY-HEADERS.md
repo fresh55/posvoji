@@ -370,6 +370,17 @@ automatically trusts one Caddy hop when it connects on loopback; otherwise set
 
 ## `/_next/static` cache headers
 
+Verified 20 September 2026 (Europe/Ljubljana), using the authenticated Chrome
+session and its network response headers after a homepage reload: the sampled
+JavaScript, CSS and both WOFF2 files returned `200` without `Cache-Control`.
+For example, `/_next/static/chunks/30u6sh46bxos5.js` and
+`/_next/static/media/inter-latin.2bn3s6zvc0dyp.woff2` had no cache policy.
+HTML and compressible chunks carried `Content-Encoding: zstd`; the font was
+served as `font/woff2`. HSTS was present with `max-age=300`.
+The immutable policy below still needs to be applied on the host. No production
+configuration was changed during this verification.
+
+
 `next build` names every file under `/_next/static/` for a hash of its
 contents, the way `apps/ingest` names a processed photo. A rebuilt chunk gets a
 new name; the old name never points at different bytes. That makes it

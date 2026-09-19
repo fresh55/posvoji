@@ -603,3 +603,32 @@ crawler reads and the body is never seen. None of this changes what
 `scripts/validate-caddy-layout.cjs` inspects: it follows roots and reachable
 file servers through `routes`, and Caddy adapts `handle_errors` into a separate
 error chain.
+
+## Back/forward cache
+
+Every navigation on the public site is a full document load and the home page
+is 1.2 MB of HTML, so a Back that the browser answers from the back/forward
+cache skips a parse it would otherwise repeat.
+
+Measured 19 September 2026 against the live site, signed in past the gate: a
+`pageshow` listener on the home page survived a click to `/zavetisca/obalno`
+and a `history.back()` and reported `persisted: true`. The HTML response
+carries no `Cache-Control` at all, only `ETag`, `Last-Modified`,
+`Vary: Accept-Encoding` and `content-encoding: zstd`.
+
+`no-store` on a document disqualifies it outright. `no-cache` and
+`max-age=0, must-revalidate` both keep it eligible, so the revalidation the
+`.html` paragraph under `/_next/static` cache headers asks for costs nothing
+here. If a document `Cache-Control` is ever added to the `try_files` chain, it
+has to be one of those two.
+
+Nothing in the exported pages blocks it either. No public page registers an
+`unload` or `beforeunload` handler, opens a `BroadcastChannel` or a WebSocket,
+or installs a service worker. The one `beforeunload` in the tree guards unsaved
+portal photo drafts and ships only in the `/portal` chunks.
+
+Headless Chromium refuses the cache under automation and reports
+`BackForwardCacheDisabledForDelegate` and `BrowsingInstanceNotSwapped`, so no
+e2e test can guard this. After a change to the Caddy block, re-test by hand:
+Chrome DevTools, Application panel, Back/forward cache, "Test back/forward
+cache".

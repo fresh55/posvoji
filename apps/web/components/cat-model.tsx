@@ -25,6 +25,7 @@ const MODEL = "/models/our-cat/cat.glb?v=27";
 // and the hint below has to name the same path, or the browser keeps the
 // preload and fetches the file a second time.
 const DECODER = "/models/our-cat/meshopt-decoder.js";
+const SLOW_LOAD_MS = 10_000;
 
 // What the viewer asks for once its chunk has evaluated, asked for at the same
 // moment as the chunk instead of after it: the model, which used to wait for
@@ -62,17 +63,19 @@ const copy = {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Maček se še nalaga …",
+    slow: "Počasnejša povezava? Še se nalaga …",
     unavailable: "3D-ogled ni na voljo.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "The cat is still loading …",
+    slow: "Slow connection? Still loading …",
     unavailable: "The 3D view is unavailable.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-type Status = "loading" | "ready" | "failed";
+type Status = "loading" | "revealing" | "ready" | "failed";
 
 /** What a page can ask of the cat once he is on screen. */
 export type CatModelHandle = {
@@ -178,13 +181,15 @@ export const CatModel = memo(function CatModel({
   // the box the page put it in, which is where a keyboard reach lands.
   const stage = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
+  const [slow, setSlow] = useState(false);
   // What the stage still owes the visitor, and empty once it owes nothing.
   // One expression, so the label's text, its box and whether it is drawn
   // cannot fall out of step.
-  // The ready/not-ready split, named once. The three-way checks below still
-  // read `status`, because they distinguish loading from failed.
+  // The ready/not-ready split, named once; status also distinguishes the
+  // reveal from a request still on the wire and from a failed attempt.
   const ready = status === "ready";
-  const waiting = ready ? "" : status === "failed" ? text.unavailable : text.loading;
+  const loading = status === "loading" || status === "revealing";
+  const waiting = ready ? "" : status === "failed" ? text.unavailable : slow ? text.slow : text.loading;
   // Whether the visitor has reached for him before he was there. The label
   // is drawn from then on, and stays until he is, rather than following the
   // pointer in and out.
@@ -197,6 +202,12 @@ export const CatModel = memo(function CatModel({
   useEffect(() => {
     handOver.current = onHandle;
   });
+  const activate = useRef(() => {});
+  useEffect(() => {
+    // React must remove the still before the first animated frame. Starting
+    // playback in transitionend can run ahead of that DOM commit.
+    if (ready) activate.current();
+  }, [ready]);
   // The other way round: the reach reaching into the effect. He is fetched
   // from inside it, so the reach has to be told to it rather than made a
   // dependency of it, which would restart it and take the observer, and on a
@@ -210,7 +221,7 @@ export const CatModel = memo(function CatModel({
   const reach = (touch: boolean) => {
     if (status === "ready") return;
     setReached(true);
-    if (touch && status === "loading") touched.current = true;
+    if (touch) touched.current = true;
     wake.current();
   };
 
@@ -228,6 +239,10 @@ export const CatModel = memo(function CatModel({
     let started = false;
     let visible = false;
     let ready = false;
+    let loaded = false;
+    let attempt = 0;
+    let slowTimer: ReturnType<typeof setTimeout> | undefined;
+    let revealFrame: number | undefined;
     // Whether anyone wants him yet. On screen is the answer everywhere but a
     // stage that waits for a reach, where the reach below is.
     let wanted = !startOnReach;
@@ -255,7 +270,7 @@ export const CatModel = memo(function CatModel({
     // to the generic body answer, which is the coarser thing the fallback
     // still answers.
     const buildPicker = () => {
-      if (disposed || !ready || !viewer || !makePicker) return;
+      if (disposed || !loaded || !viewer || !makePicker) return;
       picker?.dispose();
       try { picker = makePicker(viewer); }
       catch { picker = undefined; }
@@ -268,19 +283,14 @@ export const CatModel = memo(function CatModel({
           if (disposed) return;
           makePicker = module.createViewerCatPicker;
           // The cat can be here already: this is the later of the two chunks.
-          if (ready) buildPicker();
+          if (loaded) buildPicker();
         },
         () => {},
       );
     };
-    const onLoad = () => {
-      // Apply the seated first frame even when reduced motion starts paused.
-      if (viewer) viewer.currentTime = 0;
-      // Whatever the old picker held is a scene that has just been replaced.
-      picker?.dispose();
-      picker = undefined;
+    activate.current = () => {
+      if (!loaded || ready || disposed) return;
       ready = true;
-      setStatus("ready");
       syncPlayback();
       const controller = interaction;
       if (controller) handOver.current?.({ react: (name) => controller.react(name) });
@@ -290,12 +300,58 @@ export const CatModel = memo(function CatModel({
         touched.current = false;
         controller?.react("Notice");
       }
+    };
+    const finishReveal = () => {
+      if (loaded && !ready && !disposed) setStatus("ready");
+    };
+    const onRevealEnd = (event: TransitionEvent) => {
+      if (event.target === container && event.propertyName === "opacity") finishReveal();
+    };
+    const onLoad = () => {
+      if (disposed || loaded || !viewer) return;
+      clearTimeout(slowTimer);
+      // Hold the matching first pose throughout the reveal. Animation, the
+      // page's handle and a remembered touch all wait until the still leaves.
+      viewer.pause();
+      viewer.currentTime = 0;
+      loaded = true;
       buildPicker();
+      setStatus("revealing");
+      if (motion.matches) finishReveal();
+      else {
+        // No transitionend is emitted if styles disable the transition or
+        // the host is already opaque. Check once after React's style commit;
+        // the ordinary fade completes through transitionend, not a timer.
+        revealFrame = requestAnimationFrame(() => {
+          revealFrame = requestAnimationFrame(() => {
+            if (getComputedStyle(container).opacity === "1") finishReveal();
+          });
+        });
+      }
+    };
+    const releaseViewer = () => {
+      interaction?.dispose();
+      interaction = undefined;
+      picker?.dispose();
+      picker = undefined;
+      viewer?.removeEventListener("load", onLoad);
+      viewer?.removeEventListener("error", onError);
+      viewer?.pause();
+      viewer?.remove();
+      viewer = undefined;
+      for (const link of hints) link.remove();
+      hints = [];
     };
     const onError = () => {
+      if (disposed) return;
+      clearTimeout(slowTimer);
+      if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
+      loaded = false;
       ready = false;
-      interaction?.syncPlayback();
-      viewer?.pause();
+      started = false;
+      wanted = false;
+      attempt += 1;
+      releaseViewer();
       handOver.current?.(null);
       setStatus("failed");
     };
@@ -304,7 +360,7 @@ export const CatModel = memo(function CatModel({
     // chunk. Called from start() and nowhere else, so start()'s gate is the
     // whole gate: a route that never shows him, a stage still waiting for a
     // reach and a hidden tab ask for nothing.
-    const askForHim = () => {
+    const askForHim = (modelUrl: string) => {
       if (hints.length) return;
       hints = HINTS.map(({ href, as, crossOrigin }) => {
         const link = document.createElement("link");
@@ -326,7 +382,7 @@ export const CatModel = memo(function CatModel({
         link.setAttribute("fetchpriority", "low");
         if (crossOrigin) link.setAttribute("crossorigin", crossOrigin);
         // Last, so the request goes out with the rest already on the element.
-        link.setAttribute("href", href);
+        link.setAttribute("href", href === MODEL ? modelUrl : href);
         document.head.append(link);
         return link;
       });
@@ -350,7 +406,15 @@ export const CatModel = memo(function CatModel({
     const start = async () => {
       if (!wanted || started || disposed || !visible || document.hidden) return;
       started = true;
-      askForHim();
+      setStatus("loading");
+      setSlow(false);
+      clearTimeout(slowTimer);
+      slowTimer = setTimeout(() => setSlow(true), SLOW_LOAD_MS);
+      // model-viewer caches even failed loads by URL. Only an explicit reach
+      // after failure changes the URL, so it makes a real request without
+      // clearing other viewers' caches or retrying on scroll/tab changes.
+      const modelUrl = attempt ? `${MODEL}&retry=${attempt}` : MODEL;
+      askForHim(modelUrl);
       try {
         const { ModelViewerElement: Viewer } = await import("@google/model-viewer");
         if (disposed) return;
@@ -362,7 +426,7 @@ export const CatModel = memo(function CatModel({
         Viewer.meshoptDecoderLocation = DECODER;
         viewer = document.createElement("model-viewer") as ModelViewerElement;
         const attributes = {
-          src: MODEL,
+          src: modelUrl,
           alt: text.alt,
           "camera-controls": "",
           "disable-pan": "",
@@ -434,11 +498,6 @@ export const CatModel = memo(function CatModel({
         });
         container.append(viewer);
       } catch {
-        // Nothing will read the model now, and the links go on downloading it
-        // whether or not anything does: half a megabyte on a stage that has
-        // already failed. Taken back before the stage says so.
-        for (const link of hints) link.remove();
-        hints = [];
         if (!disposed) onError();
       }
     };
@@ -476,31 +535,33 @@ export const CatModel = memo(function CatModel({
       void start();
       syncPlayback();
     };
+    const onMotionChange = () => {
+      if (motion.matches) finishReveal();
+      syncPlayback();
+    };
+    container.addEventListener("transitionend", onRevealEnd);
     document.addEventListener("visibilitychange", onVisibilityChange);
-    motion.addEventListener("change", syncPlayback);
+    motion.addEventListener("change", onMotionChange);
     return () => {
       disposed = true;
       wake.current = () => {};
+      activate.current = () => {};
       corner?.removeEventListener("focusin", onCornerFocus);
       observer?.disconnect();
+      clearTimeout(slowTimer);
+      if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
+      container.removeEventListener("transitionend", onRevealEnd);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      motion.removeEventListener("change", syncPlayback);
+      motion.removeEventListener("change", onMotionChange);
       handOver.current?.(null);
-      interaction?.dispose();
-      picker?.dispose();
-      for (const link of hints) link.remove();
-      hints = [];
-      viewer?.removeEventListener("load", onLoad);
-      viewer?.removeEventListener("error", onError);
-      viewer?.pause();
-      viewer?.remove();
+      releaseViewer();
     };
   }, [locale, text, framing.orbit, framing.target, startOnReach]);
 
   return (
     <div
       ref={stage}
-      className={cn("relative", status === "loading" && "cursor-progress", className)}
+      className={cn("relative", loading && "cursor-progress", className)}
       onPointerEnter={() => reach(false)}
       onPointerDown={() => reach(true)}
     >
@@ -546,7 +607,7 @@ export const CatModel = memo(function CatModel({
         ref={host}
         inert={!ready}
         aria-hidden={!ready}
-        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
       />
       {/* The one thing ever drawn over the stage, and only while there is
           no cat to touch and someone has tried. It sits at the foot, on the
@@ -564,7 +625,7 @@ export const CatModel = memo(function CatModel({
       >
         {waiting && (
           <Badge variant="overlay-quiet">
-            {reached && status === "loading" && <LoaderCircle className="animate-spin" aria-hidden />}
+            {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
             {waiting}
           </Badge>
         )}

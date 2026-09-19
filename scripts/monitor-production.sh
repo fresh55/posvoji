@@ -71,11 +71,9 @@ grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path d
 # `precompressed br gzip` (docs/DEPLOY-HEADERS.md). Raw it is 1,500,464 bytes
 # against 550,478 brotli.
 #
-# Opt-in, because the host is not wired for those siblings yet and nothing in
-# this repository can wire it: until the directive lands the answer here is
-# correctly "no Content-Encoding", and a red light on every run for a thing
-# the site works without is a red light nobody reads. docs/DEPLOY-HEADERS.md
-# turns it on as the last of its host steps.
+# Production enabled the sidecars and this check on 17 September 2026.
+# Other hosts opt in after configuring their file_server; the build cannot
+# change that host setting. docs/DEPLOY-HEADERS.md records the setup steps.
 #
 # HEAD, because a precompressed sibling's Content-Encoding is set before any
 # body is written: a bodyless 200 carries it and the megabyte stays off the

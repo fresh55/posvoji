@@ -71,16 +71,18 @@ On nginx, list `image/svg+xml` explicitly: `app/icon.svg` is 11,478 bytes,
 `components/logo.tsx` preloads it on every page, and no other entry in the list
 covers it.
 
-**Not verified against production.** `posvoji.si` answers `401` behind Caddy
-`basic_auth`, the gate DEPLOY-PORTAL.md records, so
-`curl -sI -H 'Accept-Encoding: gzip' https://posvoji.si/` cannot say what the
-live server does with a real response. The live Caddyfile is assumed to encode
-text on the fly and to carry no `precompressed` directive; it lives on the host
-and is in no path of this repository, so that assumption could not be checked
-either. If the live config
-already compresses, the directives below change nothing and this file finally
-records what the server is doing. Run the curl once the gate comes off, before
-assuming it either way.
+**Production model compression verified 17 September 2026.** The live
+Caddyfile now has `precompressed br gzip` on the release's `file_server`.
+The authenticated model response carried `Content-Encoding: br` and was
+550,478 bytes. The deployed health monitor checks model encoding on every
+run with `POSVOJI_MONITOR_MODEL_ENCODING=1`, alongside its homepage and
+JavaScript compression checks.
+
+The live Caddyfile remains on the host rather than in this repository.
+Unauthenticated requests behind its `basic_auth` gate answer `401`, so a
+plain `curl -sI` cannot establish the encoding of the real page or model.
+Use the authenticated monitor while the gate is active; the manual checks
+below also apply after it comes off.
 
 The whole check is one line:
 
@@ -103,14 +105,15 @@ compresses on its own. Caddy's `encode` picks responses by `Content-Type`, and
 its default match list is `text/*`, `font/*`, `image/svg+xml`, the two icon
 types and a long set of `application/*` document and font types
 ([encode](https://caddyserver.com/docs/caddyfile/directives/encode)). No
-`model/*` type is in it, so the model goes out raw.
+`model/*` type is in it, so a host without the sidecar configuration sends
+the model raw. Production serves the sidecars, as verified above.
 
 The file is meshopt-encoded geometry, which is built to be entropy-coded
 afterwards. Measured on the September 2026 export: 1,500,464 bytes raw,
 624,978 gzipped, 550,478 brotli at quality 11. The gate page loads it on every
 visit, `/o-nas` when a visitor scrolls to the stage and the homepage only when
-one reaches for the corner, so a first visit to the gate wastes close to a
-megabyte of it.
+one reaches for the corner. Serving the Brotli sibling saves close to a
+megabyte on a first visit to the gate.
 
 Quality 11 is too slow to run per request, so the build does it once.
 `pnpm --filter web build` runs `apps/web/scripts/precompress-out.mjs` after

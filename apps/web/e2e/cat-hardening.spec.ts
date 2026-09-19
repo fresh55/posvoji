@@ -12,6 +12,7 @@ async function load(page: Page) {
   const model = page.locator("model-viewer");
   await model.scrollIntoViewIfNeeded();
   await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).loaded)).toBe(true);
+  await expect(model.locator("..")).toHaveAttribute("aria-hidden", "false");
   return model;
 }
 async function clip(model: Locator, name: string) {
@@ -63,6 +64,74 @@ test("the stage says he is loading until he can be touched, and he answers a tou
   await expect(status).toHaveText("");
   await expect.poll(opacity).toBe("0");
   await expect(poster).not.toHaveCSS("cursor", "progress");
+});
+
+test("the still stays under the reveal and the remembered greeting waits for it", async ({ page, isMobile }) => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/models/our-cat/cat.glb*", async route => {
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto("/vstop");
+    const model = page.locator("model-viewer");
+    await model.waitFor({ state: "attached" });
+    await model.evaluate(e => {
+      const viewer = e as ModelViewerElement;
+      const host = e.parentElement!;
+      const poster = host.parentElement!.querySelector("img")!;
+      const frames: { opacity: number; still: boolean; paused: boolean }[] = [];
+      e.addEventListener("load", () => {
+        const sample = () => {
+          const opacity = Number(getComputedStyle(host).opacity);
+          const still = getComputedStyle(poster).visibility !== "hidden";
+          frames.push({ opacity, still, paused: viewer.paused });
+          if (!still) e.setAttribute("data-reveal-frames", JSON.stringify(frames));
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      }, { once: true });
+    });
+    const box = (await stage(page).boundingBox())!;
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+    release();
+    await expect(model).toHaveAttribute("data-reveal-frames", /.+/);
+    const frames = JSON.parse((await model.getAttribute("data-reveal-frames"))!) as
+      { opacity: number; still: boolean; paused: boolean }[];
+    expect(frames.some(frame => frame.still && frame.opacity < 1)).toBe(true);
+    expect(frames.every(frame => frame.still || frame.opacity === 1)).toBe(true);
+    expect(frames.filter(frame => frame.still).every(frame => frame.paused)).toBe(true);
+    await clip(model, "Notice");
+  } finally {
+    release();
+  }
+});
+
+test("a failed download retries on the next touch without extra controls", async ({ page, isMobile }) => {
+  const attempts: string[] = [];
+  await page.route("**/models/our-cat/cat.glb*", async route => {
+    attempts.push(route.request().url());
+    if (!new URL(route.request().url()).searchParams.has("retry")) {
+      await route.fulfill({ status: 503, body: "Temporarily unavailable" });
+    } else await route.continue();
+  });
+  await page.goto("/vstop");
+  const status = page.locator('[data-slot="cat-status"]');
+  await expect(status).toHaveText(/ni na voljo/);
+  await expect(page.locator("model-viewer")).toHaveCount(0);
+  const buttonsBefore = await page.getByRole("button").count();
+  const box = (await stage(page).boundingBox())!;
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
+  const model = page.locator("model-viewer");
+  await expect(model).toHaveCount(1);
+  await expect(model.locator("..")).toHaveAttribute("aria-hidden", "false");
+  await expect(status).toHaveText("");
+  await clip(model, "Notice");
+  expect(attempts.some(url => new URL(url).searchParams.get("retry") === "1")).toBe(true);
+  expect(await page.getByRole("button").count()).toBe(buttonsBefore);
 });
 
 test("anatomical taps use the proxy instead of the full mesh and rapid repeats finish before returning to idle", async ({ page, isMobile }) => {

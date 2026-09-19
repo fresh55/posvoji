@@ -44,7 +44,8 @@ const sl = {
   // The action first, the reason second. The old order led with the caveat
   // and the visitor read a warning under the one button that mattered.
   sourceVerificationOld:
-    "Pred obiskom preverite pri zavetišču, ali je žival še na voljo. Zadnje preverjanje je starejše od enega dne ali ni znano.",
+    "Pred obiskom preverite pri zavetišču, ali je žival še na voljo.",
+  sourceVerificationAge: "Zadnje preverjanje: {age}.",
   // The line the contact address follows, on every page rather than only on
   // /o-nas. A wrong listing is the likeliest reason anyone writes, and the
   // page it is wrong on is not the about page. The address itself stays the
@@ -642,7 +643,8 @@ const en: Messages = {
   listPublished: "List published",
   sourceVerificationUnknown: "Check time unknown",
   sourceVerificationOld:
-    "Before visiting, check with the shelter that the animal is still available. The last check is over a day old or unknown.",
+    "Before visiting, check with the shelter that the animal is still available.",
+  sourceVerificationAge: "Last checked {age}.",
   footerContact: "A correction or a question?",
   moreInformation: "More information",
   footerLinks: "Footer links",

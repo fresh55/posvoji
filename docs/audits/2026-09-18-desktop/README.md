@@ -8,7 +8,7 @@ The original audit overstated some visual problems, missed existing affordances,
 
 [Original audit - superseded](ORIGINAL-AUDIT.md) · [36 original screenshots](EVIDENCE.md) · [Original validation results](validation/README.md)
 
-**Implementation progress, 19 September:** the first batch addresses D02, U1, D03, D04, D05 and D07 on an isolated branch initially based on `f2b7a79`, now integrated with `main` at `6e94362`. The second batch addresses D08 and D09: recorded energy counts in the existing filter hint and energy facts in animal details. See [implemented behavior, browser evidence and passing checks](implementation/README.md). The remaining findings retain the decisions below.
+**Implementation progress, 19 September:** the first batch addresses D02, U1, D03, D04, D05 and D07 on an isolated branch initially based on `f2b7a79`, now integrated with `main` at `6e94362`. The second batch addresses D08 and D09: recorded energy counts in the existing filter hint and energy facts in animal details. D10 now gives the actual age of source verification in the existing warning. See [implemented behavior, browser evidence and passing checks](implementation/README.md). The remaining findings retain the decisions below.
 
 ## Evidence and upstream baseline
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { quotedLang } from "@/lib/i18n";
-import { sourceIsOld, verificationDate } from "@/lib/source-freshness";
+import { sourceIsOld, verificationAge, verificationDate } from "@/lib/source-freshness";
 
 export function SourceFreshness({
   attribution,
@@ -20,7 +20,7 @@ export function SourceFreshness({
   checkedAt?: string;
   reference: Date;
 }) {
-  const { locale, messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   const [now, setNow] = useState(reference.getTime());
   useEffect(() => {
     // Start with the server's reference to hydrate consistently, then age even
@@ -30,6 +30,7 @@ export function SourceFreshness({
     const timer = window.setInterval(update, 60000);
     return () => { window.clearTimeout(first); window.clearInterval(timer); };
   }, []);
+  const age = verificationAge(checkedAt, locale, now);
   return (
     <div className="space-y-2 text-xs text-muted-foreground" data-slot="source-freshness">
       <p>
@@ -39,7 +40,7 @@ export function SourceFreshness({
             See quotedLang in lib/i18n.ts. */}
         {attribution && <span lang={quotedLang("sl", locale)}>{attribution}</span>}
         {attribution && " · "}
-        {checkedAt ? (
+        {checkedAt && age !== null ? (
           <>
             {messages.sourceVerified}{" "}
             {/* The machine value stays the instant. Only what is read changes. */}
@@ -53,7 +54,12 @@ export function SourceFreshness({
           measured 3.19:1 on white, under the 4.5:1 that 12px text needs; the
           amber on this card also already means the wait, which the hourglass
           says. It inherits the wrapper's muted foreground. */}
-      {sourceIsOld(checkedAt, now) && <p className="font-medium">{messages.sourceVerificationOld}</p>}
+      {sourceIsOld(checkedAt, now) && (
+        <p className="font-medium">
+          {messages.sourceVerificationOld}
+          {age !== null && ` ${t("sourceVerificationAge", { age })}`}
+        </p>
+      )}
     </div>
   );
 }

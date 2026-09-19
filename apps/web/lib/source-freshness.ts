@@ -41,7 +41,30 @@ export function verificationDate(value: string, locale: Locale): string {
   return Number.isFinite(date.getTime()) ? dateFormats[locale].format(date) : "—";
 }
 
-export function sourceIsOld(value: string | undefined, now: number): boolean {
+function sourceAge(value: string | undefined, now: number): number | null {
   const time = value === undefined ? NaN : Date.parse(value);
-  return !Number.isFinite(time) || time > now + 300000 || now - time > 30 * 3600000;
+  return !Number.isFinite(time) || time > now + 300000
+    ? null
+    : Math.max(0, now - time);
+}
+
+export function sourceIsOld(value: string | undefined, now: number): boolean {
+  const age = sourceAge(value, now);
+  return age === null || age > 30 * 3600000;
+}
+
+const relativeFormats: Record<Locale, Intl.RelativeTimeFormat> = {
+  sl: new Intl.RelativeTimeFormat("sl-SI", { numeric: "always" }),
+  en: new Intl.RelativeTimeFormat("en-GB", { numeric: "always" }),
+};
+
+export function verificationAge(value: string | undefined, locale: Locale, now: number): string | null {
+  const age = sourceAge(value, now);
+  if (age === null) return null;
+  // Keep hours through the first two days so a 31-hour check is distinct
+  // from one a full two days old. Longer gaps use completed days.
+  const hours = Math.floor(age / 3600000);
+  return hours < 48
+    ? relativeFormats[locale].format(-hours, "hour")
+    : relativeFormats[locale].format(-Math.floor(hours / 24), "day");
 }

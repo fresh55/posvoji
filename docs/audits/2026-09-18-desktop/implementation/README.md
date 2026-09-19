@@ -66,3 +66,13 @@ Regression coverage includes all three energy levels in both languages, an energ
 Browser verification at 1280x720 used the local 486-animal dataset. With dogs selected, the tooltip reported 3 recorded energy answers; selecting Miren reduced the results to Reks and Biba while keeping that coverage count at 3. Reks displayed Miren in the dialog and Slovenian standalone page, and Calm after switching the standalone page to English. The new fact used the existing compact identity row without clipping.
 
 Validation: `corepack pnpm check` passed: 3,755 JavaScript/TypeScript tests (2,718 web), 364 portal tests with 4 skipped, type checking, lint, policy validation (16 valid, 0 invalid, 13 enabled) and the 2,009-page production build. The existing unused `CARDS_PER_CLICK` lint warning remains. The ignored local log is `energy-check.log`.
+
+## Verification age, 19 September 2026
+
+**D10:** the existing warning keeps its placement and 30-hour threshold, but now names the elapsed time of a known source check. It uses completed hours below 48 hours and completed days thereafter, localized in Slovenian and English. The shelter-availability advice remains first. Missing, invalid or implausibly future dates show the unknown-date footnote and the advice without inventing an age.
+
+The static page starts with its server reference so hydration remains consistent, then the existing minute timer updates the age. The source timestamp and machine-readable date remain unchanged. Regression tests cover 31 hours versus 12 days, the hours-to-days boundary, the existing five-minute clock tolerance, unreliable dates, both languages and an open page aging into another day.
+
+Browser verification at 1280x720 confirmed Reks's warning below the shelter action in the dialog and both standalone locales. After hydration it read “pred 13 dnevi” / “13 days ago”, with the source timestamp still `2026-09-05T18:50:30.148Z`. The warning remained readable without clipping. Initial static text used the publication reference before advancing to the current age.
+
+Validation: `corepack pnpm check` passed: 3,770 JavaScript/TypeScript tests (2,733 web), 364 portal tests with 4 skipped, type checking, lint, policy validation (16 valid, 0 invalid, 13 enabled) and the 2,009-page production build. The existing unused `CARDS_PER_CLICK` lint warning remains. The ignored local log is `verification-age-check.log`.

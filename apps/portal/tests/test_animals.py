@@ -36,6 +36,41 @@ def put(client, slug, animal_id, payload):
 
 
 @pytest.mark.django_db
+def test_clear_published_override_returns_crawled_value(
+    member_client, shelter, dataset_file
+):
+    dataset_file(
+        [make_animal("testno:1", shelter, status="reserved")],
+        crawled=[
+            make_animal(
+                "testno:1",
+                shelter,
+                status="available",
+                images=[
+                    {
+                        "sourceUrl": "https://example.si/bela.jpg",
+                        "rights": "cache-permitted",
+                    }
+                ],
+            )
+        ],
+    )
+    AnimalOverride.objects.create(
+        shelter=shelter, animal_id="testno:1", status="reserved"
+    )
+    response = put(member_client, shelter.slug, "testno:1", {"status": None})
+    assert response.status_code == 200
+    assert not AnimalOverride.objects.exists()
+    for item in (
+        response.json(),
+        member_client.get(animals_url(shelter.slug)).json()[0],
+    ):
+        assert item["overrides"] == {}
+        assert item["status"] == "available"
+        assert item["thumbnailUrl"] == "/media/animals/bela.jpg"
+
+
+@pytest.mark.django_db
 def test_listing_requires_a_session(client, shelter, dataset_file):
     dataset_file([])
 

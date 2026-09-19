@@ -6,12 +6,10 @@ data/dist/animals.crawled.json is the same run's records before any override
 was merged. The portal only reads them, never writes them, and keeps working
 when a file is missing because the pipeline may not have run yet.
 
-Which file a caller wants depends on its question. "What should the shelter
-see" is the merged one, so the listing reads DATASET_PATH. "What does the
-crawl say" is the crawled one, so a baseline and a conflict read
-CRAWLED_DATASET_PATH: read off the merged file, the baseline of an override
-the last run applied would be the override's own value, and a run that merely
-carried the correction forward would look like a crawl that caught up.
+The listing uses DATASET_PATH for published identities and cached thumbnails,
+then applies current overrides to the editable facts in CRAWLED_DATASET_PATH.
+Baselines and conflicts also read the crawled file: reading the merged file
+would mistake a previously published correction for the crawl's own value.
 """
 
 import json
@@ -218,19 +216,22 @@ def crawled_values(animal: Animal) -> dict[str, Any]:
     return values
 
 
-def merge_animal(animal: Animal, override: AnimalOverride | None) -> dict[str, Any]:
-    """A dataset record with the shelter's overrides applied on top.
+def merge_animal(
+    animal: Animal, override: AnimalOverride | None, *, crawled: Animal | None = None
+) -> dict[str, Any]:
+    """Crawled facts with current overrides and the published thumbnail.
 
-    The record is usually one from the merged dataset, which already carries
-    the overrides ingest applied on the last run. Applying the same values
-    again changes nothing, and an override set or cleared since that run
-    lands on top of it, which is the view the shelter expects.
+    The published record may contain corrections from an earlier export, so
+    clearing an override must fall back to the crawled record's editable
+    values. Keep its cached thumbnail from animal; the crawled snapshot has
+    no cached URLs. Older datasets without a crawled record still fall back
+    to animal.
     """
     overrides = override.overridden_fields() if override is not None else {}
     merged: dict[str, Any] = {
         "id": animal.get("id"),
         "species": animal.get("species"),
-        **crawled_values(animal),
+        **crawled_values(crawled or animal),
         "thumbnailUrl": thumbnail_url(animal),
     }
     merged.update(overrides)

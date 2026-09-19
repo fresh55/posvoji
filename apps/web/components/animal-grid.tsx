@@ -31,6 +31,7 @@ import {
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
+import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   PREHYDRATION_DATASET_KEY,
@@ -54,30 +55,9 @@ import {
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 import { useIncrementalGrid } from "./use-incremental-grid";
 
-// The dialog and everything under it: the photo fan, the lightbox, the share
-// sheet, the shelter block and the dialog's own motion, which is the largest
-// single thing this page would otherwise put in the document. The grid, the
-// filters and the cards need none of it to draw. Measured with
-// scripts/measure-chunks.mjs: the home document asked for 397.3 KB of script
-// gzipped with it imported and 373.7 KB with it fetched, so the chunk that
-// moved off the document is the 23.6 KB between them. Those numbers still
-// describe the document after the idle mount below, because the chunk is
-// still a fetch that happens after load; what changed is when it is asked
-// for, not who asks the document for it.
-//
-// ssr: false because there is nothing here to prerender. Which animal is open
-// is an address, the export has no server to read one with
-// (getServerLocationSnapshot in lib/location-search.ts returns "" and has to),
-// and the component returns null until an animal is selected, so the server
-// pass would emit the chunk's preload for markup that is empty either way.
-//
-// loading is null for the same reason the empty state has no skeletons: until
-// an animal is chosen there is no surface here, and a placeholder over the
-// grid would be a promise of a dialog nobody opened. The fallback is also the
-// thing the idle mount below keeps out of the click: React holds a commit
-// that only resolves a Suspense fallback until 300ms after that fallback was
-// shown (FALLBACK_THROTTLE_MS in react-dom-client), so a dialog first mounted
-// inside the click waits out the rest of those 300ms before it draws.
+// Load the dialog separately from the grid. The static export has no open
+// animal, so skip SSR and render no placeholder. The idle mount below prepares
+// the dialog before a click to avoid the Suspense fallback delay.
 const AnimalDialog = dynamic(
   () =>
     import("@/components/animal-dialog/animal-dialog").then(
@@ -86,9 +66,7 @@ const AnimalDialog = dynamic(
   { ssr: false, loading: () => null },
 );
 
-// How long a cleared filter state can still be taken back. Long enough to
-// read the row and reach for it, short enough that the offer is gone before
-// it becomes part of the furniture.
+// Time available to undo clearing filters.
 export const UNDO_WINDOW_MS = 7000;
 
 // When a browser with no requestIdleCallback does the idle work below
@@ -860,4 +838,3 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
-import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
+import type { FilterCardLayout } from "./filter-card";
 
 export type FilterSectionKey =
   | "sex"
@@ -48,10 +49,7 @@ type Overrides = Partial<Record<FilterSectionKey, boolean>>;
 
 const NO_OVERRIDES: Overrides = {};
 
-// One store per tab, so every list reading the sections sees the same folds.
-// The sidebar and the phone sheet are both readers and they share it. Only one
-// of the two is on screen at a width, so they cannot disagree in front of a
-// visitor; a phone rotated into the lg layout finds the folds it left.
+// Share saved folds between the sidebar and sheet within this tab.
 const listeners = new Set<() => void>();
 let cache: Overrides | null = null;
 
@@ -76,8 +74,7 @@ function sameOverrides(a: Overrides, b: Overrides): boolean {
   return keys.every((key) => a[key] === b[key]);
 }
 
-// A second tab folding a section writes to the same storage. Reading it back
-// here keeps both tabs on one state instead of drifting apart.
+// Sync saved folds from other tabs.
 function onStorage(event: StorageEvent) {
   if (event.key !== null && event.key !== STORAGE_KEY) return;
   const next = readStored();
@@ -120,9 +117,7 @@ function write(next: Overrides) {
   for (const listener of listeners) listener();
 }
 
-/** Test-only. The store outlives a single render, so a test that folded a
-    section would hand its state to the next one. Drops the cache and wakes
-    every reader, which then reads storage again. */
+/** Test-only: discard cached folds and notify subscribers. */
 export function resetFilterSectionsStore(): void {
   cache = null;
   for (const listener of listeners) listener();
@@ -130,7 +125,13 @@ export function resetFilterSectionsStore(): void {
 
 /** Shared folds for sidebar and sheet. A sheet can reveal its active sections
     on mount without replacing the visitor's stored choices for other sections. */
-export function useFilterSections(initiallyOpen?: Overrides, sidebar = true): {
+export function useFilterSections({
+  initiallyOpen,
+  layout = "sidebar",
+}: {
+  initiallyOpen?: Overrides;
+  layout?: FilterCardLayout;
+} = {}): {
   isOpen: (key: FilterSectionKey) => boolean;
   toggleSection: (key: FilterSectionKey) => void;
 } {
@@ -142,8 +143,9 @@ export function useFilterSections(initiallyOpen?: Overrides, sidebar = true): {
   const [revealed, setRevealed] = useState(initiallyOpen);
   const short = useSyncExternalStore(subscribeHeight, shortDesktop, serverHeight);
   const defaultOpen = useCallback(
-    (key: FilterSectionKey) => DEFAULT_OPEN[key] && !(sidebar && short && key === "age"),
-    [sidebar, short],
+    (key: FilterSectionKey) =>
+      DEFAULT_OPEN[key] && !(layout === "sidebar" && short && key === "age"),
+    [layout, short],
   );
 
   const isOpen = useCallback(

@@ -64,12 +64,12 @@
 [CmdletBinding()]
 param(
   [string]$CloneDir = (Join-Path ([Environment]::GetFolderPath('UserProfile')) 'source\repos\posvoji-crawl'),
-  [string]$GitBash = (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
   [string]$RepoUrl = 'https://github.com/fresh55/posvoji.git',
   [string]$SeedDataDir = '',
   [string]$SeedMediaDir = '',
   [datetime]$StartAt = ([datetime]::Now.Date.AddHours([datetime]::Now.Hour + 1)),
-  [switch]$DryRun
+  [switch]$DryRun,
+  [string]$GitBash = (Join-Path $env:ProgramFiles 'Git\bin\bash.exe')
 )
 
 Set-StrictMode -Version 2.0

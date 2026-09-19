@@ -93,6 +93,15 @@ The dedicated suite uses desktop Chromium, Pixel 7 Chromium emulation and iPhone
 14 WebKit emulation. Set `CAT_TEST_URL` to use an already-running site; otherwise
 it uses the repository's Playwright server configuration.
 
+CI runs `cat-hardening.spec.ts` after the production build on desktop Chromium
+and Pixel 7 Chromium emulation. `CAT_TEST_BUILD=1` starts a loopback server for
+`apps/web/out` and shuts it down after the run; it can also be used locally after
+`pnpm --filter web build`. WebKit and the cat pose screenshots remain local
+checks. These behaviour checks do not measure real-device GPU performance.
+
+Loading checks cover the still-to-canvas reveal, cancellation when the stage is
+hidden mid-fade, queued touches and retry after a failed model download.
+
 It covers native anatomical taps (including each of the four legs), held head strokes and quiet recovery, rapid queued input, zero-pick drags, held-touch
 cancellation, multiple contacts, offscreen pause/resume, reduced motion and the
 sleep/wake chain. Sleep tests advance the clock and seek transition endpoints;

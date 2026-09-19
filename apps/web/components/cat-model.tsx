@@ -15,6 +15,7 @@ const MODEL = "/models/our-cat/cat.glb?v=27";
 
 // The preload and viewer must use the same decoder URL.
 const DECODER = "/models/our-cat/meshopt-decoder.js";
+const SLOW_LOAD_MS = 10_000;
 
 // Match the viewer request modes so preloads are reused.
 const HINTS = [
@@ -41,17 +42,19 @@ const copy = {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Maček se še nalaga …",
-    unavailable: "3D-ogled ni na voljo.",
+    slow: "Nalaganje traja dlje kot običajno …",
+    unavailable: "3D-ogled ni uspel. Dotakni se ga za nov poskus.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "The cat is still loading …",
-    unavailable: "The 3D view is unavailable.",
+    slow: "Loading is taking longer than usual …",
+    unavailable: "The 3D view couldn’t load. Tap or click to try again.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-type Status = "loading" | "ready" | "failed";
+type Status = "loading" | "revealing" | "ready" | "failed";
 
 /** Controls exposed after the model loads. */
 export type CatModelHandle = {
@@ -89,8 +92,10 @@ export const CatModel = memo(function CatModel({
   // Observe parent focus so the caption link can trigger model loading.
   const stage = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
+  const [slow, setSlow] = useState(false);
   const ready = status === "ready";
-  const waiting = ready ? "" : status === "failed" ? text.unavailable : text.loading;
+  const loading = status === "loading" || status === "revealing";
+  const waiting = ready ? "" : status === "failed" ? text.unavailable : slow ? text.slow : text.loading;
   // Keep loading feedback visible after the first interaction until ready.
   const [reached, setReached] = useState(false);
   // Replay a touch received while the poster was loading.
@@ -100,6 +105,12 @@ export const CatModel = memo(function CatModel({
   useEffect(() => {
     handOver.current = onHandle;
   });
+  const activate = useRef(() => {});
+  useEffect(() => {
+    // React must remove the still before the first animated frame. Starting
+    // playback in transitionend can run ahead of that DOM commit.
+    if (ready) activate.current();
+  }, [ready]);
   // Trigger loading without restarting the effect or replacing the viewer.
   const wake = useRef(() => {});
 
@@ -107,7 +118,7 @@ export const CatModel = memo(function CatModel({
   const reach = (touch: boolean) => {
     if (status === "ready") return;
     setReached(true);
-    if (touch && status === "loading") touched.current = true;
+    if (touch) touched.current = true;
     wake.current();
   };
 
@@ -125,6 +136,10 @@ export const CatModel = memo(function CatModel({
     let started = false;
     let visible = false;
     let ready = false;
+    let loaded = false;
+    let attempt = 0;
+    let slowTimer: ReturnType<typeof setTimeout> | undefined;
+    let revealFrame: number | undefined;
     let wanted = !startOnReach;
     const canAnimate = () => ready && visible && !disposed && !document.hidden && !motion.matches;
 
@@ -135,7 +150,7 @@ export const CatModel = memo(function CatModel({
     };
     // Load precise picking alongside the viewer; use material picking until it is ready.
     const buildPicker = () => {
-      if (disposed || !ready || !viewer || !makePicker) return;
+      if (disposed || !loaded || !viewer || !makePicker) return;
       picker?.dispose();
       try { picker = makePicker(viewer); }
       catch { picker = undefined; }
@@ -148,19 +163,14 @@ export const CatModel = memo(function CatModel({
           if (disposed) return;
           makePicker = module.createViewerCatPicker;
           // The model may finish loading before this import.
-          if (ready) buildPicker();
+          if (loaded) buildPicker();
         },
         () => {},
       );
     };
-    const onLoad = () => {
-      // Apply the seated first frame even when reduced motion starts paused.
-      if (viewer) viewer.currentTime = 0;
-      // Discard references to the previous scene.
-      picker?.dispose();
-      picker = undefined;
+    activate.current = () => {
+      if (!loaded || ready || disposed) return;
       ready = true;
-      setStatus("ready");
       syncPlayback();
       const controller = interaction;
       if (controller) handOver.current?.({ react: (name) => controller.react(name) });
@@ -169,18 +179,64 @@ export const CatModel = memo(function CatModel({
         touched.current = false;
         controller?.react("Notice");
       }
+    };
+    const finishReveal = () => {
+      if (loaded && !ready && !disposed) setStatus("ready");
+    };
+    const onRevealEnd = (event: TransitionEvent) => {
+      if (event.target === container && event.propertyName === "opacity") finishReveal();
+    };
+    const onLoad = () => {
+      if (disposed || loaded || !viewer) return;
+      clearTimeout(slowTimer);
+      // Hold the matching first pose throughout the reveal. Animation, the
+      // page's handle and a remembered touch all wait until the still leaves.
+      viewer.pause();
+      viewer.currentTime = 0;
+      loaded = true;
       buildPicker();
+      setStatus("revealing");
+      if (motion.matches) finishReveal();
+      else {
+        // No transitionend is emitted if styles disable the transition or
+        // the host is already opaque. Check once after React's style commit;
+        // the ordinary fade completes through transitionend, not a timer.
+        revealFrame = requestAnimationFrame(() => {
+          revealFrame = requestAnimationFrame(() => {
+            if (getComputedStyle(container).opacity === "1") finishReveal();
+          });
+        });
+      }
+    };
+    const releaseViewer = () => {
+      interaction?.dispose();
+      interaction = undefined;
+      picker?.dispose();
+      picker = undefined;
+      viewer?.removeEventListener("load", onLoad);
+      viewer?.removeEventListener("error", onError);
+      viewer?.pause();
+      viewer?.remove();
+      viewer = undefined;
+      for (const link of hints) link.remove();
+      hints = [];
     };
     const onError = () => {
+      if (disposed) return;
+      clearTimeout(slowTimer);
+      if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
+      loaded = false;
       ready = false;
-      interaction?.syncPlayback();
-      viewer?.pause();
+      started = false;
+      wanted = false;
+      attempt += 1;
+      releaseViewer();
       handOver.current?.(null);
       setStatus("failed");
     };
 
     // Start model and decoder downloads alongside the viewer import, after the loading gate.
-    const askForHim = () => {
+    const askForHim = (modelUrl: string) => {
       if (hints.length) return;
       hints = HINTS.map(({ href, as, crossOrigin }) => {
         const link = document.createElement("link");
@@ -190,7 +246,7 @@ export const CatModel = memo(function CatModel({
         link.setAttribute("fetchpriority", "low");
         if (crossOrigin) link.setAttribute("crossorigin", crossOrigin);
         // Set the URL after the request attributes.
-        link.setAttribute("href", href);
+        link.setAttribute("href", href === MODEL ? modelUrl : href);
         document.head.append(link);
         return link;
       });
@@ -200,7 +256,15 @@ export const CatModel = memo(function CatModel({
     const start = async () => {
       if (!wanted || started || disposed || !visible || document.hidden) return;
       started = true;
-      askForHim();
+      setStatus("loading");
+      setSlow(false);
+      clearTimeout(slowTimer);
+      slowTimer = setTimeout(() => setSlow(true), SLOW_LOAD_MS);
+      // model-viewer caches even failed loads by URL. Only an explicit reach
+      // after failure changes the URL, so it makes a real request without
+      // clearing other viewers' caches or retrying on scroll/tab changes.
+      const modelUrl = attempt ? `${MODEL}&retry=${attempt}` : MODEL;
+      askForHim(modelUrl);
       try {
         const { ModelViewerElement: Viewer } = await import("@google/model-viewer");
         if (disposed) return;
@@ -210,7 +274,7 @@ export const CatModel = memo(function CatModel({
         Viewer.meshoptDecoderLocation = DECODER;
         viewer = document.createElement("model-viewer") as ModelViewerElement;
         const attributes = {
-          src: MODEL,
+          src: modelUrl,
           alt: text.alt,
           "camera-controls": "",
           "disable-pan": "",
@@ -266,9 +330,6 @@ export const CatModel = memo(function CatModel({
         });
         container.append(viewer);
       } catch {
-        // Remove unused preload hints after a failed import.
-        for (const link of hints) link.remove();
-        hints = [];
         if (!disposed) onError();
       }
     };
@@ -300,31 +361,36 @@ export const CatModel = memo(function CatModel({
       void start();
       syncPlayback();
     };
+    const onMotionChange = () => {
+      if (motion.matches) finishReveal();
+      syncPlayback();
+    };
+    container.addEventListener("transitionend", onRevealEnd);
+    // A responsive ancestor can hide the stage mid-fade, cancelling its end event.
+    container.addEventListener("transitioncancel", onRevealEnd);
     document.addEventListener("visibilitychange", onVisibilityChange);
-    motion.addEventListener("change", syncPlayback);
+    motion.addEventListener("change", onMotionChange);
     return () => {
       disposed = true;
       wake.current = () => {};
+      activate.current = () => {};
       corner?.removeEventListener("focusin", onCornerFocus);
       observer?.disconnect();
+      clearTimeout(slowTimer);
+      if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
+      container.removeEventListener("transitionend", onRevealEnd);
+      container.removeEventListener("transitioncancel", onRevealEnd);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      motion.removeEventListener("change", syncPlayback);
+      motion.removeEventListener("change", onMotionChange);
       handOver.current?.(null);
-      interaction?.dispose();
-      picker?.dispose();
-      for (const link of hints) link.remove();
-      hints = [];
-      viewer?.removeEventListener("load", onLoad);
-      viewer?.removeEventListener("error", onError);
-      viewer?.pause();
-      viewer?.remove();
+      releaseViewer();
     };
   }, [locale, text, framing.orbit, framing.target, startOnReach]);
 
   return (
     <div
       ref={stage}
-      className={cn("relative", status === "loading" && "cursor-progress", className)}
+      className={cn("relative", loading && "cursor-progress", className)}
       onPointerEnter={() => reach(false)}
       onPointerDown={() => reach(true)}
     >
@@ -347,7 +413,7 @@ export const CatModel = memo(function CatModel({
         ref={host}
         inert={!ready}
         aria-hidden={!ready}
-        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${ready ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
       />
       {/* Announce loading status immediately; show visual feedback after interaction. */}
       <div
@@ -359,8 +425,8 @@ export const CatModel = memo(function CatModel({
         )}
       >
         {waiting && (
-          <Badge variant="overlay-quiet">
-            {reached && status === "loading" && <LoaderCircle className="animate-spin" aria-hidden />}
+          <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
+            {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
             {waiting}
           </Badge>
         )}

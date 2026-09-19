@@ -29,8 +29,8 @@ pnpm test
 pnpm validate:policies
 ```
 
-Node >= 22, pnpm, Python >= 3.12 and uv are required for the complete check
-suite. No external services are needed; the whole project works offline from
+Node 24 (see `.node-version`), pnpm, Python >= 3.12 and uv are required for the
+complete check suite. No external services are needed; the whole project works offline from
 fixtures. See [`apps/portal/README.md`](apps/portal/README.md) only when you
 need to run the shelter portal itself.
 

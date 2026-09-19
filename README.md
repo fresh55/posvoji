@@ -62,7 +62,8 @@ Read the binding rules in the [data policy](docs/DATA-POLICY.md).
 
 ## Quick start
 
-The static index requires **Node.js 22+** and **pnpm 10**. Running the complete
+The static index uses **Node.js 24** (see `.node-version`) and **pnpm 10**.
+Other supported Node releases are listed in `package.json`. Running the complete
 test suite also requires **Python 3.12+** and **uv** for the shelter portal.
 
 ```bash

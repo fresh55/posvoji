@@ -83,7 +83,7 @@ export const GALLERY_BUTTON_CLASS =
 // The dark half of the plate is there for the reason GALLERY_BUTTON_CLASS
 // above gives.
 const OWN_BUTTON_CLASS =
-  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/80 dark:hover:bg-background group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
+  "absolute inset-y-0 z-10 my-auto rounded-full bg-background/80 opacity-0 pointer-events-none shadow-xs group-hover/photo:backdrop-blur-sm group-focus-within/photo:backdrop-blur-sm transition-opacity hover:bg-background active:translate-y-0! dark:bg-background/80 dark:hover:bg-background group-hover/photo:opacity-100 group-hover/photo:pointer-events-auto group-focus-within/photo:opacity-100 group-focus-within/photo:pointer-events-auto";
 
 // What a grid card adds to the chevrons above. OWN_BUTTON_CLASS serves all
 // three surfaces this component is mounted on, and only the card's photo is

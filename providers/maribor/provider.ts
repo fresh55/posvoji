@@ -88,6 +88,15 @@ export function parseSlovenianDate(value: string): string | undefined {
 // the separator and its decimals with it, and the lookbehind has to stop the
 // pattern from starting in the middle of a number.
 const AGE_COUNT = "(?<![\\d,.])(\\d+(?:[.,]\\d+)?)";
+const AGE_YEARS_PATTERN = new RegExp(
+  `${AGE_COUNT}\\s*(?:leto|leti|leta|let)\\b`, "i",
+);
+const AGE_MONTHS_PATTERN = new RegExp(
+  `${AGE_COUNT}\\s*(?:mesec|meseca|mesece|mesecev)\\b`, "i",
+);
+// A range is not a single age, including decimal endpoints.
+const AGE_RANGE =
+  /\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mesec(?:a|e|ev)?|let(?:o|i|a)?)\b/iu;
 
 function ageCount(raw: string | undefined): number {
   return Number((raw ?? "").replace(",", "."));
@@ -95,13 +104,10 @@ function ageCount(raw: string | undefined): number {
 
 export function parseApproximateAgeMonths(value: string | undefined): number | undefined {
   if (!value) return undefined;
-  const years = value.match(
-    new RegExp(`${AGE_COUNT}\\s*(?:leto|leti|leta|let)\\b`, "i"),
-  );
+  if (AGE_RANGE.test(value)) return undefined;
+  const years = value.match(AGE_YEARS_PATTERN);
   if (years) return Math.round(ageCount(years[1]) * 12);
-  const months = value.match(
-    new RegExp(`${AGE_COUNT}\\s*(?:mesec|meseca|mesece|mesecev)\\b`, "i"),
-  );
+  const months = value.match(AGE_MONTHS_PATTERN);
   return months ? Math.round(ageCount(months[1])) : undefined;
 }
 
@@ -165,6 +171,9 @@ function parseMedical($: cheerio.CheerioAPI): AnimalMedical | undefined {
 
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
+  if ($(".jhmb-detail-container").length === 0) {
+    throw new Error("maribor: missing animal detail container");
+  }
   const imageUrls: string[] = [];
   const addImage = (value: string | undefined) => {
     const url = sameSiteImage(value);

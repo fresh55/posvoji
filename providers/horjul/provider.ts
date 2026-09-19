@@ -229,6 +229,7 @@ function addImageUrl(urls: string[], value: string | undefined): void {
 export function parseDetail(html: string): DetailFacts {
   const $ = cheerio.load(html);
   const main = $("main.site-main").first();
+  if (main.length === 0) throw new Error("horjul: missing animal detail container");
   const facts = readHeadingFacts($);
   const labeledBlock = readLabeledBlock($);
   const mainClasses = main.attr("class") ?? "";

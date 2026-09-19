@@ -46,6 +46,13 @@ describe("parseList", () => {
 
 describe("detail facts", () => {
   it.each([
+    ["maintenance page", "<html><h1>Maintenance</h1></html>"],
+    ["list page", listHtml],
+  ])("rejects a %s with no animal detail", (_, html) => {
+    expect(() => parseDetail(html)).toThrow(/animal detail/);
+  });
+
+  it.each([
     ["14. 11. 2023", "2023-11-14"],
     ["V zavetišču od: 3. 2. 2026 (197 dni)", "2026-02-03"],
     ["31. 2. 2026", undefined],
@@ -55,6 +62,11 @@ describe("detail facts", () => {
 
   it.each([
     ["8 let", 96],
+    ["2-3 leta", undefined],
+    ["5–6 mesecev", undefined],
+    ["1,5-2,5 leta", undefined],
+    ["1.5–2.5 leta", undefined],
+    ["3 leta", 36],
     ["1 leto", 12],
     ["4 mesece", 4],
     ["star 3 leta", 36],

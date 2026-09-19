@@ -108,6 +108,13 @@ describe("parseVeterinaryCare", () => {
 });
 
 describe("parseDetail", () => {
+  it.each([
+    ["maintenance page", "<html><h1>Maintenance</h1></html>"],
+    ["list page", loadFixture(import.meta.url, "list.html")],
+  ])("rejects a %s with no animal detail", (_, html) => {
+    expect(() => parseDetail(html)).toThrow(/animal detail/);
+  });
+
   it("extracts labeled cat facts, combined tests and the carousel image", () => {
     expect(parseDetail(catHtml)).toEqual({
       sourceAnimalId: "9220",

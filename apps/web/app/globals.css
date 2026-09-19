@@ -20,6 +20,7 @@
 
 /* A phone held sideways. */
 @custom-variant short (@media (max-height: 32rem));
+@custom-variant short-desktop (@media (min-width: 64rem) and (32rem < height < 50rem));
 
 /* Which shell a surface stands in, as one name each.
    
@@ -183,6 +184,15 @@
        distance does not reach the footer's padding. */
     --back-to-top-bottom: 1.5rem;
     --back-to-top-right: max(1.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* Keep the first cards within reach on shorter laptops. The cat corner uses
+   the same height band so its caption and stage still fit above the toolbar. */
+@media (width >= 64rem) and (32rem < height < 50rem) {
+  :root {
+    --page-y: 2rem;
+    --section-gap: 1.5rem;
   }
 }
 
@@ -520,14 +530,8 @@
      measures 3.66:1 on the page and 3.36:1 on --muted (2026-09-17 audit).
      Worn as border-control-border, never as a divider.
 
-     Applied at the leaves for now, through CONTROL_FRAME in lib/link-styles.ts.
-     The root of it is ui/button.tsx's outline variant, which spells
-     border-border and dark:border-input for its own: the token belongs there
-     and in ui/select.tsx and ui/input.tsx, at which point CONTROL_FRAME and its
-     dark half go away. That reaches about forty call sites across the portal,
-     the register and the dialog, none of which this audit measured, so it is
-     the follow-up and not this pass. Do not copy the pattern to a new control
-     without reading that constant first. */
+     Shared input, select and outline-button primitives use this token.
+     Focus and invalid states keep their own borders. */
   --control-border: oklch(0.62 0.004 49);
   /* The focus ring, and the one token here with a number it has to hit: SC
      1.4.11 asks a focus indicator for 3:1 against what it sits on. Measured

@@ -1,0 +1,94 @@
+{
+  "date": "2026-09-19",
+  "preview": "local Next.js development preview, temporary localhost:3012 origin",
+  "datasetAnimals": 486,
+  "measurements": [
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "firstPhotoTop": 276,
+      "cat": {
+        "top": 75.671875,
+        "width": 128,
+        "height": 123.328125
+      },
+      "headerBottom": 73,
+      "freshAgeExpanded": false
+    },
+    {
+      "viewport": [
+        1024,
+        768
+      ],
+      "locale": "en",
+      "firstPhotoTop": 276,
+      "horizontalOverflow": false
+    },
+    {
+      "viewport": [
+        1440,
+        900
+      ],
+      "firstPhotoTop": 308,
+      "catWidth": 168,
+      "unstoredAgeExpanded": true
+    },
+    {
+      "pickerName": "Obalno zavetišče (Marjetica Koper)",
+      "height": 39,
+      "scrollHeight": 39
+    },
+    {
+      "mapFilter": "vrsta=pes&energija=miren",
+      "solidHollowMarkers": 6,
+      "dashedHollowMarkers": 9,
+      "dashPattern": "1.6 1.2",
+      "legendRows": 2
+    },
+    {
+      "shelter": "obalno",
+      "selectableTextChannels": [
+        "phone",
+        "on-call",
+        "email"
+      ],
+      "websiteUserSelect": "none"
+    },
+    {
+      "coverage": "6000 / Koper",
+      "callWidths": [
+        348,
+        348
+      ],
+      "callScrollWidths": [
+        348,
+        348
+      ]
+    },
+    {
+      "standalone": "Ficko",
+      "sharedPhoto": 3,
+      "photoCount": 13,
+      "sharedQuery": "foto=3",
+      "lightboxImageFit": "contain",
+      "imageNaturalSize": [
+        1366,
+        911
+      ]
+    }
+  ],
+  "upstreamVerified": [
+    "D06",
+    "D12",
+    "D13",
+    "D29",
+    "U2"
+  ],
+  "limits": [
+    "Native geolocation permission and device-response browser simulation remain unverified.",
+    "No whole-site accessibility conformance claim.",
+    "Development toolbar excluded from product conclusions; no hit-target measurements in this pass."
+  ]
+}

@@ -281,7 +281,7 @@ export function FilterSelectionMark({
               // unchanged and dark gives up 5.20:1 for 3.77:1, still over the
               // 3:1 SC 1.4.11 asks of a control's own boundary. No dark: half:
               // this span spells no dark border of its own, so the token's own
-              // dark value stands (see CONTROL_FRAME in lib/link-styles.ts).
+              // dark value stands.
               // The checked box is not affected; its tick is 7.37:1.
               "border-control-border bg-background text-transparent",
           className,

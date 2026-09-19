@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
@@ -44,6 +44,7 @@ const scrollIntoView = installFilterFoldSeams();
 
 afterEach(() => {
   window.history.replaceState(null, "", "/");
+  vi.unstubAllGlobals();
 });
 
 function animal(
@@ -198,6 +199,22 @@ function stored(): unknown {
 }
 
 describe("collapsible filter sections", () => {
+  it("folds age on short desktops without replacing a saved choice", () => {
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      matches: query.includes("49.99rem"), media: query, onchange: null,
+      addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    })));
+    const { unmount } = renderSidebar();
+    expect(expanded("Starost")).toBe("false");
+    expect(stored()).toBeNull();
+    fireEvent.click(header("Starost"));
+    expect(expanded("Starost")).toBe("true");
+    unmount();
+    renderSidebar();
+    expect(expanded("Starost")).toBe("true");
+  });
+
   it("counts recorded energy with other filters applied and its own selection lifted", () => {
     renderSidebar();
     fireEvent.click(header("Energija"));

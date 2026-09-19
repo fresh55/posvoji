@@ -1,10 +1,10 @@
-# Desktop fixes: implementation progress
+# Desktop fixes: implementation and verification
 
-Implemented and checked on 18 September 2026 against `f2b7a79`, the locally available `origin/main`, on branch `codex/desktop-navigation-fixes`. Application changes live in the isolated `desktop-audit-fixes` worktree. The original working tree's application changes were left intact.
+First batch implemented and checked on 18 September 2026 against `f2b7a79`, the locally available `origin/main`, on branch `codex/desktop-navigation-fixes`. Application changes live in the isolated `desktop-audit-fixes` worktree. The original working tree's application changes were left intact.
 
 The documentation corrections are complete: em dashes were removed, D16 now says unused column **height**, and the verdict is called the **review verdict**. `verdict.md` remains unchanged.
 
-## Completed in this batch
+## First navigation batch
 
 | Finding | Result | Verification |
 | --- | --- | --- |
@@ -36,9 +36,9 @@ Screenshots use the local development preview with the development toolbar remov
 
 The local check log is retained as ignored `check.log`; it is not part of the portable evidence bundle. Build-generated changes to two share images were discarded because they are unrelated to this batch.
 
-## Remaining scope
+## Scope remaining after the first batch
 
-This is the first navigation and continuity batch, not completion of the full audit. All other findings retain their decisions in the [reconciled plan](../README.md). D11, D22 and D28 remain product decisions; D15, D18 and D23 remain withdrawn. The five upstream fixes remain verify-only. The standalone photo count and enlarge control were observed during D03 verification, but a full verification of those upstream items is still pending.
+At this point only the first navigation and continuity batch was complete. The sections below record the subsequent work; the [final disposition of all 34 entries](STATUS.md) is the current status. D11, D22 and D28 remain product decisions, and D15, D18 and D23 remain withdrawn.
 
 ## Quality review, 19 September 2026
 
@@ -100,3 +100,38 @@ Regression tests cover the accuracy threshold, invalid accuracy, London, Vienna,
 Browser verification at 1280x720 confirmed that typing `1000` still directly resolves Ljubljana, while Križevci stays a four-option choice until keyboard confirmation writes `kraj=Križevci`. Device responses were verified in automated hook/component tests. Browser simulation was unavailable because the browser tool does not support pre-navigation script injection; native permission prompts and the new device-state layouts were not browser-verified.
 
 Validation completed across runs: type checking, lint, all 3,791 JavaScript/TypeScript tests (2,754 web), 364 portal tests with 4 skipped, policy validation (16 valid, 0 invalid, 13 enabled) and the 2,009-page production build passed. The first full run hit an unrelated photo-animation timing assertion, which passed alone and in the next full web run. That rerun had an ingestion worker exit unexpectedly; all 532 ingestion tests passed on a separate rerun, followed by the remaining checks. The existing unused `CARDS_PER_CLICK` lint warning remains. Ignored local logs are `device-location-check.log`, `device-location-recheck.log` and `device-location-remaining-checks.log`.
+
+
+## Remaining controls and short-height refinements, 19 September 2026
+
+- **D16:** both shelter-name renderers allow two lines at every width. The existing list width and map split remain.
+- **D17:** a media-query subscription changes only the sidebar's unstored age default below approximately 800px desktop height. It does not write a preference. Explicit open/closed choices retain priority and the mobile sheet retains its existing defaults and active-filter handling.
+- **D19:** desktops between 512px and 800px high use 32px page padding and a 24px section gap. The cat corner shrinks with that band to preserve its aspect and caption clearance. Tall desktops and landscape-phone behavior remain.
+- **D21:** filtered hollow markers have a dashed stroke, while unpublished shelters retain a solid hollow circle. Lone markers, clusters, satellites and legend swatches share the pattern. Each legend caption appears only when its state occurs.
+- **D25:** local `select-text` on shelter phone, on-call and email anchors, and coverage call anchors, restores selection without changing the shared button behavior or adding copy controls.
+- **D26:** input, select and outline-button primitives now own `border-control-border`. Removed the obsolete `CONTROL_FRAME` helper, its redundant uses and the input/select overrides it replaces. Focus and invalid-state rules remain. Quiet toolbar overrides and other primitives retain their existing contracts.
+- **D27:** one route-state helper reads the existing locale path map for both navigation layouts. Exact destinations retain `aria-current="page"`; guarded descendants receive a dotted underline and normal weight. Similar prefixes and locale roots do not count as descendant matches.
+- **D32:** the localized age hint names the under-one, one-to-under-eight and eight-plus ranges. It now connects to the shared header info tooltip; row labels, individual tooltips and the grove remain. No extra row of permanent text was added.
+
+The quality pass removed redundant styling wrappers and obsolete explanations rather than introducing new control abstractions. Regression coverage exercises the shared map legend/marker distinction, navigation route boundaries in both languages, and the short-desktop preference behavior. Existing presentation assertions were updated for the age hint and cat corner.
+
+### Final browser verification
+
+The local development preview used the 486-animal dataset. All five upstream items were verified: D06 standalone count and full-image viewing; D12 presence-gated hours/on-call details; D13 project-email joining invitation; D29 unknown-place directory links in both languages; U2 photo 3 preserved through the standalone share link and reopening.
+
+At 1366x768 and 1024x768, first photos start at y=276 instead of the review's y=308. The short-height cat figure is 128x123.3 at y=75.7, below the header's y=73 edge. At 1440x900 the first-photo y=308 and 168px cat width remain. The English 1024px layout has no horizontal overflow.
+
+A fresh preview origin confirmed that age starts collapsed at 1366x768, opens at 1440x900, and stays explicitly open after reloading at the shorter height. Keyboard navigation exposes the age-range tooltip. A 390x844 check confirmed the mobile sheet's retained age section and controls.
+
+The Koper name uses 39px of height with matching scroll height in the picker. The filtered-dog map shows both solid and dashed hollow circles with matching legend rows in light and dark modes. Shelter/coverage contact anchors compute `user-select: text`. The shared picker field, shelter outline contacts and portal login field resolve to the control-border token; the focused login field resolves to the focus token. The English dropdown marks the shelter parent with a dotted underline and no `aria-current`, matching the desktop row.
+
+**D20 and D24 assessed and retained:** the review established that the fan is readable and uncropped with a lightbox. Its optional tall-screen enlargement would alter a settled composition without fixing a demonstrated problem. The Koper contact column fits both 348px call actions and readable wrapped hours; widening it would take space from the map. Both are recorded as retained choices rather than unfinished fixes.
+
+These checks used temporary browser tabs and viewport/theme emulation, all closed or reset afterwards. The Next.js development toolbar was visible in inline inspection screenshots and was not treated as a product element or used for hit-target conclusions. No additional screenshot files are claimed; numerical observations are in [final-browser-checks.json](final-browser-checks.json).
+
+
+### Final validation
+
+`corepack pnpm check` passed in one complete run after the last implementation change: type checking, lint, all 3,795 JavaScript/TypeScript tests (2,758 web), 364 portal tests with 4 skipped, policy validation (16 valid, 0 invalid, 13 enabled), and the production build with 2,009 static pages. Lint retains the pre-existing unused `CARDS_PER_CLICK` warning. The ignored local log is `desktop-completion-check.log`.
+
+Before the final run, two existing presentation assertions were updated to match the new age hint and cat-corner class. The focused suite then passed all 237 tests. Build-generated changes to the two unrelated share images were discarded. The verdict remains unchanged, and the final notes contain no em dashes.

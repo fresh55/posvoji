@@ -484,6 +484,7 @@ export function FilterGroupList({
       home: filters.home.length > 0,
       care: filters.care.length > 0,
     } : undefined,
+    layout === "sidebar",
   );
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.

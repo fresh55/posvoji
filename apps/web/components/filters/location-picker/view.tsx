@@ -7,7 +7,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { animalCount } from "@/lib/labels";
-import { CONTROL_FRAME } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { PickerFooter } from "./footer";
@@ -62,9 +61,8 @@ export function LocationPickerView({
                 ? // The dock's trigger, and on the dock the frame is the whole
                   // of what says this is pressable: it stands on the plate's
                   // own ground with no fill of its own, and the plate's own
-                  // edge over a light card measured 1.14:1 (CONTROL_FRAME in
-                  // lib/link-styles.ts).
-                  cn(CONTROL_FRAME, "gap-1.5 px-2")
+                  // edge over a light card measured 1.14:1.
+                  "gap-1.5 px-2"
                 : cn(
                     QUIET_TRIGGER_CLASS,
                     "max-w-[14rem] aria-expanded:border-border",

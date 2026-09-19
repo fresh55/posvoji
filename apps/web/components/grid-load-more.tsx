@@ -4,7 +4,7 @@ import type { Ref } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { CARDS_PER_CLICK } from "@/components/grid-rendering";
-import { COARSE_ACTION, CONTROL_FRAME } from "@/lib/link-styles";
+import { COARSE_ACTION } from "@/lib/link-styles";
 
 /**
  * The tail of an incrementally drawn grid.
@@ -85,11 +85,7 @@ export function GridLoadMore({
           // is the one control at the bottom of the list, and h-8 is short of
           // what a thumb needs. The pointer and not the width, so a touch tablet
           // past lg gets it and a narrow mouse window does not.
-          //
-          // CONTROL_FRAME because the frame is what says this is pressable at
-          // all: an outline button with no fill, alone on a line under sixty
-          // photographs (lib/link-styles.ts).
-          className={`${COARSE_ACTION} ${CONTROL_FRAME}`}
+            className={COARSE_ACTION}
         >
           {t("showMoreAnimals", { n: Math.min(CARDS_PER_CLICK, total - drawn) })}
         </Button>

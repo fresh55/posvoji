@@ -350,7 +350,7 @@ export function ShelterRows({
                 <span className="min-w-0 flex-1">
                   <span
                     title={label}
-                    className="text-sm leading-snug font-medium text-foreground max-lg:line-clamp-2 lg:block lg:truncate"
+                    className="text-sm leading-snug font-medium text-foreground line-clamp-2"
                   >
                     {label}
                   </span>
@@ -470,7 +470,7 @@ export function ShelterRows({
                   <span
                     title={label}
                     className={cn(
-                      "min-w-0 text-sm leading-snug font-medium max-lg:line-clamp-2 lg:block lg:truncate",
+                      "min-w-0 text-sm leading-snug font-medium line-clamp-2",
                       disabled ? "text-inherit" : "text-foreground",
                     )}
                   >

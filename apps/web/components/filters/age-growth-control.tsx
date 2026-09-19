@@ -191,6 +191,7 @@ export function AgeGrowthControl({
       <section>
         <FilterSectionHeader
           label={groupLabel("age", locale)}
+          hint={messages.ageFilterHint}
           active={selected.length > 0}
           onReset={() => {
             setCelebration(null);

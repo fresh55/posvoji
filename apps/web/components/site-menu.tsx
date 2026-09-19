@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Locale } from "@/lib/i18n";
-import { CONTROL_FRAME } from "@/lib/link-styles";
 import { siteLinks } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
 
@@ -47,19 +46,22 @@ import { cn } from "@/lib/utils";
 const NAV_ROOM_SHOWS = "lg:@nav-room/header:flex";
 const NAV_ROOM_HIDES = "lg:@nav-room/header:hidden";
 
-/** Whether a link points at the page the header is already on.
- *
- *  Read off the language-switcher's own map rather than a prop of its own:
- *  the switcher needs this page's address in both locales, which is strictly
- *  more than "which page am I", so asking each page for the second thing as
- *  well only creates two values that can disagree after a route rename. */
-function isCurrent(
+/** Read the existing locale path map; no second router subscription is needed. */
+function navigationState(
   paths: Record<Locale, string> | undefined,
   locale: Locale,
   href: string,
-): boolean {
-  return paths?.[locale] === href;
+): "page" | "section" | undefined {
+  const path = paths?.[locale];
+  if (path === href) return "page";
+  if (href !== "/" && href !== "/en" && path?.startsWith(`${href}/`)) {
+    return "section";
+  }
 }
+
+// A dotted underline identifies a parent section without imitating either
+// the current page's weight or the hover colour.
+const SECTION_LINK = "underline decoration-dotted underline-offset-4";
 
 // Inline links for lg and up: the roster entries flagged `inline`, which is
 // fewer than the roster a visitor can see. "Viri" is hidden altogether in
@@ -89,25 +91,12 @@ export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
       className={cn("hidden items-center gap-6", NAV_ROOM_SHOWS)}
     >
       {links.map((link) => {
-        // The page the reader is already on. The footer has always dropped its
-        // own link rather than offering it (site-footer.tsx's
-        // showSheltersLink), and the header offering one anyway is the two
-        // halves of the same site disagreeing about where the visitor is. It
-        // stays in the row rather than disappearing, because a nav whose items
-        // move between pages is harder to learn than one that marks the
-        // current place; aria-current is what a screen reader reads off it,
-        // and the weight and the ink are what everyone else sees.
-        //
-        // The weight is what carries it. Full ink alone is what this row
-        // already gives a hovered link, so on a desktop with the pointer
-        // anywhere in the row the current page and the link under the cursor
-        // were drawn identically. A marker a hover can imitate marks nothing.
-        const current = isCurrent(paths, locale, link.href);
+        const state = navigationState(paths, locale, link.href);
         return (
           <a
             key={link.key}
             href={link.href}
-            aria-current={current ? "page" : undefined}
+            aria-current={state === "page" ? "page" : undefined}
             className={cn(
               "text-sm transition-colors hover:text-foreground",
               // 20px of line is what a link this size draws, and this row only
@@ -117,7 +106,8 @@ export function SiteNav({ paths }: { paths?: Record<Locale, string> }) {
               // inside its overhang here (24px between the links, 40px to the
               // brand, and the header row is taller than 44).
               "pointer-coarse:tap-target",
-              current ? "font-medium text-foreground" : "text-muted-foreground",
+              state === "page" ? "font-medium text-foreground" : "text-muted-foreground",
+              state === "section" && SECTION_LINK,
             )}
           >
             {link.label}
@@ -151,10 +141,7 @@ export function ShelterLogin() {
       variant="outline"
       // 32px drawn at size sm, which is a mouse's button. On a coarse pointer
       // it is the only door to the portal on the page, so it takes the 44.
-      className={cn(
-        CONTROL_FRAME,
-        "hidden font-normal text-muted-foreground pointer-coarse:h-11 hover:text-foreground lg:inline-flex",
-      )}
+      className="hidden font-normal text-muted-foreground pointer-coarse:h-11 hover:text-foreground lg:inline-flex"
     >
       {/* The whole phrase at every width it renders at, never "Prijava" on
           its own. On a site with no visitor accounts, a bare login in the
@@ -210,21 +197,23 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
         {/* Marked here too. Below lg this dropdown is the whole nav, which is
             most of this site's traffic, and a menu that offers the page you
             are reading is the same disagreement the inline row above fixed. */}
-        {loud.map((link) => (
-          <DropdownMenuItem key={link.key} asChild className="min-h-11">
-            <a
-              href={link.href}
-              aria-current={
-                isCurrent(paths, locale, link.href) ? "page" : undefined
-              }
-              className={
-                isCurrent(paths, locale, link.href) ? "font-medium" : undefined
-              }
-            >
-              {link.label}
-            </a>
-          </DropdownMenuItem>
-        ))}
+        {loud.map((link) => {
+          const state = navigationState(paths, locale, link.href);
+          return (
+            <DropdownMenuItem key={link.key} asChild className="min-h-11">
+              <a
+                href={link.href}
+                aria-current={state === "page" ? "page" : undefined}
+                className={cn(
+                  state === "page" && "font-medium",
+                  state === "section" && SECTION_LINK,
+                )}
+              >
+                {link.label}
+              </a>
+            </DropdownMenuItem>
+          );
+        })}
         {/* The rule stays for as long as it has something under it to
             separate. */}
         {quiet.length > 0 && (

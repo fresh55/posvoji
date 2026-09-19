@@ -192,12 +192,6 @@ export function SortPicker({
           // width gate had it the other way round: measured at 1180x820 with a
           // coarse pointer this trigger was 32px.
           "text-sm pointer-coarse:min-h-11",
-          // The frame this control is named for, at the strength the job
-          // asks: the primitive's border-input is 1.26:1 on the page in light
-          // mode and 1.47:1 in dark, and --control-border is 3.66:1 and
-          // 3.77:1. No dark: half is needed, because the token carries its own
-          // dark value and ui/select.tsx spells no dark border of its own.
-          //
           // The wash with it. Under the pointer this trigger changed 0 of its
           // 42,840 pixels in light mode, while the species tabs across the row
           // from it change 74% of theirs; the ground is the ghost button's,
@@ -208,7 +202,7 @@ export function SortPicker({
           // background-color joins the primitive's own transition list, which
           // is colour and box-shadow: without it the new wash arrives in one
           // frame while every other control in the row eases into its own.
-          "border-control-border transition-[color,background-color,box-shadow]",
+          "transition-[color,background-color,box-shadow]",
           TOOLBAR_HOVER_WASH,
           // min-w-0, so the trigger can be narrower than its own words. The
           // primitive is w-fit, and a flex item's minimum width is its

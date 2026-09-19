@@ -138,23 +138,6 @@ function shelterAbsenceKey(count: number): TranslationKey {
   return "noResultsShelterPlural";
 }
 
-/** What the empty state's buttons wear: a touch line on a coarse pointer, and
- *  a frame that can be seen.
- *
- *  They are `size="sm"`, which is a mouse's height, and on a phone this state
- *  holds the only controls on screen. Grown rather than overlaid, and padded
- *  to match, for the reason globals.css states at the tap-target utility. The
- *  gate asks the pointer rather than the width, which is what the rest of the
- *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
- *  mouse.
- *
- *  CONTROL_FRAME is the same argument in the other dimension: these are
- *  outline buttons with no fill on an empty page, so their edge is the whole
- *  of what says they are controls. Why that is a token and not --border is
- *  written where the constant is (lib/link-styles.ts).
- */
-const EMPTY_STATE_ACTION = `${COARSE_ACTION} ${CONTROL_FRAME}`;
-
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
 // are one message. Four pulsing skeletons used to stand under the first of
@@ -655,7 +638,7 @@ export function AnimalGrid({
                 <Button
                   variant="outline"
                   size="sm"
-                  className={EMPTY_STATE_ACTION}
+                  className={COARSE_ACTION}
                   onClick={() => toggleMany("shelter", filters.shelter)}
                 >
                   {messages.showFromAllShelters}
@@ -668,7 +651,7 @@ export function AnimalGrid({
                 <Button
                   variant="outline"
                   size="sm"
-                  className={EMPTY_STATE_ACTION}
+                  className={COARSE_ACTION}
                   onClick={() => setSpecies("all")}
                 >
                   {t("showAllSpeciesCount", { count: speciesTally.all })}
@@ -878,4 +861,4 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
-import { COARSE_ACTION, CONTROL_FRAME, SOURCE_LINK } from "@/lib/link-styles";
+import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";

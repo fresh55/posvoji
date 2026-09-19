@@ -241,3 +241,37 @@ describe("the shelter login", () => {
     expect(link.textContent).toBe("Shelter login (Slovenian)");
   });
 });
+
+
+describe("navigation location", () => {
+  it.each(["sl", "en"] as const)("marks exact pages and descendants separately in %s", (locale) => {
+    const routes = { sl: "/zavetisca", en: "/en/shelters" };
+    const { rerender } = render(
+      <I18nProvider locale={locale}><SiteNav paths={routes} /></I18nProvider>,
+    );
+    const label = locale === "sl" ? "Zavetišča" : "Shelters";
+    expect(screen.getByRole("link", { name: label }).getAttribute("aria-current")).toBe("page");
+    const descendants = { sl: "/zavetisca/ljubljana", en: "/en/shelters/ljubljana" };
+    rerender(<I18nProvider locale={locale}><SiteNav paths={descendants} /><SiteMenu paths={descendants} /></I18nProvider>);
+    const section = screen.getByRole("link", { name: label });
+    expect(section.getAttribute("aria-current")).toBeNull();
+    expect(section.className).toContain("decoration-dotted");
+    expect(section.className).not.toContain("font-medium");
+    fireEvent.keyDown(screen.getByRole("button", { name: locale === "sl" ? "Meni" : "Menu" }), { key: "Enter" });
+    const menuSection = screen.getByRole("menuitem", { name: label });
+    expect(menuSection.getAttribute("aria-current")).toBeNull();
+    expect(menuSection.className).toContain("decoration-dotted");
+  });
+
+  it("does not match a similar path prefix or an unrelated page", () => {
+    for (const paths of [
+      { sl: "/zavetisca-other", en: "/en/shelters-other" },
+      { sl: "/", en: "/en" },
+    ]) {
+      const { container, unmount } = render(<I18nProvider locale="sl"><SiteNav paths={paths} /></I18nProvider>);
+      expect(container.querySelector('[aria-current]')).toBeNull();
+      expect(container.querySelector('.decoration-dotted')).toBeNull();
+      unmount();
+    }
+  });
+});

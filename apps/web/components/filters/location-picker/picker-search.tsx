@@ -82,14 +82,6 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
             // on focus across every touch tablet and landscape phone.
             // lg:text-sm is where the 14px was meant to start.
             "md:text-base lg:text-sm",
-            // The frame is the whole of this control: one field in a dialog
-            // with no label beside it and nothing else drawn around it.
-            // ui/input.tsx ships border-input, which measures 1.26:1 on the
-            // page, against the 3.66:1 --control-border carries. Spelled here
-            // rather than on the primitive, which every portal form shares. No
-            // dark: half, because ui/input.tsx spells no dark border of its
-            // own (see CONTROL_FRAME in lib/link-styles.ts).
-            "border-control-border",
           )}
         />
         {query !== "" && (

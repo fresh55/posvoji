@@ -8,7 +8,7 @@ The original audit overstated some visual problems, missed existing affordances,
 
 [Original audit - superseded](ORIGINAL-AUDIT.md) · [36 original screenshots](EVIDENCE.md) · [Original validation results](validation/README.md)
 
-**Implementation progress, 19 September:** completed findings are D01, D02, U1, D03, D04, D05, D07, D08, D09, D10, D14, D30 and D31. These cover device-location safeguards, navigation continuity, energy information, verification age, the finding-place heading, cross-species recovery and the portal's destination language. Work is on an isolated branch initially based on `f2b7a79`, now integrated with `main` at `6e94362`. See [implemented behavior, browser evidence and passing checks](implementation/README.md). The remaining findings retain the decisions below.
+**Implementation complete, 19 September:** all 34 entries have a [final disposition](implementation/STATUS.md): 21 implemented, 5 verified upstream, 2 optional layouts retained, 3 product decisions and 3 withdrawn findings. The implementation includes the short-height refinements and age-range help. Work is on the isolated `codex/desktop-navigation-fixes` branch, integrated with `main` at `6e94362`. See [behavior, browser evidence and checks](implementation/README.md). The decisions below preserve the reviewed plan; their original action wording is historical.
 
 ## Evidence and upstream baseline
 
@@ -253,7 +253,7 @@ The review confirmed a page showing photo 3 sharing the bare URL while the dialo
 - Preserve the containment guard, existing route source of truth, and species contract. Avoid duplicate current-page semantics.
 - Run required repository checks and the web build for application changes. Add meaningful behavioral tests for actual defects, not tests that merely repeat presentation code.
 
-## Corrected flow health
+## Corrected flow health at review
 
 | Step | Flow | Health after review |
 | --- | --- | --- |
@@ -271,8 +271,8 @@ The review confirmed a page showing photo 3 sharing the bare URL while the dialo
 | 12 | Information pages | Reading layouts healthy; section cue and optional provenance are separate concerns |
 | 13 | Poster | Original screen preview only; actual printing unverified |
 
-## Revision scope and validation
+## Original reconciliation scope and validation
 
-This revision changes documentation only. No application fixes, upstream integration, or fresh browser measurements were performed. The review verdict is unchanged. Historical notes/screenshots remain, but this document supersedes their recommendations.
+The initial reconciliation revision changed documentation only. No application fixes, upstream integration, or fresh browser measurements were performed during that documentation revision. Subsequent implementation and verification are recorded above. The review verdict is unchanged. Historical notes/screenshots remain, but this document supersedes their recommendations.
 
 The original four required checks passed; [logs](validation/README.md) are historical evidence for the audited tree, not validation of future fixes. This prose-only revision checks document links, stable IDs, verdict categories, and preservation of the verdict. Application checks were not repeated solely for documentation edits.

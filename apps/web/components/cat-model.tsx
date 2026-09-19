@@ -425,7 +425,7 @@ export const CatModel = memo(function CatModel({
         )}
       >
         {waiting && (
-          <Badge variant="overlay-quiet">
+          <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
             {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
             {waiting}
           </Badge>

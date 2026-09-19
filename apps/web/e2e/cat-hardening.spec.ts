@@ -150,6 +150,7 @@ test("hiding the stage mid-fade cancels the reveal without stranding it", async 
 });
 
 test("a failed download retries on the next touch without extra controls", async ({ page, isMobile }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
   const attempts: string[] = [];
   await page.route("**/models/our-cat/cat.glb*", async route => {
     attempts.push(route.request().url());
@@ -163,6 +164,9 @@ test("a failed download retries on the next touch without extra controls", async
   await expect(page.locator("model-viewer")).toHaveCount(0);
   const buttonsBefore = await page.getByRole("button").count();
   const box = (await stage(page).boundingBox())!;
+  const badge = (await status.locator('[data-slot="badge"]').boundingBox())!;
+  expect(badge.x).toBeGreaterThanOrEqual(box.x);
+  expect(badge.x + badge.width).toBeLessThanOrEqual(box.x + box.width);
   const x = box.x + box.width / 2, y = box.y + box.height / 2;
   if (isMobile) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y);
   const model = page.locator("model-viewer");
@@ -172,6 +176,23 @@ test("a failed download retries on the next touch without extra controls", async
   await clip(model, "Notice");
   expect(attempts.some(url => new URL(url).searchParams.get("retry") === "1")).toBe(true);
   expect(await page.getByRole("button").count()).toBe(buttonsBefore);
+});
+
+test("the homepage retry sentence stays inside its narrow corner", async ({ page }, info) => {
+  test.skip(info.project.name !== "cat-desktop", "The homepage corner is hidden on phones.");
+  await page.route("**/models/our-cat/cat.glb*", route => route.fulfill({ status: 503, body: "Temporary failure" }));
+  for (const path of ["/", "/en"]) {
+    await page.goto(path);
+    const poster = page.locator('source[srcset*="poster-home.webp"]').locator("..").locator("img");
+    await poster.hover();
+    const status = page.locator('[data-slot="cat-status"]');
+    await expect(status).toHaveText(/nov poskus|try again/);
+    const badge = (await status.locator('[data-slot="badge"]').boundingBox())!;
+    const box = (await poster.boundingBox())!;
+    expect(badge.x).toBeGreaterThanOrEqual(box.x);
+    expect(badge.x + badge.width).toBeLessThanOrEqual(box.x + box.width);
+    expect(badge.x + badge.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  }
 });
 
 test("anatomical taps use the proxy instead of the full mesh and rapid repeats finish before returning to idle", async ({ page, isMobile }) => {

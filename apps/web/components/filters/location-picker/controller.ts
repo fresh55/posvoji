@@ -244,7 +244,7 @@ export function useLocationPickerController({
   // The point the list sorts from, and where it came from. Memoized because
   // the row sort below takes it as a dependency, and a fresh object every
   // render would re-sort every render.
-  const typed = useTypedLocation(query);
+  const typed = useTypedLocation(query, open);
   const resolved = useMemo(
     () => resolveOrigin(geolocated, chosenPlace?.location ?? { status: "empty" }),
     [geolocated, chosenPlace],

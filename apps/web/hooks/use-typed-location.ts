@@ -1,20 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TypedLocation } from "@/lib/origin";
 
+type Reader = (query: string) => TypedLocation;
 const EMPTY: TypedLocation = { status: "empty" };
 
-/** The postal catalogue is needed only after someone types a place. */
-export function useTypedLocation(query: string): TypedLocation {
-  const [answer, setAnswer] = useState<{ query: string; location: TypedLocation }>();
+/** Warm the postal catalogue when the picker opens, before its first keystroke. */
+export function useTypedLocation(query: string, open: boolean): TypedLocation {
+  const [read, setRead] = useState<Reader>();
   useEffect(() => {
-    if (query.trim().length < 2) return;
+    if (!open || read) return;
     let cancelled = false;
     void import("@/lib/origin").then(({ readTypedLocation }) => {
-      if (!cancelled) setAnswer({ query, location: readTypedLocation(query) });
-    }).catch(() => { /* The shelter-name search remains available offline. */ });
+      if (!cancelled) setRead(() => readTypedLocation);
+    }).catch(() => { /* Shelter-name search remains available offline. */ });
     return () => { cancelled = true; };
-  }, [query]);
-  return answer?.query === query ? answer.location : EMPTY;
+  }, [open, read]);
+  return useMemo(() => read ? read(query) : EMPTY, [query, read]);
 }

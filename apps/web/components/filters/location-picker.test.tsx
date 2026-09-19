@@ -160,7 +160,7 @@ describe("LocationPicker typed location", () => {
   it("sorts the nearer shelter first only after the suggested postcode is chosen", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
 
     // The roster stays whole under a place query that matched no shelter's
     // name, in the order it was already in, so choosing the place is a list
@@ -177,7 +177,7 @@ describe("LocationPicker typed location", () => {
   it("sorts from a town typed by name, and names the match in the status line", async () => {
     const input = await openPicker();
 
-    type(input, "ajdovscina");
+    await type(input, "ajdovscina");
     choosePlace();
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
@@ -199,7 +199,7 @@ describe("LocationPicker typed location", () => {
 
     expect(rowText()).not.toContain("km");
 
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
 
     expect(rowText()).toContain("km");
@@ -208,7 +208,7 @@ describe("LocationPicker typed location", () => {
   it("says nothing while the input is too short to be a finished attempt", async () => {
     const input = await openPicker();
 
-    type(input, "10");
+    await type(input, "10");
 
     expect(screen.queryByText(/Tega kraja ne najdem/)).toBeNull();
   });
@@ -216,7 +216,7 @@ describe("LocationPicker typed location", () => {
   it("says nothing about a place when the words were a name all along", async () => {
     const input = await openPicker();
 
-    type(input, "qqqqq");
+    await type(input, "qqqqq");
 
     // The one box takes both, so a word the postal table does not know is a
     // shelter being searched for, not a mistake. Calling it one used to be the
@@ -229,7 +229,7 @@ describe("LocationPicker typed location", () => {
   it("lets the place row answer a postcode, with no empty list under it", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
 
     // A postcode is the one input that cannot have been a shelter's name, so
     // the list narrowing to none is not news about it. Drawn anyway, "Ni
@@ -246,7 +246,7 @@ describe("LocationPicker typed location", () => {
   it("keeps the empty list for a query that found no place either", async () => {
     const input = await openPicker();
 
-    type(input, "qqqqq");
+    await type(input, "qqqqq");
 
     // Nothing else on screen is answering, so the block is the answer.
     expect(screen.queryByRole("button", { name: /^V bližini / })).toBeNull();
@@ -256,7 +256,7 @@ describe("LocationPicker typed location", () => {
   it("still names a postcode that resolves to nothing", async () => {
     const input = await openPicker();
 
-    type(input, "9998");
+    await type(input, "9998");
 
     // Four digits are the one input that cannot have been a shelter's name, so
     // the empty list has a reason worth giving: the number was wrong, not the
@@ -270,11 +270,11 @@ describe("LocationPicker typed location", () => {
   it("retains the explicitly chosen origin when the input is cleared", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
     expect(rowOrder()).toEqual(["jug", "sever"]);
 
-    type(input, "");
+    await type(input, "");
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
     expect(
@@ -284,7 +284,7 @@ describe("LocationPicker typed location", () => {
 
   it("removes a chosen origin explicitly and restores the unsorted list", async () => {
     const input = await openPicker();
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
     expect(rowOrder()).toEqual(["jug", "sever"]);
 
@@ -301,12 +301,12 @@ describe("LocationPicker typed location", () => {
 
     expect(screen.getByRole("button", { name: "Najbližje prvo" })).toBeTruthy();
 
-    type(input, "1000");
+    await type(input, "1000");
     expect(screen.getByRole("button", { name: "Najbližje prvo" })).toBeTruthy();
     choosePlace();
     expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
 
-    type(input, "");
+    await type(input, "");
     expect(screen.queryByRole("button", { name: "Najbližje prvo" })).toBeNull();
   });
 
@@ -317,7 +317,7 @@ describe("LocationPicker typed location", () => {
     fireEvent.click(screen.getByRole("button", { name: "Najbližje prvo" }));
     expect(screen.getByText("Brskalnik ne pozna lokacije.")).toBeTruthy();
 
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
 
     expect(screen.queryByText("Brskalnik ne pozna lokacije.")).toBeNull();
@@ -329,7 +329,7 @@ describe("LocationPicker typed location", () => {
   it("clears the input from its own button", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
     fireEvent.click(screen.getByRole("button", { name: "Počisti vnos" }));
 
     expect((input as HTMLInputElement).value).toBe("");
@@ -375,7 +375,7 @@ describe("LocationPicker most recent act", () => {
     geolocation.succeed();
     expect(rowOrder()).toEqual(["sever", "jug"]);
 
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
@@ -390,7 +390,7 @@ describe("LocationPicker most recent act", () => {
     const input = await openPicker();
 
     fireEvent.click(screen.getByRole("button", { name: "Najbližje prvo" }));
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
     expect(rowOrder()).toEqual(["jug", "sever"]);
 
@@ -409,7 +409,7 @@ describe("LocationPicker keyboard", () => {
   it("clears a typed place on Escape and keeps the dialog open", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
     fireEvent.keyDown(input, { key: "Escape" });
 
     expect((input as HTMLInputElement).value).toBe("");
@@ -420,7 +420,7 @@ describe("LocationPicker keyboard", () => {
   it("clears a typed name on Escape and keeps the dialog open", async () => {
     const input = await openPicker();
 
-    type(input, "Sever");
+    await type(input, "Sever");
     expect(rowOrder()).toEqual(["sever"]);
 
     fireEvent.keyDown(input, { key: "Escape" });
@@ -435,7 +435,7 @@ describe("LocationPicker keyboard", () => {
   it("focuses the place suggestion on Enter without silently choosing it", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
     input.focus();
     fireEvent.keyDown(input, { key: "Enter" });
 
@@ -448,7 +448,7 @@ describe("LocationPicker keyboard", () => {
 
   it("follows the visible order into the place suggestion when a city also matches a shelter", async () => {
     const input = await openPicker();
-    type(input, "Ljubljana");
+    await type(input, "Ljubljana");
     expect(rowOrder()).toEqual(["jug"]);
     input.focus();
     fireEvent.keyDown(input, { key: "Enter" });
@@ -543,7 +543,7 @@ describe("LocationPicker merged field", () => {
   it("filters the list by name while the words are not a place", async () => {
     await openPicker({ offSite });
 
-    type(field(), "Sever");
+    await type(field(), "Sever");
 
     expect(rowOrder()).toEqual(["sever"]);
     expect(mode()).toBe("name");
@@ -556,7 +556,7 @@ describe("LocationPicker merged field", () => {
   it("sorts the whole list from a place without filtering it", async () => {
     await openPicker();
 
-    type(field(), "Maribor");
+    await type(field(), "Maribor");
     expect(rowOrder()).toEqual(["sever"]);
     expect(mode()).toBe("name");
     choosePlace();
@@ -579,11 +579,11 @@ describe("LocationPicker merged field", () => {
     // "Lju" is not a place yet: five districts are named "Ljubljana - X" and
     // the table refuses to guess between them (see findByKey). So it is a
     // name, and the only row carrying it is the Ljubljana one.
-    type(input, "Lju");
+    await type(input, "Lju");
     expect(rowOrder()).toEqual(["jug"]);
     expect(mode()).toBe("name");
 
-    type(input, "Ljubljana");
+    await type(input, "Ljubljana");
 
     expect(rowOrder()).toEqual(["jug"]);
     expect(mode()).toBe("name");
@@ -597,7 +597,7 @@ describe("LocationPicker merged field", () => {
     ).toBeTruthy();
 
     // Editing searches within the chosen origin instead of dropping it.
-    type(input, "Lju");
+    await type(input, "Lju");
     expect(rowOrder()).toEqual(["jug"]);
     expect(mode()).toBe("name");
     expect(
@@ -609,7 +609,7 @@ describe("LocationPicker merged field", () => {
     await openPicker();
     const input = field();
 
-    type(input, "sever");
+    await type(input, "sever");
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(document.activeElement?.textContent).toContain("Zavetišče Sever");
@@ -632,7 +632,7 @@ describe("LocationPicker merged field", () => {
     // The most recent act wins, exactly as it did in the place box: a typed
     // town is a newer answer than a fix, so the fix goes off rather than
     // quietly outranking what was just typed.
-    type(field(), "1000");
+    await type(field(), "1000");
     choosePlace();
 
     expect(rowOrder()).toEqual(["jug", "sever"]);
@@ -642,7 +642,7 @@ describe("LocationPicker merged field", () => {
   it("selects what is in the box when the field is focused again", async () => {
     const input = await openPicker();
 
-    type(input, "1000");
+    await type(input, "1000");
     input.focus();
 
     // The box holds one answer at a time, so coming back to it means
@@ -654,11 +654,11 @@ describe("LocationPicker merged field", () => {
   it("walks into the list on ArrowDown, in either mode", async () => {
     const input = await openPicker();
 
-    type(input, "Sever");
+    await type(input, "Sever");
     fireEvent.keyDown(input, { key: "ArrowDown" });
     expect(document.activeElement?.textContent).toContain("Zavetišče Sever");
 
-    type(input, "1000");
+    await type(input, "1000");
     input.focus();
     fireEvent.keyDown(input, { key: "ArrowDown" });
     expect(document.activeElement).toBe(screen.getByRole("button", { name: /^V bližini Ljubljana/ }));
@@ -671,7 +671,7 @@ describe("LocationPicker merged field", () => {
   it("clears the box from its own button, whichever mode it is in", async () => {
     const input = await openPicker();
 
-    type(input, "Sever");
+    await type(input, "Sever");
     fireEvent.click(screen.getByRole("button", { name: "Počisti vnos" }));
 
     expect((input as HTMLInputElement).value).toBe("");
@@ -693,7 +693,7 @@ describe("LocationPicker search announcement", () => {
     // until there is a search to report on.
     expect(live()).not.toContain("Zadetki");
 
-    type(search, "Sever");
+    await type(search, "Sever");
 
     expect(live()).toContain(`Zadetki: ${shelterCount(1, "sl")}`);
     // The selection summary the region already carried is still in it. The
@@ -707,7 +707,7 @@ describe("LocationPicker search announcement", () => {
 
     // "Zavetišče" matches all three rows, the two live ones and the registry
     // one under its own heading.
-    type(search, "Zavetišče");
+    await type(search, "Zavetišče");
 
     expect(live()).toContain(`Zadetki: ${shelterCount(3, "sl")}`);
   });
@@ -716,7 +716,7 @@ describe("LocationPicker search announcement", () => {
     await openPicker();
     const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
-    type(search, "zzzzz");
+    await type(search, "zzzzz");
 
     // The visible empty state is inside the list scroller, which nobody is
     // looking at while typing into the box above it. Same sentence either way,
@@ -733,7 +733,7 @@ describe("LocationPicker search announcement", () => {
     await openPicker();
     const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
-    type(search, "1000");
+    await type(search, "1000");
 
     // The drawn answer is the place row, so that is what is announced. The
     // two must not disagree; see the empty state's own test above.
@@ -745,8 +745,8 @@ describe("LocationPicker search announcement", () => {
     await openPicker();
     const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
 
-    type(search, "zzzzz");
-    type(search, "");
+    await type(search, "zzzzz");
+    await type(search, "");
 
     expect(live()).not.toContain("Ni zadetkov");
     expect(live()).not.toContain("Zadetki");
@@ -895,7 +895,7 @@ describe("LocationPicker search keys", () => {
 
     // Nothing live matches, so the off-site group is the whole answer and
     // stands open: the row is mounted and the fallback can reach it.
-    type(input, "Vzhod");
+    await type(input, "Vzhod");
     expect(rowOrder()).toEqual([]);
 
     fireEvent.keyDown(input, { key: "ArrowDown" });
@@ -905,7 +905,7 @@ describe("LocationPicker search keys", () => {
   it("leaves Enter to the browser when the search has nothing to move to", async () => {
     const input = await openPicker();
 
-    type(input, "zzz");
+    await type(input, "zzz");
     input.focus();
     const event = new KeyboardEvent("keydown", {
       key: "Enter",
@@ -920,7 +920,7 @@ describe("LocationPicker search keys", () => {
   it("leaves the key alone when the only match is behind the fold", async () => {
     const input = await openPicker({ offSite, counts: noCounts });
 
-    type(input, "Zavetišče");
+    await type(input, "Zavetišče");
 
     // The premise: both live rows on screen, so the off-site group is a fold
     // rather than the whole answer, and nothing inside it is mounted.
@@ -938,7 +938,7 @@ describe("LocationPicker search keys", () => {
   it("reaches the off-site row once the group is open", async () => {
     const input = await openPicker({ offSite, counts: noCounts });
 
-    type(input, "Zavetišče");
+    await type(input, "Zavetišče");
     openOffGroup();
     input.focus();
 
@@ -1521,11 +1521,11 @@ describe("LocationPicker map picking", () => {
     expect(expanded()).toBe("sever");
   });
 
-  it("reveals a new map choice when an old query and another shelter's details are active", () => {
+  it("reveals a new map choice when an old query and another shelter's details are active", async () => {
     openMap();
     fireEvent.click(info("Zavetišče Jug"));
     const search = screen.getByLabelText("Kraj, pošta ali zavetišče");
-    type(search, "Jug");
+    await type(search, "Jug");
     expect(rowOrder()).toEqual(["jug"]);
 
     fireEvent.click(marker("maribor"));
@@ -2360,11 +2360,11 @@ describe("LocationPicker details dismissal", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("empties the box Escape was pressed in before it reaches the panel", () => {
+  it("empties the box Escape was pressed in before it reaches the panel", async () => {
     openList();
 
     fireEvent.click(show("Zavetišče Jug"));
-    type(search(), "Jug");
+    await type(search(), "Jug");
 
     fireEvent.keyDown(search(), { key: "Escape" });
 
@@ -2771,7 +2771,7 @@ describe("LocationPicker attribution", () => {
 
     expect(screen.queryByText("Izhodišče")).toBeNull();
 
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
 
     // The legend now renders twice in markup (an on-map panel for md+, an
@@ -2796,7 +2796,7 @@ describe("LocationPicker attribution", () => {
 
   it("keeps the legend on a phone too, where the states it explains are drawn", async () => {
     const input = await openPicker({ offSite });
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
 
     // The legend used to be taken away with the sheet below lg, which is the
@@ -3150,12 +3150,12 @@ describe("LocationPicker audit regressions", () => {
   it("keeps postcode typing as search until the place suggestion is chosen", async () => {
     const input = await openPicker();
     for (const query of ["1", "10", "100"]) {
-      type(input, query);
+      await type(input, query);
       expect(rowOrder()).toEqual([]);
       expect(screen.queryByRole("button", { name: /^V bližini / })).toBeNull();
       expect(screen.queryByText(/Razvrščeno po bližini/)).toBeNull();
     }
-    type(input, "1000");
+    await type(input, "1000");
     // Four digits match no shelter's name, so the roster stays whole in its
     // resting order for the place row to reorder; three of them are not a
     // postcode yet, so the list above is narrowed to nothing and says so.
@@ -3167,7 +3167,7 @@ describe("LocationPicker audit regressions", () => {
   });
   it("trims pasted shelter names", async () => {
     const input = await openPicker();
-    type(input, " Zavetišče Jug ");
+    await type(input, " Zavetišče Jug ");
     expect(rowOrder()).toEqual(["jug"]);
   });
   // The heading closed the search block, from where it labelled whatever came
@@ -3178,7 +3178,7 @@ describe("LocationPicker audit regressions", () => {
     const input = await openPicker();
     expect(screen.queryByText("Zavetišča")).toBeNull();
 
-    type(input, "Zavetišče");
+    await type(input, "Zavetišče");
     const heading = screen.getByText("Zavetišča");
     const group = screen
       .getByRole("dialog")
@@ -3189,14 +3189,14 @@ describe("LocationPicker audit regressions", () => {
 
     // A place query leaves the whole roster on screen, which is not a set of
     // matches, and the row above the list is what says what the typing did.
-    type(input, "1000");
+    await type(input, "1000");
     expect(screen.queryByText("Zavetišča")).toBeNull();
     expect(rowOrder()).toEqual(["sever", "jug"]);
   });
   it("asks for a row choice when Enter has more than one match", async () => {
     const onToggle = vi.fn();
     const input = await openPicker({ onToggle });
-    type(input, "Zavetišče");
+    await type(input, "Zavetišče");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onToggle).not.toHaveBeenCalled();
     expect(document.activeElement?.textContent).toContain("Zavetišče Sever");
@@ -3248,14 +3248,14 @@ describe("LocationPicker audit regressions", () => {
     // A postcode names a place and matches no shelter name, so the list under
     // the caption would be empty and the caption would read as "no such
     // place" about the place just found.
-    type(input, "1000");
+    await type(input, "1000");
     expect(screen.queryByText("Zavetišča")).toBeNull();
 
-    type(input, "Sever");
+    await type(input, "Sever");
     expect(screen.getByText("Zavetišča")).toBeTruthy();
 
     // An off-site match is still something for the caption to name.
-    type(input, "Vzhod");
+    await type(input, "Vzhod");
     expect(screen.getByText("Zavetišča")).toBeTruthy();
   });
   it("hands focus to the search field before the clear-selection button unmounts", async () => {
@@ -3268,7 +3268,7 @@ describe("LocationPicker audit regressions", () => {
   });
   it("names the place the origin chip shows in the chip's accessible name", async () => {
     const input = await openPicker();
-    type(input, "1000");
+    await type(input, "1000");
     choosePlace();
     expect(
       screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),

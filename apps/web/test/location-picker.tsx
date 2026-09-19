@@ -1,5 +1,6 @@
 import { useState, type ComponentProps } from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -145,8 +146,11 @@ export async function openPicker(
 }
 
 /** Types into the search field the way a change event delivers it. */
-export function type(input: HTMLElement, value: string) {
-  fireEvent.change(input, { target: { value } });
+export async function type(input: HTMLElement, value: string) {
+  await act(async () => {
+    fireEvent.change(input, { target: { value } });
+    await import("@/lib/origin");
+  });
 }
 
 /**

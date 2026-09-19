@@ -6,6 +6,7 @@ import {
   prefetchAnimalDescriptions,
   resetAnimalDescriptionsStore,
   useAnimalDescription,
+  useAnimalSource,
 } from "@/lib/animal-descriptions";
 
 const DESCRIPTIONS = {
@@ -40,7 +41,7 @@ describe("the one fetch", () => {
     ]);
 
     expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith("/generated/animal-descriptions.json");
+    expect(fetch).toHaveBeenCalledWith("/generated/animal-details.json");
     expect(first).toEqual(DESCRIPTIONS);
     expect(second).toBe(first);
     expect(third).toBe(first);
@@ -126,6 +127,28 @@ describe("useAnimalDescription", () => {
     const view = renderHook(() => useAnimalDescription(undefined));
 
     expect(view.result.current).toBeUndefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("deferred source details", () => {
+  it("shares one request with descriptions and changes source when the animal changes", async () => {
+    const source = { sourceUrl: "https://shelter.example/animals/1", fetchedAt: "2026-09-19T00:00:00Z" };
+    const fetch = serving({ "shelter:1": { description: "Shelter text", source } });
+    const view = renderHook(({ id }) => ({
+      description: useAnimalDescription(id), source: useAnimalSource(id),
+    }), { initialProps: { id: "shelter:1" } });
+    expect(view.result.current.source).toBeUndefined();
+    await waitFor(() => expect(view.result.current.source).toEqual(source));
+    expect(view.result.current.description).toBe("Shelter text");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    view.rerender({ id: "shelter:2" });
+    expect(view.result.current.source).toBeUndefined();
+  });
+
+  it("does not request details for a standalone page that already has its source", () => {
+    const fetch = serving();
+    renderHook(() => useAnimalSource(undefined));
     expect(fetch).not.toHaveBeenCalled();
   });
 });

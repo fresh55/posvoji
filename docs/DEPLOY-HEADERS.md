@@ -73,25 +73,27 @@ covers it.
 
 **Production model compression verified 17 September 2026.** The live
 Caddyfile now has `precompressed br gzip` on the release's `file_server`.
-The authenticated model response carried `Content-Encoding: br` and was
-550,478 bytes. The deployed health monitor checks model encoding on every
-run with `POSVOJI_MONITOR_MODEL_ENCODING=1`, alongside its homepage and
+The model response carried `Content-Encoding: br` and was 550,478 bytes.
+The deployed health monitor checks model encoding on every run with
+`POSVOJI_MONITOR_MODEL_ENCODING=1`, alongside its homepage and
 JavaScript compression checks.
 
 The live Caddyfile remains on the host rather than in this repository.
-Unauthenticated requests behind its `basic_auth` gate answer `401`, so a
-plain `curl -sI` cannot establish the encoding of the real page or model.
-Use the authenticated monitor while the gate is active; the manual checks
-below also apply after it comes off.
+The model path is outside `basic_auth`: a plain request with
+`Accept-Encoding: br` returns `200`, `Content-Encoding: br` and 550,478 bytes,
+reconfirmed on 20 September 2026. It needs no credentials. For gated pages,
+use the monitor's configured credentials and check the response status before
+interpreting compression headers; a `401` describes the gate response.
 
-The whole check is one line:
+Check the homepage's response status as well as its encoding:
 
 ```bash
-curl -sI -H 'Accept-Encoding: gzip, zstd' https://posvoji.si/ | grep -i content-encoding
+curl -sI -H 'Accept-Encoding: gzip, zstd' https://posvoji.si/ | grep -i '^HTTP/\|content-encoding'
 ```
 
-A line naming `gzip` or `zstd` is the answer. No line at all means the server
-is sending the homepage uncompressed, and the fix is the `encode zstd gzip`
+A line naming `gzip` or `zstd` on a `200` response is the answer. No line on
+that successful response means the server is sending the homepage
+uncompressed, and the fix is the `encode zstd gzip`
 directive from the Caddy block below, added to the `posvoji.si` site block
 followed by `sudo systemctl reload caddy`. Repeat the curl against one
 `/_next/static/chunks/*.js` file from the current release: `encode` covers both
@@ -124,8 +126,8 @@ sibling, since the host encodes text per request already.
 
 **Sidecars are what this repository supports.** The on-the-fly alternative
 below is written down for a host that cannot serve them, and it uses neither
-file. Either way the host has to be configured, and until it is, the two files
-are dead weight in the release: a sidecar nothing asks for is never read.
+file. Production has used sidecars since 17 September 2026. A new host still
+needs the configuration below before it can serve them.
 
 ### Caddy
 
@@ -220,51 +222,39 @@ types {
 gzip_types text/css application/javascript application/json image/svg+xml application/xml model/gltf-binary;
 ```
 
-### Host steps
+### Host steps — completed 17 September 2026
 
-Nothing in this repository can make the host serve the sidecars. On the
-production host, in this order:
+The host configuration is separate from this repository. Production completed
+the following rollout on 17 September 2026; retain this order for a new host:
 
-1. **Deploy once from this repository first.** The current live release
-   carries about 10500 `.br`/`.gz` files from an old hand-made deploy.
-   `precompressed` serves a sidecar without comparing it to the file beside it,
-   so turning the directive on over that release would start serving those
-   siblings, and nothing says they were written from the bytes they now sit
-   next to. A release built by `scripts/deploy.sh` contains the model's two and
-   nothing else.
-2. **Add the subdirective** to the `file_server` in the `posvoji.si` block of
-   the host Caddyfile, then `sudo caddy validate --config <path>` and
+1. **Stale sidecars removed.** About 10,500 `.br`/`.gz` files from an old
+   hand-made release were pruned before enabling `precompressed`. It serves
+   siblings without checking that they match the source file, so that cleanup
+   was a prerequisite. Releases built by `scripts/deploy.sh` contain only the
+   model's `.br` and `.gz` siblings and reject any others.
+2. **Caddy configured and reloaded.** The release's `file_server` in the
+   `posvoji.si` block has `precompressed br gzip`. For a new host, validate the
+   changed configuration with `sudo caddy validate --config <path>` before
    `sudo systemctl reload caddy`.
-3. **Confirm it on a real response.**
+3. **Live response verified.** A real model response returned `200`,
+   `Content-Encoding: br` and `Content-Length: 550478`. This public path is
+   outside the launch gate. Repeat the check without credentials:
 
    ```bash
    curl -sI -H 'Accept-Encoding: br' https://posvoji.si/models/our-cat/cat.glb |
-     grep -i 'content-encoding\|content-length'
+     grep -i '^HTTP/\|content-encoding\|content-length'
    ```
 
-   `br` and a length near 550,478 rather than 1,500,464. Behind the launch
-   gate this answers `401`, so pass the credentials or run it after the gate
-   comes off.
+   This `HEAD` check was reconfirmed against production on 20 September 2026:
+   `200`, `br`, 550,478 bytes. The retry query also receives the same compressed
+   model. The monitor uses `HEAD` to check encoding without downloading it.
 
-   The `HEAD` below takes the file server's source at its word: it sets
-   `Content-Encoding` before any body is written, so a bodyless response still
-   carries it. That has been seen against a stand-in server and not against
-   this host. If the curl above reports `br` where the monitor reports nothing,
-   that shortcut is what to drop, and a `--range` request will not replace it:
-   Caddy declines to encode a partial response, so a range over an on-the-fly
-   encoding arrives raw.
-
-4. **Turn the monitor's check on.** `scripts/monitor-production.sh` asserts the
-   same header with that `HEAD` on every run, but only when
-   `POSVOJI_MONITOR_MODEL_ENCODING=1` is set: until step 2 lands the honest
-   answer is no `Content-Encoding`, and a check that fails for a thing the site
-   works without is one nobody reads. Set it in both places that run the
-   script, once the curl above answers `br`:
-
-   - `scripts/systemd/posvoji-health.service`, as a second `Environment=` line
-     beside `POSVOJI_MONITOR_NETRC_FILE`, then `sudo systemctl daemon-reload`.
-   - `.github/workflows/production-health.yml`, in the `env:` of the step that
-     runs the script, beside `MONITOR_NETRC`.
+4. **Encoding monitoring enabled in both runners.** The installed health
+   unit passed with `POSVOJI_MONITOR_MODEL_ENCODING=1` on 17 September 2026.
+   [PR #246](https://github.com/fresh55/posvoji/pull/246), merged that day,
+   recorded the switch in both `scripts/systemd/posvoji-health.service` and
+   `.github/workflows/production-health.yml`. Each monitor run checks the
+   model's encoding alongside page and JavaScript compression.
 
 ## The branded 404
 
@@ -282,10 +272,9 @@ next build. `scripts/monitor-production.sh` requests a path that cannot exist
 and asserts both halves, the status and the page's own text, so the server and
 the export cannot drift apart again.
 
-Unchecked against production for the same reason compression is: behind the
-gate `curl -so /dev/null -w '%{http_code}' https://posvoji.si/ni-take-strani`
-answers `401`, not `404`. The monitor settles it on its first run after the
-gate comes off.
+A request to a gated missing page can return `401` before it reaches the
+file server. Use the monitor's configured credentials to check its `404`
+status and branded body while the gate is active.
 
 ## nginx
 
@@ -392,9 +381,9 @@ and the 12h crawl keeps moving the timestamps the guess reads.
 `.html` must keep revalidating. It is served by the `try_files` chain above,
 and a long `max-age` there makes a deploy invisible.
 
-What the live server sends today is unknown, again because of the gate:
-`curl -sI https://posvoji.si/_next/static/chunks/<chunk>.js` answers `401`. If
-the header is already set, these lines record it.
+Check these headers on a successful response from a chunk in the current
+release. If a request returns `401`, use the monitor's configured credentials;
+the gate's headers do not establish the cache policy of the asset behind it.
 
 The three icons at the root are a separate case. Their names are fixed, so a
 year is too long, but `/icon.svg` is requested under two URLs, bare by the

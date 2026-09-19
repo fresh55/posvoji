@@ -42,15 +42,15 @@ const copy = {
     alt: "Bel maček s sivimi lisami, olivnim levim očesom in zaprtim desnim očesom.",
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Maček se še nalaga …",
-    slow: "Počasnejša povezava? Še se nalaga …",
-    unavailable: "3D-ogled ni na voljo.",
+    slow: "Nalaganje traja dlje kot običajno …",
+    unavailable: "3D-ogled ni uspel. Dotakni se ga za nov poskus.",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "The cat is still loading …",
-    slow: "Slow connection? Still loading …",
-    unavailable: "The 3D view is unavailable.",
+    slow: "Loading is taking longer than usual …",
+    unavailable: "The 3D view couldn’t load. Tap or click to try again.",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -366,6 +366,8 @@ export const CatModel = memo(function CatModel({
       syncPlayback();
     };
     container.addEventListener("transitionend", onRevealEnd);
+    // A responsive ancestor can hide the stage mid-fade, cancelling its end event.
+    container.addEventListener("transitioncancel", onRevealEnd);
     document.addEventListener("visibilitychange", onVisibilityChange);
     motion.addEventListener("change", onMotionChange);
     return () => {
@@ -377,6 +379,7 @@ export const CatModel = memo(function CatModel({
       clearTimeout(slowTimer);
       if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
       container.removeEventListener("transitionend", onRevealEnd);
+      container.removeEventListener("transitioncancel", onRevealEnd);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       motion.removeEventListener("change", onMotionChange);
       handOver.current?.(null);

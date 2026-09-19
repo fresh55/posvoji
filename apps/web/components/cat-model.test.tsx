@@ -110,6 +110,9 @@ const endTransition = (element: Element, propertyName: string) => fireEvent(
   element, Object.assign(new Event("transitionend", { bubbles: true }), { propertyName }),
 );
 const finishReveal = (viewer: Viewer) => endTransition(viewer.parentElement!, "opacity");
+const cancelTransition = (element: Element, propertyName = "opacity") => fireEvent(
+  element, Object.assign(new Event("transitioncancel", { bubbles: true }), { propertyName }),
+);
 
 // The stage's label, and the two ways a visitor reaches for the poster. The
 // assertions stay in each test; only the reaching is shared.
@@ -211,7 +214,7 @@ describe("the cat model", () => {
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
     expect(hints()).toHaveLength(2);
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("unavailable"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tap or click to try again"));
     // Half a megabyte nothing is left to read: the links download the model
     // on their own, so a stage that has already failed takes them back.
     expect(hints()).toEqual([]);
@@ -352,6 +355,28 @@ describe("the cat model", () => {
     expect(onHandle).toHaveBeenCalledOnce();
   });
 
+  it("finishes a cancelled fade while preserving visibility-based playback", async () => {
+    const onHandle = vi.fn();
+    render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    const poster = screen.getByRole("img");
+    const viewer = await loadViewer(undefined, false);
+    const host = viewer.parentElement!;
+    cancelTransition(viewer);
+    cancelTransition(host, "transform");
+    expect(poster.classList.contains("invisible")).toBe(false);
+    act(() => intersect(false));
+    cancelTransition(host);
+    expect(poster.classList.contains("invisible")).toBe(true);
+    expect(host.hasAttribute("inert")).toBe(false);
+    expect(screen.getByRole("status").textContent).toBe("");
+    expect(viewer.paused).toBe(true);
+    expect(onHandle).toHaveBeenCalledOnce();
+    act(() => intersect(true));
+    expect(viewer.paused).toBe(false);
+    finishReveal(viewer);
+    expect(onHandle).toHaveBeenCalledOnce();
+  });
+
   it("finishes the reveal if reduced motion cancels its transition", async () => {
     render(<CatModel sizes="100vw" locale="en" />);
     const poster = screen.getByRole("img");
@@ -369,6 +394,7 @@ describe("the cat model", () => {
     const host = viewer.parentElement!;
     unmount();
     endTransition(host, "opacity");
+    cancelTransition(host);
     expect(onHandle.mock.calls).toEqual([[null]]);
     expect(viewer.paused).toBe(true);
   });
@@ -447,7 +473,7 @@ describe("the cat model", () => {
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
     expect(viewer.paused).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("unavailable");
+    expect(screen.getByRole("status").textContent).toContain("Tap or click to try again");
     expect(screen.getByRole("img").getAttribute("alt")).toContain("white cat");
     expect(screen.queryByRole("button")).toBeNull();
   });
@@ -487,7 +513,7 @@ describe("the cat model", () => {
     viewerModule.fails = true;
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("unavailable"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tap or click to try again"));
     viewerModule.fails = false;
     reachFor();
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
@@ -502,9 +528,9 @@ describe("the cat model", () => {
     await act(async () => intersect(true));
     const viewer = document.querySelector("model-viewer")!;
     await act(async () => vi.advanceTimersByTime(9_999));
-    expect(screen.getByRole("status").textContent).not.toContain("Slow connection");
+    expect(screen.getByRole("status").textContent).not.toContain("longer than usual");
     await act(async () => vi.advanceTimersByTime(1));
-    expect(screen.getByRole("status").textContent).toContain("Slow connection");
+    expect(screen.getByRole("status").textContent).toContain("longer than usual");
     expect(shown()).toBe(false);
     reachFor();
     expect(shown()).toBe(true);
@@ -557,14 +583,14 @@ describe("the cat model", () => {
     expect(shown()).toBe(false);
     fireEvent(viewer, new Event("error"));
     expect(shown()).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("ni na voljo");
+    expect(screen.getByRole("status").textContent).toContain("Dotakni se ga za nov poskus");
   });
 
   it("does not apologise for a failure to someone who never reached for him", async () => {
     render(<CatModel sizes="100vw" locale="sl" />);
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
-    expect(screen.getByRole("status").textContent).toContain("ni na voljo");
+    expect(screen.getByRole("status").textContent).toContain("Dotakni se ga za nov poskus");
     expect(shown()).toBe(false);
     reachFor();
     expect(shown()).toBe(true);

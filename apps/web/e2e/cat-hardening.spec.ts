@@ -109,6 +109,46 @@ test("the still stays under the reveal and the remembered greeting waits for it"
   }
 });
 
+test("hiding the stage mid-fade cancels the reveal without stranding it", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route("**/models/our-cat/cat.glb*", async route => {
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.goto("/vstop");
+    const model = page.locator("model-viewer");
+    await model.waitFor({ state: "attached" });
+    await model.evaluate(e => {
+      const host = e.parentElement!;
+      host.addEventListener("transitionstart", event => {
+        if (event.target !== host || event.propertyName !== "opacity") return;
+        // Hide after the one-off rAF fallback has already checked the fade.
+        setTimeout(() => { host.parentElement!.style.display = "none"; }, 100);
+      }, { once: true });
+      host.addEventListener("transitioncancel", event => {
+        if (event.target === host && event.propertyName === "opacity") {
+          host.setAttribute("data-reveal-cancelled", "true");
+        }
+      }, { once: true });
+    });
+    release();
+    const host = model.locator("..");
+    await expect(host).toHaveAttribute("data-reveal-cancelled", "true");
+    await expect(host).toHaveAttribute("aria-hidden", "false");
+    await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).paused)).toBe(true);
+    await model.evaluate(e => { e.parentElement!.parentElement!.style.display = ""; });
+    await expect(model).toBeVisible();
+    await expect(page.locator('[data-slot="cat-status"]')).toHaveText("");
+    await expect(stage(page)).not.toHaveCSS("cursor", "progress");
+    const initial = await model.evaluate(e => (e as ModelViewerElement).currentTime);
+    await expect.poll(() => model.evaluate(e => (e as ModelViewerElement).currentTime)).toBeGreaterThan(initial + .5);
+  } finally {
+    release();
+  }
+});
+
 test("a failed download retries on the next touch without extra controls", async ({ page, isMobile }) => {
   const attempts: string[] = [];
   await page.route("**/models/our-cat/cat.glb*", async route => {
@@ -119,7 +159,7 @@ test("a failed download retries on the next touch without extra controls", async
   });
   await page.goto("/vstop");
   const status = page.locator('[data-slot="cat-status"]');
-  await expect(status).toHaveText(/ni na voljo/);
+  await expect(status).toHaveText(/Dotakni se ga za nov poskus/);
   await expect(page.locator("model-viewer")).toHaveCount(0);
   const buttonsBefore = await page.getByRole("button").count();
   const box = (await stage(page).boundingBox())!;

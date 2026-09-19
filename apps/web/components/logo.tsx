@@ -1,22 +1,10 @@
 import { preload } from "react-dom";
 
-// The mark is a traced line-art drawing: one even-odd path of about 11KB.
-// Inlined as an <svg> it was 22KB of every page that carries a header, because
-// the header renders inside I18nProvider and so the path landed once in the
-// markup and again in the RSC flight payload. Across the export that was 23MB
-// for one logo, and on an animal page it was over a third of the compressed
-// weight.
-//
-// So it is pulled in as a mask instead: the element paints currentColor through
-// the picture, which keeps the contract the inline version had, that the logo
-// is a single colour and follows whatever text colour surrounds it, dark mode
-// included. One cached request now serves every page.
-//
-// The file is app/icon.svg, the same drawing the favicon already ships, rather
-// than a second copy under public/. A mask reads only alpha, so the fills and
-// the prefers-color-scheme block in there do not reach this. That does make the
-// header depend on the icon's silhouette: app/icon.svg says so.
-const LOGO_HREF = "/icon.svg";
+// A shared mask keeps the drawing out of each page's markup and RSC payload.
+// It paints currentColor, including in dark mode and on printed posters.
+// Keep this full animal mark separate from the simplified browser-tab icon.
+// The source must stay transparent: an opaque plate would mask as a rectangle.
+const LOGO_HREF = "/logo.svg";
 
 // inline-block, not block: with width auto a block box stretches to its
 // container and aspect-ratio stops applying, so the mark would paint full
@@ -41,11 +29,11 @@ export function Logo({ className }: { className?: string }) {
   // crossOrigin is not optional here. CSS fetches a mask anonymously, and a
   // preload without it asks in a different credentials mode, so the browser
   // discards the preloaded copy and fetches the file a second time. Chrome says
-  // so out loud: "a preload for /icon.svg is found, but is not used because the
+  // so out loud: "a preload for /logo.svg is found, but is not used because the
   // request credentials mode does not match".
   //
   // fetchPriority is not decoration either, and it fixes two things with one
-  // argument. An image preload defaults to Low, so this 11KB file queued
+  // argument. An image preload defaults to Low, so the previous drawing queued
   // behind roughly 600KB of JavaScript; and react-dom routes an image preload
   // into the head's early queue only when it is marked high, so in the export
   // the tag landed last in the head, after both stylesheets and every async
@@ -57,5 +45,5 @@ export function Logo({ className }: { className?: string }) {
     crossOrigin: "anonymous",
     fetchPriority: "high",
   });
-  return <span aria-hidden className={className} style={LOGO_STYLE} />;
+  return <span aria-hidden data-logo-mark className={className} style={LOGO_STYLE} />;
 }

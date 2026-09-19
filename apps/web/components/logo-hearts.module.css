@@ -1,0 +1,123 @@
+.hearts {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.hearts path {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: 64px 30.5px;
+}
+
+.eyes {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: 65px 72.5px;
+}
+
+.eyes path {
+  opacity: 1;
+  transform: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+/* Cut only the cat-eye region out of the cached mark while drawing animated
+   eyes above it. Even-odd clipping keeps the background genuinely transparent.
+   Percentages map x=56.5..73.5, y=69..76 in the 128 x 120.8 viewBox.
+   Unsupported clipping leaves the complete original logo and hearts intact. */
+@media screen and (prefers-reduced-motion: no-preference) {
+  @supports (clip-path: polygon(evenodd, 0 0, 100% 0, 0 100%)) {
+    :global([data-brand][data-logo-playing]) .blinkable {
+      clip-path: polygon(evenodd,
+        0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+        44.140625% 57.119205%, 44.140625% 62.913907%,
+        57.421875% 62.913907%, 57.421875% 57.119205%,
+        44.140625% 57.119205%, 0 0);
+    }
+
+    .hearts[data-playing] .eyes {
+      opacity: 1;
+      animation: blink 200ms ease-in-out both;
+    }
+  }
+}
+
+/* Rise stays continuous on the outer groups while the hearts bloom and drift
+   sideways inside them. Separate axes avoid pausing vertical travel at each
+   opacity/scale keyframe. Durations plus delays fit within BURST_MS.
+   SVG units: 60 units of travel are about 20px in the 40px header mark. */
+.first {
+  --rise: -72px;
+  --flight-duration: 940ms;
+  --flight-delay: 380ms;
+}
+
+.second {
+  --rise: -62px;
+  --flight-duration: 820ms;
+  --flight-delay: 530ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hearts[data-playing] .pulse {
+    animation: pulse 380ms 200ms ease-in-out both;
+  }
+
+  .hearts[data-playing] :is(.first, .second) {
+    animation: rise var(--flight-duration) var(--flight-delay) cubic-bezier(0.2, 0.55, 0.35, 1) both;
+  }
+
+  .hearts[data-playing] .first path {
+    animation: drift-left var(--flight-duration) var(--flight-delay) ease-in-out both;
+  }
+
+  .hearts[data-playing] .second path {
+    animation: drift-right var(--flight-duration) var(--flight-delay) ease-in-out both;
+  }
+}
+
+@keyframes blink {
+  0%, 100% { transform: scaleY(1); }
+  42%, 56% { transform: scaleY(0.1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  12% { opacity: 1; transform: scale(1); }
+  42% { opacity: 1; transform: scale(1.24); }
+  72% { opacity: 1; transform: scale(1.04); }
+  90% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rise {
+  from { transform: translateY(0); }
+  to { transform: translateY(var(--rise)); }
+}
+
+@keyframes drift-left {
+  0% { opacity: 0; transform: translateX(0) rotate(-3deg) scale(0.45); }
+  18% { opacity: 0.9; transform: translateX(-4px) rotate(-6deg) scale(0.95); }
+  55% { opacity: 0.8; transform: translateX(-24px) rotate(-15deg) scale(0.98); }
+  85% { opacity: 0.25; transform: translateX(-31px) rotate(-8deg) scale(0.82); }
+  100% { opacity: 0; transform: translateX(-28px) rotate(-3deg) scale(0.6); }
+}
+
+@keyframes drift-right {
+  0% { opacity: 0; transform: translateX(0) rotate(3deg) scale(0.35); }
+  20% { opacity: 0.85; transform: translateX(5px) rotate(7deg) scale(0.76); }
+  58% { opacity: 0.7; transform: translateX(27px) rotate(16deg) scale(0.8); }
+  85% { opacity: 0.2; transform: translateX(36px) rotate(9deg) scale(0.65); }
+  100% { opacity: 0; transform: translateX(32px) rotate(3deg) scale(0.5); }
+}
+
+@media print, (prefers-reduced-motion: reduce) {
+  .hearts { display: none; }
+}

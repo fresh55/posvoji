@@ -2,7 +2,8 @@
 
 import { Check } from "lucide-react";
 import { cva } from "class-variance-authority";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { domAnimation, m, useReducedMotion } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { useState, type ReactNode } from "react";
 import {
   CollapsibleBody,

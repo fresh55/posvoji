@@ -60,7 +60,7 @@ describe("the animal page's gallery and the photo a link names", () => {
     const trigger = screen.getByRole("button", { name: "Odpri fotografijo 1 čez cel zaslon" });
     expect(document.activeElement).toBe(document.body);
     fireEvent.click(trigger);
-    const lightbox = await screen.findByRole("dialog");
+    const lightbox = await screen.findByRole("dialog", {}, { timeout: 5000 });
     fireEvent.click(within(lightbox).getByRole("button", { name: "Zapri" }));
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
@@ -72,7 +72,7 @@ describe("the animal page's gallery and the photo a link names", () => {
     const trigger = screen.getByRole("button", { name: "Odpri fotografijo 2 čez cel zaslon" });
     trigger.focus();
     fireEvent.click(trigger);
-    const lightbox = await screen.findByRole("dialog");
+    const lightbox = await screen.findByRole("dialog", {}, { timeout: 5000 });
     expect(within(lightbox).getByRole("img").getAttribute("src")).toContain("pika-2");
     fireEvent.click(within(lightbox).getByRole("button", { name: "Naslednja fotografija" }));
     expect(within(lightbox).getByRole("img").getAttribute("src")).toContain("pika-3");

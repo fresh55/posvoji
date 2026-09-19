@@ -1,13 +1,13 @@
 // How many cards the first render draws. The grid is not paginated, so Vse
 // used to mount all 503 matches at once: about fourteen thousand nodes, a
 // thousand tab stops and a 66,000px page, all of it in the prerendered HTML as
-// well. Sixty is several screens on the tallest phone and more than a desktop
+// well. Twenty-four is several screens on a phone and more than a desktop
 // first paint can show, and the steps after it are asked for well before
 // anyone reaches the bottom.
 //
 // Rendering only. Every count on the page, the facet numbers and the dialog's
 // sibling list all still read the whole filtered set.
-export const INITIAL_CARDS = 60;
+export const INITIAL_CARDS = 24;
 
 // How far below the last drawn card the next step is asked for, so the grid is
 // already longer by the time the visitor gets there.

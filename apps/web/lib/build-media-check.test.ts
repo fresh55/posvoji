@@ -53,7 +53,7 @@ describe("buildMediaWarnings", () => {
       JSON.stringify({
         entries: {
           horjul: { file: "here.webp" },
-          maribor: { file: "swept.webp" },
+          maribor: { file: "swept.webp", variants: [{ file: "small-missing.webp" }] },
         },
       }),
     );
@@ -61,6 +61,7 @@ describe("buildMediaWarnings", () => {
     const warnings = buildMediaWarnings(paths);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("maribor (swept.webp)");
+    expect(warnings[0]).toContain("maribor (small-missing.webp)");
     expect(warnings[0]).not.toContain("horjul");
   });
 

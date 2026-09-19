@@ -3,11 +3,11 @@
 import { ListFilter, PawPrint, Undo2, X } from "lucide-react";
 import {
   AnimatePresence,
-  LazyMotion,
   domMax,
   m,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useI18n } from "@/components/i18n-context";
 import {

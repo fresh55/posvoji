@@ -2,10 +2,10 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { LucideIcon } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -476,7 +476,7 @@ describe("AnimalCard shelter line", () => {
     // on a hover that a thumb never fires.
     const chevron = screen
       .getByRole("link", { name: "Test" })
-      .querySelector("svg");
+      .querySelector('[aria-hidden="true"]');
     expect(chevron?.getAttribute("class")).toContain("pointer-coarse:opacity-60");
     // The same 60% the hover draws, not a treatment of its own.
     expect(chevron?.getAttribute("class")).toContain(
@@ -841,4 +841,50 @@ describe("AnimalCard photo morph", () => {
     expect(started).toEqual([]);
     expect(opened).toEqual(["rex"]);
   });
+});
+
+
+it("keeps the first photo while metadata loads, then honors the card's keyboard step", async () => {
+  const projected = animalsForClient([schemaAnimal({ images: photos(3) })], {
+    deferPhotos: true,
+  })[0];
+  let finish!: (value: unknown) => void;
+  const fetcher = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  vi.stubGlobal("fetch", fetcher);
+  try {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <AnimalCard animal={projected} reference={NOW} onOpen={() => {}} />
+      </I18nProvider>,
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+    fireEvent.keyDown(container.querySelector('[data-slot="card-link"]')!, {
+      key: "ArrowRight",
+    });
+    expect(container.querySelector("img")?.getAttribute("src")).toContain(
+      "photo-0",
+    );
+    await act(async () => {
+      finish({
+        ok: true,
+        json: async () => animal({ images: photos(3) }).images,
+      });
+    });
+    await waitFor(() =>
+      expect(container.querySelector("img")?.getAttribute("src")).toContain(
+        "photo-1",
+      ),
+    );
+    expect(
+      container.querySelector('[data-slot="photo-position"]')?.textContent,
+    ).toContain("2 od 3");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

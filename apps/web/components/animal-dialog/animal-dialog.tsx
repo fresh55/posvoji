@@ -14,13 +14,13 @@ import {
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ChevronLeft, ChevronRight, ExternalLink, XIcon } from "lucide-react";
 import {
-  LazyMotion,
   animate,
   domAnimation,
   m,
   useMotionValue,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
 import {
   cardArrivesLate,
@@ -647,7 +647,23 @@ function OpenAnimalDialog({
     const front = frontPrintOf(contentRef.current);
     if (!front) return;
     event.preventDefault();
-    front.focus({ preventScroll: true });
+    // On a touch open, forcing layout here blocks the shell's first paint.
+    // Keyboard opens retain immediate focus; touch opens hand it over just
+    // after paint, unless the visitor has already moved focus or closed.
+    const touch = window.matchMedia?.("(pointer: coarse)").matches;
+    if (!touch || returnFocus.current?.matches(":focus-visible")) {
+      front.focus({ preventScroll: true });
+      return;
+    }
+    const previous = returnFocus.current;
+    requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        if (!front.isConnected || front.closest('[data-state="closed"]')) return;
+        const active = document.activeElement;
+        if (active !== previous && active !== document.body) return;
+        front.focus({ preventScroll: true });
+      }, 0);
+    });
   }
 
   // Closing is the opening played backwards: the front print goes back into

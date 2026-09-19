@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { cards } from "./grid";
 
 // INITIAL_CARDS in animal-grid.tsx caps what mounts on first paint, so an
-// unfiltered "Vse" tab draws 60 of the dataset's several hundred animals
+// unfiltered "Vse" tab draws 24 of the dataset's several hundred animals
 // rather than all of them at once. Each automatic step after it is
 // ROWS_PER_STEP rows wide and the budget runs out at TARGET_ROWS, both
 // measured off the columns the viewport actually draws, so how many steps
@@ -23,7 +23,7 @@ test("draws an initial page of cards and grows it as the sentinel is reached", a
 
   const initial = await cards(page).count();
   expect(initial).toBeGreaterThan(0);
-  expect(initial).toBeLessThanOrEqual(60);
+  expect(initial).toBeLessThanOrEqual(24);
   await expect(sentinel(page)).toBeAttached();
 
   // Scroll the sentinel into view until it is gone, which is the budget

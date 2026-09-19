@@ -71,6 +71,8 @@ export interface CachedLogoEntry extends LogoSurface {
   file: string;
   width: number;
   height: number;
+  // Optional for manifests from before the responsive logo ladder.
+  variants?: { file: string; width: number; height: number }[];
   // Kept so a reviewer can see exactly which file on the shelter's site this
   // came from without re-running discovery.
   sourceUrl: string;
@@ -705,6 +707,42 @@ export async function cacheLogos(
     cacheOne,
   );
 
+  // Derive from the cached master, including on reuse and 304 paths. Existing
+  // manifests therefore gain the ladder without another shelter request.
+  // Content-addressed writes leave unchanged files alone. Never enlarge a
+  // small source, and keep the master for wide wordmarks and high-DPR heroes.
+  for (const outcome of outcomes) {
+    if (!outcome.entry) continue;
+    const entry = { ...outcome.entry };
+    delete entry.variants;
+    outcome.entry = entry;
+    try {
+      const variants: NonNullable<CachedLogoEntry["variants"]> = [];
+      const bytes = readFileSync(join(logosDir, entry.file));
+      for (const size of [96, 192]) {
+        if (size >= Math.max(entry.width, entry.height)) continue;
+        const { data, info } = await sharp(bytes)
+          .resize({
+            width: size,
+            height: size,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({ quality: WEBP_QUALITY, effort: WEBP_EFFORT })
+          .toBuffer({ resolveWithObject: true });
+        const hash = createHash("sha256").update(data).digest("hex").slice(0, 16);
+        const file = `${hash}.webp`;
+        writeContentAddressed(join(logosDir, file), data);
+        variants.push({ file, width: info.width, height: info.height });
+      }
+      if (variants.length) outcome.entry = { ...entry, variants };
+    } catch (error) {
+      console.warn(
+        `logo ${entry.file}: could not derive responsive copies (${error})`,
+      );
+    }
+  }
+
   let fetched = 0;
   let reused = 0;
   targets.forEach((target, index) => {
@@ -731,10 +769,16 @@ export async function cacheLogos(
   // closes that window; the run after this one sweeps them, because by then
   // they are unreferenced by both manifests.
   const referenced = new Set(
-    Object.values(next.entries).map((entry) => entry.file),
+    Object.values(next.entries).flatMap((entry) => [
+      entry.file,
+      ...(entry.variants ?? []).map((variant) => variant.file),
+    ]),
   );
   const referencedBefore = new Set(
-    Object.values(previous.entries).map((entry) => entry.file),
+    Object.values(previous.entries).flatMap((entry) => [
+      entry.file,
+      ...(entry.variants ?? []).map((variant) => variant.file),
+    ]),
   );
   let deleted = 0;
   if (!manifestLost) {

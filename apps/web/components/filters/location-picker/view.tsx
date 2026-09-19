@@ -1,10 +1,7 @@
-import { List, Map, Maximize2, X } from "lucide-react";
-import { MiniMap } from "@/components/filters/mini-map";
-import { LocationScopeRow } from "@/components/filters/location-scope-row";
-import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
+import { List, Map, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -21,9 +18,9 @@ export function LocationPickerView({
   controller: LocationPickerController;
 }) {
   const {
-    options, counts, selected, onToggleMany, resultCount, offSite,
-    deepLink, dress, locale, messages, t, open, setOpen, query, setQuery,
-    expandedShelter, setExpandedShelter, dropNote, searchRef, pins, label,
+    selected, resultCount,
+    locale, messages, open, setOpen, query, setQuery,
+    expandedShelter, setExpandedShelter, dropNote, searchRef, label,
     searchNews, sheetOpen, setSheetOpen, panelOpen,
   } = controller;
   // Below lg the two views are one at a time, and the map view is the one
@@ -35,52 +32,6 @@ export function LocationPickerView({
       open={open}
       onOpenChange={setOpen}
     >
-      {dress === "sidebar" ? (
-        <LocationScopeRow
-          options={options}
-          counts={counts}
-          offSite={offSite}
-          selected={selected}
-          expanded={open}
-          onOpen={() => setOpen(true)}
-          onReset={() => onToggleMany(selected)}
-          isPickerTrigger
-        />
-      ) : (
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            aria-expanded={open}
-            aria-haspopup="dialog"
-            aria-label={t("shelterPickerLabel", { label })}
-            data-picker-trigger
-            className={cn(
-              "justify-between gap-2 font-normal",
-              deepLink === "mobile"
-                ? // The dock's trigger, and on the dock the frame is the whole
-                  // of what says this is pressable: it stands on the plate's
-                  // own ground with no fill of its own, and the plate's own
-                  // edge over a light card measured 1.14:1.
-                  "gap-1.5 px-2"
-                : cn(
-                    QUIET_TRIGGER_CLASS,
-                    "max-w-[14rem] aria-expanded:border-border",
-                  ),
-            )}
-          >
-            <span className="flex min-w-0 items-center gap-1.5">
-              <MiniMap
-                pins={pins}
-                selected={selected}
-                className="hidden h-4 w-auto shrink-0 text-foreground opacity-60 min-[360px]:inline-block"
-              />
-              <span className="truncate">{label}</span>
-            </span>
-            <Maximize2 className="size-3.5 opacity-50" aria-hidden />
-          </Button>
-        </DialogTrigger>
-      )}
       <DialogContent
         className={cn(
           // 94vw counts the notch: a phone held sideways reserves 44px on
@@ -125,7 +76,7 @@ export function LocationPickerView({
           (event.currentTarget as HTMLElement).focus({ preventScroll: true });
         }}
         onCloseAutoFocus={(event) => {
-          const trigger = visibleTrigger();
+          const trigger = visibleTrigger() ?? controller.triggerRef.current;
           if (!trigger) return;
           event.preventDefault();
           trigger.focus({ preventScroll: true });

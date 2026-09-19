@@ -183,7 +183,7 @@ describe("how much of a shelter's grid is drawn", () => {
   // so the address that names an animal here is a history entry: Forward
   // after Back, or a reload that kept the client's state. It has to open
   // whether or not the card it names has been drawn.
-  it("opens an animal whose card is past the cut when the address names it", () => {
+  it("opens an animal whose card is past the cut when the address names it", async () => {
     stubGridColumns(columnTracks(2));
     stubIntersectionObserver();
     // The last animal in the order shown, well past the sixty that are drawn.
@@ -204,6 +204,6 @@ describe("how much of a shelter's grid is drawn", () => {
     expect(screen.getAllByRole("article", { hidden: true })).toHaveLength(
       INITIAL_CARDS,
     );
-    expect(screen.getByRole("dialog").textContent).toContain(last.name);
+    expect((await screen.findByRole("dialog", {}, { timeout: 5000 })).textContent).toContain(last.name);
   });
 });

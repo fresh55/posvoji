@@ -1,6 +1,7 @@
 "use client";
 
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { domAnimation, m, useReducedMotion } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { memo, useMemo, type CSSProperties } from "react";
 import type { Celebration } from "@/components/filters/use-filter-motion";
 import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";

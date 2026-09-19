@@ -404,7 +404,7 @@ export function ShelterDetailPage({
           <ShelterAnimalGrid
             // The same cards and the same dialog as the home page, so the
             // same projection: see animalsForClient in lib/dataset.ts.
-            animals={animalsForClient(animals)}
+            animals={animalsForClient(animals, { deferPhotos: true })}
             logos={logos}
             referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
             basePath={`${indexHref}/${shelter.id}`}

@@ -1,3 +1,4 @@
+import { clientPayload } from "@/lib/client-payload";
 import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
@@ -157,9 +158,10 @@ export function SitePage({ locale }: { locale: Locale }) {
         // Everything above this line is counted on the server and stays
         // here; the grid is a client component, so what it is given is
         // what ends up in the page's flight payload.
-        animals={animalsForClient(animals)}
+        animals={animalsForClient(animals, { deferPhotos: true })}
         logos={getShelterLogos()}
         referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
+        municipalitiesUrl={clientPayload("municipalities", municipalities).url}
         offSiteShelters={offSiteShelters}
       />
     </SiteShell>

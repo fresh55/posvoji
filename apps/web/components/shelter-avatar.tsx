@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { shelterInitial } from "@/lib/shelter-initial";
 import type { ShelterLogo } from "@/lib/shelter-logos";
@@ -264,8 +263,15 @@ export function ShelterAvatar({
           logo.chipOnDark && CHIP_ON_DARK,
         )}
       >
-        <Image
+        {/* The ingest ladder supplies responsive files. Keep the image as
+            the chip's direct flex child so wide wordmarks can shrink. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={logo.url}
+          srcSet={logo.srcSet}
+          sizes={logo.srcSet ? `${box.width}px` : undefined}
+          loading="lazy"
+          decoding="async"
           alt=""
           // The cached copy's own dimensions, so the intrinsic ratio is the
           // file's; the style is the drawn box markBox worked out.

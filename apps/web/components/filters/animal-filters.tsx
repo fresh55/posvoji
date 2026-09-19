@@ -2,11 +2,11 @@
 
 import {
   AnimatePresence,
-  LazyMotion,
   domAnimation,
   m,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { useState } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import {
@@ -134,6 +134,7 @@ export function AnimalFilters({
   shelters,
   shelterTally,
   municipalities,
+  municipalitiesUrl,
   offSiteShelters,
   shelterSummaries,
   chips,
@@ -171,6 +172,7 @@ export function AnimalFilters({
   shelters: FilterOption[] | undefined;
   shelterTally: Map<string, number>;
   municipalities?: LookupEntry[];
+  municipalitiesUrl?: string;
   /** Registry shelters with no animals on the site, shown inert in the
    *  location picker's map and list. */
   offSiteShelters?: FilterOption[];
@@ -362,6 +364,7 @@ export function AnimalFilters({
                   filterSummary={pickerFilterSummary(filters, locale)}
                   {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
                   municipalities={municipalities}
+            municipalitiesUrl={municipalitiesUrl}
                   offSite={offSiteShelters}
                   summaries={shelterSummaries}
                   deepLink="desktop"
@@ -588,6 +591,7 @@ export function AnimalFilters({
                 filterSummary={pickerFilterSummary(filters, locale)}
                 {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
                 municipalities={municipalities}
+            municipalitiesUrl={municipalitiesUrl}
                 offSite={offSiteShelters}
                 summaries={shelterSummaries}
                 deepLink="mobile"

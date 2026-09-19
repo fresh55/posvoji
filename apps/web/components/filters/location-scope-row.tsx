@@ -3,11 +3,11 @@
 import { MapPin } from "lucide-react";
 import {
   AnimatePresence,
-  LazyMotion,
   domAnimation,
   m,
   useReducedMotion,
 } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { FilterSectionHeader } from "@/components/filters/filter-section-header";
 import { MiniMap } from "@/components/filters/mini-map";

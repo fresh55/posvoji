@@ -41,7 +41,10 @@ export type AnimalFields = Omit<Animal, "images" | "source"> & {
  *  the file each one is drawn from, the ones no surface may draw already
  *  dropped, and nothing on the wire that only the server needed. See
  *  animalsForClient in lib/dataset.ts. */
-export type ClientAnimal = AnimalFields & { images: PermittedPhoto[] };
+export type ClientAnimal = AnimalFields & {
+  images: PermittedPhoto[];
+  gallery?: { url: string; count: number };
+};
 
 /**
  * The same animal with its photos left behind, for a client component that

@@ -24,6 +24,7 @@ export type LocationPickerProps = {
    * the picker names who answers for the občine inside a region the roster
    * leaves empty. The lookup itself is a page (found-animal-page.tsx). */
   municipalities?: LookupEntry[];
+  municipalitiesUrl?: string;
   /** Registry shelters with no animals on the site. */
   offSite?: FilterOption[];
   /** Per-shelter species breakdown and longest wait, keyed by shelter id. */

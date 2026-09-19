@@ -71,6 +71,14 @@ function validateSnapshot(dataset, shareManifest, logoManifest) {
     if (!isRecord(entry) || typeof entry.file !== "string") {
       throw new Error(`generated shelter-logos.json has an invalid entry for ${id}`);
     }
+    if (entry.variants !== undefined && (
+      !Array.isArray(entry.variants) || entry.variants.some((variant) =>
+        !isRecord(variant) || typeof variant.file !== "string" ||
+        !Number.isSafeInteger(variant.width) || variant.width <= 0 ||
+        !Number.isSafeInteger(variant.height) || variant.height <= 0)
+    )) {
+      throw new Error(`generated shelter-logos.json has invalid variants for ${id}`);
+    }
   }
 }
 
@@ -82,7 +90,7 @@ function validateSnapshot(dataset, shareManifest, logoManifest) {
  * so an unreferenced file left in the local cache can never become public.
  * @param {{generatedAt: string, animals: {id: string, images: {rights: string, cachedUrl?: string, widths?: number[], avif?: boolean}[]}[]}} dataset
  * @param {{entries: Record<string, {files: string[]}>} | undefined} shareManifest
- * @param {{entries: Record<string, {file: string}>} | undefined} logoManifest
+ * @param {{entries: Record<string, {file: string, variants?: {file: string, width: number, height: number}[]}>} | undefined} logoManifest
  */
 export function collectMediaReferences(
   dataset,
@@ -143,6 +151,9 @@ export function collectMediaReferences(
 
   for (const [id, entry] of Object.entries(logoManifest?.entries ?? {})) {
     reference(`/media/shelter-logos/${entry.file}`, `${id} logo`);
+    for (const variant of entry.variants ?? []) {
+      reference(`/media/shelter-logos/${variant.file}`, `${id} logo variant`);
+    }
   }
 
   return {

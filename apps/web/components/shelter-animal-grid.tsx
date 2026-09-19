@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDeferredModule } from "@/hooks/use-deferred-module";
+import { DeferredStatus } from "@/components/deferred-status";
 import { AnimalCard } from "@/components/animal-card";
-import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import { GridLoadMore } from "@/components/grid-load-more";
 import { useI18n } from "@/components/i18n-context";
 import { useIncrementalGrid } from "@/components/use-incremental-grid";
@@ -12,6 +13,8 @@ import { CARD_GRID } from "@/lib/card-grid";
 import { SKIP_LINK } from "@/lib/skip-link";
 import { DEFAULT_ANIMAL_SORT, sortAnimals } from "@/lib/sort";
 import type { ShelterLogos } from "@/lib/shelter-logos";
+
+const loadDialog = () => import("@/components/animal-dialog/animal-dialog");
 
 // The cards, the grid and the dialog wiring are the home page's; the species
 // tabs, filter sidebar and clear-filters trail that come with AnimalGrid are
@@ -54,26 +57,36 @@ export function ShelterAnimalGrid({
   // a shared link opens the one it names whether or not its card is on the
   // page yet. Both resolve against `animals`, the same as on the home grid.
   //
-  // dialogOnPage because this grid imports the dialog rather than loading it
-  // lazily, so it is here from the first render and a card may carry its
-  // photograph into it from the first press. The home grid's cards have to
-  // wait for the chunk; here there is nothing to wait for, and the readiness
-  // this page used to report through onReady was false for one commit and true
-  // for the rest of the visit.
+  // Load the dialog only when a card or shared history entry asks for it.
   const {
     selected,
     origin,
     shownIds,
     handleOpen,
     isDialogReady,
+    handleDialogReady,
     handleNavigate,
     close,
   } = useAnimalDialogHost({
     animals,
     shown: sorted,
     basePath,
-    dialogOnPage: true,
   });
+  const [dialogMounted, setDialogMounted] = useState(false);
+  if (selected && !dialogMounted) setDialogMounted(true);
+  const {
+    module: dialog,
+    error,
+    retry,
+  } = useDeferredModule(loadDialog, dialogMounted);
+  useEffect(() => {
+    if (!selected || dialog) return;
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [selected, dialog, close]);
 
   // Drawn in steps, the same steps as the home grid and by the same hook. This
   // grid used to mount its whole list at once, and the largest shelter in the
@@ -145,15 +158,23 @@ export function ShelterAnimalGrid({
           same holds for anchors a letter apart across the site. */}
       <div id="za-zivalmi" tabIndex={-1} />
 
-      <AnimalDialog
-        animal={selected}
-        logos={logos}
-        origin={origin}
-        siblingIds={shownIds}
-        reference={reference}
-        onNavigate={handleNavigate}
-        onClose={close}
-      />
+      {selected && !dialog && (
+        <div className="fixed inset-x-4 bottom-20 z-50 mx-auto max-w-sm">
+          <DeferredStatus error={error} retry={retry} />
+        </div>
+      )}
+      {dialog && (
+        <dialog.AnimalDialog
+          animal={selected}
+          logos={logos}
+          origin={origin}
+          siblingIds={shownIds}
+          reference={reference}
+          onNavigate={handleNavigate}
+          onClose={close}
+          onReady={handleDialogReady}
+        />
+      )}
     </>
   );
 }

@@ -44,7 +44,7 @@ function isEmptyDir(dir: string): boolean {
  *  it is one stat per shelter against a build that prerenders a thousand
  *  pages. */
 function missingLogoFiles(manifestPath: string, logosDir: string): string[] {
-  let entries: Record<string, { file?: unknown }>;
+  let entries: Record<string, { file?: unknown; variants?: { file?: unknown }[] }>;
   try {
     const parsed = JSON.parse(readFileSync(manifestPath, "utf8"));
     if (!parsed?.entries || typeof parsed.entries !== "object") return [];
@@ -57,9 +57,14 @@ function missingLogoFiles(manifestPath: string, logosDir: string): string[] {
 
   const missing: string[] = [];
   for (const [id, entry] of Object.entries(entries)) {
-    const file = entry?.file;
-    if (typeof file !== "string") continue;
-    if (!existsSync(join(logosDir, file))) missing.push(`${id} (${file})`);
+    const files = [entry?.file];
+    if (Array.isArray(entry?.variants)) {
+      files.push(...entry.variants.map((variant) => variant?.file));
+    }
+    for (const file of files) {
+      if (typeof file !== "string") continue;
+      if (!existsSync(join(logosDir, file))) missing.push(`${id} (${file})`);
+    }
   }
   return missing;
 }

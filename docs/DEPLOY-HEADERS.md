@@ -50,6 +50,16 @@ closed preview.
 
 ## Compression
 
+The production build enables `experimental.inlineCss`. Initial HTML includes
+the stylesheet, removing the CSS chunk request from the first paint's critical
+path. Next also includes the styles in the RSC payload, so compression remains
+essential: the September mobile experiment added about 42 KB compressed per
+document while removing a 27 KB stylesheet request. A repeat document visit
+pays that CSS cost again; client navigation can still request CSS chunks, so
+keep their existing cache headers. Fonts are not preloaded: doing so competed
+with the document on slow 4G. The Latin face uses `font-display: optional` to
+avoid a late fallback-font swap on a cold, slow visit.
+
 The exported site is text, and it is large. Measured on the September 2026
 export: `out/index.html` is 1,475,957 bytes raw against 180,899 gzipped, and
 the 22 chunks it loads are 1,373,577 raw against 431,461 gzipped. Without a

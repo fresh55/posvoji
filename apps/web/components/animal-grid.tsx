@@ -259,6 +259,7 @@ export function AnimalGrid({
   logos,
   referenceDate,
   municipalities,
+  municipalitiesUrl,
   offSiteShelters,
 }: {
   animals: ClientAnimal[];
@@ -269,6 +270,7 @@ export function AnimalGrid({
   /** Municipality → responsible-shelter entries for the shelter dialog's
    *  "found an animal" mode. Built on the server from data/. */
   municipalities?: LookupEntry[];
+  municipalitiesUrl?: string;
   /** Registry shelters with no animals on the site, drawn inert in the
    *  location picker's map and list. */
   offSiteShelters?: FilterOption[];
@@ -551,6 +553,7 @@ export function AnimalGrid({
             shelters={shelters}
             shelterTally={counts.shelter}
             municipalities={municipalities}
+            municipalitiesUrl={municipalitiesUrl}
             offSiteShelters={offSiteShelters}
             shelterSummaries={shelterSummaries}
             chips={chips}
@@ -769,6 +772,7 @@ export function AnimalGrid({
                 options: shelters,
                 counts: counts.shelter,
                 municipalities,
+                municipalitiesUrl,
                 offSite: offSiteShelters,
                 summaries: shelterSummaries,
                 resultCount: visible.length,

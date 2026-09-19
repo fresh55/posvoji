@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { LazyMotion, domAnimation } from "motion/react";
+import { domAnimation } from "motion/react";
+import { LazyMotion } from "@/components/motion-scope";
 import { I18nProvider } from "@/components/i18n-provider";
 import { Logo } from "@/components/logo";
 import { portalText } from "@/components/portal/portal-text";

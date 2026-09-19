@@ -12,8 +12,11 @@ import {
   mergeTownDots,
   regionStatsByRegion,
   type ShelterPin,
-} from "@/lib/map-layout";
-import { MINI_OUTLINE_PATH, MINI_REGION_PATHS } from "@/lib/map-regions";
+} from "@/lib/map-layout-core";
+import miniMapData from "@/lib/mini-map-data.json";
+const MINI_OUTLINE_PATH = miniMapData.outline;
+const MINI_REGION_PATHS = new Map(miniMapData.regions.map(r => [r.id, r.path]));
+const CITY_REGIONS: Record<string, number | undefined> = miniMapData.cityRegions;
 import { cn } from "@/lib/utils";
 
 // A live preview of the real map, drawn at trigger-icon size (roughly 20-28px
@@ -110,13 +113,16 @@ function MiniMapImpl({
   // the towns and the region lookup on their own, not folded into stats.
   const towns = useMemo(() => layoutTowns(pins), [pins]);
   const { byRegion, regionIdByTownKey } = useMemo(
-    () => groupTownsByRegion(towns),
+    () => groupTownsByRegion(towns, at => {
+      const id = CITY_REGIONS[`${at.lat},${at.lon}`];
+      return id === undefined ? undefined : { id };
+    }),
     [towns],
   );
   // Same density computation the big map draws from (lib/map-layout.ts), so
   // this preview can never disagree with the map it is a preview of.
   const regions = useMemo(
-    () => regionStatsByRegion(byRegion, selected),
+    () => regionStatsByRegion(byRegion, selected, miniMapData.regions),
     [byRegion, selected],
   );
 

@@ -2,11 +2,20 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { SITE_URL } from "@/lib/site";
-import { SRECKO, SRECKO_PATHS, SRECKO_TEXT, sreckoPortrait } from "@/lib/srecko";
+import {
+  SRECKO,
+  SRECKO_PATHS,
+  SRECKO_TEXT,
+  sreckoPortrait,
+} from "@/lib/srecko";
 import { qrSymbol } from "./qr-code";
 import { SreckoPoster } from "./srecko-poster";
+
 const recordedPhotos = [...SRECKO.photos];
-afterEach(() => { cleanup(); SRECKO.photos.splice(0, SRECKO.photos.length, ...recordedPhotos); });
+afterEach(() => {
+  cleanup();
+  SRECKO.photos.splice(0, SRECKO.photos.length, ...recordedPhotos);
+});
 describe("memorial poster", () => {
   it.each(["sl", "en"] as const)("identifies a memorial without an adoption status or medical tiles (%s)", locale => {
     const { container } = render(<SreckoPoster locale={locale} />);
@@ -17,7 +26,7 @@ describe("memorial poster", () => {
     expect(container.querySelector(".poster-timeline")?.textContent).toBe(locale === "sl" ? "Prišel domov: 17. 3. 2023" : "Came home: 17 March 2023");
     expect(container.querySelector(".poster-memorial-story")?.textContent).toContain(SRECKO.memory![locale]);
     expect(screen.getByText(SRECKO_TEXT[locale].scan)).toBeTruthy();
-    expect(screen.getByText(SRECKO_TEXT[locale].dedication)).toBeTruthy();
+    expect(screen.getByRole("link", { name: SRECKO_TEXT[locale].story }).getAttribute("href")).toBe(`${SITE_URL}${SRECKO_PATHS[locale]}`);
     expect(container.querySelector('svg[role="img"] path')?.getAttribute("d")).toBe(qrSymbol(`${SITE_URL}${SRECKO_PATHS[locale]}`).path);
     expect(container.querySelector(".poster-url")?.textContent).toBe(`posvoji.si${SRECKO_PATHS[locale]}`);
     expect(container.querySelector(".poster-credit")?.textContent).toBe(SRECKO_TEXT[locale].photoCredit);

@@ -1,6 +1,8 @@
 # Desktop audit: final disposition
 
-19 September 2026. All approved implementation work is complete on `codex/desktop-navigation-fixes`, based on the integrated `6e94362` baseline. This accounts for all 34 entries: **21 implemented, 5 verified upstream, 2 optional layouts retained, 3 product decisions and 3 withdrawn findings**.
+19 September 2026. All approved implementation work is complete on `codex/desktop-navigation-fixes`, integrated with `main` at `a400178`. This accounts for all 34 entries: **21 implemented, 5 verified upstream, 2 optional layouts retained, 3 product decisions and 3 withdrawn findings**.
+
+D16 also landed independently in upstream PR #261 while this pass was running. Integration kept its equivalent two-line classes.
 
 The table records implementation status; it does not rewrite the original review categories. [Review verdict](../verdict.md) is unchanged. [Implementation notes and checks](README.md) retain the history and verification limits. [Final browser measurements](final-browser-checks.json) record the last pass.
 

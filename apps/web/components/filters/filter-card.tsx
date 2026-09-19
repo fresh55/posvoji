@@ -163,10 +163,9 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  * everything else. What is left in the sidebar is rows and the map plate, and
  * the plate stays because it frames a picture.
  *
- * The row is 40px, not the 44px a finger needs. The sidebar is lg-only and
- * mouse-driven, the sheet is what a phone gets, and the panel had more to
- * show than it could: at 1440x900 its content ran 972px in an 876px box, so
- * two whole sections sat below its own fold.
+ * The row starts at 40px and grows when its label needs a second line. The
+ * sidebar is lg-only; keeping its compact minimum leaves room for the other
+ * sections without cutting off the words needed to choose a filter.
  *
  * Two answers, so they are two strings and not a cn() call per option. There
  * are about 28 options in the list and every one of them asks; below lg the
@@ -177,7 +176,7 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  */
 const LAYOUT_CLASS: Readonly<Record<FilterCardLayout, string>> = Object.freeze({
   sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center`,
-  sidebar: `${DEAD_OPTION_CLASS} h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
+  sidebar: `${DEAD_OPTION_CLASS} min-h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
 });
 
 export function filterCardLayoutClass(layout: FilterCardLayout): string {
@@ -501,7 +500,8 @@ export function FilterCardHoverLift({
  * count and borrows the sizes from here. Hand-copied they drifted, and Starost
  * printed 11px over 10px while every other section printed 12 over 11.
  */
-export const SIDEBAR_LABEL_CLASS = "truncate text-xs";
+const SIDEBAR_LABEL_TYPE = "text-xs";
+export const SIDEBAR_LABEL_CLASS = `truncate ${SIDEBAR_LABEL_TYPE}`;
 
 /**
  * The resting voice of the count, per layout. Not exported: everything that
@@ -595,7 +595,13 @@ export function FilterCardTail({
 
   return (
     <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-      <span className={cn(SIDEBAR_LABEL_CLASS, checked && "font-medium")}>
+      <span
+        className={cn(
+          SIDEBAR_LABEL_TYPE,
+          "min-w-0 whitespace-normal leading-tight",
+          checked && "font-medium",
+        )}
+      >
         {label}
       </span>
       {/* Only a flex item can be squeezed by a long label, so shrink-0 rides

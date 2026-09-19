@@ -407,7 +407,7 @@ describe("filter flow interactions", () => {
   it("narrows to the animals that need a patient person", () => {
     renderFilters();
     fireEvent.click(
-      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
     );
 
     expect(matchingIds()).toBe("female-adult");
@@ -425,7 +425,7 @@ describe("filter flow interactions", () => {
       screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
     );
     expect(query()).toBe("?dom=stanovanje&skrb=potrpezljiv");
 
@@ -438,7 +438,7 @@ describe("filter flow interactions", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Odstrani filter Potrebuje potrpežljivega človeka",
+        name: "Odstrani filter Potrpežljiv človek",
       }),
     );
     expect(query()).toBe("");
@@ -455,7 +455,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("");
 
     fireEvent.click(
-      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
     );
     fireEvent.click(
       screen.getByRole("button", { name: "Ponastavi filter posebne skrbi" }),
@@ -466,7 +466,7 @@ describe("filter flow interactions", () => {
       screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: /^Potrebuje potrpežljivega človeka, / }),
+      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");

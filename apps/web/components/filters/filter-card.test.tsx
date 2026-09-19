@@ -139,11 +139,11 @@ describe("the filter card's two surfaces", () => {
 
   // The sidebar is lg-only and mouse-driven, and the panel had two sections
   // below its own fold at 1440x900.
-  it("draws the sidebar row 40px tall", () => {
+  it("keeps a compact sidebar minimum while allowing labels to wrap", () => {
     const row = filterCardLayoutClass("sidebar");
 
-    expect(row).toContain("h-10");
-    expect(row).not.toContain("h-11");
+    expect(row.split(" ")).toContain("min-h-10");
+    expect(row.split(" ")).not.toContain("h-10");
   });
 });
 

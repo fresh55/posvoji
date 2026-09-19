@@ -135,3 +135,11 @@ These checks used temporary browser tabs and viewport/theme emulation, all close
 `corepack pnpm check` passed in one complete run after the last implementation change: type checking, lint, all 3,795 JavaScript/TypeScript tests (2,758 web), 364 portal tests with 4 skipped, policy validation (16 valid, 0 invalid, 13 enabled), and the production build with 2,009 static pages. Lint retains the pre-existing unused `CARDS_PER_CLICK` warning. The ignored local log is `desktop-completion-check.log`.
 
 Before the final run, two existing presentation assertions were updated to match the new age hint and cat-corner class. The focused suite then passed all 237 tests. Build-generated changes to the two unrelated share images were discarded. The verdict remains unchanged, and the final notes contain no em dashes.
+
+
+## Final upstream reconciliation
+
+While the final commit was being pushed, `main` advanced to `a400178` with reviewed animal facts from PR #258 and care-label/shelter-name readability from PR #261. The only conflict was D16's two equivalent class orders. Kept the upstream two-line shelter classes; the care-filter wrapping changes and reviewed data were preserved. The browser measurements above precede this integration; the changed shelter classes have the same behavior.
+
+
+After reconciliation, `corepack pnpm check` passed again in full: 3,797 JavaScript/TypeScript tests (2,758 web), 364 portal tests with 4 skipped, type checking, lint, 16 valid policies with 0 invalid and 13 enabled, and all 2,009 generated pages. The two additional tests came from upstream ingestion coverage. The existing lint warning is unchanged. The ignored log is `desktop-integrated-check.log`.

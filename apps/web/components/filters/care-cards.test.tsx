@@ -61,13 +61,13 @@ describe("CareCards", () => {
 
   it("labels the card as a whole phrase in both locales", () => {
     expect(options.map(({ label }) => label)).toEqual([
-      "Potrebuje potrpežljivega človeka",
+      "Potrpežljiv človek",
       "Posvojitev v paru",
       "Izkušen skrbnik",
-      "Potrebuje redno oskrbo",
+      "Redna oskrba",
     ]);
     expect(careOptions("en").map(({ label }) => label)).toEqual([
-      "Needs a patient person",
+      "Patient person",
       "Adopt together",
       "Experienced carer",
       "Ongoing care",

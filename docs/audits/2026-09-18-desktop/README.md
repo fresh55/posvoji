@@ -8,7 +8,7 @@ The original audit overstated some visual problems, missed existing affordances,
 
 [Original audit - superseded](ORIGINAL-AUDIT.md) · [36 original screenshots](EVIDENCE.md) · [Original validation results](validation/README.md)
 
-**Implementation complete, 19 September:** all 34 entries have a [final disposition](implementation/STATUS.md): 21 implemented, 5 verified upstream, 2 optional layouts retained, 3 product decisions and 3 withdrawn findings. The implementation includes the short-height refinements and age-range help. Work is on the isolated `codex/desktop-navigation-fixes` branch, integrated with `main` at `6e94362`. See [behavior, browser evidence and checks](implementation/README.md). The decisions below preserve the reviewed plan; their original action wording is historical.
+**Implementation complete, 19 September:** all 34 entries have a [final disposition](implementation/STATUS.md): 21 implemented, 5 verified upstream, 2 optional layouts retained, 3 product decisions and 3 withdrawn findings. The implementation includes the short-height refinements and age-range help. Work is on the isolated `codex/desktop-navigation-fixes` branch, integrated with `main` at `a400178`. See [behavior, browser evidence and checks](implementation/README.md). The decisions below preserve the reviewed plan; their original action wording is historical.
 
 ## Evidence and upstream baseline
 

@@ -1,0 +1,133 @@
+/* Uses the shared A4 screen/print unit. */
+.poster-sheet--memorial {
+  /* Preserve the paper proportions inside the stage's phone scroller. */
+  flex: none;
+  padding: calc(16 * var(--u)) calc(25 * var(--u)) calc(14 * var(--u));
+  color: #292524;
+}
+
+.poster-sheet--memorial .poster-memorial-head {
+  flex: none;
+  margin: 0 0 calc(7 * var(--u));
+}
+
+.poster-sheet--memorial .poster-memorial-label {
+  margin: 0 0 calc(3 * var(--u));
+  font-size: calc(3.2 * var(--u));
+  line-height: 1.4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #625c55;
+}
+
+.poster-sheet--memorial .poster-headline {
+  font-size: calc(23 * var(--u));
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+
+/* Fit the full portrait; allow less height if text wraps. */
+.poster-sheet--memorial .poster-photo {
+  width: 100%;
+  height: calc(149 * var(--u));
+  min-height: calc(100 * var(--u));
+  flex: 0 1 auto;
+  background: #ffffff;
+}
+
+.poster-sheet--memorial .poster-memorial-story {
+  flex: none;
+  margin: calc(6 * var(--u)) 0 calc(7 * var(--u));
+}
+
+.memorial-memory {
+  margin: 0 0 calc(2 * var(--u));
+  font-size: calc(6 * var(--u));
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+
+.memorial-origin {
+  margin: 0;
+  font-size: calc(4 * var(--u));
+  line-height: 1.5;
+  color: #57534e;
+}
+
+.poster-sheet--memorial .poster-timeline {
+  margin: calc(1.5 * var(--u)) 0 0;
+  font-size: calc(3.2 * var(--u));
+  line-height: 1.4;
+  color: #625c55;
+}
+
+.memorial-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--u));
+  margin-top: auto;
+  padding-top: calc(5 * var(--u));
+  border-top: calc(0.25 * var(--u)) solid #d6d3d1;
+}
+
+.memorial-footer-copy {
+  min-width: 0;
+}
+
+.poster-sheet--memorial .poster-brand-mark {
+  height: calc(6 * var(--u));
+}
+
+.poster-sheet--memorial .poster-wordmark {
+  font-size: calc(4 * var(--u));
+}
+
+.poster-sheet--memorial .poster-scan-invitation {
+  margin: calc(2 * var(--u)) 0;
+  max-width: calc(104 * var(--u));
+  font-size: calc(3.5 * var(--u));
+  line-height: 1.45;
+  color: #57534e;
+}
+
+.poster-sheet--memorial .poster-url {
+  display: inline-block;
+  max-width: 100%;
+  font-size: calc(3.2 * var(--u));
+  line-height: 1.4;
+  text-align: left;
+  color: #292524;
+  text-decoration: none;
+}
+
+/* The 32mm symbol includes its four-module quiet zone. */
+.memorial-qr {
+  display: block;
+  flex: none;
+  width: calc(32 * var(--u));
+  background: #ffffff;
+}
+
+.memorial-qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.memorial-qr:focus-visible,
+.poster-sheet--memorial .poster-url:focus-visible {
+  outline: 2px solid #292524;
+  outline-offset: 4px;
+}
+
+.poster-sheet--memorial .poster-credit {
+  flex: none;
+  margin: calc(3 * var(--u)) 0 0;
+  font-size: calc(2.8 * var(--u));
+  line-height: 1.4;
+  color: #625c55;
+}

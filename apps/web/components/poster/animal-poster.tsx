@@ -246,11 +246,11 @@ export function AnimalPoster({
       <p className="poster-colophon">
         <span className="poster-brand">
           {/* The header's own mark, drawn the way the header draws it: a mask
-              of app/icon.svg painting the sheet's ink. Inlining the paths
+              of public/logo.svg painting the sheet's ink. Inlining the paths
               instead put 22KB into each of the thousand poster pages, the
               same weight logo.tsx took out of every page of the site. Logo
-              preloads the file, and a mask reads only alpha, so the icon's
-              own colour-scheme rule never reaches the paper; poster.css keeps
+              preloads the file, and a mask reads only alpha, so the mark's
+              own colour never reaches the paper; poster.css keeps
               the painted colour through print-color-adjust. */}
           <Logo className="poster-brand-mark" />
           <span className="poster-wordmark">posvoji.si</span>

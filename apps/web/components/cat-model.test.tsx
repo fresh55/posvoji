@@ -89,19 +89,30 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 /** Mounts the viewer and loads it, with a chance to prepare it in between. */
-async function loadViewer(before?: (viewer: Viewer) => void) {
+async function loadViewer(before?: (viewer: Viewer) => void, reveal = true) {
   act(() => intersect(true));
   await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
   const viewer = document.querySelector("model-viewer") as unknown as Viewer;
   before?.(viewer);
   fireEvent(viewer, new Event("load"));
+  if (reveal) finishReveal(viewer);
   return viewer;
 }
+
+// jsdom has no TransitionEvent constructor, so name the property explicitly.
+const endTransition = (element: Element, propertyName: string) => fireEvent(
+  element, Object.assign(new Event("transitionend", { bubbles: true }), { propertyName }),
+);
+const finishReveal = (viewer: Viewer) => endTransition(viewer.parentElement!, "opacity");
+const cancelTransition = (element: Element, propertyName = "opacity") => fireEvent(
+  element, Object.assign(new Event("transitioncancel", { bubbles: true }), { propertyName }),
+);
 
 // The stage's label, and the two ways a visitor reaches for the poster. The
 // assertions stay in each test; only the reaching is shared.
@@ -203,7 +214,7 @@ describe("the cat model", () => {
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
     expect(hints()).toHaveLength(2);
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("unavailable"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tap or click to try again"));
     // Half a megabyte nothing is left to read: the links download the model
     // on their own, so a stage that has already failed takes them back.
     expect(hints()).toEqual([]);
@@ -280,6 +291,7 @@ describe("the cat model", () => {
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
     const viewer = document.querySelector("model-viewer") as unknown as Viewer;
     fireEvent(viewer, new Event("load"));
+    finishReveal(viewer);
     expect(viewer.animationName).toBe("Notice");
   });
 
@@ -302,6 +314,89 @@ describe("the cat model", () => {
     expect(viewer.getAttribute("animation-name")).toBe("Companion");
     expect(viewer.hasAttribute("camera-controls")).toBe(true);
     expect(viewer.getAttribute("touch-action")).toBe("pan-y");
+  });
+
+  it("keeps the still and the seated pose until the canvas has finished fading", async () => {
+    const onHandle = vi.fn();
+    render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    touchPoster();
+    const poster = screen.getByRole("img");
+    const viewer = await loadViewer(undefined, false);
+    const host = viewer.parentElement!;
+    expect(poster.classList.contains("invisible")).toBe(false);
+    expect(host.classList.contains("opacity-100")).toBe(true);
+    expect(host.hasAttribute("inert")).toBe(true);
+    expect(viewer.paused).toBe(true);
+    expect(viewer.currentTime).toBe(0);
+    expect(onHandle).not.toHaveBeenCalled();
+    expect(viewer.animationName).toBeUndefined();
+
+    // A child transition or another property must not release the still.
+    endTransition(viewer, "opacity");
+    endTransition(host, "transform");
+    expect(poster.classList.contains("invisible")).toBe(false);
+    finishReveal(viewer);
+    expect(poster.classList.contains("invisible")).toBe(true);
+    expect(host.hasAttribute("inert")).toBe(false);
+    expect(viewer.animationName).toBe("Notice");
+    expect(onHandle).toHaveBeenCalledOnce();
+    finishReveal(viewer);
+    expect(onHandle).toHaveBeenCalledOnce();
+  });
+
+  it("does not wait for a transition when reduced motion is requested", async () => {
+    media.matches = true;
+    const onHandle = vi.fn();
+    render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    const poster = screen.getByRole("img");
+    const viewer = await loadViewer(undefined, false);
+    expect(poster.classList.contains("invisible")).toBe(true);
+    expect(viewer.paused).toBe(true);
+    expect(onHandle).toHaveBeenCalledOnce();
+  });
+
+  it("finishes a cancelled fade while preserving visibility-based playback", async () => {
+    const onHandle = vi.fn();
+    render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    const poster = screen.getByRole("img");
+    const viewer = await loadViewer(undefined, false);
+    const host = viewer.parentElement!;
+    cancelTransition(viewer);
+    cancelTransition(host, "transform");
+    expect(poster.classList.contains("invisible")).toBe(false);
+    act(() => intersect(false));
+    cancelTransition(host);
+    expect(poster.classList.contains("invisible")).toBe(true);
+    expect(host.hasAttribute("inert")).toBe(false);
+    expect(screen.getByRole("status").textContent).toBe("");
+    expect(viewer.paused).toBe(true);
+    expect(onHandle).toHaveBeenCalledOnce();
+    act(() => intersect(true));
+    expect(viewer.paused).toBe(false);
+    finishReveal(viewer);
+    expect(onHandle).toHaveBeenCalledOnce();
+  });
+
+  it("finishes the reveal if reduced motion cancels its transition", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    const poster = screen.getByRole("img");
+    const viewer = await loadViewer(undefined, false);
+    media.matches = true;
+    act(() => media.dispatchEvent(new Event("change")));
+    expect(poster.classList.contains("invisible")).toBe(true);
+    expect(viewer.paused).toBe(true);
+  });
+
+  it("does not hand over a viewer removed during its reveal", async () => {
+    const onHandle = vi.fn();
+    const { unmount } = render(<CatModel sizes="100vw" locale="en" onHandle={onHandle} />);
+    const viewer = await loadViewer(undefined, false);
+    const host = viewer.parentElement!;
+    unmount();
+    endTransition(host, "opacity");
+    cancelTransition(host);
+    expect(onHandle.mock.calls).toEqual([[null]]);
+    expect(viewer.paused).toBe(true);
   });
 
   it("frames the camera and the poster as one choice", async () => {
@@ -378,9 +473,71 @@ describe("the cat model", () => {
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
     expect(viewer.paused).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("unavailable");
+    expect(screen.getByRole("status").textContent).toContain("Tap or click to try again");
     expect(screen.getByRole("img").getAttribute("alt")).toContain("white cat");
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("retries a failed model only on another reach, with one fresh viewer and matching hints", async () => {
+    render(<CatModel sizes="100vw" locale="en" />);
+    const first = await loadViewer(undefined, false);
+    const firstUrl = first.getAttribute("src");
+    fireEvent(first, new Event("error"));
+    expect(first.isConnected).toBe(false);
+    expect(hints()).toEqual([]);
+    expect(runtime.picker.dispose).toHaveBeenCalled();
+    act(() => { intersect(false); intersect(true); });
+    fireEvent(document, new Event("visibilitychange"));
+    await act(async () => {});
+    expect(document.querySelector("model-viewer")).toBeNull();
+
+    touchPoster();
+    reachFor();
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    const second = document.querySelector("model-viewer") as Viewer;
+    expect(document.querySelectorAll("model-viewer")).toHaveLength(1);
+    expect(second.getAttribute("src")).not.toBe(firstUrl);
+    expect(hints()[0]).toBe(second.getAttribute("src"));
+    expect(hints()).toHaveLength(2);
+    expect(screen.getByRole("status").textContent).toContain("still loading");
+    // Events from the discarded scene cannot fail the new attempt.
+    fireEvent(first, new Event("error"));
+    fireEvent(second, new Event("load"));
+    finishReveal(second);
+    expect(second.animationName).toBe("Notice");
+    expect(screen.getByRole("status").textContent).toBe("");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("can retry a renderer setup failure on another reach", async () => {
+    viewerModule.fails = true;
+    render(<CatModel sizes="100vw" locale="en" />);
+    act(() => intersect(true));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tap or click to try again"));
+    viewerModule.fails = false;
+    reachFor();
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    expect(screen.getByRole("status").textContent).toContain("still loading");
+  });
+
+  it("starts the slow-load sentence with the request, keeps it quiet, and resets it on retry", async () => {
+    vi.useFakeTimers();
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => vi.advanceTimersByTime(20_000));
+    expect(screen.getByRole("status").textContent).toBe("The cat is still loading …");
+    await act(async () => intersect(true));
+    const viewer = document.querySelector("model-viewer")!;
+    await act(async () => vi.advanceTimersByTime(9_999));
+    expect(screen.getByRole("status").textContent).not.toContain("longer than usual");
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.getByRole("status").textContent).toContain("longer than usual");
+    expect(shown()).toBe(false);
+    reachFor();
+    expect(shown()).toBe(true);
+    fireEvent(viewer, new Event("error"));
+    reachFor();
+    await act(async () => {});
+    expect(screen.getByRole("status").textContent).toBe("The cat is still loading …");
   });
 
   it("releases the observer and viewer when leaving the page", async () => {
@@ -426,14 +583,14 @@ describe("the cat model", () => {
     expect(shown()).toBe(false);
     fireEvent(viewer, new Event("error"));
     expect(shown()).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("ni na voljo");
+    expect(screen.getByRole("status").textContent).toContain("Dotakni se ga za nov poskus");
   });
 
   it("does not apologise for a failure to someone who never reached for him", async () => {
     render(<CatModel sizes="100vw" locale="sl" />);
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
-    expect(screen.getByRole("status").textContent).toContain("ni na voljo");
+    expect(screen.getByRole("status").textContent).toContain("Dotakni se ga za nov poskus");
     expect(shown()).toBe(false);
     reachFor();
     expect(shown()).toBe(true);

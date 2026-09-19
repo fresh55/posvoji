@@ -1,6 +1,6 @@
 // Regenerate committed brand exports after editing public/logo.svg or app/icon.svg:
 // run `node scripts/build-app-icons.mjs` from apps/web.
-// Full animal mark: home-screen icons, Apple icon and documentation.
+// Full animal mark: home-screen icons and Apple icon.
 // Compact roof-and-heart mark: SVG browser icon and multi-size ICO fallback.
 import sharp from "sharp";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -63,13 +63,3 @@ for (const [index, size] of sizes.entries()) {
 }
 writeFileSync(join(webRoot, "app/favicon.ico"), Buffer.concat([directory, ...images]));
 console.log("app/favicon.ico: 16, 32, 48px");
-
-// Documentation uses the same source geometry, with a fixed color for each theme.
-const docsRoot = resolve(webRoot, "../../docs/assets");
-const docMark = mark.toString().replace(
-  'viewBox="0 0 128 120.8"',
-  'viewBox="0 0 128 120.8" width="128" height="120.8"',
-);
-writeFileSync(join(docsRoot, "logo.svg"), docMark);
-writeFileSync(join(docsRoot, "logo-dark.svg"), docMark.replace('color="#313941"', 'color="#E6EDF3"'));
-console.log("docs/assets/logo.svg, logo-dark.svg");

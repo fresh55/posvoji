@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { Metadata, Viewport } from "next";
 import { fontStack } from "@/app/font-stack";
 import { PrehydrationFilterScript } from "@/components/prehydration-filter-script";
+import { SpeculationRules } from "@/components/speculation-rules";
 import { ViewTransitionScript } from "@/components/view-transition-script";
 import { rootMetadata, rootViewport } from "@/lib/site-metadata";
 import "../../globals.css";
@@ -22,7 +23,7 @@ export default function EnglishLayout({ children }: LayoutProps<"/en">) {
     // on this element before React ever sees it.
     <html lang="en" className="h-full" suppressHydrationWarning
       style={{ "--font-sans": fontStack } as CSSProperties}>
-      <head><ViewTransitionScript /></head>
+      <head><ViewTransitionScript /><SpeculationRules /></head>
       <body className="flex min-h-dvh flex-col">
         <PrehydrationFilterScript />
         {children}

@@ -3,7 +3,8 @@ import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { expect, test } from "vitest";
 
-test("ESLint 10 runs the Next plugins and preserves project guardrails", async () => {
+// Loading the full Next plugin stack can exceed five seconds on a cold worker.
+test("ESLint 10 runs the Next plugins and preserves project guardrails", { timeout: 30_000 }, async () => {
   const eslint = new ESLint({
     cwd: fileURLToPath(new URL("../", import.meta.url)),
   });

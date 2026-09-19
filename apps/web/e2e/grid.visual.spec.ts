@@ -16,6 +16,22 @@ const CARD_COUNT = 8;
 const LIGHT = '[data-card-gallery-theme="light"]';
 const DARK = '[data-card-gallery-theme="dark"]';
 
+// The reduced-motion preference must not change the server/client markup.
+// Screenshots alone can pass even when React leaves mismatched styles behind.
+const hydrationErrors = new WeakMap<Page, string[]>();
+test.beforeEach(({ page }) => {
+  const errors: string[] = [];
+  hydrationErrors.set(page, errors);
+  page.on("console", (message) => {
+    if (message.type() === "error" && /hydrat/i.test(message.text())) {
+      errors.push(message.text());
+    }
+  });
+});
+test.afterEach(({ page }) => {
+  expect(hydrationErrors.get(page)).toEqual([]);
+});
+
 async function openGallery(page: Page): Promise<void> {
   await page.goto("/dev/cards");
   await page.evaluate(() => document.fonts.ready);

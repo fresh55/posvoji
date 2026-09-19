@@ -1,5 +1,7 @@
 "use client";
 
+import { useAnimalSource } from "@/lib/animal-descriptions";
+
 import {
   startTransition,
   useCallback,
@@ -576,6 +578,8 @@ function OpenAnimalDialog({
   );
   const askedPhoto = useMemo(() => photoFromSearch(search), [search]);
 
+  const deferredSource = useAnimalSource(lastAnimal.source ? undefined : lastAnimal.id);
+  const source = lastAnimal.source ?? deferredSource;
   const name = lastAnimal.name ?? messages.unnamed;
   // The address this animal has of its own, which is also what the card behind
   // the dialog links to, so it is how that card is found.
@@ -1189,11 +1193,11 @@ function OpenAnimalDialog({
                 >
                   <Button asChild size="sm" className="h-11 w-full">
                     <a
-                      href={lastAnimal.source.sourceUrl}
+                      href={source?.sourceUrl ?? href}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {messages.viewOriginalListing}
+                      {source ? messages.viewOriginalListing : messages.animalDetails}
                       <ExternalLink aria-hidden />
                     </a>
                   </Button>

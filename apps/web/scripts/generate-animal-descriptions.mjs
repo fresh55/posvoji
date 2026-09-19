@@ -58,9 +58,11 @@ if (existsSync(DATASET)) {
 const descriptions = {};
 for (const animal of animals) {
   if (typeof animal.id !== "string") continue;
-  if (typeof animal.shortDescription !== "string") continue;
-  if (animal.shortDescription.length === 0) continue;
-  descriptions[animal.id] = animal.shortDescription;
+  descriptions[animal.id] = {
+    ...(typeof animal.shortDescription === "string" && animal.shortDescription.length > 0
+      ? { description: animal.shortDescription } : {}),
+    source: { sourceUrl: animal.source.sourceUrl, fetchedAt: animal.source.fetchedAt },
+  };
 }
 
 const json = JSON.stringify(descriptions);

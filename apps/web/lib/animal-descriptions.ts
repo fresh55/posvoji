@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import type { ClientAnimalSource } from "@/lib/animal";
 
 /**
  * The shelter descriptions the animal dialog prints, fetched once and only
@@ -27,7 +28,9 @@ import { useEffect, useSyncExternalStore } from "react";
 /** id -> the shelter's own text. Written by
  *  scripts/generate-animal-descriptions.mjs, one entry per animal that has
  *  one; an animal with no description is simply absent. */
-export type AnimalDescriptions = Readonly<Record<string, string>>;
+type AnimalDetail = { description?: string; source?: ClientAnimalSource };
+// Accept old description-only files during a rolling static deployment.
+export type AnimalDescriptions = Readonly<Record<string, string | AnimalDetail>>;
 
 // Under public/, so `output: export` copies it into out/ and a static host
 // serves it with no route handler.
@@ -104,7 +107,10 @@ export function useAnimalDescription(
 
   return useSyncExternalStore(
     subscribe,
-    () => (id === undefined ? undefined : current?.[id]),
+    () => {
+      const detail = id === undefined ? undefined : current?.[id];
+      return typeof detail === "string" ? detail : detail?.description;
+    },
     getServerSnapshot,
   );
 }
@@ -115,4 +121,15 @@ export function resetAnimalDescriptionsStore(): void {
   current = undefined;
   inFlight = undefined;
   for (const listener of listeners) listener();
+}
+
+/** Shares the description request; standalone animal pages already carry this. */
+export function useAnimalSource(id: string | undefined): ClientAnimalSource | undefined {
+  useEffect(() => {
+    if (id !== undefined) void prefetchAnimalDescriptions();
+  }, [id]);
+  return useSyncExternalStore(subscribe, () => {
+    const detail = id === undefined ? undefined : current?.[id];
+    return typeof detail === "object" ? detail.source : undefined;
+  }, () => undefined);
 }

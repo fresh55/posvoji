@@ -157,8 +157,8 @@ export function shelterAnimals(shelterId: string): Animal[] {
  * image that never had one.
  *
  * Source identity and first/last-seen bookkeeping remain on the server.
- * The listing URL and fetchedAt cross so the shelter block can link to the
- * source and show when that particular listing was actually verified.
+ * The listing URL and fetchedAt ride with the deferred descriptions, so the
+ * dialog can link to the source and show when it was verified.
  *
  * `shortDescription`, the shelter's own words. One component renders it,
  * AnimalFacts, for the one animal a dialog is open on, and it is the longest
@@ -181,7 +181,6 @@ export function animalsForClient(animals: Animal[]): ClientAnimal[] {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
     ({ source, shortDescription, ...animal }) => ({
       ...animal,
-      source: { sourceUrl: source.sourceUrl, fetchedAt: source.fetchedAt },
       // permittedPhotos has already dropped the images no surface may draw, so
       // the first photo left is the one that leads: what a card shows and what
       // a dialog opens on.

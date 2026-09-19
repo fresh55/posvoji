@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PortalPageTransition } from "@/components/portal/portal-transition";
 import { PortalWorkspace } from "@/components/portal/portal-workspace";
 
 export const metadata: Metadata = {
@@ -9,6 +10,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// The wrapper sits here and not in the layout on purpose: the layout persists
+// across a client navigation, and a page body that is never unmounted has no
+// exit to animate. The other page of the pair carries the same wrapper, so
+// the step between them is one crossfade and not two unrelated fades.
 export default function Portal() {
-  return <PortalWorkspace />;
+  return (
+    <PortalPageTransition>
+      <PortalWorkspace />
+    </PortalPageTransition>
+  );
 }

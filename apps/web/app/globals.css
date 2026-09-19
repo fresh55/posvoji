@@ -1121,12 +1121,127 @@
 /* Cross-document view transitions. The site's navigations are real anchors
    between prerendered pages (a card to its animal page, a card's shelter line
    to the shelter's page), so this is the API built for exactly that: the
-   browser cross-fades the two documents instead of flashing white between
-   them. Pure progressive enhancement, ignored by browsers without it, and
-   gated the same way every other motion here is. */
+   browser carries the reader from one document to the next instead of
+   flashing white between them. Pure progressive enhancement, ignored by
+   browsers without it, and gated the same way every other motion here is.
+
+   What the browser does on its own is a 250ms cross-fade of the whole root,
+   the chrome included, and that was wrong in two ways at once. The rules
+   below take the header out of it and replace the fade with a handover. */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
+  }
+
+  /* A snapshot is a picture of the page and not the page, so a press that
+     lands on one while it is up should reach what is underneath. Written out
+     because the browser does not write it: on a bare page with no stylesheet
+     of ours, the computed pointer-events of ::view-transition during a running
+     transition measured auto, not none. lib/view-transition.ts already counts
+     on none, a card pressed during the dialog's 320ms close being an ordinary
+     click on the live grid. Unscoped, because it is true of every transition
+     here, the morph included. */
+  ::view-transition {
+    pointer-events: none;
+  }
+
+  /* The header does not travel. It is the same band on every page, so
+     cross-fading it with itself is motion that says nothing. Measured on the
+     built export, the band's pixels changed on eight consecutive frames of
+     the browser's 250ms fade, which is the two headers drawn over each other
+     the whole way; where the documents' headers differ, the SL/EN pill on a
+     language switch, that is one pill printed over the other.
+
+     A name lifts the band out of both root snapshots and gives it a group of
+     its own. That group is told not to animate at all, the old half is taken
+     out of the tree rather than faded out, and what is left is one header
+     image standing still over a page that changes under it. z-index because
+     the band draws no background of its own: the root fading below it has to
+     stay below it.
+
+     That missing background also costs the glyphs their subpixel antialiasing
+     while the snapshot is up, the way a composited layer without one always
+     does. Measured against the settled page it is the whole text row of the
+     band and nothing else: same glyphs in the same places, greyscale edges
+     instead of coloured ones. Not a cost of this change. The browser's own
+     cross-fade composites the root the header was inside, and the same
+     greyscale edges measured there, on top of drawing the band twice.
+
+     One element per document can wear the name, which the browser requires.
+     site-shell.tsx is the only caller of SiteHeader, the portal's header is
+     hand-rolled (portal/portal-shell.tsx), and the demo gate, the error
+     boundaries and the poster sheets draw no site chrome at all.
+
+     Not while the photo morph below is running. That one is same-document and
+     the dialog it opens dims the page behind it; a header with a name of its
+     own would be captured as its own group above the overlay and stand there
+     un-dimmed for the whole 320ms. The scope works because of when the mark
+     is written: lib/view-transition.ts sets it on the root before it calls
+     startViewTransition, so the old snapshot is captured under it, and the new
+     one is taken inside the same transition with it still on. Unmarked is
+     exactly the set of transitions that are not a morph, in both documents of
+     a navigation as well, since a fresh document has never been marked. */
+  :root:not([data-photo-morph]) [data-slot="site-header"] {
+    view-transition-name: site-header;
+  }
+
+  :root:not([data-photo-morph])::view-transition-group(site-header) {
+    animation: none;
+    z-index: 1;
+  }
+
+  :root:not([data-photo-morph])::view-transition-old(site-header) {
+    display: none;
+  }
+
+  :root:not([data-photo-morph])::view-transition-new(site-header) {
+    animation: none;
+  }
+
+  /* And the page under it changes one way round rather than both at once. A
+     cross-fade of two documents is two documents drawn at the same time, so
+     every title spent a quarter of a second printed over the next one:
+     "Živali iz slovenskih zavetišč" over "Obalno zavetišče" going to a
+     shelter, and on the language switch the same headline in two languages
+     stacked into text that could not be read.
+
+     The old page leaves first and the new one follows it in. 90ms out, then
+     180ms in, 270ms end to end against the default's 250, and the twenty
+     milliseconds buy a transition with no overlapping frame in it. The delay
+     on the way in is the duration on the way out, which is what makes that
+     true rather than nearly true.
+
+     A 6px lift on the new page was written, measured and then dropped. It is
+     safe, which was the thing worth checking: the named header leaves a hole
+     in the root snapshot the height of the band, and a translate that starts
+     below its resting place never moves anything up into that hole, which the
+     band's pixels confirmed frame by frame. It was dropped because it adds a
+     second movement to a transition whose whole point is that the band does
+     not move. The fade says the page changed; the slide only says it again.
+
+     Scoped away from the morph, and that scope is what keeps the close rule
+     below meaning what it says. That rule sets a duration and nothing else,
+     on the browser's own fade keyframes; a shorthand reaching it would have
+     handed it these keyframes instead, and the dialog would have left by
+     halves. */
+  @keyframes page-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes page-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  :root:not([data-photo-morph])::view-transition-old(root) {
+    animation: 90ms cubic-bezier(0.4, 0, 1, 1) both page-fade-out;
+  }
+
+  :root:not([data-photo-morph])::view-transition-new(root) {
+    animation: 180ms cubic-bezier(0, 0, 0.2, 1) 90ms both page-fade-in;
   }
 
   /* The same API in its same-document form, for the card that opens the animal

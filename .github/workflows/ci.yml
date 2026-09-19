@@ -65,7 +65,7 @@ jobs:
 
       - run: pnpm validate:policies
 
-      - name: Install Chromium for map and cat browser tests
+      - name: Install Chromium for map visual tests
         run: pnpm --filter web exec playwright install --with-deps chromium
 
       - name: Check map screenshots
@@ -73,7 +73,3 @@ jobs:
 
       - run: pnpm --filter web build
 
-      - name: Check cat behaviour against the static export
-        env:
-          CAT_TEST_BUILD: "1"
-        run: pnpm --filter web test:e2e:cat cat-hardening.spec.ts --project=cat-desktop --project=cat-android

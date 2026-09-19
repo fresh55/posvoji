@@ -1,0 +1,9 @@
+# Minimal server contract for offline route and layout tests.
+# The placeholder credential is not a production password.
+@guest {
+    expression `{http.request.cookie.posvoji_demo} != "{$POSVOJI_DEMO_KEY}" || "{$POSVOJI_DEMO_KEY}" == ""`
+    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /icon.svg /favicon.ico /apple-icon.png
+}
+basic_auth @guest {
+    health <test-password-hash>
+}

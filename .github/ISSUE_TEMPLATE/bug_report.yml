@@ -1,23 +1,28 @@
 name: Bug report
-description: Nekaj ne dela, kot bi moralo.
-labels: [bug]
+description: Report a problem in Slovenian or English.
+labels: [bug, "status: triage"]
 body:
+  - type: markdown
+    attributes:
+      value: Do not include passwords, private correspondence or personal data. For vulnerabilities, follow SECURITY.md.
   - type: textarea
     id: what
     attributes:
-      label: Kaj se je zgodilo?
+      label: What happened / Kaj se je zgodilo?
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Kaj bi se moralo zgoditi?
+      label: Expected result / Kaj bi se moralo zgoditi?
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Koraki za ponovitev
+      label: Steps to reproduce / Koraki za ponovitev
       placeholder: |
         1. ...
         2. ...
+    validations:
+      required: true

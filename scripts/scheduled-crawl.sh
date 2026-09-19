@@ -23,7 +23,7 @@
 # scripts/crawl-notify.ps1 does both.
 #
 # Set up by scripts/setup-crawl-task.ps1. Documented in
-# docs/CRAWL-SCHEDULING.md.
+# the private scheduling runbook.
 
 set -euo pipefail
 
@@ -79,7 +79,7 @@ LOG_DIR="${REPO_ROOT}-logs"
 # destroyed on the next run and published on the first. Optional, because a
 # machine with no portal configured still has a crawl to do: ingest skips the
 # override and listing feeds when PORTAL_EXPORT_URL and PORTAL_EXPORT_TOKEN
-# are unset. Documented in docs/CRAWL-SCHEDULING.md.
+# are unset. Host scheduling procedures are maintained outside Git.
 
 
 NOTIFY_PS1="${REPO_ROOT}/scripts/crawl-notify.ps1"

@@ -1,0 +1,14 @@
+name: Development question / Razvojno vprašanje
+description: Ask about contributing or the code in English or Slovenian.
+labels: [question, "status: triage"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question / Vprašanje
+      description: Explain what you are trying to do and what you have already checked.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: For an adoption, contact the shelter. For private reports, follow SECURITY.md.

@@ -2,13 +2,31 @@
 
 Hvala! Contributions are welcome in Slovenian or English.
 
+## First contribution
+
+Start with an issue labelled **good first issue** or **help wanted**, or use an
+[issue form](https://github.com/fresh55/posvoji/issues/new/choose) to report a bug,
+propose a shelter or discuss an improvement. Small fixes can go straight to a
+pull request; discuss larger changes first so the scope is clear.
+
+Fork the repository, create a branch in your fork, and open a pull request to
+`main`. You do not need write access to contribute. Draft pull requests are
+welcome when you want early feedback. Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+`@fresh55` is the sole maintainer and the only person who merges pull requests.
+CODEOWNERS requests their review. The merge policy is a squash commit after
+checks pass and review conversations are resolved; bots do not merge changes.
+
 ## Setup
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
+uv sync --directory apps/portal --frozen
 pnpm typecheck
 pnpm lint
 pnpm test
+pnpm validate:policies
 ```
 
 Node >= 22, pnpm, Python >= 3.12 and uv are required for the complete check
@@ -54,7 +72,7 @@ version:
    the parser needs. Never commit full page mirrors, photos, or any personal
    data.
 4. Fill in `policy.yaml`. A provider **cannot be enabled** without
-   `permission_status: granted` from the shelter, and CI enforces this. Parsers
+   `permission.status: granted` from the shelter, and CI enforces this. Parsers
    for shelters that haven't answered yet are welcome; they stay disabled.
 
 ## Rules that are not negotiable
@@ -96,5 +114,25 @@ be Slovenian or English. Details and examples are in
 - Keep PRs focused; one provider or one feature per PR.
 - The **PR title must be a valid conventional commit**. PRs are squash-merged,
   so the title is what lands on `main`.
-- `pnpm typecheck && pnpm test` must pass.
+- `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm validate:policies` must pass.
+- Run `pnpm --filter web build` when changing `apps/web`.
 - New parser logic needs fixture tests.
+
+## Labels and review
+
+Use the issue forms to select a report type. The maintainer adds area labels
+and removes `status: triage` after the first review. `good first issue` means
+the task is small and has enough guidance to get started; `help wanted` means
+the proposed work is ready for contributions. A label is not a promise of a
+release date. Explain a blocker before adding `status: blocked`.
+
+## Public documentation and private reports
+
+Keep public setup instructions, API contracts, data policy and attribution in
+the repository. Internal audits, deployment runbooks, incident notes and
+private correspondence belong outside Git. The `docs/` allowlist in
+`scripts/check-public-docs.mjs` is checked in CI; additions need explicit review.
+Ignoring or deleting a file does not remove it from earlier Git history.
+
+Do not post credentials or personal data in issues, commits or screenshots.
+Follow [SECURITY.md](SECURITY.md) for vulnerabilities and other private reports.

@@ -10,8 +10,7 @@
 // shows up in `pnpm test`, because the media directory is written by ingest,
 // is gitignored, and on the host lives outside the release tree entirely.
 //
-// So it is checked before the release symlink moves, not after. See
-// docs/DEPLOY-MEDIA.md.
+// So it is checked before the release symlink moves, not after.
 //
 // Usage:
 //   node scripts/verify-media.mjs [media-root]
@@ -144,6 +143,6 @@ for (const { relative, reasons } of missing) {
 }
 console.error(
   "\nThe site would render these as broken or blank. Sync the media " +
-    "directory before flipping the release symlink; see docs/DEPLOY-MEDIA.md.",
+    "directory before flipping the release symlink.",
 );
 process.exit(1);

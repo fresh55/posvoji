@@ -22,7 +22,7 @@
 
   Both tasks run with an interactive token, so they only run while the user
   is logged on and no password is stored anywhere. Everything else about
-  them is in docs/CRAWL-SCHEDULING.md.
+  them is in the private scheduling runbook.
 
   schtasks.exe is deliberately not used: it cannot set StartWhenAvailable or
   WakeToRun, which are the two settings that make a 12 hour schedule survive
@@ -404,5 +404,5 @@ Write-Info "  Get-Content (Get-ChildItem '$CloneDir-logs\run-*.log' | Sort-Objec
 Write-Info 'Pause it:'
 Write-Info "  Disable-ScheduledTask -TaskName $CrawlTaskName -TaskPath $TaskPath"
 Write-Host ''
-Write-Info 'Details: docs/CRAWL-SCHEDULING.md'
+Write-Info 'Host-specific details are in the private scheduling runbook.'
 Write-Host ''

@@ -19,8 +19,9 @@ Local endpoints: [API docs](http://localhost:8000/api/docs) and
 Login links print to the server console in development.
 
 Configuration: [.env.example](.env.example). Load variables into the environment
-before starting the server. For production, follow the
-[deployment guide](../../docs/DEPLOY-PORTAL.md).
+before starting the server. Production variables are described in
+[.env.production.example](.env.production.example); keep deployment runbooks
+and credentials outside the repository.
 
 ## Shelter access
 

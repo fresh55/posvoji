@@ -65,8 +65,8 @@ const FOOTER_LINK = `${MUTED_LINK} underline`;
  * addresses whether it is up or not, which is why the lead states the
  * condition rather than asserting it: a visitor who opens /vstop after the
  * gate comes off is told what the password was for, not that the site they
- * are already looking at is closed. docs/DEMO-GATE.md says when the routes
- * themselves can go.
+ * are already looking at is closed. Remove the routes only after the host
+ * stops referencing them in its authentication and error-page configuration.
  */
 export function DemoGatePage({ locale }: { locale: Locale }) {
   const text = copy[locale];

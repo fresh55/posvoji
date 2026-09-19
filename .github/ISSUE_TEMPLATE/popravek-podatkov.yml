@@ -3,7 +3,7 @@ description: >-
   Za zavetišča in uporabnike: napačen podatek, zahteva za spremembo prikaza ali
   izključitev vira.
 title: "[data] "
-labels: [data]
+labels: [data, "status: triage"]
 body:
   - type: input
     id: source

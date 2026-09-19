@@ -3,7 +3,8 @@
 //
 // Caddy's `encode` chooses responses by Content-Type, and no `model/*` entry is
 // in its default match list, so the 3D cat's cat.glb is served raw
-// (docs/DEPLOY-HEADERS.md). That file is meshopt-encoded geometry, which is
+// unless the host serves precompressed siblings. That file is meshopt-encoded
+// geometry, which is
 // designed to be entropy-coded afterwards: measured on the September 2026
 // export, 1,500,464 bytes raw against 624,978 gzipped and 550,478 brotli.
 // Almost half the transfer is left on the table.

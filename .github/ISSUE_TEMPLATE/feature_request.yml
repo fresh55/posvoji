@@ -1,0 +1,21 @@
+name: Feature request / Predlog izboljšave
+description: Suggest an improvement in English or Slovenian.
+labels: [enhancement, "status: triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Težava
+      description: Who is affected, and what are they trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change / Predlog
+      description: Describe the useful outcome and any alternatives you considered.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Please keep personal data, credentials and private shelter correspondence out of issues.

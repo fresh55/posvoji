@@ -39,15 +39,12 @@ describe("isGatedView", () => {
   });
 });
 
-// The Caddy matcher in docs/DEMO-GATE.md lists these paths by hand, on a host
-// whose config is in no path of this repository. Rename a route without
-// editing that list and the gate page becomes gated: every request answers
-// 401 with a body the browser is not allowed to fetch. This is the only place
-// the two halves can be checked against each other.
-describe("the documented Caddy allow-list", () => {
+// Keep route names compatible with the minimal server contract fixture.
+// Production configuration and its runbook are maintained outside Git.
+describe("the Caddy contract allow-list", () => {
   it("names every gate route, clean and .html", () => {
-    const doc = readFileSync(new URL("../../../docs/DEMO-GATE.md", import.meta.url), "utf8");
-    const allowList = doc.match(/^\s*not path (.+)$/mu)?.[1] ?? "";
+    const fixture = readFileSync(new URL("../../../scripts/fixtures/demo-gate.caddy", import.meta.url), "utf8");
+    const allowList = fixture.match(/^\s*not path (.+)$/mu)?.[1] ?? "";
     expect(allowList).not.toBe("");
     for (const path of Object.values(GATE_PATHS)) {
       expect(allowList.split(/\s+/u)).toContain(path);

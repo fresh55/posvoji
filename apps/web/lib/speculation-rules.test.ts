@@ -66,16 +66,10 @@ describe("the small pages", () => {
   it.each([
     "/zavetisca",
     "/zavetisca/zavetisce-ljubljana",
-    "/o-nas",
-    "/o-nas/vsebine",
-    "/o-nas/srecko",
     "/najdena-zival",
     "/viri",
     "/en/shelters",
     "/en/shelters/zavetisce-ljubljana",
-    "/en/about",
-    "/en/about/content",
-    "/en/about/srecko",
     "/en/found-animal",
     "/en/resources",
   ])("prerenders %s", (href) => {
@@ -97,6 +91,19 @@ describe("everything else", () => {
   ])("prefetches the animal page %s", (href) => {
     expect(classify(href)).toBe("prefetch");
   });
+
+  // Small pages, but they mount the 3D cat, and a prerender would fetch its
+  // model on every hover. Prefetch is the most they get.
+  it.each([
+    "/o-nas",
+    "/o-nas/vsebine",
+    "/o-nas/srecko",
+    "/en/about",
+    "/en/about/content",
+    "/en/about/srecko",
+  ])("only prefetches the about page %s", (href) => {
+    expect(classify(href)).toBe("prefetch");
+  });
 });
 
 describe("the excluded pages", () => {
@@ -116,11 +123,12 @@ describe("the excluded pages", () => {
     expect(classify(href)).toBe("none");
   });
 
-  // A print page sits under a prerendered prefix, so the exclusion has to win
-  // over the rule that would otherwise claim it.
-  it("excludes the print pages from the prerender set too", () => {
-    expect(hrefMatches(PRERENDER_PATTERNS, "/o-nas/srecko/plakat")).toBe(true);
+  // A print page sits under the prefetch rule's catch-all, so the exclusion
+  // has to win over the rule that would otherwise claim it.
+  it("excludes the print pages from the catch-all too", () => {
+    expect(hrefMatches(["/*"], "/o-nas/srecko/plakat")).toBe(true);
     expect(hrefMatches(NEVER_PATTERNS, "/o-nas/srecko/plakat")).toBe(true);
+    expect(classify("/o-nas/srecko/plakat")).toBe("none");
   });
 
   // Relative patterns resolve against the document, which is what keeps every

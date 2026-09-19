@@ -2,8 +2,7 @@ import { PortalProvider } from "@/components/portal/portal-provider";
 // The crossfade between the two pages below. Loaded here rather than in
 // globals.css so the rules ship with the routes that use them: this is the
 // one part of the site that navigates inside the document.
-// Spelled relatively, the way the root layouts import globals.css.
-import "../../../../components/portal/portal-transitions.css";
+import "@/components/portal/portal-transitions.css";
 
 // The signed-in half of the portal: the list of animals and the page one
 // animal is edited on. The group adds no segment, so the two routes stay

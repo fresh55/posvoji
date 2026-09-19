@@ -9,9 +9,12 @@
    covers this half. A route navigation is a transition, so the wrapper each
    page body carries runs its exit and enter animation on the way through.
 
-   A stylesheet of its own, loaded from the portal's own layout, so these
-   rules reach the two pages that use them and no other page in the export.
-   The class names are the ones portal-transition.tsx hands React.
+   A stylesheet of its own, loaded from the portal's own layout. In the
+   built export its chunk is referenced by portal.html and portal/zival.html
+   and by no other page; were Next ever to fold it into a shared sheet, the
+   reduce block below would reach pages whose motion is already gated on
+   no-preference, which is the same swap it asks for. The class names are the
+   ones portal-transition.tsx hands React.
 
    Asymmetric, in the shape the rest of the site's motion has. The page that
    is leaving goes quickly so it does not compete with what is arriving; what
@@ -26,13 +29,10 @@
    not move: they are drawn by the layout, which persists across a client
    navigation, so only the page body is ever mounted or unmounted. */
 
-/* The overlay the browser paints the transition on swallows clicks for as
-   long as it stands. On a page of forms and save buttons a tap lost to an
-   animation is worse than the animation is worth, so the live page under it
-   keeps taking them. */
-::view-transition {
-  pointer-events: none;
-}
+/* The overlay the browser paints the transition on takes no pointer events,
+   so a tap on a save button during the fade reaches the live page. That rule
+   is globals.css's, written once for every transition on the site, and it
+   loads here too. */
 
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(.portal-exit) {

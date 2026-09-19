@@ -4,6 +4,15 @@
 // https://drafts.csswg.org/css-view-transitions-1/#page-visibility-change-steps
 // Attach before the first paint (pagereveal can run before hydration).
 // Only handle this transition's promise; unrelated rejections remain visible.
+//
+// pageswap also takes the photo-morph mark off the root. lib/view-transition.ts
+// writes data-photo-morph for the length of the dialog's morph and clears it
+// when that transition settles, and a link pressed during the 320ms close
+// leaves the document before it has. The stylesheet scopes the header's
+// view-transition-name and the page handover to an unmarked root
+// (globals.css), so a marked old document would be captured without either
+// while the new one has both. pageswap fires before the old snapshot is taken,
+// which makes it the one place to put the mark right.
 export const VIEW_TRANSITION_SCRIPT = `(()=>{
   function observe(event) {
     if (!event.viewTransition) return;
@@ -11,6 +20,9 @@ export const VIEW_TRANSITION_SCRIPT = `(()=>{
       if (error?.name !== "AbortError" && error?.name !== "InvalidStateError") console.error(error);
     });
   }
-  window.addEventListener("pageswap", observe);
+  window.addEventListener("pageswap", event => {
+    document.documentElement.removeAttribute("data-photo-morph");
+    observe(event);
+  });
   window.addEventListener("pagereveal", observe);
 })();`;

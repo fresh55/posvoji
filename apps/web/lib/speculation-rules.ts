@@ -27,25 +27,25 @@ export type SpeculationRuleSet = {
 
 // Patterns are relative, which resolves them against the document's base URL
 // and therefore restricts every rule to same-origin links. A `*` in a pathname
-// pattern spans separators, so `/o-nas/*` also covers `/o-nas/srecko/plakat`
-// and the print pages have to be excluded by name below.
+// pattern spans separators, so the prefetch rule's `/*` also covers
+// `/o-nas/srecko/plakat` and the print pages have to be excluded by name below.
 
 /**
  * Pages small enough to hold in memory before the click. The home page is not
  * here on purpose: its HTML is 1.2 MB, 111 KB compressed, with sixty cards and
- * a 3D model, which is too much to build on every hover over the logo.
+ * a 3D model, which is too much to build on every hover over the logo. The
+ * about pages are left out for the model alone: a prerendered document runs
+ * its scripts, and the cat on /o-nas mounts a 1.5 MB GLB at the top of the
+ * page (components/about-cat.tsx), so prerendering it would download the
+ * model on every hover over the nav. Those pages are prefetched like the rest.
  */
 export const PRERENDER_PATTERNS = [
   "/zavetisca",
   "/zavetisca/*",
-  "/o-nas",
-  "/o-nas/*",
   "/najdena-zival",
   "/viri",
   "/en/shelters",
   "/en/shelters/*",
-  "/en/about",
-  "/en/about/*",
   "/en/found-animal",
   "/en/resources",
 ] as const;

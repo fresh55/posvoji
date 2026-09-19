@@ -1128,21 +1128,27 @@
    What the browser does on its own is a 250ms cross-fade of the whole root,
    the chrome included, and that was wrong in two ways at once. The rules
    below take the header out of it and replace the fade with a handover. */
+
+/* A snapshot is a picture of the page and not the page, so a press that
+   lands on one while it is up should reach what is underneath. Written out
+   because the browser does not write it: on a bare page with no stylesheet
+   of ours, the computed pointer-events of ::view-transition during a running
+   transition measured auto, not none. lib/view-transition.ts already counts
+   on none, a card pressed during the dialog's 320ms close being an ordinary
+   click on the live grid.
+
+   Outside the reduced-motion gate below, because a transition can run under
+   reduced motion too: the portal's React ViewTransition still calls
+   startViewTransition there and only zeroes its durations
+   (portal/portal-transitions.css), and an overlay that stands for one frame
+   still swallows the tap that landed on it. */
+::view-transition {
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
     navigation: auto;
-  }
-
-  /* A snapshot is a picture of the page and not the page, so a press that
-     lands on one while it is up should reach what is underneath. Written out
-     because the browser does not write it: on a bare page with no stylesheet
-     of ours, the computed pointer-events of ::view-transition during a running
-     transition measured auto, not none. lib/view-transition.ts already counts
-     on none, a card pressed during the dialog's 320ms close being an ordinary
-     click on the live grid. Unscoped, because it is true of every transition
-     here, the morph included. */
-  ::view-transition {
-    pointer-events: none;
   }
 
   /* The header does not travel. It is the same band on every page, so
@@ -1171,6 +1177,12 @@
      site-shell.tsx is the only caller of SiteHeader, the portal's header is
      hand-rolled (portal/portal-shell.tsx), and the demo gate, the error
      boundaries and the poster sheets draw no site chrome at all.
+     site-header.test.tsx counts the class across the source tree.
+
+     Keyed on a class of the header's own and not on its data-slot, for the
+     reason the .morph-still comment below records: under a root mark Blink
+     invalidates by attribute name, and [data-slot] matches hundreds of
+     elements on a grid page.
 
      Not while the photo morph below is running. That one is same-document and
      the dialog it opens dims the page behind it; a header with a name of its
@@ -1180,8 +1192,11 @@
      startViewTransition, so the old snapshot is captured under it, and the new
      one is taken inside the same transition with it still on. Unmarked is
      exactly the set of transitions that are not a morph, in both documents of
-     a navigation as well, since a fresh document has never been marked. */
-  :root:not([data-photo-morph]) [data-slot="site-header"] {
+     a navigation as well: a fresh document has never been marked, and the
+     head script (lib/view-transition-script.ts) takes the mark off the old one
+     at pageswap, before its snapshot is captured, in case a link was pressed
+     while a morph was still running. */
+  :root:not([data-photo-morph]) .site-header {
     view-transition-name: site-header;
   }
 
@@ -1196,6 +1211,21 @@
 
   :root:not([data-photo-morph])::view-transition-new(site-header) {
     animation: none;
+  }
+
+  /* When only one of the two documents has the band. The poster sheets, the
+     gate and the portal draw no site chrome, so a navigation to or from one
+     of them gives the group a single snapshot, and the rules above would drop
+     the band on frame one on the way out and print it at full strength over
+     a page still at zero on the way back. An only child instead fades with
+     the page it belongs to, on the same clock as the root handover below. */
+  :root:not([data-photo-morph])::view-transition-old(site-header):only-child {
+    display: block;
+    animation: 90ms cubic-bezier(0.4, 0, 1, 1) both page-fade-out;
+  }
+
+  :root:not([data-photo-morph])::view-transition-new(site-header):only-child {
+    animation: 180ms cubic-bezier(0, 0, 0.2, 1) 90ms both page-fade-in;
   }
 
   /* And the page under it changes one way round rather than both at once. A

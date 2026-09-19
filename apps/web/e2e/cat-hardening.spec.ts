@@ -3,7 +3,7 @@ import type { ModelViewerElement } from "@google/model-viewer";
 
 /** The box the poster and the viewer share, the cat's only handle in the DOM. */
 function stage(page: Page) {
-  return page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..");
+  return page.locator('img[src*="/models/our-cat/poster.webp"]').locator("..").locator("..");
 }
 async function load(page: Page) {
   await page.goto("/o-nas");

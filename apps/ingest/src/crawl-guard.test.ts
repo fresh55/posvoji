@@ -91,6 +91,24 @@ class StopAfterFirstRequestClient extends StubClient {
 }
 
 describe("excludedPathFor", () => {
+  it.each(["/privat-oddaja", "/privat-oddaja/"])(
+    "matches the section root and descendants for %s, but not siblings",
+    (excluded) => {
+      for (const path of ["/privat-oddaja", "/privat-oddaja/", "/privat-oddaja/1"]) {
+        expect(excludedPathFor(`https://shelter.si${path}`, [excluded])).toBe(excluded);
+      }
+      expect(
+        excludedPathFor("https://shelter.si/privat-oddaja-arhiv", [excluded]),
+      ).toBeUndefined();
+    },
+  );
+
+  it("matches a percent-encoded bare section root", () => {
+    expect(
+      excludedPathFor("https://shelter.si/privat%2Doddaja", ["/privat-oddaja/"]),
+    ).toBe("/privat-oddaja/");
+  });
+
   it("matches an excluded prefix", () => {
     expect(
       excludedPathFor("https://shelter.si/privat-oddaja/muca-1", [
@@ -116,6 +134,30 @@ describe("excludedPathFor", () => {
 
 describe("guardProviderRequests", () => {
   const excluded = policy(["/posvoji-zival/oddajo-lastniki"]);
+
+  it("refuses direct page and image requests for an excluded bare root", async () => {
+    const client = new StubClient();
+    const guarded = guardProviderRequests(client, policy(["/privat-oddaja/"]));
+    await expect(guarded.get("/privat-oddaja")).rejects.toThrow(/refusing to fetch/);
+    await expect(guarded.getBytes("/privat-oddaja")).rejects.toThrow(/refusing to fetch/);
+    expect(client.calls).toEqual([]);
+  });
+
+  it("refuses a redirect to an excluded bare root before following it", async () => {
+    const client = new RedirectingClient("/privat-oddaja");
+    const guarded = guardProviderRequests(client, policy(["/privat-oddaja/"]));
+    const url = "https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu";
+    await expect(guarded.get(url)).rejects.toThrow(/refusing to fetch/);
+    expect(client.calls).toEqual([url]);
+  });
+
+  it("allows a sibling of a section excluded without a trailing slash", async () => {
+    const client = new StubClient();
+    const guarded = guardProviderRequests(client, excluded);
+    const url = "https://www.zavetisce-ljubljana.si/posvoji-zival/oddajo-lastniki-arhiv";
+    await guarded.get(url);
+    expect(client.calls).toEqual([url]);
+  });
 
   it("refuses a fetch under an excluded path", async () => {
     const client = new StubClient();
@@ -270,6 +312,14 @@ describe("current provider entry requests", () => {
     expect(
       providers.every((provider) => policyById.get(provider.id)?.enabled),
     ).toBe(true);
+  });
+
+  it("blocks a Horjul redirect to its excluded section root", async () => {
+    const currentPolicy = policyById.get("horjul")!;
+    const client = new RedirectingClient("/privat-oddaja");
+    const guarded = guardProviderRequests(client, currentPolicy);
+    await expect(guarded.get(currentPolicy.source)).rejects.toThrow(/excludes/);
+    expect(client.calls).toEqual([currentPolicy.source]);
   });
 
   it.each(["privat_oddaja", "privat_oddajo", "unknown-section"])("blocks Mala hiša redirects into %s", async (path) => {

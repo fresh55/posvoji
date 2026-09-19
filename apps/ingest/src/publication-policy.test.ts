@@ -129,32 +129,35 @@ describe("applyPublicationPolicy", () => {
     expect(result.adjusted).toEqual([]);
   });
 
-  it("drops a carried-over record under a newly excluded path", () => {
-    const privat = animal({
-      id: `${PROVIDER}:zasebno`,
-      source: {
-        ...animal().source,
-        sourceUrl: "https://example.si/privat-oddaja/muca",
-      },
-    });
-    const result = applyPublicationPolicy(
-      [animal(), privat],
-      policies({
-        crawl: { intervalHours: 12, excludePaths: ["/privat-oddaja/"] },
-      }),
-    );
+  it.each(["/privat-oddaja", "/privat-oddaja/", "/privat-oddaja/muca"])(
+    "drops a carried-over record at excluded path %s",
+    (path) => {
+      const privat = animal({
+        id: `${PROVIDER}:zasebno`,
+        source: {
+          ...animal().source,
+          sourceUrl: `https://example.si${path}`,
+        },
+      });
+      const result = applyPublicationPolicy(
+        [animal(), privat],
+        policies({
+          crawl: { intervalHours: 12, excludePaths: ["/privat-oddaja/"] },
+        }),
+      );
 
-    expect(result.animals).toHaveLength(1);
-    expect(result.animals[0]?.id).toBe(`${PROVIDER}:luna`);
-    expect(result.dropped).toEqual([
-      {
-        providerId: PROVIDER,
-        count: 1,
-        reason:
-          'under "/privat-oddaja/", which policy.yaml excludes from the crawl',
-      },
-    ]);
-  });
+      expect(result.animals).toHaveLength(1);
+      expect(result.animals[0]?.id).toBe(`${PROVIDER}:luna`);
+      expect(result.dropped).toEqual([
+        {
+          providerId: PROVIDER,
+          count: 1,
+          reason:
+            'under "/privat-oddaja/", which policy.yaml excludes from the crawl',
+        },
+      ]);
+    },
+  );
 
   it("catches an excluded path a link percent-encoded", () => {
     const privat = animal({

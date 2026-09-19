@@ -74,7 +74,7 @@ function canonicalRequestUrl(
   return target.href;
 }
 
-// excludePaths entries are path prefixes, e.g. "/privat-oddaja/". The
+// excludePaths entries name sections, with or without a trailing slash. The
 // comparison is on the decoded pathname so a percent-encoded link to an
 // excluded section is caught too.
 export function excludedPathFor(
@@ -94,7 +94,10 @@ export function excludedPathFor(
   } catch {
     // A malformed escape stays as it is and is compared raw.
   }
-  return excludePaths.find((excluded) => decoded.startsWith(excluded));
+  return excludePaths.find((excluded) => {
+    const base = excluded.endsWith("/") ? excluded.slice(0, -1) : excluded;
+    return decoded === base || decoded.startsWith(`${base}/`);
+  });
 }
 
 function decodedCrawlPath(url: string): string | undefined {

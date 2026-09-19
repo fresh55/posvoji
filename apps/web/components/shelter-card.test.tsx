@@ -358,48 +358,14 @@ describe("the shelter card", () => {
     );
   });
 
-  it("folds the count onto the town's line on a phone with no mark", () => {
-    const { container } = render(
-      <ShelterCard shelter={shelter({ animals: 2 })} text={text} />,
-    );
-
-    // With no mark the media row is one short phrase, and under the town it
-    // took a line of the card to say it. Below sm the card wraps instead: the
-    // row is pushed to the right edge and set against the bottom of the name
-    // block, which is the town's line, and the contacts take a full basis so
-    // they keep a line under both. Everything asserted here is max-sm, so the
-    // subgrid band from sm up is the same on every card, mark or no mark.
-    const card = container.querySelector("li");
-    expect(card?.className).toContain("max-sm:flex-wrap");
-    expect(card?.className).not.toContain("max-sm:flex-col");
-
-    const media = container.querySelector('[data-slot="item-media"]');
-    expect(media?.className).toContain("max-sm:ml-auto");
-    expect(media?.className).toContain("max-sm:self-end");
-    // The name block grows from a fixed basis, or a long name's own width
-    // takes the whole first line and the count drops under it again. Fixed
-    // and not zero: from zero the row could shrink the block to nothing, and
-    // at 200% text the town under the name came out as "Br…" beside a "Brez
-    // objav" that kept its width. 9rem holds the fold at 100% on the
-    // narrowest card and lets the media wrap under at 200%.
-    const content = container.querySelector('[data-slot="item-content"]');
-    expect(content?.className).toContain("max-sm:basis-36");
-    expect(content?.className).not.toContain("max-sm:basis-0");
-    expect(content?.className).toContain("max-sm:flex-1");
-    expect(
-      container.querySelector('[data-slot="item-footer"]')?.className,
-    ).toContain("max-sm:basis-full");
-  });
-
-  it("states the count once per card, whichever phone layout it gets", () => {
+  it("states the count once per card, with or without a logo", () => {
     const card = (over: Partial<ShelterCardData>) =>
       render(<ShelterCard shelter={shelter(over)} text={text} />).container;
 
     // The browser suite adds data-animals up against the census line and
     // counts the cards that carry data-no-list, so a card that drew either of
     // them twice, one copy hidden behind a breakpoint, would be a card
-    // counted twice. That is why the fold is CSS over one element rather than
-    // a second element for the phone.
+    // counted twice. Each status uses one element at every breakpoint.
     expect(card({ animals: 2 }).querySelectorAll("[data-animals]")).toHaveLength(
       1,
     );

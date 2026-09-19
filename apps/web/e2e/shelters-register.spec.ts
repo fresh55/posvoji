@@ -46,6 +46,60 @@ const REGISTER = "/zavetisca";
 const CARD = 'li[id^="zavetisce-"]';
 const CHANNELS = ["phone", "email", "website"] as const;
 
+test.describe("mobile shelter names", () => {
+  // A narrow desktop viewport reserves scrollbar space and keeps fine-pointer
+  // targets. Exercise the actual phone layout and available content width.
+  test.use({ isMobile: true, hasTouch: true });
+
+  for (const width of [320, 375, 390]) {
+    for (const route of ["/zavetisca", "/en/shelters"]) {
+      test(`${route}: the status leaves names their full width at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(route);
+        await expect(page.locator(CARD)).toHaveCount(17);
+        const layout = await page.locator(CARD).evaluateAll(cards => ({
+          contentWidth: document.documentElement.clientWidth,
+          coarsePointer: matchMedia("(pointer: coarse)").matches,
+          squeezed: cards.flatMap(card => {
+            const style = getComputedStyle(card);
+            const box = card.getBoundingClientRect();
+            const content = card.querySelector('[data-slot="item-content"]')!.getBoundingClientRect();
+            const media = card.querySelector('[data-slot="item-media"]')!.getBoundingClientRect();
+            const available = box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+              - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+            return Math.abs(content.width - available) > 1 || media.top < content.bottom
+              ? [card.id] : [];
+          }),
+        }));
+        expect(layout.contentWidth).toBe(width);
+        expect(layout.coarsePointer).toBe(true);
+        expect(layout.squeezed).toEqual([]);
+      });
+    }
+  }
+});
+
+test.describe("mobile shelter filters", () => {
+  test.use({ isMobile: true, hasTouch: true });
+
+  for (const indexPath of ["/zavetisca", "/en/shelters"]) {
+    test(`${indexPath}: the filter route has a full touch target and retains the shelter`, async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 844 });
+      await page.goto(`${indexPath}/macja-hisa`);
+      const filterPath = indexPath === "/zavetisca"
+        ? "/?zavetisce=macja-hisa" : "/en?zavetisce=macja-hisa";
+      const filter = page.locator(`main a[href="${filterPath}"]`);
+      await expect(filter).toBeVisible();
+      const box = await filter.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+      await filter.tap();
+      await expect(page).toHaveURL(new RegExp(`${filterPath.replace("?", "\\?")}$`));
+    });
+  }
+});
+
 for (const indexPath of ["/zavetisca", "/en/shelters"]) {
   test(`${indexPath}: the summary and help link reflow with enlarged text`, async ({ page }) => {
     const errors: string[] = [];
@@ -64,14 +118,14 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     expect(errors).toEqual([]);
   });
 
-  test(`${indexPath}: one email invitation precedes the directory and reflows`, async ({ page }) => {
+  test(`${indexPath}: one email invitation follows the directory and reflows`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto(indexPath);
     const invite = page.locator('main a[href="mailto:info@posvoji.si"]');
     await expect(invite).toHaveCount(1);
     const inviteBox = await invite.boundingBox();
-    const firstCardBox = await page.locator(CARD).first().boundingBox();
-    expect(inviteBox!.y + inviteBox!.height).toBeLessThan(firstCardBox!.y);
+    const lastCardBox = await page.locator(CARD).last().boundingBox();
+    expect(inviteBox!.y).toBeGreaterThan(lastCardBox!.y + lastCardBox!.height);
     await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
     expect(await invite.evaluate(el => el.parentElement!.scrollWidth - el.parentElement!.clientWidth)).toBeLessThanOrEqual(1);
   });
@@ -82,6 +136,9 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     await skip.focus();
     await page.keyboard.press("Enter");
     await expect(page.locator("#za-zavetisci")).toBeFocused();
+    await page.keyboard.press("Tab");
+    // The invitation now follows the directory alongside its permission note.
+    await expect(page.locator('main a[href="mailto:info@posvoji.si"]')).toBeFocused();
     await page.keyboard.press("Tab");
     // Back to top is legitimately between the register and the footer.
     if (await page.locator('[data-slot="back-to-top"]:focus').count()) {

@@ -1,0 +1,14 @@
+{
+  "providers/muri/fixtures/detail-minimal.html": {
+    "emails": ["zavod.muri@gmail.com"],
+    "reason": "Zavod Muri's institutional contact, present in the shelter's fixture; not a private-owner listing."
+  },
+  "providers/obalno/fixtures/detail-cat-wrapped.html": {
+    "phones": ["050000000"],
+    "reason": "Existing synthetic all-zero subscriber number in the minimal parser fixture."
+  },
+  "providers/turk/fixtures/list-dogs-page-2.json": {
+    "phones": ["070000000"],
+    "reason": "Existing synthetic all-zero subscriber number; the fixture also tests excluding a missing-animal post."
+  }
+}

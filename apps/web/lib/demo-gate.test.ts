@@ -53,5 +53,6 @@ describe("the documented Caddy allow-list", () => {
       expect(allowList.split(/\s+/u)).toContain(path);
       expect(allowList.split(/\s+/u)).toContain(`${path}.html`);
     }
+    expect(allowList.split(/\s+/u)).toContain("/.well-known/security.txt");
   });
 });

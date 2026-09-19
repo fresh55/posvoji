@@ -1,8 +1,7 @@
 # Production crawl operations
 
 The host runs an installed commit reachable from `origin/main`. The current pin
-belongs in private `/etc/posvoji/crawl.env`, not this runbook. Historical rollout
-measurements are in [the handover log](operations/2026-09-06-crawl-handover.md).
+belongs in private `/etc/posvoji/crawl.env`, not this runbook.
 
 ## Operating contract
 

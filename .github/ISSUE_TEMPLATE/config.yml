@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or private report / Zasebna prijava
+    url: https://github.com/fresh55/posvoji/blob/main/SECURITY.md
+    about: Use the private reporting instructions. Do not post personal data or vulnerabilities in public issues.
+  - name: Adoption enquiries / Vprašanja o posvojitvi
+    url: https://github.com/fresh55/posvoji/blob/main/.github/SUPPORT.md#adoption-enquiries
+    about: Contact the animal's shelter directly; this project does not handle adoptions.

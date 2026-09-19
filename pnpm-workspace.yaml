@@ -3,6 +3,9 @@ packages:
   - packages/*
   - providers/*
 
+# Wait seven days before resolving newly published package versions.
+minimumReleaseAge: 10080
+
 onlyBuiltDependencies:
   - better-sqlite3
   - esbuild

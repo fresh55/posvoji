@@ -42,7 +42,7 @@ Keep the account line as it is; the health checks depend on it.
 ```caddy
 @guest {
     expression `{http.request.cookie.posvoji_demo} != "{$POSVOJI_DEMO_KEY}" || "{$POSVOJI_DEMO_KEY}" == ""`
-    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /icon.svg /favicon.ico /apple-icon.png
+    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /icon.svg /favicon.ico /apple-icon.png /.well-known/security.txt
 }
 basic_auth @guest {
     health <the existing hash>
@@ -90,6 +90,10 @@ the case).
 Both `.html` names are in the path list because `try_files` runs before
 `basic_auth` in Caddy's directive order, so the matcher sees the rewritten
 path. `@en` lists `/en.html` for the same reason.
+
+Keep `/.well-known/security.txt` outside authentication so security researchers
+can find the reporting address while the demo gate is active. Apply this matcher
+when deploying the file; changing this document alone does not update the host.
 
 `handle_errors 401` sits beside the existing `handle_errors` block for the
 404 page; Caddy lets a block claim its status codes and leaves the rest to

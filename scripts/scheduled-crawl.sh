@@ -3,7 +3,7 @@
 # The scheduled crawl and deploy.
 #
 # Windows Task Scheduler runs this every 12 hours from a dedicated clone at
-# C:\Users\bruno\source\repos\posvoji-crawl. It updates that clone to
+# the task owner's profile under source/repos/posvoji-crawl. It updates it to
 # origin/main, installs, exports the dataset, decides from the export's exit
 # code whether the result is worth shipping, and then hands off to
 # scripts/deploy.sh, which does its own hermetic build.
@@ -27,34 +27,10 @@
 
 set -euo pipefail
 
-# --- this machine ------------------------------------------------------------
-#
-# Task Scheduler hands a task the environment as it was cached when the user
-# logged on, and that copy can be stale or incomplete (KB 2968540). Nothing
-# below is inherited from it. The paths were read off this PC with
-# `where.exe node pnpm` and `where.exe git`; if the box changes, they change
-# here.
-
-export HOME="/c/Users/bruno"
-export USERPROFILE='C:\Users\bruno'
-export APPDATA='C:\Users\bruno\AppData\Roaming'
-export LOCALAPPDATA='C:\Users\bruno\AppData\Local'
-
-# deploy.sh calls mktemp -d, and a task with no TMP set gets a directory it
-# cannot write to.
-export TMPDIR="/c/Users/bruno/AppData/Local/Temp"
-export TMP='C:\Users\bruno\AppData\Local\Temp'
-export TEMP='C:\Users\bruno\AppData\Local\Temp'
-
-# node.exe, then the npm global bin where pnpm lives, then Git's own binaries
-# (tar, ssh, cygpath), then System32 for ping, cmd and powershell. Prepended
-# rather than appended: a cached PATH that points at an old Node must not win.
-PATH="/c/Program Files/nodejs:/c/Users/bruno/AppData/Roaming/npm:${PATH}"
-PATH="/c/Program Files/Git/bin:/c/Program Files/Git/usr/bin:${PATH}"
-PATH="${PATH}:/c/Windows/System32:/c/Windows/System32/Wbem"
-export PATH
-
-POWERSHELL="/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+# Derive the toolchain and writable directories from the task owner's profile.
+# The helper has no crawl/deploy side effects and is exercised by local lint.
+source "$(dirname "${BASH_SOURCE[0]}")/crawl-runtime.sh"
+configure_crawl_runtime
 
 # How long to wait for a network after a wake. A machine that resumes for a
 # 03:00 run has its NIC up seconds later, but DHCP and a VPN can take longer.

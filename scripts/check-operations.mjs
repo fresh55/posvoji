@@ -6,6 +6,7 @@ import { runBash } from "./operation-shell.mjs";
 for (const name of [
   "deploy",
   "scheduled-crawl",
+  "crawl-runtime",
   "verify-release",
   "monitor-production",
   "run-host-crawl",

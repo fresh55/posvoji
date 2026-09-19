@@ -23,7 +23,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$CloneDir = 'C:\Users\bruno\source\repos\posvoji-crawl',
+  [string]$CloneDir = (Join-Path ([Environment]::GetFolderPath('UserProfile')) 'source\repos\posvoji-crawl'),
 
   # Two missed runs plus slack. See above.
   [int]$MaxAgeHours = 30

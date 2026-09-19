@@ -49,15 +49,18 @@ registration is what replaces the old execution limit on the machine.
 ### What one run does
 
 Everything below is [`scripts/scheduled-crawl.sh`](../scripts/scheduled-crawl.sh),
-running out of a dedicated clone at `C:\Users\bruno\source\repos\posvoji-crawl`.
+running out of a dedicated clone at `$env:USERPROFILE\source\repos\posvoji-crawl`.
 That clone exists so a crawl never runs against a working copy somebody is
 editing, and so a deploy is always of committed code.
 
-1. **Pin the environment.** Task Scheduler hands a task the environment as it
-   was cached at logon, and that copy can be stale or wrong (KB 2968540). The
-   script sets `HOME`, `USERPROFILE`, `APPDATA`, `LOCALAPPDATA` and the temp
-   directory itself, and prepends the absolute locations of Node, the npm
-   global bin where pnpm lives, Git's own binaries and System32 to `PATH`.
+1. **Resolve the environment.** The script uses the task owner's Windows
+   profile and inherited app-data and temp directories. Missing app-data and
+   temp settings fall back to that profile. Node defaults to `ProgramFiles`,
+   pnpm to the user's npm bin, and Git tools to the running Git Bash install.
+   Set `POSVOJI_NODE_DIR` or `PNPM_HOME` in the task owner's environment for
+   custom tool locations; pass `-GitBash` to setup for a custom Git install.
+   Task Scheduler can cache the environment at logon, so log out and back in
+   after changing these settings.
    `HOME` matters more than it looks: `deploy.sh` finds the SSH key under it,
    and the portal's credentials are read from `$HOME/.posvoji-crawl.env` when
    that file exists. It sits beside the clone rather than in it because step 3
@@ -144,7 +147,7 @@ is live.
 
 ## Logs
 
-`C:\Users\bruno\source\repos\posvoji-crawl-logs\run-YYYYMMDD-HHMMSS.log`, one
+`$env:USERPROFILE\source\repos\posvoji-crawl-logs\run-YYYYMMDD-HHMMSS.log`, one
 file per run, holding everything the run and its children printed. The
 directory sits beside the clone rather than inside it, so it never shows up in
 `git status` and needs no gitignore entry that exists for one machine's
@@ -154,7 +157,7 @@ Task Scheduler discards a task's stdout, so these files are the only copy.
 
 ```powershell
 # the newest run, followed live
-Get-Content (Get-ChildItem 'C:\Users\bruno\source\repos\posvoji-crawl-logs\run-*.log' |
+Get-Content (Get-ChildItem (Join-Path $env:USERPROFILE 'source\repos\posvoji-crawl-logs\run-*.log') |
   Sort-Object LastWriteTime | Select-Object -Last 1).FullName -Wait
 ```
 
@@ -233,7 +236,7 @@ Disable-ScheduledTask -TaskName PosvojiCrawlDeploy -TaskPath \Posvoji\
 Enable-ScheduledTask  -TaskName PosvojiCrawlDeploy -TaskPath \Posvoji\
 
 # check the dead man's switch by hand
-.\scripts\crawl-deadman.ps1 -CloneDir C:\Users\bruno\source\repos\posvoji-crawl
+.\scripts\crawl-deadman.ps1 -CloneDir (Join-Path $env:USERPROFILE 'source\repos\posvoji-crawl')
 ```
 
 `LastTaskResult` of `0` means the runner fully completed. Any nonzero value (or
@@ -254,8 +257,8 @@ it either holds that same lock or the scheduled task has stopped.
 # for real, seeding the clone from an existing working copy so the first run
 # does not have to re-fetch 270 MB of photos
 .\scripts\setup-crawl-task.ps1 `
-  -SeedDataDir  C:\Users\bruno\source\repos\posvoji.si\data\dist `
-  -SeedMediaDir C:\Users\bruno\source\repos\posvoji.si\apps\web\public\media
+  -SeedDataDir  (Join-Path $env:USERPROFILE 'source\repos\posvoji.si\data\dist') `
+  -SeedMediaDir (Join-Path $env:USERPROFILE 'source\repos\posvoji.si\apps\web\public\media')
 ```
 
 The script is idempotent: it re-registers both tasks and leaves an existing

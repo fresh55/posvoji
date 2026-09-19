@@ -467,14 +467,12 @@ export function FilterGroupList({
   goodWith?: GoodWithSection;
   home?: HomeSection;
   care?: CareSection;
-  /** Which surface these sections are drawn on. The sheet draws tiles, the
-      sidebar draws rows, and every section takes the same answer: it was the
-      age control's alone once, and by the time the sex and size sections were
-      brought onto the row treatment it was deciding all of them. */
+  /** The sheet draws tiles; the sidebar draws rows. */
   layout?: FilterCardLayout;
 } & FilterActionContract) {
-  const { isOpen, toggleSection } = useFilterSections(
-    layout === "sheet" ? {
+  const { isOpen, toggleSection } = useFilterSections({
+    layout,
+    initiallyOpen: layout === "sheet" ? {
       sex: filters.sex.length > 0,
       age: filters.age.length > 0,
       size: filters.size.length > 0,
@@ -484,7 +482,7 @@ export function FilterGroupList({
       home: filters.home.length > 0,
       care: filters.care.length > 0,
     } : undefined,
-  );
+  });
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();

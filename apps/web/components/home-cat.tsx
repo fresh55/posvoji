@@ -32,11 +32,12 @@ export const HOME_CAT_FRAMING: CatFraming = {
  *  its child, which is the bargain --rail-pad strikes in globals.css for the
  *  same reason.
  *
- *  184px, and 200px at lg. Zero on a phone held sideways, where he is not
+ *  184px, and 200px at lg. Short desktops use 160px to fit the tighter
+ *  vertical spacing. Zero on a phone held sideways, where he is not
  *  drawn: the padding has to leave when the drawing does, and this is the one
  *  place that can be said once for both. */
 export const CAT_CORNER =
-  "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:0rem]";
+  "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short-desktop:[--cat-corner:10rem] short:[--cat-corner:0rem]";
 
 /**
  * The viewports the poster is worth downloading at, which is exactly the
@@ -170,7 +171,7 @@ export function HomeCat({ locale }: { locale: Locale }) {
         // which drops sizes and srcset, and there is one poster file. Kept
         // truthful about the two boxes for the day that changes. What actually
         // decides whether the file is fetched is posterMedia below.
-        sizes="(min-width: 64rem) 168px, 152px"
+        sizes="(min-width: 64rem) and (max-height: 799px) 128px, (min-width: 64rem) 168px, 152px"
         framing={HOME_CAT_FRAMING}
         posterMedia={HOME_CAT_POSTER_MEDIA}
         startOnReach

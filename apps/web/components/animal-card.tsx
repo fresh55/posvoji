@@ -171,7 +171,7 @@ export const AnimalCard = memo(function AnimalCard({
   species?: SpeciesFilter;
   /** Set on the first row, so the largest image on screen is not lazy. */
   eager?: boolean;
-  onOpen: (id: string, origin?: DialogOrigin) => void;
+  onOpen: (id: string, origin?: DialogOrigin, photoIndex?: number) => void;
   /** Asks whether the dialog this card opens is already on the page. The home
    *  grid mounts it on idle, so a press that beats the idle callback, or
    *  Safari's two-second fallback, would start a morph into a state that has no
@@ -251,13 +251,13 @@ export const AnimalCard = memo(function AnimalCard({
     // on the page yet has nowhere to carry it, and a browser without the API
     // or a visitor who asked for less movement gets the plain open.
     if (!photo || photoCount === 0 || !isDialogReady() || !canMorphPhoto()) {
-      onOpen(animal.id, origin);
+      onOpen(animal.id, origin, photoIndex);
       return;
     }
     morphPhoto({
       photo,
       direction: "open",
-      update: () => onOpen(animal.id, origin),
+      update: () => onOpen(animal.id, origin, photoIndex),
     });
   }
 

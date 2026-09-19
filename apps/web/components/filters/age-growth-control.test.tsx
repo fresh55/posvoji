@@ -55,7 +55,7 @@ describe("AgeGrowthControl", () => {
 
     expect(html).toContain('aria-hidden="true" data-age-view="grove"');
     expect(html).toContain('aria-label="Starost"');
-    expect(html).toContain("Izberi eno ali več starosti.");
+    expect(html).toContain("mladič do 1 leta, odrasla žival od 1 do manj kot 8 let");
   });
 
   // inert is what takes it out of the tab order, not a tabIndex={-1} written

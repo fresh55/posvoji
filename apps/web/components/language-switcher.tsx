@@ -1,9 +1,14 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useSyncExternalStore } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
+import {
+  getSearchSnapshot,
+  getServerSearchSnapshot,
+  subscribeToLocation,
+} from "@/lib/location-search";
 import { cn } from "@/lib/utils";
 
 // Below lg only the other language is drawn. Both halves and the well around
@@ -61,20 +66,13 @@ export function LanguageSwitcher({
 }) {
   const { locale, messages } = useI18n();
 
-  // The filters travel with the language, so the press carries the current
-  // query onto the link before the browser follows it. A static export has no
-  // server to read the query with, so this cannot be part of the rendered href.
-  //
-  // Built from the path the link was rendered with and not from the href the
-  // last press left on it. A held modifier opens the destination in a new tab
-  // and leaves this page mounted with its link rewritten, so an href appended
-  // to in place is appended to again on the next press: /en?vrsta=pes became
-  // /en?vrsta=pes?vrsta=macka. Rebuilt from the path each time, a press only
-  // ever states the query once.
-  const keepFilters =
-    (path: string) => (event: MouseEvent<HTMLAnchorElement>) => {
-      event.currentTarget.href = `${path}${window.location.search}`;
-    };
+  // The static HTML has no query. After hydration the real href stays current
+  // for every browser link action, including copying and opening a new tab.
+  const search = useSyncExternalStore(
+    subscribeToLocation,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
 
   return (
     <nav
@@ -118,12 +116,11 @@ export function LanguageSwitcher({
             )}
           >
             <a
-              href={path}
+              href={`${path}${search}`}
               hrefLang={language.locale}
               lang={language.locale}
               aria-label={language.name}
               aria-current={locale === language.locale ? "page" : undefined}
-              onClick={keepFilters(path)}
             >
               {/* The short name at every width, where the full names used to
                   appear from sm. Spelled out this was 151px of bordered

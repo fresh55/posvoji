@@ -44,7 +44,8 @@ const sl = {
   // The action first, the reason second. The old order led with the caveat
   // and the visitor read a warning under the one button that mattered.
   sourceVerificationOld:
-    "Pred obiskom preverite pri zavetišču, ali je žival še na voljo. Zadnje preverjanje je starejše od enega dne ali ni znano.",
+    "Pred obiskom preverite pri zavetišču, ali je žival še na voljo.",
+  sourceVerificationAge: "Zadnje preverjanje: {age}.",
   // The line the contact address follows, on every page rather than only on
   // /o-nas. A wrong listing is the likeliest reason anyone writes, and the
   // page it is wrong on is not the about page. The address itself stays the
@@ -254,6 +255,7 @@ const sl = {
   noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
   showAllSpecies: "Pokaži vse živali",
+  showAllSpeciesCount: "Pokaži vse vrste ({count})",
   resetFilters: "Ponastavi",
   resetAgeFilters: "Ponastavi filter starosti",
   resetSexFilters: "Ponastavi filter spola",
@@ -261,9 +263,9 @@ const sl = {
   resetEnergyFilters: "Ponastavi filter energije",
   resetHealthFilters: "Ponastavi zdravstvene filtre",
   resetShelterFilters: "Ponastavi izbor zavetišč",
-  ageFilterHint: "Izberi eno ali več starosti.",
+  ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, odrasla žival od 1 do manj kot 8 let, starejša žival od 8 let naprej.",
   energyFilterHint:
-    "Po presoji zavetišča. Živali brez podatka ta filter skrije.",
+    "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: {count}. Živali brez podatka ta filter skrije.",
   healthFilterHint: "Ujema se vsaj ena izbrana lastnost.",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
@@ -381,7 +383,8 @@ const sl = {
   // reason: "našel sem psa" is the search, and the page exists to be found by
   // it. The advice below is where the reader is addressed rather than quoted,
   // and that one is neutral.
-  muniPromptTitle: "Si našel žival?",
+  foundAnimalLink: "Si našel žival?",
+  muniPromptTitle: "Kje si našel žival?",
   muniTab: "Najdena žival",
   // The field's name, said in full, and the hint drawn inside it. They are
   // two keys because the box is 196px wide inside its padding on a 360px
@@ -404,6 +407,8 @@ const sl = {
     "Namesto tega vpiši poštno številko kraja, kjer je bila žival najdena.",
   muniFromPostcode: "Pošta {code} {name}",
   muniWhichOne: "Ta pošta pokriva več občin. Katera je prava?",
+  muniLocationConfirm: "Lokacija je približna. Potrdi predlagano občino ali vpiši kraj, kjer je bila žival najdena.",
+  muniLocationUnmatched: "Lokacije ni mogoče povezati z bližnjo slovensko pošto. Vpiši občino ali poštno številko kraja, kjer je bila žival najdena.",
   // The finder's own version of postcodeNotFound. The shared one tells the
   // reader to check what they typed, which on this page is a dead end for
   // somebody standing over an animal with the right number and a table that
@@ -642,7 +647,8 @@ const en: Messages = {
   listPublished: "List published",
   sourceVerificationUnknown: "Check time unknown",
   sourceVerificationOld:
-    "Before visiting, check with the shelter that the animal is still available. The last check is over a day old or unknown.",
+    "Before visiting, check with the shelter that the animal is still available.",
+  sourceVerificationAge: "Last checked {age}.",
   footerContact: "A correction or a question?",
   moreInformation: "More information",
   footerLinks: "Footer links",
@@ -658,7 +664,7 @@ const en: Messages = {
   resources: "Trusted animal-care resources",
   shelters: "Shelters",
   about: "About",
-  shelterLogin: "Login for shelters",
+  shelterLogin: "Shelter login (Slovenian)",
   chooseLanguage: "Choose language",
   // A statement, matching the Slovenian. It used to read "See photo on the
   // shelter's website", which is an instruction the click does not carry out:
@@ -732,6 +738,7 @@ const en: Messages = {
   noResultsShelterPlural: "The selected shelters currently have no {species}.",
   showFromAllShelters: "Show from all shelters",
   showAllSpecies: "Show all animals",
+  showAllSpeciesCount: "Show all species ({count})",
   resetFilters: "Reset",
   resetAgeFilters: "Reset age filters",
   resetSexFilters: "Reset sex filters",
@@ -739,9 +746,9 @@ const en: Messages = {
   resetEnergyFilters: "Reset energy filters",
   resetHealthFilters: "Reset health filters",
   resetShelterFilters: "Reset the shelter selection",
-  ageFilterHint: "Choose one or more ages.",
+  ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
   energyFilterHint:
-    "As judged by the shelter. Animals with no answer are hidden by this filter.",
+    "As judged by the shelter. Recorded energy among animals matching the other filters: {count}. Animals with no answer are hidden by this filter.",
   healthFilterHint: "Matches at least one selected trait.",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
@@ -790,7 +797,8 @@ const en: Messages = {
   showAnimals: "Show {count}",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
-  muniPromptTitle: "Found an animal?",
+  foundAnimalLink: "Found an animal?",
+  muniPromptTitle: "Where did you find the animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
   muniSearchPlaceholder: "Town or postcode",
@@ -801,6 +809,8 @@ const en: Messages = {
     "Or type the postcode of the place where the animal was found.",
   muniFromPostcode: "Postcode {code} {name}",
   muniWhichOne: "This postcode covers several municipalities. Which one?",
+  muniLocationConfirm: "The location is approximate. Confirm the suggested municipality or type where the animal was found.",
+  muniLocationUnmatched: "The location could not be matched to a nearby Slovenian postal district. Type the municipality or postcode where the animal was found.",
   muniPostcodeNotFound:
     "No such postcode. Type the municipality or use your location.",
   muniNoMatch: "No municipality named",

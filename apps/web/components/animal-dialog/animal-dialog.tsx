@@ -299,6 +299,18 @@ function zoomOrigin(origin: DialogOrigin | undefined): string | undefined {
   return `calc(50% + ${x}px) calc(50% + ${y}px)`;
 }
 
+/** Scroll one page if content remains; return whether the card consumed it. */
+function scrollCardPage(card: HTMLElement | null, direction: -1 | 1): boolean {
+  if (!card) return false;
+  const { clientHeight, scrollHeight, scrollTop } = card;
+  const end = Math.max(0, scrollHeight - clientHeight);
+  const remaining = direction < 0 ? scrollTop : end - scrollTop;
+  // Allow for fractional scroll offsets at the boundary.
+  if (remaining <= 1) return false;
+  card.scrollTop = Math.max(0, Math.min(end, scrollTop + direction * clientHeight));
+  return true;
+}
+
 type AnimalDialogProps = {
   /** Undefined while nothing is open, and for an id no animal answers to. */
   animal: ClientAnimal | undefined;
@@ -423,14 +435,11 @@ function OpenAnimalDialog({
     dragY.set(0);
   }, [animal, dragY]);
 
-  // A step to another animal keeps the card element, and with it whatever it
-  // was scrolled to. Nothing here sends it back to the top, so the shift is
-  // re-read from the card rather than assumed to be zero; a listing short
-  // enough for the browser to clamp the scroll is the case a scroll event
-  // alone cannot be relied on to report. Reading scrollTop settles the layout
-  // first, so the number is the clamped one.
+  // The reused card starts each animal at its heading, even when both
+  // descriptions overflow a short desktop viewport.
   useEffect(() => {
-    syncNavShift(cardRef.current?.scrollTop ?? 0);
+    if (cardRef.current) cardRef.current.scrollTop = 0;
+    syncNavShift(0);
   }, [animal, syncNavShift]);
 
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
@@ -601,9 +610,8 @@ function OpenAnimalDialog({
       ? siblingIds[place + 1]
       : undefined;
 
-  // Page keys walk animals. The arrows belong to the photos, and taking them
-  // here would fight the fan. At either end of the list the key is the
-  // browser's again, so the card can still scroll on it.
+  // Page keys scroll the detail card first, including when focus is on the
+  // photo above it. Only a key at the card's end steps to another animal.
   //
   // Only the keys pressed inside the dialog's own box. React bubbles a
   // portal's events up the component tree rather than the DOM one, so every
@@ -615,6 +623,11 @@ function OpenAnimalDialog({
     if (lightboxOpen.current) return;
     if (event.key !== "PageUp" && event.key !== "PageDown") return;
     if (!event.currentTarget.contains(event.target as Node)) return;
+    const direction = event.key === "PageUp" ? -1 : 1;
+    if (scrollCardPage(cardRef.current, direction)) {
+      event.preventDefault();
+      return;
+    }
     const target = event.key === "PageUp" ? previousId : nextId;
     if (!target) return;
     event.preventDefault();

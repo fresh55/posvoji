@@ -1607,7 +1607,7 @@ describe("MapLegend rows", () => {
     return container.querySelector("[data-map-legend]")!;
   }
 
-  it("draws one hollow-circle row, whichever of the two states is on the plate", () => {
+  it("explains each hollow-circle state when it occurs", () => {
     expect(renderLegend({ hasEmptyMarker: true }).textContent).toContain(
       "Brez objavljenih živali",
     );
@@ -1617,19 +1617,28 @@ describe("MapLegend rows", () => {
     );
   });
 
-  it("draws it once when both states are, because the map draws one mark", () => {
+  it("distinguishes unlisted shelters from filtered shelters in both legend and map", () => {
     const legend = renderLegend({
       hasEmptyMarker: true,
       hasFilteredMarker: true,
     });
 
-    // One glyph and one caption. Two captions beside two identical circles
-    // promised a distinction the marker cannot draw: the hollow disc is the
-    // same disc for a shelter with nothing published and for one the filter
-    // emptied.
-    expect(legend.querySelectorAll("svg").length).toBe(1);
+    expect(legend.querySelectorAll("svg").length).toBe(2);
     expect(legend.textContent).toContain("Brez objavljenih živali");
-    expect(legend.textContent).not.toContain("Brez zadetkov s temi filtri");
+    expect(legend.textContent).toContain("Brez zadetkov s temi filtri");
+    const circles = legend.querySelectorAll("circle");
+    expect(circles[0].getAttribute("stroke-dasharray")).toBeNull();
+    const dash = circles[1].getAttribute("stroke-dasharray");
+    expect(dash).toBeTruthy();
+    for (const sharedTown of [false, true]) {
+      const html = renderMap([
+        { ...pin("unlisted", "Unlisted", "Ljubljana", 0), selectable: false },
+        pin("filtered", "Filtered", sharedTown ? "Ljubljana" : "Maribor", 0),
+      ]);
+      const marks = [...html.matchAll(/<circle[^>]*data-marker-empty[^>]*>/g)];
+      expect(marks).toHaveLength(2);
+      expect(marks.filter(([mark]) => mark.includes(`stroke-dasharray="${dash}"`))).toHaveLength(1);
+    }
   });
 
   it("puts the partly picked swatch on the ramp the map now draws there", () => {

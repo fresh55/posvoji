@@ -93,28 +93,6 @@ export const QUIET_DOC_LINK = `${MUTED_LINK} rounded-sm underline focus-visible:
 export const COARSE_ACTION = "pointer-coarse:min-h-11 pointer-coarse:px-4";
 
 /**
- * The frame on a control whose border is the thing that says it can be
- * pressed: the grid's "show more", the empty state's actions, the header's
- * login, the dock's shelter trigger, the way back to the top.
- *
- * --border stays the hairline it is, because it is also every divider and the
- * card's own edge, and a divider is not a component. This is the other job:
- * SC 1.4.11 asks 3:1 of the visual information that identifies a component,
- * and --border measures 1.26:1 light and 1.47:1 dark against the page while
- * --control-border measures 3.66:1 and 3.77:1 (2026-09-17 audit).
- *
- * The dark: term is not decoration, for the same reason QUIET_TRIGGER_CLASS
- * carries its own: ui/button.tsx's outline variant ships `dark:border-input`,
- * and twMerge keys a `dark:` class apart from an unprefixed one, so both
- * survive and the dark rule wins on specificity. Written out here once rather
- * than rediscovered at each call site. A caller on a primitive that spells no
- * dark border of its own, such as ui/select.tsx, wants `border-control-border`
- * alone and not this.
- */
-export const CONTROL_FRAME =
-  "border-control-border dark:border-control-border";
-
-/**
  * The size of a page's own title. One decision, and the phone step was missing
  * from five pages at once because the string had no home: they printed 30px on
  * a 390 viewport where the home page's own title prints 20.

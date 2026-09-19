@@ -111,7 +111,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
         <div className="space-y-2">
           {coverage.phone && (
             <Button asChild className="w-full pointer-coarse:h-11">
-              <a href={telHref(coverage.phone)}>
+              <a href={telHref(coverage.phone)} className="select-text">
                 <Phone className="size-4 shrink-0" aria-hidden />
                 {t("muniCall", { phone: coverage.phone })}
               </a>
@@ -123,7 +123,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
               variant="outline"
               className="w-full pointer-coarse:h-11"
             >
-              <a href={telHref(coverage.onCallPhone)}>
+              <a href={telHref(coverage.onCallPhone)} className="select-text">
                 <Phone className="size-4 shrink-0" aria-hidden />
                 {t("muniCallOnCall", { phone: coverage.onCallPhone })}
               </a>

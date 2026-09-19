@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
+import type { FilterCardLayout } from "./filter-card";
 
 export type FilterSectionKey =
   | "sex"
@@ -14,22 +15,9 @@ export type FilterSectionKey =
 
 const STORAGE_KEY = "posvoji:filter-sections";
 
-// Spol and Starost start open; inactive secondary sections fold until asked for.
-// The sidebar scrolls on its own from lg up, so page scrolling never reveals
-// what sits under its fold: at 1440x900 the panel held 972px of content in an
-// 876px box and the last two headers were off the bottom of it. Velikost is
-// 185px of that and the one of the three a visitor is least often after, so it
-// folds with the rest. A closed section still shows its selection in the
-// header, and a visitor who opens it keeps it open (the overrides below).
-//
-// The phone sheet folds on the same defaults since 2026-09-17, and it needs
-// them more: its body held 1586px of content in a 388px window at 390x844 and
-// 1649px in 189px at 320x568, against the panel's 1.07x (filter-sheet.tsx).
-// One set of defaults for both, because the question they answer is which
-// sections a visitor is usually after, and that does not change with the
-// width the list is drawn at.
-// The sheet also opens its initially active sections so a filtered link shows
-// its selected options immediately; a manual fold still wins for that opening.
+// Sex and age start open. On a short desktop, age starts folded so the
+// remaining headings fit. Saved choices always override this height default.
+// The sheet can reveal active filters for each opening independently.
 const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   sex: true,
   age: true,
@@ -41,14 +29,27 @@ const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   care: false,
 };
 
+const SHORT_DESKTOP = "(min-width: 64rem) and (max-height: 49.99rem)";
+
+function subscribeHeight(listener: () => void): () => void {
+  const query = window.matchMedia?.(SHORT_DESKTOP);
+  query?.addEventListener("change", listener);
+  return () => query?.removeEventListener("change", listener);
+}
+
+function shortDesktop(): boolean {
+  return window.matchMedia?.(SHORT_DESKTOP).matches ?? false;
+}
+
+function serverHeight(): boolean {
+  return false;
+}
+
 type Overrides = Partial<Record<FilterSectionKey, boolean>>;
 
 const NO_OVERRIDES: Overrides = {};
 
-// One store per tab, so every list reading the sections sees the same folds.
-// The sidebar and the phone sheet are both readers and they share it. Only one
-// of the two is on screen at a width, so they cannot disagree in front of a
-// visitor; a phone rotated into the lg layout finds the folds it left.
+// Share saved folds between the sidebar and sheet within this tab.
 const listeners = new Set<() => void>();
 let cache: Overrides | null = null;
 
@@ -73,8 +74,7 @@ function sameOverrides(a: Overrides, b: Overrides): boolean {
   return keys.every((key) => a[key] === b[key]);
 }
 
-// A second tab folding a section writes to the same storage. Reading it back
-// here keeps both tabs on one state instead of drifting apart.
+// Sync saved folds from other tabs.
 function onStorage(event: StorageEvent) {
   if (event.key !== null && event.key !== STORAGE_KEY) return;
   const next = readStored();
@@ -117,9 +117,7 @@ function write(next: Overrides) {
   for (const listener of listeners) listener();
 }
 
-/** Test-only. The store outlives a single render, so a test that folded a
-    section would hand its state to the next one. Drops the cache and wakes
-    every reader, which then reads storage again. */
+/** Test-only: discard cached folds and notify subscribers. */
 export function resetFilterSectionsStore(): void {
   cache = null;
   for (const listener of listeners) listener();
@@ -127,7 +125,13 @@ export function resetFilterSectionsStore(): void {
 
 /** Shared folds for sidebar and sheet. A sheet can reveal its active sections
     on mount without replacing the visitor's stored choices for other sections. */
-export function useFilterSections(initiallyOpen?: Overrides): {
+export function useFilterSections({
+  initiallyOpen,
+  layout = "sidebar",
+}: {
+  initiallyOpen?: Overrides;
+  layout?: FilterCardLayout;
+} = {}): {
   isOpen: (key: FilterSectionKey) => boolean;
   toggleSection: (key: FilterSectionKey) => void;
 } {
@@ -137,23 +141,29 @@ export function useFilterSections(initiallyOpen?: Overrides): {
     getServerSnapshot,
   );
   const [revealed, setRevealed] = useState(initiallyOpen);
+  const short = useSyncExternalStore(subscribeHeight, shortDesktop, serverHeight);
+  const defaultOpen = useCallback(
+    (key: FilterSectionKey) =>
+      DEFAULT_OPEN[key] && !(layout === "sidebar" && short && key === "age"),
+    [layout, short],
+  );
 
   const isOpen = useCallback(
     (key: FilterSectionKey) =>
-      revealed?.[key] || (overrides[key] ?? DEFAULT_OPEN[key]),
-    [overrides, revealed],
+      revealed?.[key] || (overrides[key] ?? defaultOpen(key)),
+    [overrides, revealed, defaultOpen],
   );
 
   const toggleSection = useCallback(
     (key: FilterSectionKey) => {
       const current = getSnapshot();
-      const open = revealed?.[key] || (current[key] ?? DEFAULT_OPEN[key]);
+      const open = revealed?.[key] || (current[key] ?? defaultOpen(key));
       if (revealed?.[key]) {
         setRevealed((previous) => ({ ...previous, [key]: false }));
       }
       write({ ...current, [key]: !open });
     },
-    [revealed],
+    [revealed, defaultOpen],
   );
 
   return { isOpen, toggleSection };

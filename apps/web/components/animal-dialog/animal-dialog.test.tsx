@@ -32,10 +32,11 @@ import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
-import { PHOTO_MORPH_MARK } from "@/lib/view-transition";
+import { PHOTO_MORPH_MARK, PHOTO_TRANSITION_NAME } from "@/lib/view-transition";
 import { stubIdleCallback } from "@/test/grid-stubs";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
 import { stubViewTransition } from "@/test/view-transition";
+import { PHOTO_MORPH_CLASS } from "./fan-photo-styles";
 import { dialogOnPage } from "@/test/animal-dialog";
 import {
   DESKTOP_FAN_QUERY,
@@ -2286,6 +2287,88 @@ describe("animal dialog", () => {
       ),
     );
   });
+
+  it("scrolls the card before PageDown or PageUp can change the animal", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    const card = slot(dialog, "animal-dialog-card");
+    Object.defineProperties(card, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 650 },
+    });
+
+    // Focus can be on a photo outside the scrollport or within the description.
+    fireEvent.keyDown(photoButton(dialog, "photo-spread", 1), { key: "PageDown" });
+    expect(card.scrollTop).toBe(200);
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
+    fireEvent.keyDown(card, { key: "PageDown" });
+    expect(card.scrollTop).toBe(400);
+    fireEvent.keyDown(card, { key: "PageDown" });
+    expect(card.scrollTop).toBe(450);
+    expect(window.location.pathname).toBe(animalPath(REX, "sl"));
+
+    fireEvent.keyDown(card, { key: "PageDown" });
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(MURI, "sl")));
+    const nextCard = slot(animalDialog(), "animal-dialog-card");
+    expect(nextCard.scrollTop).toBe(0);
+
+    nextCard.scrollTop = 100;
+    fireEvent.keyDown(nextCard, { key: "PageUp" });
+    expect(nextCard.scrollTop).toBe(0);
+    expect(window.location.pathname).toBe(animalPath(MURI, "sl"));
+    fireEvent.keyDown(nextCard, { key: "PageUp" });
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(REX, "sl")));
+  });
+
+  it("resets the reused card and navigation offset when the next animal also overflows", async () => {
+    renderGrid();
+    openCard("Rex");
+    const dialog = await screen.findByRole("dialog");
+    const card = slot(dialog, "animal-dialog-card");
+    Object.defineProperties(card, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 650 },
+    });
+    card.scrollTop = 250;
+    fireEvent.scroll(card);
+    fireEvent.click(edgeNav(dialog, "Naslednja žival"));
+    await waitFor(() => expect(window.location.pathname).toBe(animalPath(MURI, "sl")));
+    expect(slot(animalDialog(), "animal-dialog-card")).toBe(card);
+    expect(card.scrollTop).toBe(0);
+    expect(slot(animalDialog(), "animal-dialog-frame").style.getPropertyValue("--nav-shift"))
+      .toBe("0px");
+  });
+
+  it.each([false, true])(
+    "opens the selected photo with native transitions available: %s",
+    async (nativeTransition) => {
+      const started = nativeTransition
+        ? stubViewTransition(() => {
+            const frame = Array.from(document.querySelectorAll<HTMLElement>("[style]"))
+              .find((element) =>
+                element.style.viewTransitionName === PHOTO_TRANSITION_NAME ||
+                element.classList.contains(PHOTO_MORPH_CLASS),
+              );
+            return frame?.querySelector("img")?.getAttribute("src");
+          })
+        : [];
+      renderGrid();
+      await dialogOnPage();
+      const link = screen.getByRole("heading", { name: "Rex" }).closest("a")!;
+      fireEvent.keyDown(link, { key: "ArrowRight" });
+      fireEvent.click(link);
+      const dialog = await screen.findByRole("dialog");
+      expect(window.location.search).toBe("?foto=2");
+      expect(photoButton(dialog, "photo-spread", 2).getAttribute("aria-current"))
+        .toBe("true");
+      if (nativeTransition) {
+        expect(started).toHaveLength(1);
+        expect(started[0].before).toContain("rex-2");
+        expect(started[0].after).toContain("rex-2");
+      }
+    },
+  );
 
   it("walks the list with the page keys and stops at the ends", async () => {
     window.history.replaceState(null, "", "/?zival=rex");

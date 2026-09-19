@@ -43,6 +43,7 @@ export const DATA_POLICY_PATHS = {
 export type SiteLink = {
   key: SiteLinkKey;
   href: string;
+  hrefLang?: Locale;
   label: string;
   /** De-emphasised where it renders: almost nobody reading these links is
       shelter staff. */
@@ -133,6 +134,7 @@ export function siteLinks(locale: Locale, messages: Messages): SiteLink[] {
     {
       key: "portal",
       href: "/portal/prijava",
+      hrefLang: "sl",
       label: messages.shelterLogin,
       quiet: true,
     },

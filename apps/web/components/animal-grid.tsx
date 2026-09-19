@@ -31,6 +31,7 @@ import {
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
+import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   PREHYDRATION_DATASET_KEY,
@@ -51,34 +52,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CARDS_PER_CLICK } from "./grid-rendering";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 import { useIncrementalGrid } from "./use-incremental-grid";
 
-// The dialog and everything under it: the photo fan, the lightbox, the share
-// sheet, the shelter block and the dialog's own motion, which is the largest
-// single thing this page would otherwise put in the document. The grid, the
-// filters and the cards need none of it to draw. Measured with
-// scripts/measure-chunks.mjs: the home document asked for 397.3 KB of script
-// gzipped with it imported and 373.7 KB with it fetched, so the chunk that
-// moved off the document is the 23.6 KB between them. Those numbers still
-// describe the document after the idle mount below, because the chunk is
-// still a fetch that happens after load; what changed is when it is asked
-// for, not who asks the document for it.
-//
-// ssr: false because there is nothing here to prerender. Which animal is open
-// is an address, the export has no server to read one with
-// (getServerLocationSnapshot in lib/location-search.ts returns "" and has to),
-// and the component returns null until an animal is selected, so the server
-// pass would emit the chunk's preload for markup that is empty either way.
-//
-// loading is null for the same reason the empty state has no skeletons: until
-// an animal is chosen there is no surface here, and a placeholder over the
-// grid would be a promise of a dialog nobody opened. The fallback is also the
-// thing the idle mount below keeps out of the click: React holds a commit
-// that only resolves a Suspense fallback until 300ms after that fallback was
-// shown (FALLBACK_THROTTLE_MS in react-dom-client), so a dialog first mounted
-// inside the click waits out the rest of those 300ms before it draws.
+// Load the dialog separately from the grid. The static export has no open
+// animal, so skip SSR and render no placeholder. The idle mount below prepares
+// the dialog before a click to avoid the Suspense fallback delay.
 const AnimalDialog = dynamic(
   () =>
     import("@/components/animal-dialog/animal-dialog").then(
@@ -87,9 +66,7 @@ const AnimalDialog = dynamic(
   { ssr: false, loading: () => null },
 );
 
-// How long a cleared filter state can still be taken back. Long enough to
-// read the row and reach for it, short enough that the offer is gone before
-// it becomes part of the furniture.
+// Time available to undo clearing filters.
 export const UNDO_WINDOW_MS = 7000;
 
 // When a browser with no requestIdleCallback does the idle work below
@@ -137,23 +114,6 @@ function shelterAbsenceKey(count: number): TranslationKey {
   if (count === 2) return "noResultsShelterDual";
   return "noResultsShelterPlural";
 }
-
-/** What the empty state's buttons wear: a touch line on a coarse pointer, and
- *  a frame that can be seen.
- *
- *  They are `size="sm"`, which is a mouse's height, and on a phone this state
- *  holds the only controls on screen. Grown rather than overlaid, and padded
- *  to match, for the reason globals.css states at the tap-target utility. The
- *  gate asks the pointer rather than the width, which is what the rest of the
- *  filter bar now does: a 1180px tablet is a thumb and a 1024px window is a
- *  mouse.
- *
- *  CONTROL_FRAME is the same argument in the other dimension: these are
- *  outline buttons with no fill on an empty page, so their edge is the whole
- *  of what says they are controls. Why that is a token and not --border is
- *  written where the constant is (lib/link-styles.ts).
- */
-const EMPTY_STATE_ACTION = `${COARSE_ACTION} ${CONTROL_FRAME}`;
 
 // The two states that say there is nothing here: no dataset at all, and no
 // match for the current filter. They are one shape deliberately, because they
@@ -655,34 +615,23 @@ export function AnimalGrid({
                 <Button
                   variant="outline"
                   size="sm"
-                  className={EMPTY_STATE_ACTION}
+                  className={COARSE_ACTION}
                   onClick={() => toggleMany("shelter", filters.shelter)}
                 >
                   {messages.showFromAllShelters}
                 </Button>
               )}
-              {/* This state draws no clear of its own at any width. The pills
-                  that name the filters are above the grid everywhere now: the
-                  sticky bar's row from lg and the in-flow row below it
-                  (animal-filters.tsx). That row marks the chip costing the
-                  most when nothing matches and ends in the clear, so a second
-                  way out down here would be the same press a screenful lower,
-                  away from the pills that say what it takes off.
-
-                  The species is what is left, because no clear touches it
-                  (use-animal-filters.ts). With no pills at all the state is a
-                  species tab with nothing in it, which a deep link to a
-                  species the roster does not hold can reach, and the species
-                  is then the only thing to undo. Nothing else on any width
-                  offers that press, so it stays at every width. */}
-              {chips.length === 0 && filters.species !== "all" && (
+              {/* Filter clearing stays in the chip rows. This action widens
+                  the species scope while keeping the remaining filters, and
+                  is offered only when the existing facet count promises results. */}
+              {filters.species !== "all" && speciesTally.all > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className={EMPTY_STATE_ACTION}
+                  className={COARSE_ACTION}
                   onClick={() => setSpecies("all")}
                 >
-                  {messages.showAllSpecies}
+                  {t("showAllSpeciesCount", { count: speciesTally.all })}
                 </Button>
               )}
             </EmptyState>
@@ -889,4 +838,3 @@ export {
   ROWS_PER_STEP_BEHIND_DIALOG,
   TARGET_ROWS,
 } from "./grid-rendering";
-import { COARSE_ACTION, CONTROL_FRAME, SOURCE_LINK } from "@/lib/link-styles";

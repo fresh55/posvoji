@@ -678,13 +678,13 @@ function renderReal() {
 
 // A fix that arrives the moment the button is pressed, so the finder is in the
 // state this test is about without any waiting.
-function stubGeolocationAt(lat: number, lon: number) {
+function stubGeolocationAt(lat: number, lon: number, accuracy = 50) {
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
       getCurrentPosition: vi.fn((success: PositionCallback) => {
         success({
-          coords: { latitude: lat, longitude: lon },
+          coords: { latitude: lat, longitude: lon, accuracy },
         } as GeolocationPosition);
       }),
     },
@@ -696,6 +696,47 @@ afterEach(() => {
 });
 
 describe("MunicipalityFinder typed text against the device position", () => {
+  it("keeps a coarse singleton tentative until a keyboard confirmation", () => {
+    stubGeolocationAt(46.0569, 14.5058, 5000);
+    const onAnswer = vi.fn();
+    render(<I18nProvider locale="sl"><MunicipalityFinder entries={ENTRIES} onAnswer={onAnswer} /></I18nProvider>);
+    fireEvent.click(screen.getByRole("button", { name: LOCATE }));
+
+    expect(screen.getByText(/^Lokacija je približna/)).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Ljubljana/ })).toBeTruthy();
+    expect(onAnswer).toHaveBeenLastCalledWith(null);
+    expect(new URLSearchParams(window.location.search).has("kraj")).toBe(false);
+
+    const input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(input.getAttribute("aria-activedescendant")).toBeTruthy();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(onAnswer).toHaveBeenLastCalledWith(expect.objectContaining({ municipality: "Ljubljana" }));
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Ljubljana");
+  });
+
+  it("lets a typed place replace a coarse device suggestion without confirmation", () => {
+    stubGeolocationAt(46.0569, 14.5058, 5000);
+    renderFinder();
+    fireEvent.click(screen.getByRole("button", { name: LOCATE }));
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "Maribor" } });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("kraj")).toBe("Maribor");
+  });
+
+  it("asks for a typed place when the device is outside lookup range", () => {
+    stubGeolocationAt(45.815, 15.9819);
+    renderFinder();
+    fireEvent.click(screen.getByRole("button", { name: LOCATE }));
+    expect(screen.getByText(/^Lokacije ni mogoče povezati/)).toBeTruthy();
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(window.location.search).toBe("");
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "1000" } });
+    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+  });
+
   it("stops answering with the fix as soon as something is typed", () => {
     // Somebody in Ljubljana presses the location button, then types the občina
     // the animal was actually found in. 26 občine, Kungota among them, have no

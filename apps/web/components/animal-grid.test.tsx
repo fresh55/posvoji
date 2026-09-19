@@ -410,9 +410,34 @@ describe("animal grid empty state", () => {
       screen.queryAllByRole("button", { name: "Počisti filtre" }),
     ).toHaveLength(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "Pokaži vse živali" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pokaži vse vrste (3)" }));
 
     expect(query()).toBe("");
+  });
+
+  it.each([
+    ["sl", "Pokaži vse vrste (1)"],
+    ["en", "Show all species (1)"],
+  ] as const)("offers cross-species recovery with active chips in %s", (locale, name) => {
+    window.history.replaceState(null, "", "/?vrsta=ostalo&zavetisce=muri&spol=samec");
+    renderGrid(ANIMALS, locale);
+
+    fireEvent.click(screen.getByRole("button", { name }));
+
+    const params = new URLSearchParams(query());
+    expect(params.has("vrsta")).toBe(false);
+    expect(params.get("zavetisce")).toBe("muri");
+    expect(params.get("spol")).toBe("samec");
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getByRole("article", { name: "dog-muri" })).toBeTruthy();
+  });
+
+  it.each(["?vrsta=ostalo&spol=samica", "?spol=samica"])("offers no species recovery when no species matches for %s", (search) => {
+    window.history.replaceState(null, "", `/${search}`);
+    renderGrid(ANIMALS);
+
+    expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Pokaži vse vrste/ })).toBeNull();
   });
 
   it("keeps the mobile dock and its shelter picker at a single result", () => {

@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { animalCount } from "@/lib/labels";
-import { CONTROL_FRAME } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -162,15 +161,7 @@ export function PickerFooter({ controller, hug = false }: {
         {resultCount === 0 && recovery && (
           <Button
             variant="outline"
-            // The one control in this row that is a frame and nothing else:
-            // no fill, no ink of its own, standing beside the filled primary.
-            // --border measures 1.26:1 light and 1.47:1 dark on this ground,
-            // which is a divider's strength and not a component's; the grid's
-            // empty state answers the same case with the same token.
-            className={cn(
-              "min-h-11 flex-1 shadow-none sm:flex-none",
-              CONTROL_FRAME,
-            )}
+            className="min-h-11 flex-1 shadow-none sm:flex-none"
             onClick={recovery.run}
           >
             {recovery.label}

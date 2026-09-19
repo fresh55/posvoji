@@ -105,7 +105,7 @@ describe("the home cat", () => {
       container.querySelector('[data-testid="cat"]')!.className,
     ).toContain("aspect-[192/152]");
     expect(CAT_CORNER).toBe(
-      "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short:[--cat-corner:0rem]",
+      "[--cat-corner:11.5rem] lg:[--cat-corner:12.5rem] short-desktop:[--cat-corner:10rem] short:[--cat-corner:0rem]",
     );
   });
 

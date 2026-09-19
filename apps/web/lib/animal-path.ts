@@ -118,9 +118,8 @@ export function findAnimalBySlug<T extends AnimalFields>(
 // `zival`, and the same word in both languages: an address is one address
 // whichever language the page it names is read in.
 //
-// Written by the share sheet and nowhere else. Stepping through the photos
-// does not rewrite the address, so the parameter says where a visitor was
-// when they handed the link on rather than where they are now.
+// Written when sharing a photo or opening it from a card. Stepping through
+// the dialog's photos does not rewrite the address.
 export const PHOTO_PARAM = "foto";
 
 /**
@@ -165,6 +164,12 @@ export function clampPhotoIndex(
  * one people read out loud.
  */
 export function pathWithPhoto(path: string, index: number | undefined): string {
-  if (index === undefined || !Number.isInteger(index) || index < 1) return path;
-  return `${path}?${PHOTO_PARAM}=${index + 1}`;
+  const query = photoQuery(index);
+  return query ? `${path}?${query}` : path;
+}
+
+/** The photo parameter shared by standalone links and filtered dialog opens. */
+export function photoQuery(index: number | undefined): string {
+  if (index === undefined || !Number.isInteger(index) || index < 1) return "";
+  return `${PHOTO_PARAM}=${index + 1}`;
 }

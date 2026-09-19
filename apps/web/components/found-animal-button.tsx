@@ -62,7 +62,7 @@ export function FoundAnimalButton() {
       className={`h-auto gap-1 p-0 text-sm font-normal ${QUIET_UNDERLINE} underline-offset-4 pointer-coarse:tap-target`}
     >
       <a href={FOUND_ANIMAL_PATHS[locale]}>
-        {messages.muniPromptTitle}
+        {messages.foundAnimalLink}
         {/* The one mark left, and it is an affordance rather than a subject:
             the words say what this is, the arrow says it goes somewhere. Small
             enough to read as punctuation. */}

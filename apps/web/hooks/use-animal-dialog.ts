@@ -14,6 +14,7 @@ import {
   animalSlugFromPath,
   findAnimalBySlug,
   PHOTO_PARAM,
+  photoQuery,
 } from "@/lib/animal-path";
 import {
   commitLocation,
@@ -120,12 +121,16 @@ export function useAnimalDialog({
   }, [animals, basePath, locale, openId]);
 
   const open = useCallback(
-    (id: string) => {
+    (id: string, photoIndex = 0) => {
       const animal = animals.find((candidate) => candidate.id === id);
       if (!animal) return;
       commitLocation(
         animalPath(animal, locale),
-        queryWithout(PHOTO_PARAM),
+        mergeOwnedParams(
+          window.location.search,
+          [PHOTO_PARAM],
+          photoQuery(photoIndex),
+        ),
         "push",
         PUSHED_BY_DIALOG,
       );

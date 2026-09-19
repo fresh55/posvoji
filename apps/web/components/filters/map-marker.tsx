@@ -48,6 +48,7 @@ import { mapAvailabilityText, shelterAvailability } from "./map-availability";
 // at 2.295, within a rounding error of where it was.
 const EMPTY_MARKER_RADIUS_SCALE = 0.54;
 const EMPTY_MARKER_STROKE_WIDTH = 0.7;
+const FILTERED_MARKER_DASH = "1.6 1.2";
 const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
 
 // The same mark at legend size. The viewBox runs in the map's own user units,
@@ -55,7 +56,10 @@ const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
 // markerRadius(0) is the radius a shelter with no animals is sized at, less
 // half the coin stroke, times the scale the hollow disc takes. The box adds a
 // stroke's width of air on each side so the circle is not clipped by it.
-export function EmptyMarkerGlyph({ className }: { className?: string }) {
+export function EmptyMarkerGlyph({
+  className,
+  filtered = false,
+}: { className?: string; filtered?: boolean }) {
   const r =
     (markerRadius(0) - MARKER_STROKE_WIDTH / 2) * EMPTY_MARKER_RADIUS_SCALE;
   const box = (r + EMPTY_MARKER_STROKE_WIDTH) * 2;
@@ -63,6 +67,7 @@ export function EmptyMarkerGlyph({ className }: { className?: string }) {
     <svg aria-hidden viewBox={`0 0 ${box} ${box}`} className={className}>
       <circle
         data-legend-empty=""
+        strokeDasharray={filtered ? FILTERED_MARKER_DASH : undefined}
         cx={box / 2}
         cy={box / 2}
         r={r}
@@ -717,6 +722,7 @@ export const Marker = memo(function Marker({
           glyphScale={1.15}
           selected={state === true}
           live={live}
+          filtered={town.shelters[0].selectable !== false}
           highlighted={highlighted}
         />
       ) : dominant ? (
@@ -844,6 +850,7 @@ function MarkerDisc({
   highlighted,
   hoverScope = "group",
   emptyScale = EMPTY_MARKER_RADIUS_SCALE,
+  filtered,
 }: {
   cx: number;
   cy: number;
@@ -868,6 +875,7 @@ function MarkerDisc({
    *  passes 1 and draws the hollow mark at its own radius, which lands it
    *  within a rounding error of the size a lone empty marker draws. */
   emptyScale?: number;
+  filtered: boolean;
 }) {
   const glyph = r * glyphScale;
   const groupHover = hoverScope === "group";
@@ -894,6 +902,7 @@ function MarkerDisc({
             row explaining it cannot drift. */}
         <circle
           data-marker-empty=""
+          strokeDasharray={filtered ? FILTERED_MARKER_DASH : undefined}
           cx={cx}
           cy={cy}
           r={r * emptyScale}
@@ -994,6 +1003,7 @@ function markProps(
   const picked = selected.includes(shelter.value);
   return {
     selected: picked,
+    filtered: shelter.selectable !== false,
     // An off-site shelter keeps its own mark whatever its town holds: the
     // mark, not the town, is what says "this one you can pick".
     live: live && shelterIsSelectable(shelter, selected),

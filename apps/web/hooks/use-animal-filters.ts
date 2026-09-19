@@ -42,10 +42,6 @@ import {
 /** The results block, which begins with the toolbar and holds every card. */
 const RESULTS_ANCHOR = 'section[aria-labelledby="rezultati"]';
 
-// Past this far, a smooth scroll is a long ride through content nobody asked
-// to see. The jump is the point, so beyond two screens it is instant.
-const SMOOTH_SCROLL_LIMIT = 2;
-
 /**
  * Answering a filter with the same scroll offset leaves the visitor deep
  * inside a list they have never seen. Measured on a 390px phone: scrolled to
@@ -85,9 +81,10 @@ export function scrollToResults(): void {
   if (!results) return;
   const top = results.getBoundingClientRect().top + window.scrollY;
   if (window.scrollY <= top) return;
-  const far = window.scrollY - top > window.innerHeight * SMOOTH_SCROLL_LIMIT;
-  const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  window.scrollTo({ top, behavior: far || still ? "auto" : "smooth" });
+  // Motion measures the incoming cards and restores the scroll it captured.
+  // Finish this move immediately so that measurement captures the new position
+  // instead of cancelling an in-flight smooth scroll.
+  window.scrollTo({ top, behavior: "auto" });
 }
 
 /**

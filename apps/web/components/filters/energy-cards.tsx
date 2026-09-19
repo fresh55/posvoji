@@ -473,7 +473,7 @@ export function EnergyCards({
   layout?: FilterCardLayout;
   collapse?: SectionCollapse;
 }) {
-  const { locale, messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const {
     celebration,
@@ -500,7 +500,9 @@ export function EnergyCards({
   return (
     <FilterCardSection
       label={groupLabel("energy", locale)}
-      hint={messages.energyFilterHint}
+      hint={t("energyFilterHint", {
+        count: Array.from(counts.values()).reduce((total, count) => total + count, 0),
+      })}
       active={selected.length > 0}
       onReset={() => {
         clearCelebration();

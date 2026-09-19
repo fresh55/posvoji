@@ -163,33 +163,17 @@ export function MapLegend({
           {messages.mixedRegionLegend}
         </span>
       )}
-      {/* The hollow circle a shelter with no animals listed gets. Every other
-          mark on the map either answers on hover or earns a row here the
-          moment it appears; this one is too small to aim a pointer at, so the
-          callout never gets asked and the row is the only way to learn it.
-          The glyph comes from map-marker.tsx, drawn from the same classes and
-          the same radius-to-stroke proportion the real circle uses.
-
-          This row follows the markers and not the docks, and it follows them
-          through the map's own answer rather than through a breakpoint that
-          guesses at it. max-md:hidden used to be what kept the row off a
-          phone; it also kept it off a tablet that draws markers, and left it
-          standing on a landscape phone that does not. */}
-      {(hasEmptyMarker || hasFilteredMarker) && (
+      {/* Match each hollow marker's stroke, including when both states occur. */}
+      {hasEmptyMarker && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <EmptyMarkerGlyph className="size-3.5 shrink-0" />
-          {/* One row, because the plate draws one mark. A shelter with nothing
-              published and a shelter whose animals the filter removed are the
-              same hollow circle (MarkerDisc's !selected && !live branch in
-              map-marker.tsx), so two captions beside two identical glyphs
-              promised a distinction the map cannot draw: fifteen hollow discs
-              and a key claiming some of them were one thing and some the
-              other. With both states on the plate the row takes the caption
-              that is true of every hollow circle, since the other one is only
-              true of half the circles it would be explaining. */}
-          {hasEmptyMarker
-            ? mapAvailabilityText[locale].noListingsLegend
-            : mapAvailabilityText[locale].noMatchesLegend}
+          {mapAvailabilityText[locale].noListingsLegend}
+        </span>
+      )}
+      {hasFilteredMarker && (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <EmptyMarkerGlyph filtered className="size-3.5 shrink-0" />
+          {mapAvailabilityText[locale].noMatchesLegend}
         </span>
       )}
       {/* Only once there is a point to explain. The ring repeats the dashed

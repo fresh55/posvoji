@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
-import { CONTROL_FRAME } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 
 // The grid is unpaginated: every match renders, which at 503 animals two to a
@@ -165,12 +164,6 @@ export function BackToTop() {
         // light photo at 1280 and 2.00:1 at 390, against 8.9:1 on the page
         // ground (2026-09-17 audit). From 1024 to 1279 the button overlaps the
         // last card column by 36px, which is how it comes to stand on photos.
-        //
-        // CONTROL_FRAME is the other half of the same problem and the reason
-        // that constant exists: the frame is what says this disc is a control,
-        // and --border measured 1.11:1 over a photo at worst and 1.31:1 at
-        // best (lib/link-styles.ts).
-        CONTROL_FRAME,
         "size-11 rounded-full bg-background/90 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-background dark:bg-background/90 dark:hover:bg-background",
         shown ? "opacity-100" : "pointer-events-none opacity-0",
       )}

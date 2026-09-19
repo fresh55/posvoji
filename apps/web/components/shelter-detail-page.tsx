@@ -103,6 +103,7 @@ function ContactButton({
       <a
         href={href}
         data-contact={channel}
+        className={channel !== "website" ? "select-text" : undefined}
         aria-label={label}
         {...(external && { target: "_blank", rel: "noreferrer" })}
       >

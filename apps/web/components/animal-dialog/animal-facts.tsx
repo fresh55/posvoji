@@ -21,11 +21,13 @@ import {
 } from "@/components/ui/popover";
 import type { AnimalFields } from "@/lib/animal";
 import { useAnimalDescription } from "@/lib/animal-descriptions";
-import { GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
+import { ENERGY_ICONS, GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
 import {
   ageGroup,
   ageInMonths,
   GOOD_WITH_KEYS,
+  groupLabel,
+  optionLabel,
   toggleLabel,
   togglesAskedOf,
   type GoodWithKey,
@@ -479,13 +481,14 @@ export function AnimalFacts({
   const applicable = togglesAskedOf(animal.species);
   const medical = applicable.filter((toggle) => toggle.matches(animal));
   // One row of pills cannot describe three dogs, so a listing that names
-  // several of them leaves the age, the sex and the size to the text below.
+  // several of them leaves age, sex, size and energy to the text below.
   // The health and status pills stay: those the shelter answered for the
   // listing as a whole.
   const severalAnimals = namesSeveralAnimals(animal.name);
   const hasIdentity =
     !severalAnimals &&
-    (sex !== undefined || months !== undefined || animal.size !== undefined);
+    (sex !== undefined || months !== undefined || animal.size !== undefined ||
+      animal.energy !== undefined);
   const fullRecord = medical.length === applicable.length;
   // Named only beside an itemised row: a full record has no gap to name, and a
   // shelter that recorded nothing at all says nothing here either.
@@ -579,6 +582,14 @@ export function AnimalFacts({
                   prefix={messages.factSize}
                 >
                   {sizeLabel(animal.size, locale)}
+                </Fact>
+              )}
+              {animal.energy && (
+                <Fact
+                  icon={ENERGY_ICONS[animal.energy]}
+                  prefix={groupLabel("energy", locale)}
+                >
+                  {optionLabel("energy", animal.energy, [], locale)}
                 </Fact>
               )}
             </ul>

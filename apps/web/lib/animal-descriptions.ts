@@ -25,16 +25,14 @@ import type { ClientAnimalSource } from "@/lib/animal";
  * writer is the grid above them, and neither is a parent of the other.
  */
 
-/** id -> the shelter's own text. Written by
- *  scripts/generate-animal-descriptions.mjs, one entry per animal that has
- *  one; an animal with no description is simply absent. */
+/** Dialog-only text and provenance, written by generate-animal-descriptions. */
 type AnimalDetail = { description?: string; source?: ClientAnimalSource };
 // Accept old description-only files during a rolling static deployment.
 export type AnimalDescriptions = Readonly<Record<string, string | AnimalDetail>>;
 
 // Under public/, so `output: export` copies it into out/ and a static host
 // serves it with no route handler.
-const SOURCE = "/generated/animal-descriptions.json";
+const SOURCE = "/generated/animal-details.json";
 
 const EMPTY: AnimalDescriptions = {};
 

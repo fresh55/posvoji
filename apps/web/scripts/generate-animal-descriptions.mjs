@@ -17,7 +17,7 @@
 //
 // Rebuild with: pnpm --filter web generate:animal-descriptions
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DATASET = new URL("../../../data/dist/animals.json", import.meta.url);
@@ -52,9 +52,7 @@ if (existsSync(DATASET)) {
   animals = data.animals;
 }
 
-// Only what the dialog would print. An animal with no description is absent
-// from the map, and the dialog renders nothing for it, which is what it does
-// today for an animal whose description never arrived in the payload.
+// Dialog-only descriptions and source metadata, keyed by animal id.
 const descriptions = {};
 for (const animal of animals) {
   if (typeof animal.id !== "string") continue;
@@ -68,7 +66,12 @@ for (const animal of animals) {
 const json = JSON.stringify(descriptions);
 const outPath = typeof OUT === "string" ? OUT : fileURLToPath(OUT);
 mkdirSync(dirname(outPath), { recursive: true });
-writeFileSync(outPath, json);
+// Preserve the old string-only endpoint for tabs opened before deployment.
+writeFileSync(outPath, JSON.stringify(Object.fromEntries(
+  Object.entries(descriptions).filter(([, detail]) => detail.description)
+    .map(([id, detail]) => [id, detail.description]),
+)));
+writeFileSync(join(dirname(outPath), "animal-details.json"), json);
 
 console.log(
   `animal-descriptions: ${Object.keys(descriptions).length}/${animals.length} animals, ${json.length} bytes`,

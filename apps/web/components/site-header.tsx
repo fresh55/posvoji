@@ -1,5 +1,7 @@
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
+import { LogoHearts } from "@/components/logo-hearts";
+import logoMotion from "@/components/logo-hearts.module.css";
 import { ShelterLogin, SiteMenu, SiteNav } from "@/components/site-menu";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
@@ -116,7 +118,10 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
           className="flex min-w-0 pointer-coarse:tap-target items-center gap-2 font-medium tracking-tight"
           aria-label="posvoji.si"
         >
-          <Logo className="h-10 w-auto shrink-0" />
+          <span className="relative inline-flex h-10 shrink-0">
+            <Logo className={`h-full w-auto ${logoMotion.blinkable}`} />
+            <LogoHearts />
+          </span>
           <span className="truncate">posvoji.si</span>
         </a>
         <SiteNav paths={languagePaths} />

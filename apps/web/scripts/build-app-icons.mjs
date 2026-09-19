@@ -1,72 +1,65 @@
-// The home-screen icons the manifest points at, drawn from app/icon.svg.
-//
-// Run by hand when the mark changes: `node scripts/build-app-icons.mjs` from
-// apps/web. A one-off rather than a build step, because the mark is a file in
-// the repo that changes about as often as the logo does, and a build that
-// rasterises it every time would rewrite three binaries on every deploy.
-//
-// Three files, all on white. White because the manifest's background_color is
-// white and a splash that fades into an icon of another colour is a seam; the
-// mark itself carries no plate (app/icon.svg says why: the header masks that
-// same file), so on a transparent PNG a dark launcher would lose it.
-//
-// The maskable one is the reason for the other two being separate. Android
-// crops a maskable icon to whatever shape the launcher uses, from a circle to
-// a squircle, and only guarantees the inner circle of 80% diameter. Anything
-// in the corners is the launcher's to cut. So the mark is drawn at half the
-// canvas there, centred, which leaves its corners at 181px from the centre of
-// a 512px icon against the 205px the safe circle allows, and the padding that
-// looks generous next to the plain icons is what keeps the paw whole on a
-// round launcher.
+// Regenerate committed brand exports after editing public/logo.svg or app/icon.svg:
+// run `node scripts/build-app-icons.mjs` from apps/web.
+// Full animal mark: home-screen icons and Apple icon.
+// Compact roof-and-heart mark: SVG browser icon and multi-size ICO fallback.
 import sharp from "sharp";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const mark = readFileSync(join(webRoot, "app/icon.svg"));
+const mark = readFileSync(join(webRoot, "public/logo.svg"));
+const compactMark = readFileSync(join(webRoot, "app/icon.svg"));
 
-// Density rather than a width: librsvg rasterises at the SVG's own size times
-// this, and a 512px icon grown from a 128px unit box would be soft.
-const source = () => sharp(mark, { density: 1200 });
-
-/** One square PNG: the mark centred on white, inset by a share of the side. */
-async function icon(size, inset) {
+/** Centre the mark on white so it stays visible on any launcher background. */
+async function icon(source, size, inset) {
   const box = Math.round(size * (1 - 2 * inset));
-  const drawn = await source()
+  const drawn = await sharp(source, { density: 1200 })
     .resize({ width: box, height: box, fit: "inside" })
     .png()
     .toBuffer({ resolveWithObject: true });
   return sharp({
-    create: {
-      width: size,
-      height: size,
-      channels: 4,
-      background: "#ffffff",
-    },
+    create: { width: size, height: size, channels: 4, background: "#ffffff" },
   })
-    .composite([
-      {
-        input: drawn.data,
-        left: Math.round((size - drawn.info.width) / 2),
-        top: Math.round((size - drawn.info.height) / 2),
-      },
-    ])
+    .composite([{
+      input: drawn.data,
+      left: Math.round((size - drawn.info.width) / 2),
+      top: Math.round((size - drawn.info.height) / 2),
+    }])
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
 
-// 12% on the plain pair: enough that the mark is not flush against a rounded
-// corner, little enough that the icon reads at 48px in a launcher's tray.
-// 25% on the maskable one, which is the safe circle above.
+// 25% padding keeps the maskable mark within Android's 80%-diameter safe circle.
 const sheet = [
   ["public/icon-192.png", 192, 0.12],
   ["public/icon-512.png", 512, 0.12],
   ["public/icon-maskable-512.png", 512, 0.25],
+  ["app/apple-icon.png", 180, 0.12],
 ];
-
 for (const [file, size, inset] of sheet) {
-  const png = await icon(size, inset);
+  const png = await icon(mark, size, inset);
   writeFileSync(join(webRoot, file), png);
-  console.log(`${file}: ${size}x${size}, ${Math.round(inset * 100)}% inset, ${png.length} bytes`);
+  console.log(`${file}: ${size}x${size}, ${png.length} bytes`);
 }
+
+// ICO directory entries point to PNG payloads, supported by modern browsers.
+// The compact SVG already includes clear space; do not shrink it again here.
+const sizes = [16, 32, 48];
+const images = await Promise.all(sizes.map((size) => icon(compactMark, size, 0)));
+const directory = Buffer.alloc(6 + sizes.length * 16);
+directory.writeUInt16LE(1, 2);
+directory.writeUInt16LE(sizes.length, 4);
+let offset = directory.length;
+for (const [index, size] of sizes.entries()) {
+  const entry = 6 + index * 16;
+  directory[entry] = size;
+  directory[entry + 1] = size;
+  directory.writeUInt16LE(1, entry + 4);
+  directory.writeUInt16LE(32, entry + 6);
+  directory.writeUInt32LE(images[index].length, entry + 8);
+  directory.writeUInt32LE(offset, entry + 12);
+  offset += images[index].length;
+}
+writeFileSync(join(webRoot, "app/favicon.ico"), Buffer.concat([directory, ...images]));
+console.log("app/favicon.ico: 16, 32, 48px");

@@ -18,12 +18,12 @@ import { SITE_NAME, THEME_COLOR } from "@/lib/site-metadata";
  * share, and a shared link opened from a home screen icon should still show
  * the status bar the phone would otherwise hide.
  *
- * The SVG serves any size where a browser takes one, the 180px PNG is what
+ * The compact SVG is also used in browser tabs, the 180px PNG is what
  * iOS reads, and the two square PNGs beside them are what an Android install
  * needs: Chrome asks for 192 and 512 and puts anything else, an SVG included,
  * inside a white circle of its own. The maskable one is the same mark with
  * the padding a launcher's crop needs, drawn by scripts/build-app-icons.mjs
- * from the same app/icon.svg, so the three cannot drift apart.
+ * from public/logo.svg, so the full animal mark stays consistent across them.
  */
 
 // The same declaration app/robots.ts and app/sitemap.ts carry, and for the

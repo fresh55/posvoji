@@ -4,8 +4,10 @@ Sections A and B of the mobile performance report, based on `934ff1a`.
 
 ## Page loading
 
-- Inline production CSS and use `font-display: optional` for Latin Inter,
-  without preloading fonts. The Slovenian subset keeps `swap`. Inlining trades
+- Inline production CSS and use `font-display: swap` for both Latin Inter
+  and the Slovenian subset. Only the small Slovenian subset is preloaded.
+  Latin-only `optional` left cold visits mixing Arial letters with Inter
+  accents, so both faces now swap when ready. Inlining trades
   an earlier first paint for larger HTML on repeat visits; see
   [DEPLOY-HEADERS.md](DEPLOY-HEADERS.md).
 - Prerender 24 cards and retain first-photo blur only for those animals in

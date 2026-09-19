@@ -198,6 +198,22 @@ function stored(): unknown {
 }
 
 describe("collapsible filter sections", () => {
+  it("counts recorded energy with other filters applied and its own selection lifted", () => {
+    renderSidebar();
+    fireEvent.click(header("Energija"));
+    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 2\./)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Miren,/ }));
+    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 2\./)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Samec,/ }));
+    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 1\./)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Miren,/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Senior,/ }));
+    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 0\./)).toBeTruthy();
+  });
+
   it("opens what a visitor reaches for first and folds the rest away", () => {
     // Two sections and no more. The panel scrolls on its own, so anything
     // past its fold is reached by scrolling the panel and not the page, and

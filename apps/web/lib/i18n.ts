@@ -263,7 +263,7 @@ const sl = {
   resetShelterFilters: "Ponastavi izbor zavetišč",
   ageFilterHint: "Izberi eno ali več starosti.",
   energyFilterHint:
-    "Po presoji zavetišča. Živali brez podatka ta filter skrije.",
+    "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: {count}. Živali brez podatka ta filter skrije.",
   healthFilterHint: "Ujema se vsaj ena izbrana lastnost.",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
@@ -741,7 +741,7 @@ const en: Messages = {
   resetShelterFilters: "Reset the shelter selection",
   ageFilterHint: "Choose one or more ages.",
   energyFilterHint:
-    "As judged by the shelter. Animals with no answer are hidden by this filter.",
+    "As judged by the shelter. Recorded energy among animals matching the other filters: {count}. Animals with no answer are hidden by this filter.",
   healthFilterHint: "Matches at least one selected trait.",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",

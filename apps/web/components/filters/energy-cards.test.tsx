@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
+import type { Locale } from "@/lib/i18n";
 import { EnergyCards } from "./energy-cards";
 import {
   installFilterFoldSeams,
@@ -20,6 +21,7 @@ const counts = new Map(options.map(({ value }) => [value, 3]));
 
 function renderCards(
   overrides: {
+    locale?: Locale;
     counts?: Map<string, number>;
     selected?: string[];
     onToggle?: (value: string) => void;
@@ -29,7 +31,7 @@ function renderCards(
   const onToggle = overrides.onToggle ?? vi.fn();
   const onToggleMany = overrides.onToggleMany ?? vi.fn();
   render(
-    <I18nProvider locale="sl">
+    <I18nProvider locale={overrides.locale ?? "sl"}>
       <EnergyCards
         options={options}
         counts={overrides.counts ?? counts}
@@ -43,13 +45,20 @@ function renderCards(
 }
 
 describe("EnergyCards", () => {
+  it("localizes zero recorded answers without implying the filter includes unknown values", () => {
+    renderCards({ locale: "en", counts: new Map() });
+    expect(screen.getByText(
+      "As judged by the shelter. Recorded energy among animals matching the other filters: 0. Animals with no answer are hidden by this filter.",
+    )).toBeTruthy();
+  });
+
   it("names the section and says where the answers come from", () => {
     renderCards();
 
     expect(screen.getByRole("heading", { name: "Energija" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Po presoji zavetišča. Živali brez podatka ta filter skrije.",
+        "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: 9. Živali brez podatka ta filter skrije.",
       ),
     ).toBeTruthy();
   });

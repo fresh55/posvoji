@@ -70,6 +70,29 @@ function descriptionBlock(): HTMLElement | null {
   return document.querySelector("[data-slot='animal-description']");
 }
 
+describe("recorded energy", () => {
+  it.each([
+    ["calm", "sl", "Miren"],
+    ["balanced", "sl", "Uravnotežen"],
+    ["lively", "sl", "Živahen"],
+    ["calm", "en", "Calm"],
+    ["balanced", "en", "Balanced"],
+    ["lively", "en", "Lively"],
+  ] as const)("shows %s energy in %s even without other identity facts", (energy, locale, label) => {
+    renderFacts({ energy }, locale);
+    const row = screen.getByRole("list", {
+      name: locale === "sl" ? "Podrobnosti o živali" : "Animal details",
+    });
+    expect(within(row).getByText(label)).toBeTruthy();
+    expect(within(row).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("does not infer energy from the shelter's description", () => {
+    renderFacts({ shortDescription: "Miren maček išče dom." });
+    expect(screen.queryByRole("list", { name: "Podrobnosti o živali" })).toBeNull();
+  });
+});
+
 describe("the zdravje row", () => {
   // FIV and FeLV are cat viruses. A dog's record can carry a negative all the
   // same, a field filled in rather than a test run.

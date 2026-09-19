@@ -1,4 +1,4 @@
-# Desktop fixes: first implementation batch
+# Desktop fixes: implementation progress
 
 Implemented and checked on 18 September 2026 against `f2b7a79`, the locally available `origin/main`, on branch `codex/desktop-navigation-fixes`. Application changes live in the isolated `desktop-audit-fixes` worktree. The original working tree's application changes were left intact.
 
@@ -55,3 +55,14 @@ The screenshots and measurements above remain the evidence from 18 September. Th
 Validation: `corepack pnpm check` passed after integration and cleanup: 3,746 JavaScript/TypeScript tests (2,709 web), 364 portal tests with 4 skipped, type checking, lint, policy validation and the 2,009-page production build. The existing `CARDS_PER_CLICK` lint warning remains. The ignored local log is `quality-check.log`.
 
 A browser smoke check at 1280x720 confirmed that Ficko's second card photo opened as photo 2 with the same image source and `?foto=2`; closing returned to `/` with no dialog. Native transition capture and fallback behavior are covered by the updated integration tests.
+
+## Energy information, 19 September 2026
+
+- **D08:** the existing energy hint now includes the number of animals with recorded energy after applying the other filters. It reuses the energy facet counts, so choosing an energy level does not reduce the coverage count. Unknown values remain excluded when filtering by energy. No persistent coverage block or include-unknown control was added.
+- **D09:** the shared animal details render recorded energy with the existing identity pill, icon and localized filter label. This covers both the dialog and standalone page. Missing energy produces no fact and is never inferred from descriptive text. The existing safeguard for listings that name several animals still applies.
+
+Regression coverage includes all three energy levels in both languages, an energy-only record, missing data, zero coverage and coverage updates when other filters change.
+
+Browser verification at 1280x720 used the local 486-animal dataset. With dogs selected, the tooltip reported 3 recorded energy answers; selecting Miren reduced the results to Reks and Biba while keeping that coverage count at 3. Reks displayed Miren in the dialog and Slovenian standalone page, and Calm after switching the standalone page to English. The new fact used the existing compact identity row without clipping.
+
+Validation: `corepack pnpm check` passed: 3,755 JavaScript/TypeScript tests (2,718 web), 364 portal tests with 4 skipped, type checking, lint, policy validation (16 valid, 0 invalid, 13 enabled) and the 2,009-page production build. The existing unused `CARDS_PER_CLICK` lint warning remains. The ignored local log is `energy-check.log`.

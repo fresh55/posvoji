@@ -22,11 +22,11 @@ import type {
   HomeSection,
 } from "@/components/filters/filter-groups";
 import {
-  FilterSheet,
   filterSheetReason,
   SORT_ROW_HIDDEN,
   SORT_TOOLBAR_HIDDEN,
-} from "@/components/filters/filter-sheet";
+} from "@/components/filters/filter-sheet-policy";
+import { ResponsiveFilterSheet as FilterSheet } from "./responsive-filter-sheet";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
 import {

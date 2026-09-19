@@ -3,44 +3,15 @@
 import { useEffect, useSyncExternalStore } from "react";
 import type { ClientAnimalSource } from "@/lib/animal";
 
-/**
- * The shelter descriptions the animal dialog prints, fetched once and only
- * when something asks for one.
- *
- * The grid is a client component, so every field of every animal it can draw
- * is serialized into the home page's payload. The descriptions were 53,673 of
- * that page's 148,363 gzipped bytes, 36% of it, and exactly one of them is
- * ever read: the animal whose dialog the visitor opens, if they open one. So
- * lib/dataset.ts leaves the field behind and the text is fetched from a static
- * file instead. A visitor who never opens a dialog never downloads it, which
- * is the saving; the grid asks for it on interaction so that the visitor who does
- * open one is usually not waiting on anything.
- *
- * The animal's own page does not come here at all. It is server-rendered from
- * a whole dataset animal, so its description is already in the markup and
- * AnimalFacts prints that one.
- *
- * A module singleton rather than context, for the same reason as
- * hooks/use-nearby-origin.ts: the readers are one per open dialog and the
- * writer is the grid above them, and neither is a parent of the other.
- */
-
-/** Dialog-only text and provenance, written by generate-animal-descriptions. */
+/** Dialog-only fields omitted from the grid payload. Standalone pages have them already. */
 type AnimalDetail = { description?: string; source?: ClientAnimalSource };
-// Accept old description-only files during a rolling static deployment.
-export type AnimalDescriptions = Readonly<Record<string, string | AnimalDetail>>;
+type AnimalDetails = Readonly<Record<string, AnimalDetail>>;
 
-// Under public/, so `output: export` copies it into out/ and a static host
-// serves it with no route handler.
 const SOURCE = "/generated/animal-details.json";
-
-const EMPTY: AnimalDescriptions = {};
-
+const EMPTY: AnimalDetails = {};
 const listeners = new Set<() => void>();
-// undefined until the fetch settles. After that it is the map, or EMPTY if
-// there was nothing to be had.
-let current: AnimalDescriptions | undefined;
-let inFlight: Promise<AnimalDescriptions> | undefined;
+let current: AnimalDetails = EMPTY;
+let inFlight: Promise<AnimalDetails> | undefined;
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
@@ -49,13 +20,7 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-// Nothing that goes wrong here is worth a word on screen. A description that
-// does not arrive leaves the dialog exactly as an animal the shelter wrote
-// nothing about leaves it: the paragraph is not drawn. The failure resolves to
-// the empty map rather than rejecting, and `inFlight` keeps holding it, so a
-// dialog that opens after a failed fetch reads the empty answer instead of
-// asking for the file again and again.
-async function load(): Promise<AnimalDescriptions> {
+async function load(): Promise<AnimalDetails> {
   try {
     const response = await fetch(SOURCE);
     if (!response.ok) return EMPTY;
@@ -63,71 +28,51 @@ async function load(): Promise<AnimalDescriptions> {
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
       return EMPTY;
     }
-    return body as AnimalDescriptions;
+    return body as AnimalDetails;
   } catch {
     return EMPTY;
   }
 }
 
-/** Start the one fetch, or hand back the one already running or done. Called
- *  by the first dialog that needs a description and, before that, by the grid
- *  on first interaction. */
-export function prefetchAnimalDescriptions(): Promise<AnimalDescriptions> {
+/** Share one request for the page lifetime, including failures, to avoid repeated retries. */
+export function prefetchAnimalDescriptions(): Promise<AnimalDetails> {
   if (inFlight) return inFlight;
-  inFlight = load().then((descriptions) => {
-    current = descriptions;
+  inFlight = load().then((details) => {
+    current = details;
     for (const listener of listeners) listener();
-    return descriptions;
+    return details;
   });
   return inFlight;
 }
 
-function getServerSnapshot(): string | undefined {
+function getServerSnapshot(): undefined {
   return undefined;
 }
 
-/**
- * The shelter's text for one animal, or undefined while it is on its way and
- * for an animal that has none.
- *
- * Pass undefined for an animal that already carries its own description and
- * nothing is fetched. Nothing has an answer on the server or in the first
- * client render, which is what keeps hydration from mismatching: the fetch
- * cannot have landed before the render that starts it.
- */
-export function useAnimalDescription(
-  id: string | undefined,
-): string | undefined {
+/** An undefined id skips loading when the server already supplied the field. */
+function useAnimalDetail(id: string | undefined): AnimalDetail | undefined {
   useEffect(() => {
-    if (id === undefined) return;
-    void prefetchAnimalDescriptions();
+    if (id !== undefined) void prefetchAnimalDescriptions();
   }, [id]);
 
   return useSyncExternalStore(
     subscribe,
-    () => {
-      const detail = id === undefined ? undefined : current?.[id];
-      return typeof detail === "string" ? detail : detail?.description;
-    },
+    () => id === undefined ? undefined : current[id],
     getServerSnapshot,
   );
 }
 
-/** Test-only. The fetch is held for the life of the page, so a test that
-    resolved it would hand the result to the next one. */
-export function resetAnimalDescriptionsStore(): void {
-  current = undefined;
-  inFlight = undefined;
-  for (const listener of listeners) listener();
+export function useAnimalDescription(id: string | undefined): string | undefined {
+  return useAnimalDetail(id)?.description;
 }
 
-/** Shares the description request; standalone animal pages already carry this. */
 export function useAnimalSource(id: string | undefined): ClientAnimalSource | undefined {
-  useEffect(() => {
-    if (id !== undefined) void prefetchAnimalDescriptions();
-  }, [id]);
-  return useSyncExternalStore(subscribe, () => {
-    const detail = id === undefined ? undefined : current?.[id];
-    return typeof detail === "object" ? detail.source : undefined;
-  }, () => undefined);
+  return useAnimalDetail(id)?.source;
+}
+
+/** Test-only: each test starts without the previous page's cached response. */
+export function resetAnimalDescriptionsStore(): void {
+  current = EMPTY;
+  inFlight = undefined;
+  for (const listener of listeners) listener();
 }

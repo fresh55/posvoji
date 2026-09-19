@@ -1,21 +1,5 @@
-// Writes public/generated/animal-descriptions.json: the shelter's own text for
-// every animal that has one, keyed by animal id.
-//
-// The home page hands the grid every animal it can draw, and the grid is a
-// client component, so every field on those animals is serialized into the
-// page's flight payload. `shortDescription` was 53,673 of the home page's
-// 148,363 gzipped bytes, 36% of the whole thing, so that a dialog could print
-// one description for the one animal a visitor opens, if they open one at all.
-// So the field stops crossing that boundary (animalsForClient in
-// lib/dataset.ts) and the text lives here instead, fetched once and lazily by
-// the dialog that needs it. See lib/animal-descriptions.ts.
-//
-// Runs before `next build` and before `next dev`. `output: export` copies
-// public/ into out/, so the file is served at /generated/animal-descriptions
-// .json with no route handler. It is build output like public/media/, derived
-// from data/dist and not committed.
-//
-// Rebuild with: pnpm --filter web generate:animal-descriptions
+// Build the deferred dialog details and the legacy description-only endpoint.
+// Runs before dev/build; output: export copies both files from public/generated.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,12 +9,7 @@ const OUT =
   process.argv[2] ??
   new URL("../public/generated/animal-descriptions.json", import.meta.url);
 
-// Absent and unreadable are not the same answer, which is the distinction
-// loadDataset draws in lib/dataset.ts. Absent is the ordinary state of a
-// checkout that has not run an ingest yet: the grid is empty, no dialog opens,
-// and an empty map is written all the same so a stray fetch reads `{}` rather
-// than the 404 page. A dataset that is there and will not parse stops the run
-// instead of quietly shipping a site with no descriptions in it.
+// A checkout without a dataset exports empty maps. An invalid dataset fails the build.
 let animals = [];
 if (existsSync(DATASET)) {
   let data;
@@ -52,27 +31,26 @@ if (existsSync(DATASET)) {
   animals = data.animals;
 }
 
-// Dialog-only descriptions and source metadata, keyed by animal id.
+const details = {};
 const descriptions = {};
 for (const animal of animals) {
   if (typeof animal.id !== "string") continue;
-  descriptions[animal.id] = {
-    ...(typeof animal.shortDescription === "string" && animal.shortDescription.length > 0
-      ? { description: animal.shortDescription } : {}),
+  const description = typeof animal.shortDescription === "string" && animal.shortDescription.length > 0
+    ? animal.shortDescription : undefined;
+  if (description) descriptions[animal.id] = description;
+  details[animal.id] = {
+    description,
     source: { sourceUrl: animal.source.sourceUrl, fetchedAt: animal.source.fetchedAt },
   };
 }
 
-const json = JSON.stringify(descriptions);
+const json = JSON.stringify(details);
 const outPath = typeof OUT === "string" ? OUT : fileURLToPath(OUT);
 mkdirSync(dirname(outPath), { recursive: true });
-// Preserve the old string-only endpoint for tabs opened before deployment.
-writeFileSync(outPath, JSON.stringify(Object.fromEntries(
-  Object.entries(descriptions).filter(([, detail]) => detail.description)
-    .map(([id, detail]) => [id, detail.description]),
-)));
+// Keep the old endpoint for tabs opened before deployment.
+writeFileSync(outPath, JSON.stringify(descriptions));
 writeFileSync(join(dirname(outPath), "animal-details.json"), json);
 
 console.log(
-  `animal-descriptions: ${Object.keys(descriptions).length}/${animals.length} animals, ${json.length} bytes`,
+  `animal-details: ${Object.keys(details).length}/${animals.length} animals, ${Buffer.byteLength(json)} bytes`,
 );

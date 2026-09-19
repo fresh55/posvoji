@@ -1,7 +1,5 @@
 "use client";
 
-import { useAnimalSource } from "@/lib/animal-descriptions";
-
 import {
   startTransition,
   useCallback,
@@ -34,6 +32,7 @@ import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-context";
+import { useAnimalSource } from "@/lib/animal-descriptions";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
 import { PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
 import { StatusBadge } from "@/components/status-badge";

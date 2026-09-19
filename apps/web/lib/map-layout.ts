@@ -1,11 +1,21 @@
 import { project } from "./geo";
 import { REGION_SHAPES, regionAt } from "./map-regions";
-import { groupTownsByRegion as group, regionStatsByRegion as stats, type Town } from "./map-layout-core";
+import {
+  groupTownsByRegion as group,
+  regionStatsByRegion as stats,
+  type Town,
+} from "./map-layout-core";
+
+// Full-map callers use geographic shapes; the thumbnail supplies precomputed ids.
 export * from "./map-layout-core";
 
 export function groupTownsByRegion(towns: Town[]) {
-  return group(towns, at => regionAt(project(at)));
+  return group(towns, (at) => regionAt(project(at))?.id);
 }
-export function regionStatsByRegion(byRegion: Map<number, Town[]>, selected: string[], rank = true) {
+export function regionStatsByRegion(
+  byRegion: Map<number, Town[]>,
+  selected: string[],
+  rank = true,
+) {
   return stats(byRegion, selected, REGION_SHAPES, rank);
 }

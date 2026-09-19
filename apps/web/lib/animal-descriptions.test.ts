@@ -10,8 +10,8 @@ import {
 } from "@/lib/animal-descriptions";
 
 const DESCRIPTIONS = {
-  "zavetisce:1": "Muri je prijazna muca, ki obožuje crkljanje.",
-  "zavetisce:2": "Rex rad teka.",
+  "zavetisce:1": { description: "Muri je prijazna muca, ki obožuje crkljanje." },
+  "zavetisce:2": { description: "Rex rad teka." },
 };
 
 afterEach(() => {
@@ -106,7 +106,7 @@ describe("useAnimalDescription", () => {
     expect(view.result.current).toBeUndefined();
 
     await waitFor(() =>
-      expect(view.result.current).toBe(DESCRIPTIONS["zavetisce:1"]),
+      expect(view.result.current).toBe(DESCRIPTIONS["zavetisce:1"].description),
     );
   });
 

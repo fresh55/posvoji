@@ -129,7 +129,10 @@ export const dialog = () => screen.getByRole("dialog");
  * a test that reads a marker or a region from racing the chunk.
  */
 export async function reopenPicker() {
-  fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
+    await import("@/lib/origin");
+  });
   await screen.findByRole("dialog");
   await waitFor(() =>
     expect(dialog().querySelector("[data-slot='map-attribution']")).toBeTruthy(),
@@ -149,7 +152,6 @@ export async function openPicker(
 export async function type(input: HTMLElement, value: string) {
   await act(async () => {
     fireEvent.change(input, { target: { value } });
-    await import("@/lib/origin");
   });
 }
 

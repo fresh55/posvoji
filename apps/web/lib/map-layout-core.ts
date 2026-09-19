@@ -121,17 +121,22 @@ export function getRegionStats(
 /** Towns bucketed into the region each one really sits in, plus the reverse
  *  lookup. Real coordinates and not the laid-out marker position, because
  *  collision layout may nudge a marker across a region border. */
-export function groupTownsByRegion(towns: Town[], regionFor: (at: LatLon) => { id: number } | undefined): {
+export function groupTownsByRegion(
+  towns: Town[],
+  regionIdFor: (at: LatLon) => number | undefined,
+): {
   byRegion: Map<number, Town[]>;
   regionIdByTownKey: Map<string, number>;
 } {
   const byRegion = new Map<number, Town[]>();
   const regionIdByTownKey = new Map<string, number>();
   for (const town of towns) {
-    const region = regionFor(town.shelters[0].at);
-    if (!region) continue;
-    byRegion.set(region.id, [...(byRegion.get(region.id) ?? []), town]);
-    regionIdByTownKey.set(town.key, region.id);
+    const regionId = regionIdFor(town.shelters[0].at);
+    if (regionId === undefined) continue;
+    const townsInRegion = byRegion.get(regionId);
+    if (townsInRegion) townsInRegion.push(town);
+    else byRegion.set(regionId, [town]);
+    regionIdByTownKey.set(town.key, regionId);
   }
   return { byRegion, regionIdByTownKey };
 }

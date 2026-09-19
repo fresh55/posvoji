@@ -12,10 +12,12 @@ export function useTypedLocation(query: string, open: boolean): TypedLocation {
   useEffect(() => {
     if (!open || read) return;
     let cancelled = false;
-    void import("@/lib/origin").then(({ readTypedLocation }) => {
-      if (!cancelled) setRead(() => readTypedLocation);
-    }).catch(() => { /* Shelter-name search remains available offline. */ });
+    void import("@/lib/origin")
+      .then(({ readTypedLocation }) => {
+        if (!cancelled) setRead(() => readTypedLocation);
+      })
+      .catch(() => { /* Shelter-name search remains available offline. */ });
     return () => { cancelled = true; };
   }, [open, read]);
-  return useMemo(() => read ? read(query) : EMPTY, [query, read]);
+  return useMemo(() => (read ? read(query) : EMPTY), [query, read]);
 }

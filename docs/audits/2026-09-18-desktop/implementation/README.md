@@ -76,3 +76,15 @@ The static page starts with its server reference so hydration remains consistent
 Browser verification at 1280x720 confirmed Reks's warning below the shelter action in the dialog and both standalone locales. After hydration it read “pred 13 dnevi” / “13 days ago”, with the source timestamp still `2026-09-05T18:50:30.148Z`. The warning remained readable without clipping. Initial static text used the publication reference before advancing to the current age.
 
 Validation: `corepack pnpm check` passed: 3,770 JavaScript/TypeScript tests (2,733 web), 364 portal tests with 4 skipped, type checking, lint, policy validation (16 valid, 0 invalid, 13 enabled) and the 2,009-page production build. The existing unused `CARDS_PER_CLICK` lint warning remains. The ignored local log is `verification-age-check.log`.
+
+## Recovery and destination wording, 19 September 2026
+
+- **D14:** the found-animal heading and metadata ask “Kje si našel žival?” / “Where did you find the animal?”. The homepage invitation retains its existing wording through a separate label. The input's accessible name and placeholder are unchanged.
+- **D30:** empty results offer “Pokaži vse vrste ({count})” / “Show all species ({count})” when another species matches, even with active chips. The count reuses the existing species facet tally. Clicking widens the species scope through the existing action and preserves the other applicable filters. Filter clearing stays in the existing chip rows and does not reset species; current upstream already removed the redundant empty-block clear at every width.
+- **D31:** the English header says “Shelter login (Slovenian)”. Both the large-screen link and dropdown inherit `hrefLang="sl"` from the shared portal destination. Slovenian wording and portal behavior are unchanged.
+
+Regression coverage checks recovery with active shelter and sex filters in both languages, the count against the resulting cards, no recovery when all species have zero matches, existing clear behavior, both portal links and the unchanged homepage invitation.
+
+Browser verification: at 1280x720, `/?vrsta=ostalo&zavetisce=muri` offered “Pokaži vse vrste (53)” beside the existing shelter recovery. Clicking it produced 53 results at `/?zavetisce=muri`, retaining the shelter chip. Both found-animal headings matched their page titles. At 1024x768 the English heading and login label fit without horizontal overflow; at 960x720 the dropdown showed the same portal notice. Both portal links exposed `hreflang="sl"`.
+
+Validation: `corepack pnpm check` passed: 3,774 JavaScript/TypeScript tests (2,737 web), 364 portal tests with 4 skipped, type checking, lint, policy validation (16 valid, 0 invalid, 13 enabled) and the 2,009-page production build. The existing unused `CARDS_PER_CLICK` lint warning remains. The ignored local log is `recovery-copy-check.log`.

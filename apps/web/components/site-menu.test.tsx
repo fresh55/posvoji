@@ -66,6 +66,8 @@ describe("the header menu", () => {
       "/en/about",
       "/portal/prijava",
     ]);
+    const login = screen.getByRole("menuitem", { name: "Shelter login (Slovenian)" });
+    expect(login.getAttribute("hreflang")).toBe("sl");
   });
 
   // The page still builds and still answers on /viri and /en/resources; it is
@@ -233,8 +235,9 @@ describe("the shelter login", () => {
       </I18nProvider>,
     );
 
-    const link = screen.getByRole("link", { name: "Login for shelters" });
+    const link = screen.getByRole("link", { name: "Shelter login (Slovenian)" });
     expect(link.getAttribute("href")).toBe("/portal/prijava");
-    expect(link.textContent).toBe("Login for shelters");
+    expect(link.getAttribute("hreflang")).toBe("sl");
+    expect(link.textContent).toBe("Shelter login (Slovenian)");
   });
 });

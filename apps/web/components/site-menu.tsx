@@ -161,7 +161,7 @@ export function ShelterLogin() {
           corner is a question asked of the wrong person; the two words after
           it are what answer it before anyone clicks. There is room for them
           at every width the button renders at. */}
-      <a href={portal.href}>
+      <a href={portal.href} hrefLang={portal.hrefLang}>
         <LogIn className="size-4" aria-hidden />
         {portal.label}
       </a>
@@ -243,7 +243,7 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
               alsoInTheHeader.includes(link.key) && "lg:hidden",
             )}
           >
-            <a href={link.href}>{link.label}</a>
+            <a href={link.href} hrefLang={link.hrefLang}>{link.label}</a>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

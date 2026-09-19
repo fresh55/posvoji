@@ -661,28 +661,17 @@ export function AnimalGrid({
                   {messages.showFromAllShelters}
                 </Button>
               )}
-              {/* This state draws no clear of its own at any width. The pills
-                  that name the filters are above the grid everywhere now: the
-                  sticky bar's row from lg and the in-flow row below it
-                  (animal-filters.tsx). That row marks the chip costing the
-                  most when nothing matches and ends in the clear, so a second
-                  way out down here would be the same press a screenful lower,
-                  away from the pills that say what it takes off.
-
-                  The species is what is left, because no clear touches it
-                  (use-animal-filters.ts). With no pills at all the state is a
-                  species tab with nothing in it, which a deep link to a
-                  species the roster does not hold can reach, and the species
-                  is then the only thing to undo. Nothing else on any width
-                  offers that press, so it stays at every width. */}
-              {chips.length === 0 && filters.species !== "all" && (
+              {/* Filter clearing stays in the chip rows. This action widens
+                  the species scope while keeping the remaining filters, and
+                  is offered only when the existing facet count promises results. */}
+              {filters.species !== "all" && speciesTally.all > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   className={EMPTY_STATE_ACTION}
                   onClick={() => setSpecies("all")}
                 >
-                  {messages.showAllSpecies}
+                  {t("showAllSpeciesCount", { count: speciesTally.all })}
                 </Button>
               )}
             </EmptyState>

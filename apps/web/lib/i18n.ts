@@ -255,6 +255,7 @@ const sl = {
   noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
   showAllSpecies: "Pokaži vse živali",
+  showAllSpeciesCount: "Pokaži vse vrste ({count})",
   resetFilters: "Ponastavi",
   resetAgeFilters: "Ponastavi filter starosti",
   resetSexFilters: "Ponastavi filter spola",
@@ -382,7 +383,8 @@ const sl = {
   // reason: "našel sem psa" is the search, and the page exists to be found by
   // it. The advice below is where the reader is addressed rather than quoted,
   // and that one is neutral.
-  muniPromptTitle: "Si našel žival?",
+  foundAnimalLink: "Si našel žival?",
+  muniPromptTitle: "Kje si našel žival?",
   muniTab: "Najdena žival",
   // The field's name, said in full, and the hint drawn inside it. They are
   // two keys because the box is 196px wide inside its padding on a 360px
@@ -660,7 +662,7 @@ const en: Messages = {
   resources: "Trusted animal-care resources",
   shelters: "Shelters",
   about: "About",
-  shelterLogin: "Login for shelters",
+  shelterLogin: "Shelter login (Slovenian)",
   chooseLanguage: "Choose language",
   // A statement, matching the Slovenian. It used to read "See photo on the
   // shelter's website", which is an instruction the click does not carry out:
@@ -734,6 +736,7 @@ const en: Messages = {
   noResultsShelterPlural: "The selected shelters currently have no {species}.",
   showFromAllShelters: "Show from all shelters",
   showAllSpecies: "Show all animals",
+  showAllSpeciesCount: "Show all species ({count})",
   resetFilters: "Reset",
   resetAgeFilters: "Reset age filters",
   resetSexFilters: "Reset sex filters",
@@ -792,7 +795,8 @@ const en: Messages = {
   showAnimals: "Show {count}",
   noSheltersFound: "No matches for",
   clearSearch: "Clear search",
-  muniPromptTitle: "Found an animal?",
+  foundAnimalLink: "Found an animal?",
+  muniPromptTitle: "Where did you find the animal?",
   muniTab: "Found an animal",
   muniSearch: "Municipality or postcode …",
   muniSearchPlaceholder: "Town or postcode",

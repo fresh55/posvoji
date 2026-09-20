@@ -11,7 +11,7 @@ import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { shelterCensus } from "@/lib/shelter-census";
 import { loadShelters } from "@/lib/shelters";
 import { sheltersIndexPath } from "@/lib/shelter-path";
-import { SOURCE_LINK } from "@/lib/link-styles";
+import { PAGE_LEAD, PAGE_TITLE, SOURCE_LINK } from "@/lib/link-styles";
 
 export function FoundAnimalPage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -40,7 +40,7 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={FOUND_ANIMAL_PATHS}
-      mainClassName="flex w-full flex-1 flex-col gap-6 py-page-y"
+      mainClassName="flex w-full flex-1 flex-col gap-section-gap py-page-y"
       // Omit the listings' export date: it does not date the coverage records.
       footer={
         <SiteFooter
@@ -52,10 +52,14 @@ export function FoundAnimalPage({ locale }: { locale: Locale }) {
     >
       <div className="space-y-5">
         <PageBreadcrumb locale={locale} current={messages.muniTab} />
-        <h1 className="text-balance text-xl font-semibold tracking-tight sm:text-2xl md:text-3xl">
+        {/* The shared title and lead, where this page used to print 20px
+            over a 14px lead: the one short-title page that stepped down
+            twice from what every other page's title says. The home page
+            keeps its own smaller pair, because its h1 is a sentence. */}
+        <h1 className={`text-balance ${PAGE_TITLE}`}>
           {messages.muniPromptTitle}
         </h1>
-        <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className={`max-w-2xl text-pretty ${PAGE_LEAD}`}>
           {messages.muniIntro}
         </p>
       </div>

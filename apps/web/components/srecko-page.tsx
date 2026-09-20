@@ -28,7 +28,7 @@ export function SreckoPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={SRECKO_PATHS}
-      mainClassName="mx-auto flex w-full max-w-xl flex-1 flex-col gap-7 py-page-y sm:gap-8"
+      mainClassName="mx-auto flex w-full max-w-xl flex-1 flex-col gap-section-gap py-page-y"
       footer={
         <SiteFooter locale={locale}>
           {!hasPhotos && <ModelCredit locale={locale} />}

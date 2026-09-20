@@ -4,7 +4,7 @@
 // (motion/react), which reads window.matchMedia when it resolves the
 // reducedMotion="user" setting.
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AboutPage } from "./about-page";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -29,7 +29,10 @@ describe("the about page", () => {
   it("explains shelter adoption before site details in Slovenian", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
-      "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba",
+      "Za posvojitelje", "Za zavetišča",
+    ]);
+    expect(screen.getAllByRole("heading", { level: 3 }).map(node => node.textContent)).toEqual([
+      "Kako poteka posvojitev?", "Ali žival še išče dom?", "Brezplačna uporaba",
       "Zavetišča odločate o svojih vsebinah", "Kako se zavetišče vključi?",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
@@ -47,7 +50,8 @@ describe("the about page", () => {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
         getMessages(locale).about,
       );
-      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(5);
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(2);
+      expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(5);
     },
   );
 
@@ -74,6 +78,31 @@ describe("the about page", () => {
     );
     expect(footerHrefs.length).toBeGreaterThan(0);
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
+  });
+
+  // Two sections built the same way, one heading and its rows each, and
+  // the address after both: a visitor reporting an adopted animal writes to
+  // it as much as a shelter does, so it belongs to neither section.
+  it.each([
+    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča" },
+    { locale: "en" as const, adopters: "For adopters", availability: "Is the animal still available?", shelters: "For shelters" },
+  ])("keeps availability with adopters and the address after both sections (%s)", ({ locale, adopters, availability, shelters }) => {
+    render(<AboutPage locale={locale} />);
+    const adopterSection = screen.getByRole("region", { name: adopters });
+    const shelterSection = screen.getByRole("region", { name: shelters });
+    expect(within(adopterSection).getByRole("heading", { level: 3, name: availability })).toBeTruthy();
+    expect(within(adopterSection).getAllByRole("heading", { level: 3 })).toHaveLength(3);
+    expect(within(shelterSection).getAllByRole("heading", { level: 3 })).toHaveLength(2);
+    expect(adopterSection.compareDocumentPosition(shelterSection) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    // Where the address sits, not what it points at: the test below owns the
+    // href. queryByRole is the load-bearing half of the pair under it, because
+    // compareDocumentPosition reports FOLLOWING for a descendant too, so the
+    // position alone would pass with the address inside the shelter section.
+    const address = screen.getByRole("link", { name: "info@posvoji.si" });
+    expect(within(shelterSection).queryByRole("link", { name: "info@posvoji.si" })).toBeNull();
+    expect(shelterSection.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
   });
 
   // One button under the closing line: the address, printed as itself so it

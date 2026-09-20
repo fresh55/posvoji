@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { mailtoHref } from "@/lib/contact-links";
 import { isGatedView, readGateCookie, writeGateCookie } from "@/lib/demo-gate";
 import type { Locale } from "@/lib/i18n";
-import { MUTED_LINK } from "@/lib/link-styles";
+import { MUTED_LINK, PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
 import { HOME_PATHS } from "@/lib/shelter-path";
 import { CONTENT_ID } from "@/lib/skip-link";
 import { CONTACT_EMAIL } from "@/lib/site";
@@ -172,10 +172,10 @@ export function DemoGatePage({ locale }: { locale: Locale }) {
             />
           </figure>
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h1 className={PAGE_TITLE}>
               {text.title}
             </h1>
-            <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className={PAGE_LEAD}>
               {text.lead}
             </p>
           </div>

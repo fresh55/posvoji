@@ -240,8 +240,13 @@ describe("MunicipalityFinder empty state", () => {
   it("heads the guidance, before the first sentence and without an answer", () => {
     renderFinder();
 
+    // The role and the level are the fact. The weight used to be asserted
+    // here too, which pinned this page's heading to a number it happened to
+    // share with a row on another page: the heading takes SECTION_TITLE now,
+    // and a test that reads a class off it would have to be edited every
+    // time the ladder moves, without ever having said anything the reader of
+    // this page can see.
     const heading = screen.getByRole("heading", { name: "Do prihoda pomoči", level: 2 });
-    expect(heading.className).toContain("font-medium");
 
     const first = screen.getByText(/Poškodovane živali ne premikaj/);
     expect(

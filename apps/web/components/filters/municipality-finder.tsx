@@ -48,7 +48,12 @@ import {
   type MunicipalityGuess,
 } from "@/lib/municipality-lookup";
 import { cn } from "@/lib/utils";
-import { COARSE_ACTION, MUTED_LINK, SOURCE_LINK } from "@/lib/link-styles";
+import {
+  COARSE_ACTION,
+  MUTED_LINK,
+  SECTION_TITLE,
+  SOURCE_LINK,
+} from "@/lib/link-styles";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 
 const LAW_URL =
@@ -759,7 +764,12 @@ export function MunicipalityFinder({
         <div className="space-y-2 border-t pt-4 text-sm leading-relaxed">
           {/* Keep practical advice reachable by heading navigation even
               before a search produces a shelter. */}
-          <h2 className="font-medium">{messages.muniGuidanceTitle}</h2>
+          {/* SECTION_TITLE, where font-medium alone left it at the block's
+              own 14px: the page's one section heading, printed at the size of
+              the three lines under it, and from sm under its own lead. It is
+              a section of the page, not a row inside one, so it takes the
+              page's rung rather than the block's. */}
+          <h2 className={SECTION_TITLE}>{messages.muniGuidanceTitle}</h2>
           <ul className="space-y-2 text-muted-foreground">
             <li>{messages.muniInjured}</li>
             <li>{messages.muniCallAdvice}</li>

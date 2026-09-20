@@ -19,6 +19,7 @@ import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { homePath, shelterPath } from "@/lib/shelter-path";
 import { animalSubtitle } from "@/lib/labels";
+import { PAGE_TITLE } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 
 /** The wider list, reached without reopening the animal being left. */
@@ -67,7 +68,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         sl: animalPath(animal, "sl"),
         en: animalPath(animal, "en"),
       }}
-      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y"
+      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-section-gap py-page-y"
       // The page a shared link lands on, and the one where the freshness line
       // earns the most: a stranger reading it has nothing else on the screen
       // that says whether the listing was captured last night or in March.
@@ -151,7 +152,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                       reserved or adopted animal is a fact about the whole page
                       and belongs on the line that names it. */}
                   <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                    <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                    <h1 className={PAGE_TITLE}>
                       {animal.name ?? messages.unnamed}
                     </h1>
                     <StatusBadge status={animal.status} locale={locale} />

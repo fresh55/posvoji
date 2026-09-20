@@ -99,3 +99,25 @@ export const COARSE_ACTION = "pointer-coarse:min-h-11 pointer-coarse:px-4";
  */
 export const PAGE_TITLE =
   "text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl";
+
+/**
+ * The sentence under a page's title. 16px on a phone, one step under
+ * SECTION_TITLE and two under the title. At 18px the About lead was the
+ * largest block on the first screen, three grey lines the eye landed on
+ * instead of the title, and level with the section headings under it.
+ */
+export const PAGE_LEAD =
+  "text-base leading-relaxed text-muted-foreground sm:text-lg";
+
+/**
+ * The heading of a section inside a page: 20px, between the lead above it
+ * and a 16px row heading below. It is the rung PAGE_LEAD is measured
+ * against, so the two move together or neither does.
+ *
+ * Not yet the whole site. The pages that stack titled sections of their own
+ * still spell their own heading (resources 20 to 24 medium, a shelter's own
+ * page 18 to 20), and converting them changes what they draw, so each is a
+ * decision rather than a sweep. What this owns is the pages whose headings
+ * were sized against the block under them instead of against the page.
+ */
+export const SECTION_TITLE = "text-xl font-semibold";

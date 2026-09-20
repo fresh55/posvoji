@@ -53,7 +53,7 @@ jobs:
         env:
           POSVOJI_ALERT_CONFIG: ${{ secrets.POSVOJI_ALERT_CONFIG }}
           TEST_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.test_alert }}
-          CHECK_FAILED: ${{ failure() }}
+          CHECK_FAILED: ${{ job.status == 'failure' }}
         run: |
           unit=posvoji-health.service
           if [[ "$TEST_ALERT" == true && "$CHECK_FAILED" != true ]]; then unit=posvoji-alert-test.service; fi

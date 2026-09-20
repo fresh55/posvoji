@@ -209,7 +209,14 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               cards stood between a reader and two numbers nobody scrolled
               to. Two items now, not three: the registry count is the lead's.
               Listing counts do not establish permission status or shelter
-              capacity. */}
+              capacity.
+
+              Both rows are drawn whenever the block is. A shelter only enters
+              byShelter because an animal was counted onto it, so withData > 0
+              is animals > 0 (lib/shelter-census.ts): the guard the animals row
+              used to carry was the gate above it said twice, and the array's
+              `| false` member and the filter pass existed to express a branch
+              that could not be taken. */}
           {census.withData > 0 && (
             <ul
               role="list"
@@ -233,7 +240,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                     </span>
                   ),
                 },
-                census.animals > 0 && {
+                {
                   key: "animals",
                   icon: PawPrint,
                   count: census.animals,
@@ -246,9 +253,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                     </span>
                   ),
                 },
-              ]
-                .filter((group) => group !== false)
-                .map(({ key, icon: Icon, count, body }) => (
+              ].map(({ key, icon: Icon, count, body }) => (
                   // data-census and data-count are a test contract, not
                   // decoration, the same as data-contact on the cards'
                   // rows. What has to be checkable from the rendered page

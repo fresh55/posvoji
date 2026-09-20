@@ -106,8 +106,16 @@ export type ShelterCardText = {
 // each other; the tap-target utility in globals.css carries that rule. The
 // card is free to be taller: below sm the grid is one column, so no neighbour
 // holds it to a height.
-const CONTACT_ROW =
-  "relative z-10 flex min-h-9 pointer-coarse:min-h-11 items-center gap-2.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-hidden hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring";
+// Everything above is true of any control on the card, not just a contact
+// row: the count pill is a link to the shelter's animals and escapes the
+// same overlay into the same finger box. So the rule is stated once here and
+// the two callers add only what makes them different. Written out twice, the
+// 36px and the coarse 44px drift the next time the target rule moves, and the
+// measurements above would then describe one of them.
+const CARD_ACTION =
+  "relative z-10 min-h-9 pointer-coarse:min-h-11 items-center rounded-ui text-sm underline-offset-4 outline-hidden hover:underline focus-visible:ring-3 focus-visible:ring-ring";
+
+const CONTACT_ROW = `${CARD_ACTION} flex gap-2.5 text-muted-foreground hover:text-foreground`;
 
 // Everything the card is, apart from how its sections sit below sm. The phone
 // column is the constant under it, shared by cards with and without a mark.
@@ -387,12 +395,15 @@ export function ShelterCard({
               same fact stated in the same place in the visual system: this
               shelter shares its list with us.
 
-              A marker, not a link. The name's stretched ::after already covers
-              the card, so a second link here would have to lift itself out of
-              it with relative z-10 the way the contact rows do, and it would
-              point where the card already points. The paw rather than the
-              census line's shield: the pill's green is what says "shares its
-              data", so the glyph is free to say what the number counts. */}
+              A link, and it used to be a marker. What it points at is the one
+              thing the card cannot otherwise reach: this shelter's animals in
+              the grid, filtered, rather than the shelter page the name already
+              opens. It escapes the name's stretched ::after through CARD_ACTION
+              the way the contact rows do, and the name's underline stands down
+              under it, which is what the second group-has clause on the name
+              is for. The paw rather than the census line's shield: the pill's
+              green is what says "shares its data", so the glyph is free to say
+              what the number counts. */}
           {/* The other half of the same statement, drawn in the same slot on
               the same fixed row, so the column of counts the eye runs down
               has no holes in it: every card answers "does this one share a
@@ -402,7 +413,13 @@ export function ShelterCard({
               statement that a shelter shares its data, and a bordered chip
               wearing the negative would answer the scan just as loudly as the
               positive it is the absence of. This is the quiet fact under the
-              loud one, which is what it is. */}
+              loud one, which is what it is.
+
+              text-sm, the pill's size. The two are one statement in one slot,
+              so they are read against each other down the column, and 12px
+              against the pill's 14px made the absence look like a footnote
+              rather than the answer. Quiet is the colour's job here, not the
+              size's. No height floor with it: nothing here is pressable. */}
           {animals === undefined && (
             // data-no-list and not data-animals="none": the browser suite
             // adds every data-animals up against the census line, and a word
@@ -411,7 +428,7 @@ export function ShelterCard({
               data-no-list
               // ml-auto, because on a card with no mark this is the row's
               // only child and justify-between would set it on the left.
-              className="ml-auto min-w-0 text-right text-xs text-muted-foreground"
+              className="ml-auto min-w-0 text-right text-sm text-muted-foreground"
             >
               {text.noAnimals}
             </p>
@@ -426,7 +443,7 @@ export function ShelterCard({
             <a
               href={shelter.animalsHref}
               data-animals={animals}
-              className="relative z-10 ml-auto inline-flex min-h-9 pointer-coarse:min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-ui border border-brand-border bg-brand px-2.5 py-0.5 text-sm font-medium tabular-nums text-brand-foreground underline-offset-4 outline-hidden hover:underline focus-visible:ring-3 focus-visible:ring-ring"
+              className={`${CARD_ACTION} ml-auto inline-flex min-w-0 justify-center gap-1.5 border border-brand-border bg-brand px-2.5 py-0.5 font-medium tabular-nums text-brand-foreground`}
             >
               <PawPrint className="size-3 shrink-0" aria-hidden />
               {text.animals(animals)}

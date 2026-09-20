@@ -28,13 +28,13 @@ describe("the deferred status note", () => {
     vi.useRealTimers();
   });
 
-  it("is not in the DOM at all while a load is inside the delay", () => {
+  it("keeps the live region empty while a load is inside the delay", () => {
     show();
 
     act(() => {
       vi.advanceTimersByTime(DELAY_MS - 1);
     });
-    expect(note()).toBeNull();
+    expect(note()?.textContent).toBe("");
   });
 
   it("names the wait once the delay has passed", () => {
@@ -50,6 +50,17 @@ describe("the deferred status note", () => {
     show(true);
 
     expect(note()?.textContent).toContain("Poskusi znova");
+  });
+
+  it("keeps the note up when a retry turns the error back into a wait", () => {
+    const { rerender } = show(true);
+
+    rerender(
+      <I18nProvider locale="sl">
+        <DeferredStatus error={false} retry={() => undefined} />
+      </I18nProvider>,
+    );
+    expect(note()?.textContent).toContain("Nalaganje");
   });
 
   it("clears its timer when it is unmounted inside the delay", () => {

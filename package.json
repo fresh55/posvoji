@@ -25,6 +25,7 @@
     "media:verify": "node scripts/verify-media.mjs"
   },
   "devDependencies": {
+    "jsdom": "26.1.0",
     "vitest": "5.0.0"
   }
 }

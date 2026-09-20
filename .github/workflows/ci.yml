@@ -48,7 +48,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test:node --shard=${{ matrix.shard }}/6
+      # Vitest otherwise reserves one CPU, leaving a two-core runner half idle.
+      - run: pnpm test:node --shard=${{ matrix.shard }}/6 --maxWorkers=2
 
   web-checks:
     runs-on: ubuntu-latest

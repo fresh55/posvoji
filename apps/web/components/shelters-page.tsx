@@ -21,7 +21,7 @@ import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
 import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
-import { PAGE_TITLE, MUTED_LINK } from "@/lib/link-styles";
+import { MUTED_LINK, PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
 import { CONTACT_EMAIL } from "@/lib/site";
 import { mailtoHref } from "@/lib/contact-links";
 
@@ -198,7 +198,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           <h1 className={PAGE_TITLE}>
             {text.title}
           </h1>
-          <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className={PAGE_LEAD}>
             <span data-census="shelters" data-count={shelters.length} className="tabular-nums">
               {shelterCount(shelters.length, locale)}
             </span>{" "}

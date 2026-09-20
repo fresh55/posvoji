@@ -2,7 +2,6 @@
 
 import {
   memo,
-  useEffect,
   useId,
   useRef,
   useState,
@@ -136,15 +135,6 @@ const PHOTO_FRAME =
 // function every render.
 const NO_DIALOG = () => false;
 
-// How long a visitor who asked for another photo waits before the card admits
-// it is still fetching the gallery. The payload is a few kilobytes and on a
-// warm connection it lands well inside this, so on most steps the note never
-// draws at all; a box appearing and vanishing in that time is a flicker over
-// the photo, and it is a live region, so it is also an announcement nobody had
-// time to read. Long enough that only a slow load reaches it, short enough that
-// a visitor who is waiting is told before the card feels broken.
-const PENDING_NOTE_DELAY_MS = 400;
-
 /**
  * One animal in the grid.
  *
@@ -220,17 +210,10 @@ export const AnimalCard = memo(function AnimalCard({
   const photoCount = photos.count;
   const pendingIndex = useRef(0);
   // Whether the visitor is waiting on a photo they asked for. The gallery is
-  // fetched by two paths and only this one is worth a word on the card: a mouse
-  // resting on the photo warms the gallery silently after 150ms
-  // (photo-gallery.tsx), so the load is pending on every desktop hover, and the
-  // note below used to read the load rather than the asking. Every hover
-  // painted a box in the photo's corner, over the status badge, for as long as
-  // the JSON took.
-  //
-  // Both start false, so the server and the first client render agree: asking
-  // and waiting are things a visitor does, not states a card is born in.
+  // fetched by two paths and only this one is worth a word on the card: the
+  // mouse dwell in photo-gallery.tsx warms the gallery silently and never sets
+  // this, so a hover leaves the card quiet.
   const [awaitingStep, setAwaitingStep] = useState(false);
-  const [showPending, setShowPending] = useState(false);
   function selectPhoto(next: number) {
     pendingIndex.current = next;
     if (photos.ready) {
@@ -248,22 +231,6 @@ export const AnimalCard = memo(function AnimalCard({
       // the retry.
       .catch(() => {});
   }
-  // The delay before the pending note draws, held here rather than as a CSS
-  // animation-delay: the note is a live region, and a delayed opacity would
-  // announce it the moment it mounts and only hide it from the eye. The
-  // cleanup takes the flag back down, so a load that settles or a card that is
-  // asked again starts the wait over.
-  useEffect(() => {
-    if (!awaitingStep || !photos.pending) return;
-    const timer = window.setTimeout(
-      () => setShowPending(true),
-      PENDING_NOTE_DELAY_MS,
-    );
-    return () => {
-      window.clearTimeout(timer);
-      setShowPending(false);
-    };
-  }, [awaitingStep, photos.pending]);
   const waitMonths = longStayMonths(animal, reference);
   // The animal's own page, which is also what the dialog writes to the
   // address bar when this card is clicked. Filters are deliberately left out:
@@ -456,12 +423,7 @@ export const AnimalCard = memo(function AnimalCard({
         announceChanges={announcePhotoChanges}
         eager={eager}
       />
-      {/* What the card says about a gallery that is not in yet, and only to
-          the visitor who asked for it: awaitingStep is the asking, and the
-          silent warm-up never sets it. A failed load says so at once, because
-          nothing else is going to happen and the retry is the only way on; a
-          pending one waits out PENDING_NOTE_DELAY_MS first. */}
-      {awaitingStep && (photos.error || (photos.pending && showPending)) && (
+      {awaitingStep && (photos.error || photos.pending) && (
         <div className="absolute inset-x-2 top-2 z-30">
           <DeferredStatus
             error={photos.error}

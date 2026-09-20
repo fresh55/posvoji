@@ -2,6 +2,7 @@
 Description=Verify Posvoji delivery and real source freshness
 Wants=network-online.target
 After=network-online.target
+OnFailure=posvoji-alert@%n.service
 
 [Service]
 Type=oneshot

@@ -32,7 +32,8 @@ protects no personal data; the portal has its own.
 Everything else stays behind the gate, including `/media/*`. The paths a
 guest may fetch are `/vstop`, `/en/enter`, `/_next/static/*` (the code and
 CSS, which carry no listings; the animal data is in the pages and their RSC
-payloads, which stay gated), `/models/our-cat/*` and the three site icons.
+payloads, which stay gated), `/models/our-cat/*`, the site icons and
+`/manifest.webmanifest`.
 
 ## Caddy
 
@@ -42,7 +43,7 @@ Keep the account line as it is; the health checks depend on it.
 ```caddy
 @guest {
     expression `{http.request.cookie.posvoji_demo} != "{$POSVOJI_DEMO_KEY}" || "{$POSVOJI_DEMO_KEY}" == ""`
-    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /icon.svg /favicon.ico /apple-icon.png /.well-known/security.txt
+    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /icon.svg /favicon.ico /apple-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png /manifest.webmanifest /.well-known/security.txt
 }
 basic_auth @guest {
     health <the existing hash>
@@ -94,6 +95,43 @@ path. `@en` lists `/en.html` for the same reason.
 Keep `/.well-known/security.txt` outside authentication so security researchers
 can find the reporting address while the demo gate is active. Apply this matcher
 when deploying the file; changing this document alone does not update the host.
+
+`/manifest.webmanifest` is in the list because a browser fetches a manifest
+with credentials omitted. The cookie never rides along, so the request is a
+guest request even on a page an invited shelter is already reading: every page
+logs a failed manifest fetch, and Add to Home Screen falls back to the page
+title and a guessed icon, which is the case `app/manifest.ts` exists to
+prevent. The three PNG icons the manifest names are fetched the same way and
+are listed with it, so an install finds them. The file holds the site name, its
+description and the icon paths, all of which the gate page itself already
+serves. Putting `crossorigin="use-credentials"` on the link instead is not
+available: Next writes that tag itself from the `app/manifest.ts` file
+convention, and its metadata API takes no attribute for it.
+
+Measured on 20 September 2026 before the host update, with no cookie:
+`/icon.svg`, `/favicon.ico` and `/apple-icon.png` answer `200`, while
+`/manifest.webmanifest`, the three PNG icons and `/.well-known/security.txt`
+answer `401`. The host was running an older list than the one above. The list
+as written was run the same day in a `caddy:2` container against the exported
+names, with the key set and empty: a guest gets `200` for the manifest and its
+icons, pages and `.json` still answer `401`, and the health account still
+reaches the site.
+
+Applied to production on 20 September 2026 by adding those five paths to the
+host's existing `@gated` matcher. Its existing portal and asset exceptions,
+account lines and cookie expression were preserved. When updating an existing
+host, add the missing paths without replacing its intentional public routes.
+Caddy validated and reloaded without a restart or environment change; the
+active configuration passed `scripts/validate-caddy-layout.cjs`.
+
+Verified after reload, with no cookie: all five paths return `200` and exactly
+match the exported files. `/o-nas` and `/en/about` still return `401` with the
+appropriate gate page and no browser authentication challenge. Plain requests
+to `/o-nas`, `/_posvoji/status.json`, `/_posvoji/operations.json` and `/media/`
+remain `401`. The existing health credentials still reach the page and release
+status, and the demo cookie still reaches `/o-nas`. The previous configuration
+is saved on the host at
+`/etc/caddy/Caddyfile.before-demo-assets-20260920T184725Z`.
 
 `handle_errors 401` sits beside the existing `handle_errors` block for the
 404 page; Caddy lets a block claim its status codes and leaves the rest to

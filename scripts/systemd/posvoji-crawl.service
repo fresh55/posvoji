@@ -2,6 +2,7 @@
 Description=Refresh and publish the Posvoji index
 Wants=network-online.target
 After=network-online.target
+OnFailure=posvoji-alert@%n.service
 
 [Service]
 Type=oneshot

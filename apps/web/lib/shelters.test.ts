@@ -71,14 +71,11 @@ describe("shelter registry loader", () => {
     });
   });
 
-  // Johanca stood here until its operator's number was copied into the
-  // registry. Every shelter has a phone now, so the sparse entries left are
-  // the ones with no site of their own and the one with no address.
+  // A shelter without its own website must not receive a guessed URL.
   it("leaves missing optional fields undefined rather than guessing", () => {
     const potepuhi = getShelterBySlug("potepuhi");
     expect(potepuhi?.city).toBe("Podlog");
     expect(potepuhi?.website).toBeUndefined();
-    expect(getShelterBySlug("mala-hisa")?.email).toBeUndefined();
   });
 
   it("returns undefined for a slug that isn't in the registry", () => {
@@ -107,6 +104,15 @@ describe("a registry the loader cannot read", () => {
 
     expect(load()).toHaveLength(1);
     expect(load()[0]).toMatchObject({ id: "zonzani", city: "Dramlje" });
+  });
+
+  it("keeps missing contact fields absent in a sparse registry", async () => {
+    const { loadShelters: load } = await registryOf(
+      "shelters:\n  - id: example\n    name: Example shelter\n    city: Example town\n",
+    );
+    expect(load()[0].email).toBeUndefined();
+    expect(load()[0].phone).toBeUndefined();
+    expect(load()[0].website).toBeUndefined();
   });
 
   it("throws when the file is not there", async () => {

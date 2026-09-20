@@ -37,6 +37,12 @@ and offers no click-through past a certificate error:
 2. `max-age=86400`
 3. `max-age=31536000; includeSubDomains`
 
+Production advanced from stage one to `max-age=86400` on 20 September 2026
+at 18:55 UTC, after successful TLS checks for `posvoji.si`, `www.posvoji.si`,
+`api.posvoji.si` and `mail.posvoji.si`. The demo gate remains enabled: removing
+it is not a prerequisite for this ramp. Observe stage two for at least 48
+hours and repeat those checks before the year-long policy. Keep preload off.
+
 `includeSubDomains` reaches `mail.posvoji.si`, which is Neoserv's host rather
 than ours. On 16 September 2026 it answered `200` over HTTPS with a valid
 `*.posvoji.si` certificate, so the policy costs it nothing today. It also binds

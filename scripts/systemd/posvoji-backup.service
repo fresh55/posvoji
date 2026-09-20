@@ -1,4 +1,5 @@
 [Unit]
+OnFailure=posvoji-alert@%n.service
 Description=Prepare a consistent Posvoji backup for PC retrieval
 
 [Service]

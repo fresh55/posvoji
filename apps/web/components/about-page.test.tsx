@@ -95,8 +95,11 @@ describe("the about page", () => {
     expect(within(shelterSection).getAllByRole("heading", { level: 3 })).toHaveLength(2);
     expect(adopterSection.compareDocumentPosition(shelterSection) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
+    // Where the address sits, not what it points at: the test below owns the
+    // href. queryByRole is the load-bearing half of the pair under it, because
+    // compareDocumentPosition reports FOLLOWING for a descendant too, so the
+    // position alone would pass with the address inside the shelter section.
     const address = screen.getByRole("link", { name: "info@posvoji.si" });
-    expect(address.getAttribute("href")).toBe("mailto:info@posvoji.si");
     expect(within(shelterSection).queryByRole("link", { name: "info@posvoji.si" })).toBeNull();
     expect(shelterSection.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();

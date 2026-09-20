@@ -42,13 +42,22 @@ for (const name of process.argv.length > 3 ? process.argv.slice(3) : ["Back pet"
     const newTrack = newClip.tracks.find(track => track.name === trackName)?.clone();
     if (!oldTrack || !newTrack) throw new Error(`Missing track: ${trackName}`);
     const size = newTrack.getValueSize();
+    // Allow Meshopt's 16-bit rounding and equivalent quaternion signs.
+    // Exact installed endpoints are restored below.
+    const rotation = channel.target.path === "rotation";
+    const tolerance = rotation ? 5e-5 : Math.max(1, ...oldTrack.values.map(Math.abs)) * 1.5 / 2 ** 15;
+    const same = (a, b) => (rotation ? [1, -1] : [1]).some(sign =>
+      a.every((value, i) => Math.abs(value - sign * b[i]) <= tolerance));
+    if (rotation && oldTrack.values.slice(0, size).reduce((sum, value, i) => sum + value * newTrack.values[i], 0) < 0) {
+      for (let i = 0; i < newTrack.values.length; i++) newTrack.values[i] *= -1;
+    }
     // Refuse a different rig/rest pose and force exact shared endpoints so
     // consecutive taps and idle crossfades do not introduce a pose jump.
+    const resting = oldTrack.values.slice(0, size);
+    if (!same(resting, newTrack.values.slice(0, size)) || !same(resting, newTrack.values.slice(-size))) {
+      throw new Error(`Rest pose mismatch: ${trackName}`);
+    }
     for (let i = 0; i < size; i++) {
-      if (Math.abs(oldTrack.values[i] - newTrack.values[i]) > 1e-5 ||
-          Math.abs(oldTrack.values[i] - newTrack.values[newTrack.values.length - size + i]) > 1e-5) {
-        throw new Error(`Rest pose mismatch: ${trackName}`);
-      }
       newTrack.values[i] = newTrack.values[newTrack.values.length - size + i] = oldTrack.values[i];
     }
     const interpolant = oldTrack.createInterpolant(), incoming = newTrack.createInterpolant();
@@ -56,7 +65,7 @@ for (const name of process.argv.length > 3 ? process.argv.slice(3) : ["Back pet"
     // endpoint keys and must still replace an old moving tail or shoulder.
     const unchanged = existing && [...oldTrack.times, ...newTrack.times].every(time => {
       const previous = interpolant.evaluate(time), next = incoming.evaluate(time);
-      return previous.every((value, i) => Math.abs(value - next[i]) < 1e-5);
+      return same(previous, next);
     });
     let sampler = animation.samplers[channel.sampler];
     if (!unchanged) {

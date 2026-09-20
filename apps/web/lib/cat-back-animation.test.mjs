@@ -8,18 +8,8 @@ beforeAll(async () => {
   clips = gltf.animations;
   root = gltf.scene;
 });
-// The web export writes animation samples through Meshopt's 16-bit filters,
-// which leave a value within max|component| / 2**15 of the authored one, and
-// canonicalise a quaternion's sign so that q arrives as -q. Both mean the same
-// pose, so compare a whole key at a time and let it choose the sign.
-//
-// That quantum is what each tolerance is derived from, so they differ by what
-// the components hold. A quaternion component is at most 1, so 1 / 2**15 is
-// about 3.05e-5 and 5e-5 is it plus headroom; the worst rotation sample in
-// these two clips is 2.1e-5. A position is in bone units and reaches about 4,
-// so the same quantum is 1.22e-4 there, which is the worst position sample
-// exactly; scale samples are carried over unchanged. Both were 5e-4 before,
-// an order of magnitude of slack neither needs.
+// Meshopt's 16-bit filters round samples and can negate quaternions.
+// Allow rounding at this rig's scale; q and -q represent the same rotation.
 const tolerance = { rotation: 5e-5, translation: 2e-4 };
 const samePose = (track, offset, other, otherOffset) => {
   const size = track.getValueSize();
@@ -54,14 +44,57 @@ it("returns both back reactions to their shared idle pose", () => {
   }
 });
 
-it("reacts with the ears before the head and keeps the stronger back clip visibly distinct", () => {
+it("reacts with the ears before the head and keeps the warning eye facing the swat", () => {
   const gentle = clips.find(clip => clip.name === "Back pet");
   const warning = clips.find(clip => clip.name === "Back warning");
   expect(angle(gentle, "j_l_ear_020", .15)).toBeGreaterThan(.3);
   expect(angle(gentle, "j_head_08", .15)).toBeLessThan(.01);
   expect(angle(gentle, "j_head_08", .9)).toBeGreaterThan(.6);
-  expect(angle(warning, "j_head_08", .9)).toBeGreaterThan(angle(gentle, "j_head_08", .9) + .08);
+  expect(angle(warning, "j_head_08", .9)).toBeLessThan(.2);
   expect(angle(gentle, "j_tail_6_048", 1.46)).toBeLessThan(.01);
+});
+
+it("extends the swatting paw, recoils immediately and keeps the support paw planted", () => {
+  const mixer = new AnimationMixer(root);
+  const warning = clips.find(clip => clip.name === "Back warning");
+  mixer.clipAction(warning).play();
+  const paw = root.getObjectByName("j_l_palm_034");
+  const other = root.getObjectByName("j_r_palm_040");
+  const upper = root.getObjectByName("j_l_humerous_031");
+  const elbow = root.getObjectByName("j_l_elbow_032");
+  const wrist = root.getObjectByName("j_l_wrist_033");
+  const finger = root.getObjectByName("j_l_finger_035");
+  const at = time => {
+    mixer.setTime(time); root.updateMatrixWorld(true);
+    return paw.getWorldPosition(new Vector3());
+  };
+  const rest = at(0), support = other.getWorldPosition(new Vector3());
+  const windup = at(.5), shoulderBefore = upper.getWorldPosition(new Vector3());
+  const strike = at(.625), shoulderAfter = upper.getWorldPosition(new Vector3());
+  expect(windup.y - rest.y).toBeGreaterThan(.2);
+  expect(windup.x - strike.x).toBeGreaterThan(.25);
+  expect(windup.y - strike.y).toBeGreaterThan(.06);
+  expect(strike.distanceTo(windup) / .125).toBeGreaterThan(2);
+  expect(shoulderAfter.distanceTo(shoulderBefore)).toBeGreaterThan(.015);
+  const joint = elbow.getWorldPosition(new Vector3()), hand = wrist.getWorldPosition(new Vector3());
+  expect(shoulderAfter.clone().sub(joint).angleTo(hand.clone().sub(joint))).toBeGreaterThan(2);
+  // The digits and wrist extend in the same direction, without the old hook.
+  expect(strike.clone().sub(hand).normalize().dot(
+    finger.getWorldPosition(new Vector3()).sub(strike).normalize())).toBeGreaterThan(.9);
+  expect(at(2 / 3).distanceTo(strike)).toBeGreaterThan(.02);
+  const recoil = at(5 / 6);
+  expect(recoil.x - strike.x).toBeGreaterThan(.2);
+  expect(at(3.49).distanceTo(rest)).toBeLessThan(.0001);
+  // Sample between authored frames too, where rotation interpolation can
+  // introduce a jump or foot slide even when the keys themselves look right.
+  let previous = at(0);
+  for (let frame = 1; frame < 420; frame++) {
+    const position = at(frame / 120);
+    expect(position.distanceTo(previous), `continuous sample ${frame}`).toBeLessThan(.04);
+    expect(other.getWorldPosition(new Vector3()).distanceTo(support)).toBeLessThan(.001);
+    previous = position;
+  }
+  mixer.stopAllAction();
 });
 
 it("raises the strong response's tail visibly behind the cat", () => {

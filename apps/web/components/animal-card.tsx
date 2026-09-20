@@ -209,17 +209,26 @@ export const AnimalCard = memo(function AnimalCard({
   const photos = useAnimalPhotos(animal);
   const photoCount = photos.count;
   const pendingIndex = useRef(0);
+  // Whether the visitor is waiting on a photo they asked for. The gallery is
+  // fetched by two paths and only this one is worth a word on the card: the
+  // mouse dwell in photo-gallery.tsx warms the gallery silently and never sets
+  // this, so a hover leaves the card quiet.
+  const [awaitingStep, setAwaitingStep] = useState(false);
   function selectPhoto(next: number) {
     pendingIndex.current = next;
     if (photos.ready) {
       setPhotoIndex(next);
       return;
     }
+    setAwaitingStep(true);
     void photos
       .load()
       .then(() => {
         if (cardRef.current?.isConnected) setPhotoIndex(pendingIndex.current);
+        setAwaitingStep(false);
       })
+      // Left standing on a failure, which is what lets the note below offer
+      // the retry.
       .catch(() => {});
   }
   const waitMonths = longStayMonths(animal, reference);
@@ -414,7 +423,7 @@ export const AnimalCard = memo(function AnimalCard({
         announceChanges={announcePhotoChanges}
         eager={eager}
       />
-      {(photos.pending || photos.error) && (
+      {awaitingStep && (photos.error || photos.pending) && (
         <div className="absolute inset-x-2 top-2 z-30">
           <DeferredStatus
             error={photos.error}

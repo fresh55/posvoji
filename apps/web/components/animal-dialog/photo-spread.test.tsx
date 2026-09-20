@@ -811,7 +811,7 @@ it("keeps a shared secondary photo selection while gallery metadata loads", asyn
       </I18nProvider>,
     );
     expect(change).not.toHaveBeenCalled();
-    expect(screen.getByRole("status").textContent).toContain("Nalaganje");
+    await screen.findByText("Nalaganje …", {}, { timeout: 3000 });
     await act(async () => {
       finish({
         ok: true,

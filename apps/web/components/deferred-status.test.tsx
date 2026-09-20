@@ -1,0 +1,75 @@
+// @vitest-environment jsdom
+
+import { act, cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DeferredStatus } from "@/components/deferred-status";
+import { I18nProvider } from "@/components/i18n-provider";
+
+afterEach(cleanup);
+
+const DELAY_MS = 400;
+
+function show(error = false) {
+  return render(
+    <I18nProvider locale="sl">
+      <DeferredStatus error={error} retry={() => undefined} />
+    </I18nProvider>,
+  );
+}
+
+const note = () => screen.queryByRole("status");
+
+describe("the deferred status note", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps the live region empty while a load is inside the delay", () => {
+    show();
+
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS - 1);
+    });
+    expect(note()?.textContent).toBe("");
+  });
+
+  it("names the wait once the delay has passed", () => {
+    show();
+
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS);
+    });
+    expect(note()?.textContent).toContain("Nalaganje");
+  });
+
+  it("offers the retry at once when the load has failed", () => {
+    show(true);
+
+    expect(note()?.textContent).toContain("Poskusi znova");
+  });
+
+  it("keeps the note up when a retry turns the error back into a wait", () => {
+    const { rerender } = show(true);
+
+    rerender(
+      <I18nProvider locale="sl">
+        <DeferredStatus error={false} retry={() => undefined} />
+      </I18nProvider>,
+    );
+    expect(note()?.textContent).toContain("Nalaganje");
+  });
+
+  it("clears its timer when it is unmounted inside the delay", () => {
+    const { unmount } = show();
+
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => {
+      vi.advanceTimersByTime(DELAY_MS * 2);
+    });
+  });
+});

@@ -36,6 +36,7 @@ export type ShelterCardData = {
   name: string;
   city: string;
   href: string;
+  animalsHref: string;
   /** How many animals the dataset holds for this shelter. Absent or zero for
    *  a shelter that shares no list: the page never prints a zero, because a
    *  zero here reads as a shelter with no animals rather than as a shelter we
@@ -55,7 +56,7 @@ export type ShelterCardText = {
    *  is the one thing on the card that leaves the site, and target="_blank"
    *  announces nothing on its own. */
   newWindow: string;
-  /** "5 živali" / "5 animals", from lib/labels.ts. A function rather than a
+  /** "Poglej 5 živali" / "View 5 animals", using lib/labels.ts. A function rather than a
    *  string, because Slovenian agrees the noun with the number (žival, živali)
    *  and the card is a server component with no locale of its own: the page
    *  holds the locale and hands the card the one formatter it needs. */
@@ -276,7 +277,7 @@ export function ShelterCard({
               <a
                 href={shelter.href}
                 data-card-link
-                className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-ui group-hover:underline group-has-[[data-contact]:hover]:no-underline"
+                className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-ui group-hover:underline group-has-[[data-contact]:hover]:no-underline group-has-[[data-animals]:hover]:no-underline"
               >
                 {shelter.name}
               </a>
@@ -352,7 +353,7 @@ export function ShelterCard({
             still on a line of their own, so the eye has an edge to run down;
             what it no longer has is one y. Paid for the name reaching the
             reader first, which is the thing the page is a list of. */}
-        <ItemMedia className="justify-between gap-3">
+        <ItemMedia className="flex-wrap justify-between gap-3">
           {/* "register" rather than "sm": this is the one place the whole set
               of logos is drawn side by side, so it is the one place one mark's
               drawn size is read against another's. See WIDTH_FALLOFF.
@@ -417,18 +418,19 @@ export function ShelterCard({
           )}
           {animals !== undefined && (
             // data-animals is a test contract, the same as data-contact on
-            // the rows below: the census line above the grid states how many
+            // the rows below: the census line below the grid states how many
             // shelters share a list and how many animals they hold, and the
             // only way to check the page agrees with itself is to add these
             // up. The number rather than the label, because Slovenian agrees
             // the noun with it and a test should not be parsing the dual.
-            <p
+            <a
+              href={shelter.animalsHref}
               data-animals={animals}
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-ui border border-brand-border bg-brand px-2 py-0.5 text-xs font-medium tabular-nums text-brand-foreground"
+              className="relative z-10 ml-auto inline-flex min-h-9 pointer-coarse:min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-ui border border-brand-border bg-brand px-2 py-0.5 text-xs font-medium tabular-nums text-brand-foreground underline-offset-4 outline-hidden hover:underline focus-visible:ring-3 focus-visible:ring-ring"
             >
               <PawPrint className="size-3 shrink-0" aria-hidden />
               {text.animals(animals)}
-            </p>
+            </a>
           )}
         </ItemMedia>
 

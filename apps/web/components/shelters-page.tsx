@@ -1,4 +1,4 @@
-import { Building2, ListChecks, MapPinned, PawPrint } from "lucide-react";
+import { ListChecks, MapPinned, PawPrint } from "lucide-react";
 import { BackToTop } from "@/components/back-to-top";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { JsonLd } from "@/components/json-ld";
@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
+import { shelterAnimalsPath } from "@/lib/filters";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
 import {
@@ -27,7 +28,7 @@ import { mailtoHref } from "@/lib/contact-links";
 const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
-    lead: "Kontakti slovenskih zavetišč na enem mestu.",
+    lead: "Kontakti na enem mestu.",
     permissionNote: "Objave živali dodamo z dovoljenjem zavetišč.",
     join: "Ste zavetišče in se želite vključiti? Pišite na",
     lookupLink: "Najdena žival? Poišči pomoč po občini",
@@ -36,6 +37,7 @@ const pageText = {
     withListings: "z objavami",
     onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
+    viewAnimals: "Poglej",
     noAnimals: "Brez objav na Posvoji.si",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
@@ -44,7 +46,7 @@ const pageText = {
   },
   en: {
     title: "Shelters across Slovenia",
-    lead: "Contact details for Slovenian animal shelters in one place.",
+    lead: "Contact details in one place.",
     permissionNote: "Animal listings are published with each shelter’s permission.",
     join: "Would your shelter like to join? Email",
     lookupLink: "Found an animal? Find help by municipality",
@@ -53,6 +55,7 @@ const pageText = {
     withListings: "with listings",
     onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
+    viewAnimals: "View",
     noAnimals: "No listings on Posvoji.si",
     heading: "Shelters",
     skip: "Skip the list of shelters",
@@ -110,6 +113,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       name: shelter.name,
       city: shelter.city,
       href: shelterPath(shelter.id, locale),
+      animalsHref: shelterAnimalsPath(shelter.id, locale),
       animals: census.byShelter.get(shelter.id),
       logo: logos[shelter.id],
       website: shelter.website,
@@ -194,7 +198,9 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-            {text.lead}
+            <span data-census="shelters" data-count={shelters.length} className="tabular-nums">
+              {shelterCount(shelters.length, locale)} {text.inRegistry}
+            </span>. {text.lead}
           </p>
           {/* This lookup serves people who have found a stray. */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
@@ -210,33 +216,38 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               </a>
             </Button>
           </div>
+        </div>
+      </div>
 
-          {/* Label what is counted. Listing counts do not establish permission status or shelter capacity. */}
+      <SheltersAtlas
+        shelters={cards}
+        card={{
+          website: messages.contactWebsite,
+          email: messages.contactEmail,
+          phone: messages.contactPhone,
+          newWindow: messages.newWindow,
+          animals: (count) => `${text.viewAnimals} ${animalCount(count, locale)}`,
+          noAnimals: text.noAnimals,
+        }}
+        text={{
+          heading: text.heading,
+          skip: text.skip,
+          sortNote: text.sortNote,
+        }}
+      />
+
+      {/* Keep publishing context beside the source so the introduction
+          gets readers to the directory sooner, especially on phones. */}
+      <div className="max-w-3xl space-y-2 text-sm leading-relaxed text-muted-foreground">
+        {/* Listing counts do not establish permission status or shelter capacity. */}
+        {census.withData > 0 && (
           <ul
             role="list"
             aria-label={text.censusLabel}
             data-shelter-census
-            // gap-x-4 rather than gap-x-5. The groups have carried no
-            // separator since the hairlines came off below sm, so the gap is
-            // the only thing holding them apart, and at 20px the registry
-            // count and the listings count did not fit on one line at 390:
-            // three groups took three lines out of a phone's first screen.
-            // 16px seats two of them together there and reads as one line
-            // with a break in it rather than as a list. The e2e spec checks
-            // that every line starts at the same x whatever the wrap does.
             className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground"
           >
             {[
-              shelters.length > 0 && {
-                key: "shelters",
-                icon: Building2,
-                count: shelters.length,
-                body: (
-                  <span className="tabular-nums">
-                    {shelterCount(shelters.length, locale)} {text.inRegistry}
-                  </span>
-                ),
-              },
               census.withData > 0 && {
                 key: "providers",
                 icon: ListChecks,
@@ -288,29 +299,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
                 </li>
               ))}
           </ul>
-        </div>
-      </div>
-
-      <SheltersAtlas
-        shelters={cards}
-        card={{
-          website: messages.contactWebsite,
-          email: messages.contactEmail,
-          phone: messages.contactPhone,
-          newWindow: messages.newWindow,
-          animals: (count) => animalCount(count, locale),
-          noAnimals: text.noAnimals,
-        }}
-        text={{
-          heading: text.heading,
-          skip: text.skip,
-          sortNote: text.sortNote,
-        }}
-      />
-
-      {/* Keep publishing context beside the source so the introduction
-          gets readers to the directory sooner, especially on phones. */}
-      <div className="max-w-3xl space-y-2 text-sm leading-relaxed text-muted-foreground">
+        )}
         <p>{text.permissionNote}</p>
         <p>
           {text.join}{" "}

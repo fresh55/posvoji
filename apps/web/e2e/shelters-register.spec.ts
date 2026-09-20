@@ -106,7 +106,7 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     page.on("pageerror", error => errors.push(error.message));
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto(indexPath);
-    await expect(page.locator("[data-shelter-census] li")).toHaveCount(3);
+    await expect(page.locator("[data-shelter-census] li")).toHaveCount(2);
     await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
     await expect.poll(() => page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -354,7 +354,8 @@ test.describe("the shelters register", () => {
     expect(after.compared).toBeGreaterThan(0);
   });
 
-  // The census line under the lede: three groups separated by hairlines, which
+  // The participation counts below the directory must stay aligned when they wrap.
+  // Previously, three groups were separated by hairlines, which
   // are a separator only while the groups sit on one line. At 375px the third
   // wraps, and the rules that drew the separator and its padding used to
   // follow it, leaving a stroke pointing at the empty end of line one and the

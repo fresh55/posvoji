@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { useI18n } from "@/components/i18n-context";
 
 // How long a pending note waits before it draws. A fetch on a warm connection
 // lands well inside this, and a box that appears and vanishes in that time is
-// a flicker over whatever it sits on; being a live region, it is also an
-// announcement nobody has time to read. A failure has no such window, so it
-// draws at once.
+// a flicker over whatever it sits on and, as a live region, an announcement
+// nobody has time to read.
 const PENDING_DELAY_MS = 400;
 
 export function DeferredStatus({

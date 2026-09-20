@@ -775,9 +775,8 @@ it("keeps the first photo while metadata loads, then honors the card's keyboard 
 
 // What the card says while the deferred gallery is on its way, and to whom.
 // Two paths fetch the payload: the dwell in photo-gallery.tsx warms it for a
-// resting mouse, which the visitor did not ask for, and a step asks for a
-// photo the card cannot draw yet. The note's own timing is tested in
-// deferred-status.test.tsx.
+// resting mouse who asked for nothing, and a step asks for a photo the card
+// cannot draw yet. The note's own timing is in deferred-status.test.tsx.
 describe("AnimalCard deferred gallery note", () => {
   beforeEach(() => {
     vi.useFakeTimers();

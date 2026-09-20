@@ -7,8 +7,6 @@ import { I18nProvider } from "@/components/i18n-provider";
 
 afterEach(cleanup);
 
-// The note's own delay, which belongs to the component rather than to these
-// tests.
 const DELAY_MS = 400;
 
 function show(error = false) {

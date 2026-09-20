@@ -149,7 +149,7 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={DATA_POLICY_PATHS}
-      mainClassName="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 py-page-y"
+      mainClassName="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-section-gap py-page-y"
       // The address is printed inside the exit rule, where it is the thing to
       // do about the sentence above it. Same reason /o-nas passes the footer's
       // copy off: a second copy of one address on one screen says nothing new.

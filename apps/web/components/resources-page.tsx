@@ -296,7 +296,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={RESOURCES_PATHS}
-      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-10 py-page-y sm:gap-14"
+      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-section-gap py-page-y"
       footer={<SiteFooter locale={locale} />}
     >
       <div className="space-y-5">

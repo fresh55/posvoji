@@ -206,7 +206,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={ABOUT_PATHS}
-      mainClassName="grid w-full flex-1 grid-cols-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
+      mainClassName="grid w-full flex-1 grid-cols-1 content-start gap-section-gap py-page-y lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
       // The one footer that does not link to this page, because it is on it.
       // It passes the correction route off for the same reason: the contact
       // block above prints the address already, and a second copy of it two

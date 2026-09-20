@@ -759,7 +759,12 @@ export function MunicipalityFinder({
         <div className="space-y-2 border-t pt-4 text-sm leading-relaxed">
           {/* Keep practical advice reachable by heading navigation even
               before a search produces a shelter. */}
-          <h2 className="font-medium">{messages.muniGuidanceTitle}</h2>
+          {/* text-base, where font-medium alone left it at the block's own
+              14px: the page's one heading, printed at the size of the three
+              lines under it. 16px over 14px is the step About's rows use. */}
+          <h2 className="text-base font-medium text-foreground">
+            {messages.muniGuidanceTitle}
+          </h2>
           <ul className="space-y-2 text-muted-foreground">
             <li>{messages.muniInjured}</li>
             <li>{messages.muniCallAdvice}</li>

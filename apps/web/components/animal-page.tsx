@@ -68,7 +68,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         sl: animalPath(animal, "sl"),
         en: animalPath(animal, "en"),
       }}
-      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y"
+      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-section-gap py-page-y"
       // The page a shared link lands on, and the one where the freshness line
       // earns the most: a stranger reading it has nothing else on the screen
       // that says whether the listing was captured last night or in March.

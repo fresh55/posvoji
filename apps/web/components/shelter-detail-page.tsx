@@ -159,7 +159,7 @@ export function ShelterDetailPage({
         sl: `/zavetisca/${shelter.id}`,
         en: `/en/shelters/${shelter.id}`,
       }}
-      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-8 py-page-y sm:gap-10"
+      mainClassName="flex w-full max-w-5xl flex-1 flex-col gap-section-gap py-page-y"
       // A long document. The grid below draws in the home grid's steps
       // (use-incremental-grid.ts) and settles at TARGET_ROWS, which at the 300
       // to 330px a row measures is still some 12,000px between the top of the

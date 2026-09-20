@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
-import { translate } from "./i18n";
+import { getMessages, translate } from "./i18n";
+import { labelMessages } from "./label-messages";
+import { pickerText } from "@/components/filters/location-picker/model";
+import { portalText } from "@/components/portal/portal-text";
 import { groupLabel, groupOptions, toggleLabel } from "./filters";
 import {
   allShelters,
@@ -182,5 +185,45 @@ describe("localized labels", () => {
     expect(statusLabel("available", "sl")).toBe("na voljo");
     expect(statusLabel("adopted", "en")).toBe("adopted");
     expect(statusLabel("unknown", "sl")).toBeUndefined();
+  });
+});
+
+// One verb for every control that reveals a list. The site carried both
+// "Pokaži" and "Prikaži" for the same press: the filter sheet's CTA, the
+// shelter picker it opens and the grid's load-more button read as three
+// different actions. Fixing today's instances does not stop the next string
+// picking the other word, so the catalogues are walked.
+//
+// The imperative only. "Prikazane so živali ..." in the filter outcome lines
+// is a participle reporting a result, not a control asking to be pressed, and
+// the two are different parts of speech rather than drift.
+describe("the Slovenian show verb", () => {
+  // Both address forms: the public site would say "Prikaži" and the portal,
+  // which speaks to shelter staff as "vi", "Prikažite". Same wrong verb.
+  const SHOW_IMPERATIVE = /\bPrikaži(te)?\b/;
+
+  const catalogues: [string, Record<string, unknown>][] = [
+    ["lib/i18n.ts", getMessages("sl") as unknown as Record<string, unknown>],
+    ["lib/label-messages.ts", labelMessages.sl],
+    ["location-picker/model.ts", pickerText.sl],
+    // Flat rather than keyed by locale: the portal is Slovenian only.
+    ["portal/portal-text.ts", portalText],
+  ];
+
+  it.each(catalogues)("says Pokaži and never Prikaži in %s", (_name, catalogue) => {
+    const offenders = Object.entries(catalogue)
+      .filter(([, value]) => typeof value === "string" && SHOW_IMPERATIVE.test(value))
+      .map(([key, value]) => `${key}: ${String(value)}`);
+
+    expect(offenders).toEqual([]);
+  });
+
+  // The three presses that used to disagree, pinned as the strings a reader
+  // actually meets rather than as the keys behind them.
+  it("uses the one verb across the sheet, the picker and the grid", () => {
+    const sl = getMessages("sl");
+    expect(sl.show).toBe("Pokaži");
+    expect(sl.showAnimals).toContain("Pokaži");
+    expect(sl.showMoreAnimals).toContain("Pokaži");
   });
 });

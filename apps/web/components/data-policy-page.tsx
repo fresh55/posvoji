@@ -58,9 +58,9 @@ type PageText = {
 const pageText: Record<Locale, PageText> = {
   sl: {
     title: "Vsebine in dovoljenja",
-    // Infinitives rather than an address: the page's rules speak to shelters
-    // ("vi") and to visitors ("ti") in turn, and its opening line introduces
-    // both, so it names neither. See the voice note on about-page.tsx.
+    // Infinitives rather than an address: the rules below speak to shelters
+    // and to visitors in turn, so the line introducing both names neither.
+    // docs/COPY-VOICE.md.
     lead: "Kako ravnamo z objavami zavetišč in kako sporočiti napako ali zahtevati umik.",
     rules: [
       {
@@ -154,14 +154,12 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={DATA_POLICY_PATHS}
-      // No mx-auto. A page inside the site's reading flow starts its column at
-      // the frame's left edge, which is where the header's logo and the
-      // footer's prose start and where every other narrowed page starts
-      // (animal, shelter detail, viri, all max-w-5xl and all flush left).
-      // Centring this one moved the whole column 224px right of /o-nas on the
-      // way in from its own link, while the chrome stayed put. The pages that
-      // do centre are the ones that are a single moment rather than a section
-      // to read on: the 404, the portal login and the demo gate.
+      // No mx-auto: a page in the site's reading flow starts its column at the
+      // frame's left edge, where the header and footer start and where every
+      // other narrowed page starts. Centred, this one sat 224px right of
+      // /o-nas on the way in from its own link while the chrome stayed put.
+      // The pages that do centre are a single moment rather than a section to
+      // read on: the 404, the portal login, the demo gate.
       mainClassName="flex w-full max-w-3xl flex-1 flex-col gap-section-gap py-page-y"
       // The address is printed inside the exit rule, where it is the thing to
       // do about the sentence above it. Same reason /o-nas passes the footer's

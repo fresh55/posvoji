@@ -77,14 +77,10 @@ type PointKey = keyof typeof pointIcons;
 // Do not promise live availability or a refresh interval: sources can lag.
 // Browsing needs no account; shelters have a separate portal login.
 //
-// Two voices, and the sections below already say which is which. The visitor
-// is "ti", the form the rest of the site uses ("Si našel žival?", "Vpiši
-// kraj", "Poglej vse živali"); a shelter is "vi", here and in the portal. So
-// adopters.points are informal and shelters.points are not, and a point moved
-// between the two lists moves its address with it. The closing line stands
-// outside both and takes the visitor's form, naming shelters in the third
-// person rather than switching address mid-paragraph. English has no T-V
-// distinction, so the en record needs no counterpart.
+// Two voices, and the two lists below are what keeps them apart: adopters are
+// "ti" and shelters are "vi", so a point moved between them moves its address
+// with it. The closing line stands outside both and takes the visitor's form.
+// docs/COPY-VOICE.md has the rule.
 const pageText: Record<Locale, PageText> = {
   sl: {
     lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",

@@ -47,10 +47,9 @@ const sl = {
   // The action first, the reason second. The old order led with the caveat
   // and the visitor read a warning under the one button that mattered.
   //
-  // "preveri" and not "preverite": the site speaks to the visitor as "ti"
-  // everywhere else, and this line sits directly under "Odpri objavo pri
-  // zavetišču", "Poglej vse živali" and "Natisni plakat". Shelters are the
-  // ones addressed as "vi", on the about page's own section and in the portal.
+  // "preveri" and not "preverite": this line sits directly under "Odpri
+  // objavo pri zavetišču", "Poglej vse živali" and "Natisni plakat", which
+  // all address the visitor as "ti". docs/COPY-VOICE.md.
   sourceVerificationOld:
     "Pred obiskom preveri pri zavetišču, ali je žival še na voljo.",
   // The line the contact address follows, on every page rather than only on

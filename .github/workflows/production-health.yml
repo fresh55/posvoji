@@ -2,8 +2,15 @@ name: Production health
 
 on:
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Send a test notice to the configured alert recipient
+        type: boolean
+        default: false
   schedule:
-    - cron: "7,17,27,37,47,57 * * * *"
+    # The host checks every ten minutes. Hourly external checks bound private
+    # repository runner use; GitHub scheduling is still best effort.
+    - cron: "7 * * * *"
 
 permissions:
   contents: read
@@ -14,15 +21,11 @@ concurrency:
 
 jobs:
   verify:
-    # Standard runners are free for public repositories. Keep this disabled
-    # until the status-producing release is live; never incur private-repo usage.
-    if: toJSON(github.event.repository.private) == 'false' && vars.POSVOJI_MONITOR_ENABLED == 'true'
+    # Explicit opt-in is independent of repository visibility.
+    if: vars.POSVOJI_MONITOR_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify the public repository event
-        run: |
-          node -e 'const e=JSON.parse(require("fs").readFileSync(process.env.GITHUB_EVENT_PATH)); if(e.repository?.private!==false) process.exit(1); console.log("Public repository gate verified for "+process.env.GITHUB_EVENT_NAME);'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -45,3 +48,13 @@ jobs:
           fi
           unset MONITOR_NETRC
           bash scripts/monitor-production.sh
+      - name: Send failure or requested test notice
+        if: failure() || (github.event_name == 'workflow_dispatch' && inputs.test_alert)
+        env:
+          POSVOJI_ALERT_CONFIG: ${{ secrets.POSVOJI_ALERT_CONFIG }}
+          TEST_ALERT: ${{ github.event_name == 'workflow_dispatch' && inputs.test_alert }}
+          CHECK_FAILED: ${{ failure() }}
+        run: |
+          unit=posvoji-health.service
+          if [[ "$TEST_ALERT" == true && "$CHECK_FAILED" != true ]]; then unit=posvoji-alert-test.service; fi
+          python3 scripts/notify-failure.py "$unit" --github-actions

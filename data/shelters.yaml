@@ -96,6 +96,8 @@ shelters:
     name: Zavetišče Mala hiša
     city: Moravske Toplice
     website: https://zavetisce-malahisa.si/
+    # Published shelter contact, verified 2026-09-20 on /kontakt/.
+    email: malahisa@siol.net
     phone: "031 732 700"
     notes: >-
       Pogodbeno pokriva tudi Ptuj (Javne službe Ptuj). Dovoljenje potrjeno

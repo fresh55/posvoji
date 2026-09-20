@@ -1,0 +1,18 @@
+[Unit]
+Description=Email a failure notice for %i
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/posvoji/alerts.env
+
+[Service]
+Type=oneshot
+User=posvoji
+Group=caddy
+EnvironmentFile=/srv/posvoji/portal.env
+EnvironmentFile=/etc/posvoji/alerts.env
+ExecStart=/usr/bin/python3 /usr/local/lib/posvoji/notify-failure.py %i
+TimeoutStartSec=90s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true

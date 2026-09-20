@@ -118,7 +118,7 @@ a full Next build and may need missing media; it is not a five-minute guarantee.
 
 ## External monitoring without a new account
 
-`.github/workflows/production-health.yml` requests external checks every ten
+`.github/workflows/production-health.yml` requests external checks every hour
 minutes, but actual September 2026 runs had gaps exceeding five hours. Do not
 promise ten-minute external detection. The additional `posvoji-health.timer`
 runs the same check on the host every ten minutes; it checks delivery and
@@ -127,6 +127,35 @@ posvoji-health.service` and its journal for failures. This is a local check,
 not host-loss detection or proof that a human received an alert. The health
 unit uses `/etc/posvoji/health.netrc`; remove that unit environment setting
 when the site no longer needs authentication.
+
+Health, crawl and backup units use `OnFailure=posvoji-alert@%n.service`.
+The alert template reads the portal's existing SMTP settings from
+`/srv/posvoji/portal.env` and the recipient from `/etc/posvoji/alerts.env`:
+
+```ini
+POSVOJI_ALERT_TO=operator@example.invalid
+```
+
+Create that file as root with mode `600`, using the operator's confirmed
+address. `install-host-runner.sh` installs the template and its bounded,
+standard-library SMTP sender. A portal unit managed separately can use the
+same `OnFailure` setting in a systemd drop-in. Notices contain the failed unit
+and inspection instructions, never application logs. The alert unit has no
+failure hook of its own, so a mail outage cannot recurse into more alerts.
+Test the complete route using a deliberate, separate failing unit:
+
+```bash
+sudo systemd-run --wait --unit=posvoji-alert-test \
+  --property=Type=oneshot \
+  --property=OnFailure=posvoji-alert@posvoji-alert-test.service.service /bin/false
+sudo systemctl status posvoji-alert@posvoji-alert-test.service.service
+sudo systemctl reset-failed posvoji-alert-test.service
+```
+
+The first command intentionally fails. Confirm the alert service succeeds and
+the test notice reaches the operator before claiming delivery works. The host
+still cannot email during a host or network outage; the external check covers
+that case independently, subject to GitHub scheduling and SMTP availability.
 
 The monitor fails if the dataset is older than 30 hours, if no provider
 observations exist, or if any provider's discovery or oldest detail check is
@@ -163,18 +192,27 @@ the next monitor run, rather than waiting for the dataset freshness threshold.
 Run both services once when installing status reporting; missing history fails
 closed. The monitor checks host backup preparation, not whether the PC is online.
 
-Set repository variable `POSVOJI_MONITOR_ENABLED=true`. While basic auth remains,
+Set repository variable `POSVOJI_MONITOR_ENABLED=true`. This opt-in works for
+private and public repositories; private checks consume the account's Actions
+allowance. The hourly schedule bounds that usage while host checks remain every
+ten minutes. While basic auth remains,
 store its netrc in Actions secret `POSVOJI_MONITOR_NETRC`, never a variable or
 commit. Confirm both a manual and a scheduled run execute the verification job.
-The public-repository gate compares the serialized boolean to `false`; missing
-payload metadata cannot pass by coercion. The first step validates the actual
-event payload and logs only its event name and public-repository verdict.
+Store `POSVOJI_ALERT_CONFIG` as an Actions **secret** containing a JSON object
+with `POSVOJI_ALERT_TO` and the required `PORTAL_EMAIL_*`, `PORTAL_FROM_EMAIL`,
+`PORTAL_FROM_NAME` and `PORTAL_REPLY_TO_EMAIL` settings from the private host
+configuration. Never put the recipient or SMTP password in a repository file
+or variable. Failed checks send a bounded notice linking to the Actions run.
+Dispatch once with `test_alert=true` and confirm inbox receipt; the same sender
+is covered by offline SMTP tests. Repository visibility is a separate launch
+decision and is not changed by enabling monitoring.
 
 GitHub checks are external; HTTPS checks initiated on the production host are
 not independent monitoring. GitHub can delay schedules or disable them after
 inactivity. Failed-workflow notifications depend on the maintainer's GitHub
 notification preferences; successful polling does not prove notification
-receipt. This setup needs no new monitoring account or SMTP credentials.
+receipt. The explicit SMTP alert uses the existing portal mail account, so no
+new monitoring account or mail provider is needed.
 
 ## Backups using existing PC storage
 

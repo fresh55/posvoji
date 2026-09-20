@@ -22,6 +22,7 @@ import {
 import type { AnimalFields } from "@/lib/animal";
 import { useAnimalDescription } from "@/lib/animal-descriptions";
 import { ENERGY_ICONS, GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
+import { namesSeveralAnimals } from "@/lib/animal-name";
 import {
   ageGroup,
   ageInMonths,
@@ -387,23 +388,6 @@ function clampsDescription(paragraphs: string[]): boolean {
 // the footnote under the shelter box already prints that one.
 const PHOTO_CREDIT_ONLY =
   /^(?:Foto|Fotografij[ae]|Fotografiral[ai]?|Vse fotografije)\s*:?\s+\p{Lu}[^.]{2,40}$/u;
-
-// A listing that names more than one animal: "Bria in Brin", "TOM in LADY",
-// "DISEL, LYANN, LUNA". Six of them, and an animal's identity pills have one
-// age, one sex and one size to give for two or three animals, so they state
-// something untrue: a line reading 7, 12 and 12 years stood under a single
-// "7 let" pill. The shelter's own text names each of them, so it answers what
-// one row of pills cannot. Conservative on purpose: every part has to be a
-// single capitalised name, which leaves "Peter Zajec" and "brezrepa tritačka
-// Luna" the one animal each of them is.
-const NAME_LIST = /\s*,\s*|\s+in\s+/;
-const ONE_NAME = /^\p{Lu}[\p{L}'’-]*\.?$/u;
-
-function namesSeveralAnimals(name: string | null | undefined): boolean {
-  if (!name) return false;
-  const parts = name.trim().split(NAME_LIST);
-  return parts.length > 1 && parts.every((part) => ONE_NAME.test(part));
-}
 
 // The icon carries the meaning on screen; a screen reader gets the same
 // meaning from the prefix instead. Facts that read as a full sentence on their

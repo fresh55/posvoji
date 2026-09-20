@@ -46,9 +46,13 @@ const sl = {
   sourceVerificationUnknown: "Čas preverjanja ni znan",
   // The action first, the reason second. The old order led with the caveat
   // and the visitor read a warning under the one button that mattered.
+  //
+  // "preveri" and not "preverite": the site speaks to the visitor as "ti"
+  // everywhere else, and this line sits directly under "Odpri objavo pri
+  // zavetišču", "Poglej vse živali" and "Natisni plakat". Shelters are the
+  // ones addressed as "vi", on the about page's own section and in the portal.
   sourceVerificationOld:
-    "Pred obiskom preverite pri zavetišču, ali je žival še na voljo.",
-  sourceVerificationAge: "Zadnje preverjanje: {age}.",
+    "Pred obiskom preveri pri zavetišču, ali je žival še na voljo.",
   // The line the contact address follows, on every page rather than only on
   // /o-nas. A wrong listing is the likeliest reason anyone writes, and the
   // page it is wrong on is not the about page. The address itself stays the
@@ -221,7 +225,10 @@ const sl = {
   // The grid's own load-more control, once the automatic steps are spent.
   // Numerals only, no noun: "še 120" needs no agreement, where "120 živali"
   // would have to re-decide its form for every count the slot can carry.
-  showMoreAnimals: "Prikaži še {n}",
+  // "Pokaži" and not "Prikaži": one verb owns every control that reveals a
+  // list, because the sheet's CTA, the picker's CTA and this button are three
+  // presses of one flow and used to carry two different words.
+  showMoreAnimals: "Pokaži še {n}",
   // Under the button. "od {total} živali" stands after "od" in the genitive,
   // and every genitive of žival is "živali", so the noun can be spelled out
   // here without asking plural() to agree with the number.
@@ -239,8 +246,15 @@ const sl = {
   // nothing about the rest. A shelter's own page is the way through: it is a
   // list of that shelter's animals, and for all but the largest shelters the
   // whole of it is in the prerendered HTML.
+  //
+  // The filters are named as well as the list. The export writes one HTML for
+  // every query string, so a shared link carrying ?vrsta=pes&spol=samica
+  // arrives at the same unfiltered sixty cards with "Vse" still selected, and
+  // the page had no way of saying that the link had asked for something else.
+  // It cannot be conditional on the query for the same reason it has to be
+  // said: the server render never sees one.
   needsScriptForFullList:
-    "Seznam se razširi z JavaScriptom, ki je izklopljen. Vse živali posameznega zavetišča so na njegovi strani v registru.",
+    "Brez JavaScripta seznam ostane pri prvih živalih, filtri in razvrstitev iz povezave pa se ne upoštevajo. Vse živali posameznega zavetišča so na njegovi strani v registru.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
   // The zero state gets specific when a shelter selection is the whole
@@ -306,7 +320,9 @@ const sl = {
   // gazetteer, which carries nominatives only, and "Iz Ljubljana" is not a
   // sentence.
   originFrom: "Izhodišče: {place}",
-  show: "Prikaži",
+  // The filter sheet's CTA. Same verb as showAnimals below, which the shelter
+  // picker opened from this sheet carries: one flow, one word.
+  show: "Pokaži",
   removeFilter: "Odstrani filter {label}",
   health: "Zdravje",
   // The scope row's heading, in the panels and in the sheet. One word, because
@@ -616,7 +632,7 @@ const sl = {
   adoptionRequirements: "Pogoji posvojitve",
   resetHomeFilters: "Ponastavi filter doma",
   homeFilterHint:
-    "Prikaži živali z izrecno navedenimi zahtevami glede doma.",
+    "Pokaži živali z izrecno navedenimi zahtevami glede doma.",
   homeOutcome:
     "Prikazane so živali z izrecno navedeno zahtevo glede doma. {count} od {total}.",
   apartmentYes: "Primeren za stanovanje",
@@ -627,7 +643,7 @@ const sl = {
   care: "Posebna skrb",
   resetCareFilters: "Ponastavi filter posebne skrbi",
   careFilterHint:
-    "Prikaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
+    "Pokaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
   careOutcome:
     "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
   // A pill, so a label and not the sentence it used to be: the words the care
@@ -658,7 +674,6 @@ const en: Messages = {
   sourceVerificationUnknown: "Check time unknown",
   sourceVerificationOld:
     "Before visiting, check with the shelter that the animal is still available.",
-  sourceVerificationAge: "Last checked {age}.",
   footerContact: "A correction or a question?",
   moreInformation: "More information",
   footerLinks: "Footer links",
@@ -738,7 +753,7 @@ const en: Messages = {
   shownOfTotal: "{shown} of {total} animals",
   allShown: "End of the list. {total} of {total} animals.",
   needsScriptForFullList:
-    "The list grows with JavaScript, which is turned off. Every animal of a single shelter is on that shelter’s own page in the register.",
+    "Without JavaScript the list stops at the first animals, and filters or sorting from a link are not applied. Every animal of a single shelter is on that shelter’s own page in the register.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
   noResultsShelterSingular: "The selected shelter currently has no {species}.",

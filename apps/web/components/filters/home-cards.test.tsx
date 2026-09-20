@@ -54,7 +54,7 @@ describe("HomeCards", () => {
     expect(screen.getByRole("heading", { name: "Dom" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Prikaži živali z izrecno navedenimi zahtevami glede doma.",
+        "Pokaži živali z izrecno navedenimi zahtevami glede doma.",
       ),
     ).toBeTruthy();
   });

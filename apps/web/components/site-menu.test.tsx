@@ -70,6 +70,20 @@ describe("the header menu", () => {
     expect(login.getAttribute("hreflang")).toBe("sl");
   });
 
+  // Grey text under a separator is the shape a disabled menu item has, and on
+  // a phone this menu is the only door to the portal on the page. The
+  // separator above is what demotes the group; the colour was borrowing the
+  // disabled state's only signal to say the same thing twice. The lg button
+  // keeps its muted colour, because a frame around a control says "press me"
+  // on its own and a bare menu row has nothing else.
+  it("does not grey the login into looking disabled", () => {
+    openMenu("sl", "Meni");
+
+    const login = screen.getByRole("menuitem", { name: "Prijava za zavetišča" });
+    expect(login.className.split(" ")).not.toContain("text-muted-foreground");
+    expect(login.getAttribute("aria-disabled")).toBeNull();
+  });
+
   // The page still builds and still answers on /viri and /en/resources; it is
   // only unlisted, in lib/site-links.ts, and the dropdown is the surface that
   // used to show every link there was.

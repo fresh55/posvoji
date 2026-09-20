@@ -171,6 +171,21 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                 <p className="text-sm text-muted-foreground">
                   {animalSubtitle(animal, locale)}
                 </p>
+                {/* The grid card this page is usually reached from draws the
+                    species mark and says "Fotografija na strani zavetišča"
+                    where the picture would be. Here the photo column is
+                    dropped entirely (see the grid comment above), so without
+                    this line the listing simply looks short, and a visitor
+                    arriving from a search result has nothing telling them the
+                    shelter has pictures at all. The sentence and no mark:
+                    photo-gallery.tsx already states that the animal page and
+                    the dialog take the words alone, the empty box being one
+                    box on a page that is about one animal. */}
+                {!hasPhoto && (
+                  <p className="text-sm text-muted-foreground">
+                    {messages.photoAtShelter}
+                  </p>
+                )}
               </div>
 
               <AnimalFacts animal={fields} reference={reference} />

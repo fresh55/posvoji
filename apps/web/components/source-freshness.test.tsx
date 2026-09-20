@@ -15,10 +15,14 @@ it("ages an open static page without changing its source timestamp", async () =>
   expect(screen.queryByText(/still available/)).toBeNull();
   vi.setSystemTime(new Date("2026-09-15T07:00:00Z"));
   await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+  // What ageing shows is the warning arriving, and it is the whole of what the
+  // minute timer is for. The sentence used to end in "Last checked 2 days
+  // ago.", which restated the date printed in the line above it under a second
+  // label, and it is gone; the paragraph being drawn at all is the age now.
   expect(screen.getByText(/still available/)).toBeTruthy();
-  expect(screen.getByText(/Last checked 2 days ago\./)).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(24 * 60 * 60000); });
-  expect(screen.getByText(/Last checked 3 days ago\./)).toBeTruthy();
+  expect(screen.getByText(/still available/)).toBeTruthy();
+  expect(screen.queryByText(/Last checked/)).toBeNull();
   // The reader gets the date, the machine keeps the instant.
   expect(container.querySelector("time")?.dateTime).toBe(checkedAt);
   expect(container.querySelector("time")?.textContent).toBe("13 Sept 2026");
@@ -63,10 +67,13 @@ it.each([undefined, "bad", "2026-09-14T07:00:00Z"])("treats an unreliable check 
   expect(screen.queryByText(/Last checked/)).toBeNull();
 });
 
+// The instruction and nothing after it. The relative age that used to close
+// this sentence is the date in the line above told a second time, and the one
+// thing to do was reaching the reader last.
 it.each([
-  ["sl", "Zadnje preverjanje: pred 31 urami."],
-  ["en", "Last checked 31 hours ago."],
-] as const)("renders the verification age in %s using the server reference initially", (locale, expected) => {
+  ["sl", "Pred obiskom preveri pri zavetišču, ali je žival še na voljo."],
+  ["en", "Before visiting, check with the shelter that the animal is still available."],
+] as const)("says what to do about an old check in %s, and stops there", (locale, expected) => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-30T12:00:00Z"));
   render(
@@ -77,5 +84,5 @@ it.each([
       />
     </I18nProvider>,
   );
-  expect(screen.getByText((text) => text.endsWith(expected))).toBeTruthy();
+  expect(screen.getByText(expected).textContent).toBe(expected);
 });

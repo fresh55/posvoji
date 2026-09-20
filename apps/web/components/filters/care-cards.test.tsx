@@ -54,7 +54,7 @@ describe("CareCards", () => {
     expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Prikaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
+        "Pokaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
       ),
     ).toBeTruthy();
   });

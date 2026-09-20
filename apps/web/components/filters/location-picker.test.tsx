@@ -1391,15 +1391,20 @@ describe("LocationPicker map picking", () => {
 
     fireEvent.click(marker("maribor"));
 
-    // The deleted card used to end in its own "Prikaži živali", directly under
+    // The deleted card used to end in a show button of its own, directly under
     // one shelter's own count, and clicking it applied every filter in the
     // dialog rather than that shelter's animals. One button in the footer now,
     // and the number it wears is the whole dialog's, not one shelter's: the
     // objection to the card's button was never the count, it was a primary
     // action sitting under a single shelter's row and answering for every
     // other one.
-    expect(screen.queryByRole("button", { name: "Prikaži živali" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Prikaži/ })).toBeNull();
+    //
+    // Counted rather than named as the label it used to carry. That label was
+    // "Prikaži živali" and the verb is now "Pokaži" everywhere, so a query for
+    // the old spelling would pass on a dialog that had grown a second button.
+    expect(screen.queryAllByRole("button", { name: /^Pokaži \d/ })).toHaveLength(
+      1,
+    );
     expect(
       screen.getByRole("button", { name: "Pokaži 11 živali" }),
     ).toBeTruthy();

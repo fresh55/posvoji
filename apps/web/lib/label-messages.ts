@@ -6,6 +6,11 @@ export const labelMessages = {
   sl: {
     lessThanMonth: "manj kot mesec",
     cardAge: "starost {age}",
+    // The card's fact for a listing that covers more than one animal, in the
+    // slot the age would have taken. It replaces rather than joins: the age,
+    // the size and the sex all describe one animal, and the card has no
+    // description under it to correct them the way the dialog does.
+    cardSeveralAnimals: "več živali",
     factStayValue: "V zavetišču: {duration}",
     longStayWholeLife: "{name} v zavetišču čaka že {duration}, skoraj vse svoje življenje.",
     longStay: "{name} v zavetišču čaka že {duration}.",
@@ -26,6 +31,7 @@ export const labelMessages = {
   en: {
     lessThanMonth: "less than a month",
     cardAge: "{age} old",
+    cardSeveralAnimals: "several animals",
     factStayValue: "In the shelter: {duration}",
     longStayWholeLife: "{name} has been waiting in the shelter for {duration}, almost its whole life.",
     longStay: "{name} has been waiting in the shelter for {duration}.",

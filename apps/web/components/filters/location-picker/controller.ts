@@ -16,6 +16,7 @@ import {
 } from "@/hooks/use-desktop-breakpoint-close";
 import { useNearby, useNearbyQuery, useNearbyChosenPlace } from "@/hooks/use-nearby";
 import { usePublishNearbyOrigin } from "@/hooks/use-nearby-origin";
+import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { isDrop } from "@/lib/filters";
 import { onMap } from "@/lib/geo";
 import {
@@ -117,10 +118,24 @@ export function useLocationPickerController({
   const [offGroupOpen, setOffGroupOpen] = useState(false);
   // Detail reveals scroll only the list, keeping search and dialog chrome in place.
   const listNode = useRef<HTMLDivElement | null>(null);
-  const listRef = useCallback((node: HTMLDivElement | null) => {
-    listNode.current = node;
-    return () => { listNode.current = null; };
-  }, []);
+  // The roster runs under the dialog's own CTA, which clipped the last visible
+  // row through the middle at a hard edge: a row cut in half reads as the end
+  // of the list rather than as more of it. Same fade the desktop filter
+  // sidebar wears, from the same hook, so the two containers cannot drift to
+  // different depths. Composed into the existing ref rather than added beside
+  // it, because the detail reveals above still need the node.
+  const fadeRef = useScrollEdgeFades<HTMLDivElement>();
+  const listRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      listNode.current = node;
+      const stopFade = fadeRef(node);
+      return () => {
+        listNode.current = null;
+        stopFade?.();
+      };
+    },
+    [fadeRef],
+  );
   const pendingMapFocus = useRef<string | null>(null);
   // The news of a region click that took several shelters off at once, and the
   // selection it left behind. It is carried with that selection rather than

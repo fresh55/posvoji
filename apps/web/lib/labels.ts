@@ -1,6 +1,7 @@
 import type { LabelKey } from "@/lib/label-messages";
 import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
 import type { AnimalFields } from "@/lib/animal";
+import { namesSeveralAnimals } from "@/lib/animal-name";
 import type { Locale } from "@/lib/i18n";
 import { translateLabel as translate } from "@/lib/label-messages";
 import {
@@ -383,6 +384,17 @@ export function animalMetaParts(
   // The species word, unless the tab the card is under has already said it.
   if (species !== "dog" && species !== "cat") {
     facts.push(speciesLabel(animal.species, locale));
+  }
+  // A listing covering several animals takes the one fact that is true of all
+  // of them and stops. The dialog and the page withhold the age, the sex and
+  // the size for the same reason (animal-facts.tsx) and let the shelter's
+  // description answer instead; the card has no description under it, and the
+  // fall-through below would have filled the slot with the next single-animal
+  // fact rather than leaving it empty. On a species tab this is the whole
+  // line, which is why it is a phrase and not a bare number.
+  if (namesSeveralAnimals(animal.name)) {
+    facts.push(translate(locale, "cardSeveralAnimals"));
+    return facts;
   }
   const months = ageInMonths(animal, now);
   // Named, not bare. The grid's default order is the longest wait first, and

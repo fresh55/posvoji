@@ -14,7 +14,7 @@ const text = {
   newWindow: "(odpre se v novem oknu)",
   // The page's own formatter, so the test reads the string a reader gets,
   // Slovenian agreement and all.
-  animals: (count: number) => animalCount(count, "sl"),
+  animals: (count: number) => `Poglej ${animalCount(count, "sl")}`,
   noAnimals: "Živali niso objavljene",
 };
 
@@ -24,6 +24,7 @@ function shelter(over: Partial<ShelterCardData> = {}): ShelterCardData {
     name: "Zavetišče Zonzani",
     city: "Dramlje",
     href: "/zavetisca/zonzani",
+    animalsHref: "/?zavetisce=zonzani",
     ...over,
   };
 }
@@ -245,7 +246,7 @@ describe("the shelter card", () => {
 
     expect(within(container).queryByText("P")).toBeNull();
     expect(container.querySelector("img")).toBeNull();
-    expect(within(container).getByText("4 živali").className).toContain(
+    expect(within(container).getByText("Poglej 4 živali").className).toContain(
       "bg-brand",
     );
   });
@@ -253,11 +254,14 @@ describe("the shelter card", () => {
   it("says how many animals a shelter that shares its list holds", () => {
     render(<ShelterCard shelter={shelter({ animals: 2 })} text={text} />);
 
+    expect(screen.getByRole("link", { name: "Poglej 2 živali" }).getAttribute("href"))
+      .toBe("/?zavetisce=zonzani");
+
     // The census line states a total and how many shelters are in it. Which
     // shelters, and with how many animals each, is only ever said here.
     //
     // Two, not five: the dual is the form a naive plural gets wrong.
-    expect(screen.getByText("2 živali").getAttribute("data-animals")).toBe(
+    expect(screen.getByText("Poglej 2 živali").getAttribute("data-animals")).toBe(
       "2",
     );
   });
@@ -336,7 +340,7 @@ describe("the shelter card", () => {
     // contacts. The media row used to come first in the document because the
     // subgrid placed it by position; it is placed by name now.
     const name = screen.getByRole("heading", { level: 2 });
-    const count = screen.getByText("2 živali");
+    const count = screen.getByText("Poglej 2 živali");
     expect(
       Boolean(
         name.compareDocumentPosition(count) & Node.DOCUMENT_POSITION_FOLLOWING,

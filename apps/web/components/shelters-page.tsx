@@ -1,4 +1,4 @@
-import { Building2, ListChecks, MapPinned, PawPrint } from "lucide-react";
+import { ListChecks, MapPinned, PawPrint } from "lucide-react";
 import { BackToTop } from "@/components/back-to-top";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { JsonLd } from "@/components/json-ld";
@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
 import { loadDataset } from "@/lib/dataset";
+import { shelterAnimalsPath } from "@/lib/filters";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
 import {
@@ -27,15 +28,18 @@ import { mailtoHref } from "@/lib/contact-links";
 const pageText = {
   sl: {
     title: "Zavetišča po Sloveniji",
-    lead: "Kontakti slovenskih zavetišč na enem mestu.",
+    // Follows the registry count as one sentence: "17 zavetišč iz registra,
+    // kontakti na enem mestu." The count stays in the nominative the
+    // formatter prints, so no case or verb has to agree with it.
+    lead: "iz registra, kontakti na enem mestu.",
     permissionNote: "Objave živali dodamo z dovoljenjem zavetišč.",
     join: "Ste zavetišče in se želite vključiti? Pišite na",
     lookupLink: "Najdena žival? Poišči pomoč po občini",
     censusLabel: "Pregled zavetišč",
-    inRegistry: "v registru",
     withListings: "z objavami",
     onSite: "na Posvoji.si",
     sortNote: "Razvrščeno po kraju.",
+    viewAnimals: "Poglej",
     noAnimals: "Brez objav na Posvoji.si",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
@@ -44,15 +48,15 @@ const pageText = {
   },
   en: {
     title: "Shelters across Slovenia",
-    lead: "Contact details for Slovenian animal shelters in one place.",
+    lead: "from the registry, contact details in one place.",
     permissionNote: "Animal listings are published with each shelter’s permission.",
     join: "Would your shelter like to join? Email",
     lookupLink: "Found an animal? Find help by municipality",
     censusLabel: "Shelter overview",
-    inRegistry: "in the registry",
     withListings: "with listings",
     onSite: "on Posvoji.si",
     sortNote: "Sorted by town.",
+    viewAnimals: "View",
     noAnimals: "No listings on Posvoji.si",
     heading: "Shelters",
     skip: "Skip the list of shelters",
@@ -110,6 +114,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
       name: shelter.name,
       city: shelter.city,
       href: shelterPath(shelter.id, locale),
+      animalsHref: shelterAnimalsPath(shelter.id, locale),
       animals: census.byShelter.get(shelter.id),
       logo: logos[shelter.id],
       website: shelter.website,
@@ -194,8 +199,87 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             {text.title}
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <span data-census="shelters" data-count={shelters.length} className="tabular-nums">
+              {shelterCount(shelters.length, locale)}
+            </span>{" "}
             {text.lead}
           </p>
+          {/* The two participation counts, under the lead they qualify.
+              They were moved below the directory once, where 5,000px of
+              cards stood between a reader and two numbers nobody scrolled
+              to. Two items now, not three: the registry count is the lead's.
+              Listing counts do not establish permission status or shelter
+              capacity.
+
+              Both rows are drawn whenever the block is. A shelter only enters
+              byShelter because an animal was counted onto it, so withData > 0
+              is animals > 0 (lib/shelter-census.ts): the guard the animals row
+              used to carry was the gate above it said twice, and the array's
+              `| false` member and the filter pass existed to express a branch
+              that could not be taken. */}
+          {census.withData > 0 && (
+            <ul
+              role="list"
+              aria-label={text.censusLabel}
+              data-shelter-census
+              // gap-x-4 rather than gap-x-5. The groups carry no separator
+              // below sm, so the gap is the only thing holding them apart,
+              // and 16px seats the two on one line at 390 where 20px did
+              // not. The e2e spec checks that every line starts at the same
+              // x whatever the wrap does.
+              className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground"
+            >
+              {[
+                {
+                  key: "providers",
+                  icon: ListChecks,
+                  count: census.withData,
+                  body: (
+                    <span>
+                      {shelterCount(census.withData, locale)} {text.withListings}
+                    </span>
+                  ),
+                },
+                {
+                  key: "animals",
+                  icon: PawPrint,
+                  count: census.animals,
+                  body: (
+                    <span>
+                      <span className="tabular-nums">
+                        {animalCount(census.animals, locale)}
+                      </span>{" "}
+                      {text.onSite}
+                    </span>
+                  ),
+                },
+              ].map(({ key, icon: Icon, count, body }) => (
+                  // data-census and data-count are a test contract, not
+                  // decoration, the same as data-contact on the cards'
+                  // rows. What has to be checkable from the rendered page
+                  // is that this line and the grid's green pills agree:
+                  // one pill per shelter counted here, and the pills adding
+                  // up to the total. Read off an attribute rather than the
+                  // text, because Slovenian agrees the noun with the number
+                  // and a test parsing "186 živali" would be parsing the
+                  // dual as well.
+                  <li
+                    key={key}
+                    data-census={key}
+                    data-count={count}
+                    // The 2px above and below is a pointer's hit area on a
+                    // line that is not a control: nothing here is pressable,
+                    // and on a phone it only adds 4px to each of the lines
+                    // this wraps onto. So it starts at sm, where the line
+                    // does not wrap and the padding costs nothing.
+                    className="flex items-center gap-1.5 sm:py-0.5"
+                  >
+                    <Icon className="size-3.5 shrink-0" aria-hidden />
+                    {body}
+                  </li>
+                ))}
+            </ul>
+          )}
           {/* This lookup serves people who have found a stray. */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1">
             <Button
@@ -210,84 +294,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
               </a>
             </Button>
           </div>
-
-          {/* Label what is counted. Listing counts do not establish permission status or shelter capacity. */}
-          <ul
-            role="list"
-            aria-label={text.censusLabel}
-            data-shelter-census
-            // gap-x-4 rather than gap-x-5. The groups have carried no
-            // separator since the hairlines came off below sm, so the gap is
-            // the only thing holding them apart, and at 20px the registry
-            // count and the listings count did not fit on one line at 390:
-            // three groups took three lines out of a phone's first screen.
-            // 16px seats two of them together there and reads as one line
-            // with a break in it rather than as a list. The e2e spec checks
-            // that every line starts at the same x whatever the wrap does.
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-sm text-muted-foreground"
-          >
-            {[
-              shelters.length > 0 && {
-                key: "shelters",
-                icon: Building2,
-                count: shelters.length,
-                body: (
-                  <span className="tabular-nums">
-                    {shelterCount(shelters.length, locale)} {text.inRegistry}
-                  </span>
-                ),
-              },
-              census.withData > 0 && {
-                key: "providers",
-                icon: ListChecks,
-                count: census.withData,
-                body: (
-                  <span>
-                    {shelterCount(census.withData, locale)} {text.withListings}
-                  </span>
-                ),
-              },
-              census.animals > 0 && {
-                key: "animals",
-                icon: PawPrint,
-                count: census.animals,
-                body: (
-                  <span>
-                    <span className="tabular-nums">
-                      {animalCount(census.animals, locale)}
-                    </span>{" "}
-                    {text.onSite}
-                  </span>
-                ),
-              },
-            ]
-              .filter((group) => group !== false)
-              .map(({ key, icon: Icon, count, body }) => (
-                // data-census and data-count are a test contract, not
-                // decoration, the same as data-contact on the cards'
-                // rows. What has to be checkable from the rendered page
-                // is that this line and the grid's green pills agree:
-                // one pill per shelter counted here, and the pills adding
-                // up to the total. Read off an attribute rather than the
-                // text, because Slovenian agrees the noun with the number
-                // and a test parsing "186 živali" would be parsing the
-                // dual as well.
-                <li
-                  key={key}
-                  data-census={key}
-                  data-count={count}
-                  // The 2px above and below is a pointer's hit area on a line
-                  // that is not a control: nothing here is pressable, and on a
-                  // phone it only adds 4px to each of the lines this wraps
-                  // onto. So it starts at sm, where the line does not wrap and
-                  // the padding costs nothing.
-                  className="flex items-center gap-1.5 sm:py-0.5"
-                >
-                  <Icon className="size-3.5 shrink-0" aria-hidden />
-                  {body}
-                </li>
-              ))}
-          </ul>
         </div>
       </div>
 
@@ -298,7 +304,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           email: messages.contactEmail,
           phone: messages.contactPhone,
           newWindow: messages.newWindow,
-          animals: (count) => animalCount(count, locale),
+          animals: (count) => `${text.viewAnimals} ${animalCount(count, locale)}`,
           noAnimals: text.noAnimals,
         }}
         text={{
@@ -308,8 +314,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         }}
       />
 
-      {/* Keep publishing context beside the source so the introduction
-          gets readers to the directory sooner, especially on phones. */}
+      {/* For shelters: how listings get here and how to join. */}
       <div className="max-w-3xl space-y-2 text-sm leading-relaxed text-muted-foreground">
         <p>{text.permissionNote}</p>
         <p>

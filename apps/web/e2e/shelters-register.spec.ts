@@ -106,7 +106,7 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     page.on("pageerror", error => errors.push(error.message));
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto(indexPath);
-    await expect(page.locator("[data-shelter-census] li")).toHaveCount(3);
+    await expect(page.locator("[data-shelter-census] li")).toHaveCount(2);
     await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
     await expect.poll(() => page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -354,11 +354,13 @@ test.describe("the shelters register", () => {
     expect(after.compared).toBeGreaterThan(0);
   });
 
-  // The census line under the lede: three groups separated by hairlines, which
-  // are a separator only while the groups sit on one line. At 375px the third
-  // wraps, and the rules that drew the separator and its padding used to
-  // follow it, leaving a stroke pointing at the empty end of line one and the
-  // wrapped group indented off the column every other line starts from.
+  // The census line under the lede: two groups now that the registry count
+  // opens the lede itself. They used to be three, separated by hairlines,
+  // which are a separator only while the groups sit on one line. At 375px the
+  // last one wraps, and the rules that drew the separator and its padding
+  // used to follow it, leaving a stroke pointing at the empty end of line one
+  // and the wrapped group indented off the column every other line starts
+  // from.
   test("keeps the census flush and unruled when it wraps", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(REGISTER);

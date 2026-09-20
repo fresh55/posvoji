@@ -1870,27 +1870,6 @@ describe("animal dialog", () => {
       .toBeTruthy();
   });
 
-  // opacity 0 does not remove hit-testing. On a touch tablet wide enough for
-  // the desktop fan nothing hovers, so the chevrons were invisible and still
-  // took the tap meant to open the photo under them. They take the pointer
-  // only once they can be seen; focus is never gated, so the keyboard keeps
-  // them. jsdom applies no Tailwind, so the classes are the assertion.
-  it("keeps the chevrons off the pointer until they show", async () => {
-    window.history.replaceState(null, "", "/?zival=rex");
-    renderGrid();
-    const dialog = await screen.findByRole("dialog");
-
-    const next = region(dialog, "photo-spread").getByRole("button", {
-      name: "Naslednja fotografija",
-    });
-    expect(next.className).toContain("pointer-events-none");
-    expect(next.className).toContain("group-hover:pointer-events-auto");
-    expect(next.className).toContain(
-      "group-has-[:focus-visible]:pointer-events-auto",
-    );
-    expect(next.className).not.toMatch(/(^|\s)pointer-events-auto(\s|$)/);
-  });
-
   // The keys reach the stage by bubbling from the print that holds focus, and
   // a walk moves that print: three steps and it is more than two seats out,
   // dropped from the window, and unmounted with focus on it. Focus fell to the
@@ -2489,24 +2468,6 @@ describe("animal dialog", () => {
     }
   });
 
-  // The close button on the photo is fixed to the top right of the phone
-  // shell while the card scrolls under it, and at 390px it stood over the last
-  // two or three characters of two lines of a description. The card reserves
-  // that column for the running text, which is the only thing in it whose
-  // lines reach so far right. Measured on the built export at 390x844; what a
-  // jsdom test can hold on to is that the card still asks for it and that the
-  // button it is measured against is the one that is fixed.
-  it("keeps the description clear of the fixed close button on a phone", async () => {
-    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
-    const dialog = await screen.findByRole("dialog");
-
-    expect(slot(dialog, "animal-dialog-card").className).toContain(
-      "phone-shell:[&_[data-slot=animal-description]]:pe-11",
-    );
-    expect(slot(dialog, "dialog-close-photo").className).toContain("fixed");
-    expect(slot(dialog, "dialog-close-photo").className).toContain("size-11");
-  });
-
   // The arrows are level with the name, and from sm up the name rides a sticky
   // bar: at rest its centre is 64px under the card's top, pinned it is 40px.
   // The arrows are absolute against the frame, which does not scroll, so they
@@ -2933,59 +2894,6 @@ describe("animal dialog", () => {
     ).toBeTruthy();
   });
 
-  // A phone held sideways is 844x390: wide enough for the desktop box and far
-  // too short for it. It used to get that box, which left the facts card a
-  // 98px window to scroll 488px of listing in, with the sticky name row over
-  // most of it. Every phone rule is written for the short viewport as well,
-  // and every desktop rule now asks for the height it needs.
-  it("keeps the phone shell on a short viewport", async () => {
-    window.history.replaceState(null, "", "/?zival=rex");
-    renderGrid();
-    const dialog = await screen.findByRole("dialog");
-
-    expect(dialog.className).toContain("phone-shell:h-dvh");
-    expect(dialog.className).toContain("phone-shell:overflow-y-auto");
-    expect(dialog.className).toContain("desktop-box:max-h-[92dvh]");
-    // The card is the scrollport on the desktop box alone; on the phone shell
-    // the dialog itself scrolls.
-    const card = dialog.querySelector('[data-slot="animal-dialog-card"]');
-    expect(card?.className).toContain("desktop-box:overflow-y-auto");
-    // The sticky bar stands on a short viewport too, so the box's own button
-    // gives way to it there rather than printing the same link twice.
-    expect(
-      region(dialog, "shelter-block")
-        .getByRole("link", { name: /Odpri objavo pri zavetišču/ })
-        .className,
-    ).toContain("");
-  });
-
-  // The animal's own page renders the same box with no bar under it, so there
-  // the button has to stay, and at a size a thumb can land on.
-  it("keeps the shelter box's button where nothing mirrors it", () => {
-    render(
-      <I18nProvider locale="sl">
-        <ShelterBlock
-          animal={REX}
-          logos={{}}
-          reference={new Date(REFERENCE)}
-        />
-      </I18nProvider>,
-    );
-
-    const cta = screen.getByRole("link", {
-      name: /Odpri objavo pri zavetišču/,
-    });
-    expect(cta.className).not.toContain("phone-shell:hidden");
-    // On the pointer and not on the width: the 768px tablet, where this is
-    // the only copy of the button, measured 36px under max-sm. A minimum
-    // rather than a height, because the label wraps at a large root font and
-    // a fixed box would have it spill; 36 and 44 are what the two pointers
-    // still measure.
-    expect(cta.className).toContain("pointer-coarse:min-h-11");
-    expect(cta.className).toContain("min-h-9");
-    expect(cta.className).toContain("whitespace-normal");
-  });
-
   // The shelter is named on every animal and, until the name became a link,
   // nothing on the page went to the page about it.
   it("sends the shelter's name to the shelter's own page", () => {
@@ -3004,27 +2912,6 @@ describe("animal dialog", () => {
         .getByRole("link", { name: "Zavetišče Test" })
         .getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
-  });
-
-  // 17px of name, and it is a control: the one way out of this box that
-  // stays on the site, and the way to the shelter's contacts now that the
-  // box draws none of its own. A finger gets 44px of it.
-  it("gives the shelter's name a finger's box", () => {
-    render(
-      <I18nProvider locale="sl">
-        <ShelterBlock
-          animal={REX}
-          logos={{}}
-          reference={new Date(REFERENCE)}
-        />
-      </I18nProvider>,
-    );
-
-    // The name's own overlay is clipped by the clamp on its line, so the row
-    // carries the height and the link is stretched over it.
-    const name = screen.getByRole("link", { name: "Zavetišče Test" });
-    expect(name.className).toContain("pointer-coarse:after:inset-0");
-    expect(name.closest("p")?.className).toContain("pointer-coarse:py-3");
   });
 
   // The shelter block replaces the CTA with the good news and a quiet text

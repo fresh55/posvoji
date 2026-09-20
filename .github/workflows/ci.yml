@@ -18,6 +18,39 @@ concurrency:
 
 jobs:
   checks:
+    if: always()
+    needs: [web-checks, tests, portal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every check to pass
+        env:
+          WEB: ${{ needs.web-checks.result }}
+          TESTS: ${{ needs.tests.result }}
+          PORTAL: ${{ needs.portal.result }}
+        run: test "$WEB" = success && test "$TESTS" = success && test "$PORTAL" = success
+
+  tests:
+    name: tests (${{ matrix.shard }}/6)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:node --shard=${{ matrix.shard }}/6
+
+  web-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -51,8 +84,6 @@ jobs:
 
       - run: pnpm lint:shell
 
-      - run: pnpm test:node
-
       - run: pnpm validate:policies
 
       - name: Install Chromium for map visual tests
@@ -63,12 +94,8 @@ jobs:
 
       - run: pnpm --filter web build
 
-  # The portal shares no build step with the Node workspace, so it checks in
-  # parallel rather than waiting behind it. It does still need node itself:
-  # test_backup.py shells out to scripts/generation-receipt.mjs. The steps
-  # repeat lint:portal and test:portal from package.json because this job
-  # installs no pnpm; change the two together. Add this job to the branch
-  # ruleset, or a portal failure stops blocking a merge.
+  # Node is also needed by the portal's backup/restore integration tests.
+  # The checks job above keeps portal failures behind the existing merge gate.
   portal:
     runs-on: ubuntu-latest
     timeout-minutes: 15

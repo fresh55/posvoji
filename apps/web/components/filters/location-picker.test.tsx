@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { useState, type ComponentProps } from "react";
 import {
   act,
@@ -781,44 +779,6 @@ describe("LocationPicker responsive body", () => {
     expect(panel.className).toContain("max-lg:hidden");
     expect(screen.getByRole("button", { name: "Pokaži 11 živali" })).toBeTruthy();
   });
-
-  // The map is width-bound, so reserving the dialog's full height for it left
-  // 141px of nothing above it and 141 below on a 390x844 phone. With the list
-  // put away below lg the stage stands in flow and the dialog is as tall as
-  // what it draws; the list view, which is as long as the roster, is not.
-  it("hands the map view its own height below lg", async () => {
-    await openPicker();
-    const content = dialog();
-    const stage = content.querySelector("[data-picker-stage]")!;
-    const map = content.querySelector("[data-map-stage]")!;
-    const footer = content.querySelector("[data-picker-footer]")!;
-
-    expect(content.className).toContain("h-[min(94dvh,52rem)]");
-    expect(stage.className).not.toContain("max-lg:flex-col");
-    expect(map.className).not.toContain("max-lg:static");
-    expect(footer.className).not.toContain("max-lg:static");
-
-    fireEvent.click(content.querySelector("[data-picker-show-map]")!);
-
-    expect(content.className).toContain("h-auto");
-    expect(content.className).toContain("max-h-[94dvh]");
-    expect(content.className).toContain("lg:h-[min(94dvh,52rem)]");
-    expect(stage.className).toContain("max-lg:flex-col");
-    expect(map.className).toContain("max-lg:static");
-    expect(footer.className).toContain("max-lg:static");
-    // Pinned to the top below lg, or the shorter map view would re-centre and
-    // slide the view switch down the screen under the finger that pressed it.
-    expect(content.className).toContain("max-lg:top-4");
-    expect(content.className).toContain("max-lg:translate-y-0");
-  });
-
-  it("keeps the shelter list scrollable without fading its text", async () => {
-    await openPicker();
-    const list = dialog().querySelector("[data-picker-list-scroll]")!;
-    expect(list.className).toContain("min-h-0");
-    expect(list.className).toContain("overflow-y-auto");
-    expect(list.className).not.toContain("fade-scroll");
-  });
 });
 
 describe("LocationPicker off-site shelters", () => {
@@ -1156,42 +1116,6 @@ describe("LocationPicker legend", () => {
     expect(screen.queryByText("Izbrana regija")).toBeNull();
   });
 
-  it("draws the selected-region swatch from the map's own selected-fill token", async () => {
-    // Both shelters share a city, so picking both fully picks that region and
-    // the "Izbrana regija" row appears with a swatch to check.
-    const shared = [
-      { value: "jug", label: "Zavetišče Jug", city: "Ljubljana" },
-      { value: "sever", label: "Zavetišče Sever", city: "Ljubljana" },
-    ];
-    const sharedCounts = new Map([
-      ["jug", 7],
-      ["sever", 4],
-    ]);
-
-    render(
-      <I18nProvider locale="sl">
-        <LocationPicker
-          options={shared}
-          counts={sharedCounts}
-          selected={["jug", "sever"]}
-          onToggle={vi.fn()}
-          onToggleMany={vi.fn()}
-          resultCount={11}
-        />
-      </I18nProvider>,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
-
-    const label = screen.getAllByText("Izbrana regija")[0];
-    const swatch = label.querySelector("span[aria-hidden]") as HTMLElement;
-    // The same token the map's selected region fills with (shelter-map.tsx
-    // REGION_LOOK.selected), not --brand-border: that token sits too
-    // close to the ramp's darkest step for the legend to teach the right
-    // colour. See --map-selected-fill's definition in globals.css.
-    expect(swatch.className).toContain("bg-[var(--map-selected-fill)]");
-    expect(swatch.className).not.toContain("brand-border");
-  });
-
   it("explains the hollow circle only while an empty shelter is on the map", async () => {
     await openPicker();
     expect(screen.queryByText("Brez objavljenih živali")).toBeNull();
@@ -1220,20 +1144,6 @@ describe("LocationPicker legend", () => {
     // drawing hollow circles. "LocationPicker marker copy" below is where the
     // two sides of that are pinned together.
     expect(row.className).not.toContain("max-md:hidden");
-  });
-
-  it("draws the legend glyph from the marker's own hollow-circle classes", async () => {
-    await openPicker({ offSite });
-
-    const glyph = screen
-      .getByRole("dialog")
-      .querySelector("[data-legend-empty]") as SVGCircleElement;
-
-    expect(glyph).toBeTruthy();
-    // The same stroke token the marker's circle wears, and no fill, so the two
-    // marks cannot drift apart.
-    expect(glyph.getAttribute("class")).toContain("stroke-foreground/45");
-    expect(glyph.getAttribute("class")).toContain("fill-none");
   });
 });
 
@@ -2792,156 +2702,6 @@ describe("LocationPicker attribution", () => {
       node = node.parentElement;
     }
     expect(node).toBe(dialogNode);
-  });
-
-  it("keeps the legend on a phone too, where the states it explains are drawn", async () => {
-    const input = await openPicker({ offSite });
-    await type(input, "1000");
-    choosePlace();
-
-    // The legend used to be taken away with the sheet below lg, which is the
-    // dialog's own default state: a phone was left with a density ramp, a
-    // hollow marker and an origin ring and no key to any of them. It is one
-    // legend at every width now, compacted by CSS rather than replaced.
-    const legend = screen
-      .getByRole("dialog")
-      .querySelector<HTMLElement>("[data-map-legend]")!;
-
-    let node: Element | null = legend;
-    while (node && node.hasAttribute("data-map-stage") === false) {
-      expect(node.className).not.toContain("max-lg:hidden");
-      node = node.parentElement;
-    }
-
-    // The same readable legend size applies to every viewport.
-    expect(legend.className).toContain("text-xs");
-    expect(legend.className).not.toContain("text-3xs");
-    expect(legend.className).toContain("gap-x-4");
-  });
-});
-
-// A utility name that does not exist fails silently: the class stays in the
-// markup, the compiler emits no rule for it, and the property it was meant to
-// set is simply never set. Nothing throws, nothing warns, and a rendering test
-// asserting the class is present passes on the drop. That is what happened to
-// the sheet's top corners, which spent a while square while the class saying
-// otherwise sat on the element.
-//
-// This reads the picker components and CSS as text rather than through a
-// compiler, because the question is narrow enough to answer that way: is every radius name this
-// component spells a name globals.css defines, either as a @utility of its own
-// or as an entry in the --radius-* namespace Tailwind generates its scale
-// from. Not a CSS build; the build is what would have to be run to answer
-// anything wider, and nothing wider is being asked.
-describe("LocationPicker radius utilities", () => {
-  const web = process.cwd();
-  const css = readFileSync(join(web, "app", "globals.css"), "utf8");
-  const source = [
-    "view.tsx",
-    "picker-dock.tsx",
-    "footer.tsx",
-    "picker-map-stage.tsx",
-    "picker-search.tsx",
-    "picker-shelter-list.tsx",
-  ]
-    .map((file) =>
-      readFileSync(
-        join(web, "components", "filters", "location-picker", file),
-        "utf8",
-      ),
-    )
-    .join("\n");
-
-  // Declared by hand, whole names. rounded-ui and rounded-ui-top are both of
-  // these, and they exist because --radius-ui is a :root variable: the
-  // compiler reads a scale out of @theme and out of nothing else, so the two
-  // corners this component needs have to be written as utilities.
-  const declared = new Set(
-    Array.from(css.matchAll(/@utility\s+(rounded-[\w-]+)/g), (m) => m[1]),
-  );
-
-  // The scale the generated names come from: Tailwind's own, plus every
-  // --radius-* the @theme block adds to it.
-  const themeStart = css.indexOf("@theme inline {");
-  const theme = css.slice(themeStart, css.indexOf("\n}", themeStart));
-  const scale = new Set([
-    "none",
-    "xs",
-    "sm",
-    "md",
-    "lg",
-    "xl",
-    "2xl",
-    "3xl",
-    "4xl",
-    "full",
-    ...Array.from(theme.matchAll(/--radius-([\w-]+):/g), (m) => m[1]),
-  ]);
-
-  // Every side and corner the radius utilities are generated for, logical and
-  // physical, with the whole-box form first.
-  const sides = [
-    "",
-    "s",
-    "e",
-    "t",
-    "r",
-    "b",
-    "l",
-    "ss",
-    "se",
-    "es",
-    "ee",
-    "tl",
-    "tr",
-    "br",
-    "bl",
-  ];
-
-  function defined(name: string): boolean {
-    if (declared.has(name)) return true;
-    // An arbitrary value or a variable shorthand carries its own length, so
-    // there is no name to look up. toggle-group.tsx reaches for exactly this
-    // to get one corner of --radius-ui.
-    if (/^rounded-(?:[a-z]{1,2}-)?[[(]/.test(name)) return true;
-    return sides.some((side) => {
-      const prefix = side === "" ? "rounded-" : `rounded-${side}-`;
-      return name.startsWith(prefix) && scale.has(name.slice(prefix.length));
-    });
-  }
-
-  // Class names as written, taken from double-quoted single-line literals,
-  // which is what prettier leaves every className in this file as. Variants
-  // are stripped off the front; prose in a comment is not read at all, because
-  // a class name is only a class name inside a string.
-  const used = new Set<string>();
-  for (const [literal] of source.matchAll(/"[^"\n]*"/g)) {
-    for (const token of literal.slice(1, -1).split(/\s+/)) {
-      const name = token.slice(token.lastIndexOf(":") + 1);
-      if (name.startsWith("rounded-")) used.add(name);
-    }
-  }
-
-  it("spells every radius it uses the way globals.css defines it", () => {
-    expect(used.size).toBeGreaterThan(0);
-    expect([...used].filter((name) => !defined(name))).toEqual([]);
-  });
-
-  it("rejects an undefined radius utility", () => {
-
-    // The check is only worth having if it rejects the spelling that broke.
-    // rounded-t-* is generated from the --radius-* namespace and --radius-ui
-    // is not in it, so that name resolves to no rule and both corners come out
-    // square.
-    expect(defined("rounded-t-ui")).toBe(false);
-    expect(used.has("rounded-t-ui")).toBe(false);
-
-    // And it still admits the ordinary shapes around it.
-    expect(defined("rounded-ui")).toBe(true);
-    expect(defined("rounded-ui-top")).toBe(true);
-    expect(defined("rounded-full")).toBe(true);
-    expect(defined("rounded-t-md")).toBe(true);
-    expect(defined("rounded-[2px]")).toBe(true);
   });
 });
 

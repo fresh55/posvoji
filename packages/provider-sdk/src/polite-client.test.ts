@@ -4,7 +4,6 @@ import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PoliteClientOptions } from "./polite-client";
 import {
-  DEFAULT_MIN_DELAY_MS,
   PoliteClient,
   ResponseBodyTooLargeError,
   computeBackoffMs,
@@ -649,7 +648,8 @@ describe("PoliteClient", () => {
       }
 
       expect(times).toHaveLength(2);
-      expect(times[1]! - times[0]!).toBeGreaterThanOrEqual(DEFAULT_MIN_DELAY_MS);
+      expect(times[1]! - times[0]!).toBeGreaterThanOrEqual(3_000);
+      expect(times[1]! - times[0]!).toBeLessThan(3_400);
     });
 
     it("lets a robots Crawl-delay longer than minDelayMs win", async () => {

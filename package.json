@@ -9,7 +9,7 @@
     "build": "pnpm -r build",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:policies && pnpm --filter web build",
     "test": "pnpm test:node && pnpm test:portal",
-    "test:node": "pnpm -r test",
+    "test:node": "vitest run",
     "test:portal": "uv run --directory apps/portal pytest",
     "test:visual": "pnpm --filter web test:e2e:visual",
     "typecheck": "node scripts/generate-operation-types.mjs && pnpm -r typecheck",
@@ -23,5 +23,8 @@
     "images:derive": "pnpm --filter @posvoji/ingest derive:images",
     "models:fetch": "pnpm --filter @posvoji/ingest fetch:model",
     "media:verify": "node scripts/verify-media.mjs"
+  },
+  "devDependencies": {
+    "vitest": "5.0.0"
   }
 }

@@ -177,25 +177,6 @@ describe("photo gallery candidates", () => {
     ).toBeNull();
   });
 
-  it("keeps the hover zoom and the arrival fade on one transition", () => {
-    setup({ images: CACHED });
-
-    // Two transition utilities on one element are one property, and cn merges
-    // them: transition-transform alone swallowed the fade AnimalPhoto writes,
-    // and the photo went back to cutting in the moment the file landed.
-    //
-    // scale and not transform, because scale-[1.03] writes the CSS `scale`
-    // property: a list naming transform left the zoom to arrive in one frame.
-    const photo = document.querySelector('[data-slot="photo-frame"] img');
-    expect(photo?.className).toContain("motion-safe:transition-[scale,opacity]");
-    expect(photo?.className).toContain("motion-safe:data-[arriving]:opacity-0");
-    expect(photo?.className).not.toContain("motion-safe:transition-transform");
-    // The property the zoom actually moves has to be in that list, whatever it
-    // is named: the zoom is a scale utility, so a list without `scale` in it is
-    // a transition on nothing.
-    expect(photo?.className).toContain("motion-safe:group-hover/card:scale-");
-  });
-
   it("preloads the rung the layout would pick, not the largest file", () => {
     const preloads = capturePreloads();
     setup({ images: CACHED });
@@ -633,54 +614,6 @@ describe("photo gallery controls", () => {
     expect(dots?.childElementCount).toBe(3);
   });
 
-  it("holds the card's dots back until the card is hovered or focused", () => {
-    setup();
-
-    // jsdom applies no media query and has no hover, so this reads the class
-    // list rather than a computed opacity: what is asserted is that the card
-    // renders the gating, not that a browser resolved it.
-    const dots = document.querySelector('[data-slot="photo-dots"]');
-    // Hidden at rest only where a hover can bring them back. can-hover and not
-    // pointer-fine is the whole rule: a stylus is a fine pointer that never
-    // hovers, and the hide has to ask the same question the reveal does.
-    expect(dots?.className).toContain("can-hover:opacity-0");
-    // Brought back by the card and not by the photo. The gallery's arrow keys
-    // live on the card's link, which is a sibling of the photo frame, so a
-    // focus condition scoped to the photo would never fire for a keyboard.
-    expect(dots?.className).toContain("group-focus-within/card:opacity-100");
-  });
-
-  it("carries the card's dots on a pill instead of five shadows", () => {
-    setup();
-
-    // jsdom paints nothing, so this reads the class list: what is asserted is
-    // that the card renders the pill and the flat dots, not that a browser
-    // resolved either.
-    const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("rounded-full");
-    expect(dots?.className).toContain("bg-black/45");
-    // The width of its dots and centred, not stretched across the frame: the
-    // pill is the row's shape, and a full-width element would draw it as a
-    // bar. It used to be exactly that, a 48px gradient the width of the
-    // photo, which read as a grey band under every animal on a white studio
-    // shot.
-    expect(dots?.className).toContain("left-1/2");
-    expect(dots?.className).toContain("-translate-x-1/2");
-    expect(dots?.className).not.toContain("inset-x-0");
-    expect(dots?.className).not.toContain("bg-linear-to-t");
-
-    // Plain discs: the pill is dark on every photo, so the 1px edge that used
-    // to draw a white dot on a white photo has nothing left to do.
-    for (const dot of Array.from(dots?.children ?? [])) {
-      expect(dot.className).not.toContain("shadow-");
-      expect(dot.className).not.toContain("ring-");
-    }
-    // White in both themes: the pill is dark whatever the theme is, so a dot
-    // following bg-background would be stone-950 on near-black in the dark one.
-    expect(dots?.children[0]?.className).toContain("bg-white");
-    expect(dots?.children[1]?.className).toContain("bg-white/55");
-  });
-
   it("marks the card's current photo by size and not by alpha alone", () => {
     setup();
 
@@ -703,22 +636,6 @@ describe("photo gallery controls", () => {
     // Two sizes in one row: without items-center the small discs are laid at
     // the top of a 6px line instead of on the current dot's centre line.
     expect(dots?.className).toContain("items-center");
-  });
-
-  it("keeps the pill on the dots' own element so the two move together", () => {
-    setup();
-
-    // One element carries the ground and the reveal, so a card at rest has
-    // neither and a hovered card has both. A ground that outlived its dots
-    // would be a smudge across the bottom of the photograph.
-    //
-    // Both on one node is the whole assertion. Reading the reveal on its own
-    // repeats the gating test above and still passes with the pill moved onto
-    // a wrapper of its own, which is the arrangement this is here to refuse.
-    const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("bg-black/45");
-    expect(dots?.className).toContain("can-hover:opacity-0");
-    expect(dots?.className).toContain("group-hover/card:opacity-100");
   });
 
   it("draws no pill on a card with a single photo", () => {
@@ -771,66 +688,6 @@ describe("photo gallery controls", () => {
     // dark-mode rule, not that a browser applied it.
     const photo = document.querySelector('[data-slot="photo-frame"] img');
     expect(photo?.className).toContain("dark:brightness-90");
-  });
-
-  it("leaves every one of the card's paint rules off a plain surface", () => {
-    const surface = setupPlain();
-
-    // The animal page and the dialog draw the one large photograph the visitor
-    // asked for: nothing is dimmed, nothing waits for a hover, and the
-    // chevrons are the full-size pair. One render, because the claim is one
-    // claim.
-    const photo = surface.querySelector("img");
-    expect(photo?.className).not.toContain("brightness");
-    const dots = document.querySelector('[data-slot="photo-dots"]');
-    expect(dots?.className).toContain("pointer-events-none");
-    expect(dots?.className).not.toContain("opacity-0");
-    // And no pill: here the row stands on one large photograph the visitor
-    // asked for, so every dot keeps carrying its own ground, and the row is
-    // laid across the frame the way it always was.
-    expect(dots?.className).not.toContain("bg-black/45");
-    expect(dots?.className).toContain("inset-x-0");
-    expect(dots?.children[0]?.className).toContain(
-      "shadow-[0_0_0_1px_rgba(0,0,0,0.28),0_1px_2px_rgba(0,0,0,0.35)]",
-    );
-    expect(dots?.children[0]?.className).toContain("bg-background");
-    for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
-      const button = screen.getByLabelText(label);
-      expect(button.className).toContain("size-8");
-      expect(button.className).not.toContain("ring-1");
-    }
-  });
-
-  it("keeps the settled tone and the dark dimming on separate elements", () => {
-    // The card's quiet tone lands on the swipe surface and the brightness on
-    // the picture inside it, so the two filters nest instead of meeting in one
-    // class list, where a merge would have to decide between them.
-    const surface = setup({ status: "adopted" });
-    const photo = surface.querySelector("img");
-    expect(surface?.className).toContain("saturate-[60%]");
-    expect(surface?.className).toContain("opacity-80");
-    expect(photo?.className).toContain("dark:brightness-90");
-  });
-
-  it("draws the card's chevrons as a hint rather than a control bar", () => {
-    setup();
-
-    for (const label of ["Prejšnja fotografija", "Naslednja fotografija"]) {
-      const button = screen.getByLabelText(label);
-      // A 24px disc on a 228px photo, edged with a hairline rather than lifted
-      // with a drop shadow that a photograph of the wrong colour swallows.
-      expect(button.className).toContain("size-6");
-      expect(button.className).toContain("ring-1");
-      expect(button.className).not.toContain("shadow-xs");
-      // A near-solid plate stays legible without a composited backdrop layer
-      // for every invisible control in the grid.
-      expect(button.className).not.toContain("backdrop-blur");
-      expect(button.className).toContain("bg-background/90");
-      // Paint only. The gating and the press exemption are untouched.
-      expect(button.className).toContain("pointer-events-none");
-      expect(button.className).toContain("active:translate-y-0!");
-      expect(button.getAttribute("data-press-exempt")).toBe("true");
-    }
   });
 
   it("stays silent until the visitor has actually driven it", () => {

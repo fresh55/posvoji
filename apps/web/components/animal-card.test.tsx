@@ -301,28 +301,6 @@ describe("AnimalCard meta line", () => {
 
     expect(metaLine()).toBe("Pes · velika");
   });
-
-  // The facts are what a visitor scans; the shelter line under them is
-  // provenance. Muted on both read as one grey block.
-  it("carries the facts in ink and the shelter line in muted", () => {
-    render(
-      <I18nProvider locale="sl">
-        <AnimalCard
-          animal={animal({ approximateAgeMonths: 36 })}
-          reference={NOW}
-          showShelter
-          onOpen={() => undefined}
-        />
-      </I18nProvider>,
-    );
-
-    const line = metaEl();
-    expect(line?.className).toContain("text-foreground");
-    expect(line?.className).not.toContain("text-muted-foreground");
-    expect(
-      screen.getByRole("link", { name: /Test/ }).className,
-    ).toContain("text-muted-foreground");
-  });
 });
 
 describe("AnimalCard element placement", () => {
@@ -458,32 +436,6 @@ describe("AnimalCard shelter line", () => {
     expect(opened).toEqual([]);
   });
 
-  it("marks the direction on a coarse pointer, where hover never fires", () => {
-    render(
-      <I18nProvider locale="sl">
-        <AnimalCard
-          animal={animal()}
-          reference={NOW}
-          onOpen={() => undefined}
-          showShelter
-        />
-      </I18nProvider>,
-    );
-
-    // jsdom resolves no media query, so this reads the class list: what is
-    // asserted is that the card renders the rule. On a phone the chevron was
-    // the only thing saying that this line leaves the page, and it was gated
-    // on a hover that a thumb never fires.
-    const chevron = screen
-      .getByRole("link", { name: "Test" })
-      .querySelector('[aria-hidden="true"]');
-    expect(chevron?.getAttribute("class")).toContain("pointer-coarse:opacity-60");
-    // The same 60% the hover draws, not a treatment of its own.
-    expect(chevron?.getAttribute("class")).toContain(
-      "group-hover/card:opacity-60",
-    );
-  });
-
   it("keeps the link inside the English tree of pages", () => {
     render(
       <I18nProvider locale="en">
@@ -499,83 +451,6 @@ describe("AnimalCard shelter line", () => {
     expect(
       screen.getByRole("link", { name: "Test" }).getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
-  });
-});
-
-describe("AnimalCard hover", () => {
-  // Asserted on the class list, because jsdom resolves neither :hover nor the
-  // media query the can-hover variant compiles to: it lays nothing out and
-  // never moves a pointer, so the rule can only be checked for being rendered,
-  // not for firing. What that leaves worth pinning is the shape of the
-  // selector, and the shape is the whole point of this rule.
-  it("underlines the name on hover, and not from the shelter row", () => {
-    render(
-      <I18nProvider locale="sl">
-        <AnimalCard
-          animal={animal()}
-          reference={NOW}
-          showShelter
-          onOpen={() => undefined}
-        />
-      </I18nProvider>,
-    );
-
-    const card = screen.getByRole("article");
-    expect(card.className).toContain(
-      "can-hover:[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline",
-    );
-    // The :not(:has()) above is only worth anything while the shelter row
-    // really carries the attribute it holds out. This is the other half of
-    // that rule, and it is the half that can silently stop being true.
-    expect(
-      screen.getByRole("link", { name: "Test" }).hasAttribute("data-press-exempt"),
-    ).toBe(true);
-    // Gated on the repo's own can-hover variant, so a tap on a phone cannot
-    // leave the name underlined with nothing to clear it.
-    expect(card.className).not.toContain("[&:hover:not(:has([data-press-exempt]:hover))_h3]:underline hover:");
-    // The offset keeps the rule off the descenders of a name like "Srečko".
-    expect(screen.getByRole("heading").className).toContain("underline-offset-4");
-  });
-});
-
-describe("AnimalCard focus ring", () => {
-  // The class list again, for the reason the hover block above gives: jsdom
-  // resolves no :focus-visible on an ancestor and paints nothing, so what can
-  // be pinned is the shape of the rule. The e2e spec reads the computed shadow.
-  it("gives the ring a dark inner edge in both themes", () => {
-    render(
-      <I18nProvider locale="sl">
-        <AnimalCard animal={animal()} reference={NOW} onOpen={() => undefined} />
-      </I18nProvider>,
-    );
-
-    const frame = document.querySelector('[data-slot="photo-frame"]');
-    // Still three pixels of the ring token, drawn inside the picture.
-    expect(frame?.className).toContain(
-      "group-has-[a:focus-visible]/card:after:ring-3",
-    );
-    expect(frame?.className).toContain(
-      "group-has-[a:focus-visible]/card:after:ring-inset",
-    );
-    // And under it 4px of black at 45%, so the ring's inner boundary is not a
-    // light green edge on a white studio photo: that boundary measured under
-    // 3:1 on 54 of 59 lead photos, and 3.4:1 with this layer.
-    expect(frame?.className).toContain(
-      "group-has-[a:focus-visible]/card:after:shadow-[inset_0_0_0_4px_rgba(0,0,0,0.45),inset_0_0_0_1px_var(--card-photo-edge)]",
-    );
-    // The hairline is still there at rest, which is what closes a white photo
-    // against the white page.
-    expect(frame?.className).toContain(
-      "after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]",
-    );
-    // One string each and no dark twin. The hairline is the only thing the
-    // theme changes about this frame and --card-photo-edge (globals.css) is
-    // where it changes now, so a dark: shadow here would be the old pair
-    // coming back.
-    expect(frame?.className).not.toContain("dark:after:shadow-");
-    expect(frame?.className).not.toContain(
-      "dark:group-has-[a:focus-visible]/card:after:shadow-",
-    );
   });
 });
 

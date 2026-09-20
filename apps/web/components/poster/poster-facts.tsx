@@ -5,6 +5,7 @@ import {
   type AgeStage,
 } from "@/components/filters/age-stage-paths";
 import type { AnimalFields } from "@/lib/animal";
+import { namesSeveralAnimals } from "@/lib/animal-name";
 import {
   filterValueGlyph,
   GOOD_WITH_ICONS,
@@ -109,7 +110,15 @@ export function posterTiles(
     glyph: { kind: "lucide", Icon: SPECIES_ICONS[animal.species] },
   });
 
-  if (animal.sex && animal.sex !== "unknown") {
+  // The identity three, withheld for a listing that covers more than one
+  // animal: one sex, one age and one size describe only one of them, and on
+  // paper there is no shelter description beside the tiles to correct it. The
+  // species stays, being true of all of them, and so does the health record,
+  // which the shelter answered for the listing as a whole. Same rule the card
+  // and the dialog read, from lib/animal-name.ts.
+  const severalAnimals = namesSeveralAnimals(animal.name);
+
+  if (!severalAnimals && animal.sex && animal.sex !== "unknown") {
     tiles.push({
       key: "sex",
       label: sexLabel(animal.sex, locale),
@@ -122,7 +131,7 @@ export function posterTiles(
   }
 
   const months = ageInMonths(animal, reference);
-  if (months !== undefined) {
+  if (!severalAnimals && months !== undefined) {
     tiles.push({
       key: "age",
       // Named, as the dialog's age fact is: "2 leti" beside a "V zavetišču: 2
@@ -135,7 +144,7 @@ export function posterTiles(
     });
   }
 
-  if (animal.size) {
+  if (!severalAnimals && animal.size) {
     tiles.push({
       key: "size",
       label: sizeLabel(animal.size, locale),

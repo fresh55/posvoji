@@ -1,7 +1,7 @@
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { MUTED_LINK, PAGE_TITLE } from "@/lib/link-styles";
+import { MUTED_LINK, PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
 import { HOME_PATHS, homePath, sheltersIndexPath } from "@/lib/shelter-path";
 
 /**
@@ -39,7 +39,7 @@ export function NotFoundPage({
       <h1 className={PAGE_TITLE}>
         {messages.notFoundTitle}
       </h1>
-      <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+      <p className={PAGE_LEAD}>
         {messages.notFoundBody}
       </p>
       {children}

@@ -32,7 +32,7 @@ describe("the about page", () => {
       "Za posvojitelje", "Za zavetišča",
     ]);
     expect(screen.getAllByRole("heading", { level: 3 }).map(node => node.textContent)).toEqual([
-      "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba",
+      "Kako poteka posvojitev?", "Ali žival še išče dom?", "Brezplačna uporaba",
       "Zavetišča odločate o svojih vsebinah", "Kako se zavetišče vključi?",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");

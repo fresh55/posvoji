@@ -20,6 +20,7 @@ import { mailtoHref } from "@/lib/contact-links";
 import { getMessages, type Locale } from "@/lib/i18n";
 import {
   MUTED_SENTENCE_LINK,
+  PAGE_LEAD,
   PAGE_TITLE,
 } from "@/lib/link-styles";
 import { CONTACT_EMAIL } from "@/lib/site";
@@ -162,7 +163,7 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
         />
         <div className="space-y-3">
           <h1 className={PAGE_TITLE}>{text.title}</h1>
-          <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          <p className={PAGE_LEAD}>
             {text.lead}
           </p>
         </div>

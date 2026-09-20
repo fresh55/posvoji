@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/item";
 import { mailtoHref } from "@/lib/contact-links";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { COARSE_ACTION, PAGE_TITLE, QUIET_DOC_LINK } from "@/lib/link-styles";
+import { COARSE_ACTION, PAGE_LEAD, PAGE_TITLE, QUIET_DOC_LINK } from "@/lib/link-styles";
 import { CONTACT_EMAIL } from "@/lib/site";
 import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
@@ -68,7 +68,7 @@ const pageText: Record<Locale, PageText> = {
     points: [
       {
         key: "shelterDecides",
-        title: "Želite posvojiti?",
+        title: "Kako poteka posvojitev?",
         body: "Ob vsaki objavi je navedeno zavetišče, ki za žival skrbi. Z njim se pogovorite o njenih potrebah, svojem vsakdanu in spoznavanju. Zavetišče vam pojasni pogoje in morebitne stroške ter vodi posvojitev.",
         link: { label: "Poiščite žival, ki išče dom", href: "/" },
       },
@@ -105,7 +105,7 @@ const pageText: Record<Locale, PageText> = {
     points: [
       {
         key: "shelterDecides",
-        title: "Want to adopt?",
+        title: "How does adoption work?",
         body: "Each listing names the shelter caring for the animal. Talk to them about the animal’s needs, your daily routine and arranging a meeting. The shelter explains the requirements and any costs, and handles the adoption.",
         link: { label: "Find an animal looking for a home", href: "/en" },
       },
@@ -223,10 +223,10 @@ export function AboutPage({ locale }: { locale: Locale }) {
           <h1 className={PAGE_TITLE}>
             {messages.about}
           </h1>
-          {/* The page's one sentence, and a step above the facts rather
-              than level with them. At 18px it sat two pixels off the
-              bodies below it and the whole column read as one size. */}
-          <p className="text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          {/* The page's one sentence, a step under the title and level
+              with nothing else: the section headings are the step above
+              the facts now, and at 18px the lead competed with them. */}
+          <p className={PAGE_LEAD}>
             {text.lead}
           </p>
         </div>

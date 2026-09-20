@@ -4,7 +4,7 @@ import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
 import { Card } from "@/components/ui/card";
-import { PAGE_TITLE } from "@/lib/link-styles";
+import { PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
 
 type LocalizedText = Record<Locale, string>;
 
@@ -305,7 +305,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
           <h1 className={PAGE_TITLE}>
             {text.title}
           </h1>
-          <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className={PAGE_LEAD}>
             {text.intro}
           </p>
         </div>

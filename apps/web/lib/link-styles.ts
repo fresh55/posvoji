@@ -99,3 +99,13 @@ export const COARSE_ACTION = "pointer-coarse:min-h-11 pointer-coarse:px-4";
  */
 export const PAGE_TITLE =
   "text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl";
+
+/**
+ * The sentence under a page's title. 16px on a phone, one step under the
+ * 20px section headings that follow it and two under the title. At 18px the
+ * About lead was the largest block on the first screen, three grey lines
+ * the eye landed on instead of the title, and level with the section
+ * headings under it.
+ */
+export const PAGE_LEAD =
+  "text-base leading-relaxed text-muted-foreground sm:text-lg";

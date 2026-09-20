@@ -8,7 +8,8 @@ export default defineConfig({
     },
   },
   test: {
-    // Playwright owns e2e/; vitest would otherwise pick up its spec files.
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    // Playwright owns e2e/ and lint:shell owns scripts/; vitest would
+    // otherwise pick up their spec files and run them a second time.
+    exclude: [...configDefaults.exclude, "e2e/**", "scripts/**"],
   },
 });

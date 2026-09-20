@@ -4,6 +4,7 @@ import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from "undici";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PoliteClientOptions } from "./polite-client";
 import {
+  DEFAULT_MIN_DELAY_MS,
   PoliteClient,
   ResponseBodyTooLargeError,
   computeBackoffMs,
@@ -612,45 +613,57 @@ describe("PoliteClient", () => {
       expect(Date.now() - started).toBeLessThan(200);
     });
 
-    // The next two tests use the real constructor default instead of the
-    // client() helper's minDelayMs: 0, so they pay for an actual multi-second
-    // wait. That cost is the point: it is the only way to prove the default
-    // is 3s, not the old 10s, and that a longer robots Crawl-delay still wins
-    // via Math.max(minDelayMs, crawlDelayMs) in respectDelay().
-
-    it("defaults minDelayMs to 3 seconds when robots.txt sets no Crawl-delay", async () => {
+    // The default gap is what keeps the crawler off a shelter's server, so it
+    // is worth a test that actually reaches the constructor rather than one
+    // that reads the constant back. Fake timers let the wait pass in no real
+    // time; the old version of this test slept for three whole seconds.
+    it("leaves a host the default gap when nothing overrides it", async () => {
       const pool = agent.get(ORIGIN);
-      pool.intercept({ path: "/robots.txt" }).reply(200, "User-agent: *");
-      pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
+      const times: number[] = [];
+      const stamp = () => {
+        times.push(Date.now());
+        return "User-agent: *";
+      };
+      pool.intercept({ path: "/robots.txt" }).reply(200, stamp);
+      pool.intercept({ path: "/cat.jpg" }).reply(200, stamp);
 
-      const started = Date.now();
-      await new PoliteClient({
-        userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
-      }).getBytes(`${ORIGIN}/cat.jpg`);
-      const elapsed = Date.now() - started;
+      vi.useFakeTimers();
+      try {
+        const done = new PoliteClient({
+          userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
+        }).getBytes(`${ORIGIN}/cat.jpg`);
+        let settled = false;
+        const finish = done.then(
+          () => (settled = true),
+          () => (settled = true),
+        );
+        // The mock answers on real I/O, so hand the clock forward in steps
+        // and let each step's microtasks run rather than jumping once.
+        for (let step = 0; step < 100 && !settled; step++) {
+          await vi.advanceTimersByTimeAsync(200);
+        }
+        await finish;
+        await done;
+      } finally {
+        vi.useRealTimers();
+      }
 
-      expect(elapsed).toBeGreaterThanOrEqual(2_900);
-      // Well under the old 10s default: catches a regression the other way.
-      expect(elapsed).toBeLessThan(5_000);
-    }, 10_000);
+      expect(times).toHaveLength(2);
+      expect(times[1]! - times[0]!).toBeGreaterThanOrEqual(DEFAULT_MIN_DELAY_MS);
+    });
 
-    it("still honors a robots Crawl-delay longer than the 3s default", async () => {
+    it("lets a robots Crawl-delay longer than minDelayMs win", async () => {
       const pool = agent.get(ORIGIN);
       pool
         .intercept({ path: "/robots.txt" })
-        .reply(200, "User-agent: *\nCrawl-delay: 3.5");
+        .reply(200, "User-agent: *\nCrawl-delay: 0.3");
       pool.intercept({ path: "/cat.jpg" }).reply(200, "cat");
 
       const started = Date.now();
-      await new PoliteClient({
-        userAgent: "PosvojiBot/test (+https://posvoji.si/bot)",
-      }).getBytes(`${ORIGIN}/cat.jpg`);
-      const elapsed = Date.now() - started;
+      await client({ minDelayMs: 100 }).getBytes(`${ORIGIN}/cat.jpg`);
 
-      // If Math.max ever regressed to picking minDelayMs, this would stop at
-      // ~3s instead of the declared 3.5s.
-      expect(elapsed).toBeGreaterThanOrEqual(3_300);
-    }, 10_000);
+      expect(Date.now() - started).toBeGreaterThanOrEqual(280);
+    });
   });
 
   describe("get", () => {

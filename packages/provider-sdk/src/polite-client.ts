@@ -4,6 +4,8 @@ import robotsParser from "robots-parser";
 const BACKOFF_BASE_MS = 2_000;
 const BACKOFF_CAP_MS = 60_000;
 export const ROBOTS_FAILURE_TTL_MS = 5 * 60 * 1000;
+// Gap between two requests to one host unless robots.txt asks for more.
+export const DEFAULT_MIN_DELAY_MS = 3_000;
 // Longer waits defer the host instead of blocking this process.
 const MAX_INLINE_WAIT_MS = 60_000;
 // Large enough for the source photos the ingest pipeline accepts, but finite
@@ -254,7 +256,7 @@ export class PoliteClient {
     // Math.max). This is the floor, not the ceiling: it is the minimum gap the
     // DATA-POLICY.md promise of "vecsekundni razmik" (a multi-second gap)
     // needs, not the maximum a host can ask for.
-    this.minDelayMs = options.minDelayMs ?? 3_000;
+    this.minDelayMs = options.minDelayMs ?? DEFAULT_MIN_DELAY_MS;
     this.maxRetries = options.maxRetries ?? 3;
     this.timeoutMs = options.timeoutMs ?? 30_000;
     this.cooldowns = options.cooldowns ?? new Map<string, number>();

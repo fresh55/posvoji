@@ -43,25 +43,15 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: apps/portal/uv.lock
-
       - run: pnpm install --frozen-lockfile
-
-      - run: uv sync --directory apps/portal --frozen
 
       - run: pnpm typecheck
 
-      - run: pnpm lint
+      - run: pnpm lint:node
 
-      - run: pnpm test
+      - run: pnpm lint:shell
+
+      - run: pnpm test:node
 
       - run: pnpm validate:policies
 
@@ -73,3 +63,41 @@ jobs:
 
       - run: pnpm --filter web build
 
+  # The portal shares no build step with the Node workspace, so it checks in
+  # parallel rather than waiting behind it. It does still need node itself:
+  # test_backup.py shells out to scripts/generation-receipt.mjs. The steps
+  # repeat lint:portal and test:portal from package.json because this job
+  # installs no pnpm; change the two together. Add this job to the branch
+  # ruleset, or a portal failure stops blocking a merge.
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/portal
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .node-version
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/portal/uv.lock
+
+      - run: uv sync --frozen
+
+      - run: uv run ruff check .
+
+      - run: uv run ruff format --check .
+
+      - run: uv run pytest

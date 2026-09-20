@@ -8,7 +8,9 @@ export default defineConfig({
     },
   },
   test: {
-    // Playwright owns e2e/; vitest would otherwise pick up its spec files.
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    name: "web",
+    root: fileURLToPath(new URL(".", import.meta.url)),
+    // Keep the animation optimizer tests; only the ESLint probe uses node:test.
+    exclude: [...configDefaults.exclude, "e2e/**", "scripts/eslint-config.test.mjs"],
   },
 });

@@ -18,6 +18,40 @@ concurrency:
 
 jobs:
   checks:
+    if: always()
+    needs: [web-checks, tests, portal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every check to pass
+        env:
+          WEB: ${{ needs.web-checks.result }}
+          TESTS: ${{ needs.tests.result }}
+          PORTAL: ${{ needs.portal.result }}
+        run: test "$WEB" = success && test "$TESTS" = success && test "$PORTAL" = success
+
+  tests:
+    name: tests (${{ matrix.shard }}/8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Vitest otherwise reserves one CPU, leaving a two-core runner half idle.
+      - run: pnpm test:node --shard=${{ matrix.shard }}/8 --maxWorkers=2
+
+  web-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -43,25 +77,13 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: apps/portal/uv.lock
-
       - run: pnpm install --frozen-lockfile
-
-      - run: uv sync --directory apps/portal --frozen
 
       - run: pnpm typecheck
 
-      - run: pnpm lint
+      - run: pnpm lint:node
 
-      - run: pnpm test
+      - run: pnpm lint:shell
 
       - run: pnpm validate:policies
 
@@ -73,3 +95,37 @@ jobs:
 
       - run: pnpm --filter web build
 
+  # Node is also needed by the portal's backup/restore integration tests.
+  # The checks job above keeps portal failures behind the existing merge gate.
+  portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/portal
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .node-version
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/portal/uv.lock
+
+      - run: uv sync --frozen
+
+      - run: uv run ruff check .
+
+      - run: uv run ruff format --check .
+
+      - run: uv run pytest

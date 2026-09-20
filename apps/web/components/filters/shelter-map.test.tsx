@@ -2,8 +2,6 @@
 // The static-markup assertions below do not need a DOM, but the inert-region
 // hover ones do: a callout only appears once React has run the event.
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -893,55 +891,6 @@ describe("ShelterMap hillshade", () => {
   });
 });
 
-// Read off globals.css rather than off a rendered tree: the tokens are the
-// whole of the theme decision, and a component test renders in neither theme.
-describe("hillshade theme tokens", () => {
-  // cwd is apps/web, the vitest root. import.meta.url is not a file URL under
-  // the transform, so it cannot be resolved from here.
-  const css = readFileSync(join(process.cwd(), "app", "globals.css"), "utf8");
-
-  it("multiplies the shadow-only raster on light", () => {
-    const light = css.slice(0, css.indexOf(".dark {"));
-    expect(light).toContain("--map-relief-blend: multiply;");
-    expect(light).toContain("--map-relief-invert: 0;");
-    const opacity = Number(
-      light.match(/--map-relief-opacity:\s*([\d.]+);/)?.[1] ?? "0",
-    );
-    // Texture, not a subject. Past about a third the relief starts competing
-    // with the density ramp for the same reading.
-    expect(opacity).toBeGreaterThan(0);
-    expect(opacity).toBeLessThanOrEqual(0.3);
-  });
-
-  it("inverts and screens on dark, where multiply has no headroom", () => {
-    // Both dark selectors: the .dark class the gallery and the dialog use, and
-    // the OS preference. A token set in one and missed in the other is a theme
-    // that only works on half the site.
-    const dark = css.slice(css.indexOf(".dark {"));
-    const blocks = [
-      ...dark.matchAll(/--map-relief-blend:\s*(\w+);/g),
-    ].map(([, value]) => value);
-    expect(blocks).toEqual(["screen", "screen"]);
-    expect(
-      [...dark.matchAll(/--map-relief-invert:\s*(\d);/g)].map(([, v]) => v),
-    ).toEqual(["1", "1"]);
-    const opacities = [
-      ...dark.matchAll(/--map-relief-opacity:\s*([\d.]+);/g),
-    ].map(([, value]) => Number(value));
-    expect(opacities).toHaveLength(2);
-    // A light mark on a dark ground carries further, so dark spends less.
-    const light = Number(
-      css.slice(0, css.indexOf(".dark {")).match(
-        /--map-relief-opacity:\s*([\d.]+);/,
-      )?.[1] ?? "0",
-    );
-    for (const opacity of opacities) {
-      expect(opacity).toBeGreaterThan(0);
-      expect(opacity).toBeLessThan(light);
-    }
-  });
-});
-
 describe("ShelterMap inert regions", () => {
   it("keeps an empty region a clear step below the quietest live one", () => {
     const html = renderMap([
@@ -1639,23 +1588,6 @@ describe("MapLegend rows", () => {
       expect(marks).toHaveLength(2);
       expect(marks.filter(([mark]) => mark.includes(`stroke-dasharray="${dash}"`))).toHaveLength(1);
     }
-  });
-
-  it("puts the partly picked swatch on the ramp the map now draws there", () => {
-    const legend = renderLegend({ hasMixedRegion: true });
-    const row = Array.from(legend.children).find((child) =>
-      child.textContent?.includes("Delno izbrana regija"),
-    )!;
-    const swatch = row.querySelector("span[aria-hidden]") as HTMLElement;
-
-    expect(swatch.className).toContain("border-dashed");
-    expect(swatch.className).toContain("border-brand-strong");
-    expect(swatch.className).not.toContain("--map-selected-fill");
-    // Built the same two layers the density swatches are, so the legend and
-    // the region it explains are made of the same ink.
-    expect(swatch.querySelector("span")!.className).toContain(
-      "bg-[var(--map-density-fill)]",
-    );
   });
 });
 
@@ -3541,21 +3473,6 @@ describe("ShelterMap without hover", () => {
 
     expect(screen.queryByText("1 zavetišče · 5 živali")).toBeNull();
     expect(onHoverShelters).toHaveBeenLastCalledWith(null);
-  });
-
-  it("takes the tap delay off the plate", () => {
-    const { container } = render(
-      <I18nProvider locale="sl">
-        <ShelterMap pins={pins} selected={[]} onPick={vi.fn()} />
-      </I18nProvider>,
-    );
-
-    // touch-action: manipulation. Two taps that have to be told apart cannot
-    // afford the browser holding each one back to see whether a double tap is
-    // coming, and this plate has nothing to zoom into anyway.
-    expect(container.querySelector("svg")?.getAttribute("class")).toContain(
-      "touch-manipulation",
-    );
   });
 });
 

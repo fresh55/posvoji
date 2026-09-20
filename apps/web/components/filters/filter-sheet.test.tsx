@@ -72,7 +72,10 @@ async function openSheet(
   overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
 ) {
   renderSheet(overrides);
-  fireEvent.click(screen.getByRole("button", { name: sl.filters }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: sl.filters }));
+    await import("./filter-sheet-content");
+  });
   return screen.findByRole("dialog");
 }
 

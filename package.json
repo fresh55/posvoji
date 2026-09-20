@@ -9,19 +9,23 @@
     "build": "pnpm -r build",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm validate:policies && pnpm --filter web build",
     "test": "pnpm test:node && pnpm test:portal",
-    "test:node": "pnpm -r test",
+    "test:node": "vitest run",
     "test:portal": "uv run --directory apps/portal pytest",
     "test:visual": "pnpm --filter web test:e2e:visual",
     "typecheck": "node scripts/generate-operation-types.mjs && pnpm -r typecheck",
     "lint": "pnpm lint:node && pnpm lint:portal && pnpm lint:shell",
     "lint:node": "pnpm -r lint",
     "lint:portal": "uv run --directory apps/portal ruff check . && uv run --directory apps/portal ruff format --check .",
-    "lint:shell": "node --test scripts/check-pr-title.test.mjs scripts/crawl-runtime.test.mjs scripts/check-fixture-contacts.test.mjs && node scripts/check-fixture-contacts.mjs && node scripts/check-operations.mjs && node apps/portal/scripts/generate-diacritics.mjs --check && node scripts/validate-caddy-layout.test.cjs && node scripts/list-media-files.test.mjs && node scripts/media-references.test.mjs && node scripts/generation-receipt.test.mjs && node scripts/snapshot-generation.test.mjs && node scripts/list-releases.test.mjs && node scripts/deploy-rollback.test.mjs",
+    "lint:shell": "node --test scripts/check-pr-title.test.mjs scripts/crawl-runtime.test.mjs scripts/check-fixture-contacts.test.mjs apps/web/scripts/eslint-config.test.mjs && node scripts/check-fixture-contacts.mjs && node scripts/check-operations.mjs && node apps/portal/scripts/generate-diacritics.mjs --check && node scripts/validate-caddy-layout.test.cjs && node scripts/list-media-files.test.mjs && node scripts/media-references.test.mjs && node scripts/generation-receipt.test.mjs && node scripts/snapshot-generation.test.mjs && node scripts/list-releases.test.mjs && node scripts/deploy-rollback.test.mjs",
     "validate:policies": "pnpm --filter @posvoji/ingest validate",
     "dataset:export": "pnpm --filter @posvoji/ingest export",
     "logos:fetch": "pnpm --filter @posvoji/ingest fetch:logos",
     "images:derive": "pnpm --filter @posvoji/ingest derive:images",
     "models:fetch": "pnpm --filter @posvoji/ingest fetch:model",
     "media:verify": "node scripts/verify-media.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0",
+    "vitest": "5.0.0"
   }
 }

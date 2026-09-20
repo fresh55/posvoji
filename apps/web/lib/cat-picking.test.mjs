@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { AnimationMixer, PerspectiveCamera, Raycaster, Vector2, Vector3 } from "three";
+import { AnimationMixer, Mesh, PerspectiveCamera, Raycaster, Vector2, Vector3 } from "three";
 import { expect, it, vi } from "vitest";
 import { catLegAtHit, createCatPicker } from "./cat-picking";
 import { loadCatAsset } from "../scripts/cat-asset.mjs";
@@ -34,6 +34,21 @@ it("keeps the nose contact on the moving head and excludes the forehead", async 
   picker.dispose();
 });
 
+// Raycasting a SkinnedMesh skins every triangle again for every ray, which is
+// what made this file take a minute. Baking moves that work to once per pose:
+// three.js reads a triangle's corners through getVertexPosition, which is the
+// same call used here, so the reference hits are the ones it would have found
+// rather than an approximation of them. catLegAtHit reads isSkinnedMesh, the
+// skeleton and the skin attributes off the hit, so the bake carries them over.
+function bakePose(mesh) {
+  const geometry = mesh.geometry.clone(), position = geometry.attributes.position, v = new Vector3();
+  for (let i = 0; i < position.count; i++) { mesh.getVertexPosition(i, v); position.setXYZ(i, v.x, v.y, v.z); }
+  geometry.computeBoundingSphere();
+  const baked = new Mesh(geometry, mesh.material);
+  baked.matrixWorld.copy(mesh.matrixWorld);
+  return Object.assign(baked, { isSkinnedMesh: true, skeleton: mesh.skeleton });
+}
+
 it("tracks animated anatomy from multiple camera angles without adding scene objects", async () => {
   const { gltf } = await loadCatAsset(new URL("../public/models/our-cat/cat.glb", import.meta.url));
   const root = gltf.scene, meshes = [];
@@ -49,14 +64,14 @@ it("tracks animated anatomy from multiple camera angles without adding scene obj
   for (const [name, time] of [["Companion", 0], ["Head pet", 1.2], ["Back warning", 1.2], ["Sleep", 2], ["Stretch", 1.75]]) {
     mixer.stopAllAction(); mixer.clipAction(gltf.animations.find(clip => clip.name === name)).play(); mixer.setTime(time);
     root.updateMatrixWorld(true);
-    for (const mesh of meshes) mesh.computeBoundingSphere();
+    const baked = meshes.map(bakePose);
     for (const angle of [-19, 90, 145]) {
       const theta = angle * Math.PI / 180;
       camera.position.set(Math.sin(theta) * 1.45, .48, Math.cos(theta) * 1.45);
       camera.lookAt(new Vector3(0, .25, 0)); camera.updateMatrixWorld(true);
       for (let y = -.6; y <= .6; y += .15) for (let x = -.6; x <= .6; x += .15) {
         ray.setFromCamera(new Vector2(x, y), camera);
-        const original = ray.intersectObjects(meshes, false)[0];
+        const original = ray.intersectObjects(baked, false)[0];
         const result = picker.pick(x, y);
         if (original) {
           hits++; seen.add(region(original.object.material.name));
@@ -79,4 +94,4 @@ it("tracks animated anatomy from multiple camera angles without adding scene obj
   expect(picker.pick(0, 0)).toBeNull();
   expect(dispose).not.toHaveBeenCalled();
   dispose.mockRestore();
-}, 60000);
+}, 30_000);

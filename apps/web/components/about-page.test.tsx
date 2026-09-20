@@ -29,8 +29,11 @@ describe("the about page", () => {
   it("explains shelter adoption before site details in Slovenian", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
+      "Za posvojitelje", "Za zavetišča",
+    ]);
+    expect(screen.getAllByRole("heading", { level: 3 }).map(node => node.textContent)).toEqual([
       "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba",
-      "Za zavetišča",
+      "Zavetišča odločate o svojih vsebinah", "Kako se zavetišče vključi?",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
@@ -47,8 +50,8 @@ describe("the about page", () => {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
         getMessages(locale).about,
       );
-      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(4);
-      expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2);
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(2);
+      expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(5);
     },
   );
 
@@ -77,18 +80,25 @@ describe("the about page", () => {
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
   });
 
+  // Two sections built the same way, one heading and its rows each, and
+  // the address after both: a visitor reporting an adopted animal writes to
+  // it as much as a shelter does, so it belongs to neither section.
   it.each([
-    { locale: "sl" as const, adoption: "Želite posvojiti?", availability: "Ali žival še išče dom?", shelters: "Za zavetišča" },
-    { locale: "en" as const, adoption: "Want to adopt?", availability: "Is the animal still available?", shelters: "For shelters" },
-  ])("keeps availability with adopters and contact with shelters (%s)", ({ locale, adoption, availability, shelters }) => {
+    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča" },
+    { locale: "en" as const, adopters: "For adopters", availability: "Is the animal still available?", shelters: "For shelters" },
+  ])("keeps availability with adopters and the address after both sections (%s)", ({ locale, adopters, availability, shelters }) => {
     render(<AboutPage locale={locale} />);
-    const adopterSection = screen.getByRole("region", { name: adoption });
+    const adopterSection = screen.getByRole("region", { name: adopters });
     const shelterSection = screen.getByRole("region", { name: shelters });
-    expect(within(adopterSection).getByRole("heading", { name: availability })).toBeTruthy();
+    expect(within(adopterSection).getByRole("heading", { level: 3, name: availability })).toBeTruthy();
+    expect(within(adopterSection).getAllByRole("heading", { level: 3 })).toHaveLength(3);
     expect(within(shelterSection).getAllByRole("heading", { level: 3 })).toHaveLength(2);
-    expect(within(shelterSection).getByRole("link", { name: "info@posvoji.si" }).getAttribute("href"))
-      .toBe("mailto:info@posvoji.si");
     expect(adopterSection.compareDocumentPosition(shelterSection) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    const address = screen.getByRole("link", { name: "info@posvoji.si" });
+    expect(address.getAttribute("href")).toBe("mailto:info@posvoji.si");
+    expect(within(shelterSection).queryByRole("link", { name: "info@posvoji.si" })).toBeNull();
+    expect(shelterSection.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
   });
 

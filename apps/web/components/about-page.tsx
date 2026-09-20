@@ -28,6 +28,10 @@ import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
 type PageText = {
   lead: string;
+  /** The two audiences, one heading each. The rows under them are all one
+   *  level, so a row in one section is never louder than the heading of
+   *  the next. */
+  adoptersTitle: string;
   sheltersTitle: string;
   points: { key: PointKey; title: string; body: string; link?: { label: string; href: string } }[];
   /** The closing line. The address follows it as a button and is not
@@ -59,6 +63,7 @@ type PointKey = keyof typeof pointIcons;
 const pageText: Record<Locale, PageText> = {
   sl: {
     lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
+    adoptersTitle: "Za posvojitelje",
     sheltersTitle: "Za zavetišča",
     points: [
       {
@@ -95,6 +100,7 @@ const pageText: Record<Locale, PageText> = {
   },
   en: {
     lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",
+    adoptersTitle: "For adopters",
     sheltersTitle: "For shelters",
     points: [
       {
@@ -145,26 +151,33 @@ function isShelterPoint(point: PageText["points"][number]) {
   return point.key === "shelterData" || point.key === "shelterJoin";
 }
 
-function AboutPoints({
-  points,
-  level,
-}: {
-  points: PageText["points"];
-  level: 2 | 3;
-}) {
-  const Heading = level === 2 ? "h2" : "h3";
+// The rows of one section: an h3 each, under the section's h2. One style
+// for every row, so the ladder on a phone is the 24px title, a 20px section
+// heading, a 16px row and its 14px body. When the adopter rows were h2s at
+// 20px they outweighed the "Za zavetišča" heading under them and the page
+// read as one size again.
+//
+// divide-y and border-b, no top rule: the heading opens the section and a
+// rule above the first row boxed it in against the rule that closed the
+// section before. The bottom rule closes each section the same way.
+//
+// mt-px on the media: text-base carries its own 24px line-height and beats
+// ItemTitle's leading-snug, so the line box is 24px against a 20px glyph
+// and the true centre is 2px. A pixel high reads better than a glyph on the
+// baseline, measured at -1.00px on every row here and on /o-nas/vsebine.
+function AboutPoints({ points }: { points: PageText["points"] }) {
   return (
-    <div className="divide-y border-y">
+    <div className="divide-y border-b">
       {points.map((point) => {
         const Icon = pointIcons[point.key];
         return (
           <Item key={point.key} layout="row" className="px-0 py-5">
-            <ItemMedia className={level === 2 ? "mt-1" : "mt-px"}>
+            <ItemMedia className="mt-px">
               <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </ItemMedia>
             <ItemContent className="break-words">
-              <ItemTitle asChild className={level === 2 ? "text-xl font-semibold" : "text-base font-medium"}>
-                <Heading id={`about-${point.key}`}>{point.title}</Heading>
+              <ItemTitle asChild className="text-base font-medium">
+                <h3>{point.title}</h3>
               </ItemTitle>
               <ItemDescription className="text-sm leading-relaxed">
                 {point.body}
@@ -219,25 +232,36 @@ export function AboutPage({ locale }: { locale: Locale }) {
         </div>
       </div>
 
-      {/* Keep adoption and availability together and readable without disclosure controls. */}
-      <section aria-labelledby="about-shelterDecides" className="lg:col-start-1 lg:row-start-2">
-        <AboutPoints points={text.points.filter((point) => !isShelterPoint(point))} level={2} />
+      {/* Two sections, one per audience, built the same way: a heading and
+          its rows. Adoption and availability stay together and readable
+          without disclosure controls. */}
+      <section aria-labelledby="about-adopters" className="space-y-3 lg:col-start-1 lg:row-start-2">
+        <h2 id="about-adopters" className="text-xl font-semibold">
+          {text.adoptersTitle}
+        </h2>
+        <AboutPoints points={text.points.filter((point) => !isShelterPoint(point))} />
       </section>
 
-      {/* The sentence stays beside the button rather than inside it: it says
-          what to write about, and a button label that is a full sentence stops
-          reading as a control.
-
-          One button, where there used to be a second one saying "Koda na
-          GitHubu" at the same size and weight beside it. The sentence above is
-          addressed to shelters, and a repository is not an answer to it: the
-          reader it was for is a developer, and the footer of this very page
-          already invites them, in the small print where that belongs. */}
       <section aria-labelledby="about-shelters" className="space-y-3 lg:col-start-1 lg:row-start-3">
         <h2 id="about-shelters" className="text-xl font-semibold">
           {text.sheltersTitle}
         </h2>
-        <AboutPoints points={text.points.filter(isShelterPoint)} level={3} />
+        <AboutPoints points={text.points.filter(isShelterPoint)} />
+      </section>
+
+      {/* The closing line is for everyone: a visitor reporting an animal that
+          has found a home writes to the same address a shelter does, so it
+          sits after both sections rather than inside the shelters' one.
+
+          The sentence stays beside the button rather than inside it: it says
+          what to write about, and a button label that is a full sentence stops
+          reading as a control.
+
+          One button, where there used to be a second one saying "Koda na
+          GitHubu" at the same size and weight beside it. A repository is not
+          an answer to the sentence above, and the footer of this very page
+          already invites developers, in the small print where that belongs. */}
+      <div className="space-y-3 lg:col-start-1 lg:row-start-4">
         <p className="text-sm leading-relaxed text-muted-foreground">
           {text.report}
         </p>
@@ -256,12 +280,12 @@ export function AboutPage({ locale }: { locale: Locale }) {
             </a>
           </Button>
         </div>
-      </section>
+      </div>
 
       {/* Keep the practical information first in mobile and keyboard
-          reading order. On desktop the cat sits beside all three text
+          reading order. On desktop the cat sits beside all four text
           rows, with the dedication directly beneath the model. */}
-      <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:flex lg:items-center">
+      <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:flex lg:items-center">
         <AboutCat locale={locale} />
       </div>
     </SiteShell>

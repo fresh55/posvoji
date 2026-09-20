@@ -28,6 +28,7 @@ import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
 type PageText = {
   lead: string;
+  sheltersTitle: string;
   points: { key: PointKey; title: string; body: string; link?: { label: string; href: string } }[];
   /** The closing line. The address follows it as a button and is not
    *  translated. */
@@ -58,6 +59,7 @@ type PointKey = keyof typeof pointIcons;
 const pageText: Record<Locale, PageText> = {
   sl: {
     lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
+    sheltersTitle: "Za zavetišča",
     points: [
       {
         key: "shelterDecides",
@@ -93,6 +95,7 @@ const pageText: Record<Locale, PageText> = {
   },
   en: {
     lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",
+    sheltersTitle: "For shelters",
     points: [
       {
         key: "shelterDecides",
@@ -138,6 +141,47 @@ const THUMB_BUTTON = `${COARSE_ACTION} pointer-coarse:gap-1.5`;
 /** w-fit because this one sits in a flex column; the rest is the shared rule. */
 const POINT_LINK = `${QUIET_DOC_LINK} w-fit`;
 
+function isShelterPoint(point: PageText["points"][number]) {
+  return point.key === "shelterData" || point.key === "shelterJoin";
+}
+
+function AboutPoints({
+  points,
+  level,
+}: {
+  points: PageText["points"];
+  level: 2 | 3;
+}) {
+  const Heading = level === 2 ? "h2" : "h3";
+  return (
+    <div className="divide-y border-y">
+      {points.map((point) => {
+        const Icon = pointIcons[point.key];
+        return (
+          <Item key={point.key} layout="row" className="px-0 py-5">
+            <ItemMedia className={level === 2 ? "mt-1" : "mt-px"}>
+              <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+            </ItemMedia>
+            <ItemContent className="break-words">
+              <ItemTitle asChild className={level === 2 ? "text-xl font-semibold" : "text-base font-medium"}>
+                <Heading id={`about-${point.key}`}>{point.title}</Heading>
+              </ItemTitle>
+              <ItemDescription className="text-sm leading-relaxed">
+                {point.body}
+              </ItemDescription>
+              {point.link && (
+                <a href={point.link.href} className={POINT_LINK}>
+                  {point.link.label}
+                </a>
+              )}
+            </ItemContent>
+          </Item>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * The site's introduction remains readable while the cat loads independently.
  */
@@ -149,7 +193,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={ABOUT_PATHS}
-      mainClassName="grid w-full flex-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
+      mainClassName="grid w-full flex-1 grid-cols-1 content-start gap-8 py-page-y sm:gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-x-12"
       // The one footer that does not link to this page, because it is on it.
       // It passes the correction route off for the same reason: the contact
       // block above prints the address already, and a second copy of it two
@@ -175,53 +219,10 @@ export function AboutPage({ locale }: { locale: Locale }) {
         </div>
       </div>
 
-      {/* A rule between facts and nothing else. Each fact is an Item on
-          the row layout: the glyph names it at a glance, and only the
-          padding is this page's, so the rules run edge to edge.
-
-          mt-px on the media. The number is right and the reason recorded
-          for it was not: text-base carries its own 24px line-height and beats
-          ItemTitle's leading-snug, so the line box is 24px against a 20px
-          glyph and the true centre is 2px. Measured at -1.00px on every row
-          on this page and on /o-nas/vsebine, and -1.50px at a 24px OS font.
-          A pixel high reads better than a glyph on the baseline, so the value
-          stays; the comment no longer claims a line box nothing draws. */}
-      <div className="divide-y border-y lg:col-start-1 lg:row-start-2">
-        {text.points.map((point) => {
-          const Icon = pointIcons[point.key];
-          return (
-            <Item
-              key={point.key}
-              layout="row"
-              className="px-0 py-5"
-            >
-              <ItemMedia className="mt-px">
-                <Icon
-                  className="size-5 shrink-0 text-muted-foreground"
-                  aria-hidden
-                />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle asChild className="text-base font-medium">
-                  <h2>{point.title}</h2>
-                </ItemTitle>
-                {/* Match the title/body hierarchy used by resource cards. */}
-                <ItemDescription className="text-sm leading-relaxed">
-                  {point.body}
-                </ItemDescription>
-                {point.link && (
-                  <a
-                    href={point.link.href}
-                    className={POINT_LINK}
-                  >
-                    {point.link.label}
-                  </a>
-                )}
-              </ItemContent>
-            </Item>
-          );
-        })}
-      </div>
+      {/* Keep adoption and availability together and readable without disclosure controls. */}
+      <section aria-labelledby="about-shelterDecides" className="lg:col-start-1 lg:row-start-2">
+        <AboutPoints points={text.points.filter((point) => !isShelterPoint(point))} level={2} />
+      </section>
 
       {/* The sentence stays beside the button rather than inside it: it says
           what to write about, and a button label that is a full sentence stops
@@ -232,7 +233,11 @@ export function AboutPage({ locale }: { locale: Locale }) {
           addressed to shelters, and a repository is not an answer to it: the
           reader it was for is a developer, and the footer of this very page
           already invites them, in the small print where that belongs. */}
-      <div className="space-y-3 lg:col-start-1 lg:row-start-3">
+      <section aria-labelledby="about-shelters" className="space-y-3 lg:col-start-1 lg:row-start-3">
+        <h2 id="about-shelters" className="text-xl font-semibold">
+          {text.sheltersTitle}
+        </h2>
+        <AboutPoints points={text.points.filter(isShelterPoint)} level={3} />
         <p className="text-sm leading-relaxed text-muted-foreground">
           {text.report}
         </p>
@@ -243,15 +248,15 @@ export function AboutPage({ locale }: { locale: Locale }) {
             asChild
             variant="outline"
             size="sm"
-            className={THUMB_BUTTON}
+            className={`${THUMB_BUTTON} h-auto min-h-9 max-w-full whitespace-normal`}
           >
             <a href={mailtoHref(CONTACT_EMAIL)}>
               <Mail aria-hidden data-icon="inline-start" />
-              {CONTACT_EMAIL}
+              <span className="min-w-0 break-all">{CONTACT_EMAIL}</span>
             </a>
           </Button>
         </div>
-      </div>
+      </section>
 
       {/* Keep the practical information first in mobile and keyboard
           reading order. On desktop the cat sits beside all three text

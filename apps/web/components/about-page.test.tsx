@@ -4,7 +4,7 @@
 // (motion/react), which reads window.matchMedia when it resolves the
 // reducedMotion="user" setting.
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AboutPage } from "./about-page";
 import { getMessages, type Locale } from "@/lib/i18n";
@@ -30,7 +30,7 @@ describe("the about page", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
       "Želite posvojiti?", "Ali žival še išče dom?", "Brezplačna uporaba",
-      "Zavetišča odločate o svojih vsebinah", "Kako se zavetišče vključi?",
+      "Za zavetišča",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
@@ -47,7 +47,8 @@ describe("the about page", () => {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
         getMessages(locale).about,
       );
-      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(5);
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(4);
+      expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2);
     },
   );
 
@@ -74,6 +75,21 @@ describe("the about page", () => {
     );
     expect(footerHrefs.length).toBeGreaterThan(0);
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
+  });
+
+  it.each([
+    { locale: "sl" as const, adoption: "Želite posvojiti?", availability: "Ali žival še išče dom?", shelters: "Za zavetišča" },
+    { locale: "en" as const, adoption: "Want to adopt?", availability: "Is the animal still available?", shelters: "For shelters" },
+  ])("keeps availability with adopters and contact with shelters (%s)", ({ locale, adoption, availability, shelters }) => {
+    render(<AboutPage locale={locale} />);
+    const adopterSection = screen.getByRole("region", { name: adoption });
+    const shelterSection = screen.getByRole("region", { name: shelters });
+    expect(within(adopterSection).getByRole("heading", { name: availability })).toBeTruthy();
+    expect(within(shelterSection).getAllByRole("heading", { level: 3 })).toHaveLength(2);
+    expect(within(shelterSection).getByRole("link", { name: "info@posvoji.si" }).getAttribute("href"))
+      .toBe("mailto:info@posvoji.si");
+    expect(adopterSection.compareDocumentPosition(shelterSection) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
   });
 
   // One button under the closing line: the address, printed as itself so it

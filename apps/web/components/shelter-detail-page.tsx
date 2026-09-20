@@ -30,6 +30,7 @@ import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
+import { PAGE_TITLE } from "@/lib/link-styles";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -252,7 +253,7 @@ export function ShelterDetailPage({
                 {/* break-words is the last resort under it: a name whose
                     longest word is wider than the column breaks the word
                     rather than the page. */}
-                <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-3xl">
+                <h1 className={`break-words ${PAGE_TITLE}`}>
                   {shelter.name}
                 </h1>
                 {/* Wrapping, not truncation: the town and the count are

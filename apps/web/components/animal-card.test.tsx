@@ -2,10 +2,18 @@
 
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { LucideIcon } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -14,6 +22,7 @@ import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { animalsForClient } from "@/lib/dataset";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
 import { PHOTO_TRANSITION_NAME } from "@/lib/photo-morph";
+import { pointer } from "@/test/pointer";
 import { stubViewTransition } from "@/test/view-transition";
 
 afterEach(cleanup);
@@ -762,4 +771,221 @@ it("keeps the first photo while metadata loads, then honors the card's keyboard 
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+// What the card says while the deferred gallery is on its way, and to whom.
+//
+// Two paths fetch that payload. A mouse resting on the photo warms it after
+// the gallery's own dwell, which the visitor did not ask for and must not be
+// told about; an arrow key, a chevron or a swipe asks for a photo the card
+// cannot draw yet, which is a wait worth naming. The store behind both is
+// keyed by the payload's URL and lives for the whole module, and the URL is
+// the hash of the photos, so every test here gives its animal photo names of
+// its own rather than inheriting a settled entry from the test above it.
+describe("AnimalCard deferred gallery note", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  // Past PRELOAD_DWELL_MS and past the note's own delay, both of which belong
+  // to the components rather than to these tests.
+  const PAST_DWELL_MS = 500;
+  const NOTE_DELAY_MS = 400;
+
+  function gallery(tag: string, count = 3): Animal["images"] {
+    return Array.from({ length: count }, (_, i) => ({
+      sourceUrl: `https://example.test/${tag}-${i}.jpg`,
+      rights: "display-permitted" as const,
+    }));
+  }
+
+  /** A card's worth of animal with its photos left to the payload. */
+  function deferred(tag: string) {
+    return animalsForClient([schemaAnimal({ images: gallery(tag) })], {
+      deferPhotos: true,
+    })[0]!;
+  }
+
+  /** What the payload answers, in the shape the hook validates. */
+  function payload(tag: string) {
+    return {
+      ok: true,
+      json: async () => animal({ images: gallery(tag) }).images,
+    };
+  }
+
+  function renderCard(tag: string) {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={deferred(tag)}
+          reference={NOW}
+          onOpen={() => undefined}
+        />
+      </I18nProvider>,
+    );
+    return container;
+  }
+
+  function note(container: HTMLElement) {
+    return container.querySelector('[role="status"]');
+  }
+
+  function photoSrc(container: HTMLElement) {
+    return container.querySelector("img")?.getAttribute("src") ?? "";
+  }
+
+  // React derives onPointerEnter from pointerover and never listens for
+  // pointerenter itself, and fireEvent.pointerEnter does that swap after the
+  // init is built, which loses the pointerType the dwell reads. Written out
+  // the way photo-gallery.test.tsx does.
+  function hoverMouse(element: Element) {
+    const event = createEvent.pointerOver(element);
+    Object.defineProperty(event, "pointerType", { value: "mouse" });
+    fireEvent(element, event);
+  }
+
+  function pending() {
+    let finish!: (value: unknown) => void;
+    const fetcher = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    return { fetcher, finish: (value: unknown) => finish(value) };
+  }
+
+  it("says nothing while a hover warms the gallery", async () => {
+    const { fetcher, finish } = pending();
+    const container = renderCard("hover");
+    const surface = container.querySelector('[data-slot="photo-frame"] a')!;
+
+    // The dwell has to elapse before anything is fetched at all.
+    hoverMouse(surface);
+    expect(fetcher).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(PAST_DWELL_MS);
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(note(container)).toBeNull();
+
+    // Long past the note's delay, and still nothing: this visitor asked for
+    // no photo. The note used to read the load rather than the asking, and
+    // every hover on the grid painted a box over the status badge.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(note(container)).toBeNull();
+
+    await act(async () => {
+      finish(payload("hover"));
+    });
+    expect(note(container)).toBeNull();
+  });
+
+  it("says nothing while a press warms the gallery", async () => {
+    const { fetcher, finish } = pending();
+    const container = renderCard("press");
+    const surface = container.querySelector('[data-slot="photo-frame"] a')!;
+
+    // The other silent path: the gesture's own start warms the gallery before
+    // it knows whether the finger is swiping or scrolling away.
+    pointer(surface, "pointerdown", { x: 100, y: 100 });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(note(container)).toBeNull();
+
+    await act(async () => {
+      finish(payload("press"));
+    });
+    expect(note(container)).toBeNull();
+  });
+
+  it("tells a stepping visitor only once the wait is worth naming", async () => {
+    const { fetcher, finish } = pending();
+    const container = renderCard("step");
+    const link = container.querySelector('[data-slot="card-link"]')!;
+
+    fireEvent.keyDown(link, { key: "ArrowRight" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    // The step is asking, so the note is coming, but not yet.
+    expect(note(container)).toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(NOTE_DELAY_MS - 1);
+    });
+    expect(note(container)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(note(container)?.textContent).toContain("Nalaganje");
+
+    // And it goes when the photos land, with the step the visitor asked for
+    // applied.
+    await act(async () => {
+      finish(payload("step"));
+    });
+    expect(note(container)).toBeNull();
+    expect(photoSrc(container)).toContain("step-1");
+  });
+
+  it("says nothing when the step's gallery arrives quickly", async () => {
+    const { finish } = pending();
+    const container = renderCard("quick");
+    const link = container.querySelector('[data-slot="card-link"]')!;
+
+    fireEvent.keyDown(link, { key: "ArrowRight" });
+    act(() => {
+      vi.advanceTimersByTime(NOTE_DELAY_MS - 200);
+    });
+    expect(note(container)).toBeNull();
+
+    await act(async () => {
+      finish(payload("quick"));
+    });
+    // Well past the delay the note would have drawn at, had the load still
+    // been running when it came round.
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(note(container)).toBeNull();
+    expect(photoSrc(container)).toContain("quick-1");
+  });
+
+  it("offers the retry at once when the step's gallery fails", async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({
+        ok: true,
+        json: async () => animal({ images: gallery("failed") }).images,
+      });
+    vi.stubGlobal("fetch", fetcher);
+    const container = renderCard("failed");
+    const link = container.querySelector('[data-slot="card-link"]')!;
+
+    await act(async () => {
+      fireEvent.keyDown(link, { key: "ArrowRight" });
+    });
+    // No delay on this one: nothing further is going to happen on its own,
+    // and the note is the only way on.
+    expect(note(container)?.textContent).toContain("Poskusi znova");
+
+    const retry = container.querySelector('[role="status"] button')!;
+    await act(async () => {
+      fireEvent.click(retry);
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(note(container)).toBeNull();
+    expect(photoSrc(container)).toContain("failed-1");
+  });
 });

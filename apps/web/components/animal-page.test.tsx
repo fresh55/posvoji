@@ -176,11 +176,7 @@ describe("the animal page's hero", () => {
     expect(grid.className).not.toContain("sm:grid-cols-2");
     // No gallery mounts at all: there is nothing for it to show.
     expect(container.querySelector("img")).toBeNull();
-    // But the absence is named. The grid card this page is reached from draws
-    // the species mark and says so where the picture would be; dropping the
-    // column without the sentence left the listing merely looking short, and a
-    // visitor arriving from a search result had nothing telling them the
-    // shelter has pictures at all.
+    // But the absence is named, in the words the card uses for it.
     expect(screen.getByText("Fotografija na strani zavetišča")).toBeTruthy();
   });
 

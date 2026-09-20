@@ -28,14 +28,14 @@ export function SourceFreshness({
       window.clearInterval(timer);
     };
   }, []);
-  const { age, isOld } = sourceFreshness(checkedAt, locale, now);
+  const { known, isOld } = sourceFreshness(checkedAt, now);
   return (
     <div className="space-y-2 text-xs text-muted-foreground" data-slot="source-freshness">
       <p>
         {/* Provider credits stay in Slovenian in both locales. */}
         {attribution && <span lang={quotedLang("sl", locale)}>{attribution}</span>}
         {attribution && " · "}
-        {checkedAt && age !== null ? (
+        {checkedAt && known ? (
           <>
             {messages.sourceVerified}{" "}
             {/* The machine value stays the instant. Only what is read changes. */}

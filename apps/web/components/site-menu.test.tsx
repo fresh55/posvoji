@@ -70,12 +70,8 @@ describe("the header menu", () => {
     expect(login.getAttribute("hreflang")).toBe("sl");
   });
 
-  // Grey text under a separator is the shape a disabled menu item has, and on
-  // a phone this menu is the only door to the portal on the page. The
-  // separator above is what demotes the group; the colour was borrowing the
-  // disabled state's only signal to say the same thing twice. The lg button
-  // keeps its muted colour, because a frame around a control says "press me"
-  // on its own and a bare menu row has nothing else.
+  // The separator is what demotes the quiet group. site-menu.tsx argues why
+  // the colour cannot help it.
   it("does not grey the login into looking disabled", () => {
     openMenu("sl", "Meni");
 

@@ -36,7 +36,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                 <div
                   ref={listRef}
                   data-picker-list-scroll
-                  className="fade-scroll-mask mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 short:min-h-11 scrollbar-thin"
+                  className="fade-scroll-thin mt-2 min-h-0 flex-1 overflow-y-auto max-lg:min-h-20 short:min-h-11"
                 >
                   {/* placeOnly: the query resolved to a place the postal
                       table knows and matched no shelter's name, so the row

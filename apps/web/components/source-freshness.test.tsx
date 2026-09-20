@@ -15,10 +15,8 @@ it("ages an open static page without changing its source timestamp", async () =>
   expect(screen.queryByText(/still available/)).toBeNull();
   vi.setSystemTime(new Date("2026-09-15T07:00:00Z"));
   await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
-  // What ageing shows is the warning arriving, and it is the whole of what the
-  // minute timer is for. The sentence used to end in "Last checked 2 days
-  // ago.", which restated the date printed in the line above it under a second
-  // label, and it is gone; the paragraph being drawn at all is the age now.
+  // The warning arriving is what ageing shows, and the whole of what the minute
+  // timer is for.
   expect(screen.getByText(/still available/)).toBeTruthy();
   await act(async () => { await vi.advanceTimersByTimeAsync(24 * 60 * 60000); });
   expect(screen.getByText(/still available/)).toBeTruthy();
@@ -67,9 +65,7 @@ it.each([undefined, "bad", "2026-09-14T07:00:00Z"])("treats an unreliable check 
   expect(screen.queryByText(/Last checked/)).toBeNull();
 });
 
-// The instruction and nothing after it. The relative age that used to close
-// this sentence is the date in the line above told a second time, and the one
-// thing to do was reaching the reader last.
+// The instruction and nothing after it; source-freshness.tsx says why.
 it.each([
   ["sl", "Pred obiskom preveri pri zavetišču, ali je žival še na voljo."],
   ["en", "Before visiting, check with the shelter that the animal is still available."],

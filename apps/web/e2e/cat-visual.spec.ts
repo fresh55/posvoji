@@ -15,12 +15,13 @@ test("cat face, eyelids, tail clearance and sleep retain their reviewed appearan
     const top = element.getBoundingClientRect().top;
     (element as HTMLElement).style.transform = `translateY(${Math.ceil(top) + .5 - top}px)`;
   });
-  for (const [name, time, orbit] of [
+  for (const [name, time, orbit, snapshot] of [
     ["Companion", 0, "-19deg 81deg 1.45m"],
     ["Slow blink", 1.1, "-19deg 81deg 1.45m"],
     ["Face wash", 3.25, "-19deg 81deg 1.45m"],
     ["Back pet", .9, "65deg 81deg 1.45m"],
     ["Back warning", 1.25, "145deg 75deg 1.45m"],
+    ["Back warning", .625, "-19deg 81deg 1.45m", "back-warning-swat"],
     ["Head pet", 1.2, "-19deg 81deg 1.45m"],
     ["Head rub", 1.6, "-19deg 81deg 1.45m"],
     ["Nose sniff", .18, "-19deg 81deg 1.45m"],
@@ -38,6 +39,7 @@ test("cat face, eyelids, tail clearance and sleep retain their reviewed appearan
       v.animationName = pose.name; v.cameraOrbit = pose.orbit; v.jumpCameraToGoal();
       await v.updateComplete; v.currentTime = pose.time; await v.updateComplete;
     }, { name, time, orbit });
-    await expect(model).toHaveScreenshot(`${name.toLowerCase().replaceAll(" ", "-")}.png`);
+    const poseName = snapshot ?? name.toLowerCase().replaceAll(" ", "-");
+    await expect(model).toHaveScreenshot(`${poseName}.png`);
   }
 });

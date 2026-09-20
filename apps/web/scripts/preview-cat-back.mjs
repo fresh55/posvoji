@@ -16,9 +16,12 @@ try {
   for (const [name, time, orbit] of [
     ["neutral", 0, "-19deg 81deg 1.45m"],
     ["flinch", .17, "-19deg 81deg 1.45m"],
+    ["wind-up", .5, "-19deg 81deg 1.45m"],
+    ["swat", .625, "-19deg 81deg 1.45m"],
+    ["recoil", .833333, "-19deg 81deg 1.45m"],
     ["annoyed-look", .9, "-19deg 81deg 1.45m"],
     ["back-view", .9, "145deg 75deg 1.45m"],
-    ["side-view", .9, "65deg 81deg 1.45m"],
+    ["side-view", .625, "65deg 81deg 1.45m"],
     ["settled", 3.5, "-19deg 81deg 1.45m"],
   ]) {
     await model.evaluate(async (v, { time, orbit, clip }) => {

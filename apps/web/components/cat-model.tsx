@@ -11,7 +11,7 @@ import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
 
 // Preload only when start() requests the model, to avoid competing with page content.
-const MODEL = "/models/our-cat/cat.glb?v=27";
+const MODEL = "/models/our-cat/cat.glb?v=29";
 
 // The preload and viewer must use the same decoder URL.
 const DECODER = "/models/our-cat/meshopt-decoder.js";

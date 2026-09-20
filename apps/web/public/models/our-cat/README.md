@@ -1,6 +1,29 @@
 # The cat
 
-`cat.glb` is revision 27: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2, with a transparent background (`VP8X` with alpha, `?v=20`). It was a plain `VP8 ` WebP until then, which baked the white capture background into the pixels and drew the figure inside a bright slab on the dark theme, permanently wherever WebGL never came up. Re-render it against a transparent background, the way `poster-home.webp` already was: real Chrome at device pixel ratio 2, `Emulation.setDefaultBackgroundColorOverride` with alpha 0, the `<picture>` under the stage hidden, and the clip taken from the `model-viewer` box once `loaded` is true. Encode at `{ quality: 85, alphaQuality: 100, effort: 6 }`: measured against its own capture that is 49.4 dB with a mean channel delta of 0.25/255, where q90 costs 4,120 more bytes for 2 dB nobody can see. The result is 20,028 bytes, smaller than the 21,078-byte opaque file it replaces, with the alpha kept. The contact shadow survives as alpha; composited back onto white the still matches the previous one to a mean channel delta of 1.84/255. `poster-home.webp` is the same frame at the home page's closer framing (`HOME_CAT_FRAMING` in `components/home-cat.tsx`), captured from the loaded model on that page at device pixel ratio 2; re-render it whenever the model, the lighting or that framing changes, and bump the `?v=` on its path in that file, or returning visitors keep the old still.
+`cat.glb` is revision 29: revision 15's likeness with twenty-five full-body clips and eight isolated gaze, ear and tilt layers. `poster.webp` retains the matching seated first frame captured at device pixel ratio 2, with a transparent background (`VP8X` with alpha, `?v=20`). It was a plain `VP8 ` WebP until then, which baked the white capture background into the pixels and drew the figure inside a bright slab on the dark theme, permanently wherever WebGL never came up. Re-render it against a transparent background, the way `poster-home.webp` already was: real Chrome at device pixel ratio 2, `Emulation.setDefaultBackgroundColorOverride` with alpha 0, the `<picture>` under the stage hidden, and the clip taken from the `model-viewer` box once `loaded` is true. Encode at `{ quality: 85, alphaQuality: 100, effort: 6 }`: measured against its own capture that is 49.4 dB with a mean channel delta of 0.25/255, where q90 costs 4,120 more bytes for 2 dB nobody can see. The result is 20,028 bytes, smaller than the 21,078-byte opaque file it replaces, with the alpha kept. The contact shadow survives as alpha; composited back onto white the still matches the previous one to a mean channel delta of 1.84/255. `poster-home.webp` is the same frame at the home page's closer framing (`HOME_CAT_FRAMING` in `components/home-cat.tsx`), captured from the loaded model on that page at device pixel ratio 2; re-render it whenever the model, the lighting or that framing changes, and bump the `?v=` on its path in that file, or returning visitors keep the old still.
+
+## Diagonal warning swat, revision 29
+
+`Back warning` now includes a 125 ms diagonal swat and immediate recoil.
+The wrist extends with the stroke, the chest turns and the other front paw
+stays planted. The clip keeps its 3.5-second duration and resting endpoints.
+
+Eleven channels change; other clips, geometry and textures retain revision
+27's data. The asset is 1,516,396 bytes, served as `?v=29`, with a regenerated
+picking checksum. Posters are unchanged.
+
+Reproduce using revision 26's editable Blender project and revision 27's web
+asset (the compressed export uses the same rig):
+
+```sh
+blender --background --python-exit-code 1 --python apps/web/scripts/animate-cat-swat.py -- SOURCE.blend output/cat-swat
+node apps/web/scripts/install-cat-back.mjs output/cat-swat/swat-reaction.glb "Back warning"
+node apps/web/scripts/prepare-cat-play.mjs
+```
+
+The output includes an editable `our-cat-web.blend`. Per-frame checks found
+no paw/body intersections (minimum sampled gap: 26.6 mm). Tests cover the
+stroke, recoil, support paw and continuity; browser snapshots cover its shape.
 
 ## Compressed web export, revision 27
 

@@ -426,7 +426,7 @@ export function ShelterCard({
             <a
               href={shelter.animalsHref}
               data-animals={animals}
-              className="relative z-10 ml-auto inline-flex min-h-9 pointer-coarse:min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-ui border border-brand-border bg-brand px-2 py-0.5 text-xs font-medium tabular-nums text-brand-foreground underline-offset-4 outline-hidden hover:underline focus-visible:ring-3 focus-visible:ring-ring"
+              className="relative z-10 ml-auto inline-flex min-h-9 pointer-coarse:min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-ui border border-brand-border bg-brand px-2.5 py-0.5 text-sm font-medium tabular-nums text-brand-foreground underline-offset-4 outline-hidden hover:underline focus-visible:ring-3 focus-visible:ring-ring"
             >
               <PawPrint className="size-3 shrink-0" aria-hidden />
               {text.animals(animals)}

@@ -354,12 +354,13 @@ test.describe("the shelters register", () => {
     expect(after.compared).toBeGreaterThan(0);
   });
 
-  // The participation counts below the directory must stay aligned when they wrap.
-  // Previously, three groups were separated by hairlines, which
-  // are a separator only while the groups sit on one line. At 375px the third
-  // wraps, and the rules that drew the separator and its padding used to
-  // follow it, leaving a stroke pointing at the empty end of line one and the
-  // wrapped group indented off the column every other line starts from.
+  // The census line under the lede: two groups now that the registry count
+  // opens the lede itself. They used to be three, separated by hairlines,
+  // which are a separator only while the groups sit on one line. At 375px the
+  // last one wraps, and the rules that drew the separator and its padding
+  // used to follow it, leaving a stroke pointing at the empty end of line one
+  // and the wrapped group indented off the column every other line starts
+  // from.
   test("keeps the census flush and unruled when it wraps", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(REGISTER);

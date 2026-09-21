@@ -10,6 +10,7 @@ import {
   HOME_KEYS,
   TOGGLE_KEYS,
   type AgeGroup,
+  type WaitingGroup,
   type CareKey,
   type FilterFacet,
   type Filters,
@@ -64,6 +65,8 @@ export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean
 /** Only a recorded yes counts, so "unknown" and no both drop out. */
 export function homeMatches(animal: AnimalFields, key: HomeKey): boolean {
   switch (key) {
+    case "only-pet":
+      return animal.adoptionRequirements?.onlyPet === true;
     case "apartment":
       return animal.apartmentOk === "yes";
     case "indoor-only":
@@ -177,6 +180,9 @@ const GROUP_BITS: Record<MultiGroup, number> = {
   size: 1 << 2,
   energy: 1 << 3,
   shelter: 1 << 4,
+  coatColor: 1 << 5,
+  coatLength: 1 << 6,
+  waiting: 1 << 7,
 };
 
 type Column<Value> = readonly (Value | undefined)[];
@@ -190,6 +196,9 @@ type FilterIndex = {
   readonly sex: Column<string>;
   readonly size: Column<string>;
   readonly energy: Column<string>;
+  readonly coatColor: Column<string>;
+  readonly coatLength: Column<string>;
+  readonly intakeDate: Column<string>;
   readonly shelter: readonly string[];
   readonly approximate: Column<number>;
   readonly born: Column<number>;
@@ -207,6 +216,9 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const sex: (string | undefined)[] = [];
   const size: (string | undefined)[] = [];
   const energy: (string | undefined)[] = [];
+  const coatColor: (string | undefined)[] = [];
+  const coatLength: (string | undefined)[] = [];
+  const intakeDate: (string | undefined)[] = [];
   const shelter: string[] = [];
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
@@ -220,6 +232,9 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     sex.push(animal.sex === "unknown" ? undefined : animal.sex);
     size.push(animal.size);
     energy.push(animal.energy);
+    coatColor.push(animal.coatColor);
+    coatLength.push(animal.coatLength);
+    intakeDate.push(animal.intakeDate);
     shelter.push(animal.shelter.id);
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
@@ -242,6 +257,9 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     size,
     energy,
     shelter,
+    coatColor,
+    coatLength,
+    intakeDate,
     approximate,
     born,
     toggles,
@@ -305,6 +323,9 @@ function queryOf(filters: Filters): Query {
       size: chosen("size"),
       energy: chosen("energy"),
       shelter: chosen("shelter"),
+      coatColor: chosen("coatColor"),
+      coatLength: chosen("coatLength"),
+      waiting: chosen("waiting"),
     },
     toggles: maskOf(TOGGLES.length, (bit) =>
       filters.toggles.includes(TOGGLE_KEYS[bit]),
@@ -325,6 +346,7 @@ function queryOf(filters: Filters): Query {
 type Pass = {
   index: FilterIndex;
   ages: Column<AgeGroup>;
+  waiting: WaitingGroup[][];
   query: Query;
 };
 
@@ -333,6 +355,7 @@ function passOf(animals: AnimalFields[], filters: Filters, now: Date): Pass {
   return {
     index,
     ages: ageColumn(index, monthsOf(now)),
+    waiting: index.intakeDate.map((date) => waitingGroups(date, now)),
     query: queryOf(filters),
   };
 }
@@ -347,7 +370,7 @@ function valueAt(
   pass: Pass,
   slot: number,
   group: MultiGroup,
-): string | undefined {
+): string | readonly string[] | undefined {
   switch (group) {
     case "sex":
       return pass.index.sex[slot];
@@ -355,6 +378,12 @@ function valueAt(
       return pass.ages[slot];
     case "size":
       return pass.index.size[slot];
+    case "coatColor":
+      return pass.index.coatColor[slot];
+    case "coatLength":
+      return pass.index.coatLength[slot];
+    case "waiting":
+      return pass.waiting[slot];
     case "energy":
       return pass.index.energy[slot];
     case "shelter":
@@ -378,7 +407,7 @@ function groupsFailedAt(pass: Pass, slot: number): number {
     const chosen = pass.query.groups[group];
     if (chosen === null) continue;
     const value = valueAt(pass, slot, group);
-    if (value === undefined || !chosen.has(value)) failed |= GROUP_BITS[group];
+    if (!asValues(value).some((v) => chosen.has(v))) failed |= GROUP_BITS[group];
   }
   return failed;
 }
@@ -501,6 +530,9 @@ export function facetCounts(
     age: new Map<string, number>(),
     size: new Map<string, number>(),
     energy: new Map<string, number>(),
+    coatColor: new Map<string, number>(),
+    coatLength: new Map<string, number>(),
+    waiting: new Map<string, number>(),
     shelter: new Map<string, number>(),
   };
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
@@ -509,8 +541,7 @@ export function facetCounts(
     for (const group of GROUPS) {
       if ((failed & ~GROUP_BITS[group]) !== 0) continue;
       const value = valueAt(pass, slot, group);
-      if (value === undefined) continue;
-      bump(counts[group], value);
+      for (const item of asValues(value)) bump(counts[group], item);
     }
   }
   return counts;
@@ -636,6 +667,9 @@ export function chipGains(
     age: 0,
     size: 0,
     energy: 0,
+    coatColor: 0,
+    coatLength: 0,
+    waiting: 0,
     shelter: 0,
   };
   let freedToggles = 0;
@@ -683,9 +717,11 @@ export function chipGains(
     // the only place a value can be the sole reason something is showing.
     result += 1;
     for (const group of GROUPS) {
-      if (query.groups[group] === null) continue;
+      const chosen = query.groups[group];
+      if (chosen === null) continue;
       const value = valueAt(pass, slot, group);
-      if (value !== undefined) bump(sole, chipKey(group, value));
+      const matches = asValues(value).filter((v) => chosen.has(v));
+      if (matches.length === 1) bump(sole, chipKey(group, matches[0]));
     }
     // An exact match on one bit is the test: this animal answers that value
     // and no other the section picked, so the value is holding it up alone.
@@ -929,6 +965,9 @@ export function visibleGroups(
     age: new Set<string>(),
     size: new Set<string>(),
     energy: new Set<string>(),
+    coatColor: new Set<string>(),
+    coatLength: new Set<string>(),
+    waiting: new Set<string>(),
     shelter: new Set<string>(),
   };
   const add = (group: MultiGroup, value: string | undefined) => {
@@ -939,6 +978,9 @@ export function visibleGroups(
     add("age", ages[slot]);
     add("size", index.size[slot]);
     add("energy", index.energy[slot]);
+    add("coatColor", index.coatColor[slot]);
+    add("coatLength", index.coatLength[slot]);
+    waitingGroups(index.intakeDate[slot], now).forEach((v) => add("waiting", v));
     add("shelter", index.shelter[slot]);
   }
   // includeUnavailable drops the floor to one answer rather than lifting it
@@ -957,6 +999,9 @@ export function visibleGroups(
     age: shown("age"),
     size: shown("size"),
     energy: shown("energy"),
+    coatColor: shown("coatColor"),
+    coatLength: shown("coatLength"),
+    waiting: shown("waiting"),
     shelter: shown("shelter"),
   };
 }
@@ -972,6 +1017,9 @@ export function pruneHiddenFilters(filters: Filters): Filters {
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],
     energy: keep("energy") ? filters.energy : [],
+    coatColor: filters.coatColor,
+    coatLength: filters.coatLength,
+    waiting: filters.waiting,
     shelter: keep("shelter") ? filters.shelter : [],
     toggles: filters.toggles.filter((key) =>
       toggleFitsSpecies(
@@ -986,4 +1034,25 @@ export function pruneHiddenFilters(filters: Filters): Filters {
     home: filters.home,
     care: filters.care,
   };
+}
+
+function asValues(value: string | readonly string[] | undefined): readonly string[] {
+  return value === undefined ? [] : typeof value === "string" ? [value] : value;
+}
+
+/** Strictly past the calendar anniversary, using only the shelter intake date.
+ * Clamp month-end anniversaries (August 31 + 6 months is February's last day).
+ * UTC date arithmetic makes shared links agree across visitor time zones. */
+export function waitingGroups(intakeDate: string | undefined, now: Date): WaitingGroup[] {
+  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return [];
+  const start = new Date(intakeDate);
+  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate || !Number.isFinite(now.getTime())) return [];
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (start.getTime() > today) return [];
+  const thresholds: [WaitingGroup, number][] = [["over-6-months", 6], ["over-1-year", 12], ["over-3-years", 36]];
+  return thresholds.filter(([, months]) => {
+    const month = start.getUTCMonth() + months;
+    const lastDay = new Date(Date.UTC(start.getUTCFullYear(), month + 1, 0)).getUTCDate();
+    return today > Date.UTC(start.getUTCFullYear(), month, Math.min(start.getUTCDate(), lastDay));
+  }).map(([value]) => value);
 }

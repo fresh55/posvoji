@@ -1,4 +1,4 @@
-import type { AnimalSize, EnergyLevel, Sex } from "@posvoji/schema";
+import type { AnimalSize, CoatColorCategory, CoatLength, EnergyLevel, Sex } from "@posvoji/schema";
 import type { Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
 import {
@@ -10,6 +10,7 @@ import {
   EMPTY_FILTERS,
   GROUPS,
   type AgeGroup,
+  type WaitingGroup,
   type CareKey,
   type Filters,
   type GoodWithKey,
@@ -34,6 +35,9 @@ const PARAM_NAMES: Record<MultiGroup, string> = {
   age: "starost",
   size: "velikost",
   energy: "energija",
+  coatColor: "barva",
+  coatLength: "dlaka",
+  waiting: "cakanje",
   shelter: "zavetisce",
 };
 
@@ -200,6 +204,9 @@ export function parseFilters(search: string): Filters {
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],
     energy: values("energy") as EnergyLevel[],
+    coatColor: values("coatColor") as CoatColorCategory[],
+    coatLength: values("coatLength") as CoatLength[],
+    waiting: values("waiting") as WaitingGroup[],
     shelter: values("shelter"),
     toggles,
     goodWith: codedValues("goodWith") as GoodWithKey[],

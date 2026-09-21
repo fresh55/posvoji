@@ -84,6 +84,7 @@ function dataset(count: number): Animal[] {
     const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20"]);
     const adoptionRequirements = {
       indoorOnly: flag(),
+      onlyPet: flag(),
       bondedPair: flag(),
       experiencedCarer: flag(),
       ongoingCare: flag(),
@@ -102,6 +103,10 @@ function dataset(count: number): Animal[] {
         name: "Zavetisce",
         city: "Ljubljana",
       },
+      coatColors: pick([undefined, ["black"], ["black", "white"], ["orange", "cream"], ["grey", "brown"]]),
+      coatColor: pick([undefined, "black", "white", "grey", "brown", "orange", "cream", "multicolour"]),
+      coatLength: pick([undefined, "short", "medium", "long", "hairless"]),
+      intakeDate: pick([undefined, "2026-08-16", "2026-02-14", "2025-08-15", "2025-08-14", "2023-08-14"]),
       species,
       ...(sex === undefined ? {} : { sex }),
       ...(size === undefined ? {} : { size }),
@@ -134,7 +139,7 @@ function dataset(count: number): Animal[] {
 function slowGroupValue(
   animal: Animal,
   group: MultiGroup,
-): string | undefined {
+): string | string[] | undefined {
   switch (group) {
     case "sex":
       return animal.sex === "unknown" ? undefined : animal.sex;
@@ -144,6 +149,16 @@ function slowGroupValue(
     }
     case "size":
       return animal.size;
+    case "coatColor":
+      return animal.coatColor;
+    case "coatLength":
+      return animal.coatLength;
+    case "waiting":
+      return animal.intakeDate ? ([
+        ["over-6-months", "2026-02-15"],
+        ["over-1-year", "2025-08-15"],
+        ["over-3-years", "2023-08-15"],
+      ]).filter(([, cutoff]) => animal.intakeDate! < cutoff).map(([value]) => value) : [];
     case "energy":
       return animal.energy;
     case "shelter":
@@ -158,7 +173,7 @@ function slowGroupOk(
 ): boolean {
   if (selected.length === 0) return true;
   const value = slowGroupValue(animal, group);
-  return value !== undefined && selected.includes(value);
+  return value !== undefined && (Array.isArray(value) ? value.some(v => selected.includes(v)) : selected.includes(value));
 }
 
 function slowTogglesOk(animal: Animal, selected: readonly ToggleKey[]): boolean {
@@ -244,6 +259,9 @@ function slowFacetCounts(
     size: new Map<string, number>(),
     energy: new Map<string, number>(),
     shelter: new Map<string, number>(),
+    coatColor: new Map<string, number>(),
+    coatLength: new Map<string, number>(),
+    waiting: new Map<string, number>(),
   };
   for (const group of GROUPS) {
     const applied = { ...filters, skipGroup: group };
@@ -251,7 +269,7 @@ function slowFacetCounts(
       if (!slowPasses(animal, filters, applied)) continue;
       const value = slowGroupValue(animal, group);
       if (value === undefined) continue;
-      counts[group].set(value, (counts[group].get(value) ?? 0) + 1);
+      for (const item of Array.isArray(value) ? value : [value]) counts[group].set(item, (counts[group].get(item) ?? 0) + 1);
     }
   }
   return counts;
@@ -389,7 +407,7 @@ function slowChipGains(
 // Read off FILTER_METADATA rather than listed again: this file claims to be
 // the specification, and a hand-copied list quietly stops covering a value the
 // moment one is added to the metadata.
-const values = <Group extends "sex" | "age" | "size" | "energy">(
+const values = <Group extends "sex" | "age" | "size" | "energy" | "coatColor" | "coatLength" | "waiting">(
   group: Group,
 ): (typeof FILTER_METADATA)[Group][number]["value"][] =>
   FILTER_METADATA[group].map((option) => option.value);
@@ -419,6 +437,11 @@ function states(): Filters[] {
   only({ age: ["mladicek", "senior"] });
   only({ size: ["small"] });
   only({ size: ["small", "large"] });
+  only({ coatColor: ["black"] });
+  only({ coatColor: ["black", "white"] });
+  only({ coatLength: ["short", "long"] });
+  only({ waiting: ["over-6-months", "over-3-years"] });
+  only({ home: ["only-pet"] });
   only({ energy: ["calm"] });
   only({ energy: ["calm", "lively"] });
   only({ shelter: ["s1"] });
@@ -445,6 +468,9 @@ function states(): Filters[] {
       age: some(AGES, 0.3),
       size: some(SIZES, 0.3),
       energy: some(ENERGIES, 0.3),
+      coatColor: some(values("coatColor"), 0.3),
+      coatLength: some(values("coatLength"), 0.3),
+      waiting: some(values("waiting"), 0.3),
       shelter: some(SHELTERS, 0.35),
       toggles: some(TOGGLE_KEYS, 0.3),
       goodWith: some(GOOD_WITH_KEYS, 0.35),

@@ -63,10 +63,12 @@ describe("HomeCards", () => {
     expect(options.map(({ label }) => label)).toEqual([
       "Primeren za stanovanje",
       "Samo notranje bivanje",
+      "Edini ljubljenček",
     ]);
     expect(homeOptions("en").map(({ label }) => label)).toEqual([
       "Apartment-friendly",
       "Indoor-only home",
+      "Only pet",
     ]);
   });
 
@@ -88,7 +90,7 @@ describe("HomeCards", () => {
     const cards = screen
       .getAllByRole("button")
       .filter((button) => button.getAttribute("aria-pressed") !== null);
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(3);
   });
 
   it("calls onToggle with the facet key", () => {
@@ -170,6 +172,9 @@ describe("FilterGroupList", () => {
             age: new Map(),
             size: new Map(),
             energy: new Map(),
+            coatColor: new Map(),
+            coatLength: new Map(),
+            waiting: new Map(),
             shelter: new Map(),
           }}
           toggles={[]}

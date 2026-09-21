@@ -1,9 +1,14 @@
-import type { AnimalSize, EnergyLevel, Sex } from "@posvoji/schema";
+import type {
+  AnimalSize, CoatColorCategory, CoatLength, EnergyLevel, Sex,
+} from "@posvoji/schema";
 import type { SpeciesTab } from "@/lib/species";
 
 export type SpeciesFilter = "all" | SpeciesTab;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
-export type MultiGroup = "sex" | "age" | "size" | "energy" | "shelter";
+export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
+export type MultiGroup =
+  | "sex" | "age" | "size" | "energy" | "shelter"
+  | "coatColor" | "coatLength" | "waiting";
 
 // Yes/no properties an animal either has or doesn't. Choices within this
 // section combine with OR, and sections combine with AND. Every section works
@@ -24,11 +29,8 @@ export type ToggleKey = (typeof TOGGLE_KEYS)[number];
 export const GOOD_WITH_KEYS = ["kids", "dogs", "cats"] as const;
 export type GoodWithKey = (typeof GOOD_WITH_KEYS)[number];
 
-// What kind of home the animal fits. One value today; kept as a list like
-// every other section so the URL codec and a second value later need no new
-// shape. Only a recorded yes counts, the same principle as Družba: a maybe is
-// never sold as a yes to someone who has only a flat to offer.
-export const HOME_KEYS = ["apartment", "indoor-only"] as const;
+// Home filters match confirmed answers only.
+export const HOME_KEYS = ["apartment", "indoor-only", "only-pet"] as const;
 export type HomeKey = (typeof HOME_KEYS)[number];
 
 // Not a warning but a way in: it exists for visitors who came looking for the
@@ -47,6 +49,9 @@ export type Filters = {
   age: AgeGroup[];
   size: AnimalSize[];
   energy: EnergyLevel[];
+  coatColor: CoatColorCategory[];
+  coatLength: CoatLength[];
+  waiting: WaitingGroup[];
   shelter: string[];
   toggles: ToggleKey[];
   goodWith: GoodWithKey[];
@@ -60,6 +65,9 @@ export const EMPTY_FILTERS: Filters = {
   age: [],
   size: [],
   energy: [],
+  coatColor: [],
+  coatLength: [],
+  waiting: [],
   shelter: [],
   toggles: [],
   goodWith: [],
@@ -67,13 +75,11 @@ export const EMPTY_FILTERS: Filters = {
   care: [],
 };
 
-export const GROUPS: MultiGroup[] = ["sex", "age", "size", "energy", "shelter"];
+export const GROUPS: MultiGroup[] = [
+  "sex", "age", "size", "energy", "waiting", "coatColor", "coatLength", "shelter",
+];
 
-/** Every question the filter asks, as one union. MultiGroup covers the five
- *  that share a codec; the four below each carry their own key type, so they
- *  are named here rather than folded in. The chips row is the one surface that
- *  has to talk about all nine at once: it groups by facet and it draws one
- *  icon per facet, and both need a single name for "which question is this". */
+/** All filter categories, used to group and label active chips. */
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "home" | "care";
 
 export const FILTER_FACETS: FilterFacet[] = [

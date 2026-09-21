@@ -98,6 +98,7 @@ function harness(previous: Animal[] = []) {
     now: () => new Date(NOW),
     logger: { log: vi.fn(), warn: vi.fn(), error: vi.fn() },
     loadPolicies: () => ({ policies: [{ dir: root, policy }], errors: [] }),
+    loadAppearance: () => ({ version: 1, reviewedAt: NOW, records: [] }),
     portalIntegrationEnabled: () => false,
     fetchPortalOverrides: async () => null,
     fetchPortalListings: async () => null,
@@ -142,6 +143,40 @@ function harness(previous: Animal[] = []) {
 }
 
 describe("the export command's production pipeline", () => {
+  it("publishes reviewed appearance after caching, preserves crawl truth, and withdraws changed photo evidence", async () => {
+    const h = harness();
+    h.policy.images = "cache-permitted";
+    const sourceUrl = "https://shelter.example/dog.jpg";
+    const sha256 = "c".repeat(64);
+    h.services.providers![0]!.normalize = async () => ({ ...animal(), images: [{ sourceUrl, rights: "cache-permitted" }] });
+    h.services.loadAppearance = () => ({ version: 1, reviewedAt: NOW, records: [{
+      animalId: animal().id, providerId: "test-shelter", sourceUrl: animal().source.sourceUrl, species: "dog",
+      coatColors: ["black", "white"], coatLength: "short", evidence: [{ sourceUrl, sha256 }], reviewedBy: ["first", "second"],
+      coatColor: "black", coatColorReviewedBy: ["colour-first", "colour-second"],
+    }] });
+    h.services.currentPhotoHashes = () => {
+      expect(h.events).toContain("images");
+      return new Map([[sourceUrl, sha256]]);
+    };
+    const first = await runExport({}, h.services);
+    expect(first.dataset.animals[0]?.coatColors).toEqual(["black", "white"]);
+    expect(first.dataset.animals[0]?.coatColor).toBe("black");
+    const raw = JSON.parse(readFileSync(h.paths.crawledDatasetPath, "utf8"));
+    expect(raw.animals[0].coatColors).toBeUndefined();
+    expect(raw.animals[0].coatColor).toBeUndefined();
+    const report = JSON.parse(readFileSync(h.paths.overrideReportPath, "utf8"));
+    expect(report.appearance.applied).toHaveLength(3);
+    const manifest = JSON.parse(readFileSync(join(h.root, "crawl-manifest.json"), "utf8"));
+    expect(manifest.appearanceRevision).toMatch(/^[a-f0-9]{64}$/);
+    h.services.currentPhotoHashes = () => new Map([[sourceUrl, "d".repeat(64)]]);
+    const next = await runExport({ republish: true }, h.services);
+    expect(next.dataset.animals[0]?.coatColors).toBeUndefined();
+    expect(next.dataset.animals[0]?.coatColor).toBeUndefined();
+    expect(next.dataset.animals[0]?.source.fetchedAt).toBe(NOW);
+    expect(JSON.parse(readFileSync(h.paths.overrideReportPath, "utf8")).appearance.skipped)
+      .toEqual([{ animalId: animal().id, reason: "evidence-changed" }]);
+  });
+
   it("reports a cooldown beyond the provider interval as degraded and recovers when it expires", async () => {
     const h = harness();
     expect((await runExport({}, h.services)).exitCode).toBe(0);

@@ -156,8 +156,8 @@ export function FilterSectionHeader({
 }: {
   label: string;
   active: boolean;
-  onReset: () => void;
-  resetAriaLabel: string;
+  onReset?: () => void;
+  resetAriaLabel?: string;
   collapse?: SectionCollapse;
   hint?: string;
   className?: string;
@@ -166,7 +166,7 @@ export function FilterSectionHeader({
   const shouldReduceMotion = useReducedMotion();
   // A closed section trades the reset link for the summary chip; opening it
   // brings the reset back.
-  const showReset = active && (collapse ? collapse.open : true);
+  const showReset = !!onReset && active && (collapse ? collapse.open : true);
 
   // Cards revealed below the sidebar's own scroll fold are cards nobody sees,
   // so an opened section pulls itself into view once it has finished growing.

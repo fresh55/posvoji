@@ -11,6 +11,7 @@ export {
 } from "./filters/contracts";
 export type {
   AgeGroup,
+  WaitingGroup,
   CareKey,
   FilterFacet,
   FilterOption,
@@ -41,6 +42,7 @@ export type {
 
 export {
   activeFilterCount,
+  waitingGroups,
   ageGroup,
   ageInMonths,
   applyFilters,

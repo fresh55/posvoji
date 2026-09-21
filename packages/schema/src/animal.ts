@@ -19,6 +19,17 @@ export type AdoptionStatus = z.infer<typeof AdoptionStatus>;
 export const AnimalSize = z.enum(["small", "medium", "large"]);
 export type AnimalSize = z.infer<typeof AnimalSize>;
 
+export const CoatColor = z.enum(["black", "white", "grey", "brown", "orange", "cream"]);
+export type CoatColor = z.infer<typeof CoatColor>;
+export const CoatColorCategory = z.enum([...CoatColor.options, "multicolour"]);
+export type CoatColorCategory = z.infer<typeof CoatColorCategory>;
+export const CoatLength = z.enum(["short", "medium", "long", "hairless"]);
+export type CoatLength = z.infer<typeof CoatLength>;
+export const CoatColors = z.array(CoatColor).min(1).max(6).refine(
+  (colors) => new Set(colors).size === colors.length,
+  { error: "coat colors must be unique" },
+);
+
 // The shelter's read of day-to-day temperament. Three levels only; unknown is
 // expressed by omitting the field, not by a fourth value.
 export const EnergyLevel = z.enum(["calm", "balanced", "lively"]);
@@ -137,6 +148,7 @@ export const AnimalAdoptionRequirements = z.strictObject({
   bondedPair: z.boolean().optional(),
   experiencedCarer: z.boolean().optional(),
   ongoingCare: z.boolean().optional(),
+  onlyPet: z.boolean().optional(),
 });
 export type AnimalAdoptionRequirements = z.infer<typeof AnimalAdoptionRequirements>;
 
@@ -156,6 +168,11 @@ export const Animal = z.strictObject({
   approximateAgeMonths: z.number().int().nonnegative().optional(),
 
   size: AnimalSize.optional(),
+  // Visible appearance, recorded only from explicit text or reviewed photos.
+  // Detailed colours are separate from the single category used for filtering.
+  coatColors: CoatColors.optional(),
+  coatColor: CoatColorCategory.optional(),
+  coatLength: CoatLength.optional(),
   energy: EnergyLevel.optional(),
   status: AdoptionStatus,
 

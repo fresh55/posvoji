@@ -232,6 +232,9 @@ describe("FilterGroupList energy group", () => {
             age: [],
             size: [],
             energy: selected,
+            coatColor: [],
+            coatLength: [],
+            waiting: [],
             shelter: [],
             toggles: [],
             goodWith: [],
@@ -244,6 +247,9 @@ describe("FilterGroupList energy group", () => {
             age: new Map(),
             size: new Map(),
             energy: counts,
+            coatColor: new Map(),
+            coatLength: new Map(),
+            waiting: new Map(),
             shelter: new Map(),
           }}
           toggles={[]}

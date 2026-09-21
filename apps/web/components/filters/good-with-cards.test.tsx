@@ -265,6 +265,9 @@ describe("FilterGroupList", () => {
             age: new Map(),
             size: new Map(),
             energy: new Map(),
+            coatColor: new Map(),
+            coatLength: new Map(),
+            waiting: new Map(),
             shelter: new Map(),
           }}
           toggles={[]}

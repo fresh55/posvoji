@@ -340,11 +340,92 @@ function SexGroup({
   );
 }
 
+const COAT_SWATCHES: Record<string, string> = {
+  black: "#292524",
+  white: "#ffffff",
+  grey: "#8b8b8b",
+  brown: "#795548",
+  orange: "#d88a3d",
+  cream: "#e8d8b7",
+  multicolour: "conic-gradient(#292524 0deg 120deg, #d88a3d 120deg 240deg, #ffffff 240deg)",
+};
+
+function OptionGroup({
+  group,
+  options,
+  counts,
+  selected,
+  onToggle,
+  onToggleMany,
+  layout,
+  collapse,
+}: GroupProps) {
+  const { locale } = useI18n();
+  const label = groupLabel(group, locale);
+  let hint: string | undefined;
+  if (group === "waiting") {
+    hint = locale === "sl" ? "Po znanem datumu sprejema v zavetišče." : "Based on the recorded shelter intake date.";
+  } else if (group === "coatColor") {
+    hint = locale === "sl" ? "Iščemo po prevladujoči barvi." : "Filter by predominant colour.";
+  }
+  return (
+    <FilterCardSection
+      label={label}
+      hint={hint}
+      active={selected.length > 0}
+      onReset={() => onToggleMany(selected)}
+      resetAriaLabel={(locale === "sl" ? "Ponastavi: " : "Reset: ") + label}
+      layout={layout}
+      collapse={collapse}
+      sheetColumns="grid-cols-2"
+    >
+      {options.map(({ value, label: option }) => {
+        const count = counts.get(value) ?? 0;
+        const checked = selected.includes(value);
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={checked}
+            aria-label={option + ", " + animalCount(count, locale)}
+            disabled={isDeadOption(count, checked)}
+            onClick={() => onToggle(value)}
+            className={filterCardVariants({
+              layout,
+              selected: checked,
+              className: cn("flex", filterCardLayoutClass(layout)),
+            })}
+          >
+            <FilterCardMark layout={layout} checked={checked} appearDelay={0} />
+            {group === "coatColor" && (
+              <span
+                aria-hidden="true"
+                className="size-4 shrink-0 rounded-full border border-foreground/20"
+                style={{ background: COAT_SWATCHES[value] }}
+              />
+            )}
+            <FilterCardTail
+              layout={layout}
+              label={option}
+              checked={checked}
+              renderCount={(className) => <CountRoll value={count} className={className} />}
+            />
+          </button>
+        );
+      })}
+    </FilterCardSection>
+  );
+}
+
 // Every group names its own renderer. The declared return type is what makes a
 // new CardGroup fail to compile here rather than inherit whichever branch
 // happens to be last.
 function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
   switch (group) {
+    case "coatColor":
+    case "coatLength":
+    case "waiting":
+      return <OptionGroup group={group} {...rest} />;
     case "age":
       return (
         <AgeGrowthControl
@@ -470,6 +551,9 @@ export function FilterGroupList({
   /** The sheet draws tiles; the sidebar draws rows. */
   layout?: FilterCardLayout;
 } & FilterActionContract) {
+  const { locale } = useI18n();
+  const appearanceGroups = groups.filter(({ group }) => group === "coatColor" || group === "coatLength");
+  const appearanceSelected = [...filters.coatColor, ...filters.coatLength];
   const { isOpen, toggleSection } = useFilterSections({
     layout,
     initiallyOpen: layout === "sheet" ? {
@@ -477,6 +561,8 @@ export function FilterGroupList({
       age: filters.age.length > 0,
       size: filters.size.length > 0,
       energy: filters.energy.length > 0,
+      appearance: appearanceSelected.length > 0,
+      waiting: filters.waiting.length > 0,
       health: filters.toggles.length > 0,
       goodWith: filters.goodWith.length > 0,
       home: filters.home.length > 0,
@@ -528,10 +614,19 @@ export function FilterGroupList({
     summary,
     contentId: `${idBase}-${key}`,
   });
+  const appearanceOptions = appearanceGroups.flatMap(({ options }) => options);
+  const appearanceCollapse = collapseFor(
+    "appearance",
+    selectionSummary(
+      appearanceSelected,
+      (value) => appearanceOptions.find((option) => option.value === value)?.label,
+    ),
+  );
 
   return (
     <>
       {groups.map(({ group, options }) => {
+        if (group === "coatColor" || group === "coatLength") return null;
         // Read once and widened to string[]: indexed by a union of groups,
         // filters[group] is a union of arrays, and .includes on one of those
         // takes the intersection of their element types, which is never.
@@ -569,6 +664,32 @@ export function FilterGroupList({
           />
         );
       })}
+
+      {appearanceGroups.length > 0 && (
+        <section>
+          <FilterSectionHeader
+            label={locale === "sl" ? "Videz" : "Appearance"}
+            active={appearanceSelected.length > 0}
+            collapse={appearanceCollapse}
+          />
+          <CollapsibleBody collapse={appearanceCollapse}>
+            <div className="space-y-4 pt-2">
+              {appearanceGroups.map(({ group, options }) => (
+                <FilterGroup
+                  key={group}
+                  group={group}
+                  layout={layout}
+                  options={options}
+                  counts={counts[group]}
+                  selected={filters[group]}
+                  onToggle={(value) => onToggle(group, value)}
+                  onToggleMany={(values) => onToggleMany(group, values)}
+                />
+              ))}
+            </div>
+          </CollapsibleBody>
+        </section>
+      )}
 
       {toggles.length > 0 && (
         <HealthToggleCards

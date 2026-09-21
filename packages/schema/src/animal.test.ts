@@ -31,6 +31,20 @@ const validAnimal = {
 };
 
 describe("Animal", () => {
+  it("accepts multiple distinct coat colours and leaves unknown appearance absent", () => {
+    expect(Animal.parse(validAnimal).coatColors).toBeUndefined();
+    expect(Animal.parse(validAnimal).coatColor).toBeUndefined();
+    expect(Animal.parse({ ...validAnimal, coatColor: "multicolour", coatColors: ["black", "white"] }).coatColor).toBe("multicolour");
+    expect(Animal.safeParse({ ...validAnimal, coatColor: ["black", "white"] }).success).toBe(false);
+    expect(Animal.parse({ ...validAnimal, coatColors: ["black", "white"], coatLength: "short",
+      adoptionRequirements: { onlyPet: true } })).toMatchObject({
+      coatColors: ["black", "white"], coatLength: "short", adoptionRequirements: { onlyPet: true },
+    });
+    for (const coatColors of [[], ["tabby"], ["black", "black"]]) {
+      expect(Animal.safeParse({ ...validAnimal, coatColors }).success).toBe(false);
+    }
+    expect(Animal.safeParse({ ...validAnimal, coatLength: "fluffy" }).success).toBe(false);
+  });
   it("keeps unanswered placement requirements distinct from explicit answers", () => {
     expect(Animal.parse(validAnimal).adoptionRequirements).toBeUndefined();
     expect(Animal.parse({ ...validAnimal, adoptionRequirements: { indoorOnly: true, ongoingCare: false } })

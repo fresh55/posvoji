@@ -185,6 +185,7 @@ export function buildCrawlManifest(options: {
   overrides: unknown;
   listings?: unknown;
   enrichment?: unknown;
+  appearance?: unknown;
 }) {
   const policies = [...options.policies].sort((a, b) => a.providerId.localeCompare(b.providerId));
   return {
@@ -196,6 +197,7 @@ export function buildCrawlManifest(options: {
     overridesRevision: hash(JSON.stringify(options.overrides)),
     listingsRevision: hash(JSON.stringify(options.listings ?? null)),
     enrichmentRevision: hash(JSON.stringify(options.enrichment ?? null)),
+    appearanceRevision: hash(JSON.stringify(options.appearance ?? null)),
     providers: Object.fromEntries(policies.filter((p) => p.enabled && p.permission.status === "granted").map((p) => [
       p.providerId, {
         ...(options.references[p.providerId] ?? { snapshotId: null, checkedAt: null }),

@@ -1,5 +1,7 @@
 import {
   Baby,
+  Palette,
+  Clock,
   Cat,
   Dog,
   Gauge,
@@ -83,6 +85,9 @@ export const FACET_ICONS: Record<FilterFacet, LucideIcon> = {
   age: Sprout,
   size: Ruler,
   energy: Gauge,
+  coatColor: Palette,
+  coatLength: Scissors,
+  waiting: Clock,
   shelter: MapPin,
   toggles: HeartPulse,
   goodWith: Users,

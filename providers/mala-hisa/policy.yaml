@@ -42,6 +42,20 @@ allowedFields:
   - status
   - images
   - shortDescription
+  # Reviewed facts from the already-permitted descriptions and photographs.
+  - birthDate
+  - intakeDate
+  - foundDate
+  - originMunicipality
+  - medical
+  - energy
+  - goodWith
+  - apartmentOk
+  - specialNeeds
+  - adoptionRequirements
+  - coatColor
+  - coatColors
+  - coatLength
 
 attribution: "Vir: Zavetišče Mala hiša"
 

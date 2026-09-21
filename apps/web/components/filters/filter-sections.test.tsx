@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useEffect, useState } from "react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
@@ -20,8 +21,10 @@ import {
   visibleToggles,
   type Filters,
 } from "@/lib/filters";
+import { scrollChildIntoViewY } from "@/lib/scroll-strip";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import type { CardGroup } from "./filter-groups";
+import { jumpToFilterSection } from "./filter-section-header";
 import { FilterSidebar } from "./filter-sidebar";
 import { resetFilterSectionsStore } from "./use-filter-sections";
 
@@ -41,6 +44,19 @@ globalThis.ResizeObserver ??=
   NoopResizeObserver as unknown as typeof ResizeObserver;
 
 const scrollIntoView = installFilterFoldSeams();
+
+// The pull into view is lib/scroll-strip.ts's, and jsdom lays out nothing for
+// it to measure, so this file asks whether the panel reaches for it and
+// scroll-strip.test.ts asks what it does when it is reached.
+vi.mock("@/lib/scroll-strip", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/scroll-strip")>()),
+  scrollChildIntoViewY: vi.fn(),
+}));
+const broughtIntoView = vi.mocked(scrollChildIntoViewY);
+
+beforeEach(() => {
+  broughtIntoView.mockClear();
+});
 
 afterEach(() => {
   window.history.replaceState(null, "", "/");
@@ -132,7 +148,24 @@ function sidebarProps(filters: Filters) {
 
 // The folding tests need selections to survive a click, so the sidebar runs on
 // the real URL-backed filter state.
-function SidebarHarness() {
+//
+// `landing` reproduces what a shared link does to the built site, which jsdom
+// otherwise cannot: next.config sets output: "export", so the page hydrates
+// against prerendered HTML that answers nothing and the address arrives one
+// render later (lib/location-search.ts). render() has no such step, so the
+// filters would be there in the first render and the panel would never see
+// them arrive. Held back by one tick instead.
+function SidebarHarness({ landing = false }: { landing?: boolean }) {
+  const [hydrated, setHydrated] = useState(!landing);
+  useEffect(() => {
+    if (hydrated) return;
+    // On a timeout rather than straight out of the effect, which is a
+    // cascading render the lint rightly objects to, and closer to the thing
+    // being imitated: the address reaches the panel after the paint that
+    // answered nothing, not inside it.
+    const timer = window.setTimeout(() => setHydrated(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [hydrated]);
   const {
     filters,
     toggle,
@@ -142,7 +175,7 @@ function SidebarHarness() {
     toggleGoodWith,
     toggleManyGoodWith,
   } = useAnimalFilters();
-  const props = sidebarProps(filters);
+  const props = sidebarProps(hydrated ? filters : EMPTY_FILTERS);
 
   return (
     <I18nProvider locale="sl">
@@ -164,6 +197,14 @@ function SidebarHarness() {
 
 function renderSidebar() {
   return render(<SidebarHarness />);
+}
+
+/** A panel opened on an address that already answered a section, which is what
+ *  a shared link is. The filters arrive a render after the mount, the way they
+ *  do on the built site. */
+function renderLandingOn(url: string) {
+  window.history.replaceState(null, "", url);
+  return render(<SidebarHarness landing />);
 }
 
 // The heading tests care about what the sidebar is handed, not where it came
@@ -199,20 +240,21 @@ function stored(): unknown {
 }
 
 /** The green mark an answered section carries in its heading while its cards
- *  are drawn. A folded one prints the answer itself instead, which the
- *  summary tests above read off the text. */
+ *  are drawn. A folded one prints the answer itself instead, which the summary
+ *  tests read off the heading's text. */
 function mark(label: string): Element | null {
   return header(label).querySelector(".bg-brand-border");
 }
 
 /** An address arriving at a panel that is already mounted: a shared link
  *  reaching hydration, or the back gesture. The page is statically exported,
- *  so this is the only way a sidebar ever sees a filter it did not draw
- *  itself (lib/location-search.ts). */
+ *  so this is the only way a sidebar ever sees a filter it did not draw itself
+ *  (lib/location-search.ts). */
 function arrive(url: string): void {
   window.history.replaceState(null, "", url);
   fireEvent.popState(window);
 }
+
 
 describe("collapsible filter sections", () => {
   it("folds age on short desktops without replacing a saved choice", () => {
@@ -336,29 +378,26 @@ describe("collapsible filter sections", () => {
     arrive("/?velikost=majhna");
     expect(expanded("Velikost")).toBe("true");
 
-    // The section folding away under the press that emptied it would take the
-    // rest of its options with it, and they are what a visitor clearing one
-    // answer is most likely to want next.
+    // Folding away under the press that emptied it would take the rest of its
+    // options with it, and they are what a visitor clearing one answer is most
+    // likely to want next.
     arrive("/");
 
     expect(expanded("Velikost")).toBe("true");
   });
 
-  it("puts an arriving answer where it can be seen, and a later one never", async () => {
+  it("opens an arriving answer without scrolling anything", async () => {
     renderSidebar();
 
     arrive("/?velikost=majhna");
-    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
-    expect(scrollIntoView.mock.calls[0]?.[0]).toMatchObject({
-      block: "nearest",
-    });
+    await waitFor(() => expect(expanded("Velikost")).toBe("true"));
 
-    // Mid-visit the panel is already being read, so a second answer opens its
-    // section where it stands and moves nothing.
-    arrive("/?velikost=majhna&lastnosti=sterilizacija");
-    await waitFor(() => expect(expanded("Zdravje")).toBe("true"));
+    // The panel is sticky under the page title, so it cannot lift a section
+    // into view without taking the page with it; the room the defaults give up
+    // is what brings the answer up instead (arrivalHold).
     await new Promise((resolve) => window.setTimeout(resolve, 500));
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(broughtIntoView).not.toHaveBeenCalled();
+    expect(scrollIntoView).not.toHaveBeenCalled();
   });
 
   it("marks an answered section whose cards are drawn", () => {
@@ -392,14 +431,18 @@ describe("collapsible filter sections", () => {
     renderSidebar();
 
     fireEvent.click(header("Doma imam"));
-    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
-    expect(scrollIntoView.mock.calls[0]?.[0]).toMatchObject({
-      block: "nearest",
-    });
+    await waitFor(() => expect(broughtIntoView).toHaveBeenCalledTimes(1));
+    expect(broughtIntoView.mock.calls[0]?.[0]).toBe(
+      header("Doma imam").closest("section"),
+    );
+    // Never scrollIntoView: it takes the page with it, which for a panel
+    // sticky under the page title is the site's own heading scrolled away
+    // (lib/scroll-strip.ts).
+    expect(scrollIntoView).not.toHaveBeenCalled();
 
     fireEvent.click(header("Doma imam"));
     await new Promise((resolve) => window.setTimeout(resolve, 500));
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(broughtIntoView).toHaveBeenCalledTimes(1);
   });
 
   it("walks the section headers with the arrow keys", () => {
@@ -573,5 +616,87 @@ describe("the sidebar's surfaces", () => {
     // wins.
     expect(reset?.className).toContain("px-1");
     expect(reset?.className).not.toContain("p-0");
+  });
+});
+
+describe("the room an arriving answer is given", () => {
+  it("folds the unanswered defaults on an address that came filtered", async () => {
+    renderLandingOn("/?velikost=majhna");
+
+    // Two questions this visitor has not answered, 294px of them, standing
+    // between the top of the panel and the section they arrived with.
+    await waitFor(() => expect(expanded("Spol")).toBe("false"));
+    expect(expanded("Starost")).toBe("false");
+    expect(expanded("Velikost")).toBe("true");
+    expect(mark("Velikost")).toBeTruthy();
+  });
+
+  it("leaves them open when the visitor answers the first question themselves", () => {
+    renderSidebar();
+    expect(expanded("Spol")).toBe("true");
+
+    // A press, not an arrival. The panel is already being read.
+    fireEvent.click(screen.getByRole("button", { name: /^Samica,/ }));
+
+    expect(expanded("Spol")).toBe("true");
+    expect(expanded("Starost")).toBe("true");
+  });
+
+  it("never gives up a fold the visitor set themselves", async () => {
+    // Starost opened by hand on an earlier visit, and stored.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ age: true }));
+    resetFilterSectionsStore();
+
+    renderLandingOn("/?velikost=majhna");
+
+    await waitFor(() => expect(expanded("Spol")).toBe("false"));
+    expect(expanded("Starost")).toBe("true");
+  });
+
+  it("asks nothing of the defaults on an address with no filters", async () => {
+    renderLandingOn("/");
+
+    await waitFor(() => expect(card(/^Samec/)).toBeTruthy());
+    expect(expanded("Spol")).toBe("true");
+    expect(expanded("Starost")).toBe("true");
+  });
+});
+
+describe("going to a section from outside the panel", () => {
+  it("opens a folded section and puts the keyboard on its heading", () => {
+    renderSidebar();
+    expect(expanded("Velikost")).toBe("false");
+
+    // act, because the jump presses the heading through the DOM rather than
+    // through fireEvent, and React flushes that on its own only in a browser.
+    act(() => jumpToFilterSection("size", false));
+
+    expect(expanded("Velikost")).toBe("true");
+    expect(document.activeElement).toBe(header("Velikost"));
+  });
+
+  it("only brings an open one into view", async () => {
+    renderSidebar();
+    expect(expanded("Spol")).toBe("true");
+
+    act(() => jumpToFilterSection("sex", false));
+
+    // Not toggled shut: a press meant "take me there", and the section it
+    // names was already the one open.
+    expect(expanded("Spol")).toBe("true");
+    expect(document.activeElement).toBe(header("Spol"));
+    await waitFor(() => expect(broughtIntoView).toHaveBeenCalled());
+  });
+
+  it("does nothing when no panel is drawn", () => {
+    // Below lg there is no sidebar, and the row that presses this draws no way
+    // back there either.
+    const { unmount } = renderSidebar();
+    unmount();
+    const before = document.activeElement;
+
+    act(() => jumpToFilterSection("size", false));
+
+    expect(document.activeElement).toBe(before);
   });
 });

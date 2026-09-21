@@ -16,6 +16,9 @@ function show(layout: "sheet" | "sidebar", locale: "sl" | "en", filters: Filters
   const counts = facetCounts([], EMPTY_FILTERS, new Date("2026-09-21"));
   counts.coatColor.set("black", 2);
   counts.coatColor.set("white", 1);
+  // Live, so the sidebar draws it: the palette leaves a zero-count colour out
+  // the way every other section leaves out a zero-count row.
+  counts.coatColor.set("multicolour", 1);
   counts.coatLength.set("long", 1);
   counts.waiting.set("over-1-year", 1);
   render(<I18nProvider locale={locale}>
@@ -36,8 +39,13 @@ describe.each(["sidebar", "sheet"] as const)("appearance and waiting in %s", lay
     openFilterSection("Videz");
     expect(screen.getByText("Iščemo po prevladujoči barvi.")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Barva" })).toBeTruthy();
-    const swatch = screen.getByRole("button", { name: /^Večbarvna,/ }).querySelector("[aria-hidden='true'][style]");
-    expect(swatch?.getAttribute("style")).toContain("conic-gradient");
+    // Multicolour is three drawn wedges in both layouts. It was a
+    // conic-gradient on a span, which printed as one muddy brown at the size
+    // either layout gives it.
+    const swatch = screen
+      .getByRole("button", { name: /^Večbarvna,/ })
+      .querySelector('[data-swatch="multicolour"]');
+    expect(swatch?.querySelectorAll("path").length).toBe(3);
     fireEvent.click(screen.getByRole("button", { name: /^Črna,/ }));
     expect(onToggle).toHaveBeenLastCalledWith("coatColor", "black");
     fireEvent.click(screen.getByRole("button", { name: /^Dolga,/ }));
@@ -58,6 +66,14 @@ describe.each(["sidebar", "sheet"] as const)("appearance and waiting in %s", lay
     expect(selected.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(selected);
     expect(onToggle).toHaveBeenCalledWith("coatColor", "cream");
-    expect((screen.getByRole("button", { name: /^Orange,/ }) as HTMLButtonElement).disabled).toBe(true);
+    // Videz answers a zero-count option the way every other section does now:
+    // the sheet greys the tile out, the sidebar leaves the row out. Before,
+    // it was the one block that drew dead rows in the column.
+    const orange = screen.queryByRole("button", { name: /^Orange,/ });
+    if (layout === "sheet") {
+      expect((orange as HTMLButtonElement).disabled).toBe(true);
+    } else {
+      expect(orange).toBeNull();
+    }
   });
 });

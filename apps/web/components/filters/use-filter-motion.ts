@@ -63,6 +63,55 @@ export function useResetStagger(selectedCount: number): {
   return { isResetting, beginReset, resetDelay };
 }
 
+/**
+ * Which card a pointer is being held down on, and the handlers that keep that
+ * honest.
+ *
+ * The state, the `current === value` release guard and the four pointer
+ * handlers were written out in size-paw-cards, energy-cards, care-cards and
+ * home-cards before this, character for character, comment included. The coat
+ * glyph made it five, which is where it stops: the knowledge that touch
+ * browsers skip pointerleave when the finger slides off, and that
+ * pointercancel does not cover every path, should live in one place rather
+ * than in five copies of the same paragraph.
+ *
+ * The other four still spell it out. They can adopt this as they are next
+ * touched; nothing here changes their behaviour.
+ */
+export function useFilterCardPress<T extends string = string>(): {
+  pressedValue: T | null;
+  /** Clears the press if this value still owns it. Safe to call from onClick. */
+  release: (value: T) => void;
+  handlers: (value: T) => {
+    onPointerDown: () => void;
+    onPointerUp: () => void;
+    onPointerCancel: () => void;
+    onPointerLeave: () => void;
+  };
+} {
+  const [pressedValue, setPressedValue] = useState<T | null>(null);
+
+  // Functional, and guarded on the value: a leave arriving late from the card
+  // the pointer came from must not clear the press on the card it landed on.
+  const release = useCallback(
+    (value: T) =>
+      setPressedValue((current) => (current === value ? null : current)),
+    [],
+  );
+
+  const handlers = useCallback(
+    (value: T) => ({
+      onPointerDown: () => setPressedValue(value),
+      onPointerUp: () => release(value),
+      onPointerCancel: () => release(value),
+      onPointerLeave: () => release(value),
+    }),
+    [release],
+  );
+
+  return { pressedValue, release, handlers };
+}
+
 type HoverHandlers = {
   onPointerEnter: (event: PointerEvent<Element>) => void;
   onPointerLeave: () => void;

@@ -1,7 +1,6 @@
 import type {
   AnimalAdoptionRequirements,
   AnimalSize,
-  CoatColorCategory,
   CoatLength,
   EnergyLevel,
   Sex,
@@ -10,7 +9,9 @@ import type {
 import type { AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import {
+  TWO_TONED,
   type AgeGroup,
+  type CoatColorFacet,
   type WaitingGroup,
   type CareKey,
   type FilterOption,
@@ -162,7 +163,7 @@ type CodedValueByGroup = {
   age: AgeGroup;
   size: AnimalSize;
   energy: EnergyLevel;
-  coatColor: CoatColorCategory;
+  coatColor: CoatColorFacet;
   coatLength: CoatLength;
   waiting: WaitingGroup;
   goodWith: GoodWithKey;
@@ -178,13 +179,25 @@ export type FilterValueDefinition<Value extends string = string> = {
 };
 
 export const FILTER_METADATA = {
+  // Ordered dark to light, which is the order the sidebar's palette draws
+  // them in. Unordered, the grid was six chips in no relation to each other;
+  // as a ramp it reads as one set, and a reader looking for a pale animal
+  // knows which end to look at. Multicolour last, as docs/COLOUR-REVIEW.md
+  // asks. The slug is what the URL carries, so the order is display only.
+  //
+  // Each two-toned answer follows the colour it is made of, so Črna and
+  // Črno-bela are neighbours and the choice between them is the easy one to
+  // see. See CoatColorFacet for why only three colours have a pair.
   coatColor: [
     { value: "black", slug: "crna", labels: { sl: "Črna", en: "Black" } },
-    { value: "white", slug: "bela", labels: { sl: "Bela", en: "White" } },
-    { value: "grey", slug: "siva", labels: { sl: "Siva", en: "Grey" } },
+    { value: "black-white", slug: "crno-bela", labels: { sl: "Črno-bela", en: "Black and white" } },
     { value: "brown", slug: "rjava", labels: { sl: "Rjava", en: "Brown" } },
+    { value: "brown-white", slug: "rjavo-bela", labels: { sl: "Rjavo-bela", en: "Brown and white" } },
+    { value: "grey", slug: "siva", labels: { sl: "Siva", en: "Grey" } },
+    { value: "grey-white", slug: "sivo-bela", labels: { sl: "Sivo-bela", en: "Grey and white" } },
     { value: "orange", slug: "oranzna", labels: { sl: "Oranžna", en: "Orange" } },
     { value: "cream", slug: "kremna", labels: { sl: "Kremna", en: "Cream" } },
+    { value: "white", slug: "bela", labels: { sl: "Bela", en: "White" } },
     { value: "multicolour", slug: "vecbarvna", labels: { sl: "Večbarvna", en: "Multicolour" } },
   ],
   coatLength: [
@@ -324,6 +337,29 @@ export function careOptions(
     key: value,
     label: labels[locale],
   }));
+}
+
+/**
+ * Which Barva answer an animal is, from the two facts the review records.
+ *
+ * The reviewed coatColor says which colour dominates and whiteMarkings says
+ * whether the white on the animal is a bib or half of it. Only a major white
+ * moves it, and only for the three colours that have a two-toned answer: a
+ * mostly-white animal is already White, and Multicolour is already the answer
+ * for a coat with no dominant colour at all.
+ *
+ * An animal nobody has judged the white on reads as minor, so the catalogue
+ * behaves exactly as it did before the review records this.
+ */
+export function coatColorFacet(
+  animal: Pick<AnimalFields, "coatColor" | "whiteMarkings">,
+): CoatColorFacet | undefined {
+  const colour = animal.coatColor;
+  if (colour === undefined) return undefined;
+  if (animal.whiteMarkings !== "major") return colour;
+  return TWO_TONED.some((value) => value === colour)
+    ? (`${colour}-white` as CoatColorFacet)
+    : colour;
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than

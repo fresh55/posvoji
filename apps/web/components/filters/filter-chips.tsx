@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CoatColorChipSwatch } from "@/components/filters/coat-cards";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
 import { jumpToFilterSection } from "@/components/filters/filter-section-header";
@@ -883,10 +884,21 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
       : filterValueGlyph(facet, value);
   return (
     <span className="grid size-[1.125rem] shrink-0 place-items-center text-brand-strong">
-      {/* 1.75, the same weight the species tabs draw at. This was 1.8, which
-          is invisible on its own and exactly the kind of near-miss that makes
-          a row of marks read as unresolved. */}
-      <Icon aria-hidden strokeWidth={1.75} className={className ?? "size-3.5"} />
+      {/* A colour chip shows the colour. Only where the chip names one value:
+          a folded run of them is the facet speaking, and the palette mark is
+          right for that. */}
+      {facet === "coatColor" && value !== undefined ? (
+        <CoatColorChipSwatch value={value} />
+      ) : (
+        /* 1.75, the same weight the species tabs draw at. This was 1.8, which
+           is invisible on its own and exactly the kind of near-miss that makes
+           a row of marks read as unresolved. */
+        <Icon
+          aria-hidden
+          strokeWidth={1.75}
+          className={className ?? "size-3.5"}
+        />
+      )}
     </span>
   );
 }

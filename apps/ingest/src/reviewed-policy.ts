@@ -1,5 +1,5 @@
 import type { ProviderPolicy } from "@posvoji/schema";
-import type { AppearanceManifest } from "./appearance";
+import { APPEARANCE_FIELDS, type AppearanceManifest } from "./appearance";
 import type { EnrichmentManifest } from "./enrichment";
 
 /** Check that active provider permissions allow the reviewed fields to publish. */
@@ -22,7 +22,7 @@ export function reviewedPolicyIssues(
   for (const record of enrichment.records) check(record.animalId, record.providerId, record.claims.map((claim) => claim.field));
   for (const record of appearance.records) {
     check(record.animalId, record.providerId,
-      ["images", ...(["coatColors", "coatColor", "coatLength"] as const).filter((field) => record[field] !== undefined)]);
+      ["images", ...APPEARANCE_FIELDS.filter((field) => record[field] !== undefined)]);
     const policy = policies.get(record.providerId);
     if (policy?.enabled && policy.permission.status === "granted" && policy.images !== "cache-permitted") {
       issues.push(`${record.animalId}: reviewed appearance requires ${record.providerId}.images to be cache-permitted`);

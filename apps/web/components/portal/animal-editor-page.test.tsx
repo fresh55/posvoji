@@ -498,8 +498,7 @@ describe("a box the browser could not read", () => {
     // empty boxes, and after a reload Shrani sent approximateAgeMonths null.
     await open({
       approximateAgeMonths: 27,
-      birthDate: "2020-05-01",
-      overrides: { approximateAgeMonths: 27, birthDate: "2020-05-01" },
+      overrides: { approximateAgeMonths: 27 },
     });
 
     typeUnreadable(field("portal-age-years"));
@@ -618,14 +617,14 @@ describe("a name with no space in it", () => {
   // jsdom lays nothing out, so the width cannot be measured here. What can be
   // held is the chain that let a 200-character name push the page sideways
   // at 375px: the summary is a grid item, a grid item's minimum width is its
-  // content's, and the h1 is nowrap. Every box between the h1 and the grid
-  // has to give that minimum up for the truncate to have anything to cut.
-  it("is truncated inside a column that cannot grow past the page", async () => {
+  // content's. Every box between the heading and the grid must let the
+  // name wrap within the available width.
+  it("wraps inside a column that cannot grow past the page", async () => {
     const long = "M".repeat(200);
     await open({ name: long });
 
     const heading = screen.getByRole("heading", { name: long });
-    expect(heading.className).toContain("truncate");
+    expect(heading.className).toContain("wrap-anywhere");
     expect(heading.className).toContain("min-w-0");
 
     // The flex column the three lines share.
@@ -1237,5 +1236,37 @@ describe("what the summary says beside the form", () => {
         .getAttribute("href"),
     ).toMatch(/^\/zival\/muri-[0-9a-f]{6}\/ljubljana\/testno$/);
     expect(breadcrumb().getAttribute("href")).toBe("/portal");
+  });
+});
+
+
+describe("age corrections", () => {
+  it("clears the approximate override when an exact date replaces it", async () => {
+    await open({ approximateAgeMonths: 27, overrides: { approximateAgeMonths: 27 } });
+    fireEvent.change(field("portal-birth-date"), { target: { value: "2020-05-01" } });
+    expect((field("portal-age-years") as HTMLInputElement).value).toBe("");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(saveAnimal).toHaveBeenCalledWith("testno", "testno:1", {
+      birthDate: "2020-05-01", approximateAgeMonths: null,
+    }));
+  });
+
+  it("clears the exact override when an approximate answer replaces it", async () => {
+    await open({ birthDate: "2020-05-01", approximateAgeMonths: null, overrides: { birthDate: "2020-05-01" } });
+    fireEvent.change(field("portal-age-months"), { target: { value: "0" } });
+    expect((field("portal-birth-date") as HTMLInputElement).value).toBe("");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(saveAnimal).toHaveBeenCalledWith("testno", "testno:1", {
+      birthDate: null, approximateAgeMonths: 0,
+    }));
+  });
+
+  it("starts with basic details and distinguishes unsaved fields from immediate status changes", async () => {
+    await open();
+    expect(document.querySelector("form h2")?.textContent).toBe(portalText.sectionBasics);
+    expect(screen.getByText(portalText.statusImmediateHint)).toBeTruthy();
+    expect(screen.getByText(portalText.listingEditLead)).toBeTruthy();
+    makeDirty();
+    expect(screen.getByText(portalText.unsavedChanges)).toBeTruthy();
   });
 });

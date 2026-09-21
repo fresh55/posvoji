@@ -165,7 +165,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
             className={choiceCard(
               false,
               cn(
-                "aspect-square cursor-pointer flex-col gap-1 self-start px-1.5 py-1.5 text-center text-xs leading-tight font-medium focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
+                "aspect-square cursor-pointer flex-col gap-1 self-start px-1.5 py-1.5 text-center text-sm leading-tight font-medium focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
                 panel.busy && "pointer-events-none opacity-50",
               ),
             )}
@@ -200,8 +200,9 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
         )}
       </div>
       {panel.error && <FieldError id={panel.errorId}>{panel.error}</FieldError>}
-      <p id={hintId(uid, "photos")} className="text-xs text-muted-foreground">
+      <p id={hintId(uid, "photos")} className="text-sm text-muted-foreground">
         {portalText.photosHint} {portalText.photoLimits}
+        {panel.storable && ` ${portalText.photosImmediateHint}`}
       </p>
     </div>
   );

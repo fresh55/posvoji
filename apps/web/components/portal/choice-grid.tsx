@@ -45,6 +45,8 @@ export function ChoiceGrid<Value extends string>({
   clearable = true,
   disabled,
   describedBy,
+  required = false,
+  invalid = false,
 }: {
   /** Names the group for screen readers; the visible label sits above it. */
   label: string;
@@ -58,6 +60,8 @@ export function ChoiceGrid<Value extends string>({
   disabled: boolean;
   /** The field's hint, so the group carries it as its description. */
   describedBy?: string;
+  required?: boolean;
+  invalid?: boolean;
 }) {
   return (
     <ToggleGroup
@@ -73,6 +77,8 @@ export function ChoiceGrid<Value extends string>({
       }}
       aria-label={label}
       aria-describedby={describedBy}
+      aria-required={required || undefined}
+      aria-invalid={invalid || undefined}
       disabled={disabled}
       spacing={1.5}
       // A grid over the group's own flex w-fit, so the cards divide the row
@@ -104,7 +110,7 @@ export function ChoiceGrid<Value extends string>({
             className={choiceCard(
               selected,
               cn(
-                "h-auto min-h-11 flex-col gap-0.5 px-1.5 py-1.5 text-center text-xs leading-tight font-medium whitespace-normal sm:flex-row sm:gap-1.5 sm:px-2",
+                "h-auto min-h-11 flex-col gap-0.5 px-1.5 py-1.5 text-center text-sm leading-tight font-medium whitespace-normal sm:flex-row sm:gap-1.5 sm:px-2",
                 selected && mutedWhenSelected && CHOICE_CARD_MUTED,
               ),
             )}

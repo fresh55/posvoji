@@ -27,6 +27,45 @@ def animals_url(slug: str) -> str:
     return f"/api/shelters/{slug}/animals"
 
 
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("correction", "expected_date", "expected_months"),
+    [
+        ({"birthDate": "2020-05-01"}, "2020-05-01", None),
+        ({"approximateAgeMonths": 0}, None, 0),
+        (
+            {"birthDate": "2020-05-01", "approximateAgeMonths": 27},
+            "2020-05-01",
+            None,
+        ),
+    ],
+)
+def test_age_correction_replaces_crawled_alternative_and_reverts(
+    member_client, shelter, dataset_file, correction, expected_date, expected_months
+):
+    dataset_file(
+        [
+            make_animal(
+                "testno:1", shelter, birthDate="2024-01-01", approximateAgeMonths=24
+            )
+        ]
+    )
+    response = put(member_client, shelter.slug, "testno:1", correction)
+    assert response.status_code == 200
+    for item in (
+        response.json(),
+        member_client.get(animals_url(shelter.slug)).json()[0],
+    ):
+        assert item["birthDate"] == expected_date
+        assert item["approximateAgeMonths"] == expected_months
+
+    restored = put(
+        member_client, shelter.slug, "testno:1", {key: None for key in correction}
+    ).json()
+    assert restored["birthDate"] == "2024-01-01"
+    assert restored["approximateAgeMonths"] == 24
+
+
 def put(client, slug, animal_id, payload):
     return client.put(
         f"{animals_url(slug)}/{animal_id}",

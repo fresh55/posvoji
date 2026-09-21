@@ -54,14 +54,33 @@ export function usePortalDateInputs<Draft extends DateDraft>(
     value: string,
     unreadable: boolean,
   ) {
-    setDraft((current) => ({ ...current, [key]: value }));
+    const replacesDate = value !== "" && !unreadable;
+    setDraft((current) => ({
+      ...current,
+      [key]: value,
+      ...(replacesDate ? { birthDate: "" } : {}),
+    }));
+    if (replacesDate) {
+      boxes.empty(["birthDate"]);
+      answered("birthDate");
+    }
     boxes.mark(key, unreadable);
     answered("ageYears");
     answered("ageMonths");
     touched();
   }
   function setBirthDate(value: string, unreadable: boolean) {
-    setDraft((current) => ({ ...current, birthDate: value }));
+    const replacesAge = value !== "" && !unreadable;
+    setDraft((current) => ({
+      ...current,
+      birthDate: value,
+      ...(replacesAge ? { ageYears: "", ageMonths: "" } : {}),
+    }));
+    if (replacesAge) {
+      boxes.empty(["ageYears", "ageMonths"]);
+      answered("ageYears");
+      answered("ageMonths");
+    }
     boxes.mark("birthDate", unreadable);
     answered("birthDate");
     touched();

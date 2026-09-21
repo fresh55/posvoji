@@ -17,16 +17,15 @@ const POP_MS = 520;
 // itself rather than a field inside a form. Icon first: staff scan the row
 // for the shape, not for the word.
 //
-// h-9, not the h-11 this started at. A shelter with 185 cats scrolls this row
-// 185 times, and the height it was costing is worth more to the line under it
-// naming the fields no crawl can fill.
-const BUTTON_LAYOUT = "h-9 flex-1 px-2 text-xs font-medium focus-visible:z-10";
+// Keep list rows compact; an editor has room for larger controls.
+const BUTTON_LAYOUT = "flex-1 px-2 font-medium focus-visible:z-10";
 
 export function StatusActions({
   value,
   source,
   busy = false,
   onSelect,
+  size = "compact",
 }: {
   value: PortalStatus | null;
   /**
@@ -38,6 +37,7 @@ export function StatusActions({
   source: "shelter" | "site";
   busy?: boolean;
   onSelect: (status: PortalStatus) => void;
+  size?: "compact" | "editor";
 }) {
   const shouldReduceMotion = useReducedMotion();
   // Only a tap pops. A status that arrives from the server on load must not
@@ -86,6 +86,7 @@ export function StatusActions({
               chosen,
               cn(
                 BUTTON_LAYOUT,
+                size === "editor" ? "min-h-11 text-sm" : "h-9 text-xs",
                 chosen && meta.selected,
                 inherited && CHOICE_CARD_INHERITED,
               ),

@@ -109,7 +109,7 @@ function AgeInput({
       />
       <Label
         htmlFor={id}
-        className="shrink-0 text-xs font-normal text-muted-foreground"
+        className="shrink-0 text-sm font-normal text-muted-foreground"
       >
         {unit}
       </Label>

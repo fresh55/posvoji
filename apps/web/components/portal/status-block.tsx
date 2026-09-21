@@ -26,10 +26,12 @@ export function ListingStatusBlock({
   status,
   busy,
   onSelect,
+  size = "compact",
 }: {
   status: PortalStatus | null;
   busy: boolean;
   onSelect: (status: PortalStatus) => void;
+  size?: "compact" | "editor";
 }) {
   return (
     // A container, so the row can count its own width: it is drawn full width
@@ -47,7 +49,13 @@ export function ListingStatusBlock({
         source="shelter"
         busy={busy}
         onSelect={onSelect}
+        size={size}
       />
+      {size === "editor" && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {portalText.statusImmediateHint}
+        </p>
+      )}
     </div>
   );
 }
@@ -104,8 +112,12 @@ export function StatusBlock({
         value={status}
         source={overridden ? "shelter" : "site"}
         busy={busy}
+        size="editor"
         onSelect={(next) => onSave({ status: next })}
       />
+      <p className="mt-2 text-sm text-muted-foreground">
+        {portalText.statusImmediateHint}
+      </p>
       {/* Under the buttons, not in the header's corner: the sentence is
           about the row it sits below, and it is read after the shelter has
           seen the highlighted button rather than before.

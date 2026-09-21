@@ -235,5 +235,12 @@ def merge_animal(
         "thumbnailUrl": thumbnail_url(animal),
     }
     merged.update(overrides)
+    # A shelter's age answer replaces the crawl's other representation.
+    # Otherwise a stale approximate age wins over a corrected birth date in
+    # the public age filter. Keep this aligned with ingest's portal merge.
+    if "birthDate" in overrides:
+        merged["approximateAgeMonths"] = None
+    elif "approximateAgeMonths" in overrides:
+        merged["birthDate"] = None
     merged["overrides"] = overrides
     return merged

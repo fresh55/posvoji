@@ -83,6 +83,12 @@ For crawled animals, `PUT /api/shelters/{slug}/animals/{animal_id}` updates
 only supplied fields. `null` clears a correction and restores the crawled value.
 Animal IDs must belong to the shelter (`<slug>:<local-id>`).
 
+The editors accept a birth date or an approximate age. Entering one clears
+the other. For crawled animals, an age correction also takes precedence over
+the crawl's alternative age field in both the API response and published
+dataset. Clearing the correction restores the original crawl. If an older
+override contains both age fields, the birth date takes precedence.
+
 The portal reads two files from the same ingest run:
 
 - `DATASET_PATH`: `data/dist/animals.json`, the public dataset with corrections.

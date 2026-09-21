@@ -311,7 +311,9 @@ function ListingEditor({
   const unsaved = typedWork || unreadableWork || pending.length > 0;
   // An unusable box is not a change, but Shrani has to be pressable for the
   // form to point at it and say what is wrong.
-  const canSave = listing ? typedWork || unreadableWork : missing === null;
+  // A new form can submit while incomplete so its existing field errors
+  // can explain what is missing and focus the first required answer.
+  const canSave = listing ? typedWork || unreadableWork : true;
   const saving = saveState.status === "saving";
   // The provider's slot survives Back and a remount while a POST/PUT is in
   // flight. The local submitting flag alone would let that second editor
@@ -492,9 +494,7 @@ function ListingEditor({
       {/* One form over both columns, so the bar in the summary submits the
           rows beside it without a form attribute to tie them together. */}
       <form ref={formRef} onSubmit={submit} noValidate>
-        {/* min-w-0 on both grid items, as on the crawled page: a long name
-            with no space in it would otherwise widen the column past the
-            viewport below lg, and the truncate on the h1 could not cut it. */}
+        {/* Keep long names inside the column while allowing them to wrap. */}
         <div className="grid gap-8 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">
             <div className="flex items-start gap-3">
@@ -518,7 +518,7 @@ function ListingEditor({
               )}
 
               <div className="min-w-0 flex-1 space-y-1">
-                <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight">
+                <h1 className="min-w-0 wrap-anywhere text-xl font-semibold tracking-tight">
                   {name}
                 </h1>
                 {listing ? (
@@ -533,7 +533,7 @@ function ListingEditor({
                 ) : (
                   // Nothing to summarise yet, so the space says what this form
                   // is for instead: how soon the animal reaches the site.
-                  <p className="text-xs leading-relaxed text-muted-foreground">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
                     {portalText.listingNewLead}
                   </p>
                 )}
@@ -548,9 +548,13 @@ function ListingEditor({
                 status is a row in the form, which the POST carries. */}
             {listing && (
               <>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {portalText.listingEditLead}
+                </p>
                 <ListingStatusBlock
                   status={status}
                   busy={busy || saving}
+                  size="editor"
                   // The route is a full replace, so the tap sends the whole
                   // listing with the status swapped, exactly as the card does.
                   onSelect={(next) => {
@@ -615,6 +619,8 @@ function ListingEditor({
                 after the footer, including the phone's home indicator. */}
             <EditorSaveBar
               saving={formSaving}
+              dirty={unsaved}
+              hint={!listing && missing ? portalText.listingRequiredHint : undefined}
               cancelDisabled={busy}
               saveDisabled={busy || !canSave}
               error={
@@ -626,29 +632,6 @@ function ListingEditor({
               }
               onCancel={requestLeave}
             />
-
-            {/* The shelter's delete, last and on its own: it is the one action
-                here that cannot be undone from the portal. A refused one is
-                said right under it. */}
-            {listing && (
-              <div className="space-y-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => setArchiving(true)}
-                  className="-ml-2 text-destructive hover:text-destructive"
-                >
-                  {portalText.listingArchive}
-                </Button>
-                {archiveFailure && (
-                  <FieldError id={archiveErrorId}>
-                    {archiveFailure.message}
-                  </FieldError>
-                )}
-              </div>
-            )}
           </aside>
 
           <div className="min-w-0 space-y-6">
@@ -685,6 +668,28 @@ function ListingEditor({
                 onRemove: (photoId) => void removePhoto(photoId),
               }}
             />
+
+            {/* Removal follows the form on every screen size. Keep its
+                confirmation and any failure beside the action. */}
+            {listing && (
+              <div className="space-y-2 border-t pt-6">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setArchiving(true)}
+                  className="-ml-2 text-destructive hover:text-destructive"
+                >
+                  {portalText.listingArchive}
+                </Button>
+                {archiveFailure && (
+                  <FieldError id={archiveErrorId}>
+                    {archiveFailure.message}
+                  </FieldError>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </form>

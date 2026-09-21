@@ -134,6 +134,8 @@ export const portalText = {
   // same row says the value is theirs and that our next crawl will not move it.
   statusOwnLine:
     "Stanje ste določili sami. Velja, tudi če se vaša stran spremeni.",
+  statusImmediateHint:
+    "Stanje se shrani ob izbiri. Popravke v poljih shranite z gumbom Shrani.",
   // Named for what the shelter gets out of filling them in, not for what we
   // are missing: these five are the filters an adopter narrows the grid with.
   missingTitle: "Manjka za iskalnik:",
@@ -202,6 +204,8 @@ export const portalText = {
   fieldAgeMonthsUnit: "mesecev",
   fieldAgeYearsUnit: "let",
   ageHint: "Dovolj je približek.",
+  ageChoiceHint:
+    "Vpišite datum rojstva ali približno starost. Vnos enega počisti drugega.",
   fieldSize: "Velikost",
   fieldEnergy: "Energija",
   energyHint:
@@ -210,15 +214,17 @@ export const portalText = {
   fieldGoodWithDogs: "Se razume s psi",
   fieldGoodWithCats: "Se razume z mačkami",
   compatibilityHint:
-    "Živali z izpolnjenimi polji so po izkušnjah posvojene hitreje. Da izberite le, če za to lahko stojite; Ni znano je pošten odgovor.",
+    "Ti podatki pomagajo posvojiteljem poiskati žival, ki ustreza njihovemu domu. Da izberite le, če to veste; sicer izberite Ni znano.",
   fieldApartmentOk: "Primeren za stanovanje",
   fieldSpecialNeeds: "Posebne potrebe",
-  specialNeedsHint: "Žival potrebuje potrpežljivega človeka.",
+  specialNeedsHint:
+    "Na primer redno zdravljenje, dodatna nega ali prilagojeno okolje. Potrebe pojasnite v opisu.",
   fieldDescription: "Kratek opis",
   descriptionHint: "Nekaj stavkov o značaju in tem, kakšen dom išče.",
   save: "Shrani",
   saving: "Shranjujem …",
   saved: "Shranjeno",
+  unsavedChanges: "Neshranjene spremembe",
   cancel: "Prekliči",
   keepEditing: "Nadaljuj urejanje",
   discardChanges: "Zavrzi popravke",
@@ -310,10 +316,12 @@ export const portalText = {
     "Vaše zavetišče živali objavlja tukaj. Dodajte prvo in v nekaj urah bo na Posvoji.si.",
   listingNewTitle: "Nova žival",
   listingNewLead:
-    "Objava se shrani takoj, na javni strani je vidna najpozneje v 12 urah.",
+    "Po kliku Shrani bo žival na javni strani vidna najpozneje v 12 urah.",
   listingEditLead:
-    "Popravki se shranijo takoj, na javni strani so vidni najpozneje v 12 urah.",
+    "Shranjeni popravki so na javni strani vidni najpozneje v 12 urah.",
   fieldSpecies: "Vrsta",
+  requiredField: "Obvezno",
+  listingRequiredHint: "Za shranjevanje izberite vrsto in vpišite ime.",
   speciesRequired: "Izberite vrsto živali.",
   nameRequired: "Vpišite ime živali.",
   // energyHint's second sentence is about the crawl, which a listing has
@@ -324,6 +332,7 @@ export const portalText = {
   // state of it says what is happening in a full sentence.
   fieldPhotos: "Fotografije",
   photosHint: "Prva fotografija je tista, ki jo posvojitelj vidi prvo.",
+  photosImmediateHint: "Dodane in odstranjene fotografije se shranijo takoj.",
   photoAdd: "Dodaj fotografijo",
   photoLimits: "JPG, PNG ali WebP, do 15 MB.",
   photoPending: "Čaka na nalaganje",

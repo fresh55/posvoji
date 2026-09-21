@@ -10,7 +10,7 @@ export function FormSection({
 }) {
   return (
     <section className="space-y-5">
-      <h2 className="border-b pb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+      <h2 className="border-b pb-2 text-base font-semibold text-foreground">
         {title}
       </h2>
       {children}

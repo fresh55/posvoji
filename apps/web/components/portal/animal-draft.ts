@@ -162,6 +162,24 @@ export function buildPatch(
     );
   }
 
+  // An age answer replaces the other representation, including a crawled
+  // value. Pin the chosen answer even when it equals the crawl; otherwise
+  // clearing the other override could silently restore a conflicting age.
+  const ageChanged =
+    birthDate !== isoDate(animal.birthDate) ||
+    age.months !== (animal.approximateAgeMonths ?? null);
+  if (ageChanged && !dateError && !age.error) {
+    if (birthDate !== null && age.months === null) {
+      patch.birthDate = birthDate;
+      if (isOverridden(animal, "approximateAgeMonths")) {
+        patch.approximateAgeMonths = null;
+      }
+    } else if (age.months !== null && birthDate === null) {
+      patch.approximateAgeMonths = age.months;
+      if (isOverridden(animal, "birthDate")) patch.birthDate = null;
+    }
+  }
+
   return { patch, ageError: age.error, dateError };
 }
 export { CHOICES } from "./draft-fields";

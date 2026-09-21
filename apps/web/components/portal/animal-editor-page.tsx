@@ -408,12 +408,7 @@ function AnimalEditor({
       {/* One form over both columns, so the bar in the summary submits the
           rows beside it without a form attribute to tie them together. */}
       <form ref={formRef} onSubmit={submit} noValidate>
-        {/* min-w-0 on both grid items. Below lg the column is auto-sized and
-            a grid item's minimum is its content's, so a long name with no
-            space in it (the h1 truncates, which is nowrap) would widen the
-            column past the viewport and the page would scroll sideways. With
-            the minimum at zero the column stays the viewport's width and the
-            truncate on the h1 and the two lines under it can do its job. */}
+        {/* Keep long names inside the column while allowing them to wrap. */}
         <div className="grid gap-8 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">
             <div className="flex items-start gap-3">
@@ -439,7 +434,7 @@ function AnimalEditor({
 
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight">
+                  <h1 className="min-w-0 wrap-anywhere text-xl font-semibold tracking-tight">
                     {name}
                   </h1>
                   {overrideCount > 0 && (
@@ -480,6 +475,10 @@ function AnimalEditor({
               }}
             />
 
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {portalText.listingEditLead}
+            </p>
+
             <div className="space-y-1">
               <Button asChild variant="ghost" size="sm" className="-ml-2">
                 {/* A new tab, so the form the shelter is filling in stays
@@ -511,6 +510,7 @@ function AnimalEditor({
                 after the footer, including the phone's home indicator. */}
             <EditorSaveBar
               saving={saving}
+              dirty={unsaved}
               cancelDisabled={saving}
               saveDisabled={saving || !unsaved}
               error={

@@ -80,6 +80,11 @@ function mergeFields(animal: Animal, fields: OverrideFields): unknown {
   const { goodWithKids, goodWithDogs, goodWithCats, ...flat } = fields;
   const merged: Record<string, unknown> = { ...animal, ...flat };
 
+  // The portal treats exact and approximate age as alternative answers.
+  // Do not let the crawl's other representation mask a shelter correction.
+  if (fields.birthDate !== undefined) delete merged["approximateAgeMonths"];
+  else if (fields.approximateAgeMonths !== undefined) delete merged["birthDate"];
+
   if (
     goodWithKids !== undefined ||
     goodWithDogs !== undefined ||

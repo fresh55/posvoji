@@ -56,6 +56,7 @@ function Field({
   label,
   htmlFor,
   missing = false,
+  required = false,
   hint,
   error,
   errorId,
@@ -70,6 +71,7 @@ function Field({
   htmlFor?: string;
   /** Searchable and unanswered on the saved listing, not on the draft. */
   missing?: boolean;
+  required?: boolean;
   hint?: string;
   /** Under the control, where the shelter is looking when it is refused. */
   error?: string | null;
@@ -93,11 +95,16 @@ function Field({
             {heading}
           </span>
         )}
+        {required && (
+          <span aria-hidden className="text-sm font-normal text-muted-foreground">
+            {portalText.requiredField}
+          </span>
+        )}
       </div>
       <div data-field-control>{children}</div>
       {error && <FieldError id={errorId}>{error}</FieldError>}
       {hint && (
-        <p id={hintId(uid, field)} className="text-xs text-muted-foreground">
+        <p id={hintId(uid, field)} className="text-sm text-muted-foreground">
           {hint}
         </p>
       )}
@@ -110,11 +117,8 @@ function Field({
  * that acts on it belong to the page: this draws the rows and reports what was
  * touched, exactly as AnimalForm does for a crawled animal.
  *
- * The order differs between the two things this form is. A listing that
- * exists is edited photos first, then the fields an adopter narrows the grid
- * by, as the crawled page reads. A listing that does not exist yet cannot be
- * saved without a species and a name, so those come first and the photos wait
- * behind them, which is the order the dialog this replaced asked in.
+ * Basic details come first when creating and editing, as in the crawled
+ * editor. Returning to a listing should not move its fields around.
  */
 export function ListingForm({
   uid,
@@ -240,7 +244,7 @@ export function ListingForm({
         </Field>
       ))}
       {/* One line for the three rows above, so all three point at it. */}
-      <p id={compatibilityHintId} className="text-xs text-muted-foreground">
+      <p id={compatibilityHintId} className="text-sm text-muted-foreground">
         {portalText.compatibilityHint}
       </p>
 
@@ -268,6 +272,7 @@ export function ListingForm({
         uid={uid}
         field="species"
         label={portalText.fieldSpecies}
+        required
         error={refused === "species" ? portalText.speciesRequired : null}
         errorId={refusedErrorId}
       >
@@ -279,6 +284,8 @@ export function ListingForm({
           onPick={(species) => set("species", species)}
           disabled={disabled}
           describedBy={refused === "species" ? refusedErrorId : undefined}
+          required
+          invalid={refused === "species"}
         />
       </Field>
 
@@ -287,12 +294,14 @@ export function ListingForm({
         field="name"
         label={portalText.fieldName}
         htmlFor={nameId}
+        required
         hint={portalText.nameHint}
         error={refused === "name" ? portalText.nameRequired : null}
         errorId={refusedErrorId}
       >
         <Input
           id={nameId}
+          required
           value={draft.name}
           maxLength={TEXT_LIMITS.name}
           disabled={disabled}
@@ -363,6 +372,7 @@ export function ListingForm({
 
   const ageSection = (
     <FormSection title={portalText.sectionAge}>
+      <p className="text-sm text-muted-foreground">{portalText.ageChoiceHint}</p>
       <div className="grid gap-5 sm:grid-cols-2">
         <Field
           uid={uid}
@@ -451,19 +461,9 @@ export function ListingForm({
 
   return (
     <div className="space-y-8">
-      {listing ? (
-        <>
-          {photoSection}
-          {searchableSection}
-          {basicsSection}
-        </>
-      ) : (
-        <>
-          {basicsSection}
-          {photoSection}
-          {searchableSection}
-        </>
-      )}
+      {basicsSection}
+      {photoSection}
+      {searchableSection}
       {ageSection}
       {descriptionSection}
     </div>

@@ -34,6 +34,25 @@ function payload(
   return { generatedAt: "2026-08-18T06:00:00Z", overrides };
 }
 
+describe("age corrections replace the crawl's other age answer", () => {
+  it.each([
+    { fields: { birthDate: "2020-05-01" }, date: "2020-05-01", months: undefined },
+    { fields: { approximateAgeMonths: 0 }, date: undefined, months: 0 },
+    { fields: { birthDate: "2020-05-01", approximateAgeMonths: 27 }, date: "2020-05-01", months: undefined },
+  ])("publishes $fields without a competing age", ({ fields, date, months }) => {
+    const original = animal({ id: "macja-hisa:luna", birthDate: "2024-01-01", approximateAgeMonths: 24 });
+    const result = applyOverrides([original], payload([{
+      providerId: "macja-hisa", animalId: original.id, fields,
+    }]));
+    expect(result.animals[0]?.birthDate).toBe(date);
+    expect(result.animals[0]?.approximateAgeMonths).toBe(months);
+    expect(original.birthDate).toBe("2024-01-01");
+    expect(original.approximateAgeMonths).toBe(24);
+    // Removing the override returns to the untouched crawl.
+    expect(applyOverrides([original], payload([])).animals[0]).toEqual(original);
+  });
+});
+
 describe("PortalExportPayload", () => {
   it("accepts a valid payload", () => {
     const result = PortalExportPayload.safeParse(

@@ -112,12 +112,12 @@ function Field({
       {/* Under the control, not in a legend at the top: this is the one place
           the shelter is looking when they wonder what Povrni would do. */}
       {own && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {portalText.fieldOwnLine}
         </p>
       )}
       {hint && (
-        <p id={hintId(uid, field)} className="text-xs text-muted-foreground">
+        <p id={hintId(uid, field)} className="text-sm text-muted-foreground">
           {hint}
         </p>
       )}
@@ -131,9 +131,8 @@ function Field({
  * was touched, so the page can hold one draft that survives a status save and
  * a reload.
  *
- * The order is what the animal gets out of the form, not what a record looks
- * like: first the five fields an adopter narrows the public grid by, then the
- * facts, then the age, then the words.
+ * Basic details come first, matching the manual editor. Searchable fields
+ * keep their missing markers without displacing the animal's identity.
  */
 export function AnimalForm({
   uid,
@@ -219,87 +218,6 @@ export function AnimalForm({
 
   return (
     <div className="space-y-8">
-      <FormSection title={portalText.sectionSearchable}>
-        <Field
-          uid={uid}
-          field="energy"
-          label={portalText.fieldEnergy}
-          overridden={isOverridden(animal, "energy")}
-          reverting={reverting("energy")}
-          missing={missing.has("energy")}
-          onRevert={() => set("energy", null)}
-          disabled={saving}
-          hint={portalText.energyHint}
-        >
-          <ChoiceGrid
-            label={portalText.fieldEnergy}
-            options={PORTAL_ENERGIES}
-            meta={ENERGY_META}
-            value={draft.energy}
-            onPick={(energy) => set("energy", energy)}
-            clearable={clearable("energy")}
-            disabled={saving}
-            describedBy={hintId(uid, "energy")}
-          />
-        </Field>
-
-        {(
-          [
-            ["goodWithKids", portalText.fieldGoodWithKids],
-            ["goodWithDogs", portalText.fieldGoodWithDogs],
-            ["goodWithCats", portalText.fieldGoodWithCats],
-          ] as const
-        ).map(([field, label]) => (
-          <Field
-            key={field}
-            uid={uid}
-            field={field}
-            label={label}
-            overridden={isOverridden(animal, field)}
-            reverting={reverting(field)}
-            missing={missing.has(field)}
-            onRevert={() => set(field, null)}
-            disabled={saving}
-          >
-            <ChoiceGrid
-              label={label}
-              options={PORTAL_COMPATIBILITIES}
-              meta={COMPATIBILITY_META}
-              value={draft[field]}
-              onPick={(value) => set(field, value)}
-              clearable={clearable(field)}
-              disabled={saving}
-              describedBy={compatibilityHintId}
-            />
-          </Field>
-        ))}
-        {/* One line for the three rows above, so all three point at it. */}
-        <p id={compatibilityHintId} className="text-xs text-muted-foreground">
-          {portalText.compatibilityHint}
-        </p>
-
-        <Field
-          uid={uid}
-          field="apartmentOk"
-          label={portalText.fieldApartmentOk}
-          overridden={isOverridden(animal, "apartmentOk")}
-          reverting={reverting("apartmentOk")}
-          missing={missing.has("apartmentOk")}
-          onRevert={() => set("apartmentOk", null)}
-          disabled={saving}
-        >
-          <ChoiceGrid
-            label={portalText.fieldApartmentOk}
-            options={PORTAL_COMPATIBILITIES}
-            meta={COMPATIBILITY_META}
-            value={draft.apartmentOk}
-            onPick={(value) => set("apartmentOk", value)}
-            clearable={clearable("apartmentOk")}
-            disabled={saving}
-          />
-        </Field>
-      </FormSection>
-
       <FormSection title={portalText.sectionBasics}>
         <Field
           uid={uid}
@@ -382,7 +300,89 @@ export function AnimalForm({
         </Field>
       </FormSection>
 
+      <FormSection title={portalText.sectionSearchable}>
+        <Field
+          uid={uid}
+          field="energy"
+          label={portalText.fieldEnergy}
+          overridden={isOverridden(animal, "energy")}
+          reverting={reverting("energy")}
+          missing={missing.has("energy")}
+          onRevert={() => set("energy", null)}
+          disabled={saving}
+          hint={portalText.energyHint}
+        >
+          <ChoiceGrid
+            label={portalText.fieldEnergy}
+            options={PORTAL_ENERGIES}
+            meta={ENERGY_META}
+            value={draft.energy}
+            onPick={(energy) => set("energy", energy)}
+            clearable={clearable("energy")}
+            disabled={saving}
+            describedBy={hintId(uid, "energy")}
+          />
+        </Field>
+
+        {(
+          [
+            ["goodWithKids", portalText.fieldGoodWithKids],
+            ["goodWithDogs", portalText.fieldGoodWithDogs],
+            ["goodWithCats", portalText.fieldGoodWithCats],
+          ] as const
+        ).map(([field, label]) => (
+          <Field
+            key={field}
+            uid={uid}
+            field={field}
+            label={label}
+            overridden={isOverridden(animal, field)}
+            reverting={reverting(field)}
+            missing={missing.has(field)}
+            onRevert={() => set(field, null)}
+            disabled={saving}
+          >
+            <ChoiceGrid
+              label={label}
+              options={PORTAL_COMPATIBILITIES}
+              meta={COMPATIBILITY_META}
+              value={draft[field]}
+              onPick={(value) => set(field, value)}
+              clearable={clearable(field)}
+              disabled={saving}
+              describedBy={compatibilityHintId}
+            />
+          </Field>
+        ))}
+        {/* One line for the three rows above, so all three point at it. */}
+        <p id={compatibilityHintId} className="text-sm text-muted-foreground">
+          {portalText.compatibilityHint}
+        </p>
+
+        <Field
+          uid={uid}
+          field="apartmentOk"
+          label={portalText.fieldApartmentOk}
+          overridden={isOverridden(animal, "apartmentOk")}
+          reverting={reverting("apartmentOk")}
+          missing={missing.has("apartmentOk")}
+          onRevert={() => set("apartmentOk", null)}
+          disabled={saving}
+        >
+          <ChoiceGrid
+            label={portalText.fieldApartmentOk}
+            options={PORTAL_COMPATIBILITIES}
+            meta={COMPATIBILITY_META}
+            value={draft.apartmentOk}
+            onPick={(value) => set("apartmentOk", value)}
+            clearable={clearable("apartmentOk")}
+            disabled={saving}
+          />
+        </Field>
+      </FormSection>
+
       <FormSection title={portalText.sectionAge}>
+        <p className="text-sm text-muted-foreground">{portalText.ageChoiceHint}</p>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
             uid={uid}

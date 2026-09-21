@@ -94,6 +94,17 @@ describe("sanitizeDraft", () => {
 });
 
 describe("buildPatch", () => {
+  it("pins an exact date even if it matches the crawl when replacing an approximate override", () => {
+    const subject = animal({ birthDate: "2020-05-01", overrides: { approximateAgeMonths: 24 } });
+    const { patch } = buildPatch({ ...draftFrom(subject), ageYears: "", ageMonths: "" }, subject, NOW);
+    expect(patch).toEqual({ birthDate: "2020-05-01", approximateAgeMonths: null });
+  });
+
+  it("pins the estimate when replacing an exact date even if the estimate matches the crawl", () => {
+    const subject = animal({ birthDate: "2020-05-01", overrides: { birthDate: "2020-05-01" } });
+    const { patch } = buildPatch({ ...draftFrom(subject), birthDate: "" }, subject, NOW);
+    expect(patch).toEqual({ birthDate: null, approximateAgeMonths: 24 });
+  });
   function draft(changes: Partial<Draft>, subject = animal()): Draft {
     return { ...draftFrom(subject), ...changes };
   }

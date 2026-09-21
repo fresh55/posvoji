@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
 import { ChevronRight, LoaderCircle, RotateCcw, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
@@ -98,6 +98,8 @@ export function EditorSaveBar({
   saveDisabled,
   error,
   onCancel,
+  dirty = false,
+  hint,
 }: {
   /** Drawn on the submit button, which is not the same as "anything is busy". */
   saving: boolean;
@@ -106,7 +108,11 @@ export function EditorSaveBar({
   /** The failed save's own line, drawn above the buttons while it stands. */
   error?: ReactNode;
   onCancel: () => void;
+  dirty?: boolean;
+  hint?: string;
 }) {
+  const hintId = useId();
+  const notice = hint ?? (!saving && dirty ? portalText.unsavedChanges : null);
   const barRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const bar = barRef.current;
@@ -136,6 +142,11 @@ export function EditorSaveBar({
       className="space-y-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2"
     >
       {error}
+      {notice && (
+        <p id={hintId} role="status" className="text-sm text-muted-foreground">
+          {notice}
+        </p>
+      )}
       <div className="flex gap-2">
         <Button
           type="button"
@@ -145,7 +156,12 @@ export function EditorSaveBar({
         >
           {portalText.cancel}
         </Button>
-        <Button type="submit" disabled={saveDisabled} className="flex-1">
+        <Button
+          type="submit"
+          disabled={saveDisabled}
+          aria-describedby={notice ? hintId : undefined}
+          className="flex-1"
+        >
           {saving && <LoaderCircle className="animate-spin" aria-hidden />}
           {saving ? portalText.saving : portalText.save}
         </Button>

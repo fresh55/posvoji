@@ -360,7 +360,8 @@ describe("a new listing", () => {
         "aria-checked",
       ),
     ).toBe("true");
-    expect(saveButton().disabled).toBe(true);
+    expect(saveButton().disabled).toBe(false);
+    expect(screen.getByText(portalText.listingRequiredHint)).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: portalText.listingArchive }),
     ).toBeNull();
@@ -381,14 +382,25 @@ describe("a new listing", () => {
     ]);
   });
 
-  it("lets Shrani go once a species and a name are in", async () => {
+  it("explains and focuses each missing required answer before sending", async () => {
     await openNew();
+    expect(nameBox().required).toBe(true);
+    expect(row(portalText.fieldSpecies).getAttribute("aria-required")).toBe("true");
+    fireEvent.click(saveButton());
+    expect(screen.getByRole("alert").textContent).toBe(portalText.speciesRequired);
+    expect(row(portalText.fieldSpecies).contains(document.activeElement)).toBe(true);
+    expect(createListing).not.toHaveBeenCalled();
 
     fireEvent.click(card(portalText.fieldSpecies, SPECIES_META.cat.label));
-    expect(saveButton().disabled).toBe(true);
+    fireEvent.click(saveButton());
+    expect(screen.getByRole("alert").textContent).toBe(portalText.nameRequired);
+    expect(document.activeElement).toBe(nameBox());
+    expect(createListing).not.toHaveBeenCalled();
 
     fireEvent.change(nameBox(), { target: { value: "  Luna " } });
-    expect(saveButton().disabled).toBe(false);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(portalText.listingRequiredHint)).toBeNull();
+    expect(within(saveBar()).getByText(portalText.unsavedChanges)).toBeTruthy();
   });
 
   it("posts the whole listing, then goes to the list", async () => {
@@ -777,16 +789,16 @@ describe("editing a listing", () => {
     expect(saveButton().disabled).toBe(true);
   });
 
-  it("puts the photos first and the status in the summary", async () => {
+  it("keeps the same basic-first order as New and the status in the summary", async () => {
     await open();
 
     const sections = Array.from(document.querySelectorAll("form h2")).map(
       (heading) => heading.textContent,
     );
     expect(sections.slice(0, 3)).toEqual([
+      portalText.sectionBasics,
       portalText.fieldPhotos,
       portalText.sectionSearchable,
-      portalText.sectionBasics,
     ]);
     // The status is a save of its own beside the form, not a row inside it.
     expect(screen.queryByRole("radiogroup", { name: portalText.statusLegend }))
@@ -1297,7 +1309,7 @@ describe("a box the browser could not read", () => {
   });
 
   it("is not a change and is not mirrored", async () => {
-    await open({ approximateAgeMonths: 27, birthDate: "2020-05-01" });
+    await open({ approximateAgeMonths: 27 });
 
     typeUnreadable(yearsBox());
     typeUnreadable(dateBox());
@@ -1311,7 +1323,7 @@ describe("a box the browser could not read", () => {
     makeUnreadable(yearsBox(), false);
     fireEvent.change(yearsBox(), { target: { value: "2" } });
     makeUnreadable(dateBox(), false);
-    fireEvent.change(dateBox(), { target: { value: "2020-05-01" } });
+    fireEvent.change(dateBox(), { target: { value: "" } });
 
     expect(window.sessionStorage.length).toBe(0);
     expect(saveButton().disabled).toBe(true);
@@ -1647,4 +1659,51 @@ describe("taking an icon answer back", () => {
       });
     });
   });
+});
+
+
+describe("choosing an age representation", () => {
+  it("replaces an old approximate age with the entered birth date in the saved body", async () => {
+    await open({ approximateAgeMonths: 27 });
+    fireEvent.change(dateBox(), { target: { value: "2020-05-01" } });
+    expect(yearsBox().value).toBe("");
+    expect(monthsBox().value).toBe("");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(updateListing).toHaveBeenCalledWith("johanca", ID, {
+      ...LUNA, birthDate: "2020-05-01", approximateAgeMonths: null,
+    }));
+  });
+
+  it("replaces a birth date with an approximate age, including zero months", async () => {
+    await open({ birthDate: "2020-05-01" });
+    fireEvent.change(monthsBox(), { target: { value: "0" } });
+    expect(dateBox().value).toBe("");
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(updateListing).toHaveBeenCalledWith("johanca", ID, {
+      ...LUNA, birthDate: null, approximateAgeMonths: 0,
+    }));
+  });
+
+  it("clears an unreadable alternative when a valid age answer replaces it", async () => {
+    await open({ approximateAgeMonths: 27 });
+    typeUnreadable(yearsBox());
+    fireEvent.click(saveButton());
+    expect(screen.getByRole("alert")).toBeTruthy();
+    fireEvent.change(dateBox(), { target: { value: "2020-05-01" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(saveButton());
+    await waitFor(() => expect(updateListing).toHaveBeenCalledWith("johanca", ID, {
+      ...LUNA, birthDate: "2020-05-01", approximateAgeMonths: null,
+    }));
+  });
+});
+
+it("explains immediate status saving and publication timing while keeping removal after the form", async () => {
+  await open();
+  expect(screen.getByText(portalText.statusImmediateHint)).toBeTruthy();
+  expect(screen.getByText(portalText.listingEditLead)).toBeTruthy();
+  const remove = screen.getByRole("button", { name: portalText.listingArchive });
+  const description = screen.getByRole("textbox", { name: portalText.fieldDescription });
+  expect(remove.closest("aside")).toBeNull();
+  expect(description.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

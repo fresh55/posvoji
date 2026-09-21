@@ -205,7 +205,7 @@ export const portalText = {
   fieldAgeYearsUnit: "let",
   ageHint: "Dovolj je približek.",
   ageChoiceHint:
-    "Vpišite datum rojstva ali približno starost. Vnos enega počisti drugega.",
+    "Vpišite datum rojstva ali približno starost. Ob vnosu datuma se približna starost izbriše in obratno.",
   fieldSize: "Velikost",
   fieldEnergy: "Energija",
   energyHint:
@@ -214,7 +214,7 @@ export const portalText = {
   fieldGoodWithDogs: "Se razume s psi",
   fieldGoodWithCats: "Se razume z mačkami",
   compatibilityHint:
-    "Ti podatki pomagajo posvojiteljem poiskati žival, ki ustreza njihovemu domu. Da izberite le, če to veste; sicer izberite Ni znano.",
+    "Izberite glede na to, kar ste pri živali opazili. Če niste prepričani, izberite Ni znano.",
   fieldApartmentOk: "Primeren za stanovanje",
   fieldSpecialNeeds: "Posebne potrebe",
   specialNeedsHint:
@@ -316,7 +316,7 @@ export const portalText = {
     "Vaše zavetišče živali objavlja tukaj. Dodajte prvo in v nekaj urah bo na Posvoji.si.",
   listingNewTitle: "Nova žival",
   listingNewLead:
-    "Po kliku Shrani bo žival na javni strani vidna najpozneje v 12 urah.",
+    "Ko shranite objavo, bo na javni strani vidna najpozneje v 12 urah.",
   listingEditLead:
     "Shranjeni popravki so na javni strani vidni najpozneje v 12 urah.",
   fieldSpecies: "Vrsta",
@@ -331,8 +331,9 @@ export const portalText = {
   // Photos. The upload is the one place a shelter can wait on us, so every
   // state of it says what is happening in a full sentence.
   fieldPhotos: "Fotografije",
-  photosHint: "Prva fotografija je tista, ki jo posvojitelj vidi prvo.",
-  photosImmediateHint: "Dodane in odstranjene fotografije se shranijo takoj.",
+  photosHint: "Prva fotografija je naslovna.",
+  photosImmediateHint:
+    "Fotografije se dodajo ali odstranijo takoj, brez klika na Shrani.",
   photoAdd: "Dodaj fotografijo",
   photoLimits: "JPG, PNG ali WebP, do 15 MB.",
   photoPending: "Čaka na nalaganje",

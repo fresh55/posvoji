@@ -20,6 +20,7 @@ import { SortPicker } from "@/components/filters/sort-picker";
 import { SpeciesGlyphIcon } from "@/components/filters/species-glyph";
 
 import { speciesScopeLabel } from "@/lib/labels";
+import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
 import {
   SORT_ROW_HIDDEN,
@@ -144,6 +145,10 @@ export function FilterSheetContent({
         </div>
 
         <div
+          // The sheet's own scrolling box, marked for the same reason the
+          // sidebar's is: a section opened in here pulls itself into this box
+          // and not into the page behind it (lib/scroll-strip.ts).
+          {...{ [SCROLL_BOX_MARK]: "" }}
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
           className={cn(
             "flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6 scrollbar-thin",

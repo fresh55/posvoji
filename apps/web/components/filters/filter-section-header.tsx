@@ -17,7 +17,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useI18n } from "@/components/i18n-context";
+import { scrollChildIntoViewY } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
+import type { FilterSectionKey } from "./use-filter-sections";
 
 /** Everything a section needs to fold: whether it is open, how to flip that,
     the short text a closed header shows so an active filter never disappears
@@ -30,7 +32,7 @@ export type SectionCollapse = {
   /** Which section this is, published on the heading as a handle for anything
    *  outside the panel that has to reach it -- today the active-filter row,
    *  whose pills go to the section that set them. */
-  section?: string;
+  section?: FilterSectionKey;
 };
 
 /** The panel's section-heading voice. The sheet's sort caption borrows it on
@@ -43,87 +45,32 @@ const BODY_EASE = [0.16, 1, 0.3, 1] as const;
 // The fold runs 0.3s; the section is measured once it has settled.
 const FOLD_SETTLE_MS = 350;
 
-/** The scrolling box a section sits in, or null if it is not in one. */
-function scrollPort(node: HTMLElement): HTMLElement | null {
-  for (let element = node.parentElement; element; element = element.parentElement) {
-    const { overflowY } = getComputedStyle(element);
-    if (
-      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
-      element.scrollHeight > element.clientHeight
-    ) {
-      return element;
-    }
-  }
-  return null;
-}
-
-/**
- * Bring a section into its own panel, and into nothing else.
- *
- * scrollIntoView scrolls every scrollable ancestor it can find, and inside
- * this panel that includes the page. Measured at 1440x900 on the built site,
- * page at rest: one scrollIntoView on the Velikost section moved the window
- * 177px and the panel 0. That is what opening a section by hand did, so a
- * press while the page was still at the top threw it down to where the sidebar
- * sticks -- which is the same place a filter press scrolls to (scrollToResults
- * in use-animal-filters.ts), and why it read as deliberate for as long as it
- * did. The same press now moves the panel 177px and the window 0.
- *
- * So the arithmetic is written out here instead. It is block: "nearest" and
- * nothing more -- a section taller than the room, or above it, aligns tops;
- * one below aligns bottoms; one already inside does not move at all -- applied
- * to the one box that should move.
- *
- * The room is the part of the panel the visitor can see, not the panel's own
- * box. This one is sticky and 876px tall under a title block, so at the top of
- * the page its last 141px stand below the window's edge, and a section aligned
- * to the box's bottom lands just out of sight. Clipping the target to the
- * window costs nothing once the panel is stuck, where the two are the same
- * rectangle.
- *
- * Where there is no scrolling box, which is every jsdom test that does not
- * lay one out, scrollIntoView is still the right call and still what runs.
- */
-export function revealSection(section: HTMLElement, smooth: boolean): void {
-  const behavior = smooth ? "smooth" : "auto";
-  const port = scrollPort(section);
-  if (!port) {
-    section.scrollIntoView({ block: "nearest", behavior });
-    return;
-  }
-  const panel = port.getBoundingClientRect();
-  const top = Math.max(panel.top, 0);
-  const bottom = Math.min(panel.bottom, document.documentElement.clientHeight);
-  const box = section.getBoundingClientRect();
-  const delta =
-    box.height > bottom - top || box.top < top
-      ? box.top - top
-      : box.bottom > bottom
-        ? box.bottom - bottom
-        : 0;
-  if (delta === 0) return;
-  port.scrollTo({ top: port.scrollTop + delta, behavior });
-}
-
 /**
  * Take the visitor to the panel section that holds one filter, opening it if
  * it is folded.
  *
- * Reached from outside the panel, so it goes through the DOM rather than
- * through a prop threaded down four components that have no other reason to
+ * Reached from outside the panel, so the section is found in the DOM rather
+ * than through a prop threaded down components that have no other reason to
  * know about the row above them. The handle is the heading's own
  * data-filter-section, and the scope is the sidebar: the sheet is a dialog
- * that only exists below lg, where the row draws no jump at all, and a
+ * that only exists below lg, where the row draws no way back at all, and a
  * document-wide query would find its headings first if both were mounted.
  *
- * A folded section is opened by pressing its heading, which is the same path a
- * visitor's own press takes -- the fold is stored, and the section pulls
- * itself into the panel once it has grown. An open one only has to be brought
- * into view. Focus lands on the heading either way, without a scroll of its
- * own: the panel has just been moved on purpose, and the browser's own idea of
- * where focus should sit would move it again.
+ * The fold itself is still turned by pressing the heading, which is the path a
+ * visitor's own press takes. The store behind it (use-filter-sections.ts)
+ * would be the shorter way in, but what a section is holding open for this
+ * visit lives in the hook's own state rather than in that store, so an opening
+ * written straight to storage would be masked by it. Worth collapsing the two,
+ * and larger than this change.
+ *
+ * Focus lands on the heading either way, without a scroll of its own: the
+ * panel has just been moved on purpose, and the browser's idea of where focus
+ * should sit would move it again.
  */
-export function jumpToFilterSection(section: string, smooth: boolean): void {
+export function jumpToFilterSection(
+  section: FilterSectionKey,
+  smooth: boolean,
+): void {
   const trigger = document.querySelector<HTMLElement>(
     `aside [data-filter-section="${section}"]`,
   );
@@ -131,8 +78,7 @@ export function jumpToFilterSection(section: string, smooth: boolean): void {
   if (trigger.getAttribute("aria-expanded") === "false") {
     trigger.click();
   } else {
-    const box = trigger.closest("section");
-    if (box instanceof HTMLElement) revealSection(box, smooth);
+    scrollChildIntoViewY(trigger.closest("section"), { smooth });
   }
   trigger.focus({ preventScroll: true });
 }
@@ -274,7 +220,7 @@ export function FilterSectionHeader({
     if (!section) return;
     window.setTimeout(() => {
       if (!section.isConnected) return;
-      revealSection(section, !shouldReduceMotion);
+      scrollChildIntoViewY(section, { smooth: !shouldReduceMotion });
     }, FOLD_SETTLE_MS);
   };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { useEffect, useId, type ReactElement } from "react";
+import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { CareCards, type CareOption } from "@/components/filters/care-cards";
 import {
@@ -28,7 +28,6 @@ import {
 import {
   CollapsibleBody,
   FilterSectionHeader,
-  FOLD_SETTLE_MS,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -567,46 +566,6 @@ export function FilterGroupList({
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();
 
-  // A section that opens where nobody can see it has not been shown. Measured
-  // on a shared /?cakanje=nad-1-leto at 1440x900: the panel holds 1153px of
-  // content in an 876px box, and the one answered heading sits at 993, 105px
-  // under its own fold. Everything drawn above it is a question this visitor
-  // has not answered, and the only thing in view that knows a filter exists is
-  // the count beside "Filtri".
-  //
-  // The topmost by DOM position, not by the key order above: the panel draws
-  // Cas v zavetiscu before Videz and the key map has them the other way round,
-  // and one is a list of defaults while the other is what the visitor reads.
-  // block: "nearest" then scrolls the least that brings the section in, so the
-  // sections above it stay on screen and an answer already in view moves
-  // nothing at all.
-  //
-  // The panel is its own scroll container, so this scrolls the panel; the
-  // window does not move (measured, scrollY unchanged). Same call, same
-  // settle, as opening a section by hand (filter-section-header.tsx), because
-  // it is the same event from the visitor's side.
-  const reduceMotion = useReducedMotion();
-  useEffect(() => {
-    if (arrived.length === 0) return;
-    const timer = window.setTimeout(() => {
-      const sections = arrived
-        .map((key) =>
-          document.getElementById(`${idBase}-${key}`)?.closest("section"),
-        )
-        .filter((section): section is HTMLElement => section instanceof HTMLElement);
-      if (sections.length === 0) return;
-      const first = sections.reduce((topmost, section) =>
-        section.getBoundingClientRect().top < topmost.getBoundingClientRect().top
-          ? section
-          : topmost,
-      );
-      first.scrollIntoView({
-        block: "nearest",
-        behavior: reduceMotion ? "auto" : "smooth",
-      });
-    }, FOLD_SETTLE_MS);
-    return () => window.clearTimeout(timer);
-  }, [arrived, idBase, reduceMotion]);
 
   // Which of a section's options this layout draws. The rule and the reason
   // for it are in drawnOptions; it is applied here, once, rather than in each

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
+import { jumpToFilterSection } from "@/components/filters/filter-section-header";
 import { groupLabel, type FilterFacet } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import {
@@ -98,6 +99,42 @@ const SCOPE_VISIBLE = 3;
 const CHIP_PILL =
   "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border border-control-border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
 
+// The same pill with two controls in it, for the row beside a panel a filter
+// can be gone back to. The label half goes to the section that set this
+// filter; the cross takes it off, which is what the whole pill did and what
+// the cross alone has always looked like it did.
+//
+// The padding and the ring move out of the shape and into the halves: each
+// half carries its own, so pressing near an edge cannot land on the pill's
+// own border rather than on either control, and the keyboard ring follows
+// whichever half has focus (focus-within, since the shape is a span now).
+//
+// overflow-hidden and no radius on the halves: rounded-ui is one custom
+// utility and there is no rounded-l-ui to pair it with, so the shape clips
+// the hover fills to its own corners instead. A ring is drawn outside the box
+// and is the element's own, so the clip never reaches it.
+const CHIP_SPLIT =
+  "inline-flex h-7 shrink-0 items-center overflow-hidden rounded-ui border border-control-border text-xs transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring pointer-coarse:min-h-11";
+
+/** The label half: everything the pill says, and the press that goes to it. */
+const CHIP_JUMP =
+  "flex min-w-0 shrink items-center gap-1.5 self-stretch pl-2.5 pr-1.5 outline-none transition-colors hover:bg-muted";
+
+/** The cross half. Narrower than the label's, because it holds one 12px mark,
+ *  and 44px wide on a finger.
+ *
+ *  Both halves take the pill's own coarse-pointer floor rather than splitting
+ *  it. What that floor was won for still holds: the row used to draw a 24px
+ *  circle inside a 28px pill with an invisible 44px overlay over it, and the
+ *  fix was to make the pill itself the target, measured at 1180x820 where
+ *  every pill in this row came to 28px (mobile-filter-hardening.test.tsx).
+ *  Two controls in one pill is not that circle -- neither is an overlay, and
+ *  neither overhangs its neighbour -- but a finger is owed 44px by whichever
+ *  of them it lands on, so self-stretch gives both the pill's height and
+ *  min-w-11 gives this one its width. */
+const CHIP_CROSS =
+  "flex shrink-0 items-center justify-center self-stretch pl-1.5 pr-2.5 outline-none transition-colors hover:bg-muted pointer-coarse:min-w-11 pointer-coarse:px-0";
+
 // The look a pill wears when pressing it takes its filter off, which is every
 // pill but the "+N".
 const CHIP_REMOVABLE =
@@ -156,6 +193,27 @@ const PLACEMENT: Record<
 
 /** What every pill row wears at both placements. */
 const PILL_ROW = "flex items-center gap-1.5 pointer-coarse:gap-2";
+
+/** The panel section each facet's answers live in, for the pill that goes
+ *  there. Videz holds two facets, which is why this is a map and not the
+ *  facet's own name.
+ *
+ *  Shelter is absent on purpose: Kje is the panel's first block, it does not
+ *  fold, and it is already where a visitor scrolling up arrives. Its pills
+ *  keep the whole-pill press the row has always had. */
+const FACET_SECTIONS: Partial<Record<FilterFacet, string>> = {
+  sex: "sex",
+  age: "age",
+  size: "size",
+  energy: "energy",
+  coatColor: "appearance",
+  coatLength: "appearance",
+  waiting: "waiting",
+  toggles: "health",
+  goodWith: "goodWith",
+  home: "home",
+  care: "care",
+};
 
 type Run = { facet: FilterFacet; chips: Chip[] };
 
@@ -458,6 +516,16 @@ export function FilterChips({
   // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
   const pill = cn(CHIP_PILL, shape.pill);
 
+  // Only the band. Below lg the filters are in a sheet the visitor opens, not
+  // a panel standing beside the grid, so there is nowhere for a pill to go;
+  // there the pill keeps the single press it has always had, over its whole
+  // 44px. Shelter has no folding section either (FACET_SECTIONS).
+  const jumpFor = (chip: Chip) => {
+    const section = FACET_SECTIONS[chip.facet];
+    if (placement !== "band" || !section) return undefined;
+    return () => jumpToFilterSection(section, !reduceMotion);
+  };
+
   // "Show me all of these" belonged to a filter state that is about to stop
   // existing. Carried over, the next pills a visitor picks would arrive
   // already unfolded and uncapped for no reason they could see.
@@ -522,6 +590,7 @@ export function FilterChips({
                         restoreFocusAfterRemove(stops.indexOf(item.id));
                       item.chip.onRemove();
                     }}
+                    onJump={jumpFor(item.chip)}
                     className={pill}
                   />
                 ) : item.kind === "group" ? (
@@ -829,6 +898,7 @@ function ChipButton({
   tabIndex,
   onFocus,
   onRemove,
+  onJump,
   className,
 }: {
   stop: string;
@@ -838,6 +908,9 @@ function ChipButton({
   onFocus: () => void;
   /** Takes the filter off, and says whether a keypress asked for it. */
   onRemove: (fromKeyboard: boolean) => void;
+  /** Where this pill's filter was set, when there is a panel to go back to.
+   *  Absent, the pill is the single remove button it has always been. */
+  onJump?: () => void;
   className?: string;
 }) {
   const { locale, t } = useI18n();
@@ -849,6 +922,100 @@ function ChipButton({
   // Only on the marked pill, because it is the only one that draws the number;
   // every other pill says it in the tooltip below and nowhere else.
   const removeLabel = t("removeFilter", { label: chip.label });
+
+  const glyph = <ChipGlyph facet={chip.facet} value={chip.value} />;
+  // A shelter's full name is forty characters. Untruncated, one of them filled
+  // a phone's whole row and the rest of the filter state was off the end of
+  // it. The title attribute keeps the full name reachable on a pointer, and
+  // the button's own aria-label carries it regardless.
+  const name = (
+    <span className="max-w-[11rem] truncate" title={chip.label}>
+      {chip.label}
+    </span>
+  );
+  // The paw, because a bare "+1" in this row already means something else: a
+  // folded facet's "+3" counts the values it stands for. This one counts
+  // animals, and the paw is the mark the result count above uses for exactly
+  // that.
+  const gainMark = blocked && (
+    <span className="inline-flex shrink-0 items-center gap-0.5 font-medium tabular-nums">
+      +{gain}
+      <PawPrint className="size-3" strokeWidth={2} aria-hidden />
+    </span>
+  );
+  const cross = (
+    <X
+      className={cn(
+        "size-3 shrink-0 transition-colors",
+        blocked
+          ? "text-brand-foreground"
+          : "text-muted-foreground group-hover:text-foreground",
+      )}
+      strokeWidth={2}
+      aria-hidden
+    />
+  );
+
+  if (onJump) {
+    const removeButton = (
+      <button
+        type="button"
+        // Not a stop of its own. The row is walked with the arrows, one press
+        // per pill, and Delete on the label half already takes the filter off
+        // (the row's own key handler); a second stop per pill would double the
+        // length of that walk to reach a key that works from where focus
+        // already is.
+        tabIndex={-1}
+        onClick={(event) => onRemove(fromKeyboard(event))}
+        aria-label={
+          blocked && gain > 0
+            ? `${removeLabel}: +${animalCount(gain, locale)}`
+            : removeLabel
+        }
+        className={CHIP_CROSS}
+      >
+        {cross}
+      </button>
+    );
+
+    return (
+      <span
+        className={cn(
+          CHIP_SPLIT,
+          blocked
+            ? "border-brand-border bg-brand text-brand-foreground"
+            : "bg-background text-foreground",
+        )}
+      >
+        <button
+          {...{ [STOP]: stop }}
+          type="button"
+          tabIndex={tabIndex}
+          onFocus={onFocus}
+          onClick={onJump}
+          aria-label={t("showFilterSection", { label: chip.label })}
+          aria-keyshortcuts="Delete"
+          className={CHIP_JUMP}
+        >
+          {glyph}
+          {name}
+          {gainMark}
+        </button>
+        {/* The sentence about what dropping this gives back belongs to the
+            control that drops it, now that there are two. */}
+        {gain > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{removeButton}</TooltipTrigger>
+            <TooltipContent>
+              {t("removeShowsMore", { count: animalCount(gain, locale) })}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          removeButton
+        )}
+      </span>
+    );
+  }
 
   const button = (
     <button
@@ -872,37 +1039,13 @@ function ChipButton({
           "border-brand-border bg-brand text-brand-foreground",
       )}
     >
-      <ChipGlyph facet={chip.facet} value={chip.value} />
-      {/* A shelter's full name is forty characters. Untruncated, one of them
-          filled a phone's whole row and the rest of the filter state was off
-          the end of it. The title attribute keeps the full name reachable on
-          a pointer, and the button's own aria-label carries it regardless. */}
-      <span className="max-w-[11rem] truncate" title={chip.label}>
-        {chip.label}
-      </span>
-      {/* The paw, because a bare "+1" in this row already means something
-          else: a folded facet's "+3" counts the values it stands for. This
-          one counts animals, and the paw is the mark the result count above
-          uses for exactly that. */}
-      {blocked && (
-        <span className="inline-flex shrink-0 items-center gap-0.5 font-medium tabular-nums">
-          +{gain}
-          <PawPrint className="size-3" strokeWidth={2} aria-hidden />
-        </span>
-      )}
-      {/* Kept even on the marked pill. Every pill in this row takes something
-          off when pressed, and dropping the one mark that says so would have
-          made the way out look like a different kind of control. */}
-      <X
-        className={cn(
-          "size-3 shrink-0 transition-colors",
-          blocked
-            ? "text-brand-foreground"
-            : "text-muted-foreground group-hover:text-foreground",
-        )}
-        strokeWidth={2}
-        aria-hidden
-      />
+      {glyph}
+      {name}
+      {gainMark}
+      {/* Kept even on the marked pill. Every pill in this shape takes
+          something off when pressed, and dropping the one mark that says so
+          would have made the way out look like a different kind of control. */}
+      {cross}
     </button>
   );
 

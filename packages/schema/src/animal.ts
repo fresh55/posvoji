@@ -30,6 +30,29 @@ export const CoatColors = z.array(CoatColor).min(1).max(6).refine(
   { error: "coat colors must be unique" },
 );
 
+/**
+ * How much of the animal the white is.
+ *
+ * coatColors records which colours are visible and coatColor which one
+ * dominates, and between them they cannot tell a tuxedo cat from a black cat
+ * with a white bib: both are ["black", "white"] with a predominant black. 83
+ * of the 146 animals classified black carry white, so over half of what the
+ * Črna filter returned did not look black, which is the one thing that
+ * filter promises.
+ *
+ * A separate answer rather than more colour categories, because it is a
+ * smaller question for a reviewer than picking out of ten, and because it
+ * leaves every coatColor already reviewed standing: the next review fills
+ * this in and nothing else has to be decided again.
+ *
+ * minor is a bib, a locket, socks. major is a coat someone would describe as
+ * two-coloured. Absent means nobody has looked yet, and reads as minor
+ * everywhere downstream, so the catalogue behaves exactly as it does today
+ * until the review lands.
+ */
+export const WhiteMarkings = z.enum(["none", "minor", "major"]);
+export type WhiteMarkings = z.infer<typeof WhiteMarkings>;
+
 // The shelter's read of day-to-day temperament. Three levels only; unknown is
 // expressed by omitting the field, not by a fourth value.
 export const EnergyLevel = z.enum(["calm", "balanced", "lively"]);
@@ -172,6 +195,7 @@ export const Animal = z.strictObject({
   // Detailed colours are separate from the single category used for filtering.
   coatColors: CoatColors.optional(),
   coatColor: CoatColorCategory.optional(),
+  whiteMarkings: WhiteMarkings.optional(),
   coatLength: CoatLength.optional(),
   energy: EnergyLevel.optional(),
   status: AdoptionStatus,
@@ -197,5 +221,15 @@ export const Animal = z.strictObject({
   shortDescription: z.string().optional(),
 
   attribution: z.string().min(1),
-});
+}).refine(
+  // White that is not listed among the visible colours is a contradiction
+  // between two answers from the same review, and it would put an animal in
+  // a two-toned filter bucket nothing else agrees with.
+  (animal) =>
+    animal.whiteMarkings === undefined ||
+    animal.whiteMarkings === "none" ||
+    animal.coatColors === undefined ||
+    animal.coatColors.includes("white"),
+  { error: "white markings require white among the coat colors" },
+);
 export type Animal = z.infer<typeof Animal>;

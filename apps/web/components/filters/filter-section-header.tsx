@@ -17,7 +17,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useI18n } from "@/components/i18n-context";
+import { scrollChildIntoViewY } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
+import type { FilterSectionKey } from "./use-filter-sections";
 
 /** Everything a section needs to fold: whether it is open, how to flip that,
     the short text a closed header shows so an active filter never disappears
@@ -27,6 +29,10 @@ export type SectionCollapse = {
   onToggle: () => void;
   summary: string | null;
   contentId: string;
+  /** Which section this is, published on the heading as a handle for anything
+   *  outside the panel that has to reach it -- today the active-filter row,
+   *  whose pills go to the section that set them. */
+  section?: FilterSectionKey;
 };
 
 /** The panel's section-heading voice. The sheet's sort caption borrows it on
@@ -38,6 +44,44 @@ export const SECTION_LABEL_CLASS =
 const BODY_EASE = [0.16, 1, 0.3, 1] as const;
 // The fold runs 0.3s; the section is measured once it has settled.
 const FOLD_SETTLE_MS = 350;
+
+/**
+ * Take the visitor to the panel section that holds one filter, opening it if
+ * it is folded.
+ *
+ * Reached from outside the panel, so the section is found in the DOM rather
+ * than through a prop threaded down components that have no other reason to
+ * know about the row above them. The handle is the heading's own
+ * data-filter-section, and the scope is the sidebar: the sheet is a dialog
+ * that only exists below lg, where the row draws no way back at all, and a
+ * document-wide query would find its headings first if both were mounted.
+ *
+ * The fold itself is still turned by pressing the heading, which is the path a
+ * visitor's own press takes. The store behind it (use-filter-sections.ts)
+ * would be the shorter way in, but what a section is holding open for this
+ * visit lives in the hook's own state rather than in that store, so an opening
+ * written straight to storage would be masked by it. Worth collapsing the two,
+ * and larger than this change.
+ *
+ * Focus lands on the heading either way, without a scroll of its own: the
+ * panel has just been moved on purpose, and the browser's idea of where focus
+ * should sit would move it again.
+ */
+export function jumpToFilterSection(
+  section: FilterSectionKey,
+  smooth: boolean,
+): void {
+  const trigger = document.querySelector<HTMLElement>(
+    `aside [data-filter-section="${section}"]`,
+  );
+  if (!trigger) return;
+  if (trigger.getAttribute("aria-expanded") === "false") {
+    trigger.click();
+  } else {
+    scrollChildIntoViewY(trigger.closest("section"), { smooth });
+  }
+  trigger.focus({ preventScroll: true });
+}
 
 /** The folding half shared by sidebar and sheet. Without a collapse contract
     the body stays open with no disclosure id, as plain lists require. */
@@ -176,10 +220,7 @@ export function FilterSectionHeader({
     if (!section) return;
     window.setTimeout(() => {
       if (!section.isConnected) return;
-      section.scrollIntoView({
-        block: "nearest",
-        behavior: shouldReduceMotion ? "auto" : "smooth",
-      });
+      scrollChildIntoViewY(section, { smooth: !shouldReduceMotion });
     }, FOLD_SETTLE_MS);
   };
 
@@ -268,6 +309,7 @@ export function FilterSectionHeader({
       onKeyDown={moveSectionFocus}
       aria-expanded={collapse.open}
       aria-controls={collapse.contentId}
+      data-filter-section={collapse.section}
       // uppercase and tracking-wide repeat what the h3 around this button
       // already sets. The browser's own button rules reset text-transform and
       // letter-spacing, so without them a folding heading printed in sentence
@@ -329,6 +371,36 @@ export function FilterSectionHeader({
         <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
           {collapse.summary}
         </span>
+      ) : active ? (
+        // The same thing the chip above says, in the space an open section has
+        // for it. One rule out of two: a section holding an answer carries a
+        // green mark in its heading, whether or not its cards are drawn. The
+        // panel is a column of ten headings taller than its own scrollport, and
+        // without this the only sections announcing themselves in a scan were
+        // the folded ones -- folding an active section made it more visibly
+        // active than leaving it open.
+        //
+        // The dot and not the chip, because the words do not fit twice. Open,
+        // the chosen rows are eight pixels below and say which answer it is;
+        // what is missing is only that there is one. A chip here would push a
+        // long heading into its own truncation (CAS V ZAVETISCU at 224px) to
+        // repeat what the row underneath already reads out.
+        //
+        // Left of the chevron and not beside it: the reset link is absolute at
+        // right-6 whenever the section is open and active, which is exactly
+        // when this is drawn, and the two would be laid over each other. Where
+        // the chip stands is where this stands.
+        //
+        // --brand-border is the one green measured against both grounds this
+        // heading has, the page and --muted under the pointer: 3.27:1 and
+        // 3.00:1, the 3:1 SC 1.4.11 asks of a graphic that carries meaning
+        // (globals.css). aria-hidden because it carries none that is not
+        // already said: a folded section spells its answer in the chip, an
+        // open one in the pressed state of its own rows.
+        <span
+          aria-hidden
+          className="size-1.5 shrink-0 rounded-full bg-brand-border animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
+        />
       ) : null}
       {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
           3.62:1 in light, 5.20:1 in dark. This is the one thing that says the

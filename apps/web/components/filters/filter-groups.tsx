@@ -38,6 +38,7 @@ import {
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import {
+  answeredSections,
   useFilterSections,
   type FilterSectionKey,
 } from "@/components/filters/use-filter-sections";
@@ -554,20 +555,17 @@ export function FilterGroupList({
   const { locale } = useI18n();
   const appearanceGroups = groups.filter(({ group }) => group === "coatColor" || group === "coatLength");
   const appearanceSelected = [...filters.coatColor, ...filters.coatLength];
+  // Both layouts now. This was the sheet's alone, for the pass in which the
+  // sidebar's sections could not be reached by anything but a click inside
+  // them; a shared link carries answers into folded sections on either
+  // surface, and the panel that hid them was the one standing open beside the
+  // grid the whole time. useFilterSections says when a section reveals itself
+  // and what an arriving address does to the sections that are open by
+  // default; answeredSections is the one table saying which section a facet
+  // answers in, read here and by the pills that go back to them.
   const { isOpen, toggleSection } = useFilterSections({
     layout,
-    initiallyOpen: layout === "sheet" ? {
-      sex: filters.sex.length > 0,
-      age: filters.age.length > 0,
-      size: filters.size.length > 0,
-      energy: filters.energy.length > 0,
-      appearance: appearanceSelected.length > 0,
-      waiting: filters.waiting.length > 0,
-      health: filters.toggles.length > 0,
-      goodWith: filters.goodWith.length > 0,
-      home: filters.home.length > 0,
-      care: filters.care.length > 0,
-    } : undefined,
+    active: answeredSections(filters),
   });
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
@@ -613,6 +611,7 @@ export function FilterGroupList({
     onToggle: () => toggleSection(key),
     summary,
     contentId: `${idBase}-${key}`,
+    section: key,
   });
   const appearanceOptions = appearanceGroups.flatMap(({ options }) => options);
   const appearanceCollapse = collapseFor(

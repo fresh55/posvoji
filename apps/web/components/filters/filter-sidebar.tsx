@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/i18n-context";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
+import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
 import type {
   FilterOption,
   Filters,
@@ -90,6 +91,10 @@ export function FilterSidebar({
   return (
     <aside
       ref={scrollRef}
+      // The box a section is brought into, named rather than searched for:
+      // lib/scroll-strip.ts says why, and this panel is the case it says it
+      // about.
+      {...{ [SCROLL_BOX_MARK]: "" }}
       // The negative margin and padding give focus rings room inside the
       // overflow clip. Hairlines between sections read the stack as one list.
       //

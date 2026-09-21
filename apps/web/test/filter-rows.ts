@@ -35,3 +35,39 @@ export function stickyRow(scope: ParentNode = document): HTMLElement {
   if (!row) throw new Error("no chips row in the sticky bar");
   return row;
 }
+
+/**
+ * The three ways to name a pill in one of those rows.
+ *
+ * Beside the panel a pill is two controls in one shape: the label half goes to
+ * the section that set the filter, the cross takes it off, and the shape
+ * around them is the span carrying the pill's ground and border
+ * (filter-chips.tsx). In flow it is one button and `cross` is the whole of it.
+ * Spelled by hand, the walk up to the shape drifted between two suites the
+ * first time the pill grew a level.
+ */
+export function chipStop(label: string, scope: ParentNode = document): HTMLElement {
+  return control(scope, `Show filter ${label}`);
+}
+
+export function chipCross(label: string, scope: ParentNode = document): HTMLElement {
+  return control(scope, `Remove filter ${label}`);
+}
+
+/** The shape both halves sit in, found from whichever of them is drawn. */
+export function chipPill(label: string, scope: ParentNode = document): HTMLElement {
+  const half =
+    scope.querySelector<HTMLElement>(`[aria-label="Show filter ${label}"]`) ??
+    chipCross(label, scope);
+  // In flow the button is the pill; there is no shape around it to find.
+  return half.closest("span") ?? half;
+}
+
+function control(scope: ParentNode, name: string): HTMLElement {
+  const exact = scope.querySelector<HTMLElement>(`[aria-label="${name}"]`);
+  if (exact) return exact;
+  // The pill worth dropping says in its name what dropping it gives back.
+  const withGain = scope.querySelector<HTMLElement>(`[aria-label^="${name}: "]`);
+  if (!withGain) throw new Error(`no chip control named "${name}"`);
+  return withGain;
+}

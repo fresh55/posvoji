@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-21T17:36:18.965Z",
+  "reviewedAt": "2026-09-21T19:29:26.800Z",
   "snapshotGeneratedAt": "2026-09-21T13:15:26.829Z",
   "fields": [
     "name",
@@ -6572,17 +6572,16 @@
         }
       ],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
           "/root/review_a",
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "horjul:8384",
-          "coatColor": "black",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -6592,11 +6591,13 @@
             0,
             1
           ],
-          "reason": "Dark black body dominates orange facial and scattered patches."
+          "reason": "Black long coat with clearly bounded ginger/cream face blaze and cheek patches, plus pale chin; tortoiseshell patches persist in both originals.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.100Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "horjul:8384",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -6606,10 +6607,54 @@
             0,
             1
           ],
-          "coatColor": "black",
-          "reason": "Dark tortoiseshell has predominantly black body with smaller tan facial and neck patches."
+          "reason": "Distinct orange-cream facial blaze, cheek and chest patches amid black coat: tortoiseshell, not lighting or tabby stripes.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Dark black body dominates orange facial and scattered patches."
+        "reason": "Black long coat with clearly bounded ginger/cream face blaze and cheek patches, plus pale chin; tortoiseshell patches persist in both originals.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "horjul:8384",
+              "coatColor": "black",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1
+              ],
+              "photoIndices": [
+                0,
+                1
+              ],
+              "reason": "Dark black body dominates orange facial and scattered patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "horjul:8384",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1
+              ],
+              "photoIndices": [
+                0,
+                1
+              ],
+              "coatColor": "black",
+              "reason": "Dark tortoiseshell has predominantly black body with smaller tan facial and neck patches."
+            },
+            "reason": "Dark black body dominates orange facial and scattered patches."
+          }
+        ]
       }
     },
     {
@@ -8579,17 +8624,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
           "/root/review_a",
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "horjul:9298",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -8603,11 +8647,13 @@
             2,
             3
           ],
-          "reason": "White body dominates black/orange back patches."
+          "reason": "White body with distinct orange and black islands across back, face and tail; unequivocal calico despite white predominance.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "horjul:9298",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -8621,10 +8667,62 @@
             2,
             3
           ],
-          "coatColor": "white",
-          "reason": "White sides belly chest and legs dominate calico patches on upper back and head."
+          "reason": "White calico body with distinct orange and black patches on head and flanks.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White body dominates black/orange back patches."
+        "reason": "White body with distinct orange and black islands across back, face and tail; unequivocal calico despite white predominance.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "horjul:9298",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "reason": "White body dominates black/orange back patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "horjul:9298",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "coatColor": "white",
+              "reason": "White sides belly chest and legs dominate calico patches on upper back and head."
+            },
+            "reason": "White body dominates black/orange back patches."
+          }
+        ]
       }
     },
     {
@@ -10079,17 +10177,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
           "/root/review_a",
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "horjul:947",
-          "coatColor": "black",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -10103,11 +10200,13 @@
             2,
             3
           ],
-          "reason": "Black torso dominates orange face/feet patches."
+          "reason": "Mostly black coat has discrete orange cheek, eyebrow and paw patches, visible across close and full-body views; tortoiseshell override applies.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "horjul:947",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -10121,10 +10220,62 @@
             2,
             3
           ],
-          "coatColor": "black",
-          "reason": "Black tortoiseshell body dominates smaller orange face and paw patches."
+          "reason": "Black coat with genuine orange facial blaze, brow and paw patches, also mottling across back: tortoiseshell.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Black torso dominates orange face/feet patches."
+        "reason": "Mostly black coat has discrete orange cheek, eyebrow and paw patches, visible across close and full-body views; tortoiseshell override applies.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "horjul:947",
+              "coatColor": "black",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "reason": "Black torso dominates orange face/feet patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "horjul:947",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "coatColor": "black",
+              "reason": "Black tortoiseshell body dominates smaller orange face and paw patches."
+            },
+            "reason": "Black torso dominates orange face/feet patches."
+          }
+        ]
       }
     },
     {
@@ -10208,15 +10359,14 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_b",
-          "/root/review_c"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "horjul:972",
           "coatColor": "multicolour",
           "descriptionReviewed": true,
@@ -10230,11 +10380,13 @@
             1,
             2
           ],
-          "reason": "Substantial black and orange patches distributed across torso with no clear dominant base."
+          "reason": "Black and orange mottled islands across flanks, forehead and paws; the irregular coloured areas are tortoiseshell patches rather than tabby stripes.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "horjul:972",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -10246,21 +10398,69 @@
             1,
             2
           ],
-          "coatColor": "black",
-          "reason": "Black tortoiseshell base dominates scattered orange patches."
+          "reason": "Orange patches and flecks intermixed with black across flanks face and feet: tortoiseshell.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "resolution": {
-          "animalId": "horjul:972",
-          "reviewer": "/root/review_c",
-          "coatColor": "black",
-          "reason": "Black torso and head visibly dominate scattered orange tortoiseshell flecks.",
-          "photosReviewed": [
-            0,
-            1,
-            2
-          ]
-        },
-        "reason": "Black torso and head visibly dominate scattered orange tortoiseshell flecks."
+        "reason": "Black and orange mottled islands across flanks, forehead and paws; the irregular coloured areas are tortoiseshell patches rather than tabby stripes.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "horjul:972",
+              "coatColor": "multicolour",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2
+              ],
+              "reason": "Substantial black and orange patches distributed across torso with no clear dominant base."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "horjul:972",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2
+              ],
+              "coatColor": "black",
+              "reason": "Black tortoiseshell base dominates scattered orange patches."
+            },
+            "resolution": {
+              "animalId": "horjul:972",
+              "reviewer": "/root/review_c",
+              "coatColor": "black",
+              "reason": "Black torso and head visibly dominate scattered orange tortoiseshell flecks.",
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ]
+            },
+            "reason": "Black torso and head visibly dominate scattered orange tortoiseshell flecks."
+          }
+        ]
       }
     },
     {
@@ -15521,17 +15721,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
           "/root/review_a",
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "ljubljana:b14cc8b1-271a-4096-bae8-2a16521214f0",
-          "coatColor": "black",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -15539,11 +15738,13 @@
           "photoIndices": [
             0
           ],
-          "reason": "Very dark kitten overall with sparse orange facial flecks."
+          "reason": "Predominantly dark kitten has a localized peach/orange chin patch and warm mottling beside the eyes. The supplied description explicitly calls the coat tortoiseshell, corroborating the subtle visible patches.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "ljubljana:b14cc8b1-271a-4096-bae8-2a16521214f0",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -15551,10 +15752,50 @@
           "photoIndices": [
             0
           ],
-          "coatColor": "black",
-          "reason": "Predominantly black kitten with small tan tortoiseshell face flecks."
+          "reason": "Small pale orange chin and cheek patch contrasts with black fur; source explicitly describes tortoiseshell. Silvery sunlit hairs and shaved pink belly excluded.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Very dark kitten overall with sparse orange facial flecks."
+        "reason": "Predominantly dark kitten has a localized peach/orange chin patch and warm mottling beside the eyes. The supplied description explicitly calls the coat tortoiseshell, corroborating the subtle visible patches.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "ljubljana:b14cc8b1-271a-4096-bae8-2a16521214f0",
+              "coatColor": "black",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "reason": "Very dark kitten overall with sparse orange facial flecks."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "ljubljana:b14cc8b1-271a-4096-bae8-2a16521214f0",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "coatColor": "black",
+              "reason": "Predominantly black kitten with small tan tortoiseshell face flecks."
+            },
+            "reason": "Very dark kitten overall with sparse orange facial flecks."
+          }
+        ]
       }
     },
     {
@@ -17177,17 +17418,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
           "/root/review_a",
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "ljubljana:f7f72d66-7a96-48af-9e1e-8862e26df6a8",
-          "coatColor": "black",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -17195,11 +17435,13 @@
           "photoIndices": [
             0
           ],
-          "reason": "Black kitten overall with sparse tortoiseshell flecks."
+          "reason": "Black kitten has irregular ginger/tan patches on the chest and front paw and scattered facial flecks; source also explicitly says tortoiseshell.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "ljubljana:f7f72d66-7a96-48af-9e1e-8862e26df6a8",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -17207,10 +17449,50 @@
           "photoIndices": [
             0
           ],
-          "coatColor": "black",
-          "reason": "Mostly black tortoiseshell body with small muted tan chest flecks."
+          "reason": "Muted orange/tan chest and forepaw patches plus facial flecks within black coat, consistent with explicit tortoiseshell description.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Black kitten overall with sparse tortoiseshell flecks."
+        "reason": "Black kitten has irregular ginger/tan patches on the chest and front paw and scattered facial flecks; source also explicitly says tortoiseshell.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "ljubljana:f7f72d66-7a96-48af-9e1e-8862e26df6a8",
+              "coatColor": "black",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "reason": "Black kitten overall with sparse tortoiseshell flecks."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "ljubljana:f7f72d66-7a96-48af-9e1e-8862e26df6a8",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "coatColor": "black",
+              "reason": "Mostly black tortoiseshell body with small muted tan chest flecks."
+            },
+            "reason": "Black kitten overall with sparse tortoiseshell flecks."
+          }
+        ]
       }
     },
     {
@@ -22252,12 +22534,14 @@
       "sourceCheckedAt": "2026-09-21T11:16:31.917Z",
       "descriptionReviewed": true,
       "photoReview": {
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
         "reviewedBy": [
+          "/root/review_a",
           "/root/review_b",
           "/root/review_c"
         ],
         "status": "reviewed",
-        "observation": "Brown black and orange long-coated cat with full mane.",
+        "observation": "All three reviewers support black and brown tabby colouring and a long coat. Orange is unsupported. Small pale areas were judged white or cream; omit those uncertain tags.",
         "images": [
           {
             "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2025/03/MIKICA-1-1024x1024.jpeg",
@@ -22266,6 +22550,98 @@
           {
             "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2025/03/MIKICA-scaled.jpeg",
             "sha256": "130f9e7a77b692fb9829bb8ef21514845faff1130751462aa559e13f369a54ec"
+          }
+        ],
+        "coatColors": [
+          "black",
+          "brown"
+        ],
+        "coatLength": "long",
+        "primary": {
+          "animalId": "obalno:mikica",
+          "coatColor": "brown",
+          "descriptionReviewed": true,
+          "photosReviewed": [
+            0,
+            1
+          ],
+          "photoIndices": [
+            0,
+            1
+          ],
+          "reason": "Both originals show a warm brown longhaired tabby with black stripes, a pale white muzzle and cream/tan ruff. The warm face is continuous brown shading, not a distinct orange island interrupting another base colour. Detailed visible colours are brown, black, cream and white; length is long.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z",
+          "coatColors": [
+            "black",
+            "brown",
+            "cream",
+            "white"
+          ],
+          "coatLength": "long"
+        },
+        "secondary": {
+          "animalId": "obalno:mikica",
+          "coatColor": "brown",
+          "descriptionReviewed": true,
+          "photosReviewed": [
+            0,
+            1
+          ],
+          "photoIndices": [
+            0,
+            1
+          ],
+          "reason": "Both originals show a warm golden-brown long coat, black forehead M and foreleg/flank tabby stripes, and a small whitish muzzle/chin. Detailed colours: black, brown, white. The warm ruff and paw tones are continuous golden-brown shades; no clearly separate orange patch is established, and backlit pale edge hairs do not independently establish cream or grey. Dominant category remains brown. Coat length is long: both originals clearly show a deep flowing neck ruff, long body hairs and feathered sides.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z",
+          "coatColors": [
+            "black",
+            "brown",
+            "white"
+          ],
+          "coatLength": "long"
+        },
+        "resolution": {
+          "animalId": "obalno:mikica",
+          "coatColors": [
+            "black",
+            "brown",
+            "cream"
+          ],
+          "coatLength": "long",
+          "coatColor": "brown",
+          "descriptionReviewed": true,
+          "photosReviewed": [
+            0,
+            1
+          ],
+          "photoIndices": [
+            0,
+            1
+          ],
+          "reason": "Both originals show the same long-haired brown tabby: warm brown flanks, cheeks and ruff, black forehead and foreleg stripes and dark flank markings, with pale cream muzzle/chin and lighter ruff hairs. The long mane, feathered sides and full coat support long length, also explicitly stated in the description. The warm golden/reddish areas follow the brown tabby base and graduated ruff shading; I do not see distinct orange patches interrupting a black coat as in a tortoiseshell/calico. Brown is the predominant body category. Pale fur is cream rather than confidently separate white; the warm window light is not evidence for adding orange.",
+          "reviewer": "/root/review_c",
+          "reviewedAt": "2026-09-21T19:28:00.726Z"
+        },
+        "previousReviews": [
+          {
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "status": "reviewed",
+            "observation": "Brown black and orange long-coated cat with full mane.",
+            "images": [
+              {
+                "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2025/03/MIKICA-1-1024x1024.jpeg",
+                "sha256": "657a2d90eee9f4dda52220a878cf508047a53d1b94c07fb9e199bb54b9a837cc"
+              },
+              {
+                "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2025/03/MIKICA-scaled.jpeg",
+                "sha256": "130f9e7a77b692fb9829bb8ef21514845faff1130751462aa559e13f369a54ec"
+              }
+            ]
           }
         ]
       },
@@ -22314,7 +22690,7 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
         "category": "brown",
         "observedColour": "brown",
         "reviewedBy": [
@@ -22322,7 +22698,6 @@
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "obalno:mikica",
           "coatColor": "brown",
           "descriptionReviewed": true,
@@ -22334,11 +22709,20 @@
             0,
             1
           ],
-          "reason": "Warm brown long coat with darker tabby pattern."
+          "reason": "Both originals show a warm brown longhaired tabby with black stripes, a pale white muzzle and cream/tan ruff. The warm face is continuous brown shading, not a distinct orange island interrupting another base colour. Detailed visible colours are brown, black, cream and white; length is long.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z",
+          "coatColors": [
+            "black",
+            "brown",
+            "cream",
+            "white"
+          ],
+          "coatLength": "long"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "obalno:mikica",
+          "coatColor": "brown",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -22348,10 +22732,60 @@
             0,
             1
           ],
-          "coatColor": "brown",
-          "reason": "Rich brown long coat with dark tabby head and forelegs."
+          "reason": "Both originals show a warm golden-brown long coat, black forehead M and foreleg/flank tabby stripes, and a small whitish muzzle/chin. Detailed colours: black, brown, white. The warm ruff and paw tones are continuous golden-brown shades; no clearly separate orange patch is established, and backlit pale edge hairs do not independently establish cream or grey. Dominant category remains brown. Coat length is long: both originals clearly show a deep flowing neck ruff, long body hairs and feathered sides.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z",
+          "coatColors": [
+            "black",
+            "brown",
+            "white"
+          ],
+          "coatLength": "long"
         },
-        "reason": "Warm brown long coat with darker tabby pattern."
+        "reason": "Both originals show a warm brown longhaired tabby with black stripes, a pale white muzzle and cream/tan ruff. The warm face is continuous brown shading, not a distinct orange island interrupting another base colour. Detailed visible colours are brown, black, cream and white; length is long.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "brown",
+            "observedColour": "brown",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "obalno:mikica",
+              "coatColor": "brown",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1
+              ],
+              "photoIndices": [
+                0,
+                1
+              ],
+              "reason": "Warm brown long coat with darker tabby pattern."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "obalno:mikica",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1
+              ],
+              "photoIndices": [
+                0,
+                1
+              ],
+              "coatColor": "brown",
+              "reason": "Rich brown long coat with dark tabby head and forelegs."
+            },
+            "reason": "Warm brown long coat with darker tabby pattern."
+          }
+        ]
       }
     },
     {
@@ -23125,17 +23559,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
           "/root/review_a",
           "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_a",
           "animalId": "obalno:poticka",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -23145,11 +23578,13 @@
             0,
             1
           ],
-          "reason": "White body dominates, with orange/tabby head and isolated back patches."
+          "reason": "White body with ginger areas on face and back plus distinct dark crown/back patches. Despite warm yellow lighting, the localized orange and dark areas remain separate and support calico colour.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_b",
           "animalId": "obalno:poticka",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -23159,10 +23594,54 @@
             0,
             1
           ],
-          "coatColor": "white",
-          "reason": "White chest body and face dominate small calico back and head patches."
+          "reason": "White body with orange cheek/cap and back patches plus distinct dark mottled forehead and dorsal patch; calico colours visible despite yellow room cast.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White body dominates, with orange/tabby head and isolated back patches."
+        "reason": "White body with ginger areas on face and back plus distinct dark crown/back patches. Despite warm yellow lighting, the localized orange and dark areas remain separate and support calico colour.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_a",
+              "/root/review_b"
+            ],
+            "primary": {
+              "reviewer": "/root/review_a",
+              "animalId": "obalno:poticka",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1
+              ],
+              "photoIndices": [
+                0,
+                1
+              ],
+              "reason": "White body dominates, with orange/tabby head and isolated back patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_b",
+              "animalId": "obalno:poticka",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1
+              ],
+              "photoIndices": [
+                0,
+                1
+              ],
+              "coatColor": "white",
+              "reason": "White chest body and face dominate small calico back and head patches."
+            },
+            "reason": "White body dominates, with orange/tabby head and isolated back patches."
+          }
+        ]
       }
     },
     {
@@ -29130,16 +29609,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_b",
-          "/root/review_c"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_b",
           "animalId": "macja-hisa:4006",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -29153,13 +29632,13 @@
             2,
             3
           ],
-          "coatColor": "black",
-          "reason": "Predominantly black body with sparse orange mottling."
+          "reason": "Mostly black cat has irregular rust-orange flank and shoulder patches, particularly clear in originals 2 and 3, with scattered facial flecks; not uniform sunlit black fur.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_c",
           "animalId": "macja-hisa:4006",
-          "coatColor": "black",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -29173,9 +29652,62 @@
             2,
             3
           ],
-          "reason": "Black dominant tortoiseshell with sparse orange flecks."
+          "reason": "Black coat has discrete orange flank shoulder and facial flecks, especially clear in indices 2 and 3; tortoiseshell.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Predominantly black body with sparse orange mottling."
+        "reason": "Mostly black cat has irregular rust-orange flank and shoulder patches, particularly clear in originals 2 and 3, with scattered facial flecks; not uniform sunlit black fur.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "primary": {
+              "reviewer": "/root/review_b",
+              "animalId": "macja-hisa:4006",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "coatColor": "black",
+              "reason": "Predominantly black body with sparse orange mottling."
+            },
+            "secondary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macja-hisa:4006",
+              "coatColor": "black",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "reason": "Black dominant tortoiseshell with sparse orange flecks."
+            },
+            "reason": "Predominantly black body with sparse orange mottling."
+          }
+        ]
       }
     },
     {
@@ -29260,16 +29792,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "brown",
-        "observedColour": "brown",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_b",
-          "/root/review_c"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_b",
           "animalId": "macja-hisa:4008",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -29283,13 +29815,13 @@
             2,
             3
           ],
-          "coatColor": "brown",
-          "reason": "Brown tabby body; stripes and small warm patches secondary."
+          "reason": "Striped grey-brown coat also has localized rust-orange islands on the rear flank/back, visible in several lighting conditions, especially originals 0, 2 and 3. These patches interrupt the otherwise cool tabby base; selection is based on the coloured islands, not the black stripes themselves.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_c",
           "animalId": "macja-hisa:4008",
-          "coatColor": "brown",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -29303,9 +29835,62 @@
             2,
             3
           ],
-          "reason": "Brown tabby torso with dark stripes."
+          "reason": "Tabby striping coexists with separate orange patches on flanks and nose bridge; flank patches persist across views and are not simply dark tabby stripes.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Brown tabby body; stripes and small warm patches secondary."
+        "reason": "Striped grey-brown coat also has localized rust-orange islands on the rear flank/back, visible in several lighting conditions, especially originals 0, 2 and 3. These patches interrupt the otherwise cool tabby base; selection is based on the coloured islands, not the black stripes themselves.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "brown",
+            "observedColour": "brown",
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "primary": {
+              "reviewer": "/root/review_b",
+              "animalId": "macja-hisa:4008",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "coatColor": "brown",
+              "reason": "Brown tabby body; stripes and small warm patches secondary."
+            },
+            "secondary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macja-hisa:4008",
+              "coatColor": "brown",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "reason": "Brown tabby torso with dark stripes."
+            },
+            "reason": "Brown tabby body; stripes and small warm patches secondary."
+          }
+        ]
       }
     },
     {
@@ -36084,16 +36669,16 @@
         }
       ],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "black",
-        "observedColour": "black",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_b",
-          "/root/review_c"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_b",
           "animalId": "macja-hisa:4568",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -36105,13 +36690,13 @@
             1,
             2
           ],
-          "coatColor": "black",
-          "reason": "Black body clearly dominates sparse cream/orange mottling."
+          "reason": "Dark coat has irregular ginger patches on nose, chest, flank and shoulder. The patch distribution is mottled tortoiseshell rather than ordinary tabby striping.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_c",
           "animalId": "macja-hisa:4568",
-          "coatColor": "black",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -36123,9 +36708,58 @@
             1,
             2
           ],
-          "reason": "Black dominant tortoiseshell with sparse orange mottling."
+          "reason": "Black coat with orange mottled flank, chest patches and small facial blaze; true tortoiseshell colour patches.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Black body clearly dominates sparse cream/orange mottling."
+        "reason": "Dark coat has irregular ginger patches on nose, chest, flank and shoulder. The patch distribution is mottled tortoiseshell rather than ordinary tabby striping.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "black",
+            "observedColour": "black",
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "primary": {
+              "reviewer": "/root/review_b",
+              "animalId": "macja-hisa:4568",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2
+              ],
+              "coatColor": "black",
+              "reason": "Black body clearly dominates sparse cream/orange mottling."
+            },
+            "secondary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macja-hisa:4568",
+              "coatColor": "black",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2
+              ],
+              "reason": "Black dominant tortoiseshell with sparse orange mottling."
+            },
+            "reason": "Black body clearly dominates sparse cream/orange mottling."
+          }
+        ]
       }
     },
     {
@@ -39064,16 +39698,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_b",
-          "/root/review_c"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_b",
           "animalId": "macja-hisa:4657",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -39087,13 +39721,13 @@
             2,
             3
           ],
-          "coatColor": "white",
-          "reason": "White body with few small contrasting patches and dark tail."
+          "reason": "Mostly white coat has black face/flank spots and a tail with separate ginger and black patches. White predominance does not override the visible calico colours.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_c",
           "animalId": "macja-hisa:4657",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -39107,9 +39741,62 @@
             2,
             3
           ],
-          "reason": "White body with sparse dark spots and tail."
+          "reason": "Mostly white cat has clear orange/tan and black segments on tail plus dark head patches; calico despite white dominance.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White body with few small contrasting patches and dark tail."
+        "reason": "Mostly white coat has black face/flank spots and a tail with separate ginger and black patches. White predominance does not override the visible calico colours.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "primary": {
+              "reviewer": "/root/review_b",
+              "animalId": "macja-hisa:4657",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "coatColor": "white",
+              "reason": "White body with few small contrasting patches and dark tail."
+            },
+            "secondary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macja-hisa:4657",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "reason": "White body with sparse dark spots and tail."
+            },
+            "reason": "White body with few small contrasting patches and dark tail."
+          }
+        ]
       }
     },
     {
@@ -42970,16 +43657,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_b",
-          "/root/review_c"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_b",
           "animalId": "macja-hisa:4910",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -42993,13 +43680,13 @@
             2,
             3
           ],
-          "coatColor": "white",
-          "reason": "White body dominant, scattered black/orange patches."
+          "reason": "White coat bears separate orange and black patches on back, forehead and tail, clearly visible in the full side view.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_c",
           "animalId": "macja-hisa:4910",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -43013,9 +43700,62 @@
             2,
             3
           ],
-          "reason": "White torso dominates small calico patches."
+          "reason": "White body with distinct orange and black dorsal, head and tail patches: clear calico.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White body dominant, scattered black/orange patches."
+        "reason": "White coat bears separate orange and black patches on back, forehead and tail, clearly visible in the full side view.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_b",
+              "/root/review_c"
+            ],
+            "primary": {
+              "reviewer": "/root/review_b",
+              "animalId": "macja-hisa:4910",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "coatColor": "white",
+              "reason": "White body dominant, scattered black/orange patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macja-hisa:4910",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "reason": "White torso dominates small calico patches."
+            },
+            "reason": "White body dominant, scattered black/orange patches."
+          }
+        ]
       }
     },
     {
@@ -47880,17 +48620,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_c",
-          "/root/review_a"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_c",
           "animalId": "macji-dol:1560",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -47906,12 +48645,13 @@
             3,
             4
           ],
-          "reason": "Predominantly white torso; orange-black patches confined mainly head and tail."
+          "reason": "White cat has distinct black crown/back/tail areas and orange cheek/back patches across all originals; source also explicitly says tricolour.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_a",
           "animalId": "macji-dol:1560",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -47927,9 +48667,66 @@
             3,
             4
           ],
-          "reason": "White body with sparse calico patches on head and back."
+          "reason": "White body with discrete orange and black head and dorsal patches; description also explicitly says tricolour.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Predominantly white torso; orange-black patches confined mainly head and tail."
+        "reason": "White cat has distinct black crown/back/tail areas and orange cheek/back patches across all originals; source also explicitly says tricolour.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_c",
+              "/root/review_a"
+            ],
+            "primary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macji-dol:1560",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "reason": "Predominantly white torso; orange-black patches confined mainly head and tail."
+            },
+            "secondary": {
+              "reviewer": "/root/review_a",
+              "animalId": "macji-dol:1560",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ],
+              "reason": "White body with sparse calico patches on head and back."
+            },
+            "reason": "Predominantly white torso; orange-black patches confined mainly head and tail."
+          }
+        ]
       }
     },
     {
@@ -49758,17 +50555,16 @@
         }
       ],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "brown",
-        "observedColour": "brown",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_c",
-          "/root/review_a"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_c",
           "animalId": "macji-dol:409",
-          "coatColor": "brown",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -49792,12 +50588,13 @@
             7,
             8
           ],
-          "reason": "Warm brown long body fur dominates with dark stripes and small orange face patch."
+          "reason": "The focal longhaired cat has a localized orange forehead blaze cutting through the darker striped forehead and warm patches within its otherwise brown/dark coat. This is a coloured patch, not just the tabby stripes. Companion cats in the final two photos were not used as the focal coat evidence.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_a",
           "animalId": "macji-dol:409",
-          "coatColor": "brown",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -49821,9 +50618,82 @@
             7,
             8
           ],
-          "reason": "Brown long tabby coat with warmer orange shading and dark stripes."
+          "reason": "Distinct orange forehead/nose blaze interrupts dark brown tabby pattern, with additional reddish body patches; torbie colour patches, not merely black stripes. Same long-haired subject identifiable beside separate grey companion.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "Warm brown long body fur dominates with dark stripes and small orange face patch."
+        "reason": "The focal longhaired cat has a localized orange forehead blaze cutting through the darker striped forehead and warm patches within its otherwise brown/dark coat. This is a coloured patch, not just the tabby stripes. Companion cats in the final two photos were not used as the focal coat evidence.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "brown",
+            "observedColour": "brown",
+            "reviewedBy": [
+              "/root/review_c",
+              "/root/review_a"
+            ],
+            "primary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macji-dol:409",
+              "coatColor": "brown",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "reason": "Warm brown long body fur dominates with dark stripes and small orange face patch."
+            },
+            "secondary": {
+              "reviewer": "/root/review_a",
+              "animalId": "macji-dol:409",
+              "coatColor": "brown",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "reason": "Brown long tabby coat with warmer orange shading and dark stripes."
+            },
+            "reason": "Warm brown long body fur dominates with dark stripes and small orange face patch."
+          }
+        ]
       }
     },
     {
@@ -49925,17 +50795,16 @@
         }
       ],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_c",
-          "/root/review_a"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_c",
           "animalId": "macji-dol:599",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -49947,12 +50816,13 @@
             1,
             2
           ],
-          "reason": "White torso dominates, sparse brown-black patches."
+          "reason": "Mostly white cat has separate ginger shoulder/crown patches and dark rear-back/crown/tail patches, confirmed by the wider second and third photos.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_a",
           "animalId": "macji-dol:599",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0,
@@ -49964,9 +50834,58 @@
             1,
             2
           ],
-          "reason": "White body with sparse calico patches on back and head."
+          "reason": "White calico with distinct orange shoulder/head and black dorsal/head patches.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White torso dominates, sparse brown-black patches."
+        "reason": "Mostly white cat has separate ginger shoulder/crown patches and dark rear-back/crown/tail patches, confirmed by the wider second and third photos.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_c",
+              "/root/review_a"
+            ],
+            "primary": {
+              "reviewer": "/root/review_c",
+              "animalId": "macji-dol:599",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2
+              ],
+              "reason": "White torso dominates, sparse brown-black patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_a",
+              "animalId": "macji-dol:599",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0,
+                1,
+                2
+              ],
+              "photoIndices": [
+                0,
+                1,
+                2
+              ],
+              "reason": "White body with sparse calico patches on back and head."
+            },
+            "reason": "White torso dominates, sparse brown-black patches."
+          }
+        ]
       }
     },
     {
@@ -64415,17 +65334,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_c",
-          "/root/review_a"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_c",
           "animalId": "zonzani:06308",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -64433,12 +65351,13 @@
           "photoIndices": [
             0
           ],
-          "reason": "White body dominates sparse orange-black patches."
+          "reason": "Mostly white kitten has an orange back/tail-base area and separate black tail tip/crown patch; clearly separate calico colours.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_a",
           "animalId": "zonzani:06308",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -64446,9 +65365,50 @@
           "photoIndices": [
             0
           ],
-          "reason": "White torso dominates, with sparse orange and dark patches."
+          "reason": "Mostly white kitten with orange and black head/tail patches; genuine calico pigmentation.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White body dominates sparse orange-black patches."
+        "reason": "Mostly white kitten has an orange back/tail-base area and separate black tail tip/crown patch; clearly separate calico colours.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_c",
+              "/root/review_a"
+            ],
+            "primary": {
+              "reviewer": "/root/review_c",
+              "animalId": "zonzani:06308",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "reason": "White body dominates sparse orange-black patches."
+            },
+            "secondary": {
+              "reviewer": "/root/review_a",
+              "animalId": "zonzani:06308",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "reason": "White torso dominates, with sparse orange and dark patches."
+            },
+            "reason": "White body dominates sparse orange-black patches."
+          }
+        ]
       }
     },
     {
@@ -64521,17 +65481,16 @@
       "rejectedClaims": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-09-21T17:36:18.965Z",
-        "category": "white",
-        "observedColour": "white",
+        "reviewedAt": "2026-09-21T19:29:26.800Z",
+        "category": "multicolour",
+        "observedColour": "multicolour",
         "reviewedBy": [
-          "/root/review_c",
-          "/root/review_a"
+          "/root/review_a",
+          "/root/review_b"
         ],
         "primary": {
-          "reviewer": "/root/review_c",
           "animalId": "zonzani:06309",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -64539,12 +65498,13 @@
           "photoIndices": [
             0
           ],
-          "reason": "White body with small coloured head and tail."
+          "reason": "Mostly white kitten has a black forehead blaze with orange crown/ear-base and tail areas; distinct calico colours despite the white body.",
+          "reviewer": "/root/review_a",
+          "reviewedAt": "2026-09-21T19:26:38.101Z"
         },
         "secondary": {
-          "reviewer": "/root/review_a",
           "animalId": "zonzani:06309",
-          "coatColor": "white",
+          "coatColor": "multicolour",
           "descriptionReviewed": true,
           "photosReviewed": [
             0
@@ -64552,9 +65512,50 @@
           "photoIndices": [
             0
           ],
-          "reason": "White body with small calico head marks and coloured tail."
+          "reason": "Mostly white kitten with black forehead patch adjoining orange patch and orange-black tail; calico.",
+          "reviewer": "/root/review_b",
+          "reviewedAt": "2026-09-21T19:24:23.94Z"
         },
-        "reason": "White body with small coloured head and tail."
+        "reason": "Mostly white kitten has a black forehead blaze with orange crown/ear-base and tail areas; distinct calico colours despite the white body.",
+        "rule": "Visually confirmed black-and-orange patched coats, including those with white, use Multicolour.",
+        "previousReviews": [
+          {
+            "reviewedAt": "2026-09-21T17:36:18.965Z",
+            "category": "white",
+            "observedColour": "white",
+            "reviewedBy": [
+              "/root/review_c",
+              "/root/review_a"
+            ],
+            "primary": {
+              "reviewer": "/root/review_c",
+              "animalId": "zonzani:06309",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "reason": "White body with small coloured head and tail."
+            },
+            "secondary": {
+              "reviewer": "/root/review_a",
+              "animalId": "zonzani:06309",
+              "coatColor": "white",
+              "descriptionReviewed": true,
+              "photosReviewed": [
+                0
+              ],
+              "photoIndices": [
+                0
+              ],
+              "reason": "White body with small calico head marks and coloured tail."
+            },
+            "reason": "White body with small coloured head and tail."
+          }
+        ]
       }
     },
     {

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-21T17:36:18.965Z",
+  "reviewedAt": "2026-09-21T19:29:26.800Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -1898,7 +1898,7 @@
         "black",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2509,7 +2509,7 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2896,7 +2896,7 @@
         "black",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2934,10 +2934,10 @@
         "black",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4386,7 +4386,7 @@
         "grey",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4819,7 +4819,7 @@
         "black",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6145,8 +6145,7 @@
       "species": "cat",
       "coatColors": [
         "black",
-        "brown",
-        "orange"
+        "brown"
       ],
       "coatColor": "brown",
       "coatColorReviewedBy": [
@@ -6165,6 +6164,7 @@
         }
       ],
       "reviewedBy": [
+        "/root/review_a",
         "/root/review_b",
         "/root/review_c"
       ]
@@ -6359,7 +6359,7 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -8025,10 +8025,10 @@
         "black",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8064,10 +8064,10 @@
         "brown",
         "orange"
       ],
-      "coatColor": "brown",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9981,10 +9981,10 @@
         "black",
         "orange"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10782,10 +10782,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11876,10 +11876,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13264,10 +13264,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13767,10 +13767,10 @@
         "orange",
         "cream"
       ],
-      "coatColor": "brown",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -13826,10 +13826,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17540,10 +17540,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17567,10 +17567,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/review_a",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [

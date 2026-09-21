@@ -135,14 +135,18 @@ export function SiteMenu({ paths }: { paths?: Record<Locale, string> }) {
             )}
           />
         )}
+        {/* No text-muted-foreground here, although these are the quiet links.
+            Grey text under a separator is the shape a disabled menu item has,
+            and "Prijava za zavetišča" is the one item in this menu a shelter
+            is looking for. The separator above already demotes the group, and
+            it does it without borrowing the disabled state's only signal. The
+            lg button keeps its muted colour: a frame around a control says
+            "press me" on its own, where a bare menu row has nothing else. */}
         {secondaryLinks.map((link) => (
           <DropdownMenuItem
             key={link.key}
             asChild
-            className={cn(
-              "min-h-11 text-muted-foreground",
-              link.key === "portal" && "lg:hidden",
-            )}
+            className={cn("min-h-11", link.key === "portal" && "lg:hidden")}
           >
             <a href={link.href} hrefLang={link.hrefLang}>
               {link.label}

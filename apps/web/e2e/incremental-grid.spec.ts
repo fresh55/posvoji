@@ -52,7 +52,7 @@ test("draws an initial page of cards and grows it as the sentinel is reached", a
   // Settled, and the settled state says so: the way on is a control the
   // visitor presses, with the count of what is drawn under it, so the footer
   // stands one press below the grid rather than behind an endless one.
-  await expect(page.getByRole("button", { name: /Prikaži še/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Pokaži še/ })).toBeVisible();
   await expect(
     page.getByText(new RegExp(`^${drawn} od \\d+ živali$`)),
   ).toBeVisible();

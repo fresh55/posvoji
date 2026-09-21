@@ -561,7 +561,7 @@ describe("a description that is only a photo credit", () => {
   });
 });
 
-// Six listings name more than one animal, and one row of pills has one age,
+// Seven listings name more than one animal, and one row of pills has one age,
 // one sex and one size to give for all of them.
 describe("a listing that names several animals", () => {
   const SEVERAL = {
@@ -580,6 +580,16 @@ describe("a listing that names several animals", () => {
 
   it("reads a pair joined by in the same way", () => {
     renderFacts({ name: "Bria in Brin", ...SEVERAL });
+
+    expect(
+      screen.queryByRole("list", { name: "Podrobnosti o živali" }),
+    ).toBeNull();
+  });
+
+  // The seventh is not a list, so splitting the name cannot see it. "Božanska
+  // družina" is a mother and her two sons, and the row read "Samec".
+  it("reads a collective name the same way", () => {
+    renderFacts({ name: "Božanska družina", ...SEVERAL });
 
     expect(
       screen.queryByRole("list", { name: "Podrobnosti o živali" }),

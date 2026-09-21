@@ -15,7 +15,7 @@ export function SourceFreshness({
   checkedAt?: string;
   reference: Date;
 }) {
-  const { locale, messages, t } = useI18n();
+  const { locale, messages } = useI18n();
   const [now, setNow] = useState(reference.getTime());
   useEffect(() => {
     // Start with the server's reference to hydrate consistently, then age even
@@ -28,14 +28,14 @@ export function SourceFreshness({
       window.clearInterval(timer);
     };
   }, []);
-  const { age, isOld } = sourceFreshness(checkedAt, locale, now);
+  const { known, isOld } = sourceFreshness(checkedAt, now);
   return (
     <div className="space-y-2 text-xs text-muted-foreground" data-slot="source-freshness">
       <p>
         {/* Provider credits stay in Slovenian in both locales. */}
         {attribution && <span lang={quotedLang("sl", locale)}>{attribution}</span>}
         {attribution && " · "}
-        {checkedAt && age !== null ? (
+        {checkedAt && known ? (
           <>
             {messages.sourceVerified}{" "}
             {/* The machine value stays the instant. Only what is read changes. */}
@@ -45,12 +45,13 @@ export function SourceFreshness({
           messages.sourceVerificationUnknown
         )}
       </p>
-      {isOld && (
-        <p className="font-medium">
-          {messages.sourceVerificationOld}
-          {age !== null && ` ${t("sourceVerificationAge", { age })}`}
-        </p>
-      )}
+      {/* The instruction and nothing else. This used to end in "Zadnje
+          preverjanje: pred 15 dnevi.", which is the date in the line directly
+          above told a second time in a second format and under a second label,
+          and it pushed the one thing to do off the end of a bold sentence.
+          The paragraph is drawn only when the check is old, so its presence is
+          already what the age clause was saying. */}
+      {isOld && <p className="font-medium">{messages.sourceVerificationOld}</p>}
     </div>
   );
 }

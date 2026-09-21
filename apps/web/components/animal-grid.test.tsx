@@ -707,7 +707,7 @@ describe("how much of the grid is drawn", () => {
     expect(drawn).toBeLessThan(INITIAL_CARDS + ROWS_PER_STEP * 2 * 2);
     expect(screen.getAllByRole("article")).toHaveLength(drawn);
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
-    const more = screen.getByRole("button", { name: "Prikaži še 10" });
+    const more = screen.getByRole("button", { name: "Pokaži še 10" });
     expect(
       screen.getByText(`${drawn} od ${beyond.length} živali`),
     ).toBeTruthy();
@@ -718,7 +718,7 @@ describe("how much of the grid is drawn", () => {
     // stands on the first card the press added rather than falling to body
     // with the unmounted button.
     expect(screen.getAllByRole("article")).toHaveLength(beyond.length);
-    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pokaži še/ })).toBeNull();
     // The count the button stood over stays behind and finishes itself. It
     // used to go with the button, which left the grid ending on blank space
     // with the counter stopped partway and nothing saying that was the lot.
@@ -774,7 +774,7 @@ describe("how much of the grid is drawn", () => {
         INITIAL_CARDS + ROWS_PER_STEP * columns,
       );
       expect(container.querySelector("[data-grid-sentinel]")).toBeTruthy();
-      expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Pokaži še/ })).toBeNull();
 
       act(() => {
         for (const callback of callbacks) callback([{ isIntersecting: true }]);
@@ -794,7 +794,7 @@ describe("how much of the grid is drawn", () => {
       expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
       expect(
         screen.getByRole("button", {
-          name: `Prikaži še ${Math.min(CARDS_PER_CLICK, spare)}`,
+          name: `Pokaži še ${Math.min(CARDS_PER_CLICK, spare)}`,
         }),
       ).toBeTruthy();
       expect(
@@ -924,7 +924,7 @@ describe("how much of the grid is drawn", () => {
     // is the short one the clamp makes of it, the sentinel is gone, and the way
     // on is the button with the remainder on it.
     expect(container.querySelector("[data-card-grid] button")?.textContent).toBe(
-      `Prikaži še ${spare}`,
+      `Pokaži še ${spare}`,
     );
   });
 

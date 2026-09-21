@@ -135,7 +135,7 @@ describe("how much of a shelter's grid is drawn", () => {
 
     expect(screen.getAllByRole("article")).toHaveLength(12);
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pokaži še/ })).toBeNull();
     expect(screen.queryByText(/Konec seznama/)).toBeNull();
     expect(screen.queryByText(/od 12 živali/)).toBeNull();
   });
@@ -157,7 +157,7 @@ describe("how much of a shelter's grid is drawn", () => {
     expect(screen.getAllByRole("article")).toHaveLength(drawn);
     expect(container.querySelector("[data-grid-sentinel]")).toBeNull();
     const more = screen.getByRole("button", {
-      name: `Prikaži še ${Math.min(CARDS_PER_CLICK, many.length - drawn)}`,
+      name: `Pokaži še ${Math.min(CARDS_PER_CLICK, many.length - drawn)}`,
     });
     expect(screen.getByText(`${drawn} od ${many.length} živali`)).toBeTruthy();
 
@@ -167,7 +167,7 @@ describe("how much of a shelter's grid is drawn", () => {
     // and focus stands on the first card the press added rather than on
     // body with the unmounted button.
     expect(screen.getAllByRole("article")).toHaveLength(many.length);
-    expect(screen.queryByRole("button", { name: /Prikaži še/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pokaži še/ })).toBeNull();
     // The line the button stood over stays and finishes the count, so the
     // list ends in a sentence rather than in blank space above the footer.
     expect(

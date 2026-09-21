@@ -244,6 +244,25 @@ describe("the fact tiles", () => {
     expect(bare.textContent).not.toMatch(/ni znano|not known/i);
   });
 
+  // A sheet read across a room cannot be corrected by the description beside
+  // it, because there is none: the identity three describe one animal and the
+  // listing covers three. The species and the health record stay, both being
+  // true of the listing as a whole. Same rule as the card and the dialog.
+  it("withholds the identity three for a listing covering several animals", () => {
+    const { container } = poster({
+      animal: animal({
+        name: "Disel, Lyann, Luna",
+        species: "dog",
+        sex: "female",
+        size: "medium",
+        approximateAgeMonths: 24,
+        medical: { vaccinated: true },
+      }),
+    });
+
+    expect(tiles(container)).toEqual(["Pes", "Cepljenje"]);
+  });
+
   it("gives the health record the brand green and identity the neutral", () => {
     const { container } = poster({
       animal: animal({

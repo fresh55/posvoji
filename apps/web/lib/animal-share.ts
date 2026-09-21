@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Metadata } from "next";
 import type { Animal } from "@posvoji/schema";
 import { animalPath } from "@/lib/animal-path";
+import { namesSeveralAnimals } from "@/lib/animal-name";
 import { ageInMonths } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -102,11 +103,19 @@ export function animalDescription(
   // Composed here, not borrowed from the card's meta line: that line is cut to
   // a card's width, and a sentence in a link preview is not. Sharing one
   // builder let a phone's width decide what a shared link says about an animal.
+  // A listing covering several animals keeps the species and drops the sex and
+  // the age, which describe one of them. Nothing replaces them: the sentence
+  // still names the shelter and the town, where the card had to say something
+  // or stand empty. lib/animal-name.ts holds the rule the card, the dialog and
+  // the poster read.
+  const severalAnimals = namesSeveralAnimals(animal.name);
   const months = ageInMonths(animal, reference);
   const facts = [
     speciesLabel(animal.species, locale),
-    sexFact(animal, locale),
-    months !== undefined ? ageLabel(months, locale) : undefined,
+    severalAnimals ? undefined : sexFact(animal, locale),
+    !severalAnimals && months !== undefined
+      ? ageLabel(months, locale)
+      : undefined,
   ]
     .filter(Boolean)
     .join(META_SEPARATOR);
@@ -132,7 +141,9 @@ export function animalTitle(
   const parts = [
     animal.name,
     speciesLabel(animal.species, locale),
-    months === undefined ? undefined : ageLabel(months, locale),
+    months === undefined || namesSeveralAnimals(animal.name)
+      ? undefined
+      : ageLabel(months, locale),
     animal.shelter.name,
   ].filter((part): part is string => Boolean(part));
   return parts.join(META_SEPARATOR);

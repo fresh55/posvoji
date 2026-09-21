@@ -45,3 +45,35 @@ export function displayName(name: string): string {
       first + rest.toLocaleLowerCase("sl"),
   );
 }
+
+// Seven listings in the dataset cover more than one animal, and they arrive
+// spelled two ways: as a list of names ("Bria in Brin", "TOM in LADY",
+// "DISEL, LYANN, LUNA") and, once, as a collective ("Božanska družina", a
+// mother and her two sons). Either way one age, one sex and one size describe
+// only one of them, so a row of facts states something untrue: 7, 12 and 12
+// years stood under a single "7 let" pill, and a family under "Samec".
+//
+// Both tests are deliberately narrow. Every part of a list has to be a single
+// capitalised name, which leaves "Peter Zajec" and "brezrepa tritačka Luna"
+// the one animal each of them is; the collective is one morpheme rather than a
+// vocabulary, and it is the only name in 488 carrying it.
+const NAME_LIST = /\s*,\s*|\s+in\s+/;
+const ONE_NAME = /^\p{Lu}[\p{L}'’-]*\.?$/u;
+const COLLECTIVE_NAME = /družin/i;
+
+/**
+ * Whether a listing's name covers several animals.
+ *
+ * Only ever used to withhold a claim, never to make one, which is what keeps a
+ * heuristic over the shelter's own spelling honest: the worst a false positive
+ * costs is a fact left to the description, and the description is where a
+ * listing like this says it properly anyway.
+ */
+export function namesSeveralAnimals(name: string | null | undefined): boolean {
+  if (!name) return false;
+  const parts = name.trim().split(NAME_LIST);
+  return (
+    COLLECTIVE_NAME.test(name) ||
+    (parts.length > 1 && parts.every((part) => ONE_NAME.test(part)))
+  );
+}

@@ -76,6 +76,11 @@ type PointKey = keyof typeof pointIcons;
 // Practical guidance for adopters and shelters, grounded in DATA-POLICY.md.
 // Do not promise live availability or a refresh interval: sources can lag.
 // Browsing needs no account; shelters have a separate portal login.
+//
+// Two voices, and the two lists below are what keeps them apart: adopters are
+// "ti" and shelters are "vi", so a point moved between them moves its address
+// with it. The closing line stands outside both and takes the visitor's form.
+// docs/COPY-VOICE.md has the rule.
 const pageText: Record<Locale, PageText> = {
   sl: {
     lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
@@ -85,18 +90,18 @@ const pageText: Record<Locale, PageText> = {
         {
           key: "shelterDecides",
           title: "Kako poteka posvojitev?",
-          body: "Ob vsaki objavi je navedeno zavetišče, ki za žival skrbi. Z njim se pogovorite o njenih potrebah, svojem vsakdanu in spoznavanju. Zavetišče vam pojasni pogoje in morebitne stroške ter vodi posvojitev.",
-          link: { label: "Poiščite žival, ki išče dom", href: "/" },
+          body: "Ob vsaki objavi je navedeno zavetišče, ki za žival skrbi. Z njim se pogovori o njenih potrebah, svojem vsakdanu in spoznavanju. Zavetišče ti pojasni pogoje in morebitne stroške ter vodi posvojitev.",
+          link: { label: "Poišči žival, ki išče dom", href: "/" },
         },
         {
           key: "freshness",
           title: "Ali žival še išče dom?",
-          body: "Objave se lahko spremenijo, preden se sprememba pokaže pri nas. Pred obiskom pri zavetišču preverite, ali je žival še na voljo, in se dogovorite za termin. Naš seznam ne zajema vseh živali in zavetišč.",
+          body: "Objave se lahko spremenijo, preden se sprememba pokaže pri nas. Pred obiskom pri zavetišču preveri, ali je žival še na voljo, in se dogovori za termin. Naš seznam ne zajema vseh živali in zavetišč.",
         },
         {
           key: "free",
           title: "Brezplačna uporaba",
-          body: "Ogled živali in sodelovanje zavetišč sta brezplačna. Za ogled ne potrebujete računa. Na strani ni oglasov ali plačanih prednostnih uvrstitev.",
+          body: "Ogled živali in sodelovanje zavetišč sta brezplačna. Za ogled ne potrebuješ računa. Na strani ni oglasov ali plačanih prednostnih uvrstitev.",
         },
       ],
     },
@@ -118,7 +123,7 @@ const pageText: Record<Locale, PageText> = {
       ],
     },
     report:
-      "Ste opazili napako ali je žival že našla dom? Pošljite nam povezavo do objave in povejte, kaj je treba popraviti. Na isti naslov nam lahko pišete za sodelovanje, umik vsebin ali predlog.",
+      "Si opazil napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti. Na isti naslov pišejo tudi zavetišča za sodelovanje, umik vsebin ali predlog.",
   },
   en: {
     lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",

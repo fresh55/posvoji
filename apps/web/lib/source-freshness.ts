@@ -30,29 +30,25 @@ export function verificationDate(value: string, locale: Locale): string {
   return Number.isFinite(date.getTime()) ? dateFormats[locale].format(date) : "—";
 }
 
-const relativeFormats: Record<Locale, Intl.RelativeTimeFormat> = {
-  sl: new Intl.RelativeTimeFormat("sl-SI", { numeric: "always" }),
-  en: new Intl.RelativeTimeFormat("en-GB", { numeric: "always" }),
-};
-
+/**
+ * Whether a source check is old enough to warn about, and whether it can be
+ * read at all.
+ *
+ * `known` and not a formatted age. This used to return the elapsed time as
+ * words, and the animal footnote printed them under the absolute date one line
+ * above; that sentence is gone, and with it the two Intl.RelativeTimeFormat
+ * instances and the hours-versus-days branch that built it on every tick of
+ * the component's minute timer. What the one caller actually asks is whether
+ * the timestamp parsed, which is a boolean.
+ */
 export function sourceFreshness(
   value: string | undefined,
-  locale: Locale,
   now: number,
-): { isOld: boolean; age: string | null } {
+): { isOld: boolean; known: boolean } {
   const time = value === undefined ? NaN : Date.parse(value);
   // Allow minor clock skew, but treat missing or unreliable checks as unknown.
   if (!Number.isFinite(time) || time > now + 300000) {
-    return { isOld: true, age: null };
+    return { isOld: true, known: false };
   }
-  const elapsed = Math.max(0, now - time);
-  // Keep hours through the first two days so a 31-hour check is distinct
-  // from one a full two days old. Longer gaps use completed days.
-  const hours = Math.floor(elapsed / 3600000);
-  return {
-    isOld: elapsed > 30 * 3600000,
-    age: hours < 48
-      ? relativeFormats[locale].format(-hours, "hour")
-      : relativeFormats[locale].format(-Math.floor(hours / 24), "day"),
-  };
+  return { isOld: Math.max(0, now - time) > 30 * 3600000, known: true };
 }

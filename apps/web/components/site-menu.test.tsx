@@ -70,6 +70,16 @@ describe("the header menu", () => {
     expect(login.getAttribute("hreflang")).toBe("sl");
   });
 
+  // The separator is what demotes the quiet group. site-menu.tsx argues why
+  // the colour cannot help it.
+  it("does not grey the login into looking disabled", () => {
+    openMenu("sl", "Meni");
+
+    const login = screen.getByRole("menuitem", { name: "Prijava za zavetišča" });
+    expect(login.className.split(" ")).not.toContain("text-muted-foreground");
+    expect(login.getAttribute("aria-disabled")).toBeNull();
+  });
+
   // The page still builds and still answers on /viri and /en/resources; it is
   // only unlisted, in lib/site-links.ts, and the dropdown is the surface that
   // used to show every link there was.

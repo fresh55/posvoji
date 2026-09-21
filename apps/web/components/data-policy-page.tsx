@@ -58,7 +58,10 @@ type PageText = {
 const pageText: Record<Locale, PageText> = {
   sl: {
     title: "Vsebine in dovoljenja",
-    lead: "Kako ravnamo z objavami zavetišč in kako nas opozorite na napako ali zahtevate umik.",
+    // Infinitives rather than an address: the rules below speak to shelters
+    // and to visitors in turn, so the line introducing both names neither.
+    // docs/COPY-VOICE.md.
+    lead: "Kako ravnamo z objavami zavetišč in kako sporočiti napako ali zahtevati umik.",
     rules: [
       {
         key: "permission",
@@ -73,17 +76,19 @@ const pageText: Record<Locale, PageText> = {
       {
         key: "source",
         title: "Ob vsaki živali je navedeno zavetišče",
-        body: "Dodamo povezavo do izvorne objave; če zavetišče žival objavi neposredno pri nas, je izvorna objava na Posvoji.si. Podatki se lahko medtem spremenijo. O živali in posvojitvi se zato vedno pogovorite z zavetiščem, ki zanjo skrbi.",
+        body: "Dodamo povezavo do izvorne objave; če zavetišče žival objavi neposredno pri nas, je izvorna objava na Posvoji.si. Podatki se lahko medtem spremenijo. O živali in posvojitvi se zato vedno pogovori z zavetiščem, ki zanjo skrbi.",
       },
       {
         key: "visitor",
         title: "Zasebnost obiskovalcev",
-        body: "Za ogled ne potrebujete računa. Na strani ni oglasov ali sledilcev. Če dovolite uporabo lokacije, jo uporabimo za prikaz živali po bližini in je ne shranimo. Podatkov zasebnih lastnikov, posvojiteljev ali prosilcev ne zbiramo in ne objavljamo.",
+        body: "Za ogled ne potrebuješ računa. Na strani ni oglasov ali sledilcev. Če dovoliš uporabo lokacije, jo uporabimo za prikaz živali po bližini in je ne shranimo. Podatkov zasebnih lastnikov, posvojiteljev ali prosilcev ne zbiramo in ne objavljamo.",
       },
       {
         key: "exit",
         title: "Popravek ali umik? Pišite nam.",
-        body: "Če opazite napako, nam pošljite povezavo do objave in povejte, kaj je treba popraviti. Zavetišča lahko kadarkoli zahtevate spremembo prikaza, umik fotografij ali drugih vsebin ter prenehanje sodelovanja. Zahteve za umik obravnavamo prednostno.",
+        // The first sentence answers the visitor, the second names shelters as
+        // its subject, so the two addresses do not collide.
+        body: "Če opaziš napako, nam pošlji povezavo do objave in povej, kaj je treba popraviti. Zavetišča lahko kadarkoli zahtevate spremembo prikaza, umik fotografij ali drugih vsebin ter prenehanje sodelovanja. Zahteve za umik obravnavamo prednostno.",
         contact: "Dosegljivi smo na",
       },
     ],
@@ -149,7 +154,13 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
     <SiteShell
       locale={locale}
       languagePaths={DATA_POLICY_PATHS}
-      mainClassName="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-section-gap py-page-y"
+      // No mx-auto: a page in the site's reading flow starts its column at the
+      // frame's left edge, where the header and footer start and where every
+      // other narrowed page starts. Centred, this one sat 224px right of
+      // /o-nas on the way in from its own link while the chrome stayed put.
+      // The pages that do centre are a single moment rather than a section to
+      // read on: the 404, the portal login, the demo gate.
+      mainClassName="flex w-full max-w-3xl flex-1 flex-col gap-section-gap py-page-y"
       // The address is printed inside the exit rule, where it is the thing to
       // do about the sentence above it. Same reason /o-nas passes the footer's
       // copy off: a second copy of one address on one screen says nothing new.

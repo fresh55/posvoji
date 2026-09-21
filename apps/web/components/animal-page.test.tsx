@@ -176,6 +176,19 @@ describe("the animal page's hero", () => {
     expect(grid.className).not.toContain("sm:grid-cols-2");
     // No gallery mounts at all: there is nothing for it to show.
     expect(container.querySelector("img")).toBeNull();
+    // But the absence is named, in the words the card uses for it.
+    expect(screen.getByText("Fotografija na strani zavetišča")).toBeTruthy();
+  });
+
+  it("says nothing about photographs when the animal has one", () => {
+    render(
+      <AnimalPage
+        locale="sl"
+        slug={animalPathParts(ANIMAL_WITH_PHOTO).animal}
+      />,
+    );
+
+    expect(screen.queryByText("Fotografija na strani zavetišča")).toBeNull();
   });
 
   it("keeps the two-column layout when the animal has a photo", () => {

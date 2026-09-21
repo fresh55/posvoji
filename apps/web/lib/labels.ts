@@ -1,6 +1,7 @@
 import type { LabelKey } from "@/lib/label-messages";
 import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
 import type { AnimalFields } from "@/lib/animal";
+import { namesSeveralAnimals } from "@/lib/animal-name";
 import type { Locale } from "@/lib/i18n";
 import { translateLabel as translate } from "@/lib/label-messages";
 import {
@@ -384,6 +385,15 @@ export function animalMetaParts(
   if (species !== "dog" && species !== "cat") {
     facts.push(speciesLabel(animal.species, locale));
   }
+  // A listing covering several animals takes the one fact true of all of them
+  // and stops, rather than falling through to the next single-animal one the
+  // way a missing fact does. animal-facts.tsx argues the withholding; what is
+  // decided here is that the card, having no description under it to answer
+  // instead, says so in words.
+  if (namesSeveralAnimals(animal.name)) {
+    facts.push(translate(locale, "cardSeveralAnimals"));
+    return facts;
+  }
   const months = ageInMonths(animal, now);
   // Named, not bare. The grid's default order is the longest wait first, and
   // the wait mark stays off under that very sort, so "5 mesecev" alone read as
@@ -410,8 +420,9 @@ export function animalMetaParts(
     const sex = sexFact(animal, locale);
     if (sex) facts.push(sex);
   }
-  // Never longer than the limit: the two unguarded pushes above are the head
-  // of the list and there are exactly two of them.
+  // Never longer than the limit. Three pushes above are unguarded: the species
+  // word, the age, and the several-animals fact, and that last one returns
+  // where it stands rather than falling through to the guarded pair.
   return facts;
 }
 

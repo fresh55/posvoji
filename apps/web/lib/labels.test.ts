@@ -278,3 +278,60 @@ describe("shelterChipLabel", () => {
     expect(shelterChipLabel("Zavetišče Ob (Snaga)")).toBe("Zavetišče Ob");
   });
 });
+
+// Seven listings in the dataset cover more than one animal, and the card has
+// one age, one size and one sex to give for all of them. The dialog and the
+// page withhold those and let the shelter's description answer instead; the
+// card has no description under it, so it says what it has instead of falling
+// through to the next single-animal fact.
+describe("the card's meta line for a listing covering several animals", () => {
+  const meta = (
+    subject: Animal,
+    locale: Parameters<typeof animalMetaParts>[1],
+    species: Parameters<typeof animalMetaParts>[3],
+  ) => animalMetaParts(subject, locale, NOW, species).join(META_SEPARATOR);
+
+  const three = animal({
+    name: "Disel, Lyann, Luna",
+    species: "dog",
+    sex: "female",
+    approximateAgeMonths: 84,
+    size: "medium",
+  });
+
+  it("replaces the age, the size and the sex rather than joining them", () => {
+    expect(meta(three, "sl", "all")).toBe("Pes · več živali");
+    expect(meta(three, "en", "all")).toBe("Dog · several animals");
+  });
+
+  // On a species tab the species word comes off the front, so this is the
+  // whole line. A bare number there would have read as one animal's age.
+  it("stands alone on a tab that has already named the species", () => {
+    expect(meta(three, "sl", "dog")).toBe("več živali");
+  });
+
+  it("reads a pair joined by in and a collective the same way", () => {
+    expect(meta(animal({ name: "Bria in Brin", species: "cat" }), "sl", "cat"))
+      .toBe("več živali");
+    expect(
+      meta(animal({ name: "Božanska družina", species: "cat" }), "sl", "cat"),
+    ).toBe("več živali");
+  });
+
+  // The guard the rule is worth having: an ordinary two-word name is one
+  // animal, and so is a description that happens to contain the word "in".
+  it("leaves a single animal's own facts alone", () => {
+    const one = animal({
+      name: "Peter Zajec",
+      species: "dog",
+      approximateAgeMonths: 24,
+    });
+    expect(meta(one, "sl", "dog")).toBe("starost 2 leti");
+    const tritta = animal({
+      name: "triinpoltačka Tritta",
+      species: "cat",
+      approximateAgeMonths: 24,
+    });
+    expect(meta(tritta, "sl", "cat")).toBe("starost 2 leti");
+  });
+});

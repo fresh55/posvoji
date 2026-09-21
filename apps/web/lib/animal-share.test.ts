@@ -100,3 +100,32 @@ describe("animalDescription", () => {
     );
   });
 });
+
+// A shared link is where a listing meets someone who has not seen the page, so
+// the sentence and the title withhold what a multi-animal listing cannot say
+// for all of its animals. The species and the shelter stay: both are true of
+// every one of them, and unlike the card there is no empty line to fill.
+describe("a listing that covers several animals", () => {
+  const family = animal({ name: "Bria in Brin", species: "cat", sex: "male" });
+
+  it("keeps the sex and the age out of the shared sentence", () => {
+    const description = animalDescription(family, "sl", REFERENCE);
+
+    expect(description).toContain("Bria in Brin · Mačka.");
+    expect(description).not.toContain("samec");
+    expect(description).not.toContain("4 leta");
+    expect(description).toContain("Zavod Muri, Maribor");
+  });
+
+  it("keeps the age out of the title", () => {
+    expect(animalTitle(family, "sl", REFERENCE)).toBe(
+      "Bria in Brin · Mačka · Zavod Muri",
+    );
+  });
+
+  it("leaves a single animal's own sentence whole", () => {
+    expect(animalDescription(animal(), "sl", REFERENCE)).toContain(
+      "Čoko-Lina · Pes · samica · 4 leta.",
+    );
+  });
+});

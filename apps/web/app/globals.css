@@ -752,8 +752,8 @@
 /* The fade itself, shared by the two utilities below. use-scroll-edge-fades.ts
    flips the two variables and a soft mask on each clipped edge takes over the
    scrollbar's job of saying there is more; a container that fits stays
-   untouched. The fade depth and the easing live here alone, so the two
-   containers that wear them cannot drift to different numbers.
+   untouched. The fade depth and the easing live here alone, so no container
+   wearing them can drift to different numbers.
 
    It cannot be hoisted into a custom property on :root instead. The two
    variables are registered non-inheriting with an initial value of 0, and a
@@ -805,7 +805,9 @@
 }
 
 /* The thin bar on its own, for a box that scrolls and wants to say so without
-   the fade: the phone filter sheet, the picker's shelter list, the dialog.
+   the fade: the phone filter sheet and the dialog. The picker's shelter list
+   left this list for fade-scroll-thin, because the dialog's own CTA clips its
+   last row and a row cut through the middle reads as the end of the roster.
    Lifted out of fade-scroll-thin the way fade-scroll-mask was, because three
    call sites had reached for `[scrollbar-width:thin]` by hand and none of them
    got the thumb colour the paragraph above measured. */

@@ -114,6 +114,44 @@ export function jumpToFilterSection(
   trigger.focus({ preventScroll: true });
 }
 
+/**
+ * Take the visitor to the panel section that holds one filter, opening it if
+ * it is folded.
+ *
+ * Reached from outside the panel, so the section is found in the DOM rather
+ * than through a prop threaded down components that have no other reason to
+ * know about the row above them. The handle is the heading's own
+ * data-filter-section, and the scope is the sidebar: the sheet is a dialog
+ * that only exists below lg, where the row draws no way back at all, and a
+ * document-wide query would find its headings first if both were mounted.
+ *
+ * The fold itself is still turned by pressing the heading, which is the path a
+ * visitor's own press takes. The store behind it (use-filter-sections.ts)
+ * would be the shorter way in, but what a section is holding open for this
+ * visit lives in the hook's own state rather than in that store, so an opening
+ * written straight to storage would be masked by it. Worth collapsing the two,
+ * and larger than this change.
+ *
+ * Focus lands on the heading either way, without a scroll of its own: the
+ * panel has just been moved on purpose, and the browser's idea of where focus
+ * should sit would move it again.
+ */
+export function jumpToFilterSection(
+  section: FilterSectionKey,
+  smooth: boolean,
+): void {
+  const trigger = document.querySelector<HTMLElement>(
+    `aside [data-filter-section="${section}"]`,
+  );
+  if (!trigger) return;
+  if (trigger.getAttribute("aria-expanded") === "false") {
+    trigger.click();
+  } else {
+    scrollChildIntoViewY(trigger.closest("section"), { smooth });
+  }
+  trigger.focus({ preventScroll: true });
+}
+
 /** The folding half shared by sidebar and sheet. Without a collapse contract
     the body stays open with no disclosure id, as plain lists require. */
 export function CollapsibleBody({

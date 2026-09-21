@@ -27,6 +27,10 @@ export type SectionCollapse = {
   onToggle: () => void;
   summary: string | null;
   contentId: string;
+  /** Which section this is, published on the heading as a handle for anything
+   *  outside the panel that has to reach it -- today the active-filter row,
+   *  whose pills go to the section that set them. */
+  section?: string;
 };
 
 /** The panel's section-heading voice. The sheet's sort caption borrows it on
@@ -38,6 +42,100 @@ export const SECTION_LABEL_CLASS =
 const BODY_EASE = [0.16, 1, 0.3, 1] as const;
 // The fold runs 0.3s; the section is measured once it has settled.
 const FOLD_SETTLE_MS = 350;
+
+/** The scrolling box a section sits in, or null if it is not in one. */
+function scrollPort(node: HTMLElement): HTMLElement | null {
+  for (let element = node.parentElement; element; element = element.parentElement) {
+    const { overflowY } = getComputedStyle(element);
+    if (
+      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+      element.scrollHeight > element.clientHeight
+    ) {
+      return element;
+    }
+  }
+  return null;
+}
+
+/**
+ * Bring a section into its own panel, and into nothing else.
+ *
+ * scrollIntoView scrolls every scrollable ancestor it can find, and inside
+ * this panel that includes the page. Measured at 1440x900 on the built site,
+ * page at rest: one scrollIntoView on the Velikost section moved the window
+ * 177px and the panel 0. That is what opening a section by hand did, so a
+ * press while the page was still at the top threw it down to where the sidebar
+ * sticks -- which is the same place a filter press scrolls to (scrollToResults
+ * in use-animal-filters.ts), and why it read as deliberate for as long as it
+ * did. The same press now moves the panel 177px and the window 0.
+ *
+ * So the arithmetic is written out here instead. It is block: "nearest" and
+ * nothing more -- a section taller than the room, or above it, aligns tops;
+ * one below aligns bottoms; one already inside does not move at all -- applied
+ * to the one box that should move.
+ *
+ * The room is the part of the panel the visitor can see, not the panel's own
+ * box. This one is sticky and 876px tall under a title block, so at the top of
+ * the page its last 141px stand below the window's edge, and a section aligned
+ * to the box's bottom lands just out of sight. Clipping the target to the
+ * window costs nothing once the panel is stuck, where the two are the same
+ * rectangle.
+ *
+ * Where there is no scrolling box, which is every jsdom test that does not
+ * lay one out, scrollIntoView is still the right call and still what runs.
+ */
+export function revealSection(section: HTMLElement, smooth: boolean): void {
+  const behavior = smooth ? "smooth" : "auto";
+  const port = scrollPort(section);
+  if (!port) {
+    section.scrollIntoView({ block: "nearest", behavior });
+    return;
+  }
+  const panel = port.getBoundingClientRect();
+  const top = Math.max(panel.top, 0);
+  const bottom = Math.min(panel.bottom, document.documentElement.clientHeight);
+  const box = section.getBoundingClientRect();
+  const delta =
+    box.height > bottom - top || box.top < top
+      ? box.top - top
+      : box.bottom > bottom
+        ? box.bottom - bottom
+        : 0;
+  if (delta === 0) return;
+  port.scrollTo({ top: port.scrollTop + delta, behavior });
+}
+
+/**
+ * Take the visitor to the panel section that holds one filter, opening it if
+ * it is folded.
+ *
+ * Reached from outside the panel, so it goes through the DOM rather than
+ * through a prop threaded down four components that have no other reason to
+ * know about the row above them. The handle is the heading's own
+ * data-filter-section, and the scope is the sidebar: the sheet is a dialog
+ * that only exists below lg, where the row draws no jump at all, and a
+ * document-wide query would find its headings first if both were mounted.
+ *
+ * A folded section is opened by pressing its heading, which is the same path a
+ * visitor's own press takes -- the fold is stored, and the section pulls
+ * itself into the panel once it has grown. An open one only has to be brought
+ * into view. Focus lands on the heading either way, without a scroll of its
+ * own: the panel has just been moved on purpose, and the browser's own idea of
+ * where focus should sit would move it again.
+ */
+export function jumpToFilterSection(section: string, smooth: boolean): void {
+  const trigger = document.querySelector<HTMLElement>(
+    `aside [data-filter-section="${section}"]`,
+  );
+  if (!trigger) return;
+  if (trigger.getAttribute("aria-expanded") === "false") {
+    trigger.click();
+  } else {
+    const box = trigger.closest("section");
+    if (box instanceof HTMLElement) revealSection(box, smooth);
+  }
+  trigger.focus({ preventScroll: true });
+}
 
 /** The folding half shared by sidebar and sheet. Without a collapse contract
     the body stays open with no disclosure id, as plain lists require. */
@@ -176,10 +274,7 @@ export function FilterSectionHeader({
     if (!section) return;
     window.setTimeout(() => {
       if (!section.isConnected) return;
-      section.scrollIntoView({
-        block: "nearest",
-        behavior: shouldReduceMotion ? "auto" : "smooth",
-      });
+      revealSection(section, !shouldReduceMotion);
     }, FOLD_SETTLE_MS);
   };
 
@@ -268,6 +363,7 @@ export function FilterSectionHeader({
       onKeyDown={moveSectionFocus}
       aria-expanded={collapse.open}
       aria-controls={collapse.contentId}
+      data-filter-section={collapse.section}
       // uppercase and tracking-wide repeat what the h3 around this button
       // already sets. The browser's own button rules reset text-transform and
       // letter-spacing, so without them a folding heading printed in sentence
@@ -329,6 +425,36 @@ export function FilterSectionHeader({
         <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
           {collapse.summary}
         </span>
+      ) : active ? (
+        // The same thing the chip above says, in the space an open section has
+        // for it. One rule out of two: a section holding an answer carries a
+        // green mark in its heading, whether or not its cards are drawn. The
+        // panel is a column of ten headings taller than its own scrollport, and
+        // without this the only sections announcing themselves in a scan were
+        // the folded ones -- folding an active section made it more visibly
+        // active than leaving it open.
+        //
+        // The dot and not the chip, because the words do not fit twice. Open,
+        // the chosen rows are eight pixels below and say which answer it is;
+        // what is missing is only that there is one. A chip here would push a
+        // long heading into its own truncation (CAS V ZAVETISCU at 224px) to
+        // repeat what the row underneath already reads out.
+        //
+        // Left of the chevron and not beside it: the reset link is absolute at
+        // right-6 whenever the section is open and active, which is exactly
+        // when this is drawn, and the two would be laid over each other. Where
+        // the chip stands is where this stands.
+        //
+        // --brand-border is the one green measured against both grounds this
+        // heading has, the page and --muted under the pointer: 3.27:1 and
+        // 3.00:1, the 3:1 SC 1.4.11 asks of a graphic that carries meaning
+        // (globals.css). aria-hidden because it carries none that is not
+        // already said: a folded section spells its answer in the chip, an
+        // open one in the pressed state of its own rows.
+        <span
+          aria-hidden
+          className="size-1.5 shrink-0 rounded-full bg-brand-border animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
+        />
       ) : null}
       {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
           3.62:1 in light, 5.20:1 in dark. This is the one thing that says the

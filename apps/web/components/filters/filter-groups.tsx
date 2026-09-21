@@ -554,9 +554,16 @@ export function FilterGroupList({
   const { locale } = useI18n();
   const appearanceGroups = groups.filter(({ group }) => group === "coatColor" || group === "coatLength");
   const appearanceSelected = [...filters.coatColor, ...filters.coatLength];
+  // Both layouts now. This was the sheet's alone, for the pass in which the
+  // sidebar's sections could not be reached by anything but a click inside
+  // them; a shared link carries answers into folded sections on either
+  // surface, and the panel that hid them was the one standing open beside the
+  // grid the whole time. useFilterSections says when a section may reveal
+  // itself, when it may not, and what an arriving address does to the two
+  // sections that are open by default.
   const { isOpen, toggleSection } = useFilterSections({
     layout,
-    initiallyOpen: layout === "sheet" ? {
+    active: {
       sex: filters.sex.length > 0,
       age: filters.age.length > 0,
       size: filters.size.length > 0,
@@ -567,7 +574,7 @@ export function FilterGroupList({
       goodWith: filters.goodWith.length > 0,
       home: filters.home.length > 0,
       care: filters.care.length > 0,
-    } : undefined,
+    },
   });
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
@@ -613,6 +620,7 @@ export function FilterGroupList({
     onToggle: () => toggleSection(key),
     summary,
     contentId: `${idBase}-${key}`,
+    section: key,
   });
   const appearanceOptions = appearanceGroups.flatMap(({ options }) => options);
   const appearanceCollapse = collapseFor(

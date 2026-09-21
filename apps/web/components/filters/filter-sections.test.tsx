@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import {
@@ -22,6 +22,10 @@ import {
 } from "@/lib/filters";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import type { CardGroup } from "./filter-groups";
+import {
+  jumpToFilterSection,
+  revealSection,
+} from "./filter-section-header";
 import { FilterSidebar } from "./filter-sidebar";
 import { resetFilterSectionsStore } from "./use-filter-sections";
 
@@ -198,6 +202,32 @@ function stored(): unknown {
   return JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null");
 }
 
+/** The green mark an answered section carries in its heading while its cards
+ *  are drawn. A folded one prints the answer itself instead, which the summary
+ *  tests read off the heading's text. */
+function mark(label: string): Element | null {
+  return header(label).querySelector(".bg-brand-border");
+}
+
+/** An address arriving at a panel that is already mounted: a shared link
+ *  reaching hydration, or the back gesture. The page is statically exported,
+ *  so this is the only way a sidebar ever sees a filter it did not draw itself
+ *  (lib/location-search.ts). */
+function arrive(url: string): void {
+  window.history.replaceState(null, "", url);
+  fireEvent.popState(window);
+}
+
+/** A panel drawn on an address that already carried filters, which is what a
+ *  shared link is. jsdom renders rather than hydrates, so the filters are in
+ *  the first render; the built site reaches the same arrangement through
+ *  arrive() a beat after hydration, and useFilterSections runs one rule for
+ *  both. */
+function renderLandingOn(url: string) {
+  window.history.replaceState(null, "", url);
+  return renderSidebar();
+}
+
 describe("collapsible filter sections", () => {
   it("folds age on short desktops without replacing a saved choice", () => {
     vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
@@ -292,6 +322,65 @@ describe("collapsible filter sections", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
     fireEvent.click(header("Zdravje"));
     expect(header("Zdravje").textContent).toContain("Sterilizacija +1");
+  });
+
+  it("opens a folded section when its answer arrives with the address", async () => {
+    renderSidebar();
+    expect(expanded("Velikost")).toBe("false");
+
+    arrive("/?velikost=majhna");
+
+    expect(expanded("Velikost")).toBe("true");
+    await waitFor(() => expect(card(/^Majhna/)).toBeTruthy());
+  });
+
+  it("leaves the visitor's own fold alone when another section is answered", () => {
+    renderSidebar();
+    fireEvent.click(header("Spol"));
+    expect(expanded("Spol")).toBe("false");
+
+    arrive("/?velikost=majhna");
+
+    expect(expanded("Velikost")).toBe("true");
+    expect(expanded("Spol")).toBe("false");
+  });
+
+  it("keeps a revealed section open once its answer is cleared", () => {
+    renderSidebar();
+    arrive("/?velikost=majhna");
+    expect(expanded("Velikost")).toBe("true");
+
+    // Folding away under the press that emptied it would take the rest of its
+    // options with it, and they are what a visitor clearing one answer is most
+    // likely to want next.
+    arrive("/");
+
+    expect(expanded("Velikost")).toBe("true");
+  });
+
+  it("opens an arriving answer without scrolling anything", async () => {
+    renderSidebar();
+
+    arrive("/?velikost=majhna");
+    await waitFor(() => expect(expanded("Velikost")).toBe("true"));
+
+    // The panel is sticky under the page title, so it cannot lift a section
+    // into view without taking the page with it; the room the defaults give up
+    // is what brings the answer up instead. revealSection carries the numbers.
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("marks an answered section whose cards are drawn", () => {
+    const { unmount } = renderStatic(EMPTY_FILTERS);
+    expect(expanded("Spol")).toBe("true");
+    expect(mark("Spol")).toBeNull();
+    unmount();
+
+    renderStatic({ ...EMPTY_FILTERS, sex: ["female"] });
+    expect(mark("Spol")).toBeTruthy();
+    // The heading still reads as itself: the mark is not in the name.
+    expect(header("Spol").textContent).toBe("Spol");
   });
 
   it("hands the reset back only once the section is open", () => {
@@ -494,5 +583,150 @@ describe("the sidebar's surfaces", () => {
     // wins.
     expect(reset?.className).toContain("px-1");
     expect(reset?.className).not.toContain("p-0");
+  });
+});
+
+describe("the room an arriving answer is given", () => {
+  it("folds the unanswered defaults on an address that came filtered", () => {
+    renderLandingOn("/?velikost=majhna");
+
+    // Two questions this visitor has not answered, 294px of them, standing
+    // between the top of the panel and the section they arrived with.
+    expect(expanded("Spol")).toBe("false");
+    expect(expanded("Starost")).toBe("false");
+    expect(expanded("Velikost")).toBe("true");
+    expect(mark("Velikost")).toBeTruthy();
+  });
+
+  it("leaves them open when the visitor answers the first question themselves", () => {
+    renderSidebar();
+    expect(expanded("Spol")).toBe("true");
+
+    // A press, not an arrival. The panel is already being read.
+    fireEvent.click(screen.getByRole("button", { name: /^Samica,/ }));
+
+    expect(expanded("Spol")).toBe("true");
+    expect(expanded("Starost")).toBe("true");
+  });
+
+  it("never gives up a fold the visitor set themselves", () => {
+    // Starost opened by hand on an earlier visit, and stored.
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ age: true }));
+    resetFilterSectionsStore();
+
+    renderLandingOn("/?velikost=majhna");
+
+    expect(expanded("Starost")).toBe("true");
+    expect(expanded("Spol")).toBe("false");
+  });
+
+  it("asks nothing of the defaults on an address with no filters", () => {
+    renderLandingOn("/");
+
+    expect(expanded("Spol")).toBe("true");
+    expect(expanded("Starost")).toBe("true");
+  });
+});
+
+describe("bringing a section into the panel", () => {
+  // jsdom lays nothing out and answers 0 for the window's own height, so the
+  // window, the panel and the section all state their boxes here.
+  beforeEach(() => {
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      value: 600,
+      configurable: true,
+    });
+  });
+
+  // A panel with 1000px of content, and a section inside it.
+  function panelWith(section: DOMRect, panel: Partial<DOMRect> = {}) {
+    const port = document.createElement("div");
+    port.style.overflowY = "auto";
+    Object.defineProperty(port, "scrollHeight", { value: 1000 });
+    Object.defineProperty(port, "clientHeight", { value: 500 });
+    port.scrollTop = 0;
+    port.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 500, height: 500, ...panel }) as DOMRect;
+    const scrollTo = vi.fn();
+    port.scrollTo = scrollTo;
+
+    const node = document.createElement("section");
+    node.getBoundingClientRect = () => section;
+    port.append(node);
+    document.body.append(port);
+    return { node, scrollTo };
+  }
+
+  const rect = (top: number, height: number) =>
+    ({ top, bottom: top + height, height }) as DOMRect;
+
+  it("scrolls the panel, and never the page", () => {
+    const { node, scrollTo } = panelWith(rect(700, 100));
+
+    revealSection(node, false);
+
+    // 300 past the panel's bottom edge, so the panel takes exactly that.
+    expect(scrollTo).toHaveBeenCalledWith({ top: 300, behavior: "auto" });
+    // scrollIntoView is what took the whole page with it.
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it("aims at the part of the panel the window shows", () => {
+    // The sticky panel before the page has scrolled: its box runs past the
+    // bottom of the window, and a section aligned to that box would settle out
+    // of sight.
+    const { node, scrollTo } = panelWith(rect(700, 100), {
+      top: 100,
+      bottom: 976,
+      height: 876,
+    });
+
+    revealSection(node, true);
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 200, behavior: "smooth" });
+  });
+
+  it("leaves a section that is already in the panel alone", () => {
+    const { node, scrollTo } = panelWith(rect(100, 100));
+
+    revealSection(node, false);
+
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe("going to a section from outside the panel", () => {
+  it("opens a folded section and puts the keyboard on its heading", () => {
+    renderSidebar();
+    expect(expanded("Velikost")).toBe("false");
+
+    // act, because the jump presses the heading through the DOM rather than
+    // through fireEvent, and React flushes that on its own only in a browser.
+    act(() => jumpToFilterSection("size", false));
+
+    expect(expanded("Velikost")).toBe("true");
+    expect(document.activeElement).toBe(header("Velikost"));
+  });
+
+  it("only brings an open one into view", async () => {
+    renderSidebar();
+    expect(expanded("Spol")).toBe("true");
+
+    act(() => jumpToFilterSection("sex", false));
+
+    // Not toggled shut: a press meant "take me there", and the section it
+    // names was already the one open.
+    expect(expanded("Spol")).toBe("true");
+    expect(document.activeElement).toBe(header("Spol"));
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  });
+
+  it("does nothing for a section the panel is not drawing", () => {
+    renderSidebar();
+    const before = document.activeElement;
+
+    act(() => jumpToFilterSection("nonesuch", false));
+
+    expect(document.activeElement).toBe(before);
   });
 });

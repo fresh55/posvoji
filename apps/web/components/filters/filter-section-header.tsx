@@ -35,9 +35,40 @@ export type SectionCollapse = {
 export const SECTION_LABEL_CLASS =
   "text-xs font-medium uppercase tracking-wide text-muted-foreground";
 
+/**
+ * A heading inside another section's body.
+ *
+ * Videz is the first section with parts: Barva and Dolžina dlake are one
+ * topic and fold together, but each keeps its own reset and its own sentence
+ * saying where its answers come from. Printed in the caption voice above, all
+ * three headings came out identically and the column read as three peers
+ * rather than a section with two halves. Sentence case at the same size is
+ * the whole difference, which is enough: nothing else in the panel is
+ * unfolded and not uppercase.
+ */
+/**
+ * The casing is the whole difference, and a button resets text-transform and
+ * letter-spacing on its own, so the disclosure trigger has to be told the
+ * same thing separately. One constant per tone, read by both, rather than
+ * the rule written once as a class string and once as a ternary.
+ */
+const TONE_CASE = {
+  section: "uppercase tracking-wide",
+  part: "normal-case tracking-normal",
+} as const;
+
+/** Whether a heading names a section of the panel or a part inside one. */
+export type SectionTone = keyof typeof TONE_CASE;
+
+function sectionLabelClass(tone: SectionTone = "section"): string {
+  return cn("text-xs font-medium text-muted-foreground", TONE_CASE[tone]);
+}
+
 const BODY_EASE = [0.16, 1, 0.3, 1] as const;
-// The fold runs 0.3s; the section is measured once it has settled.
-const FOLD_SETTLE_MS = 350;
+/** The fold runs 0.3s; the section is measured once it has settled. Shared
+ *  with the list above, which waits the same beat before putting a section an
+ *  arriving address opened where it can be seen (filter-groups.tsx). */
+export const FOLD_SETTLE_MS = 350;
 
 /** The folding half shared by sidebar and sheet. Without a collapse contract
     the body stays open with no disclosure id, as plain lists require. */
@@ -153,6 +184,7 @@ export function FilterSectionHeader({
   collapse,
   hint,
   className,
+  tone = "section",
 }: {
   label: string;
   active: boolean;
@@ -161,6 +193,7 @@ export function FilterSectionHeader({
   collapse?: SectionCollapse;
   hint?: string;
   className?: string;
+  tone?: SectionTone;
 }) {
   const { messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -252,7 +285,7 @@ export function FilterSectionHeader({
           className,
         )}
       >
-        <h3 className={SECTION_LABEL_CLASS}>{label}</h3>
+        <h3 className={sectionLabelClass(tone)}>{label}</h3>
         {resetButton}
       </div>
     );
@@ -306,7 +339,10 @@ export function FilterSectionHeader({
       // something the quietest thing in it under the cursor. The two marks
       // beside the caption keep their own ink: they say what they say whether
       // the pointer is here or not.
-      className="-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left uppercase tracking-wide outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11"
+      className={cn(
+        "-mx-1 -my-1 flex w-full items-center gap-2 rounded-ui px-1 py-1 text-left outline-none transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring pointer-coarse:min-h-11",
+        TONE_CASE[tone],
+      )}
     >
       <span className="truncate">{label}</span>
       {hint ? (
@@ -329,6 +365,36 @@ export function FilterSectionHeader({
         <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
           {collapse.summary}
         </span>
+      ) : active ? (
+        // The same thing the chip above says, in the space an open section has
+        // for it. One rule out of two: a section holding an answer carries a
+        // green mark in its heading, whether or not its cards are drawn. The
+        // panel is a column of ten headings taller than its own scrollport, and
+        // without this the only sections announcing themselves in a scan were
+        // the folded ones -- folding an active section made it more visibly
+        // active than leaving it open.
+        //
+        // The dot and not the chip, because the words do not fit twice. Open,
+        // the chosen rows are eight pixels below and say which answer it is;
+        // what is missing is only that there is one. A chip here would push a
+        // long heading into its own truncation (CAS V ZAVETISCU at 224px) to
+        // repeat what the row underneath already reads out.
+        //
+        // Left of the chevron and not beside it: the reset link is absolute at
+        // right-6 whenever the section is open and active, which is exactly
+        // when this is drawn, and the two would be laid over each other. Where
+        // the chip stands is where this stands.
+        //
+        // --brand-border is the one green measured against both grounds this
+        // heading has, the page and --muted under the pointer: 3.27:1 and
+        // 3.00:1, the 3:1 SC 1.4.11 asks of a graphic that carries meaning
+        // (globals.css). aria-hidden because it carries none that is not
+        // already said: a folded section spells its answer in the chip, an
+        // open one in the pressed state of its own rows.
+        <span
+          aria-hidden
+          className="size-1.5 shrink-0 rounded-full bg-brand-border animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
+        />
       ) : null}
       {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
           3.62:1 in light, 5.20:1 in dark. This is the one thing that says the
@@ -351,7 +417,7 @@ export function FilterSectionHeader({
         className,
       )}
     >
-      <h3 className={cn("min-w-0 flex-1", SECTION_LABEL_CLASS)}>
+      <h3 className={cn("min-w-0 flex-1", sectionLabelClass(tone))}>
         {hint ? (
           <TooltipProvider>
             <Tooltip>

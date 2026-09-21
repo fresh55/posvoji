@@ -51,6 +51,41 @@ describe("reviewed appearance and home filters", () => {
   });
 });
 
+describe("two-toned colours", () => {
+  // The case that started this: Mao is a tuxedo cat, predominantly black,
+  // and a visitor pressing Črna does not expect him.
+  const mao = animal("mao", { coatColor: "black", coatColors: ["black", "white"], whiteMarkings: "major" });
+  const bib = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], whiteMarkings: "minor" });
+  const solid = animal("solid-black", { coatColor: "black", coatColors: ["black"], whiteMarkings: "none" });
+  // No answer recorded yet, which is every animal until the review runs.
+  const unjudged = animal("unjudged", { coatColor: "black", coatColors: ["black", "white"] });
+  const gingerAndWhite = animal("ginger", { coatColor: "orange", coatColors: ["orange", "white"], whiteMarkings: "major" });
+  const animals = [mao, bib, solid, unjudged, gingerAndWhite];
+
+  it("moves a major white out of the plain colour and leaves a bib behind", () => {
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black"] }, now))
+      .toEqual([bib, solid, unjudged]);
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black-white"] }, now))
+      .toEqual([mao]);
+  });
+
+  it("leaves a colour with no two-toned option where it was", () => {
+    // Orange is under the 15-animal floor in COLOUR-REVIEW.md, so a major
+    // white on a ginger animal still answers Oranžna.
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["orange"] }, now))
+      .toEqual([gingerAndWhite]);
+  });
+
+  it("counts a two-toned answer separately and round-trips its slug", () => {
+    const counts = facetCounts(animals, EMPTY_FILTERS, now);
+    expect(counts.coatColor.get("black")).toBe(3);
+    expect(counts.coatColor.get("black-white")).toBe(1);
+    const state: Filters = { ...EMPTY_FILTERS, coatColor: ["black-white"] };
+    expect(serializeFilters(state)).toContain("barva=crno-bela");
+    expect(parseFilters(serializeFilters(state))).toEqual(state);
+  });
+});
+
 describe("shelter waiting thresholds", () => {
   it("uses intake date only, excludes unknown, invalid and future dates", () => {
     for (const date of [undefined, "invalid", "2026-02-30", "2026-09-22"]) expect(waitingGroups(date, now)).toEqual([]);

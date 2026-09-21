@@ -1,9 +1,13 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { useId, type ReactElement } from "react";
+import { useEffect, useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { CareCards, type CareOption } from "@/components/filters/care-cards";
+import {
+  CoatColorCards,
+  CoatLengthCards,
+} from "@/components/filters/coat-cards";
 import { EnergyCards } from "@/components/filters/energy-cards";
 import { HomeCards, type HomeOption } from "@/components/filters/home-cards";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
@@ -24,6 +28,7 @@ import {
 import {
   CollapsibleBody,
   FilterSectionHeader,
+  FOLD_SETTLE_MS,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -97,6 +102,12 @@ type GroupProps = {
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
+
+/** The two groups Videz owns, and so the ones the flat list skips. */
+const isAppearance = (
+  group: MultiGroup,
+): group is "coatColor" | "coatLength" =>
+  group === "coatColor" || group === "coatLength";
 
 /** Everything the household section needs, absent while no facet has data. */
 export type GoodWithSection = {
@@ -340,16 +351,6 @@ function SexGroup({
   );
 }
 
-const COAT_SWATCHES: Record<string, string> = {
-  black: "#292524",
-  white: "#ffffff",
-  grey: "#8b8b8b",
-  brown: "#795548",
-  orange: "#d88a3d",
-  cream: "#e8d8b7",
-  multicolour: "conic-gradient(#292524 0deg 120deg, #d88a3d 120deg 240deg, #ffffff 240deg)",
-};
-
 function OptionGroup({
   group,
   options,
@@ -362,12 +363,12 @@ function OptionGroup({
 }: GroupProps) {
   const { locale } = useI18n();
   const label = groupLabel(group, locale);
-  let hint: string | undefined;
-  if (group === "waiting") {
-    hint = locale === "sl" ? "Po znanem datumu sprejema v zavetišče." : "Based on the recorded shelter intake date.";
-  } else if (group === "coatColor") {
-    hint = locale === "sl" ? "Iščemo po prevladujoči barvi." : "Filter by predominant colour.";
-  }
+  const hint =
+    group === "waiting"
+      ? locale === "sl"
+        ? "Po znanem datumu sprejema v zavetišče."
+        : "Based on the recorded shelter intake date."
+      : undefined;
   return (
     <FilterCardSection
       label={label}
@@ -397,13 +398,6 @@ function OptionGroup({
             })}
           >
             <FilterCardMark layout={layout} checked={checked} appearDelay={0} />
-            {group === "coatColor" && (
-              <span
-                aria-hidden="true"
-                className="size-4 shrink-0 rounded-full border border-foreground/20"
-                style={{ background: COAT_SWATCHES[value] }}
-              />
-            )}
             <FilterCardTail
               layout={layout}
               label={option}
@@ -423,7 +417,9 @@ function OptionGroup({
 function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
   switch (group) {
     case "coatColor":
+      return <CoatColorCards {...rest} />;
     case "coatLength":
+      return <CoatLengthCards {...rest} />;
     case "waiting":
       return <OptionGroup group={group} {...rest} />;
     case "age":
@@ -552,11 +548,17 @@ export function FilterGroupList({
   layout?: FilterCardLayout;
 } & FilterActionContract) {
   const { locale } = useI18n();
-  const appearanceGroups = groups.filter(({ group }) => group === "coatColor" || group === "coatLength");
+  const appearanceGroups = groups.filter(({ group }) => isAppearance(group));
   const appearanceSelected = [...filters.coatColor, ...filters.coatLength];
-  const { isOpen, toggleSection } = useFilterSections({
+  // Both layouts now. This was the sheet's alone, for the pass in which the
+  // sidebar's sections could not be reached by anything but a click inside
+  // them; a shared link carries answers into folded sections on either
+  // surface, and the panel that hid them was the one standing open beside the
+  // grid the whole time. useFilterSections says when a section may reveal
+  // itself and when it may not.
+  const { isOpen, toggleSection, arrived } = useFilterSections({
     layout,
-    initiallyOpen: layout === "sheet" ? {
+    active: {
       sex: filters.sex.length > 0,
       age: filters.age.length > 0,
       size: filters.size.length > 0,
@@ -567,11 +569,52 @@ export function FilterGroupList({
       goodWith: filters.goodWith.length > 0,
       home: filters.home.length > 0,
       care: filters.care.length > 0,
-    } : undefined,
+    },
   });
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();
+
+  // A section that opens where nobody can see it has not been shown. Measured
+  // on a shared /?cakanje=nad-1-leto at 1440x900: the panel holds 1153px of
+  // content in an 876px box, and the one answered heading sits at 993, 105px
+  // under its own fold. Everything drawn above it is a question this visitor
+  // has not answered, and the only thing in view that knows a filter exists is
+  // the count beside "Filtri".
+  //
+  // The topmost by DOM position, not by the key order above: the panel draws
+  // Cas v zavetiscu before Videz and the key map has them the other way round,
+  // and one is a list of defaults while the other is what the visitor reads.
+  // block: "nearest" then scrolls the least that brings the section in, so the
+  // sections above it stay on screen and an answer already in view moves
+  // nothing at all.
+  //
+  // The panel is its own scroll container, so this scrolls the panel; the
+  // window does not move (measured, scrollY unchanged). Same call, same
+  // settle, as opening a section by hand (filter-section-header.tsx), because
+  // it is the same event from the visitor's side.
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    if (arrived.length === 0) return;
+    const timer = window.setTimeout(() => {
+      const sections = arrived
+        .map((key) =>
+          document.getElementById(`${idBase}-${key}`)?.closest("section"),
+        )
+        .filter((section): section is HTMLElement => section instanceof HTMLElement);
+      if (sections.length === 0) return;
+      const first = sections.reduce((topmost, section) =>
+        section.getBoundingClientRect().top < topmost.getBoundingClientRect().top
+          ? section
+          : topmost,
+      );
+      first.scrollIntoView({
+        block: "nearest",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+    }, FOLD_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [arrived, idBase, reduceMotion]);
 
   // Which of a section's options this layout draws. The rule and the reason
   // for it are in drawnOptions; it is applied here, once, rather than in each
@@ -626,7 +669,10 @@ export function FilterGroupList({
   return (
     <>
       {groups.map(({ group, options }) => {
-        if (group === "coatColor" || group === "coatLength") return null;
+        // Videz draws these two itself, below. Skipped here rather than
+        // filtered out of the list first, because only control flow narrows
+        // `group` for the indexed reads underneath.
+        if (isAppearance(group)) return null;
         // Read once and widened to string[]: indexed by a union of groups,
         // filters[group] is a union of arrays, and .includes on one of those
         // takes the intersection of their element types, which is never.
@@ -674,18 +720,32 @@ export function FilterGroupList({
           />
           <CollapsibleBody collapse={appearanceCollapse}>
             <div className="space-y-4 pt-2">
-              {appearanceGroups.map(({ group, options }) => (
-                <FilterGroup
-                  key={group}
-                  group={group}
-                  layout={layout}
-                  options={options}
-                  counts={counts[group]}
-                  selected={filters[group]}
-                  onToggle={(value) => onToggle(group, value)}
-                  onToggleMany={(values) => onToggleMany(group, values)}
-                />
-              ))}
+              {appearanceGroups.map(({ group, options }) => {
+                const selected: string[] = filters[group];
+                const groupCounts = counts[group];
+
+                return (
+                  <FilterGroup
+                    key={group}
+                    group={group}
+                    layout={layout}
+                    // The same rule the groups above get. Without it this was
+                    // the one block in the sidebar that drew rows the current
+                    // narrowing has no animals for: with no hairless animal in
+                    // the catalogue, Brez dlake sat there reading 0.
+                    options={drawn(options, ({ value }) =>
+                      isDeadOption(
+                        groupCounts.get(value) ?? 0,
+                        selected.includes(value),
+                      ),
+                    )}
+                    counts={groupCounts}
+                    selected={selected}
+                    onToggle={(value) => onToggle(group, value)}
+                    onToggleMany={(values) => onToggleMany(group, values)}
+                  />
+                );
+              })}
             </div>
           </CollapsibleBody>
         </section>

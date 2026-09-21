@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import type { FilterCardLayout } from "./filter-card";
 
 export type FilterSectionKey =
@@ -33,6 +33,8 @@ const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   care: false,
 };
 
+const SECTION_KEYS = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
+
 const SHORT_DESKTOP = "(min-width: 64rem) and (max-height: 49.99rem)";
 
 function subscribeHeight(listener: () => void): () => void {
@@ -52,6 +54,8 @@ function serverHeight(): boolean {
 type Overrides = Partial<Record<FilterSectionKey, boolean>>;
 
 const NO_OVERRIDES: Overrides = {};
+
+const NOTHING_ARRIVED: FilterSectionKey[] = [];
 
 // Share saved folds between the sidebar and sheet within this tab.
 const listeners = new Set<() => void>();
@@ -74,8 +78,14 @@ function readStored(): Overrides {
 }
 
 function sameOverrides(a: Overrides, b: Overrides): boolean {
-  const keys = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
-  return keys.every((key) => a[key] === b[key]);
+  return SECTION_KEYS.every((key) => a[key] === b[key]);
+}
+
+/** The set of answered sections, as a value that can be compared between
+ *  renders. The map itself is built fresh by the caller every time, so the
+ *  reveal below cannot ask whether it changed; this can. */
+function answeredKey(active: Overrides | undefined): string {
+  return SECTION_KEYS.filter((key) => active?.[key]).join(" ");
 }
 
 // Sync saved folds from other tabs.
@@ -127,24 +137,44 @@ export function resetFilterSectionsStore(): void {
   for (const listener of listeners) listener();
 }
 
-/** Shared folds for sidebar and sheet. A sheet can reveal its active sections
-    on mount without replacing the visitor's stored choices for other sections. */
+/** Shared folds for sidebar and sheet. A section that holds an answer reveals
+    itself, without replacing the visitor's stored choices for other sections.
+
+    Two moments, one rule. The sheet mounts long after hydration, so its
+    answered sections are open the first time it is drawn. The sidebar mounts
+    during hydration, where there is no answer to read yet: next.config sets
+    output: "export", so the prerendered HTML is the unfiltered page and
+    getServerSearchSnapshot has to return "" (lib/location-search.ts). A
+    shared ?dlaka=kratka link therefore reaches this hook with nothing
+    selected and gains its filters a beat later, which is why the reveal
+    cannot be a mount-time default alone.
+
+    Only a folded section is ever revealed, and only on the render its answer
+    arrives. A section the visitor has folded themselves stays folded when
+    its own count changes, and clearing the last value out of a revealed
+    section leaves it open rather than folding away under the pointer that
+    just cleared it. */
 export function useFilterSections({
-  initiallyOpen,
+  active,
   layout = "sidebar",
 }: {
-  initiallyOpen?: Overrides;
+  /** Which sections hold an answer right now. */
+  active?: Overrides;
   layout?: FilterCardLayout;
 } = {}): {
   isOpen: (key: FilterSectionKey) => boolean;
   toggleSection: (key: FilterSectionKey) => void;
+  /** The sections an arriving address opened, for the one caller that has to
+   *  put them where they can be seen. Empty for every later change, so a
+   *  section gained mid-visit opens where it stands and moves nothing. */
+  arrived: FilterSectionKey[];
 } {
   const overrides = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
-  const [revealed, setRevealed] = useState(initiallyOpen);
+  const [revealed, setRevealed] = useState(active);
   const short = useSyncExternalStore(subscribeHeight, shortDesktop, serverHeight);
   const defaultOpen = useCallback(
     (key: FilterSectionKey) =>
@@ -158,6 +188,35 @@ export function useFilterSections({
     [overrides, revealed, defaultOpen],
   );
 
+  // Adjusted during render rather than in an effect, so a section arrives open
+  // in the same paint as the grid its filter narrowed; an effect would draw
+  // the folded header first and grow it open a frame later, which is the page
+  // moving on its own for no reason the visitor can see. React's own shape for
+  // this: set state while rendering, and it re-runs this hook's component
+  // before anything is committed.
+  const answered = useMemo(() => answeredKey(active), [active]);
+  const [seen, setSeen] = useState(answered);
+  const [arrived, setArrived] = useState<FilterSectionKey[]>(NOTHING_ARRIVED);
+  if (seen !== answered) {
+    const before = new Set(seen.split(" "));
+    const gained = SECTION_KEYS.filter(
+      (key) => active?.[key] && !before.has(key) && !isOpen(key),
+    );
+    setSeen(answered);
+    if (gained.length > 0) {
+      setRevealed((previous) => ({
+        ...previous,
+        ...Object.fromEntries(gained.map((key) => [key, true])),
+      }));
+      // Only the first answers of a visit are an arrival: the panel had none,
+      // and this is the address a link carried in. A later gain is the
+      // visitor's own navigation inside a panel they are already reading, and
+      // it moves nothing. Held in state rather than derived, so the reference
+      // is stable and the caller's effect runs once.
+      if (seen === "") setArrived(gained);
+    }
+  }
+
   const toggleSection = useCallback(
     (key: FilterSectionKey) => {
       const current = getSnapshot();
@@ -170,5 +229,5 @@ export function useFilterSections({
     [revealed, defaultOpen],
   );
 
-  return { isOpen, toggleSection };
+  return { isOpen, toggleSection, arrived };
 }

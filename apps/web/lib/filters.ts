@@ -8,9 +8,11 @@ export {
   GROUPS,
   HOME_KEYS,
   TOGGLE_KEYS,
+  TWO_TONED,
 } from "./filters/contracts";
 export type {
   AgeGroup,
+  CoatColorFacet,
   WaitingGroup,
   CareKey,
   FilterFacet,
@@ -27,6 +29,7 @@ export {
   FILTER_METADATA,
   TOGGLES,
   careOptions,
+  coatColorFacet,
   goodWithOptions,
   groupLabel,
   groupOptions,

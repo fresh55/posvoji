@@ -8,13 +8,12 @@ import {
   HeartHandshake,
   Mars,
   PawPrint,
-  Palette,
-  Scissors,
   Venus,
   type LucideIcon,
 } from "lucide-react";
 import type { AnimalSize, Sex, TestResult } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
+import { CoatColorDots } from "@/components/filters/coat-cards";
 import { useI18n } from "@/components/i18n-context";
 import {
   Popover,
@@ -23,7 +22,12 @@ import {
 } from "@/components/ui/popover";
 import type { AnimalFields } from "@/lib/animal";
 import { useAnimalDescription } from "@/lib/animal-descriptions";
-import { ENERGY_ICONS, GOOD_WITH_ICONS, HEALTH_ICONS } from "@/lib/animal-icons";
+import {
+  ENERGY_ICONS,
+  FACET_ICONS,
+  GOOD_WITH_ICONS,
+  HEALTH_ICONS,
+} from "@/lib/animal-icons";
 import { namesSeveralAnimals } from "@/lib/animal-name";
 import {
   ageGroup,
@@ -572,12 +576,21 @@ export function AnimalFacts({
                 </Fact>
               )}
               {animal.coatColors && (
-                <Fact icon={Palette} prefix={groupLabel("coatColor", locale)}>
+                // The swatches rather than the palette mark: this pill names
+                // colours, and the filter that finds them draws the same
+                // discs.
+                <Fact
+                  iconNode={<CoatColorDots values={animal.coatColors} />}
+                  prefix={groupLabel("coatColor", locale)}
+                >
                   {animal.coatColors.map(color => optionLabel("coatColor", color, [], locale)).join(", ")}
                 </Fact>
               )}
               {animal.coatLength && (
-                <Fact icon={Scissors} prefix={groupLabel("coatLength", locale)}>
+                <Fact
+                  icon={FACET_ICONS.coatLength}
+                  prefix={groupLabel("coatLength", locale)}
+                >
                   {optionLabel("coatLength", animal.coatLength, [], locale)}
                 </Fact>
               )}

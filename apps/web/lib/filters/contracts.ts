@@ -6,6 +6,36 @@ import type { SpeciesTab } from "@/lib/species";
 export type SpeciesFilter = "all" | SpeciesTab;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
 export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
+
+/**
+ * The colours whose two-toned form is its own answer.
+ *
+ * Only black, brown and grey get a pair. COLOUR-REVIEW.md already sets the
+ * bar for giving a colour its own option at 15 animals, in the rule that
+ * folds Cream into Orange below that; the two-toned counts are 83, 35 and 20
+ * against 9 for orange and 4 for cream.
+ */
+export const TWO_TONED = ["black", "brown", "grey"] as const satisfies
+  readonly CoatColorCategory[];
+
+/**
+ * What the Barva filter offers, which is finer than the colour the review
+ * records.
+ *
+ * A reviewed coatColor is the one colour that dominates, and on its own it
+ * put 83 of the 146 animals classified black behind a plain black swatch
+ * when over half of them are black and white. Petfinder splits the same way
+ * and for the same reason: Black and Black & White / Tuxedo are separate
+ * options there, and every one of its two-toned options pairs with white,
+ * because white is the colour that visibly splits an animal.
+ *
+ * Derived rather than stored: the two facts it is built from are both
+ * reviewed, and a third copy of them in the payload is a third thing to keep
+ * in step. See coatColorFacet.
+ */
+export type CoatColorFacet =
+  | CoatColorCategory
+  | `${(typeof TWO_TONED)[number]}-white`;
 export type MultiGroup =
   | "sex" | "age" | "size" | "energy" | "shelter"
   | "coatColor" | "coatLength" | "waiting";
@@ -49,7 +79,7 @@ export type Filters = {
   age: AgeGroup[];
   size: AnimalSize[];
   energy: EnergyLevel[];
-  coatColor: CoatColorCategory[];
+  coatColor: CoatColorFacet[];
   coatLength: CoatLength[];
   waiting: WaitingGroup[];
   shelter: string[];

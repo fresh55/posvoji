@@ -10,6 +10,7 @@ import {
   FilterSectionHeader,
   SectionHint,
   type SectionCollapse,
+  type SectionTone,
 } from "@/components/filters/filter-section-header";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,21 @@ export type FilterCardLayout = "sidebar" | "sheet";
 // touch-action: auto keeps the double-tap window open, so two quick narrowings
 // zoom the page instead, and a rapid press on a label starts a selection or
 // raises the iOS callout over the sheet.
+/**
+ * What every filter control answers a press, the keyboard and a dead option
+ * with, independent of whether it is drawn as a card.
+ *
+ * Pulled out of the cva because the colour palette is a filter control that
+ * is not a card: it draws swatches in a grid rather than rows, so it cannot
+ * take cardVariants, and hand-writing this string beside it drifted within a
+ * day (0.97 against 0.98, a missing focus-visible border, and half opacity
+ * on a dead option where DEAD_OPTION_CLASS deliberately keeps the ink).
+ * Geometry and surface stay with the caller; this is the part that has one
+ * right answer.
+ */
+export const FILTER_CONTROL_CLASS =
+  "group touch-manipulation select-none rounded-ui outline-none transition-transform duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none";
+
 const cardVariants = cva(
   "group relative min-w-0 touch-manipulation select-none overflow-hidden rounded-ui border font-normal outline-none transition-[border-color,background-color,box-shadow,color,transform] duration-150 active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
@@ -194,7 +210,13 @@ function iconSizeClass(layout: FilterCardLayout): string {
   return layout === "sheet" ? "size-7" : "size-7.5";
 }
 
-const HOVER_SPRING = {
+/**
+ * The temperament every filter control lifts with. Exported because the
+ * colour palette lifts a bigger mark by a bigger amount and so cannot use
+ * FilterCardHoverLift itself; it should still rise at the same speed, and
+ * the numbers were sitting in two files.
+ */
+export const FILTER_HOVER_SPRING = {
   type: "spring",
   stiffness: 420,
   damping: 26,
@@ -339,6 +361,7 @@ export function FilterCardSection({
   layout,
   collapse,
   sheetColumns = "grid-cols-3",
+  tone,
   children,
   footer,
 }: {
@@ -351,6 +374,8 @@ export function FilterCardSection({
   collapse?: SectionCollapse;
   /** The sheet's columns, for a section whose labels are too long for three. */
   sheetColumns?: string;
+  /** Set by a group drawn inside another section's body; see SectionTone. */
+  tone?: SectionTone;
   children: ReactNode;
   /** What a section says about its cards once they are read together. */
   footer?: ReactNode;
@@ -364,6 +389,7 @@ export function FilterCardSection({
         resetAriaLabel={resetAriaLabel}
         collapse={collapse}
         hint={hint}
+        tone={tone}
       />
       <CollapsibleBody collapse={collapse}>
         {hint && <SectionHint collapse={collapse}>{hint}</SectionHint>}
@@ -486,7 +512,7 @@ export function FilterCardHoverLift({
       className="relative flex items-center justify-center"
       initial={false}
       animate={{ y: hovered ? -1 : 0, scale: hovered ? 1.05 : 1 }}
-      transition={shouldReduceMotion ? { duration: 0 } : HOVER_SPRING}
+      transition={shouldReduceMotion ? { duration: 0 } : FILTER_HOVER_SPRING}
     >
       {children}
     </m.span>

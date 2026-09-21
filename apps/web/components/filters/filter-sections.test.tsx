@@ -198,6 +198,22 @@ function stored(): unknown {
   return JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "null");
 }
 
+/** The green mark an answered section carries in its heading while its cards
+ *  are drawn. A folded one prints the answer itself instead, which the
+ *  summary tests above read off the text. */
+function mark(label: string): Element | null {
+  return header(label).querySelector(".bg-brand-border");
+}
+
+/** An address arriving at a panel that is already mounted: a shared link
+ *  reaching hydration, or the back gesture. The page is statically exported,
+ *  so this is the only way a sidebar ever sees a filter it did not draw
+ *  itself (lib/location-search.ts). */
+function arrive(url: string): void {
+  window.history.replaceState(null, "", url);
+  fireEvent.popState(window);
+}
+
 describe("collapsible filter sections", () => {
   it("folds age on short desktops without replacing a saved choice", () => {
     vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
@@ -292,6 +308,69 @@ describe("collapsible filter sections", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
     fireEvent.click(header("Zdravje"));
     expect(header("Zdravje").textContent).toContain("Sterilizacija +1");
+  });
+
+  it("opens a folded section when its answer arrives with the address", async () => {
+    renderSidebar();
+    expect(expanded("Velikost")).toBe("false");
+
+    arrive("/?velikost=majhna");
+
+    expect(expanded("Velikost")).toBe("true");
+    await waitFor(() => expect(card(/^Majhna/)).toBeTruthy());
+  });
+
+  it("leaves the visitor's own fold alone when another section is answered", () => {
+    renderSidebar();
+    fireEvent.click(header("Spol"));
+    expect(expanded("Spol")).toBe("false");
+
+    arrive("/?velikost=majhna");
+
+    expect(expanded("Velikost")).toBe("true");
+    expect(expanded("Spol")).toBe("false");
+  });
+
+  it("keeps a revealed section open once its answer is cleared", () => {
+    renderSidebar();
+    arrive("/?velikost=majhna");
+    expect(expanded("Velikost")).toBe("true");
+
+    // The section folding away under the press that emptied it would take the
+    // rest of its options with it, and they are what a visitor clearing one
+    // answer is most likely to want next.
+    arrive("/");
+
+    expect(expanded("Velikost")).toBe("true");
+  });
+
+  it("puts an arriving answer where it can be seen, and a later one never", async () => {
+    renderSidebar();
+
+    arrive("/?velikost=majhna");
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledTimes(1));
+    expect(scrollIntoView.mock.calls[0]?.[0]).toMatchObject({
+      block: "nearest",
+    });
+
+    // Mid-visit the panel is already being read, so a second answer opens its
+    // section where it stands and moves nothing.
+    arrive("/?velikost=majhna&lastnosti=sterilizacija");
+    await waitFor(() => expect(expanded("Zdravje")).toBe("true"));
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks an answered section whose cards are drawn", () => {
+    const { unmount } = renderStatic(EMPTY_FILTERS);
+    expect(expanded("Spol")).toBe("true");
+    expect(mark("Spol")).toBeNull();
+    unmount();
+
+    renderStatic({ ...EMPTY_FILTERS, sex: ["female"] });
+    expect(mark("Spol")).toBeTruthy();
+    // The heading still reads as itself: the mark is not in the name.
+    expect(header("Spol").textContent).toBe("Spol");
   });
 
   it("hands the reset back only once the section is open", () => {

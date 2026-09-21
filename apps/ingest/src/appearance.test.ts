@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Animal, ProviderPolicy } from "@posvoji/schema";
 import { describe, expect, it } from "vitest";
-import { AppearanceManifest, applyAppearance, currentPhotoHashes } from "./appearance";
+import {
+  AppearanceManifest,
+  applyAppearance,
+  currentPhotoHashes,
+  dominanceIssues,
+  dominanceReport,
+} from "./appearance";
 
 const now = "2026-09-21T12:00:00.000Z";
 const url = "https://shelter.example/cat.jpg";
@@ -33,6 +39,47 @@ function review(): AppearanceManifest {
   }] };
 }
 const photos = new Map([[url, hash]]);
+
+describe("colours that cannot have a dominant one", () => {
+  const filed = (coatColors: string[], coatColor: string): AppearanceManifest => {
+    const manifest = review();
+    return {
+      ...manifest,
+      records: [{ ...manifest.records[0], coatColors, coatColor } as (typeof manifest.records)[number]],
+    };
+  };
+
+  it("flags a tortoiseshell or a calico filed under one colour", () => {
+    expect(dominanceIssues(filed(["black", "orange"], "black"))).toEqual([
+      "fixture:1: tortoiseshell (black+orange) filed as black, expected multicolour",
+    ]);
+    expect(dominanceIssues(filed(["black", "white", "orange"], "white"))).toEqual([
+      "fixture:1: calico (black+white+orange) filed as white, expected multicolour",
+    ]);
+  });
+
+  it("leaves the answers nobody disputes alone", () => {
+    // Already right, a brown tabby's stripes, and a black and white cat:
+    // none of these is the pattern this check is about.
+    expect(dominanceIssues(filed(["black", "orange"], "multicolour"))).toEqual([]);
+    expect(dominanceIssues(filed(["black", "brown"], "brown"))).toEqual([]);
+    expect(dominanceIssues(filed(["black", "white"], "black"))).toEqual([]);
+  });
+
+  it("reports how much of the catalogue is forced under one colour", () => {
+    expect(dominanceReport(filed(["black", "white", "brown"], "black")))
+      .toEqual({ classified: 1, multicolour: 0, judged: 0, forced: 1 });
+    expect(dominanceReport(filed(["black", "white"], "multicolour")))
+      .toEqual({ classified: 1, multicolour: 1, judged: 0, forced: 0 });
+  });
+
+  it("counts a judged white marking, which is what the two-toned options wait for", () => {
+    const manifest = review();
+    const record = { ...manifest.records[0], coatColors: ["black", "white"], coatColor: "black", whiteMarkings: "major" };
+    expect(dominanceReport({ ...manifest, records: [record as (typeof manifest.records)[number]] }))
+      .toEqual({ classified: 1, multicolour: 0, judged: 1, forced: 0 });
+  });
+});
 
 describe("reviewed photo appearance", () => {
   it("fills supported appearance without requiring prose or changing source observations", () => {

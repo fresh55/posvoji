@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Animal, CoatColorCategory, CoatColors, CoatLength, Species, type ProviderPolicy } from "@posvoji/schema";
+import { Animal, CoatColorCategory, CoatColors, CoatLength, Species, WhiteMarkings, type ProviderPolicy } from "@posvoji/schema";
 import { z } from "zod";
 import { cachedImagesDir, repoRoot } from "./paths";
 
@@ -22,6 +22,7 @@ export const AppearanceManifest = z.strictObject({
     species: Species,
     coatColors: CoatColors.optional(),
     coatColor: CoatColorCategory.optional(),
+    whiteMarkings: WhiteMarkings.optional(),
     coatColorReviewedBy: Reviewers.optional(),
     coatLength: CoatLength.optional(),
     evidence: z.array(PhotoEvidence).min(1).refine(
@@ -32,7 +33,15 @@ export const AppearanceManifest = z.strictObject({
   }).refine((record) => record.coatColors !== undefined || record.coatLength !== undefined || record.coatColor !== undefined,
     "an appearance review must record a supported field")
     .refine((record) => (record.coatColor !== undefined) === (record.coatColorReviewedBy !== undefined),
-      "a filter colour requires its own independent reviewers")),
+      "a filter colour requires its own independent reviewers")
+    // White markings decide which colour bucket the animal is filtered into,
+    // so they are held to the same two-reviewer bar as the colour itself and
+    // have to agree with the colours the same review listed.
+    .refine((record) => record.whiteMarkings === undefined || record.coatColorReviewedBy !== undefined,
+      "white markings require the colour reviewers")
+    .refine((record) => record.whiteMarkings === undefined || record.whiteMarkings === "none" ||
+      record.coatColors === undefined || record.coatColors.includes("white"),
+      "white markings require white among the coat colors")),
 }).refine((manifest) => new Set(manifest.records.map((record) => record.animalId)).size === manifest.records.length,
   "duplicate animal appearance review");
 export type AppearanceManifest = z.infer<typeof AppearanceManifest>;
@@ -41,7 +50,10 @@ export function loadAppearance(): AppearanceManifest {
   return AppearanceManifest.parse(JSON.parse(readFileSync(join(repoRoot, "data", "animal-appearance.json"), "utf8")));
 }
 
-type AppearanceField = "coatColors" | "coatColor" | "coatLength";
+/** The reviewed fields a record can carry, for the apply loop, the issue
+    type and the provider permission check, which each listed them. */
+export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "whiteMarkings", "coatLength"] as const;
+type AppearanceField = (typeof APPEARANCE_FIELDS)[number];
 
 export type AppearanceIssue = {
   animalId: string;
@@ -76,7 +88,7 @@ export function applyAppearance(
       reject("evidence-changed"); continue;
     }
     const enriched = { ...animal };
-    for (const field of ["coatColors", "coatColor", "coatLength"] as const) {
+    for (const field of APPEARANCE_FIELDS) {
       if (record[field] === undefined) continue;
       if (policy.allowedFields?.length && !policy.allowedFields.includes(field)) { reject("permission", field); continue; }
       // Explicit shelter facts and description-backed corrections take precedence.
@@ -87,13 +99,82 @@ export function applyAppearance(
     result.set(animal.id, Animal.parse(enriched));
   }
   const published = animals.map((animal) => result.get(animal.id)!);
-  const colourReviewQueue = published.filter((animal) => animal.coatColor === undefined).map((animal) => ({
-    animalId: animal.id,
-    reason: issues.find((issue) => issue.animalId === animal.id && (!issue.field || issue.field === "coatColor"))?.reason
-      ?? "unclassified",
-  }));
-  const colourCoverage = { total: published.length, classified: published.length - colourReviewQueue.length, unknown: colourReviewQueue.length };
-  return { animals: published, applied, issues, colourCoverage, colourReviewQueue };
+  // Why each animal is unclassified, read once. Looked up inside the queue
+  // map it was a scan of every issue per unclassified animal.
+  const colourIssue = new Map<string, AppearanceIssue["reason"]>();
+  for (const issue of issues) {
+    if (issue.field && issue.field !== "coatColor") continue;
+    if (!colourIssue.has(issue.animalId)) colourIssue.set(issue.animalId, issue.reason);
+  }
+  const colourReviewQueue: { animalId: string; reason: string }[] = [];
+  // How far the white-markings review has got. A classified animal without
+  // it filters exactly as it did before the field existed, so this number
+  // going up is the only visible sign the two-toned options are filling in.
+  const whiteMarkingsCoverage = { classified: 0, judged: 0, major: 0 };
+  for (const animal of published) {
+    if (animal.coatColor === undefined) {
+      colourReviewQueue.push({
+        animalId: animal.id,
+        reason: colourIssue.get(animal.id) ?? "unclassified",
+      });
+      continue;
+    }
+    whiteMarkingsCoverage.classified += 1;
+    if (animal.whiteMarkings !== undefined) whiteMarkingsCoverage.judged += 1;
+    if (animal.whiteMarkings === "major") whiteMarkingsCoverage.major += 1;
+  }
+  const colourCoverage = { total: published.length, classified: whiteMarkingsCoverage.classified, unknown: colourReviewQueue.length };
+  return { animals: published, applied, issues, colourCoverage, whiteMarkingsCoverage, colourReviewQueue };
+}
+
+/**
+ * Colours a review filed under one dominant colour that cannot have one.
+ *
+ * Black and orange together is a tortoiseshell, and with white a calico.
+ * Neither has a dominant colour, so both belong in Multicolour, and the rule
+ * in docs/COLOUR-REVIEW.md already says so. It was not being applied: of the
+ * 30 animals carrying both, 12 were filed Multicolour, 8 White, 7 Black and
+ * 3 Brown, so the same animal landed in four different places depending on
+ * who looked. Two of the seven under Black are why a visitor pressing Črna
+ * was shown a tortoiseshell cat.
+ *
+ * A check rather than a correction: the review owns the answer, and a
+ * classifier that silently overrode it would hide the next drift instead of
+ * reporting it. Only the combination nobody disputes is flagged, so a pass
+ * here is quiet rather than merely tolerated.
+ */
+export function dominanceIssues(manifest: AppearanceManifest): string[] {
+  return manifest.records.flatMap((record) => {
+    const colours = record.coatColors;
+    if (!colours || record.coatColor === undefined) return [];
+    if (record.coatColor === "multicolour") return [];
+    if (!colours.includes("black") || !colours.includes("orange")) return [];
+    const pattern = colours.includes("white") ? "calico" : "tortoiseshell";
+    return [
+      `${record.animalId}: ${pattern} (${colours.join("+")}) filed as ${record.coatColor}, expected multicolour`,
+    ];
+  });
+}
+
+/**
+ * How much of the catalogue is being forced into a dominant colour.
+ *
+ * Reported rather than failed, because a high share is a question and not
+ * always a fault: a brown tabby really is brown, stripes and all. It earns a
+ * number because Multicolour sat at 5% while 142 animals carried three or
+ * more colours under a single-colour label, and nobody could see that from
+ * the coverage line.
+ */
+export function dominanceReport(manifest: AppearanceManifest) {
+  const classified = manifest.records.filter((record) => record.coatColor !== undefined);
+  const multicolour = classified.filter((record) => record.coatColor === "multicolour").length;
+  const forced = classified.filter((record) =>
+    record.coatColor !== "multicolour" && (record.coatColors?.length ?? 0) >= 3).length;
+  // The two-toned options are dormant until this reaches the classified
+  // count, so it belongs beside the other two numbers rather than only in
+  // the export log a release produces.
+  const judged = classified.filter((record) => record.whiteMarkings !== undefined).length;
+  return { classified: classified.length, multicolour, judged, forced };
 }
 
 /** Read only currently attached, permissioned cache masters. Never fetch here. */

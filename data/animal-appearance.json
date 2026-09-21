@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-21T19:29:26.800Z",
+  "reviewedAt": "2026-09-21T21:37:44.626Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -63,6 +63,11 @@
         "grey"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -101,6 +106,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -134,6 +144,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -181,6 +196,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -218,6 +238,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -256,6 +281,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -302,6 +332,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -341,6 +376,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -392,6 +432,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -442,6 +487,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -527,6 +577,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -590,6 +645,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -628,6 +688,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -666,6 +731,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -703,6 +773,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -741,6 +816,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -778,6 +858,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -861,6 +946,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -907,6 +997,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -961,6 +1056,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -999,6 +1099,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1054,6 +1159,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1123,6 +1233,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1185,6 +1300,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -1239,6 +1359,11 @@
         "white",
         "brown"
       ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatLength": "short",
       "evidence": [
         {
@@ -1266,6 +1391,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -1308,6 +1438,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1342,6 +1477,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1380,6 +1520,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1410,6 +1555,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -1439,6 +1589,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1469,6 +1624,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1499,6 +1659,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1529,6 +1694,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1564,6 +1734,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1598,6 +1773,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1632,6 +1812,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1695,6 +1880,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1749,6 +1939,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1791,6 +1986,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1865,6 +2065,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1899,6 +2104,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -1929,6 +2139,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2006,6 +2221,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2069,6 +2289,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2114,6 +2339,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2148,6 +2378,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2211,6 +2446,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -2258,6 +2498,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2301,6 +2546,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -2334,6 +2584,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2371,6 +2626,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2417,6 +2677,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2463,6 +2728,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2510,6 +2780,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2547,6 +2822,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2577,6 +2857,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -2624,6 +2909,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2657,6 +2947,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2691,6 +2986,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2729,6 +3029,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2759,6 +3064,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2825,6 +3135,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2897,6 +3212,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2935,6 +3255,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -2970,6 +3295,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -3036,6 +3366,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3067,6 +3402,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -3098,11 +3438,17 @@
       "species": "dog",
       "coatColors": [
         "black",
+        "white",
         "grey",
         "brown",
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3147,8 +3493,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root",
+        "/root/review_b"
       ]
     },
     {
@@ -3160,6 +3506,11 @@
         "grey"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -3207,6 +3558,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3246,6 +3602,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3308,6 +3669,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3341,6 +3707,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3372,6 +3743,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -3402,6 +3778,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3436,6 +3817,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3463,6 +3849,11 @@
         "brown"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -3526,6 +3917,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3567,6 +3963,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3597,6 +3998,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3627,6 +4033,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3658,6 +4069,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -3680,10 +4096,17 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zan-zak-25010274",
       "species": "dog",
       "coatColors": [
+        "white",
         "brown",
         "cream"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3700,8 +4123,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/review_b"
       ]
     },
     {
@@ -3715,6 +4138,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3777,6 +4205,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3812,6 +4245,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3858,6 +4296,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3892,6 +4335,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3922,6 +4370,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -3972,6 +4425,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4018,6 +4476,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4049,6 +4512,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -4111,6 +4579,11 @@
         "white",
         "brown"
       ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatLength": "short",
       "evidence": [
         {
@@ -4133,6 +4606,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4174,6 +4652,11 @@
         "brown"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4208,6 +4691,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4239,6 +4727,11 @@
         "brown"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4313,6 +4806,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4356,6 +4854,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4387,6 +4890,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4413,6 +4921,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4446,6 +4959,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4472,6 +4990,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4506,6 +5029,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4537,6 +5065,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4599,6 +5132,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4626,6 +5164,11 @@
         "cream"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4688,6 +5231,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -4718,6 +5266,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4756,6 +5309,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4790,6 +5348,11 @@
         "white"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4820,6 +5383,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4846,6 +5414,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4875,6 +5448,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4900,6 +5478,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4925,6 +5508,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4951,6 +5539,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -4981,6 +5574,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5015,6 +5613,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5041,6 +5644,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5067,6 +5675,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5093,6 +5706,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5118,6 +5736,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5144,6 +5767,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5170,6 +5798,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5196,6 +5829,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5222,6 +5860,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5246,6 +5889,11 @@
       "coatColors": [
         "white",
         "grey"
+      ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5291,6 +5939,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5318,6 +5971,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5356,6 +6014,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5383,6 +6046,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5413,6 +6081,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5443,6 +6116,11 @@
         "white"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5482,6 +6160,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5598,6 +6281,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5636,6 +6324,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5675,6 +6368,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5706,10 +6404,16 @@
       "species": "dog",
       "coatColors": [
         "black",
+        "white",
         "brown",
         "cream"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5746,8 +6450,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/review_b"
       ]
     },
     {
@@ -5760,6 +6464,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5790,6 +6499,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5824,6 +6538,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5863,6 +6582,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5898,6 +6622,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5931,6 +6660,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5965,6 +6699,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -5991,6 +6730,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6026,6 +6770,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6064,6 +6813,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6110,6 +6864,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6148,6 +6907,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6180,6 +6944,11 @@
         "grey"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6215,6 +6984,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6287,6 +7061,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6321,6 +7100,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6360,6 +7144,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6390,6 +7179,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root",
         "/root/review_c"
@@ -6424,6 +7218,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6458,6 +7257,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -6497,6 +7301,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -6536,6 +7345,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6579,6 +7393,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6613,6 +7432,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6651,6 +7475,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_c"
@@ -6686,6 +7515,11 @@
         "cream"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6724,6 +7558,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6763,6 +7602,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6798,6 +7642,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -6831,6 +7680,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -6870,6 +7724,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -6909,6 +7768,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -6948,6 +7812,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -6986,6 +7855,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7024,6 +7898,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7063,6 +7942,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7098,6 +7982,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7136,6 +8025,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7175,6 +8069,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7213,6 +8112,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7251,6 +8155,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7288,6 +8197,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7327,6 +8241,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7365,6 +8284,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7400,6 +8324,11 @@
         "grey"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_a"
@@ -7437,6 +8366,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7471,6 +8405,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7508,6 +8447,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7547,6 +8491,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7585,6 +8534,11 @@
         "orange"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_a"
@@ -7623,6 +8577,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7661,6 +8620,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7698,6 +8662,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7731,6 +8700,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7769,6 +8743,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7808,6 +8787,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7843,6 +8827,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7882,6 +8871,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7911,6 +8905,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7949,6 +8948,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -7988,6 +8992,11 @@
         "brown"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8026,6 +9035,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -8065,6 +9079,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -8104,6 +9123,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8134,6 +9158,11 @@
         "orange"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8172,6 +9201,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8201,6 +9235,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8239,6 +9278,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8273,6 +9317,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8311,6 +9360,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8350,6 +9404,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8388,6 +9447,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8427,6 +9491,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8465,6 +9534,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8500,6 +9574,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8539,6 +9618,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8568,6 +9652,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8607,6 +9696,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8644,6 +9738,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8681,6 +9780,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8719,6 +9823,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8749,6 +9858,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8776,6 +9890,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8814,6 +9933,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8849,6 +9973,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8888,6 +10017,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8923,6 +10057,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8958,6 +10097,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -8991,6 +10135,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9024,6 +10173,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9058,6 +10212,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9093,6 +10252,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9131,6 +10295,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9165,6 +10334,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9203,6 +10377,11 @@
         "orange"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9241,6 +10420,11 @@
         "cream"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9280,6 +10464,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -9317,6 +10506,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9346,6 +10540,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9376,6 +10575,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9409,6 +10613,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9448,6 +10657,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9487,6 +10701,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9526,6 +10745,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9564,6 +10788,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9602,6 +10831,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9640,6 +10874,11 @@
         "orange"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9678,6 +10917,11 @@
         "white",
         "brown"
       ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatLength": "short",
       "evidence": [
         {
@@ -9705,6 +10949,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9744,6 +10993,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9778,6 +11032,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9817,6 +11076,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9851,6 +11115,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9889,6 +11158,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9915,6 +11189,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9952,6 +11231,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -9982,6 +11266,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -10015,6 +11304,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10049,6 +11343,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10084,6 +11383,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10123,6 +11427,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10161,6 +11470,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10199,6 +11513,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10233,6 +11552,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10264,6 +11588,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10298,6 +11627,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10332,6 +11666,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10370,6 +11709,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10401,6 +11745,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10435,6 +11784,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10464,6 +11818,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10497,6 +11856,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10527,6 +11891,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10562,6 +11931,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10600,6 +11974,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10639,6 +12018,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10676,6 +12060,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10710,6 +12099,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10748,6 +12142,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10783,6 +12182,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -10821,6 +12225,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10859,6 +12268,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10894,6 +12308,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10929,6 +12348,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -10967,6 +12391,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11002,6 +12431,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11040,6 +12474,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_a"
@@ -11079,6 +12518,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11117,6 +12561,11 @@
         "cream"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11151,6 +12600,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11189,6 +12643,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11226,6 +12685,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11260,6 +12724,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11298,6 +12767,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11336,6 +12810,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11373,6 +12852,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11412,6 +12896,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11450,6 +12939,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11488,6 +12982,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11525,6 +13024,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11553,6 +13057,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11592,6 +13101,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11622,6 +13136,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11657,6 +13176,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11695,6 +13219,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11729,6 +13258,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11767,6 +13301,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11805,6 +13344,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11842,6 +13386,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11877,6 +13426,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -11916,6 +13470,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11950,6 +13509,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -11988,6 +13552,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12023,6 +13592,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12058,6 +13632,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12093,6 +13672,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12131,6 +13715,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12169,6 +13758,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12207,6 +13801,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12244,6 +13843,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12283,6 +13887,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12316,6 +13925,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12353,6 +13967,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12391,6 +14010,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12429,6 +14053,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -12467,6 +14096,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12505,6 +14139,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12544,6 +14183,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12583,6 +14227,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12618,6 +14267,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12652,6 +14306,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12686,6 +14345,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12724,6 +14388,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12759,6 +14428,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12797,6 +14471,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12836,6 +14515,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12870,6 +14554,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12908,6 +14597,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12943,6 +14637,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -12981,6 +14680,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -13006,6 +14710,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -13044,6 +14753,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -13117,6 +14831,11 @@
         "brown",
         "orange"
       ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatLength": "short",
       "evidence": [
         {
@@ -13152,6 +14871,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -13191,6 +14915,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -13230,6 +14959,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root/review_a"
+      ],
       "coatColorReviewedBy": [
         "/root/review_b",
         "/root/review_c"
@@ -13265,6 +14999,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -13307,6 +15046,11 @@
         "white",
         "brown"
       ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatLength": "short",
       "evidence": [
         {
@@ -13340,6 +15084,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13386,6 +15135,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13419,6 +15173,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13445,6 +15204,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13476,6 +15240,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13534,6 +15303,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13584,6 +15358,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13622,6 +15401,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13663,6 +15447,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13694,6 +15483,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13728,6 +15522,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13768,6 +15567,11 @@
         "cream"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -13827,6 +15631,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -13862,6 +15671,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13888,6 +15702,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13942,6 +15761,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -13968,6 +15792,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14016,6 +15845,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14042,6 +15876,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14069,6 +15908,11 @@
         "grey"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14096,6 +15940,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14122,6 +15971,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14148,6 +16002,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14186,6 +16045,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14231,6 +16095,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14269,6 +16138,11 @@
         "white",
         "grey",
         "brown"
+      ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
       ],
       "evidence": [
         {
@@ -14323,6 +16197,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14369,6 +16248,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14405,6 +16289,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14550,6 +16439,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14593,6 +16487,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14632,6 +16531,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14678,6 +16582,11 @@
         "cream"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14725,6 +16634,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14767,6 +16681,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14813,6 +16732,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14855,6 +16779,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14898,6 +16827,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14936,6 +16870,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -14978,6 +16917,11 @@
         "grey",
         "brown",
         "orange"
+      ],
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15038,6 +16982,11 @@
         "cream"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15081,6 +17030,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15119,6 +17073,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15165,6 +17124,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15207,6 +17171,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15249,6 +17218,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_b"
@@ -15284,6 +17258,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15322,6 +17301,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15352,6 +17336,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15395,6 +17384,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15438,6 +17432,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -15473,6 +17472,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15511,6 +17515,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15548,6 +17557,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15582,6 +17596,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15607,6 +17626,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15641,6 +17665,11 @@
         "orange"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15676,6 +17705,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15714,6 +17748,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15746,6 +17785,11 @@
       "coatColors": [
         "white",
         "grey"
+      ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -15781,6 +17825,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15807,6 +17856,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15849,6 +17903,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_b"
@@ -15892,6 +17951,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15930,6 +17994,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_b"
@@ -15965,6 +18034,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -15992,6 +18066,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -16022,6 +18101,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16048,6 +18132,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16078,6 +18167,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16105,6 +18199,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16131,6 +18230,11 @@
         "orange"
       ],
       "coatColor": "orange",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16162,6 +18266,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16188,6 +18297,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16213,6 +18327,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16239,6 +18358,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16298,6 +18422,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16336,6 +18465,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16374,6 +18508,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16404,6 +18543,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16435,6 +18579,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16465,6 +18614,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16503,6 +18657,11 @@
         "white"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16534,6 +18693,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_b"
@@ -16563,6 +18727,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16593,6 +18762,11 @@
         "grey"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16627,6 +18801,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16653,6 +18832,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16679,6 +18863,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16705,6 +18894,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16740,6 +18934,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16766,6 +18965,11 @@
         "brown"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16809,6 +19013,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16878,6 +19087,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16929,6 +19143,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16963,6 +19182,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -16989,6 +19213,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17019,6 +19248,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_b"
@@ -17045,6 +19279,11 @@
         "cream"
       ],
       "coatColor": "cream",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_b",
+        "/root"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17071,6 +19310,11 @@
         "grey"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17097,6 +19341,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17128,6 +19377,11 @@
         "brown"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17154,6 +19408,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17184,6 +19443,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17219,6 +19483,11 @@
         "cream"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -17253,6 +19522,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17283,6 +19557,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17309,6 +19588,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17335,6 +19619,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17361,6 +19650,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17388,6 +19682,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17413,6 +19712,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17440,6 +19744,11 @@
         "brown"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17466,6 +19775,11 @@
         "cream"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17492,6 +19806,11 @@
         "grey"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17518,6 +19837,11 @@
         "white",
         "orange"
       ],
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatLength": "short",
       "evidence": [
         {
@@ -17541,6 +19865,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -17568,6 +19897,11 @@
         "orange"
       ],
       "coatColor": "multicolour",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -17594,6 +19928,11 @@
         "orange"
       ],
       "coatColor": "white",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17619,6 +19958,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17645,6 +19989,11 @@
         "white"
       ],
       "coatColor": "black",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17670,6 +20019,11 @@
         "black"
       ],
       "coatColor": "black",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17697,6 +20051,11 @@
         "brown"
       ],
       "coatColor": "brown",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17724,6 +20083,11 @@
         "brown"
       ],
       "coatColor": "grey",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_c",
+        "/root/review_b"
+      ],
       "coatColorReviewedBy": [
         "/root/review_c",
         "/root/review_a"
@@ -17746,6 +20110,11 @@
       "sourceUrl": "https://www.zavetisce-horjul.net/papiga-nimfa/",
       "species": "other",
       "coatColor": "grey",
+      "substantialWhite": true,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
@@ -17775,6 +20144,11 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ziva-26070019",
       "species": "other",
       "coatColor": "brown",
+      "substantialWhite": false,
+      "substantialWhiteReviewedBy": [
+        "/root/review_a",
+        "/root/review_c"
+      ],
       "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"

@@ -75,7 +75,7 @@ describe("colours that cannot have a dominant one", () => {
 
   it("counts a judged white marking, which is what the two-toned options wait for", () => {
     const manifest = review();
-    const record = { ...manifest.records[0], coatColors: ["black", "white"], coatColor: "black", whiteMarkings: "major" };
+    const record = { ...manifest.records[0], coatColors: ["black", "white"], coatColor: "black", substantialWhite: true };
     expect(dominanceReport({ ...manifest, records: [record as (typeof manifest.records)[number]] }))
       .toEqual({ classified: 1, multicolour: 0, judged: 1, forced: 0 });
   });
@@ -154,6 +154,57 @@ describe("reviewed photo appearance", () => {
     expect(AppearanceManifest.safeParse(missingReview).success).toBe(false);
     missingReview.records[0]!.coatColorReviewedBy = ["same", "same"];
     expect(AppearanceManifest.safeParse(missingReview).success).toBe(false);
+  });
+
+  it("requires an independent white-markings review without rewriting earlier colour reviewers", () => {
+    const manifest = review();
+    const record = manifest.records[0]!;
+    record.substantialWhite = true;
+    expect(AppearanceManifest.safeParse(manifest).success).toBe(false);
+    record.substantialWhiteReviewedBy = ["same", "same"];
+    expect(AppearanceManifest.safeParse(manifest).success).toBe(false);
+    record.substantialWhiteReviewedBy = ["markings-first", "markings-second"];
+    expect(AppearanceManifest.parse(manifest).records[0]).toMatchObject({
+      coatColorReviewedBy: ["colour-first", "colour-second"],
+      substantialWhiteReviewedBy: ["markings-first", "markings-second"],
+    });
+    expect(applyAppearance([source], manifest, policies, photos).animals[0]?.substantialWhite).toBe(true);
+    expect(applyAppearance([source], manifest, policies, new Map()).animals[0]?.substantialWhite).toBeUndefined();
+    delete record.substantialWhite;
+    expect(AppearanceManifest.safeParse(manifest).success).toBe(false);
+  });
+
+  it("rejects a white-markings review that contradicts its descriptive colours", () => {
+    const manifest = review();
+    const record = manifest.records[0]!;
+    record.substantialWhiteReviewedBy = ["markings-first", "markings-second"];
+    record.substantialWhite = false;
+    expect(AppearanceManifest.safeParse(manifest).success).toBe(true);
+    record.coatColors = ["black"];
+    expect(AppearanceManifest.safeParse(manifest).success).toBe(true);
+    record.substantialWhite = true;
+    expect(AppearanceManifest.safeParse(manifest).success).toBe(false);
+  });
+
+  it("does not publish white markings excluded by a provider's allowed fields", () => {
+    const manifest = review();
+    manifest.records[0]!.substantialWhite = true;
+    manifest.records[0]!.substantialWhiteReviewedBy = ["markings-first", "markings-second"];
+    const restricted = { ...policy, allowedFields: ["images", "coatColor", "coatColors", "coatLength"] };
+    const result = applyAppearance([source], manifest, new Map([["fixture", restricted]]), photos);
+    expect(result.animals[0]?.substantialWhite).toBeUndefined();
+    expect(result.issues).toEqual([{ animalId: source.id, field: "substantialWhite", reason: "permission" }]);
+  });
+
+  it("preserves explicit coat colours when a photo review disagrees about white", () => {
+    const manifest = review();
+    manifest.records[0]!.substantialWhite = true;
+    manifest.records[0]!.substantialWhiteReviewedBy = ["markings-first", "markings-second"];
+    const explicit = { ...source, coatColors: ["grey" as const] };
+    const result = applyAppearance([explicit], manifest, policies, photos);
+    expect(result.animals[0]?.coatColors).toEqual(["grey"]);
+    expect(result.animals[0]?.substantialWhite).toBeUndefined();
+    expect(result.issues).toContainEqual({ animalId: source.id, field: "substantialWhite", reason: "existing-value" });
   });
 
   it("reports new animals and unclassified descriptions without inventing a filter colour", () => {

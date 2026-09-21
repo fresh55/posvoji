@@ -13,8 +13,8 @@ const animal = (id: string, extra: Partial<Animal> = {}): Animal => ({
 });
 
 describe("reviewed appearance and home filters", () => {
-  const black = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } });
-  const brown = animal("brown-tabby", { coatColor: "brown", coatColors: ["black", "brown", "white"], coatLength: "short" });
+  const black = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], substantialWhite: false, coatLength: "long", adoptionRequirements: { onlyPet: true } });
+  const brown = animal("brown-tabby", { coatColor: "brown", coatColors: ["black", "brown", "white"], substantialWhite: false, coatLength: "short" });
   const white = animal("white-with-patches", { coatColor: "white", coatColors: ["black", "white"], coatLength: "short" });
   const multicolour = animal("balanced-patches", { coatColor: "multicolour", coatColors: ["black", "orange", "white"] });
   const unknown = animal("unknown", { coatColors: ["black", "white"] });
@@ -54,19 +54,34 @@ describe("reviewed appearance and home filters", () => {
 describe("two-toned colours", () => {
   // The case that started this: Mao is a tuxedo cat, predominantly black,
   // and a visitor pressing Črna does not expect him.
-  const mao = animal("mao", { coatColor: "black", coatColors: ["black", "white"], whiteMarkings: "major" });
-  const bib = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], whiteMarkings: "minor" });
-  const solid = animal("solid-black", { coatColor: "black", coatColors: ["black"], whiteMarkings: "none" });
-  // No answer recorded yet, which is every animal until the review runs.
+  const mao = animal("mao", { coatColor: "black", coatColors: ["black", "white"], substantialWhite: true });
+  const bib = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], substantialWhite: false });
+  const solid = animal("solid-black", { coatColor: "black", coatColors: ["black"], substantialWhite: false });
+  // The old colour review alone does not distinguish a bib from a white chest.
   const unjudged = animal("unjudged", { coatColor: "black", coatColors: ["black", "white"] });
-  const gingerAndWhite = animal("ginger", { coatColor: "orange", coatColors: ["orange", "white"], whiteMarkings: "major" });
+  const gingerAndWhite = animal("ginger", { coatColor: "orange", coatColors: ["orange", "white"], substantialWhite: true });
   const animals = [mao, bib, solid, unjudged, gingerAndWhite];
 
   it("moves a major white out of the plain colour and leaves a bib behind", () => {
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black"] }, now))
-      .toEqual([bib, solid, unjudged]);
+      .toEqual([bib, solid]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black-white"] }, now))
       .toEqual([mao]);
+  });
+
+  it("keeps an unreviewed animal visible until a colour is selected", () => {
+    expect(applyFilters([unjudged], EMPTY_FILTERS, now)).toEqual([unjudged]);
+    expect(applyFilters([unjudged], { ...EMPTY_FILTERS, coatColor: ["black", "black-white"] }, now)).toEqual([]);
+    expect(facetCounts([unjudged], EMPTY_FILTERS, now).coatColor.size).toBe(0);
+  });
+
+  it.each(["black", "brown", "grey"] as const)("separates %s and white from its plain colour", (colour) => {
+    const plain = animal("plain", { coatColor: colour, substantialWhite: false });
+    const paired = animal("paired", { coatColor: colour, coatColors: [colour, "white"], substantialWhite: true });
+    const missing = animal("missing", { coatColor: colour });
+    const pool = [plain, paired, missing];
+    expect(applyFilters(pool, { ...EMPTY_FILTERS, coatColor: [colour] }, now)).toEqual([plain]);
+    expect(applyFilters(pool, { ...EMPTY_FILTERS, coatColor: [`${colour}-white`] }, now)).toEqual([paired]);
   });
 
   it("leaves a colour with no two-toned option where it was", () => {
@@ -78,7 +93,7 @@ describe("two-toned colours", () => {
 
   it("counts a two-toned answer separately and round-trips its slug", () => {
     const counts = facetCounts(animals, EMPTY_FILTERS, now);
-    expect(counts.coatColor.get("black")).toBe(3);
+    expect(counts.coatColor.get("black")).toBe(2);
     expect(counts.coatColor.get("black-white")).toBe(1);
     const state: Filters = { ...EMPTY_FILTERS, coatColor: ["black-white"] };
     expect(serializeFilters(state)).toContain("barva=crno-bela");

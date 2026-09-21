@@ -41,6 +41,7 @@ allowedFields:
   - originMunicipality
   # Reviewed facts from the permitted catalogue descriptions and photos.
   - coatColor
+  - substantialWhite
   - coatColors
   - coatLength
   - energy

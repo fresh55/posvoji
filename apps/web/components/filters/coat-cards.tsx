@@ -21,8 +21,8 @@ import {
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
+  useFilterCardGestures,
   useFilterCardHover,
-  useFilterCardPress,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
@@ -1008,13 +1008,14 @@ function CoatCards({
   } = useOneShotCelebration<string>(CELEBRATION_MS);
   const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
     selected.length,
+    options.length,
   );
-  const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover();
   const {
+    hoveredValue,
     pressedValue,
     release: releasePress,
-    handlers: pressHandlers,
-  } = useFilterCardPress();
+    handlers: gestureHandlers,
+  } = useFilterCardGestures({ press: tracksPress });
   const label = groupLabel(group, locale);
 
   const celebrationIndex = options.findIndex(
@@ -1045,8 +1046,7 @@ function CoatCards({
         const dead = isDeadOption(count, checked);
         const celebrating = celebration?.value === value && checked;
         const resetDelay = resetDelayOf(index);
-        const hover = hoverHandlers(value);
-        const press = tracksPress ? pressHandlers(value) : undefined;
+        const gestures = gestureHandlers(value);
         // The cards that did not change feel the draught. How far away they
         // are is this loop's business; how long that takes belongs to the
         // glyph, which is the split energy and size already use.
@@ -1065,12 +1065,7 @@ function CoatCards({
             aria-pressed={checked}
             aria-label={`${option}, ${animalCount(count, locale)}`}
             disabled={dead}
-            {...hover}
-            {...press}
-            onPointerLeave={() => {
-              hover.onPointerLeave();
-              press?.onPointerLeave();
-            }}
+            {...gestures}
             onClick={() => {
               if (checked) clearCelebration();
               else celebrate(value);
@@ -1321,6 +1316,7 @@ function CoatColorPalette({
   } = useOneShotCelebration<string>(CELEBRATION_MS);
   const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
     selected.length,
+    options.length,
   );
   // hoveredValue already answers the keyboard: the hook sets it on focus too,
   // gated on :focus-visible. A second piece of focus state here overrode that

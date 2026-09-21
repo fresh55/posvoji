@@ -4,7 +4,7 @@ import { PawPrint } from "lucide-react";
 import type { TargetAndTransition, Transition } from "motion/react";
 import { domAnimation, m, useReducedMotion } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   CountRoll,
   DEAD_OPTION_CLASS,
@@ -19,7 +19,8 @@ import {
 } from "@/components/filters/filter-card";
 import {
   RESET_STAGGER,
-  useFilterCardHover,
+  resetDelayStyle,
+  useFilterCardGestures,
   useOneShotCelebration,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
@@ -290,11 +291,12 @@ export function SizePawCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<string>(LANDING_MS);
-  const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover();
-  const [pressedValue, setPressedValue] = useState<string | null>(null);
-
-  const releasePress = (value: string) =>
-    setPressedValue((current) => (current === value ? null : current));
+  const {
+    hoveredValue,
+    pressedValue,
+    release: releasePress,
+    handlers: gestureHandlers,
+  } = useFilterCardGestures();
 
   const celebrationIndex = options.findIndex(
     ({ value }) => value === celebration?.value,
@@ -354,7 +356,7 @@ export function SizePawCards({
             landing,
             celebrationLanding,
           );
-          const hover = hoverHandlers(value);
+          const gestures = gestureHandlers(value);
           // The count takes the thud of a heavy landing wherever it is drawn,
           // so both layouts hand their own class to the same jolt.
           const joltedCount = (className: string) => (
@@ -399,14 +401,7 @@ export function SizePawCards({
                 onToggle(value);
               }}
               disabled={dead}
-              {...hover}
-              onPointerLeave={() => {
-                hover.onPointerLeave();
-                releasePress(value);
-              }}
-              onPointerDown={() => setPressedValue(value)}
-              onPointerUp={() => releasePress(value)}
-              onPointerCancel={() => releasePress(value)}
+              {...gestures}
               aria-pressed={checked}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
@@ -569,6 +564,10 @@ export function SizePawCards({
                           }
                         >
                           <PawPrint
+                            // The colour is a class here, so the reset's turn
+                            // has to reach it as a transition-delay: the paw
+                            // stepped away in order and went grey all at once.
+                            style={resetDelayStyle(checked, resetDelay)}
                             className={cn(
                               landing.iconClassName,
                               "transition-[color,transform,opacity] duration-200",

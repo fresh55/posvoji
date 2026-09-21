@@ -21,6 +21,7 @@ import {
   LONGEST_GOOD_WITH_GESTURE_MS,
 } from "@/components/filters/good-with-glyphs";
 import {
+  resetDelayStyle,
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
@@ -90,9 +91,12 @@ export function GoodWithCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<GoodWithKey>(GESTURE_MS);
-  const { beginReset, resetDelay } = useResetStagger(selected.length);
+  const { beginReset, resetDelay } = useResetStagger(
+    selected.length,
+    options.length,
+  );
   const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
-    useFilterCardHover();
+    useFilterCardHover<GoodWithKey>();
 
   const celebrationIndex = options.findIndex(
     ({ key }) => key === celebration?.value,
@@ -150,6 +154,7 @@ export function GoodWithCards({
         // The card that did not change leans away from the one that did.
         const reacting = celebrationIndex >= 0 && !celebrating;
         const tiltDirection = Math.sign(index - celebrationIndex) || 1;
+        const exitDelay = resetDelay(index);
 
         return (
           <button
@@ -182,7 +187,7 @@ export function GoodWithCards({
             <FilterCardIconWell
               layout={layout}
               checked={checked}
-              exitDelay={resetDelay(index)}
+              exitDelay={exitDelay}
             >
               {celebrating && !shouldReduceMotion ? (
                 <FilterCardRipple
@@ -198,7 +203,16 @@ export function GoodWithCards({
                     time. What is left out here is the neighbour's lean, which
                     is the whole icon leaning away and nothing else. */}
                 <m.span
-                  className="flex items-center justify-center"
+                  // The colour rides the wrapper rather than the glyph. It is
+                  // a class here and not a motion target, so the only place to
+                  // put the reset's turn is a transition-delay, and the glyph
+                  // itself takes no style prop. The strokes are currentColor,
+                  // so they inherit the value as it transitions.
+                  className={cn(
+                    "flex items-center justify-center transition-colors duration-150",
+                    checked ? "text-brand-strong" : "text-muted-foreground",
+                  )}
+                  style={resetDelayStyle(checked, exitDelay)}
                   initial={false}
                   animate={
                     reacting && !shouldReduceMotion
@@ -219,12 +233,7 @@ export function GoodWithCards({
                     facet={key}
                     gesture={celebrating ? "celebrate" : "rest"}
                     shouldReduceMotion={shouldReduceMotion ?? false}
-                    className={cn(
-                      "size-5 transition-colors duration-150",
-                      checked
-                        ? "text-brand-strong"
-                        : "text-muted-foreground",
-                    )}
+                    className="size-5"
                   />
                 </m.span>
               </FilterCardHoverLift>

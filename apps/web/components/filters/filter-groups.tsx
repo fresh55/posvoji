@@ -37,6 +37,7 @@ import {
 import { SexCards } from "@/components/filters/sex-cards";
 import { SizePawCards } from "@/components/filters/size-paw-cards";
 import {
+  resetDelayStyle,
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
@@ -167,9 +168,12 @@ function HealthToggleCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<ToggleKey>(GESTURE_MS);
-  const { beginReset, resetDelay } = useResetStagger(selected.length);
+  const { beginReset, resetDelay } = useResetStagger(
+    selected.length,
+    toggles.length,
+  );
   const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
-    useFilterCardHover();
+    useFilterCardHover<ToggleKey>();
 
   return (
     <FilterCardSection
@@ -194,6 +198,7 @@ function HealthToggleCards({
         const Icon = HEALTH_ICONS[key];
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
+        const exitDelay = resetDelay(index);
 
         return (
           <button
@@ -226,7 +231,7 @@ function HealthToggleCards({
             <FilterCardIconWell
               layout={layout}
               checked={checked}
-              exitDelay={resetDelay(index)}
+              exitDelay={exitDelay}
             >
               {celebrating && !shouldReduceMotion ? (
                 <FilterCardRipple
@@ -253,6 +258,11 @@ function HealthToggleCards({
                   }
                 >
                   <Icon
+                    // A lucide icon coloured by a class, so the reset's turn
+                    // reaches it as a transition-delay rather than as part of
+                    // a motion transition. Without it the halo staggered out
+                    // over icons that had all gone grey at once.
+                    style={resetDelayStyle(checked, exitDelay)}
                     className={cn(
                       "size-5 transition-colors duration-150",
                       checked
@@ -290,7 +300,10 @@ function SizeGroup({
   layout,
 }: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
-  const { isResetting, beginReset } = useResetStagger(selected.length);
+  const { isResetting, beginReset } = useResetStagger(
+    selected.length,
+    options.length,
+  );
 
   return (
     <section>

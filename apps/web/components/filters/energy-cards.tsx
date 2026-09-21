@@ -2,7 +2,6 @@
 
 import type { TargetAndTransition, Transition } from "motion/react";
 import { m, useReducedMotion } from "motion/react";
-import { useState } from "react";
 import type { EnergyLevel } from "@posvoji/schema";
 import {
   CountRoll,
@@ -19,7 +18,7 @@ import {
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
-  useFilterCardHover,
+  useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
@@ -403,11 +402,14 @@ function EnergyGlyph({
   level,
   tempo,
   checked,
+  resetDelay,
   className,
 }: {
   level: EnergyLevel;
   tempo: Tempo;
   checked: boolean;
+  /** Holds the stroke back so a reset empties the section in order. */
+  resetDelay: number;
   className: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
@@ -444,8 +446,10 @@ function EnergyGlyph({
                       ease: "easeOut",
                     }
                   : // The drawn length drops only once the stroke is gone, so
-                    // unchecking never runs the draw backwards.
-                    { duration: 0.12, ease: "easeOut" }
+                    // unchecking never runs the draw backwards. On a reset it
+                    // waits its turn with the halo around it, which was
+                    // staggering out over a glyph that had already gone grey.
+                    { duration: 0.12, delay: resetDelay, ease: "easeOut" }
             }
           />
         ))}
@@ -482,12 +486,14 @@ export function EnergyCards({
   } = useOneShotCelebration<string>(TEMPO_MS);
   const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
     selected.length,
+    options.length,
   );
-  const [pressedValue, setPressedValue] = useState<string | null>(null);
-  const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover();
-
-  const releasePress = (value: string) =>
-    setPressedValue((current) => (current === value ? null : current));
+  const {
+    hoveredValue,
+    pressedValue,
+    release: releasePress,
+    handlers: gestureHandlers,
+  } = useFilterCardGestures();
 
   const celebrationIndex = options.findIndex(
     ({ value }) => value === celebration?.value,
@@ -548,7 +554,7 @@ export function EnergyCards({
               direction,
               distance,
             );
-            const hover = hoverHandlers(value);
+            const gestures = gestureHandlers(value);
             const particles = tempo.particle
               ? PARTICLES[tempo.particle]
               : undefined;
@@ -570,14 +576,7 @@ export function EnergyCards({
                   onToggle(value);
                 }}
                 disabled={dead}
-                {...hover}
-                onPointerLeave={() => {
-                  hover.onPointerLeave();
-                  releasePress(value);
-                }}
-                onPointerDown={() => setPressedValue(value)}
-                onPointerUp={() => releasePress(value)}
-                onPointerCancel={() => releasePress(value)}
+                {...gestures}
                 aria-pressed={checked}
                 aria-label={`${label}, ${animalCount(count, locale)}`}
                 initial={false}
@@ -726,6 +725,7 @@ export function EnergyCards({
                           level={level}
                           tempo={tempo}
                           checked={checked}
+                          resetDelay={resetDelay}
                           className={cn(
                             "size-5 transition-transform duration-200",
                             // A dead option has no charge left to show.

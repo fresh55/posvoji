@@ -2,7 +2,6 @@
 
 import type { TargetAndTransition, Transition } from "motion/react";
 import { m, useReducedMotion } from "motion/react";
-import { useState } from "react";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -19,7 +18,7 @@ import {
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
-  useFilterCardHover,
+  useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
@@ -114,8 +113,22 @@ const HEARTBEAT_MS = Math.ceil(
 
 // Two layers: a muted outline that is always there, and an accent copy that
 // draws itself on when the card is chosen, heart first and plaster last.
-function CareGlyph({ checked, className }: { checked: boolean; className: string }) {
+function CareGlyph({
+  checked,
+  resetDelay,
+  className,
+}: {
+  checked: boolean;
+  /** Holds the heart back so a reset empties the section in order. */
+  resetDelay: number;
+  className: string;
+}) {
   const shouldReduceMotion = useReducedMotion();
+  // The whole retract waits its turn, fade and drawn length together, so the
+  // section empties one row at a time. The delay used to stop at the icon
+  // well's halo and never reach the heart inside it, so the halos winked out
+  // in order over hearts that had all gone grey at once.
+  const wait = shouldReduceMotion || checked ? 0 : resetDelay;
 
   return (
     <svg
@@ -137,6 +150,7 @@ function CareGlyph({ checked, className }: { checked: boolean; className: string
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
           duration: shouldReduceMotion || checked ? 0 : FADE_DURATION,
+          delay: wait,
           ease: "easeOut",
         }}
       >
@@ -158,7 +172,7 @@ function CareGlyph({ checked, className }: { checked: boolean; className: string
                     }
                   : // The drawn length drops only once the overlay has faded
                     // out, so unchecking never runs the draw backwards.
-                    { duration: 0, delay: FADE_DURATION }
+                    { duration: 0, delay: wait + FADE_DURATION }
             }
           />
         ))}
@@ -203,13 +217,16 @@ export function CareCards({
     celebrate: exhaleNow,
     clear: clearExhale,
   } = useOneShotCelebration<CareKey>(EXHALE_MS);
-  const { beginReset, resetDelay } = useResetStagger(selected.length);
-  const [pressedKey, setPressedKey] = useState<CareKey | null>(null);
-  const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
-    useFilterCardHover();
-
-  const releasePress = (key: CareKey) =>
-    setPressedKey((current) => (current === key ? null : current));
+  const { beginReset, resetDelay } = useResetStagger(
+    selected.length,
+    options.length,
+  );
+  const {
+    hoveredValue: hoveredKey,
+    pressedValue: pressedKey,
+    release: releasePress,
+    handlers: gestureHandlers,
+  } = useFilterCardGestures<CareKey>();
 
   const outcome =
     selected.length === 0
@@ -256,7 +273,7 @@ export function CareCards({
               pressedKey === key && !celebrating && !shouldReduceMotion;
             // A reset winks the row out rather than dropping it.
             const exitDelay = resetDelay(index);
-            const hover = hoverHandlers(key);
+            const gestures = gestureHandlers(key);
 
             return (
               <button
@@ -277,14 +294,7 @@ export function CareCards({
                   onToggle(key);
                 }}
                 disabled={dead}
-                {...hover}
-                onPointerLeave={() => {
-                  hover.onPointerLeave();
-                  releasePress(key);
-                }}
-                onPointerDown={() => setPressedKey(key)}
-                onPointerUp={() => releasePress(key)}
-                onPointerCancel={() => releasePress(key)}
+                {...gestures}
                 aria-pressed={checked}
                 aria-label={`${label}, ${animalCount(count, locale)}`}
                 className={filterCardVariants({
@@ -407,6 +417,7 @@ export function CareCards({
                       >
                         <CareGlyph
                           checked={checked}
+                          resetDelay={exitDelay}
                           className={cn(
                             "size-5 transition-[opacity,transform] duration-200",
                             // A dead option is a heart nobody is waiting on.

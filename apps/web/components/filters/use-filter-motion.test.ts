@@ -4,8 +4,12 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FocusEvent, PointerEvent } from "react";
 import {
+  RESET_STAGGER,
+  resetDelayStyle,
+  useFilterCardGestures,
   useFilterCardHover,
   useOneShotCelebration,
+  useResetStagger,
 } from "./use-filter-motion";
 
 const HOLD_MS = 500;
@@ -144,5 +148,146 @@ describe("useFilterCardHover", () => {
 
     act(() => result.current.handlers("small").onBlur());
     expect(result.current.hoveredValue).toBeNull();
+  });
+});
+
+describe("useResetStagger", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("hands out no delay until a reset begins", () => {
+    const { result } = renderHook(() => useResetStagger(2, 3));
+
+    expect(result.current.isResetting).toBe(false);
+    expect(result.current.resetDelay(2)).toBe(0);
+  });
+
+  it("delays each card by its position once the reset begins", () => {
+    const { result, rerender } = renderHook(
+      ({ selected }) => useResetStagger(selected, 3),
+      { initialProps: { selected: 2 } },
+    );
+
+    act(() => result.current.beginReset());
+    rerender({ selected: 0 });
+
+    expect(result.current.isResetting).toBe(true);
+    expect(result.current.resetDelay(0)).toBe(0);
+    expect(result.current.resetDelay(2)).toBeCloseTo(2 * RESET_STAGGER);
+  });
+
+  it("does not start the clock while the section still holds a selection", () => {
+    const { result } = renderHook(() => useResetStagger(2, 3));
+
+    // The filters land through the parent, which has not answered yet.
+    act(() => result.current.beginReset());
+    act(() => vi.advanceTimersByTime(2000));
+
+    expect(result.current.isResetting).toBe(true);
+  });
+
+  it("holds the reset open until the last card of a long section has had its turn", () => {
+    // Barva draws ten swatches, so the last turn comes at 9 * 45ms. Under the
+    // fixed 280ms hold this section was out of the reset before then.
+    const { result, rerender } = renderHook(
+      ({ selected }) => useResetStagger(selected, 10),
+      { initialProps: { selected: 10 } },
+    );
+
+    act(() => result.current.beginReset());
+    rerender({ selected: 0 });
+
+    act(() => vi.advanceTimersByTime(600));
+    expect(result.current.isResetting).toBe(true);
+
+    act(() => vi.advanceTimersByTime(200));
+    expect(result.current.isResetting).toBe(false);
+  });
+
+  it("lets a short section out of the reset sooner", () => {
+    const { result, rerender } = renderHook(
+      ({ selected }) => useResetStagger(selected, 3),
+      { initialProps: { selected: 3 } },
+    );
+
+    act(() => result.current.beginReset());
+    rerender({ selected: 0 });
+
+    act(() => vi.advanceTimersByTime(600));
+    expect(result.current.isResetting).toBe(false);
+  });
+});
+
+describe("resetDelayStyle", () => {
+  it("delays the leaving half of the gesture only", () => {
+    expect(resetDelayStyle(false, 0.09)).toEqual({ transitionDelay: "0.09s" });
+  });
+
+  it("says nothing while the card is being switched on", () => {
+    // One CSS rule covers both directions, so a card picked during another
+    // card's wink must not sit uncoloured waiting for a turn of its own.
+    expect(resetDelayStyle(true, 0.09)).toBeUndefined();
+  });
+
+  it("says nothing outside a reset", () => {
+    expect(resetDelayStyle(false, 0)).toBeUndefined();
+  });
+});
+
+describe("useFilterCardGestures", () => {
+  it("tracks the card the pointer is held down on", () => {
+    const { result } = renderHook(() => useFilterCardGestures());
+
+    act(() => result.current.handlers("small").onPointerDown?.());
+    expect(result.current.pressedValue).toBe("small");
+
+    act(() => result.current.handlers("small").onPointerUp?.());
+    expect(result.current.pressedValue).toBeNull();
+  });
+
+  it("clears the hover and the press on one leave", () => {
+    const { result } = renderHook(() => useFilterCardGestures());
+
+    act(() => {
+      result.current.handlers("small").onPointerEnter(pointerEvent("mouse"));
+      result.current.handlers("small").onPointerDown?.();
+    });
+    expect(result.current.hoveredValue).toBe("small");
+    expect(result.current.pressedValue).toBe("small");
+
+    // The reason the two hooks are handed out composed: spreading them
+    // separately onto one button drops whichever leave handler comes first,
+    // and a card left lit after the mouse had gone failed nothing.
+    act(() => result.current.handlers("small").onPointerLeave());
+
+    expect(result.current.hoveredValue).toBeNull();
+    expect(result.current.pressedValue).toBeNull();
+  });
+
+  it("release only clears the card that still owns the press", () => {
+    const { result } = renderHook(() => useFilterCardGestures());
+
+    act(() => result.current.handlers("small").onPointerDown?.());
+
+    act(() => result.current.release("large"));
+    expect(result.current.pressedValue).toBe("small");
+
+    act(() => result.current.release("small"));
+    expect(result.current.pressedValue).toBeNull();
+  });
+
+  it("registers no press handlers for a section that does not answer a press", () => {
+    const { result } = renderHook(() =>
+      useFilterCardGestures({ press: false }),
+    );
+    const handlers = result.current.handlers("small");
+
+    expect(handlers.onPointerDown).toBeUndefined();
+    expect(handlers.onPointerUp).toBeUndefined();
+    expect(handlers.onPointerCancel).toBeUndefined();
+
+    act(() => handlers.onPointerEnter(pointerEvent("mouse")));
+    expect(result.current.hoveredValue).toBe("small");
+    expect(result.current.pressedValue).toBeNull();
   });
 });

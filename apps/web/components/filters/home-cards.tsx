@@ -2,7 +2,6 @@
 
 import type { TargetAndTransition, Transition } from "motion/react";
 import { m, useReducedMotion } from "motion/react";
-import { useState } from "react";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -18,7 +17,7 @@ import {
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import {
-  useFilterCardHover,
+  useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
@@ -114,13 +113,21 @@ const LIGHTS_MS = Math.ceil(
 function HomeGlyph({
   checked,
   dead,
+  resetDelay,
   className,
 }: {
   checked: boolean;
   dead: boolean;
+  /** Holds the house back so a reset empties the section in order. */
+  resetDelay: number;
   className: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  // Everything the house takes off waits the same turn: the lights going out
+  // room by room, and the accent outline behind them. The delay used to stop
+  // at the icon well's halo, so the halos winked out in order over houses
+  // that had all gone dark at once.
+  const wait = shouldReduceMotion || checked ? 0 : resetDelay;
 
   return (
     <svg
@@ -157,7 +164,7 @@ function HomeGlyph({
                       duration: DIM_DURATION,
                       // The lights go out the way a house empties: the last
                       // room lit is the first one dark.
-                      delay: (WINDOWS.length - 1 - index) * DIM_STAGGER,
+                      delay: wait + (WINDOWS.length - 1 - index) * DIM_STAGGER,
                       ease: "easeOut",
                     }
             }
@@ -192,6 +199,7 @@ function HomeGlyph({
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
           duration: shouldReduceMotion || checked ? 0 : FADE_DURATION,
+          delay: wait,
           ease: "easeOut",
         }}
       >
@@ -213,7 +221,7 @@ function HomeGlyph({
                     }
                   : // The drawn length drops only once the overlay has faded
                     // out, so unchecking never runs the draw backwards.
-                    { duration: 0, delay: FADE_DURATION }
+                    { duration: 0, delay: wait + FADE_DURATION }
             }
           />
         ))}
@@ -251,13 +259,16 @@ export function HomeCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<HomeKey>(LIGHTS_MS);
-  const { beginReset, resetDelay } = useResetStagger(selected.length);
-  const [pressedKey, setPressedKey] = useState<HomeKey | null>(null);
-  const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
-    useFilterCardHover();
-
-  const releasePress = (key: HomeKey) =>
-    setPressedKey((current) => (current === key ? null : current));
+  const { beginReset, resetDelay } = useResetStagger(
+    selected.length,
+    options.length,
+  );
+  const {
+    hoveredValue: hoveredKey,
+    pressedValue: pressedKey,
+    release: releasePress,
+    handlers: gestureHandlers,
+  } = useFilterCardGestures<HomeKey>();
 
   const outcome =
     selected.length === 0
@@ -303,7 +314,7 @@ export function HomeCards({
               pressedKey === key && !celebrating && !shouldReduceMotion;
             // A reset winks the rows out in order rather than all at once.
             const exitDelay = resetDelay(index);
-            const hover = hoverHandlers(key);
+            const gestures = gestureHandlers(key);
 
             return (
               <button
@@ -322,14 +333,7 @@ export function HomeCards({
                   onToggle(key);
                 }}
                 disabled={dead}
-                {...hover}
-                onPointerLeave={() => {
-                  hover.onPointerLeave();
-                  releasePress(key);
-                }}
-                onPointerDown={() => setPressedKey(key)}
-                onPointerUp={() => releasePress(key)}
-                onPointerCancel={() => releasePress(key)}
+                {...gestures}
                 aria-pressed={checked}
                 aria-label={`${label}, ${animalCount(count, locale)}`}
                 className={filterCardVariants({
@@ -439,6 +443,7 @@ export function HomeCards({
                       <HomeGlyph
                         checked={checked}
                         dead={dead}
+                        resetDelay={exitDelay}
                         className={cn(
                           "size-5 transition-opacity duration-200",
                           // An unlit house nobody can move into.

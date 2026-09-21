@@ -8,7 +8,14 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactElement,
+} from "react";
 import { useI18n } from "@/components/i18n-context";
 import {
   Tooltip,
@@ -19,6 +26,7 @@ import {
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
 import { jumpToFilterSection } from "@/components/filters/filter-section-header";
+import { SECTION_OF_FACET } from "@/components/filters/use-filter-sections";
 import { groupLabel, type FilterFacet } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import {
@@ -96,8 +104,18 @@ const SCOPE_VISIBLE = 3;
 // boundary that identifies a control. The two shapes that mean something by
 // their border still say it over this: the "+N" adds border-dashed and a
 // marked pill takes --brand-border, which is 3.27:1 since the same audit.
-const CHIP_PILL =
-  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border border-control-border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
+//
+// The height, the radius, the border and the coarse-pointer floor are the
+// pill, whichever of the two shapes below is drawn; only the padding and where
+// the ring is answered differ. Stated once, so a row that has already had to
+// settle rounded-full against rounded-ui once does not get to drift again.
+const CHIP_FRAME =
+  "inline-flex h-7 shrink-0 items-center rounded-ui border border-control-border text-xs transition-colors pointer-coarse:min-h-11";
+
+const CHIP_PILL = cn(
+  CHIP_FRAME,
+  "gap-1.5 px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:px-3",
+);
 
 // The same pill with two controls in it, for the row beside a panel a filter
 // can be gone back to. The label half goes to the section that set this
@@ -113,12 +131,18 @@ const CHIP_PILL =
 // utility and there is no rounded-l-ui to pair it with, so the shape clips
 // the hover fills to its own corners instead. A ring is drawn outside the box
 // and is the element's own, so the clip never reaches it.
-const CHIP_SPLIT =
-  "inline-flex h-7 shrink-0 items-center overflow-hidden rounded-ui border border-control-border text-xs transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring pointer-coarse:min-h-11";
+const CHIP_SPLIT = cn(
+  CHIP_FRAME,
+  "overflow-hidden focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
+);
+
+/** What both halves are: a box filling the pill's height, answering a pointer
+ *  in its own half of it and nowhere else. */
+const CHIP_HALF =
+  "flex items-center self-stretch outline-none transition-colors hover:bg-muted";
 
 /** The label half: everything the pill says, and the press that goes to it. */
-const CHIP_JUMP =
-  "flex min-w-0 shrink items-center gap-1.5 self-stretch pl-2.5 pr-1.5 outline-none transition-colors hover:bg-muted";
+const CHIP_JUMP = cn(CHIP_HALF, "min-w-0 shrink gap-1.5 pl-2.5 pr-1.5");
 
 /** The cross half. Narrower than the label's, because it holds one 12px mark,
  *  and 44px wide on a finger.
@@ -132,8 +156,18 @@ const CHIP_JUMP =
  *  neither overhangs its neighbour -- but a finger is owed 44px by whichever
  *  of them it lands on, so self-stretch gives both the pill's height and
  *  min-w-11 gives this one its width. */
-const CHIP_CROSS =
-  "flex shrink-0 items-center justify-center self-stretch pl-1.5 pr-2.5 outline-none transition-colors hover:bg-muted pointer-coarse:min-w-11 pointer-coarse:px-0";
+//
+// `group` on the half and not on the pill: the mark inside it darkens for a
+// pointer on the cross, which is the control that mark belongs to. On the
+// single-button shape the same class comes from CHIP_REMOVABLE, where the
+// whole pill is that control.
+const CHIP_CROSS = cn(
+  CHIP_HALF,
+  "group shrink-0 justify-center pl-1.5 pr-2.5 pointer-coarse:min-w-11 pointer-coarse:px-0",
+);
+
+/** The ground a pill takes while it is the one worth dropping. */
+const CHIP_BLOCKED = "border-brand-border bg-brand text-brand-foreground";
 
 // The look a pill wears when pressing it takes its filter off, which is every
 // pill but the "+N".
@@ -160,11 +194,23 @@ export type ChipRowPlacement = "band" | "flow";
  *  by 22px. The strip is what that case falls back on. */
 const PLACEMENT: Record<
   ChipRowPlacement,
-  { visible: number; scrolls: boolean; box: string; pills: string; pill?: string }
+  {
+    visible: number;
+    scrolls: boolean;
+    jumps: boolean;
+    box: string;
+    pills: string;
+    pill?: string;
+  }
 > = {
   band: {
     visible: MAX_VISIBLE,
     scrolls: true,
+    // Beside the panel, so a pill has a section to go back to and is drawn as
+    // two controls. Below lg the filters are in a sheet the visitor opens
+    // instead, there is nowhere to go, and the pill keeps the single press it
+    // has always had over its whole 44px.
+    jumps: true,
     // SCROLL_STRIP is the fade, the scroll padding that keeps a focused pill
     // out from under it, and the horizontal room the focus ring needs; the
     // couplings between those three are on the constant. The -my/py pair is
@@ -181,6 +227,7 @@ const PLACEMENT: Record<
   flow: {
     visible: FLOW_VISIBLE,
     scrolls: false,
+    jumps: false,
     // min-w-0 and nothing else: the box is as wide as the column and the
     // pills wrap inside it.
     box: "min-w-0",
@@ -193,27 +240,6 @@ const PLACEMENT: Record<
 
 /** What every pill row wears at both placements. */
 const PILL_ROW = "flex items-center gap-1.5 pointer-coarse:gap-2";
-
-/** The panel section each facet's answers live in, for the pill that goes
- *  there. Videz holds two facets, which is why this is a map and not the
- *  facet's own name.
- *
- *  Shelter is absent on purpose: Kje is the panel's first block, it does not
- *  fold, and it is already where a visitor scrolling up arrives. Its pills
- *  keep the whole-pill press the row has always had. */
-const FACET_SECTIONS: Partial<Record<FilterFacet, string>> = {
-  sex: "sex",
-  age: "age",
-  size: "size",
-  energy: "energy",
-  coatColor: "appearance",
-  coatLength: "appearance",
-  waiting: "waiting",
-  toggles: "health",
-  goodWith: "goodWith",
-  home: "home",
-  care: "care",
-};
 
 type Run = { facet: FilterFacet; chips: Chip[] };
 
@@ -516,13 +542,11 @@ export function FilterChips({
   // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
   const pill = cn(CHIP_PILL, shape.pill);
 
-  // Only the band. Below lg the filters are in a sheet the visitor opens, not
-  // a panel standing beside the grid, so there is nowhere for a pill to go;
-  // there the pill keeps the single press it has always had, over its whole
-  // 44px. Shelter has no folding section either (FACET_SECTIONS).
+  // Whether this placement offers a way back at all is the table's answer;
+  // whether this facet has a section to go back to is SECTION_OF_FACET's.
   const jumpFor = (chip: Chip) => {
-    const section = FACET_SECTIONS[chip.facet];
-    if (placement !== "band" || !section) return undefined;
+    const section = SECTION_OF_FACET[chip.facet];
+    if (!shape.jumps || !section) return undefined;
     return () => jumpToFilterSection(section, !reduceMotion);
   };
 
@@ -591,7 +615,7 @@ export function FilterChips({
                       item.chip.onRemove();
                     }}
                     onJump={jumpFor(item.chip)}
-                    className={pill}
+                    className={shape.pill}
                   />
                 ) : item.kind === "group" ? (
                   // The tooltip names what is folded away. Without it the only
@@ -911,6 +935,10 @@ function ChipButton({
   /** Where this pill's filter was set, when there is a panel to go back to.
    *  Absent, the pill is the single remove button it has always been. */
   onJump?: () => void;
+  /** What this placement adds to the pill, over whichever shape onJump picks.
+   *  The shape itself is not passed in: which of the two is drawn is what
+   *  onJump decides, and handing it a class for the other one is how the flow
+   *  row's own narrowing came to be dropped on the floor. */
   className?: string;
 }) {
   const { locale, t } = useI18n();
@@ -922,6 +950,33 @@ function ChipButton({
   // Only on the marked pill, because it is the only one that draws the number;
   // every other pill says it in the tooltip below and nowhere else.
   const removeLabel = t("removeFilter", { label: chip.label });
+  const removeName =
+    blocked && gain > 0
+      ? `${removeLabel}: +${animalCount(gain, locale)}`
+      : removeLabel;
+  const handleRemove = (event: MouseEvent<HTMLButtonElement>) =>
+    onRemove(fromKeyboard(event));
+  // No tooltip when there is nothing to add to the label. A pill that says
+  // "Mlad" under a pointer, with a tooltip that says "remove Mlad", is a
+  // second copy of what the cursor already implies.
+  //
+  // The marked pill is not that case, though it was excluded here as if it
+  // were. It draws "+2" and a paw and nothing on the page says what either
+  // means; the sentence the tooltip carries is the only place "the two animals
+  // this brings back" is written. So it keeps it, and the number is in its
+  // accessible name as well. Where the pill is two controls, the sentence
+  // goes on the one it is about.
+  const withGainTooltip = (control: ReactElement) =>
+    gain > 0 ? (
+      <Tooltip>
+        <TooltipTrigger asChild>{control}</TooltipTrigger>
+        <TooltipContent>
+          {t("removeShowsMore", { count: animalCount(gain, locale) })}
+        </TooltipContent>
+      </Tooltip>
+    ) : (
+      control
+    );
 
   const glyph = <ChipGlyph facet={chip.facet} value={chip.value} />;
   // A shelter's full name is forty characters. Untruncated, one of them filled
@@ -957,34 +1012,12 @@ function ChipButton({
   );
 
   if (onJump) {
-    const removeButton = (
-      <button
-        type="button"
-        // Not a stop of its own. The row is walked with the arrows, one press
-        // per pill, and Delete on the label half already takes the filter off
-        // (the row's own key handler); a second stop per pill would double the
-        // length of that walk to reach a key that works from where focus
-        // already is.
-        tabIndex={-1}
-        onClick={(event) => onRemove(fromKeyboard(event))}
-        aria-label={
-          blocked && gain > 0
-            ? `${removeLabel}: +${animalCount(gain, locale)}`
-            : removeLabel
-        }
-        className={CHIP_CROSS}
-      >
-        {cross}
-      </button>
-    );
-
     return (
       <span
         className={cn(
           CHIP_SPLIT,
-          blocked
-            ? "border-brand-border bg-brand text-brand-foreground"
-            : "bg-background text-foreground",
+          className,
+          blocked ? CHIP_BLOCKED : "bg-background text-foreground",
         )}
       >
         <button
@@ -994,6 +1027,9 @@ function ChipButton({
           onFocus={onFocus}
           onClick={onJump}
           aria-label={t("showFilterSection", { label: chip.label })}
+          // The row is walked with the arrows, so a screen reader announcing
+          // "Delete" on arrival is what tells someone the key does anything
+          // here. On this half, because this half is the stop.
           aria-keyshortcuts="Delete"
           className={CHIP_JUMP}
         >
@@ -1001,17 +1037,21 @@ function ChipButton({
           {name}
           {gainMark}
         </button>
-        {/* The sentence about what dropping this gives back belongs to the
-            control that drops it, now that there are two. */}
-        {gain > 0 ? (
-          <Tooltip>
-            <TooltipTrigger asChild>{removeButton}</TooltipTrigger>
-            <TooltipContent>
-              {t("removeShowsMore", { count: animalCount(gain, locale) })}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          removeButton
+        {withGainTooltip(
+          <button
+            type="button"
+            // Not a stop of its own. The row is walked with the arrows, one
+            // press per pill, and Delete on the label half already takes the
+            // filter off (the row's own key handler); a second stop per pill
+            // would double the length of that walk to reach a key that works
+            // from where focus already is.
+            tabIndex={-1}
+            onClick={handleRemove}
+            aria-label={removeName}
+            className={CHIP_CROSS}
+          >
+            {cross}
+          </button>,
         )}
       </span>
     );
@@ -1023,21 +1063,12 @@ function ChipButton({
       type="button"
       tabIndex={tabIndex}
       onFocus={onFocus}
-      onClick={(event) => onRemove(fromKeyboard(event))}
-      aria-label={
-        blocked && gain > 0
-          ? `${removeLabel}: +${animalCount(gain, locale)}`
-          : removeLabel
-      }
+      onClick={handleRemove}
+      aria-label={removeName}
       // The row is walked with the arrows, so a screen reader announcing
       // "Delete" on arrival is what tells someone the key does anything here.
       aria-keyshortcuts="Delete"
-      className={cn(
-        className,
-        CHIP_REMOVABLE,
-        blocked &&
-          "border-brand-border bg-brand text-brand-foreground",
-      )}
+      className={cn(CHIP_PILL, className, CHIP_REMOVABLE, blocked && CHIP_BLOCKED)}
     >
       {glyph}
       {name}
@@ -1049,23 +1080,5 @@ function ChipButton({
     </button>
   );
 
-  // No tooltip when there is nothing to add to the label. A pill that says
-  // "Mlad" under a pointer, with a tooltip that says "remove Mlad", is a
-  // second copy of what the cursor already implies.
-  //
-  // The marked pill is not that case, though it was excluded here as if it
-  // were. It draws "+2" and a paw and nothing on the page says what either
-  // means; the sentence the tooltip carries is the only place "the two animals
-  // this brings back" is written. So it keeps it, and the number is in its
-  // accessible name as well.
-  if (gain <= 0) return button;
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent>
-        {t("removeShowsMore", { count: animalCount(gain, locale) })}
-      </TooltipContent>
-    </Tooltip>
-  );
+  return withGainTooltip(button);
 }

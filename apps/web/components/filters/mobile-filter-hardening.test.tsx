@@ -4,7 +4,13 @@ import { type ComponentProps } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { phoneRow, stickyRow } from "@/test/filter-rows";
+import {
+  chipCross,
+  chipPill,
+  chipStop,
+  phoneRow,
+  stickyRow,
+} from "@/test/filter-rows";
 import {
   EMPTY_FILTERS,
   FILTER_FACETS,
@@ -740,30 +746,28 @@ describe("mobile filter hardening", () => {
     // section that set this filter, the cross takes it off. Neither is that
     // circle -- no overlay, no overhang -- and a finger is owed 44px by
     // whichever of them it lands on.
-    const removeDogs = screen.getByRole("button", {
-      name: "Remove filter Dogs",
-    });
-    const showDogs = screen.getByRole("button", { name: "Show filter Dogs" });
-    const pill = removeDogs.closest("span");
+    const removeDogs = chipCross("Dogs");
+    const showDogs = chipStop("Dogs");
+    const pill = chipPill("Dogs");
     // The pointer and not the width: the bar's other controls ask the same
     // question now, and at 1180x820 with a coarse pointer every pill in this
     // row measured 28px while a 1024px mouse window was getting 44.
-    expect(pill?.className).toContain("pointer-coarse:min-h-11");
+    expect(pill.className).toContain("pointer-coarse:min-h-11");
     // Both halves take that height, and the cross takes a width with it: one
     // 12px mark in a box a thumb can find.
     expect(removeDogs.className).toContain("self-stretch");
     expect(removeDogs.className).toContain("pointer-coarse:min-w-11");
     expect(showDogs.className).toContain("self-stretch");
     // One pill shape in the bar. rounded-full is reserved for counts now.
-    expect(pill?.className).toContain("rounded-ui");
-    expect(pill?.className).not.toContain("rounded-full");
-    expect(pill?.className).not.toContain("tap-target");
+    expect(pill.className).toContain("rounded-ui");
+    expect(pill.className).not.toContain("rounded-full");
+    expect(pill.className).not.toContain("tap-target");
     // Still no control inside a control.
     expect(removeDogs.querySelector("button")).toBeNull();
     expect(showDogs.querySelector("button")).toBeNull();
 
     // And the row still keeps adjacent pills apart.
-    expect(pill?.parentElement?.parentElement?.className).toContain(
+    expect(pill.parentElement?.parentElement?.className).toContain(
       "pointer-coarse:gap-2",
     );
   });

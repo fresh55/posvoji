@@ -5,6 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { FILTER_FACETS } from "@/lib/filters";
 import { fakeStripLayout } from "@/test/strip-layout";
+import {
+  chipCross as cross,
+  chipPill as pillOf,
+  chipStop as stop,
+} from "@/test/filter-rows";
 import { FilterChips, type Chip } from "./filter-chips";
 
 afterEach(() => cleanup());
@@ -34,16 +39,7 @@ function pills() {
   ];
 }
 
-/** A pill's label half: what it says, what the arrows walk, and the press
- *  that goes to the section holding this filter. */
-function stop(label: string) {
-  return screen.getByRole("button", { name: `Show filter ${label}` });
-}
 
-/** A pill's cross, which is what takes the filter off. */
-function cross(label: string) {
-  return screen.getByRole("button", { name: `Remove filter ${label}` });
-}
 
 describe("the active filters row", () => {
   const glyphOf = (button: HTMLElement) =>
@@ -488,12 +484,13 @@ describe("the active filters row", () => {
     // The number is in the name as well as on the pill: "+9" and a paw are
     // drawn, and a label stopping at "Remove filter Cats" left a screen reader
     // with the mark and no reading of it.
-    const blocker = screen.getByRole("button", {
-      name: "Remove filter Cats: +9 animals",
-    });
-    const pill = blocker.closest("span");
-    expect(pill?.textContent).toContain("+9");
-    expect(pill?.className).toContain("bg-brand");
+    // The number is on the pill; the reading of it is on the control that
+    // acts on it.
+    expect(
+      screen.getByRole("button", { name: "Remove filter Cats: +9 animals" }),
+    ).toBeTruthy();
+    expect(pillOf("Cats").textContent).toContain("+9");
+    expect(pillOf("Cats").className).toContain("bg-brand");
     // Only the one. Five numbers over five labels is not a way out.
     expect(stop("Dogs").textContent).not.toContain("+2");
   });
@@ -560,10 +557,9 @@ describe("the active filters row", () => {
 
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
     expect(
-      screen
-        .getByRole("button", { name: "Remove filter care1: +9 animals" })
-        .closest("span")?.textContent,
-    ).toContain("+9");
+      screen.getByRole("button", { name: "Remove filter care1: +9 animals" }),
+    ).toBeTruthy();
+    expect(pillOf("care1").textContent).toContain("+9");
   });
 
   it("hands focus onward when the key that removes takes the row with it", () => {

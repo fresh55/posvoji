@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
-import { FILTER_PARAM_NAMES } from "@/lib/filters";
+import { useCallback, useState, useSyncExternalStore } from "react";
+import { parseFilters, type FilterFacet, type Filters } from "@/lib/filters";
+import { getSearchSnapshot } from "@/lib/location-search";
 import type { FilterCardLayout } from "./filter-card";
 
 export type FilterSectionKey =
@@ -38,6 +39,46 @@ const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
 
 const SECTION_KEYS = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
 
+/**
+ * Which section of the panel holds each facet's answers.
+ *
+ * One table, because two of these are not the identity they look like: Videz
+ * holds both coat facets, and the health toggles answer under their own
+ * section name. Read by the panel to know which sections are answered and by
+ * the active-filter row to know where a pill goes back to; spelled twice, a
+ * facet added to a section would have opened one and not the other.
+ *
+ * Shelter answers no section. Kje is the panel's first block, it does not
+ * fold, and it is already where a visitor scrolling up arrives -- so a pill
+ * for it has nowhere to go, and an address carrying only shelters has not
+ * answered anything the panel can make room for.
+ */
+export const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
+  sex: "sex",
+  age: "age",
+  size: "size",
+  energy: "energy",
+  coatColor: "appearance",
+  coatLength: "appearance",
+  waiting: "waiting",
+  toggles: "health",
+  goodWith: "goodWith",
+  home: "home",
+  care: "care",
+  shelter: null,
+};
+
+/** Which sections a filter state has answers in. */
+export function answeredSections(filters: Filters): Overrides {
+  const answered: Overrides = {};
+  for (const [facet, section] of Object.entries(SECTION_OF_FACET)) {
+    if (section && filters[facet as FilterFacet].length > 0) {
+      answered[section] = true;
+    }
+  }
+  return answered;
+}
+
 const SHORT_DESKTOP = "(min-width: 64rem) and (max-height: 49.99rem)";
 
 function subscribeHeight(listener: () => void): () => void {
@@ -54,19 +95,27 @@ function serverHeight(): boolean {
   return false;
 }
 
-/** Whether the page was opened on an address that already carried a filter.
+/** Whether the page was opened on an address that already answered a section.
  *
  *  It separates the two ways a panel's first answer can appear, which are
  *  otherwise the same event: a link someone shared, and the visitor's own
- *  first press. Read from the address rather than counted, because at the
- *  moment it matters the press has already written to the address too.
+ *  first press. Read from the address rather than counted, because by the time
+ *  it matters the press has written to the address too.
  *
- *  Prerendering has no location, and the answer is only ever read on a later
- *  render, so the false it returns there costs nothing. */
-function landedOnFilters(): boolean {
+ *  A section and not any filter. The species tab and Kje are filters and carry
+ *  params of their own, but neither answers a section here, and /?vrsta=pes
+ *  and the shelter links /zavetisca hands out are two of the site's commonest
+ *  entry addresses: counting them, a visitor arriving on one and then pressing
+ *  their own first filter would have had the panel rearranged under them,
+ *  which is the one thing this asks the address in order to prevent.
+ *
+ *  Prerendering has no location, and the answer is only read on a later
+ *  render, so the false getServerSearchSnapshot's empty string produces there
+ *  costs nothing. */
+function landedOnAnswers(): boolean {
   if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  return FILTER_PARAM_NAMES.some((name) => params.has(name));
+  const answered = answeredSections(parseFilters(getSearchSnapshot()));
+  return Object.keys(answered).length > 0;
 }
 
 type Overrides = Partial<Record<FilterSectionKey, boolean>>;
@@ -95,63 +144,6 @@ function readStored(): Overrides {
 
 function sameOverrides(a: Overrides, b: Overrides): boolean {
   return SECTION_KEYS.every((key) => a[key] === b[key]);
-}
-
-/** The set of answered sections, as a value that can be compared between
- *  renders. The map itself is built fresh by the caller every time, so the
- *  reveal below cannot ask whether it changed; this can. */
-function answeredKey(active: Overrides | undefined): string {
-  return SECTION_KEYS.filter((key) => active?.[key]).join(" ");
-}
-
-/** The answered sections alone. What a caller hands in says false for every
- *  other one, and a false here is a section held shut rather than a section
- *  left to its default. */
-function answeredOnly(active: Overrides | undefined): Overrides {
-  return Object.fromEntries(
-    SECTION_KEYS.filter((key) => active?.[key]).map((key) => [key, true]),
-  );
-}
-
-function openByDefault(key: FilterSectionKey, layout: FilterCardLayout): boolean {
-  return (
-    DEFAULT_OPEN[key] && !(layout === "sidebar" && shortDesktop() && key === "age")
-  );
-}
-
-/** The sections that give up their room to an arriving answer: open by
- *  default, holding no answer of their own, and never asked about by this
- *  visitor. A stored fold is a decision, either way, and is left alone. */
-function yieldingTo(
-  active: Overrides | undefined,
-  overrides: Overrides,
-  layout: FilterCardLayout,
-): Overrides {
-  if (layout !== "sidebar") return NO_OVERRIDES;
-  return Object.fromEntries(
-    SECTION_KEYS.filter(
-      (key) =>
-        !active?.[key] &&
-        openByDefault(key, layout) &&
-        overrides[key] === undefined,
-    ).map((key) => [key, false]),
-  );
-}
-
-/** What the panel holds open or shut before the visitor has touched it.
- *
- *  Answered sections, and on an address that arrived carrying them, the
- *  unanswered defaults standing above. The sidebar reaches this with nothing
- *  answered, because hydration has not read the address yet, so in the built
- *  site the second half is done by the arrival below and this is the sheet's
- *  path and the tests'. One rule, written once, for both. */
-function initialHold(
-  active: Overrides | undefined,
-  layout: FilterCardLayout,
-): Overrides {
-  const answered = answeredOnly(active);
-  if (Object.keys(answered).length === 0 || !landedOnFilters()) return answered;
-  return { ...answered, ...yieldingTo(active, getSnapshot(), layout) };
 }
 
 // Sync saved folds from other tabs.
@@ -201,6 +193,62 @@ function write(next: Overrides) {
 export function resetFilterSectionsStore(): void {
   cache = null;
   for (const listener of listeners) listener();
+}
+
+/** The set of answered sections, as a value that can be compared between
+ *  renders. The map itself is built fresh by the caller every time, so the
+ *  reveal below cannot ask whether it changed; this can. */
+function answeredKey(active: Overrides | undefined): string {
+  return SECTION_KEYS.filter((key) => active?.[key]).join(" ");
+}
+
+/** The answered sections alone. What a caller hands in says false for every
+ *  other one, and a false here is a section held shut rather than a section
+ *  left to its default. */
+function answeredOnly(active: Overrides | undefined): Overrides {
+  return Object.fromEntries(
+    SECTION_KEYS.filter((key) => active?.[key]).map((key) => [key, true]),
+  );
+}
+
+function openByDefault(
+  key: FilterSectionKey,
+  layout: FilterCardLayout,
+  short: boolean,
+): boolean {
+  return DEFAULT_OPEN[key] && !(layout === "sidebar" && short && key === "age");
+}
+
+/**
+ * What the panel holds open and shut on an address that arrived answering it.
+ *
+ * One rule: a section is open if it holds an answer, and shut if it does not,
+ * over every section the visitor has not stored a fold for. Sex and age are
+ * not special here; they are only the two the rule has anything to say about,
+ * because they are the two that would otherwise be open with nothing in them.
+ *
+ * They are open by default because they are what a visitor reaches for first,
+ * which is an answer about an address that asks nothing. On a filtered link
+ * they are two unanswered questions standing between the top of the panel and
+ * the sections that visitor arrived with: 294px of them at 1440x900, with the
+ * answered heading below at 1200 in a panel whose own box ends at 1041, so
+ * nothing but the page could have scrolled it into view. Folded, that heading
+ * comes up to 699 and onto the screen with nothing scrolled at all.
+ *
+ * A stored fold is a decision, either way, and is left alone.
+ */
+function arrivalHold(
+  active: Overrides | undefined,
+  overrides: Overrides,
+  layout: FilterCardLayout,
+): Overrides {
+  if (layout !== "sidebar") return NO_OVERRIDES;
+  return Object.fromEntries(
+    SECTION_KEYS.filter((key) => overrides[key] === undefined).map((key) => [
+      key,
+      Boolean(active?.[key]),
+    ]),
+  );
 }
 
 /** Shared folds for sidebar and sheet, and what an arriving address does to
@@ -255,16 +303,13 @@ export function useFilterSections({
   // the panel is mounted. Answered sections start in it; an arrival adds to it
   // at both ends; pressing a heading takes that section out of it and hands the
   // question back to storage.
-  const [held, setHeld] = useState(() => initialHold(active, layout));
+  const [held, setHeld] = useState(() => answeredOnly(active));
+  // Through the store and not off matchMedia here, so a window resized across
+  // the boundary re-renders the panel.
   const short = useSyncExternalStore(subscribeHeight, shortDesktop, serverHeight);
-  const [landedFiltered] = useState(landedOnFilters);
-  // `short` is read through the store above rather than off matchMedia here,
-  // so a window resized across the boundary re-renders the panel. The module
-  // helper the arrival shares asks matchMedia directly, because it runs before
-  // there is a render to subscribe from.
+  const [landedAnswering] = useState(landedOnAnswers);
   const defaultOpen = useCallback(
-    (key: FilterSectionKey) =>
-      DEFAULT_OPEN[key] && !(layout === "sidebar" && short && key === "age"),
+    (key: FilterSectionKey) => openByDefault(key, layout, short),
     [layout, short],
   );
 
@@ -279,28 +324,37 @@ export function useFilterSections({
   // moving on its own for no reason the visitor can see. React's own shape for
   // this: set state while rendering, and it re-runs this hook's component
   // before anything is committed.
-  const answered = useMemo(() => answeredKey(active), [active]);
+  //
+  // No useMemo around the key: the caller builds `active` fresh every render
+  // (filter-groups.tsx), so a dependency on it can never match, and ten key
+  // reads and a join are cheaper than the bookkeeping that would wrap them.
+  const answered = answeredKey(active);
   const [seen, setSeen] = useState(answered);
-  const [answeredOnce, setAnsweredOnce] = useState(false);
   if (seen !== answered) {
-    const before = new Set(seen.split(" "));
-    const gained = SECTION_KEYS.filter(
-      (key) => active?.[key] && !before.has(key) && !isOpen(key),
-    );
     // The arrival is the first answers of a visit, on an address that came
-    // with them. Anything later is the visitor's own navigation inside a panel
-    // they are already reading, and it moves nothing but the section gained.
-    const arriving = !answeredOnce && seen === "" && landedFiltered;
-    const yielding = arriving ? yieldingTo(active, overrides, layout) : NO_OVERRIDES;
-    setSeen(answered);
-    setAnsweredOnce(true);
-    if (gained.length > 0 || Object.keys(yielding).length > 0) {
-      setHeld((previous) => ({
-        ...previous,
-        ...Object.fromEntries(gained.map((key) => [key, true])),
-        ...yielding,
-      }));
+    // carrying them: the panel is arranged around them once. Anything later is
+    // the visitor's own navigation inside a panel they are already reading,
+    // and it opens the section gained and moves nothing else.
+    //
+    // A second arrival, after a clear-all, is left to the same rule rather
+    // than guarded against: it can only rewrite what it wrote the first time,
+    // since every section the visitor has touched since has left this hold and
+    // gained a stored fold that arrivalHold does not overwrite.
+    if (seen === "" && landedAnswering) {
+      setHeld(arrivalHold(active, overrides, layout));
+    } else {
+      const before = new Set(seen.split(" "));
+      const gained = SECTION_KEYS.filter(
+        (key) => active?.[key] && !before.has(key) && !isOpen(key),
+      );
+      if (gained.length > 0) {
+        setHeld((previous) => ({
+          ...previous,
+          ...Object.fromEntries(gained.map((key) => [key, true])),
+        }));
+      }
     }
+    setSeen(answered);
   }
 
   const toggleSection = useCallback(

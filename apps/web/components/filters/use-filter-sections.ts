@@ -8,6 +8,8 @@ export type FilterSectionKey =
   | "age"
   | "size"
   | "energy"
+  | "appearance"
+  | "waiting"
   | "health"
   | "goodWith"
   | "home"
@@ -23,6 +25,8 @@ const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   age: true,
   size: false,
   energy: false,
+  appearance: false,
+  waiting: false,
   health: false,
   goodWith: false,
   home: false,

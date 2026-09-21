@@ -193,17 +193,17 @@ describe("the active filters row", () => {
   });
 
   it("puts everything past the eighth pill behind a count", () => {
-    // Nine facets at two values each is eighteen pills inside a header that
+    // Every facet at two values each makes many pills inside a header that
     // is sticky on a phone, and two per facet is under the fold threshold,
     // so the count is the only thing bounding the row here.
     const many = FILTER_FACETS.flatMap((facet) =>
       [0, 1].map((n) => chip({ key: `${facet}:${n}`, facet, label: `${facet}${n}` })),
     );
-    expect(many).toHaveLength(18);
+    expect(many).toHaveLength(FILTER_FACETS.length * 2);
     renderChips(many);
 
     expect(screen.queryByRole("button", { name: "Remove filter care1" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Show 10 more" }));
+    fireEvent.click(screen.getByRole("button", { name: `Show ${many.length - 8} more` }));
     expect(screen.getByRole("button", { name: "Remove filter care1" })).toBeTruthy();
   });
 

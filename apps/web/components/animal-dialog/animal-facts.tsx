@@ -8,6 +8,8 @@ import {
   HeartHandshake,
   Mars,
   PawPrint,
+  Palette,
+  Scissors,
   Venus,
   type LucideIcon,
 } from "lucide-react";
@@ -473,7 +475,7 @@ export function AnimalFacts({
   const hasIdentity =
     !severalAnimals &&
     (sex !== undefined || months !== undefined || animal.size !== undefined ||
-      animal.energy !== undefined);
+      animal.energy !== undefined || animal.coatColors !== undefined || animal.coatLength !== undefined);
   const fullRecord = medical.length === applicable.length;
   // Named only beside an itemised row: a full record has no gap to name, and a
   // shelter that recorded nothing at all says nothing here either.
@@ -567,6 +569,16 @@ export function AnimalFacts({
                   prefix={messages.factSize}
                 >
                   {sizeLabel(animal.size, locale)}
+                </Fact>
+              )}
+              {animal.coatColors && (
+                <Fact icon={Palette} prefix={groupLabel("coatColor", locale)}>
+                  {animal.coatColors.map(color => optionLabel("coatColor", color, [], locale)).join(", ")}
+                </Fact>
+              )}
+              {animal.coatLength && (
+                <Fact icon={Scissors} prefix={groupLabel("coatLength", locale)}>
+                  {optionLabel("coatLength", animal.coatLength, [], locale)}
                 </Fact>
               )}
               {animal.energy && (

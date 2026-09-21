@@ -29,6 +29,21 @@ allowedFields:
   - birthDate
   - intakeDate
   - status
+  - breed
+  - approximateAgeMonths
+  - size
+  - foundDate
+  - originMunicipality
+  - medical
+  # Reviewed facts from the permitted catalogue descriptions and photos.
+  - coatColor
+  - coatColors
+  - coatLength
+  - energy
+  - goodWith
+  - apartmentOk
+  - specialNeeds
+  - adoptionRequirements
   - images
   - shortDescription
 

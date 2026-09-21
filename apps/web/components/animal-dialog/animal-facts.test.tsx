@@ -70,6 +70,18 @@ function descriptionBlock(): HTMLElement | null {
   return document.querySelector("[data-slot='animal-description']");
 }
 
+describe("reviewed appearance and only-pet facts", () => {
+  it.each([
+    ["sl", "Črna, Bela", "Dolga", "Edini ljubljenček"],
+    ["en", "Black, White", "Long", "Only pet"],
+  ] as const)("keeps detailed colours alongside a single filter category in %s", (locale, colors, length, home) => {
+    renderFacts({ coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } }, locale);
+    expect(screen.getByText(colors)).toBeTruthy();
+    expect(screen.getByText(length)).toBeTruthy();
+    expect(screen.getByText(home)).toBeTruthy();
+  });
+});
+
 describe("recorded energy", () => {
   it.each([
     ["calm", "sl", "Miren"],

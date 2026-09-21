@@ -38,6 +38,18 @@ allowedFields:
   - medical
   - images
   - shortDescription
+  # Reviewed facts from the already-permitted descriptions and photographs.
+  - approximateAgeMonths
+  - foundDate
+  - originMunicipality
+  - energy
+  - goodWith
+  - apartmentOk
+  - specialNeeds
+  - adoptionRequirements
+  - coatColor
+  - coatColors
+  - coatLength
 
 attribution: "Vir: Zavetišče Ljubljana"
 

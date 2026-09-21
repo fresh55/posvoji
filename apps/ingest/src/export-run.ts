@@ -15,6 +15,7 @@ import {
 import { exitCodeForRun } from "./exit-codes";
 import { preparePublication } from "./export-animals";
 import { loadEnrichment } from "./enrichment";
+import { applyAppearance, currentPhotoHashes, loadAppearance } from "./appearance";
 import { crawlProviders } from "./export-crawl";
 import { CrawlSchedule, hostCooldowns } from "./crawl-schedule";
 import { writeGenerationReceipt } from "./generation-receipt";
@@ -73,6 +74,8 @@ const defaultServices = {
   reserveInputRevision,
   loadPolicies,
   loadEnrichment,
+  loadAppearance,
+  currentPhotoHashes,
   readPreviousDataset,
   readPreviousCrawledDataset,
   checkPreviousGenerationSealed,
@@ -124,6 +127,8 @@ export async function runExport(
     reserveInputRevision,
     loadPolicies,
     loadEnrichment,
+    loadAppearance,
+    currentPhotoHashes,
     readPreviousDataset,
     readPreviousCrawledDataset,
     checkPreviousGenerationSealed,
@@ -168,6 +173,7 @@ export async function runExport(
     const inputRevision = reserveInputRevision(datasetDir);
     const codeSha = getCodeSha();
     const enrichment = loadEnrichment();
+    const appearance = loadAppearance();
     const providerSnapshots = createSnapshots(datasetDir);
     const snapshotReferences: Record<string, SnapshotReference> = {};
 
@@ -522,13 +528,21 @@ export async function runExport(
     // a full export. Preserved providers stay in scope for the deletion sweep but
     // out of scope for requests, so their cached files and URLs are neither
     // deleted nor needlessly rechecked.
-    const { animals, fetched, reused, deleted, derived, subjects } =
+    const { animals: cachedAnimals, fetched, reused, deleted, derived, subjects } =
       await cacheImages(overridden, client, imagePolicies, {
         refreshProviderIds: crawledProviderIds,
         subjectDetector: await loadSubjectDetector({
           warn: (message) => logger.warn(message),
         }),
       });
+    const appearanceResult = applyAppearance(cachedAnimals, appearance, policyById,
+      currentPhotoHashes(cachedAnimals, appearance));
+    const animals = appearanceResult.animals;
+    logger.log(`appearance: ${appearanceResult.applied.length} fields applied, ${appearanceResult.issues.length} skipped`);
+    logger.log(`colour coverage: ${appearanceResult.colourCoverage.classified}/${appearanceResult.colourCoverage.total}, ${appearanceResult.colourCoverage.unknown} unclassified`);
+    for (const issue of appearanceResult.issues) {
+      if (issue.reason !== "existing-value") logger.warn(`appearance: ${issue.animalId}${issue.field ? ` ${issue.field}` : ""}: ${issue.reason}`);
+    }
     logger.log(
       `images: ${fetched} fetched, ${reused} revalidated, ${deleted} deleted`,
     );
@@ -671,6 +685,13 @@ export async function runExport(
             applied: enrichmentResult?.applied ?? [],
             skipped: enrichmentResult?.issues ?? [],
           },
+          appearance: {
+            reviewedAt: appearance.reviewedAt,
+            applied: appearanceResult.applied,
+            skipped: appearanceResult.issues,
+            colourCoverage: appearanceResult.colourCoverage,
+            colourReviewQueue: appearanceResult.colourReviewQueue,
+          },
         },
         null,
         2,
@@ -726,6 +747,7 @@ export async function runExport(
       JSON.stringify(
         buildCrawlManifest({
           enrichment,
+          appearance,
           generatedAt,
           inputRevision,
           codeSha,

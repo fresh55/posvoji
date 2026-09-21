@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  Animal, AnimalSize, Compatibility, EnergyLevel, Sex, TestResult,
+  Animal, AnimalSize, CoatColors, CoatLength, Compatibility, EnergyLevel, Sex, TestResult,
   type ProviderPolicy,
 } from "@posvoji/schema";
 import { z } from "zod";
@@ -31,6 +31,8 @@ const fields = {
   originMunicipality: Animal.shape.originMunicipality.unwrap(),
   energy: EnergyLevel,
   size: AnimalSize,
+  coatColors: CoatColors,
+  coatLength: CoatLength,
   sex: Sex.exclude(["unknown"]),
   "goodWith.kids": knownCompatibility,
   "goodWith.dogs": knownCompatibility,
@@ -46,21 +48,22 @@ const fields = {
   "adoptionRequirements.bondedPair": z.literal(true),
   "adoptionRequirements.experiencedCarer": z.literal(true),
   "adoptionRequirements.ongoingCare": z.literal(true),
+  "adoptionRequirements.onlyPet": z.literal(true),
 } as const;
 
 export const EnrichmentClaim = z.strictObject({
   field: z.enum(Object.keys(fields) as [keyof typeof fields, ...(keyof typeof fields)[]]),
-  value: z.union([z.string(), z.boolean(), z.number()]),
+  value: z.union([z.string(), z.boolean(), z.number(), CoatColors]),
   // An explicit reviewed correction applies only while this old answer matches.
   // Omission retains the original fill-missing-only behavior.
-  replaces: z.union([z.string(), z.boolean(), z.number()]).optional(),
+  replaces: z.union([z.string(), z.boolean(), z.number(), CoatColors]).optional(),
   evidence: Evidence,
   reviewedBy: z.array(z.string().min(1)).min(2),
 }).superRefine((claim, ctx) => {
   if (!fields[claim.field].safeParse(claim.value).success) {
     ctx.addIssue({ code: "custom", message: "invalid value for enrichment field", path: ["value"] });
   }
-  if (claim.replaces === claim.value) {
+  if (JSON.stringify(claim.replaces) === JSON.stringify(claim.value)) {
     ctx.addIssue({ code: "custom", message: "a correction must change its previous value", path: ["replaces"] });
   }
   if (new Set(claim.reviewedBy).size < 2) {
@@ -176,7 +179,7 @@ export function applyEnrichment(
       const parent = enriched[top] as Record<string, unknown> | undefined;
       const existing = nested ? parent?.[nested] : enriched[top];
       // Existing answers require an explicit matching correction baseline.
-      if (claim.replaces === undefined ? existing !== undefined : existing !== claim.replaces) {
+      if (claim.replaces === undefined ? existing !== undefined : JSON.stringify(existing) !== JSON.stringify(claim.replaces)) {
         reject("existing-value", claim.field);
         continue;
       }
@@ -185,21 +188,20 @@ export function applyEnrichment(
       applied.push({ animalId: animal.id, field: claim.field });
     }
     // Validate once at the record boundary, after all typed claims are merged.
-    if (changed) {
-      // A reviewed correction out of the cat category invalidates feline-only
-      // results inherited from that category. Preserve all other medical facts.
-      if (animal.species === "cat" && enriched.species !== "cat" && animal.medical) {
-        const medical = { ...enriched.medical as Animal["medical"] };
-        for (const field of ["fiv", "felv"] as const) {
-          if (medical[field] !== undefined) {
-            delete medical[field];
-            applied.push({ animalId: animal.id, field: `medical.${field}`, operation: "clear" });
-          }
-        }
-        enriched.medical = medical;
-      }
-      result.set(animal.id, Animal.parse(enriched));
+    if (changed) result.set(animal.id, Animal.parse(enriched));
+  }
+  // Clear inherited feline test defaults from all noncats, not just corrected species.
+  for (const [id, animal] of result) {
+    if (animal.species === "cat" || !animal.medical) continue;
+    const medical = { ...animal.medical };
+    let changed = false;
+    for (const field of ["fiv", "felv"] as const) {
+      if (medical[field] === undefined) continue;
+      delete medical[field];
+      changed = true;
+      applied.push({ animalId: id, field: `medical.${field}`, operation: "clear" });
     }
+    if (changed) result.set(id, Animal.parse({ ...animal, medical }));
   }
   return { animals: animals.map((animal) => result.get(animal.id)!), applied, issues };
 }

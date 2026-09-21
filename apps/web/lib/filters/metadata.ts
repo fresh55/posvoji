@@ -1,6 +1,8 @@
 import type {
   AnimalAdoptionRequirements,
   AnimalSize,
+  CoatColorCategory,
+  CoatLength,
   EnergyLevel,
   Sex,
   Species,
@@ -9,6 +11,7 @@ import type { AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import {
   type AgeGroup,
+  type WaitingGroup,
   type CareKey,
   type FilterOption,
   type GoodWithKey,
@@ -19,6 +22,7 @@ import {
 
 // Filter cards and animal facts use the same wording for confirmed requirements.
 export const ADOPTION_REQUIREMENT_LABELS = {
+  onlyPet: { sl: "Edini ljubljenček", en: "Only pet" },
   indoorOnly: { sl: "Samo notranje bivanje", en: "Indoor-only home" },
   bondedPair: { sl: "Posvojitev v paru", en: "Adopt together" },
   experiencedCarer: { sl: "Izkušen skrbnik", en: "Experienced carer" },
@@ -31,6 +35,9 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     age: "Starost",
     size: "Velikost",
     energy: "Energija",
+    coatColor: "Barva",
+    coatLength: "Dolžina dlake",
+    waiting: "Čas v zavetišču",
     shelter: "Zavetišče",
   },
   en: {
@@ -38,6 +45,9 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     age: "Age",
     size: "Size",
     energy: "Energy",
+    coatColor: "Colour",
+    coatLength: "Coat length",
+    waiting: "Time in shelter",
     shelter: "Shelter",
   },
 };
@@ -152,6 +162,9 @@ type CodedValueByGroup = {
   age: AgeGroup;
   size: AnimalSize;
   energy: EnergyLevel;
+  coatColor: CoatColorCategory;
+  coatLength: CoatLength;
+  waiting: WaitingGroup;
   goodWith: GoodWithKey;
   home: HomeKey;
   care: CareKey;
@@ -165,6 +178,26 @@ export type FilterValueDefinition<Value extends string = string> = {
 };
 
 export const FILTER_METADATA = {
+  coatColor: [
+    { value: "black", slug: "crna", labels: { sl: "Črna", en: "Black" } },
+    { value: "white", slug: "bela", labels: { sl: "Bela", en: "White" } },
+    { value: "grey", slug: "siva", labels: { sl: "Siva", en: "Grey" } },
+    { value: "brown", slug: "rjava", labels: { sl: "Rjava", en: "Brown" } },
+    { value: "orange", slug: "oranzna", labels: { sl: "Oranžna", en: "Orange" } },
+    { value: "cream", slug: "kremna", labels: { sl: "Kremna", en: "Cream" } },
+    { value: "multicolour", slug: "vecbarvna", labels: { sl: "Večbarvna", en: "Multicolour" } },
+  ],
+  coatLength: [
+    { value: "short", slug: "kratka", labels: { sl: "Kratka", en: "Short" } },
+    { value: "medium", slug: "srednja", labels: { sl: "Srednja", en: "Medium" } },
+    { value: "long", slug: "dolga", labels: { sl: "Dolga", en: "Long" } },
+    { value: "hairless", slug: "brez-dlake", labels: { sl: "Brez dlake", en: "Hairless" } },
+  ],
+  waiting: [
+    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Več kot 6 mesecev", en: "Over 6 months" } },
+    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Več kot 1 leto", en: "Over 1 year" } },
+    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Več kot 3 leta", en: "Over 3 years" } },
+  ],
   sex: [
     { value: "male", slug: "samec", labels: { sl: "Samec", en: "Male" } },
     {
@@ -231,6 +264,7 @@ export const FILTER_METADATA = {
       slug: "samo-notranje-bivanje",
       labels: ADOPTION_REQUIREMENT_LABELS.indoorOnly,
     },
+    { value: "only-pet", slug: "edini-ljubljencek", labels: ADOPTION_REQUIREMENT_LABELS.onlyPet },
   ],
   care: [
     {
@@ -316,6 +350,9 @@ export function groupOptions(
     case "age":
     case "size":
     case "energy":
+    case "coatColor":
+    case "coatLength":
+    case "waiting":
       return FILTER_METADATA[group].map(({ value, labels }) => ({
         value,
         label: labels[locale],

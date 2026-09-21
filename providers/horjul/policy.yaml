@@ -35,6 +35,19 @@ allowedFields:
   - intakeDate
   - originMunicipality
   - medical
+  # Explicit placement facts reviewed from the permitted shelter description.
+  - adoptionRequirements
+  - breed
+  - birthDate
+  - foundDate
+  # Reviewed facts from the permitted catalogue descriptions and photos.
+  - coatColor
+  - coatColors
+  - coatLength
+  - energy
+  - goodWith
+  - apartmentOk
+  - specialNeeds
   - images
   - shortDescription
 

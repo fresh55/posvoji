@@ -343,7 +343,7 @@ export function FilterCardSection({
   footer,
 }: {
   label: string;
-  hint: string;
+  hint?: string;
   active: boolean;
   onReset: () => void;
   resetAriaLabel: string;
@@ -366,7 +366,7 @@ export function FilterCardSection({
         hint={hint}
       />
       <CollapsibleBody collapse={collapse}>
-        <SectionHint collapse={collapse}>{hint}</SectionHint>
+        {hint && <SectionHint collapse={collapse}>{hint}</SectionHint>}
         <LazyMotion features={domAnimation}>
           <div
             className={cn(

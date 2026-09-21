@@ -1,6 +1,9 @@
 import { loadPolicies, validateCrawlAllowlists, crawlablePolicies } from "./policies";
 import { providers } from "./registry";
 import { validateProviderRegistry } from "./registry-validation";
+import { loadEnrichment } from "./enrichment";
+import { loadAppearance } from "./appearance";
+import { reviewedPolicyIssues } from "./reviewed-policy";
 
 const loaded = loadPolicies();
 const { policies } = loaded;
@@ -9,6 +12,9 @@ const errors = [
   ...loaded.errors,
   ...validateProviderRegistry(policies, providers),
   ...allowlistErrors,
+  ...reviewedPolicyIssues(loadEnrichment(), loadAppearance(),
+    new Map(policies.map(({ policy }) => [policy.providerId, policy])))
+    .map((message) => ({ dir: "reviewed-data", message })),
 ];
 
 for (const { dir, policy } of policies) {

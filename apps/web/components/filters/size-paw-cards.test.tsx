@@ -125,6 +125,9 @@ describe("size section reset", () => {
             age: [],
             size: selected as AnimalSize[],
             energy: [],
+            coatColor: [],
+            coatLength: [],
+            waiting: [],
             shelter: [],
             toggles: [],
             goodWith: [],
@@ -137,6 +140,9 @@ describe("size section reset", () => {
             age: new Map(),
             size: counts,
             energy: new Map(),
+            coatColor: new Map(),
+            coatLength: new Map(),
+            waiting: new Map(),
             shelter: new Map(),
           }}
           toggles={[]}

@@ -1,7 +1,10 @@
 import { Animal, ProviderPolicy } from "@posvoji/schema";
+import { readFileSync } from "node:fs";
+import horjul, { parseDetail } from "@posvoji/provider-horjul";
 import { describe, expect, it } from "vitest";
-import { applyEnrichment, EnrichmentManifest, evidenceHash } from "./enrichment";
+import { applyEnrichment, EnrichmentManifest, evidenceHash, loadEnrichment } from "./enrichment";
 import { preparePublication } from "./export-animals";
+import { loadPolicies } from "./policies";
 
 const NOW = "2026-09-13T10:00:00.000Z";
 const description = "Je mirna mačka. Dobro se razume z drugimi mačkami.";
@@ -34,6 +37,50 @@ function manifest(): EnrichmentManifest {
 }
 
 describe("reviewed description enrichment", () => {
+  it("removes inherited feline defaults even when a dog was already classified correctly", () => {
+    const source = animal({ species: "dog", medical: { fiv: "negative", felv: "negative", vaccinated: true } });
+    const reviewed = manifest();
+    reviewed.records = [];
+    const result = applyEnrichment([source], reviewed, policies);
+    expect(result.animals[0]?.medical).toEqual({ vaccinated: true });
+    expect(result.applied).toEqual([
+      { animalId: source.id, field: "medical.fiv", operation: "clear" },
+      { animalId: source.id, field: "medical.felv", operation: "clear" },
+    ]);
+    expect(source.medical?.fiv).toBe("negative");
+  });
+  it("publishes the reviewed indoor-only requirements for Ficko and Klopka under Horjul's actual policy", async () => {
+    const horjulPolicy = loadPolicies().policies.find(({ policy }) => policy.providerId === "horjul")!.policy;
+    const description = parseDetail(readFileSync(
+      new URL("../../../providers/horjul/fixtures/detail-history.html", import.meta.url), "utf8",
+    )).description!;
+    const reviewed = loadEnrichment();
+    reviewed.records = reviewed.records.filter(({ animalId }) => ["horjul:834", "horjul:862"].includes(animalId));
+    expect(reviewed.records).toHaveLength(2);
+    const sources = await Promise.all(reviewed.records.map(async (record) => {
+      const name = record.animalId === "horjul:834" ? "Ficko" : "Klopka";
+      return Animal.parse(await horjul.normalize({ client: {} as never, policy: horjulPolicy }, {
+        ref: { sourceAnimalId: record.animalId.split(":")[1]!, sourceUrl: record.sourceUrl },
+        fetchedAt: NOW,
+        data: { name, species: "cat", status: "available", imageUrls: [], description: description.replace("Klopka", name) },
+      }));
+    }));
+    const result = preparePublication({
+      crawled: sources, previousAnimals: [], listingAnimals: [],
+      policies: [{ dir: "horjul", policy: horjulPolicy }],
+      policyById: new Map([["horjul", horjulPolicy]]),
+      portalPayload: null, enrichment: reviewed,
+      crawledProviderIds: new Set(["horjul"]), logger: { log() {}, warn() {} },
+    });
+    expect(result.enrichmentResult?.issues).toEqual([]);
+    expect(result.overridden).toHaveLength(2);
+    for (const animal of result.overridden) {
+      expect(animal.adoptionRequirements?.indoorOnly).toBe(true);
+      expect(animal.apartmentOk).toBeUndefined();
+    }
+    expect(result.crawledSnapshot.every((animal) => animal.adoptionRequirements === undefined)).toBe(true);
+  });
+
   it("clears inherited feline tests when a reviewed species correction identifies a dog", () => {
     const reviewed = manifest();
     reviewed.records[0]!.claims[0] = {

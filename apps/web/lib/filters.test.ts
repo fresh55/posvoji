@@ -478,12 +478,13 @@ describe("visibleCare", () => {
     expect(visibleHome([animal("dog")], ["apartment"], true)).toEqual([
       "apartment",
       "indoor-only",
+      "only-pet",
     ]);
   });
 
   it("brings the section back the day one animal carries the field", () => {
     const later = [animal("dog"), animal("cat", { apartmentOk: "yes" })];
-    expect(visibleHome(later, [], true)).toEqual(["apartment", "indoor-only"]);
+    expect(visibleHome(later, [], true)).toEqual(["apartment", "indoor-only", "only-pet"]);
   });
 });
 

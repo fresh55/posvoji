@@ -36,6 +36,18 @@ allowedFields:
   - status
   - intakeDate
   - medical
+  - birthDate
+  - foundDate
+  - originMunicipality
+  # Reviewed facts from the permitted catalogue descriptions and photos.
+  - coatColor
+  - coatColors
+  - coatLength
+  - energy
+  - goodWith
+  - apartmentOk
+  - specialNeeds
+  - adoptionRequirements
   - images
   - shortDescription
 

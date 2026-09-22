@@ -21,7 +21,10 @@ export type AnimalSize = z.infer<typeof AnimalSize>;
 
 export const CoatColor = z.enum(["black", "white", "grey", "brown", "orange", "cream"]);
 export type CoatColor = z.infer<typeof CoatColor>;
-export const CoatColorCategory = z.enum([...CoatColor.options, "multicolour"]);
+export const CoatColorCategory = z.enum([
+  ...CoatColor.options, "black-white", "brown-white", "grey-white",
+  "orange-white", "cream-white", "multicolour",
+]);
 export type CoatColorCategory = z.infer<typeof CoatColorCategory>;
 export const CoatLength = z.enum(["short", "medium", "long", "hairless"]);
 export type CoatLength = z.infer<typeof CoatLength>;
@@ -169,11 +172,9 @@ export const Animal = z.strictObject({
 
   size: AnimalSize.optional(),
   // Visible appearance, recorded only from explicit text or reviewed photos.
-  // Detailed colours are separate from the single category used for filtering.
+  // Detailed colours are separate from the reviewed category used for filtering.
   coatColors: CoatColors.optional(),
   coatColor: CoatColorCategory.optional(),
-  // False includes small white markings; absent means not established.
-  substantialWhite: z.boolean().optional(),
   coatLength: CoatLength.optional(),
   energy: EnergyLevel.optional(),
   status: AdoptionStatus,
@@ -199,12 +200,5 @@ export const Animal = z.strictObject({
   shortDescription: z.string().optional(),
 
   attribution: z.string().min(1),
-}).refine(
-  // Substantial white must agree with the detailed colours when provided.
-  (animal) =>
-    animal.substantialWhite !== true ||
-    animal.coatColors === undefined ||
-    animal.coatColors.includes("white"),
-  { error: "white markings require white among the coat colors" },
-);
+});
 export type Animal = z.infer<typeof Animal>;

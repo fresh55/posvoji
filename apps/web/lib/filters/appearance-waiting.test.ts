@@ -13,14 +13,14 @@ const animal = (id: string, extra: Partial<Animal> = {}): Animal => ({
 });
 
 describe("reviewed appearance and home filters", () => {
-  const black = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], substantialWhite: false, coatLength: "long", adoptionRequirements: { onlyPet: true } });
-  const brown = animal("brown-tabby", { coatColor: "brown", coatColors: ["black", "brown", "white"], substantialWhite: false, coatLength: "short" });
+  const black = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } });
+  const brown = animal("brown-tabby", { coatColor: "brown", coatColors: ["black", "brown", "white"], coatLength: "short" });
   const white = animal("white-with-patches", { coatColor: "white", coatColors: ["black", "white"], coatLength: "short" });
   const multicolour = animal("balanced-patches", { coatColor: "multicolour", coatColors: ["black", "orange", "white"] });
   const unknown = animal("unknown", { coatColors: ["black", "white"] });
   const animals = [black, brown, white, multicolour, unknown];
 
-  it("matches only reviewed dominant colour, leaving stripes, bibs and descriptive-only records out", () => {
+  it("matches only the reviewed filter category, leaving stripes, bibs and descriptive-only records out", () => {
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black"] }, now)).toEqual([black]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["brown"] }, now)).toEqual([brown]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["multicolour"] }, now)).toEqual([multicolour]);
@@ -51,53 +51,57 @@ describe("reviewed appearance and home filters", () => {
   });
 });
 
-describe("two-toned colours", () => {
-  // The case that started this: Mao is a tuxedo cat, predominantly black,
-  // and a visitor pressing Črna does not expect him.
-  const mao = animal("mao", { coatColor: "black", coatColors: ["black", "white"], substantialWhite: true });
-  const bib = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], substantialWhite: false });
-  const solid = animal("solid-black", { coatColor: "black", coatColors: ["black"], substantialWhite: false });
-  // The old colour review alone does not distinguish a bib from a white chest.
-  const unjudged = animal("unjudged", { coatColor: "black", coatColors: ["black", "white"] });
-  const gingerAndWhite = animal("ginger", { coatColor: "orange", coatColors: ["orange", "white"], substantialWhite: true });
-  const animals = [mao, bib, solid, unjudged, gingerAndWhite];
+describe("reviewed colour categories", () => {
+  const demeter = animal("demeter", { coatColor: "black-white", coatColors: ["black", "white"] });
+  const kato = animal("kato", { coatColor: "brown-white", coatColors: ["black", "brown", "white"] });
+  const ponco = animal("ponco", { coatColor: "orange-white", coatColors: ["orange", "white"] });
+  const bib = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"] });
+  const white = animal("plain-white", { coatColor: "white", coatColors: ["white"] });
+  const unknown = animal("unreviewed", { coatColors: ["black", "white"] });
+  const animals = [demeter, kato, ponco, bib, white, unknown];
 
-  it("moves a major white out of the plain colour and leaves a bib behind", () => {
-    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black"] }, now))
-      .toEqual([bib, solid]);
-    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black-white"] }, now))
-      .toEqual([mao]);
+  it("keeps reviewed pairs out of both solid colours", () => {
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["white"] }, now)).toEqual([white]);
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black"] }, now)).toEqual([bib]);
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["black-white"] }, now)).toEqual([demeter]);
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["brown-white"] }, now)).toEqual([kato]);
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["orange-white"] }, now)).toEqual([ponco]);
   });
 
-  it("keeps an unreviewed animal visible until a colour is selected", () => {
-    expect(applyFilters([unjudged], EMPTY_FILTERS, now)).toEqual([unjudged]);
-    expect(applyFilters([unjudged], { ...EMPTY_FILTERS, coatColor: ["black", "black-white"] }, now)).toEqual([]);
-    expect(facetCounts([unjudged], EMPTY_FILTERS, now).coatColor.size).toBe(0);
+  it("keeps unclassified animals visible without a colour filter", () => {
+    expect(applyFilters([unknown], EMPTY_FILTERS, now)).toEqual([unknown]);
+    expect(applyFilters([unknown], { ...EMPTY_FILTERS, coatColor: ["black", "black-white"] }, now)).toEqual([]);
+    expect(facetCounts([unknown], EMPTY_FILTERS, now).coatColor.size).toBe(0);
   });
 
-  it.each(["black", "brown", "grey"] as const)("separates %s and white from its plain colour", (colour) => {
-    const plain = animal("plain", { coatColor: colour, substantialWhite: false });
-    const paired = animal("paired", { coatColor: colour, coatColors: [colour, "white"], substantialWhite: true });
-    const missing = animal("missing", { coatColor: colour });
-    const pool = [plain, paired, missing];
-    expect(applyFilters(pool, { ...EMPTY_FILTERS, coatColor: [colour] }, now)).toEqual([plain]);
-    expect(applyFilters(pool, { ...EMPTY_FILTERS, coatColor: [`${colour}-white`] }, now)).toEqual([paired]);
-  });
-
-  it("leaves a colour with no two-toned option where it was", () => {
-    // Orange is under the 15-animal floor in COLOUR-REVIEW.md, so a major
-    // white on a ginger animal still answers Oranžna.
-    expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["orange"] }, now))
-      .toEqual([gingerAndWhite]);
-  });
-
-  it("counts a two-toned answer separately and round-trips its slug", () => {
+  it("preserves the full palette without inferring a pair from it", () => {
+    expect(demeter.coatColors).toEqual(bib.coatColors);
     const counts = facetCounts(animals, EMPTY_FILTERS, now);
-    expect(counts.coatColor.get("black")).toBe(2);
+    expect(counts.coatColor.get("black")).toBe(1);
     expect(counts.coatColor.get("black-white")).toBe(1);
-    const state: Filters = { ...EMPTY_FILTERS, coatColor: ["black-white"] };
-    expect(serializeFilters(state)).toContain("barva=crno-bela");
+    expect(counts.coatColor.get("brown-white")).toBe(1);
+    expect(counts.coatColor.get("orange-white")).toBe(1);
+    expect(counts.coatColor.get("white")).toBe(1);
+  });
+
+  it.each([
+    ["black-white", "crno-bela"], ["brown-white", "rjavo-bela"],
+    ["grey-white", "sivo-bela"], ["orange-white", "oranzno-bela"],
+  ] as const)("round-trips the %s category", (colour, slug) => {
+    const state: Filters = { ...EMPTY_FILTERS, coatColor: [colour] };
+    expect(serializeFilters(state)).toContain(`barva=${slug}`);
     expect(parseFilters(serializeFilters(state))).toEqual(state);
+  });
+
+  it("groups rare cream categories in orange controls without rewriting the animal", () => {
+    const cream = animal("cream", { coatColor: "cream", coatColors: ["cream"] });
+    const creamWhite = animal("cream-white", { coatColor: "cream-white", coatColors: ["cream", "white"] });
+    expect(applyFilters([cream, creamWhite], { ...EMPTY_FILTERS, coatColor: ["orange"] }, now)).toEqual([cream]);
+    expect(applyFilters([cream, creamWhite], { ...EMPTY_FILTERS, coatColor: ["orange-white"] }, now)).toEqual([creamWhite]);
+    expect(cream.coatColor).toBe("cream");
+    expect(creamWhite.coatColor).toBe("cream-white");
+    expect(parseFilters("barva=kremna,oranzna").coatColor).toEqual(["orange"]);
+    expect(parseFilters("barva=kremno-bela").coatColor).toEqual(["orange-white"]);
   });
 });
 

@@ -22,6 +22,7 @@ export const AppearanceManifest = z.strictObject({
     species: Species,
     coatColors: CoatColors.optional(),
     coatColor: CoatColorCategory.optional(),
+    // Historical white-area review; retained for provenance, never published.
     substantialWhite: z.boolean().optional(),
     substantialWhiteReviewedBy: Reviewers.optional(),
     coatColorReviewedBy: Reviewers.optional(),
@@ -49,7 +50,7 @@ export function loadAppearance(): AppearanceManifest {
 
 /** The reviewed fields a record can carry, for the apply loop, the issue
     type and the provider permission check, which each listed them. */
-export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "substantialWhite", "coatLength"] as const;
+export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "coatLength"] as const;
 type AppearanceField = (typeof APPEARANCE_FIELDS)[number];
 
 export type AppearanceIssue = {
@@ -90,10 +91,6 @@ export function applyAppearance(
       if (policy.allowedFields?.length && !policy.allowedFields.includes(field)) { reject("permission", field); continue; }
       // Explicit shelter facts and description-backed corrections take precedence.
       if (animal[field] !== undefined) { reject("existing-value", field); continue; }
-      if (field === "substantialWhite" && animal.coatColors !== undefined &&
-        record.substantialWhite === true && !animal.coatColors.includes("white")) {
-        reject("existing-value", field); continue;
-      }
       Object.assign(enriched, { [field]: record[field] });
       applied.push({ animalId: animal.id, field });
     }
@@ -108,8 +105,6 @@ export function applyAppearance(
     if (!colourIssue.has(issue.animalId)) colourIssue.set(issue.animalId, issue.reason);
   }
   const colourReviewQueue: { animalId: string; reason: string }[] = [];
-  // Track review coverage separately from the dominant-colour review.
-  const substantialWhiteCoverage = { classified: 0, judged: 0, substantial: 0 };
   for (const animal of published) {
     if (animal.coatColor === undefined) {
       colourReviewQueue.push({
@@ -118,60 +113,32 @@ export function applyAppearance(
       });
       continue;
     }
-    substantialWhiteCoverage.classified += 1;
-    if (animal.substantialWhite !== undefined) substantialWhiteCoverage.judged += 1;
-    if (animal.substantialWhite === true) substantialWhiteCoverage.substantial += 1;
   }
-  const colourCoverage = { total: published.length, classified: substantialWhiteCoverage.classified, unknown: colourReviewQueue.length };
-  return { animals: published, applied, issues, colourCoverage, substantialWhiteCoverage, colourReviewQueue };
+  const colourCoverage = { total: published.length, classified: published.length - colourReviewQueue.length, unknown: colourReviewQueue.length };
+  return { animals: published, applied, issues, colourCoverage, colourReviewQueue };
 }
 
-/**
- * Colours a review filed under one dominant colour that cannot have one.
- *
- * Black and orange together is a tortoiseshell, and with white a calico.
- * Neither has a dominant colour, so both belong in Multicolour, and the rule
- * in docs/COLOUR-REVIEW.md already says so. It was not being applied: of the
- * 30 animals carrying both, 12 were filed Multicolour, 8 White, 7 Black and
- * 3 Brown, so the same animal landed in four different places depending on
- * who looked. Two of the seven under Black are why a visitor pressing Črna
- * was shown a tortoiseshell cat.
- *
- * A check rather than a correction: the review owns the answer, and a
- * classifier that silently overrode it would hide the next drift instead of
- * reporting it. Only the combination nobody disputes is flagged, so a pass
- * here is quiet rather than merely tolerated.
- */
-export function dominanceIssues(manifest: AppearanceManifest): string[] {
+/** Report contradictions for a photo reviewer; never rewrite their decision. */
+export function categoryIssues(manifest: AppearanceManifest): string[] {
   return manifest.records.flatMap((record) => {
     const colours = record.coatColors;
-    if (!colours || record.coatColor === undefined) return [];
-    if (record.coatColor === "multicolour") return [];
-    if (!colours.includes("black") || !colours.includes("orange")) return [];
-    const pattern = colours.includes("white") ? "calico" : "tortoiseshell";
-    return [
-      `${record.animalId}: ${pattern} (${colours.join("+")}) filed as ${record.coatColor}, expected multicolour`,
-    ];
+    const category = record.coatColor;
+    if (!colours || category === undefined || category === "multicolour") return [];
+    if (record.species === "cat" && colours.includes("black") && colours.includes("orange")) {
+      const pattern = colours.includes("white") ? "calico" : "tortoiseshell";
+      return [`${record.animalId}: ${pattern} (${colours.join("+")}) filed as ${category}, expected multicolour`];
+    }
+    const required = category.split("-");
+    const missing = required.filter((colour) => !colours.some((visible) => visible === colour));
+    return missing.length ? [`${record.animalId}: ${category} requires ${missing.join(" and ")} in coatColors`] : [];
   });
 }
 
-/**
- * How much of the catalogue is being forced into a dominant colour.
- *
- * Reported rather than failed, because a high share is a question and not
- * always a fault: a brown tabby really is brown, stripes and all. It earns a
- * number because Multicolour sat at 5% while 142 animals carried three or
- * more colours under a single-colour label, and nobody could see that from
- * the coverage line.
- */
-export function dominanceReport(manifest: AppearanceManifest) {
+export function categoryReport(manifest: AppearanceManifest) {
   const classified = manifest.records.filter((record) => record.coatColor !== undefined);
   const multicolour = classified.filter((record) => record.coatColor === "multicolour").length;
-  const forced = classified.filter((record) =>
-    record.coatColor !== "multicolour" && (record.coatColors?.length ?? 0) >= 3).length;
-  // Show how much of the dominant-colour review also has a white-area decision.
-  const judged = classified.filter((record) => record.substantialWhite !== undefined).length;
-  return { classified: classified.length, multicolour, judged, forced };
+  const paired = classified.filter((record) => record.coatColor?.endsWith("-white")).length;
+  return { classified: classified.length, multicolour, paired };
 }
 
 /** Read only currently attached, permissioned cache masters. Never fetch here. */

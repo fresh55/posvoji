@@ -104,8 +104,7 @@ function dataset(count: number): Animal[] {
         city: "Ljubljana",
       },
       coatColors: pick([undefined, ["black"], ["black", "white"], ["orange", "cream"], ["grey", "brown"]]),
-      coatColor: pick([undefined, "black", "white", "grey", "brown", "orange", "cream", "multicolour"]),
-      substantialWhite: pick([undefined, false, true]),
+      coatColor: pick([undefined, "black", "white", "grey", "brown", "orange", "cream", "black-white", "brown-white", "grey-white", "orange-white", "cream-white", "multicolour"]),
       coatLength: pick([undefined, "short", "medium", "long", "hairless"]),
       intakeDate: pick([undefined, "2026-08-16", "2026-02-14", "2025-08-15", "2025-08-14", "2023-08-14"]),
       species,
@@ -150,14 +149,8 @@ function slowGroupValue(
     }
     case "size":
       return animal.size;
-    case "coatColor": {
-      const colour = animal.coatColor;
-      if (colour === "black" || colour === "brown" || colour === "grey") {
-        if (animal.substantialWhite === undefined) return undefined;
-        if (animal.substantialWhite === true) return `${colour}-white`;
-      }
-      return colour;
-    }
+    case "coatColor":
+      return animal.coatColor === "cream" ? "orange" : animal.coatColor === "cream-white" ? "orange-white" : animal.coatColor;
     case "coatLength":
       return animal.coatLength;
     case "waiting":

@@ -29,7 +29,6 @@ export {
   FILTER_METADATA,
   TOGGLES,
   careOptions,
-  coatColorFacet,
   goodWithOptions,
   groupLabel,
   groupOptions,

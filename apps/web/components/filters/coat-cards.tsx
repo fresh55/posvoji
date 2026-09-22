@@ -78,7 +78,7 @@ import { cn } from "@/lib/utils";
  * literally it drew an olive chip under the word Rjava. Swept 42 to 72 and
  * set at 54, which is brown before it turns khaki.
  */
-const SWATCHES: Record<Exclude<CoatColorCategory, "multicolour">, string> = {
+const SWATCHES: Record<Exclude<CoatColorCategory, "multicolour" | `${string}-white`>, string> = {
   // L 0.30, C 0.016, H 55. Warm, not the neutral charcoal it was.
   black: "#342c26",
   // L 0.47, C 0.070, H 54.
@@ -115,8 +115,8 @@ const SWATCH_EDGE = "var(--control-border)";
  * readout and the sheet as its section hint, so it is written once.
  */
 const COLOUR_HINT: Record<Locale, string> = {
-  sl: "Iščemo po prevladujoči barvi.",
-  en: "Filter by predominant colour.",
+  sl: "Manjših lis pri barvi ne upoštevamo.",
+  en: "Small markings do not change the colour.",
 };
 
 const CENTRE = 12;
@@ -1544,10 +1544,7 @@ export function CoatLengthCards(props: CoatCardsProps) {
     <CoatCards
       {...props}
       group="coatLength"
-      // No hint. Barva needs one, because "prevladujoči" is a rule a reader
-      // cannot guess from the swatches: a black cat with a white bib counts as
-      // black. Dolžina dlake has no such rule, and the sentence that was here
-      // said what the heading and the four labels already say.
+      // Length needs no explanation beyond its labels.
       // The coat is the one icon here that answers a held pointer.
       tracksPress
       renderIcon={({ value, checked, dead, motion }) => (

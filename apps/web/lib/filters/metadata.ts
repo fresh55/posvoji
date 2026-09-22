@@ -9,7 +9,7 @@ import type {
 import type { AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import {
-  TWO_TONED,
+  filterColour,
   type AgeGroup,
   type CoatColorFacet,
   type WaitingGroup,
@@ -179,15 +179,7 @@ export type FilterValueDefinition<Value extends string = string> = {
 };
 
 export const FILTER_METADATA = {
-  // Ordered dark to light, which is the order the sidebar's palette draws
-  // them in. Unordered, the grid was six chips in no relation to each other;
-  // as a ramp it reads as one set, and a reader looking for a pale animal
-  // knows which end to look at. Multicolour last, as docs/COLOUR-REVIEW.md
-  // asks. The slug is what the URL carries, so the order is display only.
-  //
-  // Each two-toned answer follows the colour it is made of, so Črna and
-  // Črno-bela are neighbours and the choice between them is the easy one to
-  // see. See CoatColorFacet for why only three colours have a pair.
+  // Each paired colour follows its solid colour; multicolour stays last.
   coatColor: [
     { value: "black", slug: "crna", labels: { sl: "Črna", en: "Black" } },
     { value: "black-white", slug: "crno-bela", labels: { sl: "Črno-bela", en: "Black and white" } },
@@ -196,7 +188,9 @@ export const FILTER_METADATA = {
     { value: "grey", slug: "siva", labels: { sl: "Siva", en: "Grey" } },
     { value: "grey-white", slug: "sivo-bela", labels: { sl: "Sivo-bela", en: "Grey and white" } },
     { value: "orange", slug: "oranzna", labels: { sl: "Oranžna", en: "Orange" } },
+    { value: "orange-white", slug: "oranzno-bela", labels: { sl: "Oranžno-bela", en: "Orange and white" } },
     { value: "cream", slug: "kremna", labels: { sl: "Kremna", en: "Cream" } },
+    { value: "cream-white", slug: "kremno-bela", labels: { sl: "Kremno-bela", en: "Cream and white" } },
     { value: "white", slug: "bela", labels: { sl: "Bela", en: "White" } },
     { value: "multicolour", slug: "vecbarvna", labels: { sl: "Večbarvna", en: "Multicolour" } },
   ],
@@ -339,17 +333,6 @@ export function careOptions(
   }));
 }
 
-/** Paired colours require a reviewed white-markings value. */
-export function coatColorFacet(
-  animal: Pick<AnimalFields, "coatColor" | "substantialWhite">,
-): CoatColorFacet | undefined {
-  const colour = animal.coatColor;
-  if (colour === undefined) return undefined;
-  if (!TWO_TONED.some((value) => value === colour)) return colour;
-  if (animal.substantialWhite === undefined) return undefined;
-  return animal.substantialWhite === true ? (`${colour}-white` as CoatColorFacet) : colour;
-}
-
 // Exhaustive like groupValue: a new group names its own options rather than
 // inheriting whichever branch happens to be last.
 export function groupOptions(
@@ -370,11 +353,14 @@ export function groupOptions(
         .map(([value, { name, city }]) => ({ value, label: name, city }))
         .sort((a, b) => a.label.localeCompare(b.label, "sl"));
     }
+    case "coatColor":
+      return FILTER_METADATA.coatColor
+        .filter(({ value }) => filterColour(value) === value)
+        .map(({ value, labels }) => ({ value, label: labels[locale] }));
     case "sex":
     case "age":
     case "size":
     case "energy":
-    case "coatColor":
     case "coatLength":
     case "waiting":
       return FILTER_METADATA[group].map(({ value, labels }) => ({
@@ -390,6 +376,9 @@ export function optionLabel(
   animals: AnimalFields[],
   locale: Locale = "sl",
 ): string {
+  if (group === "coatColor") {
+    return FILTER_METADATA.coatColor.find((option) => option.value === value)?.labels[locale] ?? value;
+  }
   const option = groupOptions(group, animals, locale).find(
     (candidate) => candidate.value === value,
   );

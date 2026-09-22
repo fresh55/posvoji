@@ -339,27 +339,15 @@ export function careOptions(
   }));
 }
 
-/**
- * Which Barva answer an animal is, from the two facts the review records.
- *
- * The reviewed coatColor says which colour dominates and whiteMarkings says
- * whether the white on the animal is a bib or half of it. Only a major white
- * moves it, and only for the three colours that have a two-toned answer: a
- * mostly-white animal is already White, and Multicolour is already the answer
- * for a coat with no dominant colour at all.
- *
- * An animal nobody has judged the white on reads as minor, so the catalogue
- * behaves exactly as it did before the review records this.
- */
+/** Paired colours require a reviewed white-markings value. */
 export function coatColorFacet(
-  animal: Pick<AnimalFields, "coatColor" | "whiteMarkings">,
+  animal: Pick<AnimalFields, "coatColor" | "substantialWhite">,
 ): CoatColorFacet | undefined {
   const colour = animal.coatColor;
   if (colour === undefined) return undefined;
-  if (animal.whiteMarkings !== "major") return colour;
-  return TWO_TONED.some((value) => value === colour)
-    ? (`${colour}-white` as CoatColorFacet)
-    : colour;
+  if (!TWO_TONED.some((value) => value === colour)) return colour;
+  if (animal.substantialWhite === undefined) return undefined;
+  return animal.substantialWhite === true ? (`${colour}-white` as CoatColorFacet) : colour;
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than

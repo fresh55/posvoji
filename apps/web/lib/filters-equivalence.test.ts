@@ -105,6 +105,7 @@ function dataset(count: number): Animal[] {
       },
       coatColors: pick([undefined, ["black"], ["black", "white"], ["orange", "cream"], ["grey", "brown"]]),
       coatColor: pick([undefined, "black", "white", "grey", "brown", "orange", "cream", "multicolour"]),
+      substantialWhite: pick([undefined, false, true]),
       coatLength: pick([undefined, "short", "medium", "long", "hairless"]),
       intakeDate: pick([undefined, "2026-08-16", "2026-02-14", "2025-08-15", "2025-08-14", "2023-08-14"]),
       species,
@@ -149,8 +150,14 @@ function slowGroupValue(
     }
     case "size":
       return animal.size;
-    case "coatColor":
-      return animal.coatColor;
+    case "coatColor": {
+      const colour = animal.coatColor;
+      if (colour === "black" || colour === "brown" || colour === "grey") {
+        if (animal.substantialWhite === undefined) return undefined;
+        if (animal.substantialWhite === true) return `${colour}-white`;
+      }
+      return colour;
+    }
     case "coatLength":
       return animal.coatLength;
     case "waiting":

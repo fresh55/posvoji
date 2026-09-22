@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Animal, CoatColorCategory, CoatColors, CoatLength, Species, WhiteMarkings, type ProviderPolicy } from "@posvoji/schema";
+import { Animal, CoatColorCategory, CoatColors, CoatLength, Species, type ProviderPolicy } from "@posvoji/schema";
 import { z } from "zod";
 import { cachedImagesDir, repoRoot } from "./paths";
 
@@ -22,7 +22,8 @@ export const AppearanceManifest = z.strictObject({
     species: Species,
     coatColors: CoatColors.optional(),
     coatColor: CoatColorCategory.optional(),
-    whiteMarkings: WhiteMarkings.optional(),
+    substantialWhite: z.boolean().optional(),
+    substantialWhiteReviewedBy: Reviewers.optional(),
     coatColorReviewedBy: Reviewers.optional(),
     coatLength: CoatLength.optional(),
     evidence: z.array(PhotoEvidence).min(1).refine(
@@ -30,18 +31,14 @@ export const AppearanceManifest = z.strictObject({
       "duplicate photo evidence",
     ),
     reviewedBy: Reviewers,
-  }).refine((record) => record.coatColors !== undefined || record.coatLength !== undefined || record.coatColor !== undefined,
+  }).refine((record) => record.coatColors !== undefined || record.coatLength !== undefined || record.coatColor !== undefined || record.substantialWhite !== undefined,
     "an appearance review must record a supported field")
     .refine((record) => (record.coatColor !== undefined) === (record.coatColorReviewedBy !== undefined),
       "a filter colour requires its own independent reviewers")
-    // White markings decide which colour bucket the animal is filtered into,
-    // so they are held to the same two-reviewer bar as the colour itself and
-    // have to agree with the colours the same review listed.
-    .refine((record) => record.whiteMarkings === undefined || record.coatColorReviewedBy !== undefined,
-      "white markings require the colour reviewers")
-    .refine((record) => record.whiteMarkings === undefined || record.whiteMarkings === "none" ||
-      record.coatColors === undefined || record.coatColors.includes("white"),
-      "white markings require white among the coat colors")),
+    .refine((record) => (record.substantialWhite !== undefined) === (record.substantialWhiteReviewedBy !== undefined),
+      "white markings require their own independent reviewers")
+    .refine((record) => record.substantialWhite !== true || record.coatColors === undefined || record.coatColors.includes("white"),
+      "substantial white requires white among the visible coat colors")),
 }).refine((manifest) => new Set(manifest.records.map((record) => record.animalId)).size === manifest.records.length,
   "duplicate animal appearance review");
 export type AppearanceManifest = z.infer<typeof AppearanceManifest>;
@@ -52,7 +49,7 @@ export function loadAppearance(): AppearanceManifest {
 
 /** The reviewed fields a record can carry, for the apply loop, the issue
     type and the provider permission check, which each listed them. */
-export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "whiteMarkings", "coatLength"] as const;
+export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "substantialWhite", "coatLength"] as const;
 type AppearanceField = (typeof APPEARANCE_FIELDS)[number];
 
 export type AppearanceIssue = {
@@ -93,6 +90,10 @@ export function applyAppearance(
       if (policy.allowedFields?.length && !policy.allowedFields.includes(field)) { reject("permission", field); continue; }
       // Explicit shelter facts and description-backed corrections take precedence.
       if (animal[field] !== undefined) { reject("existing-value", field); continue; }
+      if (field === "substantialWhite" && animal.coatColors !== undefined &&
+        record.substantialWhite === true && !animal.coatColors.includes("white")) {
+        reject("existing-value", field); continue;
+      }
       Object.assign(enriched, { [field]: record[field] });
       applied.push({ animalId: animal.id, field });
     }
@@ -107,10 +108,8 @@ export function applyAppearance(
     if (!colourIssue.has(issue.animalId)) colourIssue.set(issue.animalId, issue.reason);
   }
   const colourReviewQueue: { animalId: string; reason: string }[] = [];
-  // How far the white-markings review has got. A classified animal without
-  // it filters exactly as it did before the field existed, so this number
-  // going up is the only visible sign the two-toned options are filling in.
-  const whiteMarkingsCoverage = { classified: 0, judged: 0, major: 0 };
+  // Track review coverage separately from the dominant-colour review.
+  const substantialWhiteCoverage = { classified: 0, judged: 0, substantial: 0 };
   for (const animal of published) {
     if (animal.coatColor === undefined) {
       colourReviewQueue.push({
@@ -119,12 +118,12 @@ export function applyAppearance(
       });
       continue;
     }
-    whiteMarkingsCoverage.classified += 1;
-    if (animal.whiteMarkings !== undefined) whiteMarkingsCoverage.judged += 1;
-    if (animal.whiteMarkings === "major") whiteMarkingsCoverage.major += 1;
+    substantialWhiteCoverage.classified += 1;
+    if (animal.substantialWhite !== undefined) substantialWhiteCoverage.judged += 1;
+    if (animal.substantialWhite === true) substantialWhiteCoverage.substantial += 1;
   }
-  const colourCoverage = { total: published.length, classified: whiteMarkingsCoverage.classified, unknown: colourReviewQueue.length };
-  return { animals: published, applied, issues, colourCoverage, whiteMarkingsCoverage, colourReviewQueue };
+  const colourCoverage = { total: published.length, classified: substantialWhiteCoverage.classified, unknown: colourReviewQueue.length };
+  return { animals: published, applied, issues, colourCoverage, substantialWhiteCoverage, colourReviewQueue };
 }
 
 /**
@@ -170,10 +169,8 @@ export function dominanceReport(manifest: AppearanceManifest) {
   const multicolour = classified.filter((record) => record.coatColor === "multicolour").length;
   const forced = classified.filter((record) =>
     record.coatColor !== "multicolour" && (record.coatColors?.length ?? 0) >= 3).length;
-  // The two-toned options are dormant until this reaches the classified
-  // count, so it belongs beside the other two numbers rather than only in
-  // the export log a release produces.
-  const judged = classified.filter((record) => record.whiteMarkings !== undefined).length;
+  // Show how much of the dominant-colour review also has a white-area decision.
+  const judged = classified.filter((record) => record.substantialWhite !== undefined).length;
   return { classified: classified.length, multicolour, judged, forced };
 }
 

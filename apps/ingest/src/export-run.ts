@@ -540,7 +540,7 @@ export async function runExport(
     const animals = appearanceResult.animals;
     logger.log(`appearance: ${appearanceResult.applied.length} fields applied, ${appearanceResult.issues.length} skipped`);
     logger.log(`colour coverage: ${appearanceResult.colourCoverage.classified}/${appearanceResult.colourCoverage.total}, ${appearanceResult.colourCoverage.unknown} unclassified`);
-    logger.log(`white markings: ${appearanceResult.whiteMarkingsCoverage.judged}/${appearanceResult.whiteMarkingsCoverage.classified} judged, ${appearanceResult.whiteMarkingsCoverage.major} two-toned`);
+    logger.log(`white markings: ${appearanceResult.substantialWhiteCoverage.judged}/${appearanceResult.substantialWhiteCoverage.classified} judged, ${appearanceResult.substantialWhiteCoverage.substantial} with substantial white areas`);
     for (const issue of appearanceResult.issues) {
       if (issue.reason !== "existing-value") logger.warn(`appearance: ${issue.animalId}${issue.field ? ` ${issue.field}` : ""}: ${issue.reason}`);
     }
@@ -691,7 +691,7 @@ export async function runExport(
             applied: appearanceResult.applied,
             skipped: appearanceResult.issues,
             colourCoverage: appearanceResult.colourCoverage,
-            whiteMarkingsCoverage: appearanceResult.whiteMarkingsCoverage,
+            substantialWhiteCoverage: appearanceResult.substantialWhiteCoverage,
             colourReviewQueue: appearanceResult.colourReviewQueue,
           },
         },

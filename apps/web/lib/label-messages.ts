@@ -5,7 +5,7 @@ import type { Locale } from "./i18n";
 export const labelMessages = {
   sl: {
     lessThanMonth: "manj kot mesec",
-    cardAge: "starost {age}",
+    cardAge: "starost\u00a0{age}",
     // The card's fact for a listing that covers more than one animal, in the
     // slot the age would have taken. It replaces rather than joins: the age,
     // the size and the sex all describe one animal, and the card has no
@@ -30,7 +30,7 @@ export const labelMessages = {
   },
   en: {
     lessThanMonth: "less than a month",
-    cardAge: "{age} old",
+    cardAge: "{age}\u00a0old",
     cardSeveralAnimals: "several animals",
     factStayValue: "In the shelter: {duration}",
     longStayWholeLife: "{name} has been waiting in the shelter for {duration}, almost its whole life.",

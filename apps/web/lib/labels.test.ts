@@ -91,17 +91,17 @@ describe("the card's meta line on the species tabs", () => {
   const rabbit = animal({ sex: "female", approximateAgeMonths: 24 });
 
   it("drops the species word only on a tab that names one species", () => {
-    expect(meta(rabbit, "sl", "all")).toBe("Zajček · starost 2\u00a0leti");
+    expect(meta(rabbit, "sl", "all")).toBe("Zajček · starost\u00a02\u00a0leti");
     // The merged Ostale tab holds rabbits and whatever else, so the line
     // still has to say which animal this is.
-    expect(meta(rabbit, "sl", "other")).toBe("Zajček · starost 2\u00a0leti");
+    expect(meta(rabbit, "sl", "other")).toBe("Zajček · starost\u00a02\u00a0leti");
     const cat = animal({
       species: "cat",
       sex: "female",
       approximateAgeMonths: 24,
       size: "medium",
     });
-    expect(meta(cat, "sl", "cat")).toBe("starost 2\u00a0leti · srednja");
+    expect(meta(cat, "sl", "cat")).toBe("starost\u00a02\u00a0leti · srednja");
   });
 
   it("names the species and the age in English too", () => {
@@ -110,7 +110,7 @@ describe("the card's meta line on the species tabs", () => {
       sex: "male",
       approximateAgeMonths: 36,
     });
-    expect(meta(dog, "en", "all")).toBe("Dog · 3\u00a0years old");
+    expect(meta(dog, "en", "all")).toBe("Dog · 3\u00a0years\u00a0old");
   });
 
   // A missing age used to leave the card reading "Mačka" on its own, which
@@ -155,7 +155,7 @@ describe("the card's meta line on the species tabs", () => {
     });
     expect(animalMetaParts(dog, "sl", NOW, "all")).toHaveLength(2);
     expect(animalMetaParts(dog, "sl", NOW, "dog")).toHaveLength(2);
-    expect(meta(dog, "sl", "dog")).toBe("starost 3\u00a0leta · velika");
+    expect(meta(dog, "sl", "dog")).toBe("starost\u00a03\u00a0leta · velika");
   });
 });
 
@@ -326,12 +326,12 @@ describe("the card's meta line for a listing covering several animals", () => {
       species: "dog",
       approximateAgeMonths: 24,
     });
-    expect(meta(one, "sl", "dog")).toBe("starost 2 leti");
+    expect(meta(one, "sl", "dog")).toBe("starost\u00a02 leti");
     const tritta = animal({
       name: "triinpoltačka Tritta",
       species: "cat",
       approximateAgeMonths: 24,
     });
-    expect(meta(tritta, "sl", "cat")).toBe("starost 2 leti");
+    expect(meta(tritta, "sl", "cat")).toBe("starost\u00a02 leti");
   });
 });

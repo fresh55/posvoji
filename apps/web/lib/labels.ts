@@ -402,9 +402,11 @@ export function animalMetaParts(
   //
   // NBSP because with the word in front the line no longer fits a 375px
   // card's 164px column, and the free wrap broke it after "starost 10" and
-  // left "mesecev" below. Welding the number to its unit leaves the space
-  // after "starost" as the only break left, so the line breaks before the
-  // number instead.
+  // left "mesecev" below. Welding the number to its unit moved the break to
+  // after "starost", which left the word alone at the end of the line with
+  // its value under it. The cardAge message welds the word to the value too,
+  // so the whole fact moves down as one piece and the line breaks at the
+  // middot before it.
   if (months !== undefined) {
     const age = ageLabel(months, locale, NBSP);
     facts.push(translate(locale, "cardAge", { age }));

@@ -1,9 +1,15 @@
 // Cards claim a target width and the column count falls out of whatever space
 // is left. Fixed counts made cards jump from 309px to 222px the moment the
 // sidebar appeared at lg, because the count stayed at three while the room for
-// it shrank by a quarter. Two columns stay hard-coded on phones because
-// auto-fill would drop to one there, and a single column of photos is a worse
-// phone page.
+// it shrank by a quarter. Phones keep two columns, because a single column of
+// photos is a worse phone page, but only while the text fits them. The phone
+// floor is the larger of 8rem and half the row, so at normal text half the row
+// always wins and the count is two at any phone width, while at 200% browser
+// text 8rem is 256px, two of those no longer fit a 375px screen, and the grid
+// drops to one column. A fixed grid-cols-2 held two 140px cards there, and
+// the meta line set one word per line under each. The one-column case asks for
+// the 50vw photo rung in CARD_PHOTO_SIZES below and draws it wider, which is
+// a softer photo for a visitor who asked for large text, not a broken one.
 //
 // Its own module rather than an export off animal-grid: a page that shows the
 // cards without the filters around them would otherwise pull the whole filter
@@ -46,7 +52,7 @@
 // 307px it is at xl. So a 1920 screen draws nearly the same card as a 1440
 // one, and draws one more.
 export const CARD_GRID =
-  "grid grid-cols-2 gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-5" +
+  "grid grid-cols-[repeat(auto-fill,minmax(max(8rem,calc(50%_-_0.5rem)),1fr))] gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-5" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
   " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" +
   " 2xl:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]";

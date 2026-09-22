@@ -9,7 +9,6 @@ import {
   CoatLengthCards,
 } from "@/components/filters/coat-cards";
 import { EnergyCards } from "@/components/filters/energy-cards";
-import { HomeCards, type HomeOption } from "@/components/filters/home-cards";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import {
   CountRoll,
@@ -53,7 +52,6 @@ import {
   type FilterOption,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type ToggleDef,
   type ToggleKey,
@@ -122,19 +120,7 @@ export type GoodWithSection = {
   onToggleMany: (values: GoodWithKey[]) => void;
 };
 
-/** Everything the home section needs, absent while no animal answers it. Its
-    sentence names both numbers for the same reason Družba's does. */
-export type HomeSection = {
-  options: HomeOption[];
-  counts: Map<string, number>;
-  resultCount: number;
-  total: number;
-  onToggle: (key: HomeKey) => void;
-  onToggleMany: (values: HomeKey[]) => void;
-};
-
-/** Everything the special-care section needs, absent while no animal answers
-    it. */
+/** Everything Lahko ponudim needs, absent while no animal answers it. */
 export type CareSection = {
   options: CareOption[];
   counts: Map<string, number>;
@@ -541,7 +527,6 @@ export function FilterGroupList({
   toggles,
   toggleTally,
   goodWith,
-  home,
   care,
   onToggle,
   onToggleMany,
@@ -555,7 +540,6 @@ export function FilterGroupList({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
-  home?: HomeSection;
   care?: CareSection;
   /** The sheet draws tiles; the sidebar draws rows. */
   layout?: FilterCardLayout;
@@ -588,14 +572,14 @@ export function FilterGroupList({
   const drawn = <T,>(options: T[], isDead: (option: T) => boolean) =>
     drawnOptions(options, layout, isDead);
 
-  // The same call four times over, in the four sections whose options carry a
-  // `key`: health, Družba, Dom and Posebna skrb. Each differed only in which
+  // The same call three times over, in the three sections whose options carry a
+  // `key`: health, Družba and Lahko ponudim. Each differed only in which
   // tally to count in and which list of chosen values to ask, and spelled the
   // dead test out again to say so.
   //
   // Two shapes and not one, because the options have two shapes. The card
   // groups below key on `value` (FilterOption, which is what lib/filters
-  // builds a group from) and these four key on `key`, so a single helper would
+  // builds a group from) and these three key on `key`, so a single helper would
   // have to take a reader function per call and would be the thing it
   // replaced. The groups.map case keeps its own call.
   const drawnByKey = <T extends { key: string }>(
@@ -759,30 +743,8 @@ export function FilterGroupList({
         />
       )}
 
-      {/* Dom follows Družba: both ask what the visitor's household is like,
-          and Posebna skrb closes the list because it is the one section that
-          asks what the visitor is willing to take on. */}
-      {home && home.options.length > 0 && (
-        <HomeCards
-          options={drawnByKey(home.options, home.counts, filters.home)}
-          counts={home.counts}
-          selected={filters.home}
-          resultCount={home.resultCount}
-          total={home.total}
-          onToggle={home.onToggle}
-          onToggleMany={home.onToggleMany}
-          layout={layout}
-          collapse={collapseFor(
-            "home",
-            selectionSummary(
-              filters.home,
-              (value) =>
-                home.options.find((option) => option.key === value)?.label,
-            ),
-          )}
-        />
-      )}
-
+      {/* Lahko ponudim closes the list: it is the one section that asks what
+          the visitor can give rather than what they are looking for. */}
       {care && care.options.length > 0 && (
         <CareCards
           options={drawnByKey(care.options, care.counts, filters.care)}

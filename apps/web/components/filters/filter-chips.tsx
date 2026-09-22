@@ -906,11 +906,10 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
 function facetLabel(
   facet: FilterFacet,
   locale: "sl" | "en",
-  messages: { health: string; goodWith: string; home: string; care: string },
+  messages: { health: string; goodWith: string; care: string },
 ): string {
   if (facet === "toggles") return messages.health;
   if (facet === "goodWith") return messages.goodWith;
-  if (facet === "home") return messages.home;
   if (facet === "care") return messages.care;
   return groupLabel(facet, locale);
 }

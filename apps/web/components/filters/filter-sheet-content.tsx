@@ -47,7 +47,6 @@ export function FilterSheetContent({
   toggles,
   toggleTally,
   goodWith,
-  home,
   care,
   scope,
   activeCount,
@@ -176,7 +175,6 @@ export function FilterSheetContent({
             toggles={toggles}
             toggleTally={toggleTally}
             goodWith={goodWith}
-            home={home}
             care={care}
             onToggle={onToggle}
             onToggleMany={onToggleMany}

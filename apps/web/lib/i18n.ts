@@ -632,26 +632,22 @@ const sl = {
   home: "Dom",
   // The requirements list's own name; it shared "Dom" with the apartment row.
   adoptionRequirements: "Pogoji posvojitve",
-  resetHomeFilters: "Ponastavi filter doma",
-  homeFilterHint:
-    "Pokaži živali z izrecno navedenimi zahtevami glede doma.",
-  homeOutcome:
-    "Prikazane so živali z izrecno navedeno zahtevo glede doma. {count} od {total}.",
   apartmentYes: "Primeren za stanovanje",
   apartmentNo: "Potrebuje več prostora kot stanovanje",
   hintApartmentOk: "Zavetišče presoja, da lahko {name} živi v stanovanju.",
   // The section is an invitation, not a warning: it exists for the visitor who
-  // came to help, so the words never describe the animal as a problem.
-  care: "Posebna skrb",
-  resetCareFilters: "Ponastavi filter posebne skrbi",
+  // came to help, so the words never describe the animal as a problem. Its
+  // heading is the visitor speaking, the way "Doma imam" is, and each row
+  // finishes the sentence.
+  care: "Lahko ponudim",
+  resetCareFilters: "Ponastavi, kar lahko ponudim",
   careFilterHint:
-    "Pokaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
+    "Označi, kar lahko ponudiš. Pokažemo ti živali, ki potrebujejo prav to.",
   careOutcome:
-    "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
-  // A pill, so a label and not the sentence it used to be: the words the care
-  // filter already uses, so the control a visitor ticked and the badge they
-  // then read say the same thing.
-  specialNeedsLabel: "Potrebuje potrpežljivega človeka",
+    "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. {count} od {total}.",
+  // The row's words as the animal's need, so the pill a visitor reads on the
+  // animal is the row they ticked.
+  specialNeedsLabel: "Potrebuje veliko potrpežljivosti",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -947,20 +943,16 @@ const en: Messages = {
   hintGoodWithCats: "The shelter judges that {name} gets on with cats.",
   home: "Home",
   adoptionRequirements: "Adoption conditions",
-  resetHomeFilters: "Reset the home filter",
-  homeFilterHint:
-    "Show animals with explicitly reported home requirements.",
-  homeOutcome: "Showing animals with an explicitly reported home requirement. {count} of {total}.",
   apartmentYes: "Apartment-friendly",
   apartmentNo: "Needs more room than an apartment",
   hintApartmentOk: "The shelter judges that {name} can live in an apartment.",
-  care: "Special care",
-  resetCareFilters: "Reset the special care filter",
+  care: "I can offer",
+  resetCareFilters: "Reset what I can offer",
   careFilterHint:
-    "Show animals with explicitly reported adoption or care requirements.",
+    "Pick what you can offer and we'll show the animals that need exactly that.",
   careOutcome:
-    "Showing animals with an explicitly reported care requirement. {count} of {total}.",
-  specialNeedsLabel: "Needs a patient person",
+    "Showing animals that need what you can offer. {count} of {total}.",
+  specialNeedsLabel: "Needs a lot of patience",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

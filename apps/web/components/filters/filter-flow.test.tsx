@@ -14,20 +14,17 @@ import {
   goodWithOptions,
   GROUPS,
   groupOptions,
-  homeCounts,
-  homeOptions,
   optionLabel,
   toggleCounts,
   toggleLabel,
   visibleCare,
   visibleGoodWith,
   visibleGroups,
-  visibleHome,
   visibleToggles,
   type AgeGroup,
   type SpeciesFilter,
 } from "@/lib/filters";
-import { careLabel, goodWithChipLabel, homeLabel } from "@/lib/labels";
+import { careLabel, goodWithChipLabel } from "@/lib/labels";
 import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
 import {
   installFilterFoldSeams,
@@ -57,9 +54,9 @@ function animal(
   size: "small" | "medium" | "large",
   medical: Animal["medical"] = {},
   goodWith: Animal["goodWith"] = undefined,
-  // The two single-value sections answer one field each, so they ride along
-  // rather than adding two more positional arguments nobody passes.
-  extra: Partial<Pick<Animal, "apartmentOk" | "specialNeeds">> = {},
+  // Lahko ponudim reads two fields, so they ride along rather than adding two
+  // more positional arguments nobody passes.
+  extra: Partial<Pick<Animal, "adoptionRequirements" | "specialNeeds">> = {},
 ): Animal {
   return {
     ...(goodWith ? { goodWith } : {}),
@@ -94,7 +91,7 @@ const ANIMALS = [
     "small",
     { neutered: true },
     { kids: "yes", dogs: "yes" },
-    { apartmentOk: "yes" },
+    { adoptionRequirements: { bondedPair: true } },
   ),
   animal(
     "female-adult",
@@ -103,9 +100,9 @@ const ANIMALS = [
     "medium",
     { vaccinated: true },
     { kids: "yes", dogs: "no" },
-    // The only animal both new sections answer yes for, so the two can be
-    // combined without either card going dead first.
-    { apartmentOk: "yes", specialNeeds: true },
+    // The only animal both rows answer yes for, so the two can be combined
+    // without either card going dead first.
+    { adoptionRequirements: { bondedPair: true }, specialNeeds: true },
   ),
   animal("male-senior", "male", 120, "large"),
 ];
@@ -121,8 +118,6 @@ function FilterFlowHarness() {
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
-    toggleHome,
-    toggleManyHome,
     toggleCare,
     toggleManyCare,
     setSort,
@@ -166,13 +161,6 @@ function FilterFlowHarness() {
       label: goodWithChipLabel(key, "sl"),
       onRemove: () => toggleGoodWith(key),
     })),
-    ...filters.home.map((key) => ({
-      key: `home:${key}`,
-      facet: "home" as const,
-      value: key,
-      label: homeLabel(key, "sl"),
-      onRemove: () => toggleHome(key),
-    })),
     ...filters.care.map((key) => ({
       key: `care:${key}`,
       facet: "care" as const,
@@ -191,15 +179,6 @@ function FilterFlowHarness() {
     total: ANIMALS.length,
     onToggle: toggleGoodWith,
     onToggleMany: toggleManyGoodWith,
-  };
-  const homeKeys = visibleHome(ANIMALS, filters.home);
-  const home = {
-    options: homeOptions("sl").filter(({ key }) => homeKeys.includes(key)),
-    counts: homeCounts(ANIMALS, filters, NOW),
-    resultCount: matching.length,
-    total: ANIMALS.length,
-    onToggle: toggleHome,
-    onToggleMany: toggleManyHome,
   };
   const careKeys = visibleCare(ANIMALS, filters.care);
   const care = {
@@ -221,7 +200,6 @@ function FilterFlowHarness() {
           toggles={toggles}
           toggleTally={toggleCounts(ANIMALS, filters, NOW)}
           goodWith={goodWith}
-          home={home}
           care={care}
           onToggle={toggle}
           onToggleMany={toggleMany}
@@ -388,85 +366,88 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?druzba=otroci");
   });
 
-  it("narrows to apartment animals and says so on screen", () => {
+  it("narrows to the animals that go as a pair and says so on screen", () => {
     renderFilters();
     fireEvent.click(
-      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+      screen.getByRole("button", { name: /^Dom za dva, / }),
     );
 
-    expect(pressed(/^Primeren za stanovanje, /)).toBe("true");
+    expect(pressed(/^Dom za dva, /)).toBe("true");
     expect(matchingIds()).toBe("male-young,female-adult");
-    expect(query()).toBe("?dom=stanovanje");
+    expect(query()).toBe("?skrb=posvojitev-v-paru");
     expect(
       screen.getByText(
-        "Prikazane so živali z izrecno navedeno zahtevo glede doma. 2 od 3.",
+        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 2 od 3.",
       ),
     ).toBeTruthy();
   });
 
-  it("narrows to the animals that need a patient person", () => {
+  it("names which animals each row shows before anything is ticked", () => {
+    renderFilters();
+    const row = screen.getByRole("button", { name: /^Potrpežljivost, / });
+    const description = document.getElementById(
+      row.getAttribute("aria-describedby") ?? "",
+    );
+    expect(description?.textContent).toBe("Plahe ali občutljive živali");
+  });
+
+  it("narrows to the animals that need patience", () => {
     renderFilters();
     fireEvent.click(
-      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
+      screen.getByRole("button", { name: /^Potrpežljivost, / }),
     );
 
     expect(matchingIds()).toBe("female-adult");
     expect(query()).toBe("?skrb=potrpezljiv");
     expect(
       screen.getByText(
-        "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. 1 od 3.",
+        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 1 od 3.",
       ),
     ).toBeTruthy();
   });
 
-  it("puts both new sections on the chips row and takes them off again", () => {
+  it("puts each row on the chips row and takes it off again", () => {
     renderFilters();
     fireEvent.click(
-      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+      screen.getByRole("button", { name: /^Dom za dva, / }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
+      screen.getByRole("button", { name: /^Potrpežljivost, / }),
     );
-    expect(query()).toBe("?dom=stanovanje&skrb=potrpezljiv");
+    expect(query()).toBe("?skrb=posvojitev-v-paru,potrpezljiv");
+    // Either is enough, so both ticked shows what either one did.
+    expect(matchingIds()).toBe("male-young,female-adult");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Odstrani filter Primeren za stanovanje",
+        name: "Odstrani filter Dom za dve živali",
       }),
     );
     expect(query()).toBe("?skrb=potrpezljiv");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Odstrani filter Potrpežljiv človek",
+        name: "Odstrani filter Potrpežljivost",
       }),
     );
     expect(query()).toBe("");
   });
 
-  it("resets and clears the two single-value sections", () => {
+  it("resets and clears the section", () => {
     renderFilters();
     fireEvent.click(
-      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
+      screen.getByRole("button", { name: /^Dom za dva, / }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Ponastavi filter doma" }),
-    );
-    expect(query()).toBe("");
-
-    fireEvent.click(
-      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
+      screen.getByRole("button", { name: /^Potrpežljivost, / }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Ponastavi filter posebne skrbi" }),
+      screen.getByRole("button", { name: "Ponastavi, kar lahko ponudim" }),
     );
     expect(query()).toBe("");
 
     fireEvent.click(
-      screen.getByRole("button", { name: /^Primeren za stanovanje, / }),
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: /^Potrpežljiv človek, / }),
+      screen.getByRole("button", { name: /^Potrpežljivost, / }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");

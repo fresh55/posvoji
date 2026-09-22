@@ -6,7 +6,6 @@ export {
   FILTER_FACETS,
   GOOD_WITH_KEYS,
   GROUPS,
-  HOME_KEYS,
   TOGGLE_KEYS,
   TWO_TONED,
 } from "./filters/contracts";
@@ -19,7 +18,6 @@ export type {
   FilterOption,
   Filters,
   GoodWithKey,
-  HomeKey,
   MultiGroup,
   SpeciesFilter,
   ToggleKey,
@@ -29,13 +27,14 @@ export {
   FILTER_METADATA,
   TOGGLES,
   careOptions,
+  type CareOptionDef,
   goodWithOptions,
   groupLabel,
   groupOptions,
-  homeOptions,
   optionLabel,
   toggleLabel,
   togglesAskedOf,
+  valueChipLabel,
 } from "./filters/metadata";
 export type {
   FilterValueDefinition,
@@ -56,8 +55,6 @@ export {
   facetCounts,
   goodWithCounts,
   goodWithMatches,
-  homeCounts,
-  homeMatches,
   isDrop,
   pruneHiddenFilters,
   speciesCounts,
@@ -67,7 +64,6 @@ export {
   visibleCare,
   visibleGoodWith,
   visibleGroups,
-  visibleHome,
   visibleToggles,
 } from "./filters/engine";
 

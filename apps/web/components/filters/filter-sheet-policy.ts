@@ -1,4 +1,4 @@
-import type { CardGroup, CareSection, GoodWithSection, HomeSection } from "./filter-groups";
+import type { CardGroup, CareSection, GoodWithSection } from "./filter-groups";
 import type { FilterOption, ToggleDef } from "@/lib/filters";
 
 export const SORT_ROW_HIDDEN = "md:not-short:hidden";
@@ -10,7 +10,6 @@ export function filterSheetReason({
   groups,
   toggles,
   goodWith,
-  home,
   care,
   resultCount,
   activeCount,
@@ -18,7 +17,6 @@ export function filterSheetReason({
   groups: { group: CardGroup; options: FilterOption[] }[];
   toggles: ToggleDef[];
   goodWith?: GoodWithSection;
-  home?: HomeSection;
   care?: CareSection;
   resultCount: number;
   activeCount: number;
@@ -27,7 +25,6 @@ export function filterSheetReason({
     groups.length > 0 ||
     toggles.length > 0 ||
     (goodWith?.options.length ?? 0) > 0 ||
-    (home?.options.length ?? 0) > 0 ||
     (care?.options.length ?? 0) > 0;
   if (hasSections) return "sections";
   // Values and not sections: a picked shelter has no section in here but it

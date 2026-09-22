@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, homeCounts,
+  applyFilters, chipGains, EMPTY_FILTERS, facetCounts,
   parseFilters, serializeFilters, visibleGroups, waitingGroups, type Filters,
 } from "../filters";
 
@@ -12,7 +12,7 @@ const animal = (id: string, extra: Partial<Animal> = {}): Animal => ({
   shelter: { id: "fixture", name: "Fixture", city: "Ljubljana" }, ...extra,
 });
 
-describe("reviewed appearance and home filters", () => {
+describe("reviewed appearance filters", () => {
   const black = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } });
   const brown = animal("brown-tabby", { coatColor: "brown", coatColors: ["black", "brown", "white"], coatLength: "short" });
   const white = animal("white-with-patches", { coatColor: "white", coatColors: ["black", "white"], coatLength: "short" });
@@ -26,8 +26,6 @@ describe("reviewed appearance and home filters", () => {
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["multicolour"] }, now)).toEqual([multicolour]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["white", "black"] }, now)).toEqual([black, white]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["white"], coatLength: ["long"] }, now)).toEqual([]);
-    expect(applyFilters(animals, { ...EMPTY_FILTERS, home: ["only-pet"] }, now)).toEqual([black]);
-    expect(homeCounts(animals, EMPTY_FILTERS, now).get("only-pet")).toBe(1);
   });
 
   it("counts each known animal once across colour categories and computes removable chips", () => {
@@ -41,8 +39,8 @@ describe("reviewed appearance and home filters", () => {
   });
 
   it("round-trips all four filters in shared URLs and preserves selected unknown options", () => {
-    const filters: Filters = { ...EMPTY_FILTERS, coatColor: ["black", "multicolour"], coatLength: ["long"], waiting: ["over-1-year"], home: ["only-pet"] };
-    const state = { ...filters, coatLength: [...filters.coatLength], waiting: [...filters.waiting], home: [...filters.home] };
+    const filters: Filters = { ...EMPTY_FILTERS, coatColor: ["black", "multicolour"], coatLength: ["long"], waiting: ["over-1-year"], care: ["ongoing-care"] };
+    const state = { ...filters, coatLength: [...filters.coatLength], waiting: [...filters.waiting], care: [...filters.care] };
     expect(serializeFilters(state)).toContain("barva=crna,vecbarvna");
     expect(serializeFilters(state)).toContain("dlaka=dolga");
     expect(serializeFilters(state)).toContain("cakanje=nad-1-leto");

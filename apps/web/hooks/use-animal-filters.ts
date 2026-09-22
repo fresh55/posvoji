@@ -14,7 +14,6 @@ import {
   type CareKey,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -230,27 +229,6 @@ export function useAnimalFilters() {
     [filters],
   );
 
-  const toggleHome = useCallback(
-    (key: HomeKey) => {
-      const next = filters.home.includes(key)
-        ? filters.home.filter((k) => k !== key)
-        : [...filters.home, key];
-      writeFilters({ ...filters, home: next });
-    },
-    [filters],
-  );
-
-  const toggleManyHome = useCallback(
-    (values: HomeKey[]) => {
-      if (values.length === 0) return;
-      writeFilters({
-        ...filters,
-        home: toggleValues(filters.home, values) as HomeKey[],
-      });
-    },
-    [filters],
-  );
-
   const toggleCare = useCallback(
     (key: CareKey) => {
       const next = filters.care.includes(key)
@@ -305,8 +283,6 @@ export function useAnimalFilters() {
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
-    toggleHome,
-    toggleManyHome,
     toggleCare,
     toggleManyCare,
     setSort,

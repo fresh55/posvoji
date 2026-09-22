@@ -72,8 +72,8 @@ function descriptionBlock(): HTMLElement | null {
 
 describe("reviewed appearance and only-pet facts", () => {
   it.each([
-    ["sl", "Črna, Bela", "Dolga", "Edini ljubljenček"],
-    ["en", "Black, White", "Long", "Only pet"],
+    ["sl", "Črna, Bela", "Dolga", "Mora biti edina žival pri hiši"],
+    ["en", "Black, White", "Long", "Needs to be the only pet"],
   ] as const)("keeps detailed colours alongside a single filter category in %s", (locale, colors, length, home) => {
     renderFacts({ coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } }, locale);
     expect(screen.getByText(colors)).toBeTruthy();
@@ -643,13 +643,13 @@ describe("the special care pill", () => {
       screen.queryByRole("list", { name: "Pogoji posvojitve" }),
     ).toBeNull();
     expect(
-      screen.queryByText("Potrebuje potrpežljivega človeka"),
+      screen.queryByText("Potrebuje veliko potrpežljivosti"),
     ).toBeNull();
   });
 
-  // A pill carries a label, not a sentence, and the words are the care
-  // filter's own: a visitor who ticked that filter should read the same thing
-  // here.
+  // A pill carries a label, not a sentence, and the words are the need behind
+  // the filter's Potrpežljivost row: a visitor who ticked it should recognise
+  // them here.
   it("asks for the right person in the words the filter uses", () => {
     renderFacts({ specialNeeds: true });
 
@@ -657,12 +657,31 @@ describe("the special care pill", () => {
       name: "Pogoji posvojitve",
     });
     expect(
-      within(conditions).getByText("Potrebuje potrpežljivega človeka"),
+      within(conditions).getByText("Potrebuje veliko potrpežljivosti"),
     ).toBeTruthy();
     expect(
       screen.queryByText(
         "Ta žival potrebuje potrpežljivega človeka in nekaj več časa.",
       ),
+    ).toBeNull();
+  });
+
+  // The filter gives an animal to the row of its most specific need, and the
+  // pills follow it: one needing daily care says that, not patience as well.
+  it("leaves the patience pill to animals no narrower need claims", () => {
+    renderFacts({
+      specialNeeds: true,
+      adoptionRequirements: { ongoingCare: true },
+    });
+
+    const conditions = screen.getByRole("list", {
+      name: "Pogoji posvojitve",
+    });
+    expect(
+      within(conditions).getByText("Potrebuje dnevno nego"),
+    ).toBeTruthy();
+    expect(
+      within(conditions).queryByText("Potrebuje veliko potrpežljivosti"),
     ).toBeNull();
   });
 
@@ -701,7 +720,7 @@ describe("reviewed adoption requirements", () => {
     const conditions = screen.getByRole("list", {
       name: "Adoption conditions",
     });
-    expect(within(conditions).getByText("Indoor-only home")).toBeTruthy();
+    expect(within(conditions).getByText("Needs an indoor-only home")).toBeTruthy();
     // Indoor-only and "needs more room than an apartment" are different
     // answers, so they stay in different rows; see docs/ANIMAL-ENRICHMENT.md.
     expect(
@@ -716,15 +735,15 @@ describe("reviewed adoption requirements", () => {
     renderFacts({ adoptionRequirements: {
       indoorOnly: true, bondedPair: true, experiencedCarer: true, ongoingCare: true,
     } }, "en");
-    for (const label of ["Indoor-only home", "Adopt together", "Experienced carer", "Ongoing care"]) {
+    for (const label of ["Needs an indoor-only home", "Adopted only as a pair", "Needs an experienced hand", "Needs daily care"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
   });
 
   it("does not present false or absent requirements as confirmed", () => {
     renderFacts({ adoptionRequirements: { indoorOnly: false, bondedPair: true } }, "en");
-    expect(screen.getByText("Adopt together")).toBeTruthy();
-    for (const label of ["Indoor-only home", "Experienced carer", "Ongoing care"]) {
+    expect(screen.getByText("Adopted only as a pair")).toBeTruthy();
+    for (const label of ["Needs an indoor-only home", "Needs an experienced hand", "Needs daily care"]) {
       expect(screen.queryByText(label)).toBeNull();
     }
   });
@@ -785,7 +804,7 @@ describe("reviewed adoption requirements", () => {
     expect(
       within(
         screen.getByRole("list", { name: "Adoption conditions" }),
-      ).getByText("Indoor-only home"),
+      ).getByText("Needs an indoor-only home"),
     ).toBeTruthy();
     expect(screen.getByText(description)).toBeTruthy();
   });

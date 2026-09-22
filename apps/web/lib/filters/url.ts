@@ -15,7 +15,6 @@ import {
   type CareKey,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -42,15 +41,19 @@ const PARAM_NAMES: Record<MultiGroup, string> = {
   shelter: "zavetisce",
 };
 
-type ValueGroup = "goodWith" | "home" | "care";
+type ValueGroup = "goodWith" | "care";
 
 // The value sections are not MultiGroups, so they carry their own param names
 // and their own pair of lookups rather than three copies of the same find().
 const VALUE_PARAM_NAMES: Record<ValueGroup, string> = {
   goodWith: "druzba",
-  home: "dom",
   care: "skrb",
 };
+
+// Dom was its own section, and none of its three answers is a filter any
+// more. The param is still owned, so a link shared from then loses it on the
+// next write rather than carrying a dead "dom=" around for good.
+const RETIRED_PARAMS = ["dom"];
 
 function valueSlug(group: ValueGroup, value: string): string {
   const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
@@ -84,6 +87,7 @@ export const FILTER_PARAM_NAMES: readonly string[] = [
   ...Object.values(PARAM_NAMES),
   "lastnosti",
   ...Object.values(VALUE_PARAM_NAMES),
+  ...RETIRED_PARAMS,
 ];
 
 export function serializeFilters(filters: Filters): string {
@@ -110,7 +114,6 @@ export function serializeFilters(filters: Filters): string {
     );
   };
   setValues("goodWith", filters.goodWith);
-  setValues("home", filters.home);
   setValues("care", filters.care);
   // Commas are legal unencoded, and these links get shared by hand.
   return params.toString().replace(/%2C/g, ",");
@@ -211,7 +214,6 @@ export function parseFilters(search: string): Filters {
     shelter: values("shelter"),
     toggles,
     goodWith: codedValues("goodWith") as GoodWithKey[],
-    home: codedValues("home") as HomeKey[],
     care: codedValues("care") as CareKey[],
   });
 }

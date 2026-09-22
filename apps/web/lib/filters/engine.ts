@@ -7,7 +7,6 @@ import {
   CARE_KEYS,
   GOOD_WITH_KEYS,
   GROUPS,
-  HOME_KEYS,
   TOGGLE_KEYS,
   filterColour,
   type AgeGroup,
@@ -16,7 +15,6 @@ import {
   type FilterFacet,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -32,7 +30,6 @@ export function activeFilterCount(filters: Filters): number {
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length +
     filters.goodWith.length +
-    filters.home.length +
     filters.care.length
   );
 }
@@ -58,34 +55,41 @@ export function toggleValues(
   return [...new Set([...selected, ...values])];
 }
 
-/** Only a recorded yes counts, so "unknown" and no both drop out. */
+/** Only a recorded yes counts, so "unknown" and no both drop out. An animal
+ *  that has to be the only pet is no match for a home that already has a dog
+ *  or a cat, whatever its goodWith says: "Doma imam: Mačko" is the question
+ *  such a visitor asks, and it has to rule the animal out on its own. */
 export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean {
+  if (key !== "kids" && animal.adoptionRequirements?.onlyPet === true) {
+    return false;
+  }
   return animal.goodWith?.[key] === "yes";
 }
 
-/** Only a recorded yes counts, so "unknown" and no both drop out. */
-export function homeMatches(animal: AnimalFields, key: HomeKey): boolean {
-  switch (key) {
-    case "only-pet":
-      return animal.adoptionRequirements?.onlyPet === true;
-    case "apartment":
-      return animal.apartmentOk === "yes";
-    case "indoor-only":
-      return animal.adoptionRequirements?.indoorOnly === true;
-  }
-}
-
-/** Only a shelter that said so counts; an unanswered animal is not one. */
+/** Only a shelter that said so counts; an unanswered animal is not one.
+ *
+ *  Each animal answers the row of its most specific need. specialNeeds is the
+ *  older, wider flag, and every animal needing daily care carried it too, so
+ *  "Dnevno nego" ticked after "Potrpežljivost" added nothing and the
+ *  count beside it said otherwise. Patience now holds the special-needs
+ *  animals no narrower row claims, which also keeps an animal the shelter
+ *  wants an experienced carer for out of a first-timer's patience row. The
+ *  dialog's pill reads this same rule. */
 export function careMatches(animal: AnimalFields, key: CareKey): boolean {
+  const requires = animal.adoptionRequirements;
   switch (key) {
     case "patient":
-      return animal.specialNeeds === true;
+      return (
+        animal.specialNeeds === true &&
+        requires?.ongoingCare !== true &&
+        requires?.experiencedCarer !== true
+      );
     case "bonded-pair":
-      return animal.adoptionRequirements?.bondedPair === true;
-    case "experienced-carer":
-      return animal.adoptionRequirements?.experiencedCarer === true;
+      return requires?.bondedPair === true;
     case "ongoing-care":
-      return animal.adoptionRequirements?.ongoingCare === true;
+      return requires?.ongoingCare === true;
+    case "experienced-carer":
+      return requires?.experiencedCarer === true;
   }
 }
 
@@ -205,7 +209,6 @@ type FilterIndex = {
   readonly born: Column<number>;
   readonly toggles: readonly number[];
   readonly goodWith: readonly number[];
-  readonly home: readonly number[];
   readonly care: readonly number[];
   /** The age buckets, worked out on demand and kept for as long as the same
    *  date keeps being asked about. The one column a clock moves. */
@@ -225,7 +228,6 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const born: (number | undefined)[] = [];
   const toggles: number[] = [];
   const goodWith: number[] = [];
-  const home: number[] = [];
   const care: number[] = [];
   for (const animal of animals) {
     species.push(animal.species);
@@ -245,9 +247,6 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
         goodWithMatches(animal, GOOD_WITH_KEYS[bit]),
       ),
     );
-    home.push(
-      maskOf(HOME_KEYS.length, (bit) => homeMatches(animal, HOME_KEYS[bit])),
-    );
     care.push(
       maskOf(CARE_KEYS.length, (bit) => careMatches(animal, CARE_KEYS[bit])),
     );
@@ -265,7 +264,6 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     born,
     toggles,
     goodWith,
-    home,
     care,
     ages: null,
   };
@@ -307,7 +305,6 @@ type Query = {
   groups: Record<MultiGroup, ReadonlySet<string> | null>;
   toggles: number;
   goodWith: number;
-  home: number;
   care: number;
 };
 
@@ -333,9 +330,6 @@ function queryOf(filters: Filters): Query {
     ),
     goodWith: maskOf(GOOD_WITH_KEYS.length, (bit) =>
       filters.goodWith.includes(GOOD_WITH_KEYS[bit]),
-    ),
-    home: maskOf(HOME_KEYS.length, (bit) =>
-      filters.home.includes(HOME_KEYS[bit]),
     ),
     care: maskOf(CARE_KEYS.length, (bit) =>
       filters.care.includes(CARE_KEYS[bit]),
@@ -414,8 +408,8 @@ function groupsFailedAt(pass: Pass, slot: number): number {
 }
 
 /** OR within the section: any one of the picked keys is enough, and a section
- *  with nothing picked asks nothing. Lastnosti, Dom and Skrb all read this
- *  way. */
+ *  with nothing picked asks nothing. Lastnosti and Lahko ponudim both read
+ *  this way. */
 function answersAny(answered: number, picked: number): boolean {
   return picked === 0 || (answered & picked) !== 0;
 }
@@ -452,7 +446,7 @@ function goodWithFailedAt(pass: Pass, slot: number): number {
  *  came out as `number | Species` and the mask arithmetic stopped compiling.
  *  Only speciesFacetCounts lifts vrsta; every other caller is measuring
  *  something within a species tab and wants the tab to hold. */
-type LiftedSection = "toggles" | "home" | "care";
+type LiftedSection = "toggles" | "care";
 
 function sectionsPass(
   pass: Pass,
@@ -466,12 +460,9 @@ function sectionsPass(
   ) {
     return false;
   }
-  // Cheapest guard of the four and the one that rejects most, so it goes
-  // early rather than behind the two that walk a key list.
+  // Cheapest guard of the three and the one that rejects most, so it goes
+  // early rather than behind the one that walks a key list.
   if (goodWithFailedAt(pass, slot) !== 0) return false;
-  if (lift !== "home" && !answersAny(pass.index.home[slot], pass.query.home)) {
-    return false;
-  }
   if (lift !== "care" && !answersAny(pass.index.care[slot], pass.query.care)) {
     return false;
   }
@@ -504,7 +495,6 @@ export function applyFilters<T extends AnimalFields>(
       speciesAt(pass, slot) &&
       answersAny(pass.index.toggles[slot], pass.query.toggles) &&
       goodWithFailedAt(pass, slot) === 0 &&
-      answersAny(pass.index.home[slot], pass.query.home) &&
       answersAny(pass.index.care[slot], pass.query.care) &&
       groupsFailedAt(pass, slot) === 0,
   );
@@ -593,7 +583,7 @@ export function goodWithCounts(
   return counts;
 }
 
-// Home and care use OR within a section. Count each option with that entire
+// Lahko ponudim uses OR within the section. Count each option with the entire
 // section lifted, while retaining every other section's constraints.
 function orSectionCounts(
   pass: Pass,
@@ -612,14 +602,6 @@ function orSectionCounts(
     }
   }
   return counts;
-}
-
-export function homeCounts(
-  animals: AnimalFields[],
-  filters: Filters,
-  now: Date,
-): Map<string, number> {
-  return orSectionCounts(passOf(animals, filters, now), "home", HOME_KEYS);
 }
 
 export function careCounts(
@@ -674,7 +656,6 @@ export function chipGains(
     shelter: 0,
   };
   let freedToggles = 0;
-  let freedHome = 0;
   let freedCare = 0;
   // Druzba's facets are counted one by one, since dropping one of them widens
   // by itself rather than by emptying the section.
@@ -687,9 +668,8 @@ export function chipGains(
     const groupsFailed = groupsFailedAt(pass, slot);
     const goodWithFailed = goodWithFailedAt(pass, slot);
     const togglesOk = answersAny(index.toggles[slot], query.toggles);
-    const homeOk = answersAny(index.home[slot], query.home);
     const careOk = answersAny(index.care[slot], query.care);
-    const orSectionsOk = togglesOk && homeOk && careOk;
+    const orSectionsOk = togglesOk && careOk;
 
     if (orSectionsOk && groupsFailed === 0) {
       for (let bit = 0; bit < GOOD_WITH_KEYS.length; bit += 1) {
@@ -707,11 +687,10 @@ export function chipGains(
     }
     if (groupsFailed !== 0) continue;
 
-    // Each of the three measured with itself lifted, which for an OR section
+    // Each of the two measured with itself lifted, which for an OR section
     // means the whole section.
-    if (homeOk && careOk) freedToggles += 1;
-    if (togglesOk && careOk) freedHome += 1;
-    if (togglesOk && homeOk) freedCare += 1;
+    if (careOk) freedToggles += 1;
+    if (togglesOk) freedCare += 1;
     if (!orSectionsOk) continue;
 
     // Everything passes, so this animal is in the result, and the result is
@@ -729,11 +708,6 @@ export function chipGains(
     for (let bit = 0; bit < TOGGLE_KEYS.length; bit += 1) {
       if ((index.toggles[slot] & query.toggles) === 1 << bit) {
         bump(sole, chipKey("toggles", TOGGLE_KEYS[bit]));
-      }
-    }
-    for (let bit = 0; bit < HOME_KEYS.length; bit += 1) {
-      if ((index.home[slot] & query.home) === 1 << bit) {
-        bump(sole, chipKey("home", HOME_KEYS[bit]));
       }
     }
     for (let bit = 0; bit < CARE_KEYS.length; bit += 1) {
@@ -757,9 +731,6 @@ export function chipGains(
   }
   for (const key of filters.toggles) {
     price(chipKey("toggles", key), filters.toggles.length === 1, freedToggles);
-  }
-  for (const key of filters.home) {
-    price(chipKey("home", key), filters.home.length === 1, freedHome);
   }
   for (const key of filters.care) {
     price(chipKey("care", key), filters.care.length === 1, freedCare);
@@ -835,15 +806,14 @@ export function visibleToggles(
   );
 }
 
-/** Družba, Dom and Skrb ask one question of three different columns: which of
- *  this section's keys can still narrow the pool, plus whatever the visitor
+/** Družba and Lahko ponudim ask one question of two different columns: which
+ *  of this section's keys can still narrow the pool, plus whatever the visitor
  *  has already picked. One walk written once, the way narrows() above is the
- *  one place the narrowing rule itself is written. No species pinning in any
- *  of the three: every one of these questions is asked of dogs and cats alike,
- *  and a flat is a flat whether a dog or a cat lives in it. */
+ *  one place the narrowing rule itself is written. No species pinning in
+ *  either: each question is asked of dogs and cats alike. */
 function visibleFacet<Key extends string>(
   keys: readonly Key[],
-  column: "goodWith" | "home" | "care",
+  column: "goodWith" | "care",
   animals: AnimalFields[],
   selected: readonly Key[],
   includeUnavailable = false,
@@ -870,14 +840,6 @@ export function visibleGoodWith(
   includeUnavailable = false,
 ): GoodWithKey[] {
   return visibleFacet(GOOD_WITH_KEYS, "goodWith", animals, selected, includeUnavailable);
-}
-
-export function visibleHome(
-  animals: AnimalFields[],
-  selected: readonly HomeKey[],
-  includeUnavailable = false,
-): HomeKey[] {
-  return visibleFacet(HOME_KEYS, "home", animals, selected, includeUnavailable);
 }
 
 export function visibleCare(
@@ -987,7 +949,7 @@ export function visibleGroups(
   // includeUnavailable drops the floor to one answer rather than lifting it
   // off the pool altogether. A section nobody in the pool answers is not a
   // section with a zero row in it, it is a column of disabled zeros with no
-  // question behind it, and Energija, Dom and Posebna skrb were exactly that
+  // question behind it, and Energija and Posebna skrb were exactly that
   // on the live dataset. One answer is enough to keep the section, so the
   // zero rows beside it stay and explain the unknowns, and the section comes
   // back on its own the day the field arrives.
@@ -1029,10 +991,9 @@ export function pruneHiddenFilters(filters: Filters): Filters {
       ),
     ),
     // No facet here is pinned to a species, so nothing to prune: a selection
-    // made on one tab still has a control on the next. The same holds for the
-    // two sections below.
+    // made on one tab still has a control on the next. The same holds for
+    // Lahko ponudim below.
     goodWith: filters.goodWith,
-    home: filters.home,
     care: filters.care,
   };
 }

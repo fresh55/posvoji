@@ -588,19 +588,47 @@ export function countClass(layout: FilterCardLayout, checked: boolean): string {
   return COUNT_CLASS[layout][checked ? "chosen" : "rest"];
 }
 
+/**
+ * The line under a label that says which animals the option shows, for a
+ * section whose labels cannot say it alone (Lahko ponudim). One step below
+ * the label and in the count's ink, so on a chosen card it stays legible on
+ * the fill for the same reason the count does.
+ */
+function descriptionClass(layout: FilterCardLayout, checked: boolean): string {
+  return cn(
+    layout === "sheet" ? "line-clamp-2 max-w-full text-2xs" : "text-2xs",
+    "leading-snug",
+    checked ? "text-brand-foreground/80" : "text-muted-foreground",
+  );
+}
+
 // The label and count after the icon. The count is a render prop because a
 // section may animate it, and its class comes from the layout either way.
+// A description, where a section has one, goes under the label and leaves
+// the label, the count and the tick where every other section has them.
 export function FilterCardTail({
   layout,
   label,
   checked,
   renderCount,
+  description,
+  descriptionId,
 }: {
   layout: FilterCardLayout;
   label: string;
   checked: boolean;
   renderCount: (className: string) => ReactNode;
+  description?: string;
+  /** Lets the card name the description as its aria-describedby. */
+  descriptionId?: string;
 }) {
+  const said =
+    description === undefined ? null : (
+      <span id={descriptionId} className={descriptionClass(layout, checked)}>
+        {description}
+      </span>
+    );
+
   if (layout === "sheet") {
     return (
       <>
@@ -615,12 +643,13 @@ export function FilterCardTail({
         >
           {label}
         </span>
+        {said}
         {renderCount(countClass(layout, checked))}
       </>
     );
   }
 
-  return (
+  const line = (
     <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
       <span
         className={cn(
@@ -634,6 +663,13 @@ export function FilterCardTail({
       {/* Only a flex item can be squeezed by a long label, so shrink-0 rides
           with this line rather than with the voice the age grid shares. */}
       {renderCount(cn(countClass(layout, checked), "shrink-0"))}
+    </span>
+  );
+  if (said === null) return line;
+  return (
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      {line}
+      {said}
     </span>
   );
 }

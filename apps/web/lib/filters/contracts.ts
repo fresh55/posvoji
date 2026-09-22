@@ -41,17 +41,20 @@ export type ToggleKey = (typeof TOGGLE_KEYS)[number];
 export const GOOD_WITH_KEYS = ["kids", "dogs", "cats"] as const;
 export type GoodWithKey = (typeof GOOD_WITH_KEYS)[number];
 
-// Home filters match confirmed answers only.
-export const HOME_KEYS = ["apartment", "indoor-only", "only-pet"] as const;
-export type HomeKey = (typeof HOME_KEYS)[number];
-
-// Not a warning but a way in: it exists for visitors who came looking for the
-// animal that needs more from them, and who would otherwise never find it.
+// What the visitor can offer, each one a need some animals have. A pick shows
+// the animals that need it, so every key reads in one direction: "Lahko
+// ponudim" and then the thing. Ordered from what most homes can give to what
+// few can, so a visitor reads down until a row stops being about them.
+//
+// Household facts are not here. Whether the animal has to be the only pet is
+// answered by Doma imam (goodWithMatches), and indoor-only is a shelter's
+// house rule far more often than an animal's own need; both stay on the
+// animal as facts.
 export const CARE_KEYS = [
   "patient",
   "bonded-pair",
-  "experienced-carer",
   "ongoing-care",
+  "experienced-carer",
 ] as const;
 export type CareKey = (typeof CARE_KEYS)[number];
 
@@ -67,7 +70,6 @@ export type Filters = {
   shelter: string[];
   toggles: ToggleKey[];
   goodWith: GoodWithKey[];
-  home: HomeKey[];
   care: CareKey[];
 };
 
@@ -83,7 +85,6 @@ export const EMPTY_FILTERS: Filters = {
   shelter: [],
   toggles: [],
   goodWith: [],
-  home: [],
   care: [],
 };
 
@@ -92,13 +93,12 @@ export const GROUPS: MultiGroup[] = [
 ];
 
 /** All filter categories, used to group and label active chips. */
-export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "home" | "care";
+export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
 export const FILTER_FACETS: FilterFacet[] = [
   ...GROUPS,
   "toggles",
   "goodWith",
-  "home",
   "care",
 ];
 

@@ -2,7 +2,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { EMPTY_FILTERS, facetCounts, groupOptions, homeOptions, type Filters } from "@/lib/filters";
+import { EMPTY_FILTERS, facetCounts, careOptions, groupOptions, type Filters } from "@/lib/filters";
 import { installFilterFoldSeams, openFilterSection } from "@/test/filter-folds";
 import { FilterGroupList } from "./filter-groups";
 
@@ -12,7 +12,7 @@ globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObse
 
 function show(layout: "sheet" | "sidebar", locale: "sl" | "en", filters: Filters = EMPTY_FILTERS) {
   const onToggle = vi.fn();
-  const onHome = vi.fn();
+  const onCare = vi.fn();
   const counts = facetCounts([], EMPTY_FILTERS, new Date("2026-09-21"));
   counts.coatColor.set("black", 2);
   counts.coatColor.set("white", 1);
@@ -27,14 +27,14 @@ function show(layout: "sheet" | "sidebar", locale: "sl" | "en", filters: Filters
       groups={(["coatColor", "coatLength", "waiting"] as const).map(group => ({ group, options: groupOptions(group, [], locale) }))}
       counts={counts} toggles={[]} toggleTally={new Map()} onToggle={onToggle} onToggleMany={vi.fn()}
       onToggleProperty={vi.fn()} onToggleManyProperties={vi.fn()}
-      home={{ options: homeOptions(locale), counts: new Map([["only-pet", 1]]), resultCount: 1, total: 3, onToggle: onHome, onToggleMany: vi.fn() }} />
+      care={{ options: careOptions(locale), counts: new Map([["patient", 1]]), resultCount: 1, total: 3, onToggle: onCare, onToggleMany: vi.fn() }} />
   </I18nProvider>);
-  return { onToggle, onHome };
+  return { onToggle, onCare };
 }
 
 describe.each(["sidebar", "sheet"] as const)("appearance and waiting in %s", layout => {
-  it("starts appearance collapsed and exposes labelled colour, length, time and only-pet controls", () => {
-    const { onToggle, onHome } = show(layout, "sl");
+  it("starts appearance collapsed and exposes labelled colour, length, time and care controls", () => {
+    const { onToggle, onCare } = show(layout, "sl");
     expect(screen.getByRole("button", { name: "Videz" }).getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByRole("button", { name: /^Črna,/ })).toBeNull();
     openFilterSection("Videz");
@@ -56,9 +56,9 @@ describe.each(["sidebar", "sheet"] as const)("appearance and waiting in %s", lay
     openFilterSection("Čas v zavetišču");
     fireEvent.click(screen.getByRole("button", { name: /^Več kot 1 leto,/ }));
     expect(onToggle).toHaveBeenLastCalledWith("waiting", "over-1-year");
-    openFilterSection("Dom");
-    fireEvent.click(screen.getByRole("button", { name: /^Edini ljubljenček,/ }));
-    expect(onHome).toHaveBeenCalledWith("only-pet");
+    openFilterSection("Lahko ponudim");
+    fireEvent.click(screen.getByRole("button", { name: /^Potrpežljivost,/ }));
+    expect(onCare).toHaveBeenCalledWith("patient");
   });
 
   it("shows English labels and allows a selected zero-result colour to be removed", () => {

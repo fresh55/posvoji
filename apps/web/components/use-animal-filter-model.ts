@@ -13,8 +13,6 @@ import {
   goodWithOptions,
   groupOptions,
   GROUPS,
-  homeCounts,
-  homeOptions,
   optionLabel,
   speciesCounts,
   speciesFacetCounts,
@@ -23,14 +21,12 @@ import {
   visibleCare,
   visibleGoodWith,
   visibleGroups,
-  visibleHome,
   visibleToggles,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
   careLabel,
   goodWithChipLabel,
-  homeLabel,
   shelterChipLabel,
 } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
@@ -44,8 +40,6 @@ type FilterActions = Pick<
   | "toggleProperty"
   | "toggleGoodWith"
   | "toggleManyGoodWith"
-  | "toggleHome"
-  | "toggleManyHome"
   | "toggleCare"
   | "toggleManyCare"
 >;
@@ -72,8 +66,6 @@ export function useAnimalFilterModel({
     toggleProperty,
     toggleGoodWith,
     toggleManyGoodWith,
-    toggleHome,
-    toggleManyHome,
     toggleCare,
     toggleManyCare,
   } = actions;
@@ -195,27 +187,6 @@ export function useAnimalFilterModel({
     toggleManyGoodWith,
   ]);
 
-  const home = useMemo(() => {
-    const keys = visibleHome(pool, filters.home, true);
-    return {
-      options: homeOptions(locale).filter((option) => keys.includes(option.key)),
-      counts: homeCounts(animals, filters, reference),
-      resultCount: resultCount,
-      total: pool.length,
-      onToggle: toggleHome,
-      onToggleMany: toggleManyHome,
-    };
-  }, [
-    animals,
-    filters,
-    locale,
-    reference,
-    pool,
-    resultCount,
-    toggleHome,
-    toggleManyHome,
-  ]);
-
   const care = useMemo(() => {
     const keys = visibleCare(pool, filters.care, true);
     return {
@@ -295,16 +266,8 @@ export function useAnimalFilterModel({
       gain: chipGain.get(chipKey("goodWith", key)),
       onRemove: () => toggleGoodWith(key),
     })),
-    // Both of these read as whole phrases on the card already, so a chip says
-    // the same words rather than a second wording of them.
-    ...filters.home.map((key) => ({
-      key: chipKey("home", key),
-      facet: "home" as const,
-      value: key,
-      label: homeLabel(key, locale),
-      gain: chipGain.get(chipKey("home", key)),
-      onRemove: () => toggleHome(key),
-    })),
+    // The row's words, in the nominative where the row's own only reads
+    // after the section heading.
     ...filters.care.map((key) => ({
       key: chipKey("care", key),
       facet: "care" as const,
@@ -319,7 +282,6 @@ export function useAnimalFilterModel({
     groups.length > 0 ||
     toggles.length > 0 ||
     goodWith !== undefined ||
-    home !== undefined ||
     care !== undefined;
 
   return {
@@ -333,7 +295,6 @@ export function useAnimalFilterModel({
     toggles,
     toggleTally,
     goodWith,
-    home,
     care,
     chips,
     hasSidebar,

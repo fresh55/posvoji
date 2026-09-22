@@ -16,18 +16,19 @@ import {
   type CareKey,
   type FilterOption,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type ToggleKey,
 } from "./contracts";
 
-// Filter cards and animal facts use the same wording for confirmed requirements.
+// What the animal's facts say about a stated requirement. Each is the need
+// behind one "Lahko ponudim" row in the same words, so a visitor who ticked
+// "Dnevno nego" reads "Potrebuje dnevno nego" on the animal.
 export const ADOPTION_REQUIREMENT_LABELS = {
-  onlyPet: { sl: "Edini ljubljenček", en: "Only pet" },
-  indoorOnly: { sl: "Samo notranje bivanje", en: "Indoor-only home" },
-  bondedPair: { sl: "Posvojitev v paru", en: "Adopt together" },
-  experiencedCarer: { sl: "Izkušen skrbnik", en: "Experienced carer" },
-  ongoingCare: { sl: "Potrebuje redno oskrbo", en: "Ongoing care" },
+  indoorOnly: { sl: "Potrebuje dom brez izhoda", en: "Needs an indoor-only home" },
+  onlyPet: { sl: "Mora biti edina žival pri hiši", en: "Needs to be the only pet" },
+  bondedPair: { sl: "Posvoji se samo v paru", en: "Adopted only as a pair" },
+  experiencedCarer: { sl: "Potrebuje izkušeno roko", en: "Needs an experienced hand" },
+  ongoingCare: { sl: "Potrebuje dnevno nego", en: "Needs daily care" },
 } satisfies Record<keyof AnimalAdoptionRequirements, Record<Locale, string>>;
 
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
@@ -154,9 +155,9 @@ export function toggleLabel(key: ToggleKey, locale: Locale = "sl"): string {
 }
 
 type CodedGroup = Exclude<MultiGroup, "shelter">;
-// goodWith, home and care are not MultiGroups, but their values are coded the
-// same way and want the same one place to name them.
-type ValueGroup = "goodWith" | "home" | "care";
+// goodWith and care are not MultiGroups, but their values are coded the same
+// way and want the same one place to name them.
+type ValueGroup = "goodWith" | "care";
 type MetadataGroup = CodedGroup | ValueGroup;
 type CodedValueByGroup = {
   sex: Exclude<Sex, "unknown">;
@@ -167,7 +168,6 @@ type CodedValueByGroup = {
   coatLength: CoatLength;
   waiting: WaitingGroup;
   goodWith: GoodWithKey;
-  home: HomeKey;
   care: CareKey;
 };
 
@@ -176,6 +176,10 @@ export type FilterValueDefinition<Value extends string = string> = {
   readonly value: Value;
   readonly slug: string;
   readonly labels: Readonly<Record<Locale, string>>;
+  /** The value on its own, for the active-filter chip, where the section
+   *  heading that gives the label its sense is not on screen. Only where the
+   *  label does not stand alone. */
+  readonly chip?: Readonly<Record<Locale, string>>;
 };
 
 export const FILTER_METADATA = {
@@ -260,43 +264,38 @@ export const FILTER_METADATA = {
     { value: "dogs", slug: "psi", labels: { sl: "Psa", en: "A dog" } },
     { value: "cats", slug: "macke", labels: { sl: "Mačko", en: "A cat" } },
   ],
-  home: [
-    {
-      value: "apartment",
-      slug: "stanovanje",
-      labels: { sl: "Primeren za stanovanje", en: "Apartment-friendly" },
-    },
-    {
-      value: "indoor-only",
-      slug: "samo-notranje-bivanje",
-      labels: ADOPTION_REQUIREMENT_LABELS.indoorOnly,
-    },
-    { value: "only-pet", slug: "edini-ljubljencek", labels: ADOPTION_REQUIREMENT_LABELS.onlyPet },
-  ],
+  // Each label finishes the section's heading, "Lahko ponudim: dnevno nego",
+  // the way Družba's finish "Doma imam". Short enough for the sidebar's 96px
+  // label slot beside the count, measured: "Vsakodnevno nego" was 110px and
+  // "Dom za dve živali" 100px, and both broke over two lines. The line under
+  // each label ("Gredo samo v paru") is what says "dva" means two animals,
+  // and the chip, which has no such line, says it whole.
+  //
+  // The slugs are the ones the section had as Posebna skrb, so shared links
+  // keep working.
   care: [
     {
       value: "patient",
       slug: "potrpezljiv",
-      labels: {
-        sl: "Potrpežljiv človek",
-        en: "Patient person",
-      },
+      labels: { sl: "Potrpežljivost", en: "Patience" },
     },
     {
       value: "bonded-pair",
       slug: "posvojitev-v-paru",
-      labels: ADOPTION_REQUIREMENT_LABELS.bondedPair,
-    },
-    {
-      value: "experienced-carer",
-      slug: "izkusen-skrbnik",
-      labels: ADOPTION_REQUIREMENT_LABELS.experiencedCarer,
+      labels: { sl: "Dom za dva", en: "A home for two" },
+      chip: { sl: "Dom za dve živali", en: "A home for two animals" },
     },
     {
       value: "ongoing-care",
       slug: "potrebuje-redno-oskrbo",
-      // The filter names the need; the animal's facts keep the full sentence.
-      labels: { ...ADOPTION_REQUIREMENT_LABELS.ongoingCare, sl: "Redna oskrba" },
+      labels: { sl: "Dnevno nego", en: "Daily care" },
+      chip: { sl: "Dnevna nega", en: "Daily care" },
+    },
+    {
+      value: "experienced-carer",
+      slug: "izkusen-skrbnik",
+      labels: { sl: "Izkušeno roko", en: "Experience" },
+      chip: { sl: "Izkušena roka", en: "Experience" },
     },
   ],
 } as const satisfies {
@@ -315,22 +314,46 @@ export function goodWithOptions(
   }));
 }
 
-export function homeOptions(
-  locale: Locale = "sl",
-): { key: HomeKey; label: string }[] {
-  return FILTER_METADATA.home.map(({ value, labels }) => ({
-    key: value,
-    label: labels[locale],
-  }));
-}
+// Which animals each row shows, in words a first-time adopter can check
+// themselves against before ticking. Short, because the sidebar gives the
+// line 136px.
+const CARE_DESCRIPTIONS: Record<CareKey, Record<Locale, string>> = {
+  // What is left of specialNeeds once the two needs below take their own
+  // animals (careMatches): about two thirds shy, the rest unwell in a way that
+  // asks for time rather than daily care.
+  patient: { sl: "Plahe ali občutljive živali", en: "Shy or sensitive animals" },
+  "bonded-pair": { sl: "Gredo samo v paru", en: "Adopted only as a pair" },
+  "ongoing-care": { sl: "Zdravila, dieta ali pomoč", en: "Medication, diet or help" },
+  // Nineteen of the twenty are dogs, most of them large guardian breeds or
+  // dogs wary of strangers. Saying so is what stops someone who grew up with
+  // a dog from reading the row as theirs.
+  "experienced-carer": { sl: "Močni ali nezaupljivi psi", en: "Powerful or wary dogs" },
+};
 
-export function careOptions(
-  locale: Locale = "sl",
-): { key: CareKey; label: string }[] {
+export type CareOptionDef = {
+  key: CareKey;
+  label: string;
+  description: string;
+};
+
+export function careOptions(locale: Locale = "sl"): CareOptionDef[] {
   return FILTER_METADATA.care.map(({ value, labels }) => ({
     key: value,
     label: labels[locale],
+    description: CARE_DESCRIPTIONS[value][locale],
   }));
+}
+
+/** A coded value as its chip says it: the chip wording where the label needs
+ *  its heading to make sense, the label otherwise. */
+export function valueChipLabel<Group extends MetadataGroup>(
+  group: Group,
+  value: CodedValueByGroup[Group],
+  locale: Locale,
+): string {
+  const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
+  const option = options.find((candidate) => candidate.value === value);
+  return option?.chip?.[locale] ?? option?.labels[locale] ?? value;
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than

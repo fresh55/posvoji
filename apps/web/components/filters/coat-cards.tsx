@@ -1149,6 +1149,43 @@ export function CoatColorChipSwatch({ value }: { value: string }) {
 }
 
 /**
+ * The coat at chip size, for the active-filters row and the animal's facts.
+ *
+ * Both drew the facet's scissors, which is also Sterilizacija's mark, so a row
+ * holding "Dolga dlaka" and "Sterilizacija" showed one picture for two
+ * unrelated facts. This is the section's own drawing, held still: the body's
+ * arc and the strands that fall from it, which is the one thing the four
+ * answers differ in.
+ */
+export function CoatLengthMark({
+  value,
+  className = "size-3.5",
+}: {
+  value: string;
+  className?: string;
+}) {
+  const coat = Object.hasOwn(COAT, value) ? COAT[value as CoatLength] : COAT.long;
+
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d={COAT_EDGE} />
+      {coat.strands.map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
+/**
  * The animal's own colours, for the fact pill that lists them.
  *
  * Capped at three. coatColors holds up to six, and six 14px discs is wider

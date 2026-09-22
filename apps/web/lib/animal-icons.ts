@@ -29,6 +29,7 @@ import {
   Venus,
   VenusAndMars,
   WavesHorizontal,
+  WavesVertical,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -101,7 +102,9 @@ export const FACET_ICONS: Record<FilterFacet, LucideIcon> = {
   size: Ruler,
   energy: Gauge,
   coatColor: Palette,
-  coatLength: Scissors,
+  // Not scissors: that is Sterilizacija's mark. Chips and the dialog draw the
+  // coat itself (CoatLengthMark); this is only the fallback.
+  coatLength: WavesVertical,
   waiting: Clock,
   shelter: MapPin,
   toggles: HeartPulse,

@@ -11,9 +11,9 @@ import {
   facetCounts,
   goodWithCounts,
   goodWithOptions,
+  groupChipLabel,
   groupOptions,
   GROUPS,
-  optionLabel,
   speciesCounts,
   speciesFacetCounts,
   toggleCounts,
@@ -243,7 +243,7 @@ export function useAnimalFilterModel({
         label:
           group === "shelter"
             ? shelterChipLabel(shelterLabels.get(value) ?? value)
-            : optionLabel(group, value, animals, locale),
+            : groupChipLabel(group, value, animals, locale),
         gain: chipGain.get(chipKey(group, value)),
         onRemove: () => toggle(group, value),
       })),

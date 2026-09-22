@@ -198,10 +198,13 @@ export const FILTER_METADATA = {
     { value: "white", slug: "bela", labels: { sl: "Bela", en: "White" } },
     { value: "multicolour", slug: "vecbarvna", labels: { sl: "Večbarvna", en: "Multicolour" } },
   ],
+  // The chip names the coat as well. "Srednja" alone was also Velikost's
+  // answer, so the chips row could hold two identical pills and a screen
+  // reader heard "Odstrani filter Srednja" twice.
   coatLength: [
-    { value: "short", slug: "kratka", labels: { sl: "Kratka", en: "Short" } },
-    { value: "medium", slug: "srednja", labels: { sl: "Srednja", en: "Medium" } },
-    { value: "long", slug: "dolga", labels: { sl: "Dolga", en: "Long" } },
+    { value: "short", slug: "kratka", labels: { sl: "Kratka", en: "Short" }, chip: { sl: "Kratka dlaka", en: "Short coat" } },
+    { value: "medium", slug: "srednja", labels: { sl: "Srednja", en: "Medium" }, chip: { sl: "Srednja dlaka", en: "Medium coat" } },
+    { value: "long", slug: "dolga", labels: { sl: "Dolga", en: "Long" }, chip: { sl: "Dolga dlaka", en: "Long coat" } },
     { value: "hairless", slug: "brez-dlake", labels: { sl: "Brez dlake", en: "Hairless" } },
   ],
   waiting: [
@@ -391,6 +394,22 @@ export function groupOptions(
         label: labels[locale],
       }));
   }
+}
+
+/** A group value as its chip names it: the chip wording where the option's
+ *  label leans on its section heading, the label otherwise. */
+export function groupChipLabel(
+  group: MultiGroup,
+  value: string,
+  animals: AnimalFields[],
+  locale: Locale = "sl",
+): string {
+  if (group !== "shelter") {
+    const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
+    const chip = options.find((option) => option.value === value)?.chip;
+    if (chip) return chip[locale];
+  }
+  return optionLabel(group, value, animals, locale);
 }
 
 export function optionLabel(

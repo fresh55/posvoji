@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { AnimalSize, Sex, TestResult } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
-import { CoatColorDots } from "@/components/filters/coat-cards";
+import { CoatColorDots, CoatLengthMark } from "@/components/filters/coat-cards";
 import { useI18n } from "@/components/i18n-context";
 import {
   Popover,
@@ -25,7 +25,6 @@ import { useAnimalDescription } from "@/lib/animal-descriptions";
 import {
   CARE_ICONS,
   ENERGY_ICONS,
-  FACET_ICONS,
   GOOD_WITH_ICONS,
   HEALTH_ICONS,
 } from "@/lib/animal-icons";
@@ -604,7 +603,12 @@ export function AnimalFacts({
               )}
               {animal.coatLength && (
                 <Fact
-                  icon={FACET_ICONS.coatLength}
+                  iconNode={
+                    <CoatLengthMark
+                      value={animal.coatLength}
+                      className="size-3.5 shrink-0 opacity-70"
+                    />
+                  }
                   prefix={groupLabel("coatLength", locale)}
                 >
                   {optionLabel("coatLength", animal.coatLength, [], locale)}

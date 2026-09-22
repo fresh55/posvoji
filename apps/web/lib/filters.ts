@@ -30,6 +30,7 @@ export {
   careOptions,
   type CareOptionDef,
   goodWithOptions,
+  groupChipLabel,
   groupLabel,
   groupOptions,
   optionLabel,

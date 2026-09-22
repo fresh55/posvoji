@@ -173,9 +173,8 @@ function slowGroupOk(
 }
 
 function slowTogglesOk(animal: Animal, selected: readonly ToggleKey[]): boolean {
-  if (selected.length === 0) return true;
-  return TOGGLES.some(
-    (toggle) => selected.includes(toggle.key) && toggle.matches(animal),
+  return TOGGLES.every(
+    (toggle) => !selected.includes(toggle.key) || toggle.matches(animal),
   );
 }
 
@@ -269,7 +268,10 @@ function slowToggleCounts(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const toggle of TOGGLES) {
-    const applied = { ...filters, toggles: [] };
+    const applied = {
+      ...filters,
+      toggles: filters.toggles.filter((selected) => selected !== toggle.key),
+    };
     let total = 0;
     for (const animal of animals) {
       if (!slowPasses(animal, filters, applied)) continue;

@@ -98,7 +98,8 @@ const ANIMALS = [
     "female",
     36,
     "medium",
-    { vaccinated: true },
+    // Both traits, so Zdravje's AND has an animal to narrow to.
+    { vaccinated: true, neutered: true },
     { kids: "yes", dogs: "no" },
     // The only animal both rows answer yes for, so the two can be combined
     // without either card going dead first.
@@ -283,12 +284,15 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?starost=mladicek,odrasel,senior");
   });
 
-  it("uses OR semantics for multiple health traits", () => {
+  // Every health trait ticked has to hold: Sterilizacija keeps both neutered
+  // animals, and Cepljenje on top of it leaves the one that has both.
+  it("requires every health trait ticked", () => {
     renderFilters();
     fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
-
     expect(matchingIds()).toBe("male-young,female-adult");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
+    expect(matchingIds()).toBe("female-adult");
     expect(query()).toBe("?lastnosti=sterilizacija,cepljenje");
   });
 

@@ -22,10 +22,10 @@ export type MultiGroup =
   | "sex" | "age" | "size" | "energy" | "shelter"
   | "coatColor" | "coatLength" | "waiting";
 
-// Yes/no properties an animal either has or doesn't. Choices within this
-// section combine with OR, and sections combine with AND. Every section works
-// this way except Družba, whose choices are constraints of one household
-// rather than alternatives of one attribute.
+// Yes/no properties an animal either has or doesn't. Every pick here has to
+// hold, as in Družba: each is a guarantee of its own rather than an
+// alternative of one attribute, which is what the OR sections offer. Sections
+// combine with AND.
 export const TOGGLE_KEYS = [
   "sterilizacija",
   "cepljenje",

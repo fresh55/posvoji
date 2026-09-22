@@ -408,13 +408,13 @@ function groupsFailedAt(pass: Pass, slot: number): number {
 }
 
 /** OR within the section: any one of the picked keys is enough, and a section
- *  with nothing picked asks nothing. Lastnosti and Lahko ponudim both read
- *  this way. */
+ *  with nothing picked asks nothing. Lahko ponudim reads this way: offering
+ *  more widens what the visitor can take on. */
 function answersAny(answered: number, picked: number): boolean {
   return picked === 0 || (answered & picked) !== 0;
 }
 
-// AND within this section, unlike every other one. The other sections offer
+// AND within this section, and in Zdravje below. The group sections offer
 // alternatives of a single attribute, so widening them is what the visitor
 // asked for. These are independent constraints of one household: a family with
 // a child and a dog needs both answered yes, and an OR here would put
@@ -425,17 +425,25 @@ function goodWithFailedAt(pass: Pass, slot: number): number {
   return pass.query.goodWith & ~pass.index.goodWith[slot];
 }
 
+// AND as well, for the same reason. Each health trait is its own guarantee
+// rather than an alternative of one attribute: a visitor who ticks Brez FIV
+// and Brez FeLV wants a cat tested negative for both, and the OR this used to
+// be showed cats tested for one of them as that all-clear.
+function togglesFailedAt(pass: Pass, slot: number): number {
+  return pass.query.toggles & ~pass.index.toggles[slot];
+}
+
 /** The sections that are not groups, all of them except the one being
  *  measured. Every counter below wants this and each wants a different line
  *  left out, which is the faceting rule: a number next to an option is what
  *  you get when you pick it, so everything applies except the axis being
  *  counted.
  *
- *  Druzba is not among the axes that can be lifted here, and that is the AND
- *  exception showing through: the OR sections drop whole, so measuring one
- *  means switching it off, while an AND section has to keep the facets it is
- *  not measuring. goodWithCounts therefore passes null and does its own
- *  lifting. The groups are the caller's business too: facetCounts wants the
+ *  Družba and Zdravje are not among the axes that can be lifted here, and that
+ *  is the AND exception showing through: an OR section drops whole, so
+ *  measuring one means switching it off, while an AND section has to keep the
+ *  facets it is not measuring. goodWithCounts and toggleCounts therefore pass
+ *  null and do their own lifting. The groups are the caller's business too: facetCounts wants the
  *  mask of which ones failed, everyone else only wants it to be zero.
  *
  *  Vrsta is liftable too, because the species tabs are counters and the rule
@@ -446,7 +454,7 @@ function goodWithFailedAt(pass: Pass, slot: number): number {
  *  came out as `number | Species` and the mask arithmetic stopped compiling.
  *  Only speciesFacetCounts lifts vrsta; every other caller is measuring
  *  something within a species tab and wants the tab to hold. */
-type LiftedSection = "toggles" | "care";
+type LiftedSection = "care";
 
 function sectionsPass(
   pass: Pass,
@@ -454,14 +462,9 @@ function sectionsPass(
   lift: LiftedSection | "species" | null,
 ): boolean {
   if (lift !== "species" && !speciesAt(pass, slot)) return false;
-  if (
-    lift !== "toggles" &&
-    !answersAny(pass.index.toggles[slot], pass.query.toggles)
-  ) {
-    return false;
-  }
-  // Cheapest guard of the three and the one that rejects most, so it goes
-  // early rather than behind the one that walks a key list.
+  // The two AND sections are the cheapest guards and the ones that reject
+  // most, so they go ahead of the OR section.
+  if (togglesFailedAt(pass, slot) !== 0) return false;
   if (goodWithFailedAt(pass, slot) !== 0) return false;
   if (lift !== "care" && !answersAny(pass.index.care[slot], pass.query.care)) {
     return false;
@@ -493,7 +496,7 @@ export function applyFilters<T extends AnimalFields>(
   return animals.filter(
     (_, slot) =>
       speciesAt(pass, slot) &&
-      answersAny(pass.index.toggles[slot], pass.query.toggles) &&
+      togglesFailedAt(pass, slot) === 0 &&
       goodWithFailedAt(pass, slot) === 0 &&
       answersAny(pass.index.care[slot], pass.query.care) &&
       groupsFailedAt(pass, slot) === 0,
@@ -538,9 +541,10 @@ export function facetCounts(
   return counts;
 }
 
-// Count each choice with the health axis removed, just like facetCounts
-// removes the group it is measuring. The number then answers what this choice
-// itself can add under the filters from every other section.
+// Zdravje ANDs, so this follows goodWithCounts below: the number beside a
+// trait is what picking it on top of the ones already picked leaves. Every
+// filter applies, the picked traits included, and the trait is then required.
+// For a picked trait that is the result itself.
 export function toggleCounts(
   animals: AnimalFields[],
   filters: Filters,
@@ -549,7 +553,7 @@ export function toggleCounts(
   const pass = passOf(animals, filters, now);
   const counts = new Map<string, number>(TOGGLE_KEYS.map((key) => [key, 0]));
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
-    if (!sectionsPass(pass, slot, "toggles")) continue;
+    if (!sectionsPass(pass, slot, null)) continue;
     if (groupsFailedAt(pass, slot) !== 0) continue;
     const answered = pass.index.toggles[slot];
     for (let bit = 0; bit < TOGGLE_KEYS.length; bit += 1) {
@@ -630,9 +634,9 @@ export function careCounts(
  *    what goes out is the animals in the result this value alone was letting
  *    through.
  *
- *  Druzba is the exception to both, because it ANDs: dropping a facet there
- *  only ever widens, by exactly the animals that fail that facet and nothing
- *  else. */
+ *  Družba and Zdravje are the exception to both, because they AND: dropping a
+ *  facet there only ever widens, by exactly the animals that fail that facet
+ *  and nothing else. */
 export function chipGains(
   animals: AnimalFields[],
   filters: Filters,
@@ -655,11 +659,11 @@ export function chipGains(
     waiting: 0,
     shelter: 0,
   };
-  let freedToggles = 0;
   let freedCare = 0;
-  // Druzba's facets are counted one by one, since dropping one of them widens
-  // by itself rather than by emptying the section.
+  // The AND sections' facets are counted one by one, since dropping one of
+  // them widens by itself rather than by emptying the section.
   const freedGoodWith = new Map<string, number>();
+  const freedToggles = new Map<string, number>();
   // Inside the result, what each picked value is holding up on its own.
   const sole = new Map<string, number>();
 
@@ -667,31 +671,40 @@ export function chipGains(
     if (!speciesAt(pass, slot)) continue;
     const groupsFailed = groupsFailedAt(pass, slot);
     const goodWithFailed = goodWithFailedAt(pass, slot);
-    const togglesOk = answersAny(index.toggles[slot], query.toggles);
+    const togglesFailed = togglesFailedAt(pass, slot);
     const careOk = answersAny(index.care[slot], query.care);
-    const orSectionsOk = togglesOk && careOk;
 
-    if (orSectionsOk && groupsFailed === 0) {
-      for (let bit = 0; bit < GOOD_WITH_KEYS.length; bit += 1) {
-        if (goodWithFailed === 1 << bit) {
-          bump(freedGoodWith, GOOD_WITH_KEYS[bit]);
+    // A facet of an AND section is holding out exactly the animals that fail
+    // it and nothing else, the other AND section included.
+    if (careOk && groupsFailed === 0) {
+      if (togglesFailed === 0) {
+        for (let bit = 0; bit < GOOD_WITH_KEYS.length; bit += 1) {
+          if (goodWithFailed === 1 << bit) {
+            bump(freedGoodWith, GOOD_WITH_KEYS[bit]);
+          }
+        }
+      }
+      if (goodWithFailed === 0) {
+        for (let bit = 0; bit < TOGGLE_KEYS.length; bit += 1) {
+          if (togglesFailed === 1 << bit) {
+            bump(freedToggles, TOGGLE_KEYS[bit]);
+          }
         }
       }
     }
-    if (goodWithFailed !== 0) continue;
+    if (goodWithFailed !== 0 || togglesFailed !== 0) continue;
 
-    if (orSectionsOk) {
+    if (careOk) {
       for (const group of GROUPS) {
         if ((groupsFailed & ~GROUP_BITS[group]) === 0) freedGroup[group] += 1;
       }
     }
     if (groupsFailed !== 0) continue;
 
-    // Each of the two measured with itself lifted, which for an OR section
-    // means the whole section.
-    if (careOk) freedToggles += 1;
-    if (togglesOk) freedCare += 1;
-    if (!orSectionsOk) continue;
+    // Measured with itself lifted, which for an OR section means the whole
+    // section.
+    freedCare += 1;
+    if (!careOk) continue;
 
     // Everything passes, so this animal is in the result, and the result is
     // the only place a value can be the sole reason something is showing.
@@ -705,11 +718,6 @@ export function chipGains(
     }
     // An exact match on one bit is the test: this animal answers that value
     // and no other the section picked, so the value is holding it up alone.
-    for (let bit = 0; bit < TOGGLE_KEYS.length; bit += 1) {
-      if ((index.toggles[slot] & query.toggles) === 1 << bit) {
-        bump(sole, chipKey("toggles", TOGGLE_KEYS[bit]));
-      }
-    }
     for (let bit = 0; bit < CARE_KEYS.length; bit += 1) {
       if ((index.care[slot] & query.care) === 1 << bit) {
         bump(sole, chipKey("care", CARE_KEYS[bit]));
@@ -730,7 +738,7 @@ export function chipGains(
     }
   }
   for (const key of filters.toggles) {
-    price(chipKey("toggles", key), filters.toggles.length === 1, freedToggles);
+    gains.set(chipKey("toggles", key), freedToggles.get(key) ?? 0);
   }
   for (const key of filters.care) {
     price(chipKey("care", key), filters.care.length === 1, freedCare);

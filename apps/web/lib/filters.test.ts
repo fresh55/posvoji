@@ -818,7 +818,8 @@ describe("multi-select behavior", () => {
     ).toEqual([young, adult, senior]);
   });
 
-  it("uses OR for choices within health", () => {
+  // Each trait is a guarantee of its own, so every one ticked has to hold.
+  it("requires every choice within health", () => {
     const vaccinated = animal("dog", { medical: { vaccinated: true } });
     const neutered = animal("dog", { medical: { neutered: true } });
     const both = animal("dog", {
@@ -835,7 +836,7 @@ describe("multi-select behavior", () => {
         },
         NOW,
       ),
-    ).toEqual([vaccinated, neutered, both]);
+    ).toEqual([both]);
   });
 
   it("keeps only a recorded yes within družba", () => {
@@ -1016,17 +1017,33 @@ describe("multi-select behavior", () => {
     ).toEqual([onlyPet, sociable]);
   });
 
-  it("counts each health choice independently of selected health choices", () => {
+  it("prices each health choice on top of the ones already picked", () => {
     const vaccinated = animal("dog", { medical: { vaccinated: true } });
     const neutered = animal("dog", { medical: { neutered: true } });
+    const both = animal("dog", {
+      medical: { vaccinated: true, neutered: true },
+    });
     const counts = toggleCounts(
-      [vaccinated, neutered],
+      [vaccinated, neutered, both],
       { ...EMPTY_FILTERS, toggles: ["cepljenje"] },
       NOW,
     );
 
-    expect(counts.get("cepljenje")).toBe(1);
+    expect(counts.get("cepljenje")).toBe(2);
     expect(counts.get("sterilizacija")).toBe(1);
+  });
+
+  // FIV and FeLV are the one question these filters exist to answer, and a
+  // cat tested for one of them is not the all-clear two ticks ask for.
+  it("never shows a cat tested for one virus under both", () => {
+    const both = animal("cat", { medical: { fiv: "negative", felv: "negative" } });
+    const fivOnly = animal("cat", { medical: { fiv: "negative" } });
+    const filters: Filters = { ...EMPTY_FILTERS, toggles: ["brez-fiv", "brez-felv"] };
+
+    expect(applyFilters([both, fivOnly], filters, NOW)).toEqual([both]);
+    // Taking Brez FeLV off brings back the one cat it alone was holding out.
+    expect(chipGains([both, fivOnly], filters, NOW).get("toggles:brez-felv")).toBe(1);
+    expect(chipGains([both, fivOnly], filters, NOW).get("toggles:brez-fiv")).toBe(0);
   });
 
   it("uses OR for choices within energija and leaves field-less animals out once selected", () => {

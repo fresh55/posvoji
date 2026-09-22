@@ -280,7 +280,7 @@ const sl = {
   ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, odrasla žival od 1 do manj kot 8 let, starejša žival od 8 let naprej.",
   energyFilterHint:
     "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: {count}. Živali brez podatka ta filter skrije.",
-  healthFilterHint: "Ujema se vsaj ena izbrana lastnost.",
+  healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
@@ -770,7 +770,7 @@ const en: Messages = {
   ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
   energyFilterHint:
     "As judged by the shelter. Recorded energy among animals matching the other filters: {count}. Animals with no answer are hidden by this filter.",
-  healthFilterHint: "Matches at least one selected trait.",
+  healthFilterHint: "An animal has to have every trait you pick.",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",

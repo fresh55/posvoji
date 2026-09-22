@@ -9,6 +9,7 @@ import {
 import {
   EMPTY_FILTERS,
   GROUPS,
+  filterColour,
   type AgeGroup,
   type WaitingGroup,
   type CareKey,
@@ -204,7 +205,7 @@ export function parseFilters(search: string): Filters {
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],
     energy: values("energy") as EnergyLevel[],
-    coatColor: values("coatColor") as CoatColorCategory[],
+    coatColor: [...new Set((values("coatColor") as CoatColorCategory[]).map((value) => filterColour(value)!))],
     coatLength: values("coatLength") as CoatLength[],
     waiting: values("waiting") as WaitingGroup[],
     shelter: values("shelter"),

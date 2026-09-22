@@ -36,12 +36,10 @@ describe("Animal", () => {
     expect(Animal.parse(validAnimal).coatColor).toBeUndefined();
     expect(Animal.parse({ ...validAnimal, coatColor: "multicolour", coatColors: ["black", "white"] }).coatColor).toBe("multicolour");
     expect(Animal.safeParse({ ...validAnimal, coatColor: ["black", "white"] }).success).toBe(false);
-    // White markings are what separate a tuxedo from a white bib, so they
-    // have to agree with the colours the same review listed.
-    expect(Animal.parse({ ...validAnimal, coatColors: ["black", "white"], substantialWhite: true }).substantialWhite).toBe(true);
-    expect(Animal.parse({ ...validAnimal, coatColors: ["black"], substantialWhite: false }).substantialWhite).toBe(false);
-    expect(Animal.safeParse({ ...validAnimal, coatColors: ["black"], substantialWhite: true }).success).toBe(false);
-    expect(Animal.safeParse({ ...validAnimal, coatColors: ["black", "white"], substantialWhite: "mostly" }).success).toBe(false);
+    for (const coatColor of ["black-white", "brown-white", "grey-white", "orange-white", "cream-white"]) {
+      expect(Animal.parse({ ...validAnimal, coatColor }).coatColor).toBe(coatColor);
+    }
+    expect(Animal.safeParse({ ...validAnimal, substantialWhite: true }).success).toBe(false);
     expect(Animal.parse({ ...validAnimal, coatColors: ["black", "white"], coatLength: "short",
       adoptionRequirements: { onlyPet: true } })).toMatchObject({
       coatColors: ["black", "white"], coatLength: "short", adoptionRequirements: { onlyPet: true },

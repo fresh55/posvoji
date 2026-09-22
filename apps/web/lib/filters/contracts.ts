@@ -7,35 +7,17 @@ export type SpeciesFilter = "all" | SpeciesTab;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
 export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
 
-/**
- * The colours whose two-toned form is its own answer.
- *
- * Only black, brown and grey get a pair. COLOUR-REVIEW.md already sets the
- * bar for giving a colour its own option at 15 animals, in the rule that
- * folds Cream into Orange below that; the two-toned counts are 83, 35 and 20
- * against 9 for orange and 4 for cream.
- */
-export const TWO_TONED = ["black", "brown", "grey"] as const satisfies
-  readonly CoatColorCategory[];
+/** Colours with a paired swatch. Review categories are stored directly. */
+export const TWO_TONED = ["black", "brown", "grey", "orange", "cream"] as const;
+export type CoatColorFacet = CoatColorCategory;
 
-/**
- * What the Barva filter offers, which is finer than the colour the review
- * records.
- *
- * A reviewed coatColor is the one colour that dominates, and on its own it
- * put 83 of the 146 animals classified black behind a plain black swatch
- * when over half of them are black and white. Petfinder splits the same way
- * and for the same reason: Black and Black & White / Tuxedo are separate
- * options there, and every one of its two-toned options pairs with white,
- * because white is the colour that visibly splits an animal.
- *
- * Derived rather than stored: the two facts it is built from are both
- * reviewed, and a third copy of them in the payload is a third thing to keep
- * in step. See coatColorFacet.
- */
-export type CoatColorFacet =
-  | CoatColorCategory
-  | `${(typeof TWO_TONED)[number]}-white`;
+// Cream categories are below the 15-animal option threshold. Keep their
+// reviewed values in the dataset and group them with orange in the controls.
+export function filterColour(category: CoatColorCategory | undefined): CoatColorFacet | undefined {
+  if (category === "cream") return "orange";
+  if (category === "cream-white") return "orange-white";
+  return category;
+}
 export type MultiGroup =
   | "sex" | "age" | "size" | "energy" | "shelter"
   | "coatColor" | "coatLength" | "waiting";

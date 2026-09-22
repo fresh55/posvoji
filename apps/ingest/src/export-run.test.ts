@@ -152,7 +152,7 @@ describe("the export command's production pipeline", () => {
     h.services.loadAppearance = () => ({ version: 1, reviewedAt: NOW, records: [{
       animalId: animal().id, providerId: "test-shelter", sourceUrl: animal().source.sourceUrl, species: "dog",
       coatColors: ["black", "white"], coatLength: "short", evidence: [{ sourceUrl, sha256 }], reviewedBy: ["first", "second"],
-      coatColor: "black", coatColorReviewedBy: ["colour-first", "colour-second"],
+      coatColor: "black-white", coatColorReviewedBy: ["colour-first", "colour-second"],
       substantialWhite: true, substantialWhiteReviewedBy: ["markings-first", "markings-second"],
     }] });
     h.services.currentPhotoHashes = () => {
@@ -161,21 +161,21 @@ describe("the export command's production pipeline", () => {
     };
     const first = await runExport({}, h.services);
     expect(first.dataset.animals[0]?.coatColors).toEqual(["black", "white"]);
-    expect(first.dataset.animals[0]?.coatColor).toBe("black");
-    expect(first.dataset.animals[0]?.substantialWhite).toBe(true);
+    expect(first.dataset.animals[0]?.coatColor).toBe("black-white");
+    expect(first.dataset.animals[0]).not.toHaveProperty("substantialWhite");
     const raw = JSON.parse(readFileSync(h.paths.crawledDatasetPath, "utf8"));
     expect(raw.animals[0].coatColors).toBeUndefined();
     expect(raw.animals[0].coatColor).toBeUndefined();
     expect(raw.animals[0].substantialWhite).toBeUndefined();
     const report = JSON.parse(readFileSync(h.paths.overrideReportPath, "utf8"));
-    expect(report.appearance.applied).toHaveLength(4);
+    expect(report.appearance.applied).toHaveLength(3);
     const manifest = JSON.parse(readFileSync(join(h.root, "crawl-manifest.json"), "utf8"));
     expect(manifest.appearanceRevision).toMatch(/^[a-f0-9]{64}$/);
     h.services.currentPhotoHashes = () => new Map([[sourceUrl, "d".repeat(64)]]);
     const next = await runExport({ republish: true }, h.services);
     expect(next.dataset.animals[0]?.coatColors).toBeUndefined();
     expect(next.dataset.animals[0]?.coatColor).toBeUndefined();
-    expect(next.dataset.animals[0]?.substantialWhite).toBeUndefined();
+    expect(next.dataset.animals[0]).not.toHaveProperty("substantialWhite");
     expect(next.dataset.animals[0]?.source.fetchedAt).toBe(NOW);
     expect(JSON.parse(readFileSync(h.paths.overrideReportPath, "utf8")).appearance.skipped)
       .toEqual([{ animalId: animal().id, reason: "evidence-changed" }]);

@@ -54,7 +54,6 @@ allowedFields:
   - specialNeeds
   - adoptionRequirements
   - coatColor
-  - substantialWhite
   - coatColors
   - coatLength
 

@@ -9,6 +9,7 @@ import {
   GROUPS,
   HOME_KEYS,
   TOGGLE_KEYS,
+  filterColour,
   type AgeGroup,
   type WaitingGroup,
   type CareKey,
@@ -20,7 +21,7 @@ import {
   type SpeciesFilter,
   type ToggleKey,
 } from "./contracts";
-import { coatColorFacet, TOGGLES, type ToggleDef } from "./metadata";
+import { TOGGLES, type ToggleDef } from "./metadata";
 
 /** Every value the filter state holds, zavetišče included. The panels used to
  *  count a narrower set: shelter had no section in either of them, so a badge
@@ -232,9 +233,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     sex.push(animal.sex === "unknown" ? undefined : animal.sex);
     size.push(animal.size);
     energy.push(animal.energy);
-    // The derived facet, not the reviewed colour: a black and white animal
-    // answers Črno-bela rather than standing behind the plain black swatch.
-    coatColor.push(coatColorFacet(animal));
+    coatColor.push(filterColour(animal.coatColor));
     coatLength.push(animal.coatLength);
     intakeDate.push(animal.intakeDate);
     shelter.push(animal.shelter.id);

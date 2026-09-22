@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-21T21:37:44.626Z",
+  "reviewedAt": "2026-09-22T21:05:15.788Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -12,10 +12,10 @@
         "brown",
         "cream"
       ],
-      "coatColor": "brown",
+      "coatColor": "multicolour",
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -62,15 +62,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -112,8 +112,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -150,8 +150,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -195,15 +195,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -222,6 +222,14 @@
         {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/07/Inka03.jpg",
           "sha256": "5c3f0945ddb6f31ca9b58d12ad6685ccbcae2d7ee182ef0e7b5378d7a1e268bb"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/07/Inka01.jpg",
+          "sha256": "9702f8e51375c80b5640b12e71996d7a83ad42faae2e6c5eddcfb59dc4b4ee6d"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/07/Inka02.jpg",
+          "sha256": "3c53a96988800465f850fd2445b8aaa17cb6311dba808a50c55b2f3a16bab7a2"
         }
       ],
       "reviewedBy": [
@@ -338,8 +346,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -375,15 +383,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -414,6 +422,10 @@
         {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/05/Suki07.jpg",
           "sha256": "970463cf0072142b63da82e363b0a9922480a9fd6c074ccfa4fa87ad1d7f869e"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/05/Suki06.jpg",
+          "sha256": "0567657a8578cea6d5b79f1986e0e5e8542f5b9f06fd93ee13e4e1a85d20f4cc"
         }
       ],
       "reviewedBy": [
@@ -431,15 +443,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -493,8 +505,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "long",
       "evidence": [
@@ -515,8 +527,16 @@
           "sha256": "e105b72da976570880c87199ca8c25759bd1fbad80066b66f88d7e759e5fed93"
         },
         {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/06/vigo01.jpg",
+          "sha256": "609e4e3a4359dcc26ad84811ff624c81e531cf0b640e88bd3d392c66c1904a66"
+        },
+        {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/06/vigo02.jpg",
           "sha256": "52efec7de1509f476a678e219e7946e24d203d345c950cc139aca5274f5af150"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/06/vigo03.jpg",
+          "sha256": "a10c98cbfd4805c644cc434fe9dad33b3dc45fa11d4c4b39d85762a1fac52c34"
         }
       ],
       "reviewedBy": [
@@ -583,8 +603,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -651,8 +671,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -671,6 +691,22 @@
         {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/12/Ditka08.jpg",
           "sha256": "c6ac65fc9e58f591f498ed6282fca5578d280fda5e7898dca99a92e7ac4088c7"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/12/ditka03.jpg",
+          "sha256": "e234141018ae5e3f077314ab40ef634bd3ee118b8e7e3cff24b1094b3974a5ae"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/12/ditka04.jpg",
+          "sha256": "e44c78a9bf81889ee33d2ccecbab8542dc53951c983ded70c2b4f7bef61ae6ad"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/12/ditka02.jpg",
+          "sha256": "ae07f93475eb3fa85e067237cc2076b3d76e2b8c5a032f9906dd2877ae13d495"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2021/12/ditka01.jpg",
+          "sha256": "4cd89431dbf7956c0537f7c5b3bdba898cc514e9145c1d20f4b5f473834d2e9c"
         }
       ],
       "reviewedBy": [
@@ -687,15 +723,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -737,8 +773,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -779,8 +815,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -815,15 +851,10 @@
         "white",
         "cream"
       ],
-      "coatColor": "cream",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -945,15 +976,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1003,8 +1034,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1165,8 +1196,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -1239,8 +1270,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1359,10 +1390,15 @@
         "white",
         "brown"
       ],
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
+      ],
+      "coatColorReviewedBy": [
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1390,15 +1426,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1437,15 +1473,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -1526,8 +1562,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1554,15 +1590,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1623,15 +1659,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1733,15 +1769,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1879,15 +1915,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -1938,15 +1974,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -2064,15 +2100,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2145,8 +2181,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2295,8 +2331,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2345,8 +2381,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2445,15 +2481,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -2495,17 +2531,19 @@
       "coatColors": [
         "black",
         "white",
+        "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2531,8 +2569,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root"
       ]
     },
     {
@@ -2545,15 +2583,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2590,8 +2628,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2676,15 +2714,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2786,8 +2824,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2856,15 +2894,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2915,8 +2953,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -2985,15 +3023,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3028,15 +3066,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3063,15 +3101,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -3141,8 +3179,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3294,15 +3332,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "multicolour",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3341,6 +3379,10 @@
         {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Lima04.jpg",
           "sha256": "038c1847d0ffb6d58a5f99246b577dc7f2180831d2c181256f037f1d79c92575"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Icy01.jpg",
+          "sha256": "5d47313e0daa4eaa84d0638898374f4f6a384da94d275d0655a06d6721f45cc5"
         },
         {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Lima01.jpg",
@@ -3408,8 +3450,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3443,13 +3485,8 @@
         "brown",
         "cream"
       ],
-      "coatColor": "cream",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatColorReviewedBy": [
         "/root/review_a",
         "/root/review_b"
       ],
@@ -3503,7 +3540,7 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajsa-25010285",
       "species": "dog",
       "coatColors": [
-        "grey"
+        "black"
       ],
       "coatColor": "black",
       "substantialWhite": false,
@@ -3512,8 +3549,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3543,8 +3580,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ]
     },
     {
@@ -3557,15 +3594,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3608,8 +3645,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3749,8 +3786,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3816,15 +3853,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3848,15 +3885,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -3923,8 +3960,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -4039,8 +4076,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4068,15 +4105,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4108,8 +4145,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4144,8 +4181,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4204,15 +4241,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4251,8 +4288,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4334,15 +4371,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4424,15 +4461,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4475,15 +4512,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4511,15 +4548,15 @@
         "brown",
         "cream"
       ],
-      "coatColor": "cream",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -4577,12 +4614,18 @@
       "coatColors": [
         "black",
         "white",
+        "grey",
         "brown"
       ],
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
+      ],
+      "coatColorReviewedBy": [
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4592,8 +4635,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ]
     },
     {
@@ -4612,8 +4655,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4649,7 +4692,8 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kaja-26010213",
       "species": "dog",
       "coatColors": [
-        "brown"
+        "brown",
+        "cream"
       ],
       "coatColor": "cream",
       "substantialWhite": false,
@@ -4658,8 +4702,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4677,8 +4721,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ]
     },
     {
@@ -4726,15 +4770,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "cream",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4768,8 +4812,8 @@
       ],
       "coatColor": "cream",
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4805,15 +4849,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -4853,15 +4897,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4896,8 +4940,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -4965,8 +5009,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5028,15 +5072,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5071,8 +5115,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5131,15 +5175,10 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -5170,8 +5209,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -5265,15 +5304,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5308,15 +5347,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5347,15 +5386,15 @@
         "black",
         "white"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5538,15 +5577,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5643,15 +5682,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5674,15 +5713,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5712,8 +5751,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5890,10 +5929,16 @@
         "white",
         "grey"
       ],
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
+      ],
+      "coatColorReviewedBy": [
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -5970,15 +6015,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6045,15 +6090,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6115,15 +6160,15 @@
         "black",
         "white"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6166,8 +6211,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6205,8 +6250,8 @@
       ],
       "coatColor": "grey",
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -6244,8 +6289,8 @@
       ],
       "coatColor": "brown",
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6374,8 +6419,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6415,8 +6460,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -6505,8 +6550,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6581,15 +6626,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6628,8 +6673,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -6729,15 +6774,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -6769,15 +6814,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6863,15 +6908,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6950,8 +6995,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -6983,15 +7028,10 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7023,10 +7063,10 @@
         "brown",
         "cream"
       ],
-      "coatColor": "cream",
+      "coatColor": "brown",
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7099,15 +7139,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7143,15 +7183,10 @@
         "white",
         "orange"
       ],
-      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7300,15 +7335,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7344,15 +7379,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -7392,15 +7427,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7431,15 +7466,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7474,21 +7509,25 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
         {
           "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2026/04/IMG-01ee76f3de648607f55f4cb6df17e6ea-V-1024x900.jpg",
           "sha256": "2eb2f718fa63de146f3b64535b491b6ab9fdb69115bea52d3a26f019ea00f003"
+        },
+        {
+          "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2026/04/IMG-990ece12acebcc9d8a8d6a4fb828bb2b-V.jpg",
+          "sha256": "9c12460ccf113580127d592ce0977c30f1b3aa2f0ce21348258e524bb1058bd0"
         },
         {
           "sourceUrl": "https://obalnozavetisce.si/wp-content/uploads/2026/04/IMG-d5a4da3642eea492ca2322705b82566e-V.jpg",
@@ -7521,8 +7560,8 @@
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7557,15 +7596,17 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root/category_review_c",
+        "/root"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -7601,15 +7642,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7641,15 +7682,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_a",
         "/root/review_c"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -7686,8 +7727,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7723,15 +7764,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7767,15 +7808,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7811,15 +7852,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7904,8 +7945,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7948,8 +7989,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -7988,8 +8029,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8024,15 +8065,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8075,8 +8116,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8111,15 +8152,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8247,8 +8288,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8323,15 +8364,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8372,8 +8413,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8411,8 +8452,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8453,8 +8494,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8490,15 +8531,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8533,15 +8574,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8786,15 +8827,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8833,8 +8874,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8870,15 +8911,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8947,15 +8988,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8991,15 +9032,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9085,8 +9126,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9122,15 +9163,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9157,15 +9198,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9284,8 +9325,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9323,8 +9364,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9366,8 +9407,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9403,15 +9444,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9446,15 +9487,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9490,15 +9531,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9533,15 +9574,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9573,15 +9614,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9624,8 +9665,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9702,8 +9743,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9822,15 +9863,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9889,15 +9930,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9979,8 +10020,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10016,15 +10057,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10054,17 +10095,19 @@
       "coatColors": [
         "black",
         "white",
+        "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10082,8 +10125,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root"
       ]
     },
     {
@@ -10096,15 +10139,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10211,15 +10254,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10251,15 +10294,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10294,15 +10337,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10333,15 +10376,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10383,8 +10426,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10426,8 +10469,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10463,15 +10506,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10574,15 +10617,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10656,15 +10699,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10707,8 +10750,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10744,15 +10787,10 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10837,8 +10875,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10873,15 +10911,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10955,8 +10993,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10999,8 +11037,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11031,15 +11069,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11075,15 +11113,10 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -11114,15 +11147,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11164,8 +11197,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11188,15 +11221,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11382,15 +11415,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "long",
       "evidence": [
@@ -11426,15 +11459,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11587,15 +11620,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11672,8 +11705,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11744,15 +11777,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11897,8 +11930,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11937,8 +11970,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11980,8 +12013,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12017,15 +12050,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12098,15 +12131,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12141,15 +12174,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12188,8 +12221,9 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_c",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12224,15 +12258,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12307,15 +12341,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12347,15 +12381,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12430,15 +12464,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12473,15 +12507,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12517,15 +12551,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12567,8 +12601,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -12599,15 +12633,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12642,15 +12676,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12723,15 +12757,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12773,8 +12807,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12816,8 +12850,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12902,8 +12936,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12938,15 +12972,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12981,15 +13015,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13063,8 +13097,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13107,8 +13141,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13142,8 +13176,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13182,8 +13216,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13218,15 +13252,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13264,8 +13298,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13343,15 +13377,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13432,8 +13466,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13476,8 +13510,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13508,15 +13542,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -13558,8 +13592,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13598,8 +13632,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13631,15 +13665,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13671,15 +13705,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13757,15 +13791,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13800,15 +13834,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -13893,8 +13927,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14052,15 +14086,15 @@
         "black",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14182,15 +14216,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14233,8 +14267,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -14273,8 +14307,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14312,8 +14346,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14434,8 +14468,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14470,15 +14504,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14521,8 +14555,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14643,8 +14677,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14679,15 +14713,10 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14752,15 +14781,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14868,17 +14897,19 @@
       "coatColors": [
         "black",
         "white",
+        "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14900,8 +14931,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ]
     },
     {
@@ -14914,15 +14945,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14965,8 +14996,8 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15005,8 +15036,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15239,15 +15270,10 @@
         "grey",
         "brown"
       ],
-      "coatColor": "brown",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15407,8 +15433,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15489,8 +15515,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15521,15 +15547,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15573,8 +15599,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -15637,8 +15663,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -15670,15 +15696,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -15736,8 +15762,8 @@
       ],
       "coatColor": "brown",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -15791,15 +15817,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -15914,8 +15940,8 @@
         "/root"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -15946,8 +15972,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -16008,8 +16034,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -16101,8 +16127,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -16295,8 +16321,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "long",
       "evidence": [
@@ -16349,8 +16375,8 @@
       ],
       "coatColor": "black",
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -16438,15 +16464,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -16493,8 +16519,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -16537,8 +16563,8 @@
         "/root"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -16640,8 +16666,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -16833,8 +16859,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -16988,8 +17014,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17036,8 +17062,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -17079,8 +17105,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17130,8 +17156,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17170,15 +17196,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17217,15 +17243,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17264,8 +17290,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17335,15 +17361,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17390,8 +17416,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17438,8 +17464,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17478,8 +17504,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -17514,15 +17540,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17595,15 +17621,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17664,15 +17690,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17711,8 +17737,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17747,15 +17773,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17786,10 +17812,15 @@
         "white",
         "grey"
       ],
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
+      ],
+      "coatColorReviewedBy": [
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -17824,15 +17855,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17855,15 +17886,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17902,15 +17933,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17957,8 +17988,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -17993,15 +18024,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "orange",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -18040,8 +18071,9 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18063,17 +18095,19 @@
       "coatColors": [
         "black",
         "white",
+        "grey",
         "brown"
       ],
-      "coatColor": "grey",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18087,8 +18121,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root"
       ]
     },
     {
@@ -18198,15 +18232,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18236,8 +18270,8 @@
         "/root"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18272,8 +18306,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18296,15 +18330,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18357,15 +18391,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18421,15 +18455,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18464,15 +18498,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18507,15 +18541,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18542,15 +18576,15 @@
         "black",
         "white"
       ],
-      "coatColor": "white",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18585,8 +18619,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18613,15 +18647,17 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root/category_review_c",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18663,8 +18699,9 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18690,7 +18727,7 @@
       "coatColors": [
         "black",
         "white",
-        "brown"
+        "grey"
       ],
       "coatColor": "grey",
       "substantialWhite": false,
@@ -18699,8 +18736,9 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -18714,8 +18752,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ]
     },
     {
@@ -18761,15 +18799,10 @@
         "white",
         "grey"
       ],
-      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18807,8 +18840,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18838,8 +18871,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18933,15 +18966,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "black",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -18964,15 +18997,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19019,8 +19052,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19093,8 +19126,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19149,8 +19182,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19285,8 +19318,8 @@
         "/root"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19340,15 +19373,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_c"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19374,17 +19407,19 @@
       "coatColors": [
         "black",
         "white",
+        "grey",
         "brown"
       ],
-      "coatColor": "white",
+      "coatColor": "grey-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b",
+        "/root"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19394,8 +19429,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root"
       ]
     },
     {
@@ -19482,15 +19517,15 @@
         "brown",
         "cream"
       ],
-      "coatColor": "multicolour",
+      "coatColor": "cream-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_b",
+        "/root/category_review_c"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -19594,8 +19629,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19656,8 +19691,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "long",
       "evidence": [
@@ -19688,8 +19723,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19750,8 +19785,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -19837,10 +19872,15 @@
         "white",
         "orange"
       ],
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
+      ],
+      "coatColorReviewedBy": [
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19871,8 +19911,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19903,8 +19943,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19927,15 +19967,15 @@
         "white",
         "orange"
       ],
-      "coatColor": "white",
+      "coatColor": "orange-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [
@@ -19988,15 +20028,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black",
+      "coatColor": "black-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -20050,15 +20090,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_c",
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -20089,8 +20129,8 @@
         "/root/review_b"
       ],
       "coatColorReviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root/category_review_a",
+        "/root/category_review_b"
       ],
       "coatLength": "short",
       "evidence": [

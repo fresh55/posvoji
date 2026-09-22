@@ -273,7 +273,7 @@ describe("AnimalCard meta line", () => {
     //
     // The fixture carries a sex, which is what makes the exact string prove
     // the line leaves it out. Two facts is all the card's width buys.
-    expect(metaLine()).toBe("Pes · starost 3\u00a0leta");
+    expect(metaLine()).toBe("Pes · starost\u00a03\u00a0leta");
   });
 
   it("drops the species once a tab has already said it", () => {
@@ -292,7 +292,7 @@ describe("AnimalCard meta line", () => {
       </I18nProvider>,
     );
 
-    expect(metaLine()).toBe("starost 3\u00a0leta · srednja");
+    expect(metaLine()).toBe("starost\u00a03\u00a0leta · srednja");
   });
 
   // An animal with no age used to leave the line reading "Pes" alone, which

@@ -88,9 +88,10 @@ const STAGGER_STYLE = Array.from({ length: STAGGERED_CARDS }, (_, ordinal) => ({
   animationDelay: `${ordinal * 30}ms`,
 }));
 
-// Two columns is the narrowest the grid ever draws (CARD_GRID), so it is what
-// an unmeasurable grid is charged for: a miss makes the step short rather than
-// drawing rows nobody asked for.
+// Two columns is the narrowest the grid draws at normal text size (CARD_GRID),
+// so it is what an unmeasurable grid is charged for: a miss makes the step
+// short rather than drawing rows nobody asked for. At 200% text a phone draws
+// one column, and there the same miss draws twice the rows.
 
 // Which species-absence message key fills the {species} slot of the
 // shelter-absence sentences below. Keyed by the species tab rather than

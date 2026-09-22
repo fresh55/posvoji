@@ -86,6 +86,28 @@ describe("sortAnimals", () => {
     ]);
   });
 
+  it("puts animals that can be adopted now before reserved, held and adopted ones in every order", () => {
+    const now = new Date("2026-08-16T00:00:00Z");
+    const mixed = [
+      { ...animal("held", "2026-08-10"), status: "hold" as const, approximateAgeMonths: 2 },
+      { ...animal("adopted", "2026-08-12"), status: "adopted" as const, approximateAgeMonths: 1 },
+      { ...animal("reserved", "2026-08-11"), status: "reserved" as const, approximateAgeMonths: 3 },
+      { ...animal("free", "2020-01-01"), approximateAgeMonths: 90 },
+      { ...animal("unsure", "2021-01-01"), status: "unknown" as const, approximateAgeMonths: 80 },
+    ];
+
+    for (const sort of ANIMAL_SORTS) {
+      const ids = sortAnimals(mixed, sort, "sl", now).map(({ id }) => id);
+      expect(ids.slice(0, 2).sort()).toEqual(["free", "unsure"]);
+      expect(ids[2]).toBe("reserved");
+      expect(ids.slice(3).sort()).toEqual(["adopted", "held"]);
+    }
+    // Inside a group the chosen order still holds.
+    expect(
+      sortAnimals(mixed, "youngest", "sl", now).map(({ id }) => id),
+    ).toEqual(["unsure", "free", "reserved", "adopted", "held"]);
+  });
+
   it("uses the id as a stable tie-breaker", () => {
     const tied = [
       animal("b", "2025-01-01", "Same"),

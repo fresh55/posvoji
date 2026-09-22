@@ -107,6 +107,23 @@ function compareOptionalNumber(
   return direction * (left - right);
 }
 
+// Which group an animal is sorted in before the chosen order applies. Every
+// order answers "which animals can I adopt, in this order", so the ones that
+// cannot be adopted now go after the ones that can, whatever the order. Under
+// "youngest" six of the first seven cards were kittens on hold, because a
+// kitten on hold is still the youngest animal in the list.
+//
+// Reserved sits between the two: the reservation may fall through, while a
+// hold or an adoption is settled. Unknown stays with available, since nothing
+// says it is not.
+const STATUS_RANK: Record<AnimalFields["status"], number> = {
+  available: 0,
+  unknown: 0,
+  reserved: 1,
+  hold: 2,
+  adopted: 2,
+};
+
 // One distance per town, not one per comparison. Sorting five hundred animals
 // asks the comparator a few thousand questions and the towns behind them number
 // a few dozen, so the haversine runs once for each town and the comparator does
@@ -147,6 +164,8 @@ export function sortAnimals<T extends AnimalFields>(
     order === "nearest" && origin ? kmByCity(animals, origin) : undefined;
 
   return [...animals].sort((left, right) => {
+    const byStatus = STATUS_RANK[left.status] - STATUS_RANK[right.status];
+    if (byStatus !== 0) return byStatus;
     let compared: number;
     switch (order) {
       case "longest-in-shelter":

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
   applyFilters, chipGains, EMPTY_FILTERS, facetCounts,
-  parseFilters, serializeFilters, visibleGroups, waitingGroups, type Filters,
+  parseFilters, serializeFilters, toggleGroupValue, visibleGroups, waitingGroups,
+  type Filters,
 } from "../filters";
 
 const now = new Date("2026-09-21T12:00:00Z");
@@ -131,5 +132,20 @@ describe("shelter waiting thresholds", () => {
     const state = { ...filters, waiting: [...filters.waiting] };
     expect(applyFilters(animals, state, now)).toEqual([]);
     expect(applyFilters(animals, state, new Date("2026-09-22T00:00:00Z"))).toEqual(animals);
+  });
+});
+
+// The thresholds nest, so a second pick asks what the wider one already asks
+// and the narrower tick would sit there doing nothing.
+describe("time in shelter takes one threshold", () => {
+  it("swaps the threshold rather than adding a second", () => {
+    expect(toggleGroupValue("waiting", ["over-6-months"], "over-1-year")).toEqual(["over-1-year"]);
+    expect(toggleGroupValue("waiting", ["over-1-year"], "over-1-year")).toEqual([]);
+    expect(toggleGroupValue("sex", ["male"], "female")).toEqual(["male", "female"]);
+  });
+
+  it("keeps the wider threshold from an address that carries two", () => {
+    expect(parseFilters("cakanje=nad-3-leta,nad-6-mesecev").waiting).toEqual(["over-6-months"]);
+    expect(serializeFilters(parseFilters("cakanje=nad-3-leta,nad-1-leto"))).toBe("cakanje=nad-1-leto");
   });
 });

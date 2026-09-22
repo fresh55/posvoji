@@ -10,6 +10,7 @@ import {
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  toggleGroupValue,
   toggleValues,
   type CareKey,
   type Filters,
@@ -168,10 +169,7 @@ export function useAnimalFilters() {
 
   const toggle = useCallback(
     (group: MultiGroup, value: string) => {
-      const selected = filters[group] as string[];
-      const next = selected.includes(value)
-        ? selected.filter((selectedValue) => selectedValue !== value)
-        : [...selected, value];
+      const next = toggleGroupValue(group, filters[group], value);
       writeFilters({ ...filters, [group]: next });
     },
     [filters],

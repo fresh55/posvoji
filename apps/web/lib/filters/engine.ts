@@ -7,6 +7,7 @@ import {
   CARE_KEYS,
   GOOD_WITH_KEYS,
   GROUPS,
+  SINGLE_CHOICE_GROUPS,
   TOGGLE_KEYS,
   filterColour,
   type AgeGroup,
@@ -43,6 +44,19 @@ export function isDrop(
   values: readonly string[],
 ): boolean {
   return values.every((value) => selected.includes(value));
+}
+
+/** One value switched on or off within a group. A single-choice group swaps
+ *  its answer rather than adding a second one beside it. */
+export function toggleGroupValue(
+  group: MultiGroup,
+  selected: readonly string[],
+  value: string,
+): string[] {
+  if (selected.includes(value)) {
+    return selected.filter((selectedValue) => selectedValue !== value);
+  }
+  return SINGLE_CHOICE_GROUPS.includes(group) ? [value] : [...selected, value];
 }
 
 export function toggleValues(

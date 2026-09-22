@@ -6,6 +6,7 @@ export {
   FILTER_FACETS,
   GOOD_WITH_KEYS,
   GROUPS,
+  SINGLE_CHOICE_GROUPS,
   TOGGLE_KEYS,
   TWO_TONED,
 } from "./filters/contracts";
@@ -60,6 +61,7 @@ export {
   speciesCounts,
   speciesFacetCounts,
   toggleCounts,
+  toggleGroupValue,
   toggleValues,
   visibleCare,
   visibleGoodWith,

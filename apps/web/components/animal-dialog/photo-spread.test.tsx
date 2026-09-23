@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import {
   LazyMotion,
   domAnimation,
+  frame,
   motionValue,
   type MotionValue,
 } from "motion/react";
@@ -224,6 +225,22 @@ async function dragBy(
   });
 }
 
+/** Moves the fake clock on by `ms` and waits for the frame that draws the new
+ *  time. For a test that fakes performance.now(): Motion places a spring by
+ *  that clock and nothing else, so the frame moves it exactly as far as the
+ *  clock has gone, however late the frame runs.
+ *
+ *  The frames themselves stay on jsdom's real interval. Motion asks for no
+ *  new frame while one is pending, and the test before can leave one pending
+ *  on the real interval: with the interval faked too, advancing the clock
+ *  drew nothing until that real frame had run. */
+async function drawAfter(ms: number) {
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+    await new Promise<void>((resolve) => frame.postRender(() => resolve()));
+  });
+}
+
 describe("fan gestures", () => {
   // The settle window is a quarter of a second of silence after a trackpad
   // swipe, and the surface can change hands inside it: the tail used to spring
@@ -281,38 +298,46 @@ describe("fan gestures", () => {
 
   // A spring back sets no heading, so the guard that keeps the wheel off a
   // walk in flight cannot see it. Both were writing the same number.
+  //
+  // On fake time: performance.now(), which places every spring, and the
+  // timeouts behind the settle window. On the real clock a slow render
+  // counted as spring time: Motion reads the clock once per synchronous run,
+  // the release runs in the same one as the render, and so the spring's clock
+  // started before the render did. Under the full suite the first read below
+  // came back at 0.08. A stall of 150ms after the wheel would also have let
+  // the settle window close inside the wait at the end.
   it("takes the fan off a spring back when a swipe arrives in its tail", async () => {
-    const washProgress = motionValue(0);
-    const { stage } = renderFan(gallery(7), { washProgress });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    try {
+      const washProgress = motionValue(0);
+      const { stage } = renderFan(gallery(7), { washProgress });
 
-    // Past the slop so it is a drag, and under the fifth of the width that
-    // commits one, so the release hands the fan to a spring back to where it
-    // stood. A sixth of a step: 40px of a 240px span.
-    await dragBy(stage(), -40);
-    // Read to one place, not two: the release hands the fan straight to the
-    // spring, so by the time this runs the first frames of the way back are
-    // already in the number, and how many depends on how busy the machine is.
-    expect(washProgress.get()).toBeCloseTo(1 / 6, 1);
+      // Past the slop so it is a drag, and under the fifth of the width that
+      // commits one, so the release hands the fan to a spring back to where it
+      // stood. A sixth of a step: 40px of a 240px span.
+      await dragBy(stage(), -40);
+      // No time has passed since the release, so the spring has not moved it.
+      expect(washProgress.get()).toBeCloseTo(1 / 6, 2);
 
-    // Long enough for the spring to be under way and nowhere near landed.
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-    });
-    expect(washProgress.get()).toBeLessThan(1 / 6);
+      // Under way and nowhere near landed.
+      await drawAfter(30);
+      expect(washProgress.get()).toBeLessThan(1 / 6);
+      expect(washProgress.get()).toBeGreaterThan(0.1);
 
-    // One tenth of a step, written into the middle of that spring.
-    await act(async () => {
-      fireEvent.wheel(stage(), { deltaX: 24, deltaY: 0 });
-    });
-    expect(washProgress.get()).toBeCloseTo(0.1, 2);
+      // One tenth of a step, written into the middle of that spring.
+      await act(async () => {
+        fireEvent.wheel(stage(), { deltaX: 24, deltaY: 0 });
+      });
+      expect(washProgress.get()).toBeCloseTo(0.1, 2);
 
-    // And it stays there. The spring, left running, would have carried it the
-    // rest of the way to zero inside this; the settle window that puts a
-    // travel back is another 250ms out.
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-    expect(washProgress.get()).toBeCloseTo(0.1, 2);
+      // And it stays there. The spring, left running, would have carried it
+      // the rest of the way to zero inside this; the settle window that puts
+      // a travel back is another 250ms out.
+      await drawAfter(100);
+      expect(washProgress.get()).toBeCloseTo(0.1, 2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // A touch swipe fires no click at all, so the flag it sets to swallow one

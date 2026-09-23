@@ -35,6 +35,13 @@ import {
   stubIdleCallback,
   stubIntersectionObserver,
 } from "@/test/grid-stubs";
+// The chunks the grid fetches for the dialog, the filter sheet and the
+// picker, loaded with the file so no test waits for them inside its find or
+// inside settle's act (test/picker-chunks.ts says why). The suite at the end
+// imports a fresh grid and dialog on purpose, and still waits for its own.
+import "@/components/animal-dialog/animal-dialog";
+import "@/components/filters/filter-sheet-content";
+import "@/test/picker-chunks";
 
 // AnimalGrid renders its own I18nProvider-consuming children, but the
 // component itself does not open one: the page shell normally does that, so
@@ -195,7 +202,7 @@ describe("animal grid renders", () => {
     await act(async () => {
       fireEvent.click(link!);
     });
-    await screen.findByRole("dialog", {}, { timeout: 5000 });
+    await screen.findByRole("dialog");
 
     // The grid rendered again, with the dialog in it and the address changed,
     // and the card that has nothing to do with the animal being opened did
@@ -476,7 +483,7 @@ describe("animal grid empty state", () => {
     // The roster is the registry (three shelters), not the species-filtered
     // pool /?vrsta=zajcek leaves standing (druga alone): every shelter still
     // renders as a row, whatever the tab.
-    const dialog = await screen.findByRole("dialog", {}, { timeout: 5000 });
+    const dialog = await screen.findByRole("dialog");
     for (const id of ["muri", "tretje", "druga"]) {
       expect(dialog.querySelector(`[data-shelter-row='${id}']`)).toBeTruthy();
     }
@@ -973,7 +980,7 @@ describe("the chips row inside the grid", () => {
     window.history.replaceState(null, "", "/?zavetisce=muri,druga");
     renderGrid(ANIMALS);
     fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
-    const dialog = await screen.findByRole("dialog", {}, { timeout: 5000 });
+    const dialog = await screen.findByRole("dialog");
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Počisti filtre" }));
     expect(query()).toBe("");
@@ -1007,7 +1014,7 @@ describe("the chips row inside the grid", () => {
     window.history.replaceState(null, "", "/?zavetisce=muri,druga");
     renderGrid(ANIMALS);
     fireEvent.click(screen.getByRole("button", { name: /^Filtri, / }));
-    const dialog = await screen.findByRole("dialog", {}, { timeout: 5000 });
+    const dialog = await screen.findByRole("dialog");
     const undoName = "Razveljavi čiščenje filtrov";
 
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });

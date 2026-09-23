@@ -15,6 +15,11 @@ import { EMPTY_FILTERS, GROUPS, type MultiGroup } from "@/lib/filters";
 import { getMessages } from "@/lib/i18n";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import { FilterSheet } from "./filter-sheet";
+// The sheet's body is a chunk the first press fetches (filter-sheet.tsx).
+// Imported here it loads while the file is collected, which has no time
+// limit. Under the full suite, loading it inside the first test took longer
+// than that test's five seconds.
+import "./filter-sheet-content";
 
 // vaul asks the viewport about itself; jsdom answers nothing, which is the
 // phone case this sheet is drawn for.
@@ -68,13 +73,20 @@ function renderSheet(
   );
 }
 
+/** Presses the trigger and hands back the sheet.
+ *
+ *  The act awaits nothing but the press. It used to await the chunk too, and
+ *  a test that timed out inside it left React's act scope open: every render
+ *  after that, in every later test in the file, queued behind it and drew
+ *  nothing, so one slow test failed the whole file. The chunk is already
+ *  loaded (the import at the top), so the sheet it resolves to still lands
+ *  inside this act. */
 async function openSheet(
   overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
 ) {
   renderSheet(overrides);
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: sl.filters }));
-    await import("./filter-sheet-content");
   });
   return screen.findByRole("dialog");
 }

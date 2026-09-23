@@ -9,6 +9,11 @@ import { AnimalPageGallery } from "@/components/animal-page-gallery";
 import { AnimalPagePhotoProvider, AnimalPageShareButton } from "@/components/animal-page-photo-state";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { PermittedPhoto } from "@/lib/animal-images";
+// The lightbox is a chunk the first tap fetches (animal-page-gallery.tsx).
+// Imported here it loads while the file is collected, which has no time
+// limit. Under the full suite, loading it inside the first test took longer
+// than that test's five seconds.
+import "@/components/animal-page-lightbox";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -60,7 +65,7 @@ describe("the animal page's gallery and the photo a link names", () => {
     const trigger = screen.getByRole("button", { name: "Odpri fotografijo 1 čez cel zaslon" });
     expect(document.activeElement).toBe(document.body);
     fireEvent.click(trigger);
-    const lightbox = await screen.findByRole("dialog", {}, { timeout: 5000 });
+    const lightbox = await screen.findByRole("dialog");
     fireEvent.click(within(lightbox).getByRole("button", { name: "Zapri" }));
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
@@ -72,7 +77,7 @@ describe("the animal page's gallery and the photo a link names", () => {
     const trigger = screen.getByRole("button", { name: "Odpri fotografijo 2 čez cel zaslon" });
     trigger.focus();
     fireEvent.click(trigger);
-    const lightbox = await screen.findByRole("dialog", {}, { timeout: 5000 });
+    const lightbox = await screen.findByRole("dialog");
     expect(within(lightbox).getByRole("img").getAttribute("src")).toContain("pika-2");
     fireEvent.click(within(lightbox).getByRole("button", { name: "Naslednja fotografija" }));
     expect(within(lightbox).getByRole("img").getAttribute("src")).toContain("pika-3");

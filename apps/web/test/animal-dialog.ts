@@ -15,6 +15,10 @@
 import type { Animal } from "@posvoji/schema";
 import { act } from "@testing-library/react";
 import { vi } from "vitest";
+// The dialog's chunk, loaded with this module so a suite collects it rather
+// than paying for it inside the first test that waits in dialogOnPage below.
+// Under the full suite that load took seconds of a five-second test.
+import "@/components/animal-dialog/animal-dialog";
 
 /** The dataset's build time, which the dialog measures its freshness line
  *  against. A fixed instant, so nothing here is written against the clock. */

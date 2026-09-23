@@ -311,12 +311,12 @@ describe("animal grid empty state", () => {
       screen.queryByRole("button", { name: "Pokaži iz vseh zavetišč" }),
     ).toBeNull();
     // Nothing was answered, so there is no thin answer to name.
-    expect(screen.queryByText(/poznamo za/)).toBeNull();
+    expect(screen.queryByText(/poznamo pri/)).toBeNull();
   });
 
   it("names the thin answer when it is the likeliest reason nothing matched", () => {
-    // Psi, Otroke and Mačko on the live dataset read as no dog being fine with
-    // children, when 121 of the 124 had no answer about children at all.
+    // Psi, Otroke and Mačko on the live dataset can read as no dog being fine
+    // with children, when 121 of the 124 had no answer about children at all.
     window.history.replaceState(null, "", "/?vrsta=pes&druzba=otroci");
     renderGrid([
       { ...animal("dog-no", "dog", "muri"), goodWith: { kids: "no" } },
@@ -327,9 +327,32 @@ describe("animal grid empty state", () => {
 
     expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
     expect(
-      screen.getByText("Odnos do otrok poznamo za 1 od 3 psov."),
+      screen.getByText("Odnos do otrok poznamo pri 1 od 3 psov."),
     ).toBeTruthy();
     expect(screen.getByText("Poskusi z manj filtri.")).toBeTruthy();
+  });
+
+  it("counts Velikost on Vse over the animals it is asked of", () => {
+    // Cats are not asked a size, so "od 4 živali" would take in a cat nobody
+    // asked, and the line would say the size was known for fewer than it is.
+    // The fixture sizes every animal medium, so two of them lose theirs.
+    const unsized = (fixture: Animal): Animal => {
+      const copy = { ...fixture };
+      delete copy.size;
+      return copy;
+    };
+    window.history.replaceState(null, "", "/?velikost=majhna");
+    renderGrid([
+      { ...animal("dog-large", "dog", "muri"), size: "large" },
+      unsized(animal("dog-unsized", "dog", "muri")),
+      unsized(animal("rabbit-unsized", "rabbit", "muri")),
+      { ...animal("cat-small", "cat", "muri"), size: "small" },
+    ]);
+
+    expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
+    expect(
+      screen.getByText("Velikost poznamo pri 1 od 3 psov in drugih živali."),
+    ).toBeTruthy();
   });
 
   it("keeps the generic empty state when dropping the shelter would not help either", () => {

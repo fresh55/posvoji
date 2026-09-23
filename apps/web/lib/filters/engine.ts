@@ -106,8 +106,8 @@ function availabilityOf(status: AnimalFields["status"]): Availability {
 // the cat tab does not ask it (groupFitsSpecies below). The same holds for the
 // cats in a list that mixes species: a size a cat's listing happens to carry
 // is not an answer to this question, so no cat answers it, and no cat is
-// counted as leaving it unanswered either. Before, "Majhna" on Vse brought
-// four dogs and seven cats.
+// counted as leaving it unanswered either. Before, seven of the twelve
+// animals "Majhna" brought on Vse were cats.
 function groupAsks(group: MultiGroup, species: Species): boolean {
   return !(group === "size" && species === "cat");
 }
@@ -222,9 +222,8 @@ function maskOf(count: number, answers: (bit: number) => boolean): number {
   return mask;
 }
 
-// One bit per group, in GROUPS order. Written out rather than derived, so a
-// sixth group fails to compile here instead of quietly sharing a bit with one
-// of these.
+// One bit per group. Written out rather than derived, so a new group fails to
+// compile here instead of quietly sharing a bit with one of these.
 const GROUP_BITS: Record<MultiGroup, number> = {
   sex: 1 << 0,
   age: 1 << 1,
@@ -251,7 +250,10 @@ type FilterIndex = {
   readonly energy: Column<string>;
   readonly coatColor: Column<string>;
   readonly coatLength: Column<string>;
-  readonly intakeDate: Column<string>;
+  /** The intake date as the UTC instant of its midnight, read once: the
+   *  waiting thresholds and the question of whether there is a date at all
+   *  are asked on every pass, and each asked it by parsing the string. */
+  readonly intakeStart: Column<number>;
   readonly shelter: readonly string[];
   readonly approximate: Column<number>;
   readonly born: Column<number>;
@@ -277,7 +279,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const energy: (string | undefined)[] = [];
   const coatColor: (string | undefined)[] = [];
   const coatLength: (string | undefined)[] = [];
-  const intakeDate: (string | undefined)[] = [];
+  const intakeStart: (number | undefined)[] = [];
   const shelter: string[] = [];
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
@@ -296,7 +298,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     energy.push(animal.energy);
     coatColor.push(filterColour(animal.coatColor));
     coatLength.push(animal.coatLength);
-    intakeDate.push(animal.intakeDate);
+    intakeStart.push(intakeStartOf(animal.intakeDate));
     shelter.push(animal.shelter.id);
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
@@ -330,7 +332,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     shelter,
     coatColor,
     coatLength,
-    intakeDate,
+    intakeStart,
     approximate,
     born,
     toggles,
@@ -426,11 +428,12 @@ type Pass = {
 
 function passOf(animals: AnimalFields[], filters: Filters, now: Date): Pass {
   const index = indexOf(animals);
+  const today = todayOf(now);
   return {
     index,
     ages: ageColumn(index, monthsOf(now)),
-    waiting: index.intakeDate.map((date) => waitingGroups(date, now)),
-    intakeKnown: index.intakeDate.map((date) => intakeKnownAt(date, now)),
+    waiting: index.intakeStart.map((start) => waitingFrom(start, today)),
+    intakeKnown: index.intakeStart.map((start) => intakeKnown(start, today)),
     query: queryOf(filters),
   };
 }
@@ -689,12 +692,18 @@ export type UnansweredTally = {
 /** A tenth: past it, the animals a pick hides for want of an answer are a
  *  part of the list worth saying out loud, and short of it the line would sit
  *  under nearly every section saying almost nothing (Spol leaves out 8 of
- *  491). The same share decides the empty state's sentence. */
-export const UNANSWERED_SHARE = 0.1;
+ *  491). */
+const UNANSWERED_SHARE = 0.1;
 
 export function namesUnanswered({ asked, unanswered }: Unanswered): boolean {
   return unanswered > 0 && unanswered >= asked * UNANSWERED_SHARE;
 }
+
+/** Half: the share of the animals asked that a question has to leave
+ *  unanswered before the empty state names it as the reason nothing matched.
+ *  A tenth is worth a line under a section, but a question answered for 85%
+ *  of the tab, as Starost is, is not why a combination came back empty. */
+const EMPTY_REASON_SHARE = 0.5;
 
 function zeroTally<Key extends string>(
   keys: readonly Key[],
@@ -707,8 +716,9 @@ function zeroTally<Key extends string>(
 /**
  * What each question leaves out for want of an answer: the animals a pick
  * there hides not because they answer otherwise but because nobody said.
- * "Otroke 8" read as the other 483 not being good with children, when 479 of
- * them simply had no answer, and the panel said so only in a tooltip.
+ * "Otroke 8" can read as the other 483 not being good with children, when
+ * 479 of them simply had no answer, and before a pick the panel said so only
+ * in a tooltip a mouse has to find.
  *
  * Measured over the population the option's own count is measured over, which
  * is every filter applied but the question's own, so the two numbers stand
@@ -797,10 +807,11 @@ export type Coverage =
 
 /**
  * Of the questions the visitor has answered, the one the shelters answered
- * for the smallest share of the species tab, when what it leaves out is worth
- * naming (namesUnanswered). The empty state says it, because "Ni zadetkov"
- * under Psi, Otroke and Mačko read as no dog in the country being fine with
- * children, when 121 of the 124 had no answer at all.
+ * for the smallest share of the species tab, when it leaves half the animals
+ * asked or more without an answer (EMPTY_REASON_SHARE) and was asked of more
+ * than one. The empty state says it, because "Ni zadetkov" under Psi, Otroke
+ * and Mačko can read as no dog in the country being fine with children, when
+ * 121 of the 124 had no answer at all.
  *
  * Over the tab alone, with nothing else applied: it describes the question
  * and not the combination. "3 of 124 dogs" is why a household filter came
@@ -866,7 +877,7 @@ export function thinnestAnswer(
   let thinnest: Coverage | undefined;
   for (const candidate of candidates) {
     const { asked, answered } = candidate;
-    if (!namesUnanswered({ asked, unanswered: asked - answered })) continue;
+    if (asked < 2 || asked - answered < asked * EMPTY_REASON_SHARE) continue;
     if (
       thinnest === undefined ||
       answered / asked < thinnest.answered / thinnest.asked
@@ -1117,10 +1128,18 @@ export function visibleCare(
   return visibleFacet(CARE_KEYS, "care", animals, selected, includeUnavailable);
 }
 
+const SPECIES_FILTERS: readonly SpeciesFilter[] = ["all", "dog", "cat", "other"];
+
 /** The number each species tab shows: everything the visitor asked for
  *  applies except the species axis itself, because that is the axis the tab
  *  would set. The same rule facetCounts follows, and for the same reason a
  *  number next to an option has to be what you get when you press it.
+ *
+ *  Which is also why a tab is counted with the filters it keeps once pressed
+ *  (pruneHiddenFilters): Mačke sheds Velikost, and every tab but Mačke sheds
+ *  the cat-only toggles. Counted with them, Velikost picked on Vse left
+ *  "Mačke 0" on the strip, since no cat answers a size, and pressing it gave
+ *  every cat there is.
  *
  *  The toolbar used to show speciesCounts here, which walks the raw dataset.
  *  With four filters on, the tabs read 127 / 375 / 1 directly above a result
@@ -1144,11 +1163,36 @@ export function speciesFacetCounts(
     cat: 0,
     other: 0,
   };
+  // What each tab keeps, as masks over the two columns a tab can shed from:
+  // the same two rules pruneHiddenFilters writes, read once per question.
+  const keeps = Object.fromEntries(
+    SPECIES_FILTERS.map((tab) => [
+      tab,
+      {
+        toggles: maskOf(
+          TOGGLES.length,
+          (bit) =>
+            isFilterToggle(TOGGLE_KEYS[bit]) &&
+            toggleFitsSpecies(TOGGLES[bit].species, tab),
+        ),
+        groups: GROUPS.reduce(
+          (mask, group) =>
+            groupFitsSpecies(group, tab) ? mask | GROUP_BITS[group] : mask,
+          0,
+        ),
+      },
+    ]),
+  ) as Record<SpeciesFilter, { toggles: number; groups: number }>;
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
-    if (!sectionsPass(pass, slot, "species")) continue;
-    if (groupsFailedAt(pass, slot) !== 0) continue;
-    counts.all += 1;
-    counts[TAB_OF_SPECIES[pass.index.species[slot]]] += 1;
+    if (andFailedAt(pass, slot, "goodWith") !== 0) continue;
+    if (!answersAny(pass.index.care[slot], pass.query.care)) continue;
+    const toggles = andFailedAt(pass, slot, "toggles");
+    const groups = groupsFailedAt(pass, slot);
+    const passesOn = (tab: SpeciesFilter) =>
+      (toggles & keeps[tab].toggles) === 0 && (groups & keeps[tab].groups) === 0;
+    if (passesOn("all")) counts.all += 1;
+    const tab = TAB_OF_SPECIES[pass.index.species[slot]];
+    if (passesOn(tab)) counts[tab] += 1;
   }
   return counts;
 }
@@ -1190,6 +1234,7 @@ export function visibleGroups(
 ): Record<MultiGroup, boolean> {
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
+  const today = todayOf(now);
   const distinct = {
     availability: new Set<string>(),
     sex: new Set<string>(),
@@ -1212,7 +1257,7 @@ export function visibleGroups(
     add("energy", index.energy[slot]);
     add("coatColor", index.coatColor[slot]);
     add("coatLength", index.coatLength[slot]);
-    waitingGroups(index.intakeDate[slot], now).forEach((v) => add("waiting", v));
+    waitingFrom(index.intakeStart[slot], today).forEach((v) => add("waiting", v));
     add("shelter", index.shelter[slot]);
   }
   // includeUnavailable drops the floor to one answer rather than lifting it
@@ -1285,27 +1330,46 @@ function asValues(value: string | readonly string[] | undefined): readonly strin
   return value === undefined ? [] : typeof value === "string" ? [value] : value;
 }
 
-/** Whether an intake date is one the waiting thresholds can be read from: a
- *  real calendar date, not after today. */
-function intakeKnownAt(intakeDate: string | undefined, now: Date): boolean {
-  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return false;
+/** An intake date as the UTC instant of its midnight, or undefined for one
+ *  that is not a real calendar date. */
+function intakeStartOf(intakeDate: string | undefined): number | undefined {
+  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return undefined;
   const start = new Date(intakeDate);
-  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate || !Number.isFinite(now.getTime())) return false;
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  return start.getTime() <= today;
+  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate) return undefined;
+  return start.getTime();
+}
+
+function todayOf(now: Date): number | undefined {
+  if (!Number.isFinite(now.getTime())) return undefined;
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+/** Whether the waiting thresholds can be read from this start at all: a real
+ *  date, not after today. */
+function intakeKnown(
+  start: number | undefined,
+  today: number | undefined,
+): start is number {
+  return start !== undefined && today !== undefined && start <= today;
+}
+
+function waitingFrom(
+  start: number | undefined,
+  today: number | undefined,
+): WaitingGroup[] {
+  if (!intakeKnown(start, today) || today === undefined) return [];
+  const date = new Date(start);
+  const thresholds: [WaitingGroup, number][] = [["over-6-months", 6], ["over-1-year", 12], ["over-3-years", 36]];
+  return thresholds.filter(([, months]) => {
+    const month = date.getUTCMonth() + months;
+    const lastDay = new Date(Date.UTC(date.getUTCFullYear(), month + 1, 0)).getUTCDate();
+    return today > Date.UTC(date.getUTCFullYear(), month, Math.min(date.getUTCDate(), lastDay));
+  }).map(([value]) => value);
 }
 
 /** Strictly past the calendar anniversary, using only the shelter intake date.
  * Clamp month-end anniversaries (August 31 + 6 months is February's last day).
  * UTC date arithmetic makes shared links agree across visitor time zones. */
 export function waitingGroups(intakeDate: string | undefined, now: Date): WaitingGroup[] {
-  if (!intakeDate || !intakeKnownAt(intakeDate, now)) return [];
-  const start = new Date(intakeDate);
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const thresholds: [WaitingGroup, number][] = [["over-6-months", 6], ["over-1-year", 12], ["over-3-years", 36]];
-  return thresholds.filter(([, months]) => {
-    const month = start.getUTCMonth() + months;
-    const lastDay = new Date(Date.UTC(start.getUTCFullYear(), month + 1, 0)).getUTCDate();
-    return today > Date.UTC(start.getUTCFullYear(), month, Math.min(start.getUTCDate(), lastDay));
-  }).map(([value]) => value);
+  return waitingFrom(intakeStartOf(intakeDate), todayOf(now));
 }

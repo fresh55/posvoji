@@ -222,8 +222,8 @@ export type FilterValueDefinition<Value extends string = string> = {
 };
 
 export const FILTER_METADATA = {
-  // The label is the other side of the badge a card wears when the answer is
-  // no ("trenutno ni na voljo"), so the row says which cards go.
+  // The label answers the badges a card wears when it cannot be adopted now
+  // ("rezervirano", "trenutno ni na voljo"), so the row says which cards go.
   availability: [
     { value: "available", slug: "na-voljo", labels: { sl: "Samo na voljo", en: "Available only" } },
   ],
@@ -353,7 +353,7 @@ export const FILTER_METADATA = {
       slug: "izkusen-skrbnik",
       labels: { sl: "Izkušeno roko", en: "Experience" },
       chip: { sl: "Izkušena roka", en: "Experience" },
-      // Nineteen of the twenty are dogs, most of them large guardian breeds or
+      // Nineteen of the twenty-one are dogs, most of them large guardian breeds or
       // dogs wary of strangers. Saying so is what stops someone who grew up
       // with a dog from reading the row as theirs.
       description: { sl: "Močni ali nezaupljivi psi", en: "Powerful or wary dogs" },

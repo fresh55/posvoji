@@ -534,7 +534,14 @@ export function AnimalGrid({
           topic: t(emptyTopic),
           answered: thinnest.answered,
           asked: thinnest.asked,
-          species: t(SPECIES_ABSENCE_KEY[filters.species]),
+          // Who {asked} counts. Velikost on Vse is asked of the dogs and the
+          // other animals alone (groupAsks), so "od 40 živali" would take in
+          // cats nobody asked.
+          species: t(
+            thinnest.facet === "size" && filters.species === "all"
+              ? "sizeAskedOf"
+              : SPECIES_ABSENCE_KEY[filters.species],
+          ),
         })
       : undefined;
 
@@ -640,7 +647,7 @@ export function AnimalGrid({
                 </p>
                 {/* Why, before what to do about it, when a thin answer is the
                     likeliest reason: "Ni zadetkov" under Psi, Otroke and
-                    Mačko read as no dog being fine with children, when 121
+                    Mačko can read as no dog being fine with children, when 121
                     of the 124 had no answer. */}
                 {!shelterOnlyEmpty && emptyReason && (
                   <p className="text-sm text-muted-foreground">{emptyReason}</p>

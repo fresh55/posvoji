@@ -19,6 +19,7 @@ import {
   FilterCardRipple,
   FilterCardSection,
   FilterCardTail,
+  NOTE_CLASS,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -110,6 +111,9 @@ type GroupProps = {
   collapse?: SectionCollapse;
   /** What a pick in this section leaves out for want of an answer. */
   unanswered?: Unanswered;
+  /** Velikost on Vse, where a pick leaves out every cat (groupAsks in
+   *  lib/filters/engine.ts) and the rows alone do not say so. */
+  leavesOutCats?: boolean;
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
@@ -317,6 +321,7 @@ function SizeGroup({
   collapse,
   layout,
   unanswered,
+  leavesOutCats,
 }: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
   const { isResetting, beginReset } = useResetStagger(
@@ -345,6 +350,11 @@ function SizeGroup({
           isResetting={isResetting}
           layout={layout}
         />
+        {/* The cats first: the larger of the two left out, and the count
+            under it is of the animals asked, which cats are not. */}
+        {leavesOutCats && (
+          <p className={cn("mt-2", NOTE_CLASS)}>{messages.sizeLeavesOutCats}</p>
+        )}
         <UnansweredNote tally={unanswered} />
       </CollapsibleBody>
     </section>
@@ -400,7 +410,6 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           counts={rest.counts}
           selected={rest.selected}
           onToggle={rest.onToggle}
-          onToggleMany={rest.onToggleMany}
           layout={rest.layout}
         />
       );
@@ -449,6 +458,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           collapse={rest.collapse}
           layout={rest.layout}
           unanswered={rest.unanswered}
+          leavesOutCats={rest.leavesOutCats}
         />
       );
     case "energy":
@@ -591,8 +601,10 @@ export function FilterGroupList({
       isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
     );
 
-  // Every section folds, on both surfaces. This was a prop for the pass in
-  // which only the sidebar folded; the phone sheet joined it on 2026-09-17
+  // Every section folds, on both surfaces, but Posvojitev, which holds one
+  // row and would hide the whole of it (availability-cards.tsx). This was a
+  // prop for the pass in which only the sidebar folded; the phone sheet
+  // joined it on 2026-09-17
   // (filter-sheet.tsx has the numbers: nine open sections through a 189px
   // window at 320x568), and with both callers passing the same answer the
   // unfolded list was a configuration the site no longer had.
@@ -663,6 +675,7 @@ export function FilterGroupList({
                   )
             }
             unanswered={unanswered?.groups[group]}
+            leavesOutCats={group === "size" && filters.species === "all"}
           />
         );
       })}

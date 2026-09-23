@@ -1,6 +1,6 @@
 "use client";
 
-import { DoorOpen } from "lucide-react";
+import { Key } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
@@ -26,26 +26,27 @@ import { groupLabel, type FilterOption } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// The door swings on its hinge once as the row is switched on: the way home
-// is open for these animals now.
-const SWING = { rotateY: [0, -38, 0], x: [0, -0.6, 0] };
-const REST = { rotateY: 0, x: 0 };
-const SWING_DURATION = 0.42;
+// The key to a new home, turned once in its lock as the row is switched on.
+// A key and not an open door: the door is Najnovejši sprejemi's in the sort
+// menu, an animal that has just come in.
+const TURN = { rotate: [0, 70, 0] };
+const REST = { rotate: 0 };
+const TURN_DURATION = 0.36;
+const TURN_MS = 480;
+const CHECK_DELAY = 0.24;
 
 // On the phone the one option is a bordered row the height of the Kje row
 // above it, 52px, rather than a tile. A tile is sized for three across, and
-// alone at full width it was a tall box with a door floating in the middle
+// alone at full width it was a tall box with its icon floating in the middle
 // of it, standing between the top of the sheet and Spol, which an earlier
 // pass had folded Kje onto one line to bring above the fold.
 const SHEET_ROW_CLASS = `${DEAD_OPTION_CLASS} min-h-13 flex-row items-center justify-start gap-2.5 px-3 py-2 pr-10 text-left`;
-const SWING_MS = 560;
-const CHECK_DELAY = 0.24;
 
 /**
  * Posvojitev: one row, "Samo na voljo".
  *
  * The site lists animals that cannot be adopted right now: a quarantine,
- * a mother still nursing, a trial placement. They are sorted last and wear a
+ * a mother and her litter, a trial placement. They are sorted last and wear a
  * badge, but they were counted in every option, so "Mladiček 5" on Psi was
  * four Zonzani puppies in quarantine and one litter card. This row takes them
  * out on request, and its count says how many can be adopted before anything
@@ -60,34 +61,30 @@ export function AvailabilityCards({
   counts,
   selected,
   onToggle,
-  onToggleMany,
   layout,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
-  onToggleMany: (values: string[]) => void;
   layout: FilterCardLayout;
 }) {
-  const { locale, messages } = useI18n();
+  const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const {
     celebration,
     celebrate,
     clear: clearCelebration,
-  } = useOneShotCelebration<string>(SWING_MS);
+  } = useOneShotCelebration<string>(TURN_MS);
   const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover<string>();
 
   return (
     <FilterCardSection
       label={groupLabel("availability", locale)}
       active={selected.length > 0}
-      onReset={() => {
-        clearCelebration();
-        onToggleMany(selected);
-      }}
-      resetAriaLabel={messages.resetAvailabilityFilters}
+      // No Ponastavi: the one row is its own way off, and the link beside a
+      // heading that does not fold is a smaller target than the row it would
+      // repeat (filter-section-header.tsx).
       layout={layout}
       sheetColumns="grid-cols-1"
     >
@@ -140,18 +137,15 @@ export function AvailabilityCards({
               <FilterCardHoverLift hovered={hoveredValue === value}>
                 <m.span
                   className="flex items-center justify-center"
-                  // Depth for the swing. Motion writes it into the same
-                  // transform as the turn, so no wrapper has to carry it.
-                  style={{ transformPerspective: 60 }}
                   initial={false}
-                  animate={celebrating ? SWING : REST}
+                  animate={celebrating ? TURN : REST}
                   transition={
                     celebrating
-                      ? { duration: SWING_DURATION, ease: "easeOut" }
+                      ? { duration: TURN_DURATION, ease: "easeOut" }
                       : { duration: 0.16 }
                   }
                 >
-                  <DoorOpen
+                  <Key
                     aria-hidden
                     className={cn(
                       "size-5 transition-colors duration-150",

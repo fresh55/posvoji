@@ -206,10 +206,11 @@ const sl = {
   // the state of a thing and carry no gender.
   //
   // statusHold is "trenutno ni na voljo" (label-messages.ts). "Ni za
-  // posvojitev" read as final, and hold is not final: Zonzani and Horjul put
-  // a quarantine there and Muri a mother still nursing her litter. Nor is it
-  // always a wait, since Ljubljana's trial placements are hold too, so "še
-  // ni" would promise too much. "Trenutno" is true of both.
+  // posvojitev" read as final, and hold is not final: the Zonzani and Horjul
+  // parsers file a quarantine under it, and Muri's reviewed listings a mother
+  // and her litter. Nor is it always a wait, since Ljubljana's parser files
+  // its trial placements there too, so "še ni" would promise too much.
+  // "Trenutno" is true of both.
 
 
 
@@ -285,9 +286,11 @@ const sl = {
   // answer is said under the rows, where a mouse can read it too.
   energyFilterHint: "Po presoji zavetišča.",
   healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
-  waitingFilterHint: "Po znanem datumu sprejema v zavetišče.",
+  // The second sentence is the one thing the round marks say that a screen
+  // reader does not hear from them: a second pick replaces the first.
+  waitingFilterHint:
+    "Po znanem datumu sprejema v zavetišče. Izbereš lahko eno mejo.",
   resetWaitingFilters: "Ponastavi čas v zavetišču",
-  resetAvailabilityFilters: "Ponastavi: Posvojitev",
   // Under a section whose question a tenth or more of the list has no answer
   // to. The count takes a colon so it needs no agreement with the noun, and
   // the second sentence says what a pick does with them, which is what a
@@ -301,7 +304,14 @@ const sl = {
   // The empty state's reason, when the thinnest question answered is thin
   // enough to be it. The verb is ours, so it agrees with nothing in the
   // count, and {species} is the genitive plural speciesAbsence* already has.
-  knownFor: "{topic} poznamo za {answered} od {asked} {species}.",
+  knownFor: "{topic} poznamo pri {answered} od {asked} {species}.",
+  // The {species} of the line above for Velikost on Vse, where cats are not
+  // asked it and the count is of the dogs and other animals alone.
+  sizeAskedOf: "psov in drugih živali",
+  // Under Velikost on Vse. Cats never answer the question (groupAsks in
+  // lib/filters/engine.ts), so a pick leaves every one of them out, and
+  // nothing else on the panel said so.
+  sizeLeavesOutCats: "Mačk po velikosti ne ločimo, zato jih izbira ne pokaže.",
   knownTopicSex: "Spol",
   knownTopicAge: "Starost",
   knownTopicSize: "Velikost",
@@ -817,13 +827,15 @@ const en: Messages = {
   ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
   energyFilterHint: "As judged by the shelter.",
   healthFilterHint: "An animal has to have every trait you pick.",
-  waitingFilterHint: "Based on the recorded shelter intake date.",
+  waitingFilterHint:
+    "Based on the recorded shelter intake date. Pick one threshold.",
   resetWaitingFilters: "Reset time in the shelter",
-  resetAvailabilityFilters: "Reset: Adoption",
   unansweredLine: "No data:\u00a0{count}. Picking one shows only animals with data.",
   unansweredRow: "No data:\u00a0{count}",
   unansweredHides: "Picking one shows only animals with data.",
   knownFor: "We know {topic} for {answered} of {asked} {species}.",
+  sizeAskedOf: "dogs and other animals",
+  sizeLeavesOutCats: "Cats are not sorted by size, so a pick leaves them out.",
   knownTopicSex: "the sex",
   knownTopicAge: "the age",
   knownTopicSize: "the size",

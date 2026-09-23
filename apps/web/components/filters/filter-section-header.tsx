@@ -257,7 +257,10 @@ export function FilterSectionHeader({
     }, FOLD_SETTLE_MS);
   };
 
-  const resetButton = (
+  // Kept mounted while hidden so a reset that comes and goes fades rather than
+  // shifting the row. A section with no reset at all has nothing to fade, and
+  // an inert copy of the word would be one more node for nothing.
+  const resetButton = onReset ? (
     <Button
       type="button"
       variant="link"
@@ -277,10 +280,10 @@ export function FilterSectionHeader({
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
         // shapes, because the two placements differ. In the sheet's Kje row,
-        // the one caller with no collapse contract (location-scope-row.tsx),
-        // this sits in the header's flex row and takes the overlay; the
-        // sheet's filter sections fold now and take the absolute branch below
-        // with its 44px coarse floor. A folding section's
+        // the one caller with a reset and no collapse contract
+        // (location-scope-row.tsx), this sits in the header's flex row and
+        // takes the overlay; the sheet's filter sections fold now and take the
+        // absolute branch below with its 44px coarse floor. A folding section's
         // header is a positioned row and the button is absolute inside it, and
         // `tap-target` sets position: relative, which would fight that; there
         // the drawn box is grown instead, which costs the row nothing because
@@ -316,7 +319,7 @@ export function FilterSectionHeader({
     >
       {messages.resetFilters}
     </Button>
-  );
+  ) : null;
 
   if (!collapse) {
     return (

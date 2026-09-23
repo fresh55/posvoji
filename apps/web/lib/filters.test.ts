@@ -143,9 +143,10 @@ describe("speciesFacetCounts", () => {
 
   it("reports zero for a species the filters empty, rather than dropping it", () => {
     // The rabbit is male and the other is female, so Ostale keeps one of them
-    // either way; size is the axis no animal here answers at all.
-    const large = { ...EMPTY_FILTERS, size: ["large" as const] };
-    expect(speciesFacetCounts(zoo, large, NOW)).toEqual({
+    // either way; energy is the axis no animal here answers at all, and every
+    // tab keeps it once pressed.
+    const calm = { ...EMPTY_FILTERS, energy: ["calm" as const] };
+    expect(speciesFacetCounts(zoo, calm, NOW)).toEqual({
       all: 0,
       dog: 0,
       cat: 0,
@@ -153,6 +154,42 @@ describe("speciesFacetCounts", () => {
     });
     // The roster is what keeps the tabs on the strip in that state.
     expect(speciesCounts(zoo)).toEqual({ all: 8, dog: 3, cat: 3, other: 2 });
+  });
+
+  it("counts Mačke without the Velikost it sheds once pressed", () => {
+    // Velikost picked on Vse used to leave "Mačke 0" on the strip, since no
+    // cat answers a size, and pressing it gave every cat there is.
+    const large = { ...EMPTY_FILTERS, size: ["large" as const] };
+    const pool = [...zoo, animal("dog", { size: "large" })];
+    expect(speciesFacetCounts(pool, large, NOW)).toEqual({
+      all: 1,
+      dog: 1,
+      cat: 3,
+      other: 0,
+    });
+    expect(
+      applyFilters(pool, pruneHiddenFilters({ ...large, species: "cat" }), NOW),
+    ).toHaveLength(3);
+  });
+
+  it("counts every other tab without the cat-only toggle it sheds", () => {
+    const pool = [
+      animal("cat", { medical: { fiv: "negative" } }),
+      animal("cat", { medical: { fiv: "positive" } }),
+      animal("dog"),
+      animal("dog"),
+    ];
+    const fivFree: Filters = {
+      ...EMPTY_FILTERS,
+      species: "cat",
+      toggles: ["brez-fiv"],
+    };
+    expect(speciesFacetCounts(pool, fivFree, NOW)).toEqual({
+      all: 4,
+      dog: 2,
+      cat: 1,
+      other: 0,
+    });
   });
 });
 

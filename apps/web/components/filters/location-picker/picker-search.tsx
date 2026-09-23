@@ -1,7 +1,6 @@
-import { Check, MapPin, Navigation, Search, X } from "lucide-react";
+import { ArrowDownNarrowWide, Check, MapPin, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DEFAULT_ANIMAL_SORT } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -11,7 +10,7 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
-    sort, onSortChange,
+    sort, onSortChange, toggleNearestSort,
   } = controller;
   const byDistance = sort === "nearest";
   const copy = pickerText[locale];
@@ -139,18 +138,21 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
               dialog is not, until asked. Offered here, where the place was
               just set, and never done unasked: an order the visitor chose
               themselves is theirs to change. A toggle, so pressing it again
-              takes the grid back to the default order. */}
+              gives the grid back the order it had (toggleNearestSort).
+
+              The sort control's own mark and not the crosshair: "Najbližje
+              prvo" below wears that, and two pressed controls a row apart in
+              one mark read as one control drawn twice. This one orders the
+              grid, so it carries what the grid's order carries. */}
           {onSortChange && (
             <Button
               type="button"
               variant="outline"
               aria-pressed={byDistance}
-              onClick={() =>
-                onSortChange(byDistance ? DEFAULT_ANIMAL_SORT : "nearest")
-              }
+              onClick={toggleNearestSort}
               className="h-11 max-w-full justify-start gap-2 px-3 text-left text-sm shadow-none aria-pressed:border-brand-border aria-pressed:bg-brand aria-pressed:text-brand-foreground"
             >
-              <Navigation className="size-3.5 shrink-0" aria-hidden />
+              <ArrowDownNarrowWide className="size-3.5 shrink-0" aria-hidden />
               <span className="truncate">{messages.sortByDistance}</span>
               {byDistance && <Check className="size-3.5 shrink-0" aria-hidden />}
             </Button>

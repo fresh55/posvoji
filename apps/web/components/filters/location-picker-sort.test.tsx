@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
@@ -92,7 +93,33 @@ describe("ordering the grid by distance from the picker", () => {
     expect(onSortChange).toHaveBeenLastCalledWith("nearest");
   });
 
-  it("gives the default order back from a second press", async () => {
+  it("gives back the order the grid had before the first press", async () => {
+    const orders: AnimalSort[] = [];
+    function Sorted() {
+      const [sort, setSort] = useState<AnimalSort>("name");
+      return (
+        <Picker
+          sort={sort}
+          onSortChange={(next) => {
+            orders.push(next);
+            setSort(next);
+          }}
+        />
+      );
+    }
+    render(<Sorted />);
+    await setPlace();
+    const offer = () =>
+      screen.getByRole("button", { name: "Razvrsti živali po bližini" });
+
+    fireEvent.click(offer());
+    expect(offer().getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(offer());
+    expect(orders).toEqual(["nearest", "name"]);
+    expect(offer().getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("gives the default order back when the grid came in by distance", async () => {
     const onSortChange = vi.fn();
     render(<Picker sort="nearest" onSortChange={onSortChange} />);
     await setPlace();

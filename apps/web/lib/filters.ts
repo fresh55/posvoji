@@ -57,7 +57,6 @@ export {
   facetCounts,
   namesUnanswered,
   thinnestAnswer,
-  UNANSWERED_SHARE,
   unansweredCounts,
   goodWithCounts,
   goodWithMatches,

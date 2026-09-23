@@ -351,6 +351,13 @@ export function FilterSelectionMark({
   );
 }
 
+/** The voice a section explains itself in when the words are drawn rather
+ *  than tucked into the heading's tooltip: a lead above the rows, or the
+ *  line under them saying what the rows leave out (unanswered-note.tsx).
+ *  12px on a phone and 11px in the 224px sidebar, as SectionHint is. */
+export const NOTE_CLASS =
+  "text-xs leading-snug text-muted-foreground lg:text-2xs";
+
 /**
  * The sheetColumns a section with this many answers asks for.
  *
@@ -363,13 +370,6 @@ export function FilterSelectionMark({
  * The class names are written out rather than built, because Tailwind reads
  * this file as text and generates only what it can see.
  */
-/** The voice a section explains itself in when the words are drawn rather
- *  than tucked into the heading's tooltip: a lead above the rows, or the
- *  line under them saying what the rows leave out (unanswered-note.tsx).
- *  12px on a phone and 11px in the 224px sidebar, as SectionHint is. */
-export const NOTE_CLASS =
-  "text-xs leading-snug text-muted-foreground lg:text-2xs";
-
 export function sheetColumnsFor(count: number, max: 2 | 3 = 3): string {
   if (max === 3 && count > 2) return "grid-cols-3";
   return count > 1 ? "grid-cols-2" : "grid-cols-1";
@@ -401,8 +401,9 @@ export function FilterCardSection({
    *  section cannot be used without. */
   lead?: string;
   active: boolean;
-  onReset: () => void;
-  resetAriaLabel: string;
+  /** Absent for a section of one row, which is its own way off. */
+  onReset?: () => void;
+  resetAriaLabel?: string;
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
   /** The sheet's columns, for a section whose labels are too long for three. */

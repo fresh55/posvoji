@@ -40,6 +40,7 @@ function show({
   unanswered?: UnansweredTally;
 }) {
   const onToggle = vi.fn();
+  const onToggleManyProperties = vi.fn();
   const tally = facetCounts([], EMPTY_FILTERS, now);
   for (const [group, entries] of Object.entries(counts)) {
     for (const [value, count] of entries) tally[group as MultiGroup].set(value, count);
@@ -75,11 +76,11 @@ function show({
         onToggle={onToggle}
         onToggleMany={vi.fn()}
         onToggleProperty={vi.fn()}
-        onToggleManyProperties={vi.fn()}
+        onToggleManyProperties={onToggleManyProperties}
       />
     </I18nProvider>,
   );
-  return { onToggle };
+  return { onToggle, onToggleManyProperties };
 }
 
 describe("Posvojitev", () => {
@@ -99,7 +100,19 @@ describe("Posvojitev", () => {
     expect(screen.getByRole("button", { name: /^Samo na voljo,/ })).toBeTruthy();
   });
 
-  // A tile alone at the full width of the sheet was a tall box with a door
+  it("has no Ponastavi, the row being its own way off", () => {
+    show({
+      groups: ["availability"],
+      filters: { ...EMPTY_FILTERS, availability: ["available"] },
+      counts: { availability: [["available", 460]] },
+    });
+    expect(
+      screen.getByRole("button", { name: /^Samo na voljo,/ }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.queryByText("Ponastavi")).toBeNull();
+  });
+
+  // A tile alone at the full width of the sheet was a tall box with its icon
   // floating in it, above Spol; the row is the Kje row's height instead.
   it("is one row the height of the Kje row on a phone", () => {
     show({
@@ -137,6 +150,26 @@ describe("V zavetišču takes one threshold at a time", () => {
     // A section whose answers add up keeps the tick box.
     openFilterSection("Videz");
     expect(mark(/^Dolga,/)?.classList.contains("rounded-sm")).toBe(true);
+  });
+});
+
+describe("Velikost on Vse", () => {
+  it("says that a pick leaves every cat out", () => {
+    show({ groups: ["size"], counts: { size: [["small", 12]] } });
+    openFilterSection("Velikost");
+    expect(
+      screen.getByText("Mačk po velikosti ne ločimo, zato jih izbira ne pokaže."),
+    ).toBeTruthy();
+  });
+
+  it("says nothing of cats on Psi, where there are none to leave out", () => {
+    show({
+      groups: ["size"],
+      filters: { ...EMPTY_FILTERS, species: "dog" },
+      counts: { size: [["small", 12]] },
+    });
+    openFilterSection("Velikost");
+    expect(screen.queryByText(/Mačk po velikosti/)).toBeNull();
   });
 });
 
@@ -181,6 +214,17 @@ describe("the health rows", () => {
       screen.getByRole("button", { name: /^Brez FeLV,/ }).textContent,
     ).toContain("Brez podatka:\u00a0121");
     expect(screen.getByText("Izbira pokaže le živali s podatkom.")).toBeTruthy();
+  });
+
+  it("take every pick off with one Ponastavi", () => {
+    const { onToggleManyProperties } = show({
+      toggles: true,
+      filters: { ...EMPTY_FILTERS, species: "cat", toggles: ["brez-fiv", "brez-felv"] },
+      unanswered,
+    });
+    openFilterSection("Zdravje");
+    fireEvent.click(screen.getByRole("button", { name: "Ponastavi zdravstvene filtre" }));
+    expect(onToggleManyProperties).toHaveBeenLastCalledWith(["brez-fiv", "brez-felv"]);
   });
 
   it("stay quiet without a tally to read", () => {

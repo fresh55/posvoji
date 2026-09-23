@@ -187,9 +187,29 @@ describe("thinnestAnswer", () => {
     expect(thinnestAnswer(dogs, only({ species: "dog", sex: ["female"] }), now)).toBeUndefined();
   });
 
-  it("never names the shelter or availability, which every animal answers", () => {
+  it("names a question once half the animals asked have no answer", () => {
+    const pool = [
+      animal("dog", { energy: "calm" }),
+      animal("dog", { energy: "lively" }),
+      animal("dog"),
+      animal("dog"),
+    ];
+    const calm = only({ species: "dog", energy: ["calm"] });
+    expect(thinnestAnswer(pool, calm, now)).toEqual({
+      facet: "energy",
+      asked: 4,
+      answered: 2,
+    });
+    // Three answers in five: thin, but not the likeliest reason nothing
+    // matched, and a line that names it would point the wrong way.
     expect(
-      thinnestAnswer(dogs, only({ shelter: ["fixture"], availability: ["available"] }), now),
+      thinnestAnswer([...pool, animal("dog", { energy: "calm" })], calm, now),
+    ).toBeUndefined();
+  });
+
+  it("says nothing about a question asked of one animal", () => {
+    expect(
+      thinnestAnswer([animal("dog")], only({ species: "dog", energy: ["calm"] }), now),
     ).toBeUndefined();
   });
 });

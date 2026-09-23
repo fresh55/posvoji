@@ -280,7 +280,9 @@ const sl = {
   ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, odrasla žival od 1 do manj kot 8 let, starejša žival od 8 let naprej.",
   energyFilterHint:
     "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: {count}. Živali brez podatka ta filter skrije.",
-  healthFilterHint: "Ujema se vsaj ena izbrana lastnost.",
+  healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
+  waitingFilterHint: "Po znanem datumu sprejema v zavetišče.",
+  resetWaitingFilters: "Ponastavi čas v zavetišču",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
@@ -602,7 +604,7 @@ const sl = {
   // The section reads as one sentence, so the phrases are whole and translated,
   // never assembled from parts in the component.
   goodWithOutcome:
-    "Prikazane so živali, ki se razumejo {list}. {count} od {total}.",
+    "Prikazane so živali, ki se razumejo {list}. {count} od {total}. Živali brez odgovora zavetišča so skrite.",
   // Lead carries the preposition, which in Slovenian depends on the word that
   // follows it. Tail is the same noun without it, for the rest of the list.
   goodWithLeadKids: "z otroki",
@@ -632,26 +634,20 @@ const sl = {
   home: "Dom",
   // The requirements list's own name; it shared "Dom" with the apartment row.
   adoptionRequirements: "Pogoji posvojitve",
-  resetHomeFilters: "Ponastavi filter doma",
-  homeFilterHint:
-    "Pokaži živali z izrecno navedenimi zahtevami glede doma.",
-  homeOutcome:
-    "Prikazane so živali z izrecno navedeno zahtevo glede doma. {count} od {total}.",
   apartmentYes: "Primeren za stanovanje",
   apartmentNo: "Potrebuje več prostora kot stanovanje",
   hintApartmentOk: "Zavetišče presoja, da lahko {name} živi v stanovanju.",
   // The section is an invitation, not a warning: it exists for the visitor who
-  // came to help, so the words never describe the animal as a problem.
-  care: "Posebna skrb",
-  resetCareFilters: "Ponastavi filter posebne skrbi",
-  careFilterHint:
-    "Pokaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
+  // came to help, so the words never describe the animal as a problem. Its
+  // heading is the visitor speaking, the way "Doma imam" is, and each row
+  // finishes the sentence.
+  care: "Lahko ponudim",
+  resetCareFilters: "Ponastavi, kar lahko ponudim",
   careOutcome:
-    "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. {count} od {total}.",
-  // A pill, so a label and not the sentence it used to be: the words the care
-  // filter already uses, so the control a visitor ticked and the badge they
-  // then read say the same thing.
-  specialNeedsLabel: "Potrebuje potrpežljivega človeka",
+    "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. {count} od {total}.",
+  // The row's words as the animal's need, so the pill a visitor reads on the
+  // animal is the row they ticked.
+  specialNeedsLabel: "Potrebuje veliko potrpežljivosti",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -774,7 +770,9 @@ const en: Messages = {
   ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
   energyFilterHint:
     "As judged by the shelter. Recorded energy among animals matching the other filters: {count}. Animals with no answer are hidden by this filter.",
-  healthFilterHint: "Matches at least one selected trait.",
+  healthFilterHint: "An animal has to have every trait you pick.",
+  waitingFilterHint: "Based on the recorded shelter intake date.",
+  resetWaitingFilters: "Reset time in the shelter",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",
@@ -922,7 +920,7 @@ const en: Messages = {
   goodWithFilterHint:
     "Tell us who already lives with you. Animals the shelter has not answered for stay hidden.",
   goodWithOutcome:
-    "Showing animals that get on with {list}. {count} of {total}.",
+    "Showing animals that get on with {list}. {count} of {total}. Animals the shelter has not answered for stay hidden.",
   goodWithLeadKids: "kids",
   goodWithLeadDogs: "dogs",
   goodWithLeadCats: "cats",
@@ -947,20 +945,14 @@ const en: Messages = {
   hintGoodWithCats: "The shelter judges that {name} gets on with cats.",
   home: "Home",
   adoptionRequirements: "Adoption conditions",
-  resetHomeFilters: "Reset the home filter",
-  homeFilterHint:
-    "Show animals with explicitly reported home requirements.",
-  homeOutcome: "Showing animals with an explicitly reported home requirement. {count} of {total}.",
   apartmentYes: "Apartment-friendly",
   apartmentNo: "Needs more room than an apartment",
   hintApartmentOk: "The shelter judges that {name} can live in an apartment.",
-  care: "Special care",
-  resetCareFilters: "Reset the special care filter",
-  careFilterHint:
-    "Show animals with explicitly reported adoption or care requirements.",
+  care: "I can offer",
+  resetCareFilters: "Reset what I can offer",
   careOutcome:
-    "Showing animals with an explicitly reported care requirement. {count} of {total}.",
-  specialNeedsLabel: "Needs a patient person",
+    "Showing animals that need what you can offer. {count} of {total}.",
+  specialNeedsLabel: "Needs a lot of patience",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

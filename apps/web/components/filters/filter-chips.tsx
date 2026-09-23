@@ -23,7 +23,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CoatColorChipSwatch } from "@/components/filters/coat-cards";
+import { CoatColorChipSwatch, CoatLengthMark } from "@/components/filters/coat-cards";
+import { WaitingMark } from "@/components/filters/waiting-cards";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
 import { jumpToFilterSection } from "@/components/filters/filter-section-header";
@@ -889,6 +890,11 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
           right for that. */}
       {facet === "coatColor" && value !== undefined ? (
         <CoatColorChipSwatch value={value} />
+      ) : facet === "coatLength" ? (
+        // The section's own drawing, not a lucide stand-in.
+        <CoatLengthMark value={value} />
+      ) : facet === "waiting" ? (
+        <WaitingMark value={value} />
       ) : (
         /* 1.75, the same weight the species tabs draw at. This was 1.8, which
            is invisible on its own and exactly the kind of near-miss that makes
@@ -906,11 +912,10 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
 function facetLabel(
   facet: FilterFacet,
   locale: "sl" | "en",
-  messages: { health: string; goodWith: string; home: string; care: string },
+  messages: { health: string; goodWith: string; care: string },
 ): string {
   if (facet === "toggles") return messages.health;
   if (facet === "goodWith") return messages.goodWith;
-  if (facet === "home") return messages.home;
   if (facet === "care") return messages.care;
   return groupLabel(facet, locale);
 }

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, homeCounts,
-  parseFilters, serializeFilters, visibleGroups, waitingGroups, type Filters,
+  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, valueChipLabel,
+  parseFilters, serializeFilters, toggleGroupValue, visibleGroups, waitingGroups,
+  type Filters,
 } from "../filters";
 
 const now = new Date("2026-09-21T12:00:00Z");
@@ -12,7 +13,7 @@ const animal = (id: string, extra: Partial<Animal> = {}): Animal => ({
   shelter: { id: "fixture", name: "Fixture", city: "Ljubljana" }, ...extra,
 });
 
-describe("reviewed appearance and home filters", () => {
+describe("reviewed appearance filters", () => {
   const black = animal("black-with-bib", { coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } });
   const brown = animal("brown-tabby", { coatColor: "brown", coatColors: ["black", "brown", "white"], coatLength: "short" });
   const white = animal("white-with-patches", { coatColor: "white", coatColors: ["black", "white"], coatLength: "short" });
@@ -26,8 +27,6 @@ describe("reviewed appearance and home filters", () => {
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["multicolour"] }, now)).toEqual([multicolour]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["white", "black"] }, now)).toEqual([black, white]);
     expect(applyFilters(animals, { ...EMPTY_FILTERS, coatColor: ["white"], coatLength: ["long"] }, now)).toEqual([]);
-    expect(applyFilters(animals, { ...EMPTY_FILTERS, home: ["only-pet"] }, now)).toEqual([black]);
-    expect(homeCounts(animals, EMPTY_FILTERS, now).get("only-pet")).toBe(1);
   });
 
   it("counts each known animal once across colour categories and computes removable chips", () => {
@@ -41,8 +40,8 @@ describe("reviewed appearance and home filters", () => {
   });
 
   it("round-trips all four filters in shared URLs and preserves selected unknown options", () => {
-    const filters: Filters = { ...EMPTY_FILTERS, coatColor: ["black", "multicolour"], coatLength: ["long"], waiting: ["over-1-year"], home: ["only-pet"] };
-    const state = { ...filters, coatLength: [...filters.coatLength], waiting: [...filters.waiting], home: [...filters.home] };
+    const filters: Filters = { ...EMPTY_FILTERS, coatColor: ["black", "multicolour"], coatLength: ["long"], waiting: ["over-1-year"], care: ["ongoing-care"] };
+    const state = { ...filters, coatLength: [...filters.coatLength], waiting: [...filters.waiting], care: [...filters.care] };
     expect(serializeFilters(state)).toContain("barva=crna,vecbarvna");
     expect(serializeFilters(state)).toContain("dlaka=dolga");
     expect(serializeFilters(state)).toContain("cakanje=nad-1-leto");
@@ -133,5 +132,36 @@ describe("shelter waiting thresholds", () => {
     const state = { ...filters, waiting: [...filters.waiting] };
     expect(applyFilters(animals, state, now)).toEqual([]);
     expect(applyFilters(animals, state, new Date("2026-09-22T00:00:00Z"))).toEqual(animals);
+  });
+});
+
+// A chip has no section heading beside it, so "Srednja" there was Velikost's
+// answer and Dolžina dlake's at once.
+describe("coat length chips", () => {
+  it("name the coat, so they cannot be read as a size", () => {
+    expect(valueChipLabel("coatLength", "medium", "sl")).toBe("Srednja dlaka");
+    expect(valueChipLabel("coatLength", "long", "en")).toBe("Long coat");
+    expect(valueChipLabel("coatLength", "hairless", "sl")).toBe("Brez dlake");
+    expect(valueChipLabel("size", "medium", "sl")).toBe("Srednja");
+  });
+
+  it("say what a threshold is a wait of, the way the card's badge does", () => {
+    expect(valueChipLabel("waiting", "over-1-year", "sl")).toBe("Čaka nad 1 leto");
+    expect(valueChipLabel("waiting", "over-6-months", "en")).toBe("Waiting over 6 months");
+  });
+});
+
+// The thresholds nest, so a second pick asks what the wider one already asks
+// and the narrower tick would sit there doing nothing.
+describe("time in shelter takes one threshold", () => {
+  it("swaps the threshold rather than adding a second", () => {
+    expect(toggleGroupValue("waiting", ["over-6-months"], "over-1-year")).toEqual(["over-1-year"]);
+    expect(toggleGroupValue("waiting", ["over-1-year"], "over-1-year")).toEqual([]);
+    expect(toggleGroupValue("sex", ["male"], "female")).toEqual(["male", "female"]);
+  });
+
+  it("keeps the wider threshold from an address that carries two", () => {
+    expect(parseFilters("cakanje=nad-3-leta,nad-6-mesecev").waiting).toEqual(["over-6-months"]);
+    expect(serializeFilters(parseFilters("cakanje=nad-3-leta,nad-1-leto"))).toBe("cakanje=nad-1-leto");
   });
 });

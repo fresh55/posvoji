@@ -4,7 +4,6 @@ import {
   FILTER_METADATA,
   FILTER_PARAM_NAMES,
   GOOD_WITH_KEYS,
-  HOME_KEYS,
   TOGGLES,
   TOGGLE_KEYS,
 } from "../filters";
@@ -14,9 +13,6 @@ describe("filter module invariants", () => {
     expect(TOGGLE_KEYS).toEqual(TOGGLES.map(({ key }) => key));
     expect(GOOD_WITH_KEYS).toEqual(
       FILTER_METADATA.goodWith.map(({ value }) => value),
-    );
-    expect(HOME_KEYS).toEqual(
-      FILTER_METADATA.home.map(({ value }) => value),
     );
     expect(CARE_KEYS).toEqual(
       FILTER_METADATA.care.map(({ value }) => value),
@@ -33,7 +29,6 @@ describe("filter module invariants", () => {
       "coatLength",
       "waiting",
       "goodWith",
-      "home",
       "care",
     ] as const;
 

@@ -202,43 +202,43 @@ describe("the outcome sentence", () => {
   it("carries the preposition of whichever facet comes first", () => {
     renderCards({ selected: ["kids"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki. 70 od 489.",
+      "Prikazane so živali, ki se razumejo z otroki. 70 od 489. Živali brez odgovora zavetišča so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["dogs"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo s psi. 70 od 489.",
+      "Prikazane so živali, ki se razumejo s psi. 70 od 489. Živali brez odgovora zavetišča so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["cats"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z mačkami. 70 od 489.",
+      "Prikazane so živali, ki se razumejo z mačkami. 70 od 489. Živali brez odgovora zavetišča so skrite.",
     );
   });
 
   it("joins two and three facets in the fixed card order", () => {
     renderCards({ selected: ["dogs", "kids"], resultCount: 24 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki in psi. 24 od 489.",
+      "Prikazane so živali, ki se razumejo z otroki in psi. 24 od 489. Živali brez odgovora zavetišča so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["cats", "dogs", "kids"], resultCount: 12 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki, psi in mačkami. 12 od 489.",
+      "Prikazane so živali, ki se razumejo z otroki, psi in mačkami. 12 od 489. Živali brez odgovora zavetišča so skrite.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["kids"], resultCount: 70 });
-    expect(sentence()).toBe("Showing animals that get on with kids. 70 of 489.");
+    expect(sentence()).toBe("Showing animals that get on with kids. 70 of 489. Animals the shelter has not answered for stay hidden.");
     cleanup();
 
     renderCards({ locale: "en", selected: ["kids", "dogs"], resultCount: 24 });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids and dogs. 24 of 489.",
+      "Showing animals that get on with kids and dogs. 24 of 489. Animals the shelter has not answered for stay hidden.",
     );
     cleanup();
 
@@ -248,7 +248,7 @@ describe("the outcome sentence", () => {
       resultCount: 12,
     });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids, dogs and cats. 12 of 489.",
+      "Showing animals that get on with kids, dogs and cats. 12 of 489. Animals the shelter has not answered for stay hidden.",
     );
   });
 });

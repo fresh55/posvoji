@@ -7,9 +7,7 @@ import { translateLabel as translate } from "@/lib/label-messages";
 import {
   ageInMonths,
   FILTER_METADATA,
-  type CareKey,
   type GoodWithKey,
-  type HomeKey,
   type SpeciesFilter,
 } from "@/lib/filters";
 
@@ -631,24 +629,6 @@ export function shelterChipLabel(name: string): string {
     candidate.trim().length >= 3 ? candidate.trim() : fallback;
   const withoutOperator = keep(name.replace(SHELTER_TRAILING_PAREN, ""), name);
   return keep(withoutOperator.replace(SHELTER_NOUN, ""), withoutOperator);
-}
-
-// Both of these read as full phrases already ("Primeren za stanovanje"), so a
-// chip needs no second wording the way the household questions do.
-export function homeLabel(key: HomeKey, locale: Locale): string {
-  return (
-    FILTER_METADATA.home.find((option) => option.value === key)?.labels[
-      locale
-    ] ?? key
-  );
-}
-
-export function careLabel(key: CareKey, locale: Locale): string {
-  return (
-    FILTER_METADATA.care.find((option) => option.value === key)?.labels[
-      locale
-    ] ?? key
-  );
 }
 
 export function sizeLabel(size: AnimalSize, locale: Locale): string {

@@ -19,7 +19,6 @@ import type {
   CardGroup,
   CareSection,
   GoodWithSection,
-  HomeSection,
 } from "@/components/filters/filter-groups";
 import {
   filterSheetReason,
@@ -129,7 +128,6 @@ export function AnimalFilters({
   toggles,
   toggleTally,
   goodWith,
-  home,
   care,
   shelters,
   shelterTally,
@@ -166,7 +164,6 @@ export function AnimalFilters({
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
-  home?: HomeSection;
   care?: CareSection;
   /** Absent when the dataset has nothing to choose between. */
   shelters: FilterOption[] | undefined;
@@ -203,7 +200,6 @@ export function AnimalFilters({
       groups,
       toggles,
       goodWith,
-      home,
       care,
       resultCount,
       activeCount,
@@ -555,7 +551,6 @@ export function AnimalFilters({
               toggles={toggles}
               toggleTally={toggleTally}
               goodWith={goodWith}
-              home={home}
               care={care}
               activeCount={activeCount}
               scope={

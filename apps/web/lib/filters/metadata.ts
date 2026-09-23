@@ -16,18 +16,19 @@ import {
   type CareKey,
   type FilterOption,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type ToggleKey,
 } from "./contracts";
 
-// Filter cards and animal facts use the same wording for confirmed requirements.
+// What the animal's facts say about a stated requirement. Each is the need
+// behind one "Lahko ponudim" row in the same words, so a visitor who ticked
+// "Dnevno nego" reads "Potrebuje dnevno nego" on the animal.
 export const ADOPTION_REQUIREMENT_LABELS = {
-  onlyPet: { sl: "Edini ljubljenček", en: "Only pet" },
-  indoorOnly: { sl: "Samo notranje bivanje", en: "Indoor-only home" },
-  bondedPair: { sl: "Posvojitev v paru", en: "Adopt together" },
-  experiencedCarer: { sl: "Izkušen skrbnik", en: "Experienced carer" },
-  ongoingCare: { sl: "Potrebuje redno oskrbo", en: "Ongoing care" },
+  indoorOnly: { sl: "Potrebuje dom brez izhoda", en: "Needs an indoor-only home" },
+  onlyPet: { sl: "Mora biti edina žival pri hiši", en: "Needs to be the only pet" },
+  bondedPair: { sl: "Posvoji se samo v paru", en: "Adopted only as a pair" },
+  experiencedCarer: { sl: "Potrebuje izkušeno roko", en: "Needs an experienced hand" },
+  ongoingCare: { sl: "Potrebuje dnevno nego", en: "Needs daily care" },
 } satisfies Record<keyof AnimalAdoptionRequirements, Record<Locale, string>>;
 
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
@@ -38,7 +39,10 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energija",
     coatColor: "Barva",
     coatLength: "Dolžina dlake",
-    waiting: "Čas v zavetišču",
+    // "V zavetišču: nad 1 leto", the way the two household sections read as
+    // sentences. "Čas v zavetišču" with its info mark and the answered mark
+    // ran 9.6px into the Ponastavi beside it in the 224px sidebar.
+    waiting: "V zavetišču",
     shelter: "Zavetišče",
   },
   en: {
@@ -48,7 +52,7 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energy",
     coatColor: "Colour",
     coatLength: "Coat length",
-    waiting: "Time in shelter",
+    waiting: "In the shelter",
     shelter: "Shelter",
   },
 };
@@ -154,9 +158,9 @@ export function toggleLabel(key: ToggleKey, locale: Locale = "sl"): string {
 }
 
 type CodedGroup = Exclude<MultiGroup, "shelter">;
-// goodWith, home and care are not MultiGroups, but their values are coded the
-// same way and want the same one place to name them.
-type ValueGroup = "goodWith" | "home" | "care";
+// goodWith and care are not MultiGroups, but their values are coded the same
+// way and want the same one place to name them.
+type ValueGroup = "goodWith" | "care";
 type MetadataGroup = CodedGroup | ValueGroup;
 type CodedValueByGroup = {
   sex: Exclude<Sex, "unknown">;
@@ -167,7 +171,6 @@ type CodedValueByGroup = {
   coatLength: CoatLength;
   waiting: WaitingGroup;
   goodWith: GoodWithKey;
-  home: HomeKey;
   care: CareKey;
 };
 
@@ -176,6 +179,14 @@ export type FilterValueDefinition<Value extends string = string> = {
   readonly value: Value;
   readonly slug: string;
   readonly labels: Readonly<Record<Locale, string>>;
+  /** The value on its own, for the active-filter chip, where the section
+   *  heading that gives the label its sense is not on screen. Only where the
+   *  label does not stand alone. */
+  readonly chip?: Readonly<Record<Locale, string>>;
+  /** Which animals the option shows, drawn under its label, for a section
+   *  whose labels cannot say it alone (Lahko ponudim). Short: the sidebar
+   *  gives the line 136px. */
+  readonly description?: Readonly<Record<Locale, string>>;
 };
 
 export const FILTER_METADATA = {
@@ -194,16 +205,23 @@ export const FILTER_METADATA = {
     { value: "white", slug: "bela", labels: { sl: "Bela", en: "White" } },
     { value: "multicolour", slug: "vecbarvna", labels: { sl: "Večbarvna", en: "Multicolour" } },
   ],
+  // The chip names the coat as well. "Srednja" alone was also Velikost's
+  // answer, so the chips row could hold two identical pills and a screen
+  // reader heard "Odstrani filter Srednja" twice.
   coatLength: [
-    { value: "short", slug: "kratka", labels: { sl: "Kratka", en: "Short" } },
-    { value: "medium", slug: "srednja", labels: { sl: "Srednja", en: "Medium" } },
-    { value: "long", slug: "dolga", labels: { sl: "Dolga", en: "Long" } },
+    { value: "short", slug: "kratka", labels: { sl: "Kratka", en: "Short" }, chip: { sl: "Kratka dlaka", en: "Short coat" } },
+    { value: "medium", slug: "srednja", labels: { sl: "Srednja", en: "Medium" }, chip: { sl: "Srednja dlaka", en: "Medium coat" } },
+    { value: "long", slug: "dolga", labels: { sl: "Dolga", en: "Long" }, chip: { sl: "Dolga dlaka", en: "Long coat" } },
     { value: "hairless", slug: "brez-dlake", labels: { sl: "Brez dlake", en: "Hairless" } },
   ],
+  // "Nad", not "Več kot": with the hourglass beside it, "Več kot 6 mesecev"
+  // no longer fit the sidebar's label slot and broke over two lines. The chip
+  // has no section heading to lean on, so it says what the card's badge says
+  // ("Čaka 4 leta").
   waiting: [
-    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Več kot 6 mesecev", en: "Over 6 months" } },
-    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Več kot 1 leto", en: "Over 1 year" } },
-    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Več kot 3 leta", en: "Over 3 years" } },
+    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6 mesecev", en: "Over 6 months" }, chip: { sl: "Čaka nad 6 mesecev", en: "Waiting over 6 months" } },
+    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1 leto", en: "Over 1 year" }, chip: { sl: "Čaka nad 1 leto", en: "Waiting over 1 year" } },
+    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Nad 3 leta", en: "Over 3 years" }, chip: { sl: "Čaka nad 3 leta", en: "Waiting over 3 years" } },
   ],
   sex: [
     { value: "male", slug: "samec", labels: { sl: "Samec", en: "Male" } },
@@ -260,43 +278,48 @@ export const FILTER_METADATA = {
     { value: "dogs", slug: "psi", labels: { sl: "Psa", en: "A dog" } },
     { value: "cats", slug: "macke", labels: { sl: "Mačko", en: "A cat" } },
   ],
-  home: [
-    {
-      value: "apartment",
-      slug: "stanovanje",
-      labels: { sl: "Primeren za stanovanje", en: "Apartment-friendly" },
-    },
-    {
-      value: "indoor-only",
-      slug: "samo-notranje-bivanje",
-      labels: ADOPTION_REQUIREMENT_LABELS.indoorOnly,
-    },
-    { value: "only-pet", slug: "edini-ljubljencek", labels: ADOPTION_REQUIREMENT_LABELS.onlyPet },
-  ],
+  // Each label finishes the section's heading, "Lahko ponudim: dnevno nego",
+  // the way Družba's finish "Doma imam". Short enough for the sidebar's 96px
+  // label slot beside the count, measured: "Vsakodnevno nego" was 110px and
+  // "Dom za dve živali" 100px, and both broke over two lines. The line under
+  // each label ("Gredo samo v paru") is what says "dva" means two animals,
+  // and the chip, which has no such line, says it whole.
+  //
+  // The slugs are the ones the section had as Posebna skrb, so shared links
+  // keep working.
   care: [
     {
       value: "patient",
       slug: "potrpezljiv",
-      labels: {
-        sl: "Potrpežljiv človek",
-        en: "Patient person",
-      },
+      labels: { sl: "Potrpežljivost", en: "Patience" },
+      // What is left of specialNeeds once the two needs below take their own
+      // animals (careMatches): about two thirds shy, the rest unwell in a way
+      // that asks for time rather than daily care.
+      description: { sl: "Plahe ali občutljive živali", en: "Shy or sensitive animals" },
     },
     {
       value: "bonded-pair",
       slug: "posvojitev-v-paru",
-      labels: ADOPTION_REQUIREMENT_LABELS.bondedPair,
-    },
-    {
-      value: "experienced-carer",
-      slug: "izkusen-skrbnik",
-      labels: ADOPTION_REQUIREMENT_LABELS.experiencedCarer,
+      labels: { sl: "Dom za dva", en: "A home for two" },
+      chip: { sl: "Dom za dve živali", en: "A home for two animals" },
+      description: { sl: "Gredo samo v paru", en: "Adopted only as a pair" },
     },
     {
       value: "ongoing-care",
       slug: "potrebuje-redno-oskrbo",
-      // The filter names the need; the animal's facts keep the full sentence.
-      labels: { ...ADOPTION_REQUIREMENT_LABELS.ongoingCare, sl: "Redna oskrba" },
+      labels: { sl: "Dnevno nego", en: "Daily care" },
+      chip: { sl: "Dnevna nega", en: "Daily care" },
+      description: { sl: "Zdravila, dieta ali pomoč", en: "Medication, diet or help" },
+    },
+    {
+      value: "experienced-carer",
+      slug: "izkusen-skrbnik",
+      labels: { sl: "Izkušeno roko", en: "Experience" },
+      chip: { sl: "Izkušena roka", en: "Experience" },
+      // Nineteen of the twenty are dogs, most of them large guardian breeds or
+      // dogs wary of strangers. Saying so is what stops someone who grew up
+      // with a dog from reading the row as theirs.
+      description: { sl: "Močni ali nezaupljivi psi", en: "Powerful or wary dogs" },
     },
   ],
 } as const satisfies {
@@ -315,22 +338,31 @@ export function goodWithOptions(
   }));
 }
 
-export function homeOptions(
-  locale: Locale = "sl",
-): { key: HomeKey; label: string }[] {
-  return FILTER_METADATA.home.map(({ value, labels }) => ({
+export type CareOption = {
+  key: CareKey;
+  label: string;
+  description: string;
+};
+
+export function careOptions(locale: Locale = "sl"): CareOption[] {
+  return FILTER_METADATA.care.map(({ value, labels, description }) => ({
     key: value,
     label: labels[locale],
+    description: description[locale],
   }));
 }
 
-export function careOptions(
-  locale: Locale = "sl",
-): { key: CareKey; label: string }[] {
-  return FILTER_METADATA.care.map(({ value, labels }) => ({
-    key: value,
-    label: labels[locale],
-  }));
+/** A coded value as its chip says it: the chip wording where the label needs
+ *  its heading to make sense, the label otherwise. Every chip but a shelter's
+ *  and Družba's is named here. */
+export function valueChipLabel(
+  group: MetadataGroup,
+  value: string,
+  locale: Locale,
+): string {
+  const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
+  const option = options.find((candidate) => candidate.value === value);
+  return option?.chip?.[locale] ?? option?.labels[locale] ?? value;
 }
 
 // Exhaustive like groupValue: a new group names its own options rather than

@@ -5,7 +5,7 @@ import {
   Building2,
   ChevronDown,
   ClipboardCheck,
-  HeartHandshake,
+  House,
   Mars,
   PawPrint,
   Venus,
@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { AnimalSize, Sex, TestResult } from "@posvoji/schema";
 import { AgeStageIcon } from "@/components/filters/age-stage-icon";
-import { CoatColorDots } from "@/components/filters/coat-cards";
+import { CoatColorDots, CoatLengthMark } from "@/components/filters/coat-cards";
 import { useI18n } from "@/components/i18n-context";
 import {
   Popover,
@@ -23,8 +23,8 @@ import {
 import type { AnimalFields } from "@/lib/animal";
 import { useAnimalDescription } from "@/lib/animal-descriptions";
 import {
+  CARE_ICONS,
   ENERGY_ICONS,
-  FACET_ICONS,
   GOOD_WITH_ICONS,
   HEALTH_ICONS,
 } from "@/lib/animal-icons";
@@ -32,6 +32,7 @@ import { namesSeveralAnimals } from "@/lib/animal-name";
 import {
   ageGroup,
   ageInMonths,
+  careMatches,
   GOOD_WITH_KEYS,
   groupLabel,
   optionLabel,
@@ -53,6 +54,17 @@ const SEX_ICONS: Record<Exclude<Sex, "unknown">, LucideIcon> = {
 
 const REQUIREMENT_KEYS = Object.keys(ADOPTION_REQUIREMENT_LABELS) as
   (keyof typeof ADOPTION_REQUIREMENT_LABELS)[];
+
+// A requirement a Lahko ponudim row finds wears that row's mark. The two the
+// filters leave to the animal, indoor-only and only-pet, draw the home they
+// ask for.
+const REQUIREMENT_ICONS: Record<(typeof REQUIREMENT_KEYS)[number], LucideIcon> = {
+  indoorOnly: Building2,
+  onlyPet: House,
+  bondedPair: CARE_ICONS["bonded-pair"],
+  experiencedCarer: CARE_ICONS["experienced-carer"],
+  ongoingCare: CARE_ICONS["ongoing-care"],
+};
 
 // The size filter speaks in growing paw prints, so the size badge does too:
 // the paw itself is the measurement.
@@ -502,8 +514,11 @@ export function AnimalFacts({
   );
   // The patience flag rides in the same row as the reviewed requirements:
   // both answer what the home has to be, and a row each would have asked the
-  // visitor to read the same question twice.
-  const hasRequirements = requirements.length > 0 || animal.specialNeeds === true;
+  // visitor to read the same question twice. It is read through the filter's
+  // own rule, so an animal the Potrpežljivost row leaves to a narrower one
+  // does not say it twice here either.
+  const needsPatience = careMatches(animal, "patient");
+  const hasRequirements = requirements.length > 0 || needsPatience;
   // Two ways in, one paragraph. The animal's own page is server-rendered from
   // a whole dataset animal, so it carries its description and asks the store
   // for nothing. The grid's dialog gets an animal without one, because the
@@ -588,7 +603,12 @@ export function AnimalFacts({
               )}
               {animal.coatLength && (
                 <Fact
-                  icon={FACET_ICONS.coatLength}
+                  iconNode={
+                    <CoatLengthMark
+                      value={animal.coatLength}
+                      className="size-3.5 shrink-0 opacity-70"
+                    />
+                  }
                   prefix={groupLabel("coatLength", locale)}
                 >
                   {optionLabel("coatLength", animal.coatLength, [], locale)}
@@ -619,16 +639,15 @@ export function AnimalFacts({
               {requirements.map((key) => (
                 <RequirementFact
                   key={key}
-                  icon={key === "indoorOnly" ? Building2 : HeartHandshake}
+                  icon={REQUIREMENT_ICONS[key]}
                 >
                   {ADOPTION_REQUIREMENT_LABELS[key][locale]}
                 </RequirementFact>
               ))}
-              {/* The short label the care filter uses, not the sentence: a
-                  pill is not the place for one, and a visitor who ticked that
-                  filter should recognise the words. */}
-              {animal.specialNeeds && (
-                <RequirementFact icon={HeartHandshake}>
+              {/* The need behind the filter's Potrpežljivost row, in its
+                  words, so a visitor who ticked it recognises them. */}
+              {needsPatience && (
+                <RequirementFact icon={CARE_ICONS.patient}>
                   {messages.specialNeedsLabel}
                 </RequirementFact>
               )}

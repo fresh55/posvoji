@@ -104,7 +104,7 @@ const ANIMALS = [
     kids: "yes",
     dogs: "yes",
   }),
-  animal("female-adult", "female", 36, "medium", "lively", { vaccinated: true }, {
+  animal("female-adult", "female", 36, "medium", "lively", { vaccinated: true, neutered: true }, {
     kids: "yes",
     dogs: "no",
   }),

@@ -6,15 +6,15 @@ import { standsOnLayerEntry } from "@/hooks/use-picker-history";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
-  FILTER_PARAM_NAMES,
+  OWNED_PARAM_NAMES,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
+  toggleGroupValue,
   toggleValues,
   type CareKey,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -107,7 +107,7 @@ function writeFilters(
   commitSearch(
     mergeOwnedParams(
       getSearchSnapshot(),
-      FILTER_PARAM_NAMES,
+      OWNED_PARAM_NAMES,
       serializeFilters(pruneHiddenFilters(filters)),
     ),
     mode,
@@ -169,10 +169,7 @@ export function useAnimalFilters() {
 
   const toggle = useCallback(
     (group: MultiGroup, value: string) => {
-      const selected = filters[group] as string[];
-      const next = selected.includes(value)
-        ? selected.filter((selectedValue) => selectedValue !== value)
-        : [...selected, value];
+      const next = toggleGroupValue(group, filters[group], value);
       writeFilters({ ...filters, [group]: next });
     },
     [filters],
@@ -225,27 +222,6 @@ export function useAnimalFilters() {
       writeFilters({
         ...filters,
         goodWith: toggleValues(filters.goodWith, values) as GoodWithKey[],
-      });
-    },
-    [filters],
-  );
-
-  const toggleHome = useCallback(
-    (key: HomeKey) => {
-      const next = filters.home.includes(key)
-        ? filters.home.filter((k) => k !== key)
-        : [...filters.home, key];
-      writeFilters({ ...filters, home: next });
-    },
-    [filters],
-  );
-
-  const toggleManyHome = useCallback(
-    (values: HomeKey[]) => {
-      if (values.length === 0) return;
-      writeFilters({
-        ...filters,
-        home: toggleValues(filters.home, values) as HomeKey[],
       });
     },
     [filters],
@@ -305,8 +281,6 @@ export function useAnimalFilters() {
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
-    toggleHome,
-    toggleManyHome,
     toggleCare,
     toggleManyCare,
     setSort,

@@ -8,8 +8,9 @@ import {
   chipGains,
   EMPTY_FILTERS,
   facetCounts,
+  FILTER_PARAM_NAMES,
+  OWNED_PARAM_NAMES,
   goodWithCounts,
-  homeCounts,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
@@ -22,7 +23,6 @@ import {
   visibleCare,
   visibleGoodWith,
   visibleGroups,
-  visibleHome,
   visibleToggles,
   type Filters,
   type SpeciesFilter,
@@ -404,36 +404,6 @@ describe("visibleGoodWith", () => {
   });
 });
 
-describe("visibleHome", () => {
-  it("offers the section only once it can narrow the list", () => {
-    const animals = [
-      animal("cat", { apartmentOk: "yes" }),
-      animal("cat", { apartmentOk: "no" }),
-    ];
-    expect(visibleHome(animals, [])).toEqual(["apartment"]);
-  });
-
-  it("stays away while nothing has been answered", () => {
-    expect(visibleHome([animal("dog"), animal("cat")], [])).toEqual([]);
-  });
-
-  it("stays away when every animal would pass it", () => {
-    const animals = [
-      animal("cat", { apartmentOk: "yes" }),
-      animal("cat", { apartmentOk: "yes" }),
-    ];
-    expect(visibleHome(animals, [])).toEqual([]);
-  });
-
-  it("asks the same question of dogs and cats alike", () => {
-    const animals = [
-      animal("dog", { apartmentOk: "yes" }),
-      animal("cat", { apartmentOk: "unknown" }),
-    ];
-    expect(visibleHome(animals, [])).toEqual(["apartment"]);
-  });
-});
-
 describe("visibleCare", () => {
   it("offers the section only once it can narrow the list", () => {
     const animals = [
@@ -455,36 +425,44 @@ describe("visibleCare", () => {
     expect(visibleCare(animals, [])).toEqual([]);
   });
 
-  it("shows applicable enrichment options when requested, including zero matches", () => {
+  it("shows every row when requested, in the order most homes can give them", () => {
     const animals = [animal("dog", { adoptionRequirements: { bondedPair: true } })];
     expect(visibleCare(animals, [], true)).toEqual([
       "patient",
       "bonded-pair",
-      "experienced-carer",
       "ongoing-care",
+      "experienced-carer",
     ]);
   });
 
-  // Dom and Posebna skrb were four and two disabled zeros on the live dataset,
-  // which carries neither field. A section with no answer at all is not a
+  // Energija and Posebna skrb were columns of disabled zeros on a live dataset
+  // that carried neither field. A section with no answer at all is not a
   // question, so the panel does not ask it.
   it("drops a section no animal in the pool answers", () => {
-    const animals = [animal("dog", { adoptionRequirements: { bondedPair: true } })];
-    expect(visibleHome(animals, [], true)).toEqual([]);
     expect(visibleCare([animal("dog"), animal("cat")], [], true)).toEqual([]);
   });
 
+  // Indoor-only and only-pet are facts on the animal, not rows here, so an
+  // animal carrying only those does not open the section.
+  it("is not opened by the requirements it leaves to the animal", () => {
+    const animals = [
+      animal("cat", { adoptionRequirements: { indoorOnly: true, onlyPet: true } }),
+    ];
+    expect(visibleCare(animals, [], true)).toEqual([]);
+  });
+
   it("keeps a dead section the visitor has answered, so the answer can come off", () => {
-    expect(visibleHome([animal("dog")], ["apartment"], true)).toEqual([
-      "apartment",
-      "indoor-only",
-      "only-pet",
+    expect(visibleCare([animal("dog")], ["patient"], true)).toEqual([
+      "patient",
+      "bonded-pair",
+      "ongoing-care",
+      "experienced-carer",
     ]);
   });
 
   it("brings the section back the day one animal carries the field", () => {
-    const later = [animal("dog"), animal("cat", { apartmentOk: "yes" })];
-    expect(visibleHome(later, [], true)).toEqual(["apartment", "indoor-only", "only-pet"]);
+    const later = [animal("dog"), animal("cat", { adoptionRequirements: { ongoingCare: true } })];
+    expect(visibleCare(later, [], true)).toHaveLength(4);
   });
 });
 
@@ -536,15 +514,13 @@ describe("pruneHiddenFilters", () => {
     expect(pruned.goodWith).toEqual(["kids", "cats"]);
   });
 
-  it("keeps the dom and skrb selections across a species change", () => {
+  it("keeps the skrb selection across a species change", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
-      species: "cat",
-      home: ["apartment"],
-      care: ["patient"],
+      species: "dog",
+      care: ["ongoing-care", "patient"],
     });
-    expect(pruned.home).toEqual(["apartment"]);
-    expect(pruned.care).toEqual(["patient"]);
+    expect(pruned.care).toEqual(["ongoing-care", "patient"]);
   });
 
   it("leaves the cat tab holding its own toggles", () => {
@@ -625,29 +601,34 @@ describe("URL codec", () => {
     expect(serializeFilters(filters)).toBe("druzba=otroci");
   });
 
-  it("round-trips the dom and skrb selections under their own params", () => {
+  it("round-trips the skrb selection under its own param", () => {
     const filters: Filters = {
       ...EMPTY_FILTERS,
-      home: ["apartment"],
-      care: ["patient"],
+      care: ["bonded-pair", "patient"],
     };
     const query = serializeFilters(filters);
-    expect(query).toBe("dom=stanovanje&skrb=potrpezljiv");
+    expect(query).toBe("skrb=posvojitev-v-paru,potrpezljiv");
     expect(parseFilters(query)).toEqual(filters);
     expect(activeFilterCount(filters)).toBe(2);
   });
 
-  it("drops an unknown dom or skrb slug rather than breaking the link", () => {
-    const filters = parseFilters("dom=hisa&skrb=potrpezljiv,nujno");
-    expect(filters.home).toEqual([]);
+  it("drops an unknown skrb slug rather than breaking the link", () => {
+    const filters = parseFilters("skrb=potrpezljiv,nujno");
     expect(filters.care).toEqual(["patient"]);
     expect(serializeFilters(filters)).toBe("skrb=potrpezljiv");
   });
 
-  it("keeps a repeated dom slug to one selection", () => {
-    expect(parseFilters("dom=stanovanje,stanovanje").home).toEqual([
-      "apartment",
-    ]);
+  // Links shared while Dom was its own section. None of its answers is a
+  // filter now, so they drop out, and the codec still owns the param so the
+  // next write takes it off the address.
+  it("drops an old dom link and keeps the rest of it working", () => {
+    const filters = parseFilters(
+      "dom=stanovanje,samo-notranje-bivanje&skrb=potrpezljiv,samo-notranje-bivanje",
+    );
+    expect(filters.care).toEqual(["patient"]);
+    expect(serializeFilters(filters)).toBe("skrb=potrpezljiv");
+    expect(OWNED_PARAM_NAMES).toContain("dom");
+    expect(FILTER_PARAM_NAMES).not.toContain("dom");
   });
 
   it("degrades a stale cat-only toggle carried onto the dog tab", () => {
@@ -774,13 +755,12 @@ describe("active filter count", () => {
     ).toBe(9);
   });
 
-  it("counts družba, dom and skrb values too", () => {
+  it("counts družba and skrb values too", () => {
     expect(
       activeFilterCount({
         ...EMPTY_FILTERS,
         goodWith: ["kids", "dogs"],
-        home: ["apartment"],
-        care: ["patient"],
+        care: ["ongoing-care", "patient"],
       }),
     ).toBe(4);
   });
@@ -840,7 +820,8 @@ describe("multi-select behavior", () => {
     ).toEqual([young, adult, senior]);
   });
 
-  it("uses OR for choices within health", () => {
+  // Each trait is a guarantee of its own, so every one ticked has to hold.
+  it("requires every choice within health", () => {
     const vaccinated = animal("dog", { medical: { vaccinated: true } });
     const neutered = animal("dog", { medical: { neutered: true } });
     const both = animal("dog", {
@@ -857,7 +838,7 @@ describe("multi-select behavior", () => {
         },
         NOW,
       ),
-    ).toEqual([vaccinated, neutered, both]);
+    ).toEqual([both]);
   });
 
   it("keeps only a recorded yes within družba", () => {
@@ -930,21 +911,6 @@ describe("multi-select behavior", () => {
     expect(counts.get("kids")).toBe(1);
   });
 
-  it("keeps only a recorded yes within dom", () => {
-    const yes = animal("cat", { apartmentOk: "yes" });
-    const maybe = animal("cat", { apartmentOk: "unknown" });
-    const no = animal("cat", { apartmentOk: "no" });
-    const silent = animal("cat");
-
-    expect(
-      applyFilters(
-        [yes, maybe, no, silent],
-        { ...EMPTY_FILTERS, home: ["apartment"] },
-        NOW,
-      ),
-    ).toEqual([yes]);
-  });
-
   it("keeps only an animal the shelter marked within skrb", () => {
     const marked = animal("dog", { specialNeeds: true });
     const notMarked = animal("dog", { specialNeeds: false });
@@ -970,83 +936,116 @@ describe("multi-select behavior", () => {
     expect(
       applyFilters(
         [pair, unknown],
-        { ...EMPTY_FILTERS, home: ["indoor-only"], care: ["bonded-pair"] },
+        { ...EMPTY_FILTERS, care: ["bonded-pair"] },
         NOW,
       ),
     ).toEqual([pair]);
   });
 
-  it("ANDs dom and skrb with each other and with the other sections", () => {
-    const both = animal("cat", { apartmentOk: "yes", specialNeeds: true });
-    const homeOnly = animal("cat", { apartmentOk: "yes" });
-    const careOnly = animal("cat", { specialNeeds: true });
-    const otherSpecies = animal("dog", {
-      apartmentOk: "yes",
-      specialNeeds: true,
-    });
+  // Each row is something the visitor can give, so two ticks show the animals
+  // that need either.
+  it("ORs within skrb and ANDs it with the other sections", () => {
+    const pair = animal("cat", { adoptionRequirements: { bondedPair: true } });
+    const patient = animal("cat", { specialNeeds: true });
+    const neither = animal("cat");
+    const otherSpecies = animal("dog", { specialNeeds: true });
 
     expect(
       applyFilters(
-        [both, homeOnly, careOnly, otherSpecies],
-        {
-          ...EMPTY_FILTERS,
-          species: "cat",
-          home: ["apartment"],
-          care: ["patient"],
-        },
+        [pair, patient, neither, otherSpecies],
+        { ...EMPTY_FILTERS, species: "cat", care: ["bonded-pair", "patient"] },
         NOW,
       ),
-    ).toEqual([both]);
+    ).toEqual([pair, patient]);
   });
 
-  it("counts dom as what picking it would leave, its own axis dropped", () => {
-    const apartment = animal("cat", { apartmentOk: "yes" });
-    const house = animal("cat", { apartmentOk: "no" });
-    const counts = homeCounts(
-      [apartment, house],
-      { ...EMPTY_FILTERS, home: ["apartment"] },
-      NOW,
-    );
+  // Every animal needing daily care carried specialNeeds too, so the patience
+  // row used to hold the whole of the daily-care one and ticking both added
+  // nothing. Each animal now answers the row of its most specific need.
+  it("gives each animal to the row of its most specific need", () => {
+    const honey = animal("cat", {
+      specialNeeds: true,
+      adoptionRequirements: { ongoingCare: true },
+    });
+    const neli = animal("cat", {
+      specialNeeds: true,
+      adoptionRequirements: { experiencedCarer: true },
+    });
+    const shy = animal("cat", { specialNeeds: true });
+    const animals = [honey, neli, shy];
 
-    expect(counts.get("apartment")).toBe(1);
+    expect(applyFilters(animals, { ...EMPTY_FILTERS, care: ["patient"] }, NOW)).toEqual([shy]);
+    expect(
+      applyFilters(animals, { ...EMPTY_FILTERS, care: ["patient", "ongoing-care"] }, NOW),
+    ).toEqual([honey, shy]);
+    const counts = careCounts(animals, EMPTY_FILTERS, NOW);
+    expect(counts.get("patient")).toBe(1);
+    expect(counts.get("ongoing-care")).toBe(1);
+    expect(counts.get("experienced-carer")).toBe(1);
   });
 
-  it("still narrows the dom tally by the other sections", () => {
-    const cat = animal("cat", { apartmentOk: "yes" });
-    const dog = animal("dog", { apartmentOk: "yes" });
-    const counts = homeCounts(
-      [cat, dog],
-      { ...EMPTY_FILTERS, species: "cat" },
-      NOW,
-    );
-
-    expect(counts.get("apartment")).toBe(1);
-  });
-
-  it("prices skrb on top of a dom already selected", () => {
-    const both = animal("cat", { apartmentOk: "yes", specialNeeds: true });
-    const homeOnly = animal("cat", { apartmentOk: "yes" });
-    const careOnly = animal("cat", { specialNeeds: true });
+  it("counts skrb as what picking it would leave, its own axis dropped", () => {
+    const patient = animal("cat", { specialNeeds: true });
+    const pair = animal("cat", { adoptionRequirements: { bondedPair: true } });
     const counts = careCounts(
-      [both, homeOnly, careOnly],
-      { ...EMPTY_FILTERS, home: ["apartment"] },
+      [patient, pair],
+      { ...EMPTY_FILTERS, care: ["patient"] },
       NOW,
     );
 
     expect(counts.get("patient")).toBe(1);
+    expect(counts.get("bonded-pair")).toBe(1);
   });
 
-  it("counts each health choice independently of selected health choices", () => {
+  // "Doma imam: Mačko" is how a visitor with a cat says so, and an animal that
+  // has to be the only pet is no match for that home whatever else it records.
+  it("keeps an only-pet animal out of a home that already has a dog or a cat", () => {
+    const onlyPet = animal("cat", {
+      goodWith: { kids: "yes", dogs: "yes", cats: "yes" },
+      adoptionRequirements: { onlyPet: true },
+    });
+    const sociable = animal("cat", {
+      goodWith: { kids: "yes", dogs: "yes", cats: "yes" },
+    });
+
+    expect(
+      applyFilters([onlyPet, sociable], { ...EMPTY_FILTERS, goodWith: ["cats"] }, NOW),
+    ).toEqual([sociable]);
+    expect(
+      applyFilters([onlyPet, sociable], { ...EMPTY_FILTERS, goodWith: ["dogs"] }, NOW),
+    ).toEqual([sociable]);
+    expect(
+      applyFilters([onlyPet, sociable], { ...EMPTY_FILTERS, goodWith: ["kids"] }, NOW),
+    ).toEqual([onlyPet, sociable]);
+  });
+
+  it("prices each health choice on top of the ones already picked", () => {
     const vaccinated = animal("dog", { medical: { vaccinated: true } });
     const neutered = animal("dog", { medical: { neutered: true } });
+    const both = animal("dog", {
+      medical: { vaccinated: true, neutered: true },
+    });
     const counts = toggleCounts(
-      [vaccinated, neutered],
+      [vaccinated, neutered, both],
       { ...EMPTY_FILTERS, toggles: ["cepljenje"] },
       NOW,
     );
 
-    expect(counts.get("cepljenje")).toBe(1);
+    expect(counts.get("cepljenje")).toBe(2);
     expect(counts.get("sterilizacija")).toBe(1);
+  });
+
+  // FIV and FeLV are the one question these filters exist to answer, and a
+  // cat tested for one of them is not the all-clear two ticks ask for.
+  it("never shows a cat tested for one virus under both", () => {
+    const both = animal("cat", { medical: { fiv: "negative", felv: "negative" } });
+    const fivOnly = animal("cat", { medical: { fiv: "negative" } });
+    const filters: Filters = { ...EMPTY_FILTERS, toggles: ["brez-fiv", "brez-felv"] };
+
+    expect(applyFilters([both, fivOnly], filters, NOW)).toEqual([both]);
+    // Taking Brez FeLV off brings back the one cat it alone was holding out.
+    expect(chipGains([both, fivOnly], filters, NOW).get("toggles:brez-felv")).toBe(1);
+    expect(chipGains([both, fivOnly], filters, NOW).get("toggles:brez-fiv")).toBe(0);
   });
 
   it("uses OR for choices within energija and leaves field-less animals out once selected", () => {
@@ -1124,14 +1123,16 @@ describe("shared links for reviewed requirements", () => {
     const outdoorCare = animal("cat", { adoptionRequirements: { indoorOnly: false, ongoingCare: true } });
     const unanswered = animal("cat");
     const animals = [together, indoorCare, outdoorCare, unanswered];
-    const filters: Filters = { ...EMPTY_FILTERS, species: "cat", home: ["indoor-only"], care: ["bonded-pair", "ongoing-care"] };
+    const filters: Filters = { ...EMPTY_FILTERS, species: "cat", care: ["bonded-pair", "ongoing-care"] };
     expect(parseFilters(serializeFilters(filters))).toEqual(filters);
     expect(parseFilters(serializeFilters({ ...filters, care: ["experienced-carer"] })).care).toEqual(["experienced-carer"]);
-    expect(applyFilters(animals, filters, NOW)).toEqual([together, indoorCare]);
+    expect(applyFilters(animals, filters, NOW)).toEqual([together, indoorCare, outdoorCare]);
     expect(careCounts(animals, filters, NOW).get("bonded-pair")).toBe(1);
-    expect(careCounts(animals, filters, NOW).get("ongoing-care")).toBe(1);
+    expect(careCounts(animals, filters, NOW).get("ongoing-care")).toBe(2);
     expect(careCounts(animals, filters, NOW).get("experienced-carer")).toBe(0);
+    // Each of the three answers one row alone, so each row is holding up
+    // exactly the animals only it answers.
     expect(chipGains(animals, filters, NOW).get("care:bonded-pair")).toBe(-1);
-    expect(chipGains(animals, filters, NOW).get("home:indoor-only")).toBe(1);
+    expect(chipGains(animals, filters, NOW).get("care:ongoing-care")).toBe(-2);
   });
 });

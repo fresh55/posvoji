@@ -15,16 +15,12 @@ import {
   goodWithMatches,
   GOOD_WITH_KEYS,
   GROUPS,
-  homeCounts,
-  homeMatches,
-  HOME_KEYS,
   toggleCounts,
   TOGGLES,
   TOGGLE_KEYS,
   type CareKey,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -177,9 +173,8 @@ function slowGroupOk(
 }
 
 function slowTogglesOk(animal: Animal, selected: readonly ToggleKey[]): boolean {
-  if (selected.length === 0) return true;
-  return TOGGLES.some(
-    (toggle) => selected.includes(toggle.key) && toggle.matches(animal),
+  return TOGGLES.every(
+    (toggle) => !selected.includes(toggle.key) || toggle.matches(animal),
   );
 }
 
@@ -188,11 +183,6 @@ function slowGoodWithOk(
   selected: readonly GoodWithKey[],
 ): boolean {
   return selected.every((key) => goodWithMatches(animal, key));
-}
-
-function slowHomeOk(animal: Animal, selected: readonly HomeKey[]): boolean {
-  if (selected.length === 0) return true;
-  return selected.some((key) => homeMatches(animal, key));
 }
 
 function slowCareOk(animal: Animal, selected: readonly CareKey[]): boolean {
@@ -216,7 +206,6 @@ function slowApply(animals: Animal[], filters: Filters): Animal[] {
       slowSpeciesOk(animal, filters.species) &&
       slowTogglesOk(animal, filters.toggles) &&
       slowGoodWithOk(animal, filters.goodWith) &&
-      slowHomeOk(animal, filters.home) &&
       slowCareOk(animal, filters.care) &&
       GROUPS.every((group) => slowGroupOk(animal, group, filters[group])),
   );
@@ -230,7 +219,6 @@ function slowPasses(
   applied: {
     toggles: readonly ToggleKey[];
     goodWith: readonly GoodWithKey[];
-    home: readonly HomeKey[];
     care: readonly CareKey[];
     skipGroup?: MultiGroup;
   },
@@ -239,7 +227,6 @@ function slowPasses(
     slowSpeciesOk(animal, filters.species) &&
     slowTogglesOk(animal, applied.toggles) &&
     slowGoodWithOk(animal, applied.goodWith) &&
-    slowHomeOk(animal, applied.home) &&
     slowCareOk(animal, applied.care) &&
     GROUPS.every(
       (group) =>
@@ -281,7 +268,10 @@ function slowToggleCounts(
 ): Map<string, number> {
   const counts = new Map<string, number>();
   for (const toggle of TOGGLES) {
-    const applied = { ...filters, toggles: [] };
+    const applied = {
+      ...filters,
+      toggles: filters.toggles.filter((selected) => selected !== toggle.key),
+    };
     let total = 0;
     for (const animal of animals) {
       if (!slowPasses(animal, filters, applied)) continue;
@@ -306,26 +296,6 @@ function slowGoodWithCounts(
     for (const animal of animals) {
       if (!slowPasses(animal, filters, applied)) continue;
       if (goodWithMatches(animal, key)) total += 1;
-    }
-    counts.set(key, total);
-  }
-  return counts;
-}
-
-function slowHomeCounts(
-  animals: Animal[],
-  filters: Filters,
-): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const key of HOME_KEYS) {
-    const applied = {
-      ...filters,
-      home: [],
-    };
-    let total = 0;
-    for (const animal of animals) {
-      if (!slowPasses(animal, filters, applied)) continue;
-      if (homeMatches(animal, key)) total += 1;
     }
     counts.set(key, total);
   }
@@ -385,12 +355,6 @@ function slowChipGains(
       goodWith: filters.goodWith.filter((selected) => selected !== key),
     });
   }
-  for (const key of filters.home) {
-    without(`home:${key}`, {
-      ...filters,
-      home: filters.home.filter((selected) => selected !== key),
-    });
-  }
   for (const key of filters.care) {
     without(`care:${key}`, {
       ...filters,
@@ -441,7 +405,7 @@ function states(): Filters[] {
   only({ coatColor: ["black", "white"] });
   only({ coatLength: ["short", "long"] });
   only({ waiting: ["over-6-months", "over-3-years"] });
-  only({ home: ["only-pet"] });
+  only({ care: ["ongoing-care"] });
   only({ energy: ["calm"] });
   only({ energy: ["calm", "lively"] });
   only({ shelter: ["s1"] });
@@ -451,7 +415,7 @@ function states(): Filters[] {
   only({ goodWith: ["kids"] });
   only({ goodWith: ["kids", "dogs"] });
   only({ goodWith: ["kids", "dogs", "cats"] });
-  only({ home: ["apartment"] });
+  only({ care: ["patient", "ongoing-care"] });
   only({ care: ["patient"] });
   only({ species: "cat" });
   only({ species: "dog", size: ["medium"] });
@@ -474,7 +438,6 @@ function states(): Filters[] {
       shelter: some(SHELTERS, 0.35),
       toggles: some(TOGGLE_KEYS, 0.3),
       goodWith: some(GOOD_WITH_KEYS, 0.35),
-      home: some(HOME_KEYS, 0.35),
       care: some(CARE_KEYS, 0.35),
     });
   }
@@ -535,12 +498,8 @@ describe("the indexed engine answers what the definitions do", () => {
     });
   });
 
-  it("agrees on the home and care counts", () => {
+  it("agrees on the care counts", () => {
     STATES.forEach((filters, at) => {
-      expect(
-        entries(homeCounts(ANIMALS, filters, NOW)),
-        where(filters, at),
-      ).toEqual(entries(slowHomeCounts(ANIMALS, filters)));
       expect(
         entries(careCounts(ANIMALS, filters, NOW)),
         where(filters, at),

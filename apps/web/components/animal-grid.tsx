@@ -290,8 +290,6 @@ export function AnimalGrid({
     toggleManyProperties,
     toggleGoodWith,
     toggleManyGoodWith,
-    toggleHome,
-    toggleManyHome,
     toggleCare,
     toggleManyCare,
     setSort,
@@ -464,7 +462,6 @@ export function AnimalGrid({
     toggles,
     toggleTally,
     goodWith,
-    home,
     care,
     chips,
     hasSidebar,
@@ -480,8 +477,6 @@ export function AnimalGrid({
       toggleProperty,
       toggleGoodWith,
       toggleManyGoodWith,
-      toggleHome,
-      toggleManyHome,
       toggleCare,
       toggleManyCare,
     },
@@ -549,7 +544,6 @@ export function AnimalGrid({
             toggles={toggles}
             toggleTally={toggleTally}
             goodWith={goodWith}
-            home={home}
             care={care}
             shelters={shelters}
             shelterTally={counts.shelter}
@@ -766,7 +760,6 @@ export function AnimalGrid({
             toggles={toggles}
             toggleTally={toggleTally}
             goodWith={goodWith}
-            home={home}
             care={care}
             scope={
               shelters && {

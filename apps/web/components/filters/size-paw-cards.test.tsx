@@ -131,7 +131,6 @@ describe("size section reset", () => {
             shelter: [],
             toggles: [],
             goodWith: [],
-            home: [],
             care: [],
           }}
           groups={[{ group, options }]}

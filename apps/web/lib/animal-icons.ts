@@ -1,22 +1,25 @@
 import {
+  Award,
   Baby,
   Palette,
-  Clock,
   Cat,
   Dog,
   Gauge,
   HandHeart,
+  Heart,
   HeartPulse,
-  House,
+  Hourglass,
   MapPin,
   Mars,
   Moon,
   PawPrint,
+  Pill,
   Rabbit,
   Ruler,
   ScanLine,
   Scissors,
   ShieldCheck,
+  Snail,
   Shrub,
   Sprout,
   Syringe,
@@ -26,12 +29,14 @@ import {
   Venus,
   VenusAndMars,
   WavesHorizontal,
+  WavesVertical,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { AnimalSize, EnergyLevel, Sex, Species } from "@posvoji/schema";
 import type {
   AgeGroup,
+  CareKey,
   FilterFacet,
   GoodWithKey,
   ToggleKey,
@@ -46,6 +51,17 @@ export const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
   cip: ScanLine,
   "brez-fiv": ShieldCheck,
   "brez-felv": TestTubeDiagonal,
+};
+
+// One mark per Lahko ponudim row, for the surfaces that draw lucide rather
+// than the section's own glyphs: the active-filter chip and the animal's
+// requirement pills. Each is the nearest lucide shape to the drawn glyph, so
+// the row, the chip and the pill are recognisably the same thing.
+export const CARE_ICONS: Record<CareKey, LucideIcon> = {
+  patient: Snail,
+  "bonded-pair": Heart,
+  "ongoing-care": Pill,
+  "experienced-carer": Award,
 };
 
 // One icon per household question, for the dialog's facts row. The filter
@@ -86,12 +102,15 @@ export const FACET_ICONS: Record<FilterFacet, LucideIcon> = {
   size: Ruler,
   energy: Gauge,
   coatColor: Palette,
-  coatLength: Scissors,
-  waiting: Clock,
+  // Chips and the dialog draw the coat itself (CoatLengthMark). This entry
+  // only keeps the table total, and is not scissors, which are Sterilizacija's.
+  coatLength: WavesVertical,
+  // Chips draw the section's own glass with its sand (WaitingMark). This entry
+  // only keeps the table total, in the site's mark for a long wait.
+  waiting: Hourglass,
   shelter: MapPin,
   toggles: HeartPulse,
   goodWith: Users,
-  home: House,
   care: HandHeart,
 };
 
@@ -151,8 +170,9 @@ export function filterValueGlyph(
   if (facet === "goodWith" && value in GOOD_WITH_ICONS) {
     return { Icon: GOOD_WITH_ICONS[value as GoodWithKey] };
   }
-  // shelter has a value per shelter and no symbol for any of them; dom and
-  // posebna skrb have one value each, so the facet's own mark is already the
-  // value's.
+  if (facet === "care" && value in CARE_ICONS) {
+    return { Icon: CARE_ICONS[value as CareKey] };
+  }
+  // shelter has a value per shelter and no symbol for any of them.
   return { Icon: FACET_ICONS[facet] };
 }

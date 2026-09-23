@@ -9,13 +9,13 @@ import {
 import {
   EMPTY_FILTERS,
   GROUPS,
+  SINGLE_CHOICE_GROUPS,
   filterColour,
   type AgeGroup,
   type WaitingGroup,
   type CareKey,
   type Filters,
   type GoodWithKey,
-  type HomeKey,
   type MultiGroup,
   type SpeciesFilter,
   type ToggleKey,
@@ -42,15 +42,19 @@ const PARAM_NAMES: Record<MultiGroup, string> = {
   shelter: "zavetisce",
 };
 
-type ValueGroup = "goodWith" | "home" | "care";
+type ValueGroup = "goodWith" | "care";
 
 // The value sections are not MultiGroups, so they carry their own param names
 // and their own pair of lookups rather than three copies of the same find().
 const VALUE_PARAM_NAMES: Record<ValueGroup, string> = {
   goodWith: "druzba",
-  home: "dom",
   care: "skrb",
 };
+
+// Dom was its own section, and none of its three answers is a filter any
+// more. The param is still owned, so a link shared from then loses it on the
+// next write rather than carrying a dead "dom=" around for good.
+const RETIRED_PARAMS = ["dom"];
 
 function valueSlug(group: ValueGroup, value: string): string {
   const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
@@ -75,15 +79,23 @@ function fromSlug(group: MultiGroup, slug: string): string | undefined {
   return FILTER_METADATA[group].find((option) => option.slug === slug)?.value;
 }
 
-// Every param name this codec owns. A write that rebuilds the query (see
-// mergeOwnedParams in lib/location-search.ts) needs this list to know which
-// params it is allowed to erase and replace; anything else in the URL is not
-// its business and has to survive untouched.
+// Every param name that filters. The prehydration script watches these to hold
+// the grid back until the filter has been applied.
 export const FILTER_PARAM_NAMES: readonly string[] = [
   "vrsta",
   ...Object.values(PARAM_NAMES),
   "lastnosti",
   ...Object.values(VALUE_PARAM_NAMES),
+];
+
+// Every param name this codec owns. A write that rebuilds the query (see
+// mergeOwnedParams in lib/location-search.ts) needs this list to know which
+// params it is allowed to erase and replace; anything else in the URL is not
+// its business and has to survive untouched. The retired ones are here and not
+// above, since they filter nothing and must not hold the grid back.
+export const OWNED_PARAM_NAMES: readonly string[] = [
+  ...FILTER_PARAM_NAMES,
+  ...RETIRED_PARAMS,
 ];
 
 export function serializeFilters(filters: Filters): string {
@@ -110,7 +122,6 @@ export function serializeFilters(filters: Filters): string {
     );
   };
   setValues("goodWith", filters.goodWith);
-  setValues("home", filters.home);
   setValues("care", filters.care);
   // Commas are legal unencoded, and these links get shared by hand.
   return params.toString().replace(/%2C/g, ",");
@@ -187,10 +198,18 @@ export function parseFilters(search: string): Filters {
     "all";
   // No second dedupe below: paramValues has already made the slugs unique, and
   // every slug-to-value lookup here is one-to-one.
-  const values = (group: MultiGroup): string[] =>
-    paramValues(params, PARAM_NAMES[group])
+  // A single-choice group keeps the first of its answers in the order the
+  // metadata lists them. For V zavetišču that is the widest threshold, which
+  // is all an address from before carrying two ever returned.
+  const values = (group: MultiGroup): string[] => {
+    const picked = paramValues(params, PARAM_NAMES[group])
       .map((valueSlug) => fromSlug(group, valueSlug))
       .filter((value): value is string => value !== undefined);
+    if (group === "shelter" || !SINGLE_CHOICE_GROUPS.includes(group)) return picked;
+    const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
+    const first = options.find(({ value }) => picked.includes(value));
+    return first ? [first.value] : [];
+  };
   const toggles = paramValues(params, "lastnosti").filter(
     (toggleSlug): toggleSlug is ToggleKey =>
       TOGGLES.some((toggle) => toggle.key === toggleSlug),
@@ -211,7 +230,6 @@ export function parseFilters(search: string): Filters {
     shelter: values("shelter"),
     toggles,
     goodWith: codedValues("goodWith") as GoodWithKey[],
-    home: codedValues("home") as HomeKey[],
     care: codedValues("care") as CareKey[],
   });
 }

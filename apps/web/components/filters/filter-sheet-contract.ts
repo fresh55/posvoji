@@ -3,7 +3,6 @@ import type {
   CardGroup,
   CareSection,
   GoodWithSection,
-  HomeSection,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import type {
@@ -38,7 +37,6 @@ export type FilterSheetProps = FilterActionContract & {
   toggles: ToggleDef[];
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
-  home?: HomeSection;
   care?: CareSection;
   scope?: ShelterScope;
   activeCount: number;

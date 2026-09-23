@@ -14,7 +14,6 @@ export type FilterSectionKey =
   | "waiting"
   | "health"
   | "goodWith"
-  | "home"
   | "care";
 
 const STORAGE_KEY = "posvoji:filter-sections";
@@ -33,7 +32,6 @@ const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   waiting: false,
   health: false,
   goodWith: false,
-  home: false,
   care: false,
 };
 
@@ -63,7 +61,6 @@ export const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
   waiting: "waiting",
   toggles: "health",
   goodWith: "goodWith",
-  home: "home",
   care: "care",
   shelter: null,
 };

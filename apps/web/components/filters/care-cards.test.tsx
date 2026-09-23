@@ -51,27 +51,54 @@ describe("CareCards", () => {
   it("invites rather than warns, and says who the section is for", () => {
     renderCards();
 
-    expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Pokaži živali z izrecno navedenimi zahtevami glede posvojitve in skrbi.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Lahko ponudim" })).toBeTruthy();
   });
 
-  it("labels the card as a whole phrase in both locales", () => {
+  // Every row finishes "Lahko ponudim", and they run from what most homes can
+  // give to what few can.
+  it("labels each row as what the visitor can offer, in both locales", () => {
     expect(options.map(({ label }) => label)).toEqual([
-      "Potrpežljiv človek",
-      "Posvojitev v paru",
-      "Izkušen skrbnik",
-      "Redna oskrba",
+      "Potrpežljivost",
+      "Dom za dva",
+      "Dnevno nego",
+      "Izkušeno roko",
     ]);
     expect(careOptions("en").map(({ label }) => label)).toEqual([
-      "Patient person",
-      "Adopt together",
-      "Experienced carer",
-      "Ongoing care",
+      "Patience",
+      "A home for two",
+      "Daily care",
+      "Experience",
     ]);
+  });
+
+  it("says under each row which animals it shows, and ties the line to the row", () => {
+    renderCards();
+
+    for (const { label, description } of options) {
+      const button = screen.getByRole("button", {
+        name: new RegExp(`^${label}, `),
+      });
+      const line = document.getElementById(
+        button.getAttribute("aria-describedby") ?? "",
+      );
+      expect(line?.textContent).toBe(description);
+      expect(button.contains(line)).toBe(true);
+    }
+  });
+
+  it("draws a different mark for every row", () => {
+    renderCards();
+
+    const drawings = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("aria-pressed") !== null)
+      .map((button) =>
+        [...button.querySelectorAll("svg.size-5 > g path")]
+          .map((path) => path.getAttribute("d"))
+          .join("|"),
+      );
+    expect(drawings).toHaveLength(4);
+    expect(new Set(drawings).size).toBe(4);
   });
 
   it("renders one card per facet with its label, count and aria-label", () => {
@@ -122,7 +149,7 @@ describe("CareCards", () => {
     const { onToggleMany } = renderCards({ selected: ["patient"] });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Ponastavi filter posebne skrbi" }),
+      screen.getByRole("button", { name: "Ponastavi, kar lahko ponudim" }),
     );
     expect(onToggleMany).toHaveBeenCalledWith(["patient"]);
   });
@@ -149,14 +176,14 @@ describe("the outcome sentence", () => {
   it("names both numbers", () => {
     renderCards({ selected: ["patient"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali z izrecno navedeno zahtevo glede skrbi. 70 od 489.",
+      "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 70 od 489.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["patient"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Showing animals with an explicitly reported care requirement. 70 of 489.",
+      "Showing animals that need what you can offer. 70 of 489.",
     );
   });
 });
@@ -192,7 +219,7 @@ describe("FilterGroupList", () => {
 
   it("leaves the section out while no animal answers it", () => {
     renderList(undefined);
-    expect(screen.queryByRole("heading", { name: "Posebna skrb" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Lahko ponudim" })).toBeNull();
   });
 
   it("shows the section once a facet can narrow something", () => {
@@ -205,8 +232,8 @@ describe("FilterGroupList", () => {
       onToggleMany: () => undefined,
     });
 
-    expect(screen.getByRole("heading", { name: "Posebna skrb" })).toBeTruthy();
-    openFilterSection("Posebna skrb");
+    expect(screen.getByRole("heading", { name: "Lahko ponudim" })).toBeTruthy();
+    openFilterSection("Lahko ponudim");
     // Only "patient" has a count, so the sidebar draws that option and leaves
     // the rest out. Named rather than counted: one surviving option is also
     // what drawnOptions' keep-the-first fallback leaves behind when every

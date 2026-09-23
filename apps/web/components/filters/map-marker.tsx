@@ -838,9 +838,10 @@ export const Marker = memo(function Marker({
 
       {/* The picked shelters' names under their coin, on a map that writes
           its counts. A pick used to be said by the green fill alone, and the
-          name was a hover away, which a finger never has. Only picked marks,
-          so the crowded middle of the country stays a field of numbers until
-          someone chooses. */}
+          name was a hover away, which a touch screen large enough to draw the
+          markers still never has. Only picked marks, so the crowded middle of
+          the country stays a field of numbers until someone chooses. They
+          leave with the counts on a plate too small to read either. */}
       {showCount && (
         <PickedName
           town={town}
@@ -1080,9 +1081,9 @@ function CountText({
 
 // A picked town's name line, set under everything the marker draws. It rides a
 // translate for the reason CountText does: the town can glide on a species
-// change, and text coordinates would snap while it did. The halo is the
-// plate's own ground drawn under the letters, so the name reads over a region
-// fill, a border or the relief alike.
+// change, and text coordinates would snap while it did. The halo is the page
+// background drawn under the letters, so the name reads over a region fill, a
+// border or the relief alike.
 const PICKED_NAME_SIZE = 3.9;
 function PickedName({ town, names }: { town: Town; names: string[] }) {
   if (names.length === 0) return null;

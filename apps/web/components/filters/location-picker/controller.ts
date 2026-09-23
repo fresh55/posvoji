@@ -334,6 +334,11 @@ export function useLocationPickerController({
   // their own; they are in the list's folded group, each a link to its page,
   // and a mark on the map that cannot be picked was one more thing to read
   // past on the way to the ones that can.
+  const pins: ShelterPin[] = useMemo(
+    () => toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
+    [counts, rows],
+  );
+
   // Picking by distance, once there is somewhere to measure from. Each chip
   // stands for the shelters within its reach that have something to show under
   // the current filters. The rings nest, so the chips work as one choice rather
@@ -341,9 +346,15 @@ export function useLocationPickerController({
   // for as long as everything within it is still picked, and it is tied to the
   // origin it was measured from. Nested toggles made every wider chip covering
   // the same shelters light up at once.
+  //
+  // The chip remembers which shelters it added, so taking it off or narrowing
+  // it takes those off and leaves a shelter the visitor had ticked by hand.
+  // A shelter whose count the filters take to nought after the press drops out
+  // of the chip's reach but stays picked; it is a row like any other then.
   const [chosenRadius, setChosenRadius] = useState<{
     km: number;
     from: string;
+    added: string[];
   } | null>(null);
   const originKey = origin ? `${origin.lat},${origin.lon}` : "";
   const radiusPicks = useMemo(
@@ -372,51 +383,56 @@ export function useLocationPickerController({
     [chosenRadius, counts, origin, originKey, rows, selected],
   );
   // One filter write per press, always: the page's toggle reads the selection
-  // it was rendered with, so two writes in a row would lose the first.
+  // it was rendered with, so two writes in a row would lose the first. Every
+  // write here is either all-added or all-already-picked, which is what
+  // toggleValues needs to add or drop exactly the values it is handed.
   const pickWithin = useCallback(
     (km: number) => {
       const pick = radiusPicks.find((entry) => entry.km === km);
       if (!pick || pick.values.length === 0) return;
-      if (pick.pressed) {
-        // Pressed again: the pick comes off. Same news a region drop gives,
-        // because aria-pressed says one chip came up and not that several
-        // shelters went with it.
-        if (pick.values.length > 1) {
+      const current = radiusPicks.find((entry) => entry.pressed);
+      const added = current ? chosenRadius?.added ?? [] : [];
+      // Taking shelters off says so: aria-pressed can say one chip changed,
+      // not that several shelters went with it.
+      const drop = (values: string[]) => {
+        if (values.length === 0) return;
+        if (values.length > 1) {
           setDropNote({
-            text: sheltersDropped(pick.values.length, locale),
-            after: selected.filter((value) => !pick.values.includes(value)),
+            text: sheltersDropped(values.length, locale),
+            after: selected.filter((value) => !values.includes(value)),
           });
         }
-        onToggleMany(pick.values);
+        onToggleMany(values);
+      };
+      if (pick.pressed) {
+        drop(added.filter((value) => selected.includes(value)));
         setChosenRadius(null);
         return;
       }
-      setChosenRadius({ km, from: originKey });
       if (isDrop(selected, pick.values)) {
-        // Everything within reach is already picked, so this narrows: what
-        // the wider chip added beyond this reach comes off, and nothing picked
-        // by hand does.
-        const previous = radiusPicks.find(
-          (entry) => entry.pressed && entry.km !== km,
-        );
-        const beyond =
-          previous?.values.filter((value) => !pick.values.includes(value)) ??
-          [];
-        if (beyond.length > 0) onToggleMany(beyond);
+        // Everything within reach is picked already, so this narrows: what
+        // the wider chip added beyond this reach comes off.
+        drop(added.filter((value) => !pick.values.includes(value)));
+        setChosenRadius({
+          km,
+          from: originKey,
+          added: added.filter((value) => pick.values.includes(value)),
+        });
         return;
       }
+      const missing = pick.values.filter((value) => !selected.includes(value));
       onToggleMany(pick.values);
+      setChosenRadius({
+        km,
+        from: originKey,
+        added: [...new Set([...added, ...missing])],
+      });
     },
-    [locale, onToggleMany, originKey, radiusPicks, selected],
+    [chosenRadius, locale, onToggleMany, originKey, radiusPicks, selected],
   );
   // The ring the map draws: the chip being asked about, or else the pressed one.
   const ringKm =
     askedRadius ?? radiusPicks.find((pick) => pick.pressed)?.km ?? null;
-  const pins: ShelterPin[] = useMemo(
-    () => toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
-    [counts, rows],
-  );
-
   // Picking a region picks every shelter in it, which is as fine as a map of a
   // country can honestly be. The list is where you drop the ones you did not
   // mean, and the "Izbrano:" line above it is what says what a region click

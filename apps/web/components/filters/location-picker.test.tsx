@@ -20,6 +20,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { LocationPicker } from "./location-picker";
 import { REGION_DWELL_MS, ShelterMap, type ShelterPin } from "./shelter-map";
+import { CHOSEN_PLACE_KEY } from "@/hooks/use-nearby";
 import {
   choosePlace,
   counts,
@@ -2997,6 +2998,54 @@ describe("LocationPicker distance picks", () => {
     expect([pressed("jug"), pressed("zahod")]).toEqual(["true", "false"]);
     expect(chip(20).getAttribute("aria-pressed")).toBe("true");
     expect(chip(50).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("takes off only what it added, never a shelter ticked by hand", async () => {
+    const input = await openPicker({
+      options: [...options, { value: "zahod", label: "Zavetišče Zahod", city: "Kranj" }],
+      counts: new Map([...counts, ["zahod", 3]]),
+      selected: ["zahod"],
+    });
+    await type(input, "1000");
+    choosePlace();
+    const pressed = (value: string) =>
+      screen
+        .getByRole("dialog")
+        .querySelector(`[data-shelter-row='${value}'] button`)!
+        .getAttribute("aria-pressed");
+
+    // Zahod was picked by hand; 50 adds Jug beside it.
+    fireEvent.click(chip(50));
+    expect([pressed("jug"), pressed("zahod")]).toEqual(["true", "true"]);
+
+    // Narrowing to 20 would drop what 50 reached past 20, but 50 added only
+    // Jug, which is inside 20, so Zahod stays.
+    fireEvent.click(chip(20));
+    expect([pressed("jug"), pressed("zahod")]).toEqual(["true", "true"]);
+
+    // And taking 20 off takes Jug, the one it added.
+    fireEvent.click(chip(20));
+    expect([pressed("jug"), pressed("zahod")]).toEqual(["false", "true"]);
+  });
+
+  it("opens measuring from a place remembered from an earlier visit", async () => {
+    localStorage.setItem(
+      CHOSEN_PLACE_KEY,
+      JSON.stringify({
+        location: { status: "matched", at: cityAt("Ljubljana"), label: "Ljubljana" },
+        query: "Ljubljana",
+      }),
+    );
+    await openPicker();
+
+    expect(
+      screen.getByRole("button", { name: "Odstrani izhodišče: Ljubljana" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("dialog").querySelector("[data-shelter-row='jug']")!
+        .textContent,
+    ).toMatch(/km/);
+    expect(chip(20)).toBeTruthy();
   });
 
   it("previews a reach on hover before anything is picked", async () => {

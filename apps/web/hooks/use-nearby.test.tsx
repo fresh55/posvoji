@@ -121,7 +121,7 @@ describe("the chosen place across visits", () => {
     expect(localStorage.getItem(CHOSEN_PLACE_KEY)).toBeNull();
   });
 
-  it("opens the next visit measuring from it, with the field holding its name", () => {
+  it("reads it back on the next visit, with the field holding its name", () => {
     localStorage.setItem(CHOSEN_PLACE_KEY, JSON.stringify(kranj));
     const place = renderHook(useNearbyChosenPlace);
     const query = renderHook(useNearbyQuery);

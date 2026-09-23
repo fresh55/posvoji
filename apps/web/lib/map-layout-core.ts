@@ -56,6 +56,14 @@ export type Town = {
 const MARKER_RADIUS_STEPS = [4.7, 5.8, 7.2] as const;
 const MIN_MARKER_RADIUS = MARKER_RADIUS_STEPS[0];
 
+/** The one radius every coin takes on a map that writes its counts on the
+ *  markers (layoutTowns' `uniform`). The digits carry the count there, so a
+ *  size step only made the quiet shelters' numbers the hardest to read: at
+ *  4.7 two digits set at about 10px on a desktop plate. 6.2 fits three digits
+ *  and sits between the old middle and top steps, so the collision layout
+ *  that separated the old sizes still separates these. */
+export const COUNT_MARKER_RADIUS = 6.2;
+
 // Where the bins cut. Town totals in the live roster run 13 15 18 19 23 23 38
 // 46 50 72 186, so 20 and 50 split it four small, four medium, three large.
 // Absolute and not a share of the busiest town, so a marker does not change
@@ -293,7 +301,13 @@ function coinCount(shelters: ShelterPin[]): number {
   return shelters.reduce((sum, shelter) => sum + Math.max(shelter.count, 0), 0);
 }
 
-export function layoutTowns(pins: ShelterPin[]): Town[] {
+export function layoutTowns(
+  pins: ShelterPin[],
+  { uniform = false }: {
+    /** Size every coin at COUNT_MARKER_RADIUS rather than by its count. */
+    uniform?: boolean;
+  } = {},
+): Town[] {
   // Grouped by town name, not by coordinate. Two shelters in Ljubljana share a
   // marker; two different towns that round to the same point stay two markers
   // and get separated below, rather than silently merging under one name.
@@ -314,7 +328,7 @@ export function layoutTowns(pins: ShelterPin[]): Town[] {
         a.label.localeCompare(b.label, "sl"),
       );
       const { x, y } = project(shelters[0].at);
-      const r = markerRadius(coinCount(shelters));
+      const r = uniform ? COUNT_MARKER_RADIUS : markerRadius(coinCount(shelters));
       const town: Placed = {
         key,
         city: shelters[0].city,

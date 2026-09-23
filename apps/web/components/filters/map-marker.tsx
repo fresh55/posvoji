@@ -167,8 +167,8 @@ const GLYPH_TOO_SMALL = PLATE_TOO_SMALL;
 
 // A count in place of the paw is a number someone has to read, so it asks more
 // of the plate than a glyph does. 640px of stage is (640 - 32) / 320 = 1.9px to
-// the user unit, which sets the smallest coin's two digits at about 8.5px and
-// the largest coin's three at about 10px. Between PLATE_TOO_SMALL and this the
+// the user unit, which sets a COUNT_MARKER_RADIUS coin's two digits at about
+// 10px and its three at about 8px. Between PLATE_TOO_SMALL and this the
 // coin wears the paw instead, which asks less of the eye: a coin with nothing
 // in it read as the hollow "nothing listed" mark. The same container query as
 // PLATE_TOO_SMALL, one step further out, and its exact complement for the paw.
@@ -176,7 +176,7 @@ const COUNT_TOO_SMALL = "@max-[640px]/map-stage:hidden";
 const PAW_WHILE_COUNT_TOO_SMALL = "@min-[640px]/map-stage:hidden";
 
 // Under this radius a mark has no room for digits at any plate size. Every
-// coin clears it (the smallest step draws at 4.25 once markerGeometry takes
+// coin clears it (a count map's coins draw at 5.75 once markerGeometry takes
 // half the stroke off); most satellites do not, and they stay plain discs
 // whose number is one hover away in the callout.
 const MIN_COUNT_RADIUS = 4;

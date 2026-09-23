@@ -213,7 +213,8 @@ export function ShelterMap({
   shading?: "density" | "flat";
   /** Write each shelter's animal count on its marker instead of a paw. The
    *  picker's question is where the animals are, and a number answers it on
-   *  sight where a coin sized into three bins could only hint at it. Off by
+   *  sight where a coin sized into three bins could only hint at it, so every
+   *  coin also takes one size (COUNT_MARKER_RADIUS). Off by
    *  default: the found-animal page asks who to call, not how full they are. */
   countOnMarkers?: boolean;
   /** Per-shelter species breakdown, keyed by shelter id, the same map the
@@ -255,7 +256,10 @@ export function ShelterMap({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const contextFadeId = `map-context-fade-${uid}`;
   const hillshadeClipId = `map-hillshade-clip-${uid}`;
-  const towns = useMemo(() => layoutTowns(pins), [pins]);
+  const towns = useMemo(
+    () => layoutTowns(pins, { uniform: countOnMarkers }),
+    [pins, countOnMarkers],
+  );
   /** What every town paints, as a box each, keyed by the town so an annotation
    *  can leave its own mark out.
    *

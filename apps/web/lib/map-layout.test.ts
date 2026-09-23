@@ -350,6 +350,30 @@ describe("layoutTowns", () => {
   it("handles an empty roster", () => {
     expect(layoutTowns([])).toEqual([]);
   });
+
+  // The panel's two mini maps ask for the same layout on every press, each
+  // from a pin list of its own. The second is answered from the first.
+  it("answers a second list with the same pins from the layout already made", () => {
+    const first = layoutTowns(REAL_PINS);
+    const copy = REAL_PINS.map((shelter) => ({ ...shelter, at: { ...shelter.at } }));
+    expect(layoutTowns(copy)).toBe(first);
+  });
+
+  it("lays out again once any pin reads differently", () => {
+    const first = layoutTowns(REAL_PINS);
+    const moved = REAL_PINS.map((shelter, index) =>
+      index === 0 ? { ...shelter, count: shelter.count + 40 } : shelter,
+    );
+    const again = layoutTowns(moved);
+    expect(again).not.toBe(first);
+    const unpublished = REAL_PINS.map((shelter, index) =>
+      index === 0 ? { ...shelter, selectable: false } : shelter,
+    );
+    expect(layoutTowns(unpublished)).not.toBe(first);
+    expect(layoutTowns(unpublished)).not.toBe(again);
+    // And the answer is the one a fresh layout gives.
+    expect(layoutTowns(REAL_PINS)).toEqual(first);
+  });
 });
 
 // One town holding the given counts, which is what a cluster is made of.

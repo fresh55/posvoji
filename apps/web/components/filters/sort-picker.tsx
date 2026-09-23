@@ -10,6 +10,7 @@ import {
   TreeDeciduous,
   type LucideIcon,
 } from "lucide-react";
+import { memo } from "react";
 import { useI18n } from "@/components/i18n-context";
 import {
   Select,
@@ -97,8 +98,14 @@ const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  it is a framed button already, and the one layout that puts it in this row
  *  is an lg page with no panel beside the grid. That row, where a framed sort
  *  control would stand next to a quiet shelter one, is the place to settle
- *  whether the quiet dress survives at all. It is not settled here. */
-export function SortPicker({
+ *  whether the quiet dress survives at all. It is not settled here.
+ *
+ *  Memoised because a filter press re-renders the whole toolbar around it and
+ *  the order never moves with a filter: every prop here is a string or a
+ *  callback that keeps its identity (setSort in use-animal-filters.ts). The
+ *  Radix Select under it is a deep tree, and at 4x CPU the two copies the
+ *  toolbar mounts cost a few milliseconds of every press's first frame. */
+export const SortPicker = memo(function SortPicker({
   value,
   onChange,
   disabled = false,
@@ -333,4 +340,4 @@ export function SortPicker({
       </SelectContent>
     </Select>
   );
-}
+});

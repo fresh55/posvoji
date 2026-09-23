@@ -47,6 +47,7 @@ import { PawPrint } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useState,
@@ -309,9 +310,16 @@ export function AnimalGrid({
   // renders could bucket an animal differently. Ages here are a property of
   // the export, so they are read off the export.
   const reference = useMemo(() => new Date(referenceDate), [referenceDate]);
+  // The results follow the filters a render behind, at a priority React can
+  // interrupt. The panel answers a press at once from `filters`; the grid
+  // behind it is the expensive half, and drawn in the same render it held the
+  // press's first frame for 150-225ms at 4x CPU, which is exactly where every
+  // section's pick gesture plays. Measured on the built site, colour picks
+  // on Vse and Psi.
+  const shownFilters = useDeferredValue(filters);
   const visible = useMemo(
-    () => applyFilters(animals, filters, reference),
-    [animals, filters, reference],
+    () => applyFilters(animals, shownFilters, reference),
+    [animals, shownFilters, reference],
   );
   // Where Najbližje measures from, granted by the location picker's nearby
   // control and by nothing else. Null on the server and on the first client
@@ -409,9 +417,9 @@ export function AnimalGrid({
   const shelterOnlyEmpty = useMemo(
     () =>
       visible.length === 0 &&
-      filters.shelter.length > 0 &&
-      applyFilters(animals, { ...filters, shelter: [] }, reference).length > 0,
-    [animals, filters, reference, visible.length],
+      shownFilters.shelter.length > 0 &&
+      applyFilters(animals, { ...shownFilters, shelter: [] }, reference).length > 0,
+    [animals, shownFilters, reference, visible.length],
   );
 
   const handleClearAll = useCallback(() => {

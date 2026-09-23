@@ -85,7 +85,13 @@ export function CollapsibleBody({
 
   return (
     <LazyMotion features={domAnimation}>
-      <AnimatePresence initial={false}>
+      {/* presenceAffectsLayout off, because nothing in a section body animates
+          its layout: the fold is a height tween, not a layout projection. Left
+          on, Motion hands the body a new presence context on every render,
+          and every motion component in the section renders again with it, a
+          memoised one included. That was the whole panel's icons redrawn on
+          each filter press, in the render the press's first frame waits for. */}
+      <AnimatePresence initial={false} presenceAffectsLayout={false}>
         {open ? (
           <m.div
             key="body"

@@ -1884,8 +1884,15 @@ function CoatColorPalette({
                 ? "right"
                 : "left"
               : null;
+          // Only a turning ear reads the delay (earBeat), so every other
+          // swatch is handed the default. Computed for all of them, it moved
+          // with celebrationIndex on every pick and was the one prop that
+          // made each unpicked swatch, ears and all, draw again in the
+          // press's own render when nothing about it had changed.
           const noticeDelay =
-            NOTICE_DELAY + Math.abs(index - celebrationIndex) * NOTICE_STEP;
+            beat === "left" || beat === "right"
+              ? NOTICE_DELAY + Math.abs(index - celebrationIndex) * NOTICE_STEP
+              : undefined;
 
           return (
             <button

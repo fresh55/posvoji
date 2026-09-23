@@ -1,6 +1,6 @@
 "use client";
 
-import type { TargetAndTransition, Transition } from "motion/react";
+import type { TargetAndTransition, Transition, Variants } from "motion/react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import type { CoatColorCategory, CoatLength } from "@posvoji/schema";
@@ -33,6 +33,7 @@ import {
   TWO_TONED,
   type CoatColorFacet,
   type FilterOption,
+  type SpeciesFilter,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
@@ -46,14 +47,15 @@ import { cn } from "@/lib/utils";
  * on the row above the most informative one and left the section reading as a
  * checkbox list next to Energija's drawn glyphs.
  *
- * Picking a colour floods it: the dot grows until it fills its own ring. That
- * is the section's one gesture and it says what was chosen without a legend.
+ * Picking a colour turns the swatch into the animal wearing it: the disc grows
+ * the ears of the species tab the visitor is on. That is the section's one
+ * gesture and it says what was chosen without a legend. See EARS.
  *
  * The row keeps the brand fill every other chosen card wears. Painting the row
  * in its own colour was the other way to read "fill", and it does not survive
  * the set: white and cream have no ground that shows against the panel, the
  * label would need a measured ink per colour, and multicolour has no single
- * ground at all. The green says chosen, the flooded swatch says which.
+ * ground at all. The green says chosen, the swatch says which.
  */
 /**
  * The swatch colours, built in OKLCH from the catalogue's own photos.
@@ -191,31 +193,19 @@ function discFill(value: CoatColorFacet): string {
     : SWATCHES.grey;
 }
 
-// 11px across at rest and 17px flooded. The first pass rested at 7.2px, where
-// the white disc vanished into the panel and multicolour's three wedges were
-// 3px apiece and printed as one dark arrowhead. 11px is the smallest the
-// wedges stay three colours at, and the growth to 17 is still the loudest
-// thing that happens on the row.
-const REST_RADIUS = 5.5;
-const FULL_RADIUS = 8.5;
-const RING_RADIUS = 8.5;
-// The flood is the whole point of the gesture, so it is the slowest thing on
-// the card and lands under its own weight rather than easing out.
-const FLOOD_SPRING = { type: "spring", stiffness: 300, damping: 22 } as const;
-const FLOOD_OUT = { duration: 0.16, ease: "easeOut" } as const;
-// The palette's disc, and the ring a picked one wears outside it. 1.1 units of
-// daylight between them at the 36px the grid draws, which is the gap that
-// stops the ring reading as a rim on the swatch itself.
+// Every swatch is this disc, in both layouts: 19 of the box's 24 units. The
+// sheet's tile used to draw a smaller dot inside a ring of its own until a
+// pick flooded it, and a dot resting inside a ring is the mark of a selected
+// radio button, on ten tiles whose real control is the tick box in the
+// corner. The same critique redrew the coat length glyph below. At rest a
+// swatch is only its colour.
 const DISC_RADIUS = 9.5;
-const PICK_RING_RADIUS = 11.4;
-// Where the squash bottoms out, so the ring leaves as the disc comes back up.
-const RING_DELAY = 0.09;
 
 /**
  * A picked swatch stays bigger than the ones around it.
  *
  * The ring alone carried the whole chosen state, and a 1.6px stroke is a
- * thin thing to hang it on in a grid of seven. Size is read before colour
+ * thin thing to hang it on in a grid of ten. Size is read before colour
  * and before outline, so the chosen colours are simply the large ones.
  */
 const PICKED_SCALE = 1.07;
@@ -226,183 +216,612 @@ const HOVER_SCALE = 1.06;
 const HOVER_LIFT = -1.5;
 
 /**
- * How heavy each colour lands.
+ * The animal a picked colour becomes.
  *
- * Energija gives every level its own tempo, and doing the same here needed
- * something a colour actually has. Lightness is it: Črna at L 0.30 is the
- * heaviest thing in the grid and Bela at L 0.975 the lightest, so black
- * lands with a deep squash and settles slowly, and white lands quick and
- * bounces. Nobody will name the rule, but picking black and picking white in
- * turn feels like handling two different objects, which is the whole point.
+ * A disc is a paint chip, and a paint chip says "a colour" where this filter
+ * means a coat. Picked, the swatch grows the ears of the species tab the
+ * visitor is on, so Črna is a black cat on Mačke and a black dog on Psi, and
+ * the chosen colours are the ones that turned into animals. A change of shape
+ * is read before the outline and before the size.
  *
- * Keyed off the designed lightness rather than re-derived from the hex: the
- * value is already a decision recorded in SWATCHES above.
+ * This replaced a pick borrowed from Velikost: each colour squashed and
+ * shoved its neighbours by the weight of its lightness, which is the paws'
+ * idea rather than a colour's, and at 36px the difference between the
+ * heaviest and the lightest landing was too small to see.
+ *
+ * Ostale draws the rabbit its own tab draws. Vse has to draw something and
+ * draws the cat: most of the catalogue is cats (363 of 491 animals on
+ * 23 September 2026).
  */
-const SOLID_WEIGHT = {
-  black: 0.30,
-  brown: 0.47,
-  grey: 0.63,
-  orange: 0.71,
-  multicolour: 0.75,
-  cream: 0.865,
-  white: 0.975,
-} as const satisfies Record<Exclude<CoatColorFacet, `${string}-white`>, number>;
+type EarKind = "cat" | "dog" | "rabbit";
+
+function earKindOf(species: SpeciesFilter): EarKind {
+  if (species === "dog") return "dog";
+  if (species === "other") return "rabbit";
+  return "cat";
+}
+
+/** Tucked behind the head, the tips showing under a pointer, and up. */
+type EarState = "stowed" | "peeking" | "up";
+
+type EarSide = "left" | "right";
+const EAR_SIDES: readonly EarSide[] = ["left", "right"];
+
+// The right ear is the left one in a mirror, so every table below describes
+// one ear. A turn written for the left ear turns the right one the opposite
+// way, which is what a pair of ears does.
+const MIRROR = "translate(24 0) scale(-1 1)";
+
+const p2 = (n: number) => n.toFixed(2);
 
 /**
- * A two-toned swatch is half its colour and half white, so it lands halfway
- * between the two. Črno-bela dips and settles noticeably lighter than Črna,
- * which is the truthful answer and also the useful one: the two sit next to
- * each other in the grid and now feel different to press.
+ * A pointed ear: a triangle with bowed sides and a rounded tip, standing on
+ * the middle of its base and pointing up its own y axis.
  */
-const WEIGHT: Record<CoatColorFacet, number> = {
-  ...SOLID_WEIGHT,
-  // Object.fromEntries widens its keys to string, which is the one place this
-  // needs telling. CoatColorFacet is built from TWO_TONED, so the set of keys
-  // being produced here cannot drift from the set being claimed.
-  ...(Object.fromEntries(
-    TWO_TONED.map((colour) => [
-      `${colour}-white`,
-      (SOLID_WEIGHT[colour] + SOLID_WEIGHT.white) / 2,
-    ]),
-  ) as Record<`${(typeof TWO_TONED)[number]}-white`, number>),
+function pointedEar(width: number, height: number): string {
+  const w = width / 2;
+  return `M${p2(-w)} 0C${p2(-w * 0.72)} ${p2(-height * 0.45)} ${p2(-w * 0.44)} ${p2(-height * 0.85)} ${p2(-w * 0.16)} ${p2(-height * 0.98)}Q0 ${p2(-height * 1.06)} ${p2(w * 0.16)} ${p2(-height * 0.98)}C${p2(w * 0.44)} ${p2(-height * 0.85)} ${p2(w * 0.72)} ${p2(-height * 0.45)} ${p2(w)} 0Z`;
+}
+
+/** A long ear with a round tip, the same way up. */
+function longEar(width: number, height: number): string {
+  const w = width / 2;
+  return `M${p2(-w)} 0C${p2(-w * 1.24)} ${p2(-height * 0.55)} ${p2(-w * 0.84)} ${p2(-height)} 0 ${p2(-height)}C${p2(w * 0.84)} ${p2(-height)} ${p2(w * 1.24)} ${p2(-height * 0.55)} ${p2(w)} 0Z`;
+}
+
+/** Stands an ear's base on the head, `radius` out along `angle` degrees. */
+function earAt(angle: number, radius: number, turn: number): string {
+  return `translate(${at((angle * Math.PI) / 180, radius)}) rotate(${turn})`;
+}
+
+/**
+ * A floppy ear, drawn about the point where it folds over the crown: out and
+ * over the top of the head, down the side of the face, and back up inside it.
+ *
+ * The dog was the hard one at 36px, and three other ears were drawn and
+ * measured first. Round lobes standing off the sides of the disc printed as a
+ * mouse or a bear, pointed ears hanging past the cheeks as an owl, and lobes
+ * laid round the whole side of the face as a pair of headphones. Only an ear
+ * drawn over the face, the way the Psi tab's own dog draws its ears, reads as
+ * a dog at this size.
+ */
+const DOG_EAR =
+  "M0.8 -0.3C-2.4 -1.2 -5.6 0.2 -6.6 3C-7.6 5.8 -7.4 10 -6 11.4C-4.8 12.6 -3.4 11.2 -3 9C-2.6 6.6 -2 4 -0.2 2.2";
+
+type EarPose = { y?: number; rotate?: number; scale?: number; opacity?: number };
+
+type Ear = {
+  /** The left ear as a closed shape, drawn about its pivot. */
+  shape: string;
+  /**
+   * The line an ear lying on the face is drawn with. A pointed or long ear
+   * stands against the page and its silhouette is enough; a floppy one lies
+   * on the head in the head's own colour and needs its edge drawn.
+   */
+  line?: string;
+  /** Where the pivot sits on the head, and which way the ear points. */
+  place: string;
+  /**
+   * In front of the face or behind it. A pointed or long ear slides out from
+   * behind the disc; a floppy ear hangs over the face, which is where a dog's
+   * ear is.
+   */
+  inFront: boolean;
+  pose: Record<EarState, EarPose>;
+  /**
+   * How the ear comes up. The species is in the spring as much as in the
+   * shape: a cat's ear snaps up, a rabbit's shoots up and wobbles, a dog's
+   * flops and swings.
+   */
+  spring: Transition;
 };
 
-type Landing = {
-  spring: { type: "spring"; stiffness: number; damping: number };
-  squash: number;
-  overshoot: number;
-  rippleScale: number;
-  rippleDuration: number;
-};
-
-function landingOf(colour: CoatColorFacet): Landing {
-  const light = WEIGHT[colour];
-  const heavy = 1 - light;
-  return {
-    // Light colours are stiffer and less damped: quicker, and they bounce.
-    spring: {
-      type: "spring",
-      stiffness: Math.round(420 + light * 260),
-      damping: +(26 - light * 10).toFixed(1),
+// A stowed ear slides down its own axis until its tip is under the edge of
+// the disc, so it is hidden behind the head. Peeking, the tip clears the edge
+// by about a unit and a half.
+const EARS: Record<EarKind, Ear> = {
+  cat: {
+    shape: pointedEar(8.4, 8.2),
+    place: earAt(-128, 6.6, -38),
+    inFront: false,
+    pose: { stowed: { y: 6.6 }, peeking: { y: 3.8 }, up: { y: 0 } },
+    spring: { type: "spring", stiffness: 520, damping: 22 },
+  },
+  dog: {
+    shape: `${DOG_EAR}Z`,
+    line: DOG_EAR,
+    place: "translate(8.6 3.4)",
+    inFront: true,
+    pose: {
+      stowed: { rotate: -80, scale: 0.3, opacity: 0 },
+      peeking: { rotate: -40, scale: 0.75, opacity: 1 },
+      up: { rotate: 0, scale: 1, opacity: 1 },
     },
-    squash: +(1 - (0.06 + 0.1 * heavy)).toFixed(3),
-    overshoot: +(PICKED_SCALE + 0.04 + 0.1 * heavy).toFixed(3),
-    // A heavy colour throws a wider, slower splash. It has to clear the
-    // selection ring to be seen at all: at 1.35 it expanded to exactly where
-    // the ring lands and the two sat on top of each other, so the splash
-    // read as nothing happening.
-    rippleScale: +(1.75 + 0.35 * heavy).toFixed(2),
-    rippleDuration: +(0.34 + 0.22 * heavy).toFixed(2),
-  };
-}
+    spring: { type: "spring", stiffness: 320, damping: 14 },
+  },
+  // Shorter than a rabbit's ear wants to be. Any taller and the tips of a
+  // picked swatch on the second row reach the count under the first.
+  rabbit: {
+    shape: longEar(3.9, 7),
+    place: earAt(-106, 7.4, -20),
+    inFront: false,
+    pose: { stowed: { y: 6.2 }, peeking: { y: 3.6 }, up: { y: 0 } },
+    spring: { type: "spring", stiffness: 600, damping: 19 },
+  },
+};
+
+type SwatchKey = keyof typeof SWATCHES;
 
 /**
- * The splash a pick throws, in the colour that threw it.
- *
- * Brand green for every swatch made the seven picks identical, and the one
- * thing the gesture could say for free is which colour just landed. Pale
- * colours throw a quiet splash, which is the right amount for a pale colour.
- * Multicolour throws its orange wedge, the only one of its three with enough
- * presence on both panels.
+ * The colour each ear is painted, left then right: the patch of the coat it
+ * grows out of. Črno-bela's black half is on the left, so its left ear is
+ * black and its right one white, which is what makes it a tuxedo. Večbarvna's
+ * white wedge is on the left and its black one on the right.
  */
-function rippleColour(colour: CoatColorFacet): string {
-  if (colour === "multicolour") return SWATCHES.orange;
-  // A two-toned pick splashes in its own colour, not in the white half.
+function earCoats(colour: CoatColorFacet): readonly [SwatchKey, SwatchKey] {
+  if (colour === "multicolour") return ["white", "black"];
   const pair = twoTonedOf(colour);
-  if (pair) return SWATCHES[pair];
-  // Bela would splash white on the light panel, which is nothing at all. Grey
-  // is the neighbouring step of the same ramp, so the splash still reads as
-  // the pale end of the palette rather than as the selection green.
-  //
-  // The mirror case, Črna splashing on the dark panel, is left alone: it is
-  // the colour whose ring and size change most, so the gesture lands without
-  // it, and the only fixes are a second mode-aware token or a colour that is
-  // not the swatch's.
-  if (colour === "white") return SWATCHES.grey;
-  return discFill(colour);
+  if (pair) return [pair, "white"];
+  const solid: SwatchKey = colour in SWATCHES ? (colour as SwatchKey) : "grey";
+  return [solid, solid];
 }
 
 /**
- * How far a painted swatch turns when it is picked.
- *
- * Far enough that the swatch lands on itself, so the spin is unmistakable
- * while it runs and the resting state is identical to the one before it.
- * Večbarvna's three wedges repeat every third of a turn. A two-toned pair
- * looks like it should repeat at a half, and does not: half a turn swaps the
- * colour and the white, so a chosen Črno-bela sat mirrored against every
- * unchosen one beside it. Two colours only come back at a whole turn.
- *
- * A plain disc has no boundary, and turning one is work nobody can see.
+ * The line a floppy ear is drawn with, per coat it lies on: light on the dark
+ * coats and dark on the light ones. It cannot be SWATCH_EDGE, which on the
+ * dark panel is white at 40% and vanishes against a white coat.
  */
-function turnOf(colour: CoatColorFacet): number {
-  if (colour === "multicolour") return 120;
-  return twoTonedOf(colour) ? 360 : 0;
+const EAR_INK: Record<SwatchKey, string> = {
+  black: "rgb(255 255 255 / 0.5)",
+  brown: "rgb(255 255 255 / 0.45)",
+  grey: "rgb(255 255 255 / 0.55)",
+  orange: "rgb(40 30 20 / 0.38)",
+  cream: "rgb(40 30 20 / 0.38)",
+  white: "rgb(40 30 20 / 0.38)",
+};
+
+/**
+ * Why a swatch moves on its own: it has just been picked, or another one has
+ * and this one, picked already, turns an ear towards it.
+ */
+type EarBeat =
+  | { kind: "picked" }
+  | { kind: "noticed"; toward: EarSide; delay: number };
+
+const JUST_PICKED: EarBeat = { kind: "picked" };
+
+// Once the ears are up, each species plays the gesture its tab plays: the cat
+// flicks an ear, the dog tilts its head while its ears swing, the rabbit hops.
+// Tweens, because each is a keyframe list.
+const CAT_FLICK: Pose = {
+  animate: { rotate: [0, -24, 7, 0] },
+  transition: { duration: 0.3, delay: 0.62, times: [0, 0.3, 0.65, 1], ease: "easeInOut" },
+};
+// A rabbit's ears trail its hop.
+const RABBIT_EARS_TRAIL: Pose = {
+  animate: { rotate: [0, 10, -4, 0] },
+  transition: { duration: 0.42, delay: 0.42, times: [0, 0.45, 0.8, 1], ease: "easeInOut" },
+};
+const DOG_TILT: Pose = {
+  animate: { rotate: [0, -9, 3, 0] },
+  transition: { duration: 0.62, delay: 0.38, times: [0, 0.35, 0.7, 1], ease: "easeInOut" },
+};
+// Three and a half units is 5px on the palette's 36px swatch.
+const RABBIT_HOP: Pose = {
+  animate: { y: [0, -3.4, 0, 0], scaleY: [1, 1, 0.92, 1] },
+  transition: { duration: 0.42, delay: 0.42, times: [0, 0.45, 0.8, 1], ease: "easeInOut" },
+};
+const EAR_STILL: Pose = { animate: { rotate: 0 }, transition: { duration: 0.2 } };
+const SWATCH_STILL: Pose = {
+  animate: { rotate: 0, y: 0, scaleY: 1 },
+  transition: { duration: 0.2 },
+};
+
+// The neighbours' answer, in place of the shove the old pick sent through the
+// grid: every colour already picked turns the ear nearer the new one towards
+// it, a beat after it lands, the far ones a little later. Energija's
+// neighbours lean away; these listen.
+const NOTICE_DELAY = 0.2;
+const NOTICE_STEP = 0.06;
+const NOTICE_TURN: Record<EarKind, TargetAndTransition> = {
+  cat: { rotate: [0, -16, 0] },
+  dog: { rotate: [0, -9, 0] },
+  rabbit: { rotate: [0, -16, 0] },
+};
+
+function earBeat(kind: EarKind, side: EarSide, beat: EarBeat | null): Pose {
+  if (beat?.kind === "picked") {
+    if (kind === "cat" && side === "right") return CAT_FLICK;
+    if (kind === "rabbit") return RABBIT_EARS_TRAIL;
+  }
+  if (beat?.kind === "noticed" && beat.toward === side) {
+    return {
+      animate: NOTICE_TURN[kind],
+      transition: {
+        duration: 0.26,
+        delay: beat.delay,
+        times: [0, 0.35, 1],
+        ease: "easeInOut",
+      },
+    };
+  }
+  return EAR_STILL;
+}
+
+function swatchBeat(kind: EarKind, beat: EarBeat | null): Pose {
+  if (beat?.kind !== "picked") return SWATCH_STILL;
+  if (kind === "dog") return DOG_TILT;
+  if (kind === "rabbit") return RABBIT_HOP;
+  return SWATCH_STILL;
 }
 
 /**
- * What the swatches that were not picked do about it.
- *
- * Energija leans its neighbours away from the card that fired; a grid can do
- * the same in two axes. A pick shoves the swatches around it outward along
- * the line from the one that landed, hardest next door and dying off with
- * distance, and the heavy colours shove harder: Črna moves the grid and Bela
- * barely disturbs it. It is the same weight that drives the squash, so the
- * whole gesture is one idea rather than two.
- *
- * Small on purpose. These are 36px discs on a 50px pitch, and anything past
- * about 2px reads as the grid coming apart rather than as recoil.
+ * How long a pick holds its beat open, because the beat snaps to rest when
+ * the hold clears. The longest are the dog's tilt (0.38 + 0.62s) and the
+ * farthest neighbour's notice across ten swatches (0.2 + 9 * 0.06 + 0.26s).
  */
-const GRID_COLUMNS = 4;
-const NUDGE_MAX = 2.4;
-const NUDGE_DECAY = 0.55;
-const NUDGE_RECOIL = 0.35;
-const NUDGE_DURATION = 0.32;
-const NUDGE_TIMES = [0, 0.3, 0.62, 1];
-const NUDGE_STEP_DELAY = 0.035;
+const EAR_BEAT_MS = 1050;
+// The tick lands once the ears are up, not while they are still coming.
+const EAR_CHECK_DELAY = 0.3;
 
-/** Where a swatch sits in the grid, so the shove has a direction. */
-function cellAt(index: number): { col: number; row: number } {
-  return { col: index % GRID_COLUMNS, row: Math.floor(index / GRID_COLUMNS) };
-}
+// Motion owns transform-origin, so the origins are spelled as originX and
+// originY rather than as a CSS value it would write over. view-box, because an
+// ear's pivot is the origin of the frame its placement puts it in, and a
+// fill-box origin would move with the ear's own shape.
+const PIVOT = { transformBox: "view-box", originX: 0, originY: 0 } as const;
+const CENTRE_ORIGIN = { transformBox: "view-box", originX: 0.5, originY: 0.5 } as const;
+// A hop lands on the swatch's feet.
+const FOOT_ORIGIN = { transformBox: "view-box", originX: 0.5, originY: 1 } as const;
 
-type Nudge = { x: number[]; y: number[]; delay: number } | null;
+/**
+ * What a leaving ear needs that its last render could not know.
+ *
+ * A reset asks for its delay in the same render that unpicks the colours, and
+ * that render is the one that takes the ears away, so the delay reaches them
+ * through AnimatePresence's custom rather than through their own props.
+ */
+type EarExit = { delay: number; instant: boolean };
 
-function nudgeFrom(
-  index: number,
-  sourceIndex: number,
-  sourceColour: CoatColorFacet,
-): Nudge {
-  if (sourceIndex < 0 || index === sourceIndex) return null;
-  const here = cellAt(index);
-  const from = cellAt(sourceIndex);
-  const dx = here.col - from.col;
-  const dy = here.row - from.row;
-  const distance = Math.hypot(dx, dy);
-  if (distance === 0) return null;
-  // A floor under the weight, so the palest colours still move the grid a
-  // little. On a bare (1 - weight) Bela came out at 0.06px, which rounds to
-  // nothing: the lightest colour did not disturb its neighbours at all,
-  // which reads as the effect being broken rather than as Bela being light.
-  // 0.65px to 1.86px across the set, still plainly two different weights.
-  const push = 0.25 + 0.75 * (1 - WEIGHT[sourceColour]);
-  const amplitude = NUDGE_MAX * push * NUDGE_DECAY ** (distance - 1);
-  if (amplitude < 0.1) return null;
-  const ux = (dx / distance) * amplitude;
-  const uy = (dy / distance) * amplitude;
+const tuck = ({ delay, instant }: EarExit): Transition =>
+  instant ? { duration: 0 } : { duration: 0.17, ease: "easeIn", delay };
+
+function poseVariants(ear: Ear): Variants {
   return {
-    x: [0, ux, -ux * NUDGE_RECOIL, 0],
-    y: [0, uy, -uy * NUDGE_RECOIL, 0],
-    // The shove radiates: the far swatches are reached a beat after the near
-    // ones, rather than the whole grid twitching at once.
-    delay: (distance - 1) * NUDGE_STEP_DELAY,
+    stowed: (exit: EarExit) => ({ ...ear.pose.stowed, transition: tuck(exit) }),
+    peeking: ({ instant }: EarExit) => ({
+      ...ear.pose.peeking,
+      transition: instant ? { duration: 0 } : FILTER_HOVER_SPRING,
+    }),
+    up: ({ instant }: EarExit) => ({
+      ...ear.pose.up,
+      transition: instant ? { duration: 0 } : ear.spring,
+    }),
   };
+}
+
+const POSE_VARIANTS: Record<EarKind, Variants> = {
+  cat: poseVariants(EARS.cat),
+  dog: poseVariants(EARS.dog),
+  rabbit: poseVariants(EARS.rabbit),
+};
+
+// A floppy ear's line draws itself down the ear as the ear comes up, the way
+// the species tabs ink their glyphs in. The opacity is the switch: a
+// pathLength of 0 with a round cap still paints a dot.
+const INK_VARIANTS: Variants = {
+  stowed: (exit: EarExit) => ({ pathLength: 0, opacity: 0, transition: tuck(exit) }),
+  peeking: ({ instant }: EarExit) => ({
+    pathLength: 0.6,
+    opacity: 1,
+    transition: instant ? { duration: 0 } : { pathLength: { duration: 0.2 }, opacity: { duration: 0.08 } },
+  }),
+  up: ({ instant }: EarExit) => ({
+    pathLength: 1,
+    opacity: 1,
+    transition: instant
+      ? { duration: 0 }
+      : {
+          pathLength: { duration: 0.3, delay: 0.03, ease: "easeOut" },
+          opacity: { duration: 0.08, delay: 0.03 },
+        },
+  }),
+};
+
+/**
+ * The ring a picked swatch wore, now drawn round the whole animal.
+ *
+ * The same silhouette is stroked twice under the fills: in the page's own
+ * ground out to OUTLINE_GAP, which keeps daylight between the animal and its
+ * outline, and in brand green OUTLINE_RING wide beyond that. Each stroke is
+ * centred on the edge, so its inner half is under the animal and only the
+ * outer half shows. The ground is --background because the sidebar is
+ * lg:bg-background (animal-grid.tsx); the sheet's tile turns green instead and
+ * draws no outline.
+ */
+const OUTLINE_GAP = 1.9;
+const OUTLINE_RING = 1.4;
+
+type OutlinePaint = "ring" | "gap";
+
+function outlineVariants(width: number): Variants {
+  return {
+    off: ({ delay, instant }: EarExit) => ({
+      strokeWidth: 0,
+      transition: instant ? { duration: 0 } : { duration: 0.15, ease: "easeOut", delay },
+    }),
+    // It follows the ears out rather than arriving with them.
+    on: ({ instant }: EarExit) => ({
+      strokeWidth: width,
+      transition: instant ? { duration: 0 } : { duration: 0.26, delay: 0.12, ease: "easeOut" },
+    }),
+  };
+}
+
+const OUTLINE: Record<OutlinePaint, { stroke: string; variants: Variants }> = {
+  ring: {
+    stroke: "var(--brand-strong)",
+    variants: outlineVariants(2 * (OUTLINE_GAP + OUTLINE_RING)),
+  },
+  gap: { stroke: "var(--background)", variants: outlineVariants(2 * OUTLINE_GAP) },
+};
+
+// The body settles back to its size after a pick through a squash and an
+// overshoot, the one landing every colour shares now.
+const PICK_POP: Transition = { duration: 0.42, times: [0, 0.22, 0.58, 1], ease: "easeOut" };
+
+type EarPairProps = {
+  kind: EarKind;
+  state: EarState;
+  beat: EarBeat | null;
+  exit: EarExit;
+};
+
+/**
+ * Both ears, in one paint.
+ *
+ * The palette draws its ears three times over, as the outline's two strokes
+ * and as the coat, and every copy has to move exactly with the others or the
+ * outline slides off the ear it is drawn round. One component handed the same
+ * state is how three copies stay one ear.
+ */
+function EarPair({
+  kind,
+  state,
+  beat,
+  exit,
+  children,
+}: EarPairProps & { children: (side: EarSide) => ReactNode }) {
+  const ear = EARS[kind];
+
+  return (
+    <>
+      {EAR_SIDES.map((side) => {
+        const flick = exit.instant ? EAR_STILL : earBeat(kind, side, beat);
+        return (
+          <g key={side} transform={side === "right" ? MIRROR : undefined}>
+            <g transform={ear.place}>
+              <m.g
+                style={PIVOT}
+                variants={POSE_VARIANTS[kind]}
+                custom={exit}
+                initial="stowed"
+                animate={state}
+                exit="stowed"
+              >
+                {/* Its own group, because the beat and the pose would
+                    otherwise write one transform: a flick arriving while the
+                    ear is still springing up would cut the spring off. */}
+                <m.g style={PIVOT} animate={flick.animate} transition={flick.transition}>
+                  {children(side)}
+                </m.g>
+              </m.g>
+            </g>
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+/** The ears in the coat's own colours. */
+function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet }) {
+  const ear = EARS[pair.kind];
+  const coats = EAR_COATS[colour];
+
+  return (
+    <g data-ears={pair.kind}>
+      <EarPair {...pair}>
+        {(side) => {
+          const coat = coats[side === "left" ? 0 : 1];
+          if (!ear.line) {
+            return (
+              <path
+                d={ear.shape}
+                fill={SWATCHES[coat]}
+                stroke={SWATCH_EDGE}
+                strokeWidth={1}
+                strokeLinejoin="round"
+              />
+            );
+          }
+          return (
+            <>
+              <path d={ear.shape} fill={SWATCHES[coat]} />
+              <m.path
+                d={ear.line}
+                fill="none"
+                stroke={EAR_INK[coat]}
+                strokeWidth={1.1}
+                strokeLinecap="round"
+                variants={INK_VARIANTS}
+                custom={pair.exit}
+                initial="stowed"
+                animate={pair.state}
+                exit="stowed"
+              />
+            </>
+          );
+        }}
+      </EarPair>
+    </g>
+  );
+}
+
+/**
+ * One of the outline's two strokes: round the disc and round both ears. Only
+ * a picked swatch draws it; a peeking one keeps the copies at zero width so
+ * they have followed the ears the whole way when a click turns them on.
+ */
+function EarOutline({
+  paint,
+  checked,
+  ...pair
+}: EarPairProps & { paint: OutlinePaint; checked: boolean }) {
+  const ear = EARS[pair.kind];
+  const { stroke, variants } = OUTLINE[paint];
+
+  return (
+    <m.g
+      fill="none"
+      stroke={stroke}
+      strokeLinejoin="round"
+      variants={variants}
+      custom={pair.exit}
+      initial="off"
+      animate={checked ? "on" : "off"}
+      exit="off"
+    >
+      <circle cx={CENTRE} cy={CENTRE} r={DISC_RADIUS} />
+      <EarPair {...pair}>{() => <path d={ear.shape} />}</EarPair>
+    </m.g>
+  );
+}
+
+/**
+ * A colour, as the palette and the sheet's tiles both draw it: a disc at rest,
+ * and the animal wearing it once it is picked.
+ *
+ * The ears exist only while they are showing. Each ear is two motion nodes in
+ * up to three layers, and the palette and the sheet are both mounted below
+ * lg, so ears drawn stowed at rest would be idle motion nodes on every colour
+ * nobody has touched.
+ *
+ * Each presence says initial={false}: the ears of a colour already picked when
+ * the section opens are simply there, and only a pick or a pointer brings them
+ * up. The boundary is also what lets them come up at all. The splash this
+ * palette used to throw mounted on demand under the same parents and played
+ * its entrance already finished until it had a presence of its own.
+ */
+function CoatColorSwatch({
+  colour,
+  kind,
+  checked,
+  peeking,
+  beat,
+  resetDelay,
+  outlined,
+  pickedScale,
+  className,
+}: {
+  colour: CoatColorFacet;
+  kind: EarKind;
+  checked: boolean;
+  /** A pointer or keyboard focus is on it: the tips of the ears show. */
+  peeking: boolean;
+  beat: EarBeat | null;
+  /** Holds this swatch back so a reset empties the section in order. */
+  resetDelay: number;
+  /** Draws the chosen state as an outline round the animal. */
+  outlined: boolean;
+  /** How large a picked swatch rests. */
+  pickedScale: number;
+  className: string;
+}) {
+  const shouldReduceMotion = useReducedMotion() ?? false;
+  const ear = EARS[kind];
+  const state: EarState = checked ? "up" : peeking ? "peeking" : "stowed";
+  const shown = state !== "stowed";
+  const exit: EarExit = { delay: resetDelay, instant: shouldReduceMotion };
+  const moving = shouldReduceMotion ? null : beat;
+  const pair: EarPairProps = { kind, state, beat: moving, exit };
+  const whole = swatchBeat(kind, moving);
+  const rest = checked ? pickedScale : 1;
+  const faces = FACES[colour];
+
+  return (
+    <svg viewBox="0 0 24 24" data-swatch={colour} className={className} aria-hidden>
+      <m.g
+        style={kind === "rabbit" ? FOOT_ORIGIN : CENTRE_ORIGIN}
+        initial={false}
+        animate={whole.animate}
+        transition={whole.transition}
+      >
+        <m.g
+          style={CENTRE_ORIGIN}
+          initial={false}
+          animate={{
+            scale: moving?.kind === "picked" ? [1, 0.93, 1.12, rest] : rest,
+          }}
+          transition={
+            shouldReduceMotion
+              ? { duration: 0 }
+              : moving?.kind === "picked"
+                ? PICK_POP
+                : checked
+                  ? FILTER_HOVER_SPRING
+                  : { duration: 0.18, ease: "easeOut", delay: resetDelay }
+          }
+        >
+          {outlined && (
+            <>
+              <AnimatePresence initial={false} custom={exit}>
+                {shown && (
+                  <EarOutline key={kind} paint="ring" checked={checked} {...pair} />
+                )}
+              </AnimatePresence>
+              <AnimatePresence initial={false} custom={exit}>
+                {shown && (
+                  <EarOutline key={kind} paint="gap" checked={checked} {...pair} />
+                )}
+              </AnimatePresence>
+            </>
+          )}
+          {/* Both presences stay mounted whichever way the ears are drawn, so
+              switching from Mačke to Psi sends the cat's ears down behind the
+              head while the dog's come up in front of it. */}
+          <AnimatePresence initial={false} custom={exit}>
+            {shown && !ear.inFront && <EarCoat key={kind} colour={colour} {...pair} />}
+          </AnimatePresence>
+          {faces ? (
+            faces.map(({ d, fill }) => <path key={d} d={d} fill={fill} />)
+          ) : (
+            <circle cx={CENTRE} cy={CENTRE} r={DISC_RADIUS} fill={DISC[colour]} />
+          )}
+          {/* The white face has no edge of its own against the panel, so the
+              disc is closed by a hairline; for the dark colours it is the
+              fill again and changes nothing. */}
+          <circle
+            cx={CENTRE}
+            cy={CENTRE}
+            r={DISC_RADIUS}
+            fill="none"
+            stroke={SWATCH_EDGE}
+            strokeWidth={faces ? 1.2 : 1}
+          />
+          <AnimatePresence initial={false} custom={exit}>
+            {shown && ear.inFront && <EarCoat key={kind} colour={colour} {...pair} />}
+          </AnimatePresence>
+        </m.g>
+      </m.g>
+    </svg>
+  );
 }
 
 const RIPPLE_OPACITY = 0.45;
 const RIPPLE_SCALE = 1.45;
 const RIPPLE_DURATION = 0.42;
 const CELEBRATION_MS = 700;
-// The tick lands as the flood settles, not while the disc is still growing.
+// Dolžina dlake's tick. Barva's waits for its ears: EAR_CHECK_DELAY.
 const CHECK_DELAY = 0.18;
 
 /**
@@ -410,11 +829,10 @@ const CHECK_DELAY = 0.18;
  *
  * Every one of these is a pure function of the facet, and there are ten
  * facets, so computing them per swatch per render was rebuilding the same
- * path strings and spring objects on every keystroke of filtering, twice
- * over below lg where both layouts are mounted. The tables are the
- * authoritative option list from FILTER_METADATA rather than a second
- * enumeration, so a new colour cannot be added to the filter and forgotten
- * here.
+ * path strings on every keystroke of filtering, twice over below lg where both
+ * layouts are mounted. The tables are the authoritative option list from
+ * FILTER_METADATA rather than a second enumeration, so a new colour cannot be
+ * added to the filter and forgotten here.
  */
 const FACETS = FILTER_METADATA.coatColor.map(({ value }) => value);
 const FACET_VALUES = new Set<string>(FACETS);
@@ -429,114 +847,10 @@ function colourOf(value: string): CoatColorFacet {
   return FACET_VALUES.has(value) ? (value as CoatColorFacet) : "grey";
 }
 
-/** The two radii any swatch is ever drawn at: the sheet tile and the grid. */
-const TILE_FACES = byFacet((colour) => facesOf(colour, FULL_RADIUS));
-const PALETTE_FACES = byFacet((colour) => facesOf(colour, DISC_RADIUS));
-const LANDING = byFacet(landingOf);
-const TURN = byFacet(turnOf);
-const RIPPLE = byFacet(rippleColour);
+/** The one radius any swatch is drawn at now, in every layout. */
+const FACES = byFacet((colour) => facesOf(colour, DISC_RADIUS));
 const DISC = byFacet(discFill);
-
-function CoatSwatch({
-  colour,
-  checked,
-  className,
-}: {
-  colour: CoatColorFacet;
-  checked: boolean;
-  className: string;
-}) {
-  const shouldReduceMotion = useReducedMotion();
-  const transition = shouldReduceMotion
-    ? { duration: 0 }
-    : checked
-      ? FLOOD_SPRING
-      : FLOOD_OUT;
-
-  const faces = TILE_FACES[colour];
-  if (faces) {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        data-swatch={colour}
-        className={className}
-        aria-hidden
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r={RING_RADIUS}
-          fill="none"
-          stroke={SWATCH_EDGE}
-          strokeWidth="1.4"
-        />
-        {/* A painted face has no radius to grow, so this half of the gesture
-            is a scale. transform-box is spelled out: the initial value
-            differs between the SVG attribute and the CSS property, and
-            without it a group scales about the viewport origin rather than
-            the disc. */}
-        <m.g
-          style={{ transformBox: "view-box", transformOrigin: "12px 12px" }}
-          initial={false}
-          animate={{ scale: checked ? 1 : REST_RADIUS / FULL_RADIUS }}
-          transition={transition}
-        >
-          {faces.map(({ d, fill }) => (
-            <path key={d} d={d} fill={fill} />
-          ))}
-          {/* The white face has no edge of its own against the panel, so the
-              disc is closed by a hairline. non-scaling-stroke keeps it 1.4px
-              at both ends of the flood instead of thinning with the group. */}
-          <circle
-            cx="12"
-            cy="12"
-            r={FULL_RADIUS}
-            fill="none"
-            stroke={SWATCH_EDGE}
-            strokeWidth="1.4"
-            vectorEffect="non-scaling-stroke"
-          />
-        </m.g>
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      data-swatch={colour}
-      className={className}
-      aria-hidden
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r={RING_RADIUS}
-        fill="none"
-        stroke={SWATCH_EDGE}
-        strokeWidth="1.4"
-      />
-      {/* r rather than a scale: a circle carries its own radius, and animating
-          it keeps the disc concentric with the ring without a transform box to
-          reason about.
-
-          The disc carries the edge too. A resting white dot is white on the
-          panel's own white and was simply not there; stroking the disc gives
-          it a boundary at every radius, and for the dark colours the stroke is
-          the fill again and changes nothing. */}
-      <m.circle
-        cx="12"
-        cy="12"
-        fill={DISC[colour]}
-        stroke={SWATCH_EDGE}
-        strokeWidth="1"
-        initial={false}
-        animate={{ r: checked ? FULL_RADIUS : REST_RADIUS }}
-        transition={transition}
-      />
-    </svg>
-  );
-}
+const EAR_COATS = byFacet(earCoats);
 
 // The body the coat sits on. One arc, the same in all four glyphs, so the
 // only thing that differs between them is what hangs off it.
@@ -730,6 +1044,8 @@ const SWAY_ORIGIN = {
 export type CoatIconMotion = {
   hovered: boolean;
   pressed: boolean;
+  /** This card has just been picked and its gesture is still playing. */
+  celebrating: boolean;
   /** Another option in this section has just been picked. */
   ruffling: boolean;
   /** How many rows away the picked one is. */
@@ -1001,11 +1317,15 @@ function CoatCards({
 }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
+  // A colour's beat outlasts a coat's draught, and the hold is what the tail
+  // of either snaps back at.
   const {
     celebration,
     celebrate,
     clear: clearCelebration,
-  } = useOneShotCelebration<string>(CELEBRATION_MS);
+  } = useOneShotCelebration<string>(
+    group === "coatColor" ? EAR_BEAT_MS : CELEBRATION_MS,
+  );
   const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
     selected.length,
     options.length,
@@ -1053,6 +1373,7 @@ function CoatCards({
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
           pressed: pressedValue === value,
+          celebrating,
           ruffling: celebrationIndex >= 0 && !celebrating,
           neighbourDistance: Math.abs(index - celebrationIndex),
           resetDelay,
@@ -1081,7 +1402,7 @@ function CoatCards({
             <FilterCardMark
               layout={layout}
               checked={checked}
-              appearDelay={CHECK_DELAY}
+              appearDelay={group === "coatColor" ? EAR_CHECK_DELAY : CHECK_DELAY}
             />
             <FilterCardIconWell
               layout={layout}
@@ -1133,7 +1454,7 @@ export function CoatColorChipSwatch({ value }: { value: string }) {
 
   return (
     <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
-      {PALETTE_FACES[colour]?.map(({ d, fill }) => (
+      {FACES[colour]?.map(({ d, fill }) => (
         <path key={d} d={d} fill={fill} />
       )) ?? <circle cx="12" cy="12" r={DISC_RADIUS} fill={DISC[colour]} />}
       <circle
@@ -1203,122 +1524,6 @@ export function CoatColorDots({ values }: { values: readonly string[] }) {
   );
 }
 
-/** The swatch as the palette draws it: a disc, and a ring once it is picked. */
-function PaletteSwatch({
-  colour,
-  checked,
-  celebrating,
-  resetDelay,
-}: {
-  colour: CoatColorFacet;
-  checked: boolean;
-  /** True for the one swatch whose pick is still playing. */
-  celebrating: boolean;
-  /** Holds this swatch's ring back so a reset winks them out in order. */
-  resetDelay: number;
-}) {
-  const shouldReduceMotion = useReducedMotion();
-  const landing = LANDING[colour];
-  // The ring waits for the squash. On PICK_SPRING with no delay it was fully
-  // out by 45ms, before the disc had finished dipping, so the sequence read
-  // as a ring that had always been there over a swatch that twitched. Held
-  // back, it sweeps out as the disc rebounds, which is one gesture.
-  const ring = shouldReduceMotion
-    ? { duration: 0 }
-    : checked
-      ? { ...landing.spring, delay: RING_DELAY }
-      : { ...FLOOD_OUT, delay: resetDelay };
-
-  const paletteFaces = PALETTE_FACES[colour];
-
-  // The whole swatch, ring included, carries the chosen size. Celebrating, it
-  // gets there through a squash and an overshoot instead of straight.
-  const playing = celebrating && !shouldReduceMotion;
-  const bodyScale = playing
-    ? [1, landing.squash, landing.overshoot, PICKED_SCALE]
-    : checked
-      ? PICKED_SCALE
-      : 1;
-
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      data-swatch={colour}
-      className="size-9 overflow-visible"
-      aria-hidden
-    >
-      <m.g
-        style={{ transformBox: "view-box", transformOrigin: "12px 12px" }}
-        initial={false}
-        animate={{ scale: bodyScale }}
-        transition={
-          shouldReduceMotion
-            ? { duration: 0 }
-            : celebrating
-              ? { duration: 0.42, times: [0, 0.22, 0.55, 1], ease: "easeOut" }
-              : checked
-                ? landing.spring
-                : { duration: 0.18, ease: "easeOut" }
-        }
-      >
-        {paletteFaces ? (
-          <>
-            {/* Picked, the faces turn to their own next boundary, so the
-                motion is unmistakable and the resting state is identical to
-                the one before it. See turnOf. */}
-            <m.g
-              style={{ transformBox: "view-box", transformOrigin: "12px 12px" }}
-              initial={false}
-              animate={{ rotate: checked ? TURN[colour] : 0 }}
-              transition={
-                shouldReduceMotion ? { duration: 0 } : landing.spring
-              }
-            >
-              {paletteFaces.map(({ d, fill }) => (
-                <path key={d} d={d} fill={fill} />
-              ))}
-            </m.g>
-            <circle
-              cx="12"
-              cy="12"
-              r={DISC_RADIUS}
-              fill="none"
-              stroke={SWATCH_EDGE}
-              strokeWidth="1.2"
-            />
-          </>
-        ) : (
-          <circle
-            cx="12"
-            cy="12"
-            r={DISC_RADIUS}
-            fill={DISC[colour]}
-            stroke={SWATCH_EDGE}
-            strokeWidth="1"
-          />
-        )}
-        {/* The ring springs out of the disc it belongs to rather than fading
-            in over it, so a pick is something that happens rather than a
-            class that was always going to be there. It is the brand green
-            every other chosen card wears, kept off the colour itself. */}
-        <m.circle
-          cx="12"
-          cy="12"
-          fill="none"
-          stroke="var(--brand-strong)"
-          strokeWidth="1.4"
-          initial={false}
-          animate={{
-            r: checked ? PICK_RING_RADIUS : DISC_RADIUS,
-            opacity: checked ? 1 : 0,
-          }}
-          transition={ring}
-        />
-      </m.g>
-    </svg>
-  );
-}
-
 /**
  * Colour in the sidebar is a palette, not a list.
  *
@@ -1344,14 +1549,15 @@ function CoatColorPalette({
   onToggleMany,
   layout,
   collapse,
-}: CoatCardsProps) {
+  kind,
+}: CoatCardsProps & { kind: EarKind }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const {
     celebration,
     celebrate,
     clear: clearCelebration,
-  } = useOneShotCelebration<string>(CELEBRATION_MS);
+  } = useOneShotCelebration<string>(EAR_BEAT_MS);
   const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
     selected.length,
     options.length,
@@ -1363,21 +1569,17 @@ function CoatColorPalette({
   const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover();
   const label = groupLabel("coatColor", locale);
 
-  // Which swatch fired, so the rest of the grid knows where the shove came
-  // from. Read once per render rather than per swatch.
+  // Which swatch was just picked, so the colours already picked know which
+  // way to turn an ear. Read once per render rather than per swatch.
   const celebrationIndex = options.findIndex(
     ({ value }) => value === celebration?.value,
   );
-  const celebrationColour =
-    celebrationIndex >= 0
-      ? colourOf(options[celebrationIndex].value)
-      : "grey";
 
   const touchedOption = options.find(({ value }) => value === hoveredValue);
   // Naming the chosen colours here too was the first draft, and it bought
-  // nothing: a chosen swatch is already wearing its ring, and the swatch is
-  // the colour. So the line has one job when idle, which is the rule nobody
-  // can see.
+  // nothing: a chosen swatch is already an animal in its outline, and the
+  // swatch is the colour. So the line has one job when idle, which is the
+  // rule nobody can see.
   const readout = touchedOption
     ? `${touchedOption.label} · ${animalCount(counts.get(touchedOption.value) ?? 0, locale)}`
     : COLOUR_HINT[locale];
@@ -1388,7 +1590,7 @@ function CoatColorPalette({
       active={selected.length > 0}
       onReset={() => {
         clearCelebration();
-        // Rings wink out one after another rather than all at once, which is
+        // Ears go down one after another rather than all at once, which is
         // what Energija's reset does and what makes clearing a section read
         // as one gesture instead of a frame drop.
         beginReset();
@@ -1419,13 +1621,19 @@ function CoatColorPalette({
           const checked = selected.includes(value);
           const dead = isDeadOption(count, checked);
           const celebrating = celebration?.value === value && checked;
-          const colour = colourOf(value);
-          const landing = LANDING[colour];
           const hovered = hoveredValue === value;
-          const resetDelay = resetDelayOf(index);
-          const nudge =
-            celebration && !shouldReduceMotion
-              ? nudgeFrom(index, celebrationIndex, celebrationColour)
+          // A colour picked earlier hears the new one land and turns the ear
+          // on its side, later the further away it is.
+          const beat: EarBeat | null = celebrating
+            ? JUST_PICKED
+            : checked && celebrationIndex >= 0
+              ? {
+                  kind: "noticed",
+                  toward: index < celebrationIndex ? "right" : "left",
+                  delay:
+                    NOTICE_DELAY +
+                    Math.abs(index - celebrationIndex) * NOTICE_STEP,
+                }
               : null;
 
           return (
@@ -1452,34 +1660,14 @@ function CoatColorPalette({
                 "grid justify-items-center gap-0.5 py-1",
               )}
             >
-              {/* Two wrappers, because two things move this swatch and they
-                  overlap in time: the shove a neighbour's pick sends, and
-                  the lift the pointer gives. Folded onto one element they
-                  would have to share a transition, and a spring and a
-                  four-step keyframe list are not the same animation. */}
-              <m.span
-                className="relative grid size-9 place-items-center"
-                initial={{ x: 0, y: 0 }}
-                animate={nudge ? { x: nudge.x, y: nudge.y } : { x: 0, y: 0 }}
-                transition={
-                  nudge
-                    ? {
-                        duration: NUDGE_DURATION,
-                        times: NUDGE_TIMES,
-                        delay: nudge.delay,
-                        ease: "easeOut",
-                      }
-                    : { duration: 0.16 }
-                }
-              >
               {/* The lift every other section's icon answers a pointer with,
                   which the palette lost when its rows became a grid. Keyboard
                   focus gets it too: useFilterCardHover sets hoveredValue on a
                   focus-visible focus. An explicit resting pose, not
                   initial={false}: Motion cascades that to descendants, and
-                  the splash below is a child. */}
+                  the ears are descendants. */}
               <m.span
-                className="grid place-items-center"
+                className="grid size-9 place-items-center"
                 initial={{ y: 0, scale: 1 }}
                 animate={{
                   y: hovered ? HOVER_LIFT : 0,
@@ -1489,45 +1677,17 @@ function CoatColorPalette({
                   shouldReduceMotion ? { duration: 0 } : FILTER_HOVER_SPRING
                 }
               >
-                {/* Its own presence boundary, with initial back on.
-                    CollapsibleBody wraps every filter section in
-                    <AnimatePresence initial={false}> so a fold does not
-                    replay its contents, and that flag reaches every motion
-                    child below it: this splash mounted already finished, at
-                    opacity 0 and full scale, in the first frame after every
-                    pick. Measured, not guessed - see the frame probe. A
-                    nested AnimatePresence that says initial re-enables mount
-                    animations for its own subtree and nothing else. */}
-                <AnimatePresence initial>
-                {celebrating && !shouldReduceMotion ? (
-                  <m.span
-                    key={`ring-${celebration?.id}`}
-                    className="pointer-events-none absolute size-9 rounded-full border-2"
-                    style={{ borderColor: RIPPLE[colour] }}
-                    // Keyframes, not initial-to-animate. A mount animation
-                    // here played instantly: the splash was at opacity 0 and
-                    // full scale in the first frame after every pick, on
-                    // every colour. A keyframe list always runs from its
-                    // first entry, so it cannot be short-circuited by what an
-                    // ancestor says about initial.
-                    animate={{
-                      opacity: [RIPPLE_OPACITY, 0],
-                      scale: [0.9, landing.rippleScale],
-                    }}
-                    transition={{
-                      duration: landing.rippleDuration,
-                      ease: "easeOut",
-                    }}
-                  />
-                ) : null}
-                </AnimatePresence>
-                <PaletteSwatch
-                  colour={colour}
+                <CoatColorSwatch
+                  colour={colourOf(value)}
+                  kind={kind}
                   checked={checked}
-                  celebrating={celebrating}
-                  resetDelay={resetDelay}
+                  peeking={hovered}
+                  beat={beat}
+                  resetDelay={resetDelayOf(index)}
+                  outlined
+                  pickedScale={PICKED_SCALE}
+                  className="size-9 overflow-visible"
                 />
-              </m.span>
               </m.span>
               <CountRoll
                 value={count}
@@ -1546,25 +1706,43 @@ function CoatColorPalette({
   );
 }
 
-export function CoatColorCards(props: CoatCardsProps) {
+export function CoatColorCards({
+  species,
+  ...props
+}: CoatCardsProps & {
+  /** The tab the visitor is on, which decides whose ears a colour grows. */
+  species: SpeciesFilter;
+}) {
   const { locale } = useI18n();
+  const kind = earKindOf(species);
 
-  if (props.layout === "sidebar") return <CoatColorPalette {...props} />;
+  if (props.layout === "sidebar") {
+    return <CoatColorPalette {...props} kind={kind} />;
+  }
 
   return (
     <CoatCards
       {...props}
       group="coatColor"
       hint={COLOUR_HINT[locale]}
-      renderIcon={({ value, checked, dead }) => (
-        <CoatSwatch
+      renderIcon={({ value, checked, dead, motion }) => (
+        <CoatColorSwatch
           colour={colourOf(value)}
+          kind={kind}
           checked={checked}
+          peeking={motion.hovered}
+          beat={motion.celebrating ? JUST_PICKED : null}
+          resetDelay={motion.resetDelay}
+          // The tile turns green when it is picked, which is the chosen state
+          // every sheet tile wears; an outline inside it would say it twice.
+          // It keeps its size for the same reason.
+          outlined={false}
+          pickedScale={1}
           className={cn(
             // Bigger than the 20px glyph the other sections put in this well.
             // A swatch is the answer itself rather than a picture of it, and
             // the sheet is the only layout that still draws one in a tile.
-            "size-6.5 transition-opacity duration-200",
+            "size-6.5 overflow-visible transition-opacity duration-200",
             // A dead option keeps its full ink everywhere else in the filters,
             // and a swatch is the one icon where that reads as available. Its
             // count says 0 and its tick box is not drawn; the colour steps

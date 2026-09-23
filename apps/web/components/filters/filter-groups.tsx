@@ -55,6 +55,7 @@ import {
   type Filters,
   type GoodWithKey,
   type MultiGroup,
+  type SpeciesFilter,
   type ToggleDef,
   type ToggleKey,
 } from "@/lib/filters";
@@ -100,6 +101,11 @@ type GroupProps = {
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   collapse?: SectionCollapse;
+  /**
+   * The species tab. Only Barva reads it: a picked colour grows the ears of
+   * the animal being browsed.
+   */
+  species?: SpeciesFilter;
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
@@ -355,10 +361,14 @@ function SexGroup({
 // Every group names its own renderer. The declared return type is what makes a
 // new CardGroup fail to compile here rather than inherit whichever branch
 // happens to be last.
-function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
+function FilterGroup({
+  group,
+  species = "all",
+  ...rest
+}: GroupProps): ReactElement {
   switch (group) {
     case "coatColor":
-      return <CoatColorCards {...rest} />;
+      return <CoatColorCards {...rest} species={species} />;
     case "coatLength":
       return <CoatLengthCards {...rest} />;
     case "waiting":
@@ -636,6 +646,7 @@ export function FilterGroupList({
                     selected={selected}
                     onToggle={(value) => onToggle(group, value)}
                     onToggleMany={(values) => onToggleMany(group, values)}
+                    species={filters.species}
                   />
                 );
               })}

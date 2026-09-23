@@ -276,18 +276,32 @@ function earAt(angle: number, radius: number, turn: number): string {
 }
 
 /**
- * A floppy ear, drawn about the point where it folds over the crown: out and
- * over the top of the head, down the side of the face, and back up inside it.
+ * A long floppy ear, drawn about the point where it folds over the crown: out
+ * over the top of the head and down the side of the face to below the cheek,
+ * a spaniel's ear, lying in front of the face.
  *
- * The dog was the hard one at 36px, and three other ears were drawn and
- * measured first. Round lobes standing off the sides of the disc printed as a
- * mouse or a bear, pointed ears hanging past the cheeks as an owl, and lobes
- * laid round the whole side of the face as a pair of headphones. Only an ear
- * drawn over the face, the way the Psi tab's own dog draws its ears, reads as
- * a dog at this size.
+ * The dog is the hard one at 36px. Round lobes standing off the sides of the
+ * disc printed as a mouse or a bear, the same lobes tucked behind the head as
+ * a seal, pointed ears hanging past the cheeks as an owl, and ears flopped
+ * outward as a teddy bear. A short ear drawn as a line over the face read as
+ * a helmet. What reads as a dog is a long ear in front of the face that
+ * frames it, together with DOG_NOSE: the nose is what makes a round head with
+ * hanging ears a face at all.
  */
 const DOG_EAR =
-  "M0.8 -0.3C-2.4 -1.2 -5.6 0.2 -6.6 3C-7.6 5.8 -7.4 10 -6 11.4C-4.8 12.6 -3.4 11.2 -3 9C-2.6 6.6 -2 4 -0.2 2.2";
+  "M-0.3 0C-3.4 -0.4 -6 1 -7 3.6C-8 6.4 -8.2 10.2 -7.4 12.6C-6.8 14.4 -5 14.8 -4.1 13.4C-3.2 12 -3.3 9.2 -3 7C-2.7 4.8 -1.8 2.6 0.4 1.4Z";
+
+/**
+ * The dog's nose, low on the face. The cat has none: its pointed ears make a
+ * face of the disc on their own, and a nose on the cat was one more mark in a
+ * 36px drawing.
+ */
+const DOG_NOSE =
+  "M10.5 14.6h3c.5 0 .7.5.4.9l-1.5 1.6c-.2.2-.6.2-.8 0l-1.5-1.6c-.3-.4-.1-.9.4-.9Z";
+
+// A nose is dark, except on a coat too dark to show it, where it is drawn in
+// the light ink the ear lines use there.
+const LIGHT_NOSE_ON = new Set<CoatColorFacet>(["black", "brown", "grey"]);
 
 type EarPose = { y?: number; rotate?: number; scale?: number; opacity?: number };
 
@@ -295,11 +309,13 @@ type Ear = {
   /** The left ear as a closed shape, drawn about its pivot. */
   shape: string;
   /**
-   * The line an ear lying on the face is drawn with. A pointed or long ear
-   * stands against the page and its silhouette is enough; a floppy one lies
-   * on the head in the head's own colour and needs its edge drawn.
+   * Whether the ear's edge is inked. A pointed or long ear stands against the
+   * page and its silhouette is enough; a floppy one lies on the head in the
+   * head's own colour and needs its edge drawn.
    */
-  line?: string;
+  inked?: boolean;
+  /** A mark on the face that comes with this animal's ears. */
+  nose?: string;
   /** Where the pivot sits on the head, and which way the ear points. */
   place: string;
   /**
@@ -329,8 +345,9 @@ const EARS: Record<EarKind, Ear> = {
     spring: { type: "spring", stiffness: 520, damping: 22 },
   },
   dog: {
-    shape: `${DOG_EAR}Z`,
-    line: DOG_EAR,
+    shape: DOG_EAR,
+    inked: true,
+    nose: DOG_NOSE,
     place: "translate(8.6 3.4)",
     inFront: true,
     pose: {
@@ -530,6 +547,20 @@ const INK_VARIANTS: Variants = {
   }),
 };
 
+// The nose arrives once the ears have come down round the face, and only for
+// a pick: under a pointer the ears are only half out, and a nose on a disc
+// with no face yet is a dot.
+const NOSE_VARIANTS: Variants = {
+  stowed: (exit: EarExit) => ({ scale: 0, opacity: 0, transition: tuck(exit) }),
+  peeking: (exit: EarExit) => ({ scale: 0, opacity: 0, transition: tuck(exit) }),
+  up: (exit: EarExit) => ({
+    scale: 1,
+    opacity: 1,
+    transition: timed(exit, { type: "spring", stiffness: 520, damping: 18, delay: 0.18 }),
+  }),
+};
+const NOSE_ORIGIN = { transformBox: "fill-box", originX: 0.5, originY: 0.5 } as const;
+
 /**
  * The ring a picked swatch wore, now drawn round the whole animal.
  *
@@ -665,7 +696,7 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
       <EarPair {...pair}>
         {(side) => {
           const coat = coats[side === "left" ? 0 : 1];
-          if (!ear.line) {
+          if (!ear.inked) {
             return (
               <path
                 d={ear.shape}
@@ -680,11 +711,11 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
             <>
               <path d={ear.shape} fill={SWATCHES[coat]} />
               <m.path
-                d={ear.line}
+                d={ear.shape}
                 fill="none"
                 stroke={EAR_INK[coat]}
                 strokeWidth={1.1}
-                strokeLinecap="round"
+                strokeLinejoin="round"
                 variants={INK_VARIANTS}
                 custom={pair.exit}
                 initial="stowed"
@@ -695,6 +726,19 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
           );
         }}
       </EarPair>
+      {ear.nose && (
+        <m.path
+          d={ear.nose}
+          data-nose=""
+          fill={LIGHT_NOSE_ON.has(colour) ? EAR_INK.black : SWATCHES.black}
+          style={NOSE_ORIGIN}
+          variants={NOSE_VARIANTS}
+          custom={pair.exit}
+          initial="stowed"
+          animate={pair.state}
+          exit="stowed"
+        />
+      )}
     </g>
   );
 }

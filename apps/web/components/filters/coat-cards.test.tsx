@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -75,6 +81,17 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     renderColours({ layout, species, selected: ["black"] });
 
     expect(earsOf("Črna")).toBe(ears);
+  });
+
+  it("gives the dog a nose and the cat none", () => {
+    // A round head with floppy ears printed as a helmet until it had a nose;
+    // the cat's pointed ears make a face without one.
+    renderColours({ layout, species: "dog", selected: ["black"] });
+    expect(swatchOf("Črna").querySelector("[data-nose]")).not.toBeNull();
+    cleanup();
+
+    renderColours({ layout, species: "cat", selected: ["black"] });
+    expect(swatchOf("Črna").querySelector("[data-nose]")).toBeNull();
   });
 
   it("draws a colour nobody has picked as a plain disc", () => {

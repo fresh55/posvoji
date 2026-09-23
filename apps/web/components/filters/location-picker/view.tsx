@@ -62,6 +62,11 @@ export function LocationPickerView({
             setQuery("");
             event.preventDefault();
           } else if (expandedShelter && (window.matchMedia(DESKTOP_QUERY).matches || sheetOpen)) {
+            // Focus on the link inside the panel would go down with it and
+            // land on the dialog root; the row it belongs to takes it first.
+            if (document.activeElement?.closest("[data-shelter-details-panel]")) {
+              controller.rowRefs.current.get(expandedShelter)?.focus();
+            }
             setExpandedShelter(null);
             event.preventDefault();
           }

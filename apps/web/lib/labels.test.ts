@@ -8,6 +8,7 @@ import {
   longStayMonths,
   registerDateLabel,
   shelterChipLabel,
+  shelterListLabel,
   shelterSelectionLabel,
 } from "./labels";
 
@@ -210,6 +211,22 @@ describe("registerDateLabel", () => {
   // reading it locally moves it into the previous day west of Greenwich.
   it("prints an unparseable value as it was written", () => {
     expect(registerDateLabel("kmalu", "sl")).toBe("kmalu");
+  });
+});
+
+describe("shelterListLabel", () => {
+  it("drops the operator in brackets and keeps the rest of the name", () => {
+    expect(shelterListLabel("Obalno zavetišče (Marjetica Koper)")).toBe(
+      "Obalno zavetišče",
+    );
+    expect(shelterListLabel("Zavetišče Maribor (Snaga)")).toBe(
+      "Zavetišče Maribor",
+    );
+    expect(shelterListLabel("Zavetišče Ljubljana")).toBe("Zavetišče Ljubljana");
+  });
+
+  it("keeps a name that would be a fragment without its bracket", () => {
+    expect(shelterListLabel("AB (Društvo)")).toBe("AB (Društvo)");
   });
 });
 

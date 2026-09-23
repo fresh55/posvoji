@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatKm } from "@/lib/geo";
+import { shelterListLabel } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +127,9 @@ export function ShelterRows({
   hideInfoLabel,
   infoText,
   hideInfoText,
+  shortenNames = false,
+  detailsHref,
+  detailsLinkText,
 }: {
   rows: ShelterRow[];
   /** Per-shelter animal count, shown as a badge on a toggle row. Unused by a
@@ -209,6 +213,15 @@ export function ShelterRows({
    *  and each is expected to contain its tooltip's string verbatim so the
    *  accessible name still holds the visible label (WCAG 2.5.3). */
   hideInfoText?: string;
+  /** Draw each toggle row's name without its operator parenthetical (see
+   *  shelterListLabel). The full name moves into the row's details, and the
+   *  name's title keeps it for a pointer. */
+  shortenNames?: boolean;
+  /** Where a shelter's own page is, for a link at the foot of its details.
+   *  Omitted, the details carry no link. */
+  detailsHref?: (value: string) => string;
+  /** The words on that link, in the reader's language. */
+  detailsLinkText?: string;
 }) {
   const localRefs = useRef(new Map<string, ShelterRowElement>());
   // True while the pointer sits inside the list. `highlighted` only ever
@@ -249,9 +262,9 @@ export function ShelterRows({
   // the tab order is what reaches the second control inside a row: arrows
   // between items, Tab within one, the same division a composite widget makes.
   // Folded in, ArrowDown would have to answer "the next shelter" and "this
-  // shelter's other control" with one key. Nothing inside the opened panel is
-  // focusable either (ShelterDetails carries no button at all), so opening a
-  // row adds no stop the walk would otherwise strand.
+  // shelter's other control" with one key. The one control inside an opened
+  // panel, the link to the shelter's page, is reached the same way: by Tab
+  // from the row's own controls, never by the arrows.
   const moveFocus = (event: KeyboardEvent, value: string) => {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -374,6 +387,7 @@ export function ShelterRows({
           const disabled = count === 0 && !checked;
           const summary = summaries.get(value);
           const isExpanded = expanded === value;
+          const shownLabel = shortenNames ? shelterListLabel(label) : label;
           const showDetails = Boolean(onToggleExpanded && hasDetails(summary));
           // Selection puts nothing on the row's surface at all: any shared fill,
           // however faint, makes two adjacent picked rows read as one shape,
@@ -473,7 +487,7 @@ export function ShelterRows({
                       disabled ? "text-inherit" : "text-foreground",
                     )}
                   >
-                    {label}
+                    {shownLabel}
                   </span>
                   {/* Where, and how far: the two facts a location picker is
                       for. The longest wait rode this line too, on eight rows
@@ -628,8 +642,27 @@ export function ShelterRows({
               <CollapsibleContent>
                 {/* One quiet inset surface groups the overview without adding
                   another card border or shadow to the shelter list. */}
-                <div className="mb-2 ml-6 mr-2 rounded-ui bg-muted/40 p-3">
+                <div data-shelter-details-panel className="mb-2 ml-6 mr-2 rounded-ui bg-muted/40 p-3">
+                  {/* The name in full when the row shortened it: the
+                      bracket names the operator, which is worth knowing once
+                      somebody asks about the shelter. */}
+                  {shownLabel !== label && (
+                    <p className="mb-3 text-xs text-muted-foreground">{label}</p>
+                  )}
                   <ShelterDetails summary={summary} matchingCount={count} />
+                  {/* A link, not a second action: the footer's count stays
+                      the one thing in the dialog that applies anything. This
+                      answers "who are they" (address, contact, every animal)
+                      before somebody commits to a shelter. */}
+                  {detailsHref && detailsLinkText && (
+                    <a
+                      href={detailsHref(value)}
+                      className="-mb-2 mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                    >
+                      {detailsLinkText}
+                      <ChevronRight className="size-3.5" aria-hidden />
+                    </a>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>

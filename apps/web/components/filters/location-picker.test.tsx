@@ -2848,6 +2848,28 @@ describe("LocationPicker audit regressions", () => {
       ),
     );
   });
+  it("hands focus back to the row when Escape closes details from their link", async () => {
+    await openPicker({
+      summaries: new Map<string, ShelterSummary>([
+        ["sever", { species: [{ species: "dog", count: 3 }] }],
+      ]),
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pokaži podrobnosti za Zavetišče Sever" }),
+    );
+    const link = screen.getByRole("link", { name: "O zavetišču" });
+    expect(link.getAttribute("href")).toBe("/zavetisca/sever");
+    link.focus();
+    fireEvent.keyDown(link, { key: "Escape" });
+
+    expect(screen.queryByRole("link", { name: "O zavetišču" })).toBeNull();
+    expect(
+      document.activeElement?.closest("[data-shelter-row]")?.getAttribute(
+        "data-shelter-row",
+      ),
+    ).toBe("sever");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
   it("notes what narrows the counts only while a filter does", async () => {
     await openPicker();
     expect(

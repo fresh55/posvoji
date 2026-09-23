@@ -418,9 +418,10 @@ export function useLocationPickerController({
   // nothing else dropped keyboard focus on the body and the restore was not
   // optional. The control that collapses now is the row's own trigger: it
   // stays mounted, it stays exactly where it was, and it keeps focus by
-  // itself. Nothing inside the panel is focusable either (ShelterDetails
-  // carries no button at all), so a collapse can never strand focus inside the
-  // region it closes. Moving focus here would be the surprise, not the fix.
+  // itself. The panel's one focusable, the link to the shelter's page, can
+  // only be collapsed out from under by Escape, and view.tsx hands focus back
+  // to the row before that collapse. Moving focus here would be the surprise,
+  // not the fix.
   const toggleExpandedShelter = useCallback((value: string) => {
     setExpandedShelter((current) => (current === value ? null : value));
   }, []);

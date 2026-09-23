@@ -545,6 +545,8 @@ const sl = {
   hideShelterDetailsFor: "Skrij podrobnosti za {label}",
   showShelterDetailsShort: "Pokaži podrobnosti",
   hideShelterDetails: "Skrij podrobnosti",
+  // The link out of a shelter's details in the picker, to its own page.
+  aboutShelter: "O zavetišču",
   lessThanOneKm: "manj kot 1 km",
   shelter: "Zavetišče",
   noAnimalsListed: "Trenutno brez objavljenih živali",
@@ -879,6 +881,7 @@ const en: Messages = {
   hideShelterDetailsFor: "Hide details for {label}",
   showShelterDetailsShort: "Show details",
   hideShelterDetails: "Hide details",
+  aboutShelter: "About this shelter",
   lessThanOneKm: "less than 1 km",
   shelter: "Shelter",
   noAnimalsListed: "No animals listed right now",

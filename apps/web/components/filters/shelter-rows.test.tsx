@@ -1021,3 +1021,41 @@ it("keeps the longest wait off the row", () => {
   expect(html).toContain("Celje");
   expect(html).not.toContain("10 let");
 });
+
+// The picker shortens a row's name and hands the full one, and the way to the
+// shelter's page, to the details under it.
+describe("ShelterRows short names", () => {
+  const koper = [{ value: "obalno", label: "Obalno zavetišče (Marjetica Koper)", city: "Koper" }];
+  const summary = new Map([["obalno", { species: [{ species: "cat" as const, count: 3 }] }]]);
+
+  it("draws the name without its operator, full in the title", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows rows={koper} counts={new Map([["obalno", 3]])} shortenNames />,
+    );
+    expect(html).toContain('title="Obalno zavetišče (Marjetica Koper)"');
+    expect(html).toContain(">Obalno zavetišče</span>");
+  });
+
+  it("names the shelter in full inside its details, with a link to its page", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={koper}
+          counts={new Map([["obalno", 3]])}
+          summaries={summary}
+          expanded="obalno"
+          onToggle={() => undefined}
+          onToggleExpanded={() => undefined}
+          shortenNames
+          detailsHref={(value) => `/zavetisca/${value}`}
+          detailsLinkText="O zavetišču"
+        />
+      </I18nProvider>,
+    );
+    const panel = document.querySelector("[data-shelter-details-panel]")!;
+    expect(panel.textContent).toContain("Obalno zavetišče (Marjetica Koper)");
+    expect(
+      screen.getByRole("link", { name: "O zavetišču" }).getAttribute("href"),
+    ).toBe("/zavetisca/obalno");
+  });
+});

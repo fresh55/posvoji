@@ -103,6 +103,7 @@ export function PickerMapPlate({
             // markers and the list already carry a third time.
             shading="flat"
             countOnMarkers
+            originRadiusKm={controller.ringKm}
             summaries={summaries}
             regionShelterNames={regionShelterNames}
             // shrink, against the map's own shrink-0: this is the one caller

@@ -10,7 +10,7 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
-    toggleNearby, nearbyOn, state,
+    toggleNearby, nearbyOn, state, radiusPicks, pickWithin, setAskedRadius,
   } = controller;
   const copy = pickerText[locale];
   const canLocate = resolved.source !== "typed";
@@ -164,6 +164,37 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
             <span className="truncate">{resolved.label ?? messages.myLocation}</span>
             <X className="size-3.5 shrink-0" aria-hidden />
           </Button>
+          {/* How far, as a pick: people choose by how far they will drive,
+              not by the names of shelters they have not heard of. Each chip
+              picks every shelter within its reach that has animals under the
+              current filters, and the map draws the reach as a ring while a
+              chip is pointed at or standing. */}
+          {radiusPicks.length > 0 && (
+            <div role="group" aria-label={copy.pickWithin} className="flex flex-wrap gap-2 pt-1">
+              {radiusPicks.map(({ km, values, pressed }) => (
+                <Button
+                  key={km}
+                  type="button"
+                  variant="outline"
+                  aria-pressed={pressed}
+                  disabled={values.length === 0}
+                  data-picker-radius={km}
+                  onClick={() => pickWithin(km)}
+                  onPointerEnter={() => setAskedRadius(km)}
+                  onPointerLeave={() => setAskedRadius(null)}
+                  onFocus={() => setAskedRadius(km)}
+                  onBlur={() => setAskedRadius(null)}
+                  className={cn(
+                    "h-9 px-3 text-xs shadow-none pointer-coarse:h-11",
+                    pressed &&
+                      "border-brand-border bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground",
+                  )}
+                >
+                  {copy.upTo} {km} km
+                </Button>
+              ))}
+            </div>
+          )}
           <p className="text-xs leading-snug text-muted-foreground">{copy.distance}</p>
         </div>
       )}

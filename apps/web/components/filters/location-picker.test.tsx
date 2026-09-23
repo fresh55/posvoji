@@ -2927,3 +2927,99 @@ describe("LocationPicker audit regressions", () => {
     expect(screen.queryByText(/Ni zadetkov za/)).toBeNull();
   });
 });
+
+// Picking by how far, once the dialog knows where from.
+describe("LocationPicker distance picks", () => {
+  const chip = (km: number) =>
+    screen.getByRole("button", { name: `do ${km} km` });
+
+  it("offers no distance before there is somewhere to measure from", async () => {
+    await openPicker();
+    expect(screen.queryByRole("button", { name: /^do \d+ km$/ })).toBeNull();
+  });
+
+  it("picks every shelter within reach, and draws the reach on the map", async () => {
+    const input = await openPicker();
+    await type(input, "1000");
+    choosePlace();
+
+    // Jug is in Ljubljana, Sever in Maribor, a hundred kilometres off.
+    expect(chip(20).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(chip(20));
+
+    expect(
+      screen
+        .getByRole("dialog")
+        .querySelector("[data-shelter-row='jug'] button")!
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByRole("dialog")
+        .querySelector("[data-shelter-row='sever'] button")!
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
+    expect(chip(20).getAttribute("aria-pressed")).toBe("true");
+    expect(
+      screen.getByRole("dialog").querySelector('[data-distance-ring="20"]'),
+    ).toBeTruthy();
+
+    // A toggle like a region: the same press takes them off again.
+    fireEvent.click(chip(20));
+    expect(chip(20).getAttribute("aria-pressed")).toBe("false");
+    expect(
+      screen.getByRole("dialog").querySelector("[data-distance-ring]"),
+    ).toBeNull();
+  });
+
+  it("reads as one choice: only the pressed reach lights, and a narrower one narrows", async () => {
+    const input = await openPicker({
+      options: [...options, { value: "zahod", label: "Zavetišče Zahod", city: "Kranj" }],
+      counts: new Map([...counts, ["zahod", 3]]),
+    });
+    await type(input, "1000");
+    choosePlace();
+    const pressed = (value: string) =>
+      screen
+        .getByRole("dialog")
+        .querySelector(`[data-shelter-row='${value}'] button`)!
+        .getAttribute("aria-pressed");
+
+    // From Ljubljana: Jug is in town, Zahod in Kranj about 25 km off, Sever in
+    // Maribor past 100. 50 and 100 hold the same two shelters.
+    fireEvent.click(chip(50));
+    expect([pressed("jug"), pressed("zahod"), pressed("sever")]).toEqual(["true", "true", "false"]);
+    expect(chip(50).getAttribute("aria-pressed")).toBe("true");
+    expect(chip(100).getAttribute("aria-pressed")).toBe("false");
+    expect(chip(20).getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(chip(20));
+    expect([pressed("jug"), pressed("zahod")]).toEqual(["true", "false"]);
+    expect(chip(20).getAttribute("aria-pressed")).toBe("true");
+    expect(chip(50).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("previews a reach on hover before anything is picked", async () => {
+    const input = await openPicker();
+    await type(input, "1000");
+    choosePlace();
+
+    fireEvent.pointerEnter(chip(50));
+    expect(
+      screen.getByRole("dialog").querySelector('[data-distance-ring="50"]'),
+    ).toBeTruthy();
+    fireEvent.pointerLeave(chip(50));
+    expect(
+      screen.getByRole("dialog").querySelector("[data-distance-ring]"),
+    ).toBeNull();
+  });
+
+  it("leaves a reach with nothing to show unpressable", async () => {
+    const input = await openPicker({ counts: new Map([["sever", 4]]) });
+    await type(input, "1000");
+    choosePlace();
+
+    // Only Jug is within 20 km, and the filters leave it empty.
+    expect(chip(20).hasAttribute("disabled")).toBe(true);
+  });
+});

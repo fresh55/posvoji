@@ -39,6 +39,7 @@ import {
   bringIntoList,
   fold,
   locateAndSort,
+  PICK_RADII_KM,
   pickerText,
   sameValues,
   toPins,
@@ -177,6 +178,9 @@ export function useLocationPickerController({
   // marker and region, a marker lights up its row(s). Keeping them as separate
   // pieces of state means neither can feed back into the other.
   const [hoveredRowValue, setHoveredRowValue] = useState<string | null>(null);
+  // The distance chip under the pointer or the keyboard, whose ring the map
+  // previews before anything is picked.
+  const [askedRadius, setAskedRadius] = useState<number | null>(null);
   const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
     string[] | null
   >(null);
@@ -195,6 +199,7 @@ export function useLocationPickerController({
       // visit tinted and scrolled to a shelter nobody was pointing at.
       setHoveredRowValue(null);
       setHoveredMarkerValues(null);
+      setAskedRadius(null);
       // The geolocation error only, never turnOff: a fix that worked is a
       // page-session fact the grid's sort reads (usePublishNearbyOrigin
       // below), and only the failure belongs to the visit that caused it.
@@ -329,6 +334,84 @@ export function useLocationPickerController({
   // their own; they are in the list's folded group, each a link to its page,
   // and a mark on the map that cannot be picked was one more thing to read
   // past on the way to the ones that can.
+  // Picking by distance, once there is somewhere to measure from. Each chip
+  // stands for the shelters within its reach that have something to show under
+  // the current filters. The rings nest, so the chips work as one choice rather
+  // than three toggles: the one pressed last is the one that reads as pressed,
+  // for as long as everything within it is still picked, and it is tied to the
+  // origin it was measured from. Nested toggles made every wider chip covering
+  // the same shelters light up at once.
+  const [chosenRadius, setChosenRadius] = useState<{
+    km: number;
+    from: string;
+  } | null>(null);
+  const originKey = origin ? `${origin.lat},${origin.lon}` : "";
+  const radiusPicks = useMemo(
+    () =>
+      origin
+        ? PICK_RADII_KM.map((km) => {
+            const values = rows
+              .filter(
+                (row) =>
+                  row.km !== undefined &&
+                  row.km <= km &&
+                  (counts.get(row.value) ?? 0) > 0,
+              )
+              .map((row) => row.value);
+            return {
+              km,
+              values,
+              pressed:
+                chosenRadius?.km === km &&
+                chosenRadius.from === originKey &&
+                values.length > 0 &&
+                isDrop(selected, values),
+            };
+          })
+        : [],
+    [chosenRadius, counts, origin, originKey, rows, selected],
+  );
+  // One filter write per press, always: the page's toggle reads the selection
+  // it was rendered with, so two writes in a row would lose the first.
+  const pickWithin = useCallback(
+    (km: number) => {
+      const pick = radiusPicks.find((entry) => entry.km === km);
+      if (!pick || pick.values.length === 0) return;
+      if (pick.pressed) {
+        // Pressed again: the pick comes off. Same news a region drop gives,
+        // because aria-pressed says one chip came up and not that several
+        // shelters went with it.
+        if (pick.values.length > 1) {
+          setDropNote({
+            text: sheltersDropped(pick.values.length, locale),
+            after: selected.filter((value) => !pick.values.includes(value)),
+          });
+        }
+        onToggleMany(pick.values);
+        setChosenRadius(null);
+        return;
+      }
+      setChosenRadius({ km, from: originKey });
+      if (isDrop(selected, pick.values)) {
+        // Everything within reach is already picked, so this narrows: what
+        // the wider chip added beyond this reach comes off, and nothing picked
+        // by hand does.
+        const previous = radiusPicks.find(
+          (entry) => entry.pressed && entry.km !== km,
+        );
+        const beyond =
+          previous?.values.filter((value) => !pick.values.includes(value)) ??
+          [];
+        if (beyond.length > 0) onToggleMany(beyond);
+        return;
+      }
+      onToggleMany(pick.values);
+    },
+    [locale, onToggleMany, originKey, radiusPicks, selected],
+  );
+  // The ring the map draws: the chip being asked about, or else the pressed one.
+  const ringKm =
+    askedRadius ?? radiusPicks.find((pick) => pick.pressed)?.km ?? null;
   const pins: ShelterPin[] = useMemo(
     () => toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
     [counts, rows],
@@ -736,6 +819,10 @@ export function useLocationPickerController({
     setHoveredRowValue,
     hoveredMarkerValues,
     setHoveredMarkerValues,
+    radiusPicks,
+    pickWithin,
+    setAskedRadius,
+    ringKm,
     markersVisible,
     setMarkersVisible,
     setMapFacts,

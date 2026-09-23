@@ -394,6 +394,37 @@ export function Origin({ at }: { at: LatLon }) {
   );
 }
 
+// Kilometres per degree, north-south and at the equator east-west. The plate
+// is an equirectangular projection with its own scale on each axis, so a
+// distance in kilometres is an ellipse on it, not a circle.
+const KM_PER_DEGREE_LAT = 110.574;
+const KM_PER_DEGREE_LON_AT_EQUATOR = 111.32;
+
+/** How far "do N km" reaches from the origin, drawn under the markers while a
+ *  distance pick is asked about or standing. The same straight-line distance
+ *  the list sorts by, so a shelter inside the ring is one the pick takes. */
+export function DistanceRing({ at, km }: { at: LatLon; km: number }) {
+  const { x, y } = project(at);
+  const east = project({
+    lat: at.lat,
+    lon: at.lon + km / (KM_PER_DEGREE_LON_AT_EQUATOR * Math.cos((at.lat * Math.PI) / 180)),
+  });
+  const north = project({ lat: at.lat + km / KM_PER_DEGREE_LAT, lon: at.lon });
+  return (
+    <ellipse
+      data-distance-ring={km}
+      aria-hidden
+      cx={x}
+      cy={y}
+      rx={Math.abs(east.x - x)}
+      ry={Math.abs(y - north.y)}
+      strokeWidth={0.9}
+      strokeDasharray={ORIGIN_DASH}
+      className="pointer-events-none fill-brand-strong/6 stroke-brand-strong"
+    />
+  );
+}
+
 // Scale the origin uniformly to fit the legend box, including its stroke.
 const ORIGIN_GLYPH_BOX = 16;
 const ORIGIN_GLYPH_SCALE = 1.2;

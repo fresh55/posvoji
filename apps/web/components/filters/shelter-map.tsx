@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import {
   DEFAULT_PLATE_SCALE,
   MapCallout,
+  DistanceRing,
   Origin,
 } from "./map-callout";
 import type { CalloutRect } from "./map-callout-layout";
@@ -154,6 +155,7 @@ export function ShelterMap({
   spotlightFrom,
   shading = "density",
   countOnMarkers = false,
+  originRadiusKm,
   summaries,
   regionShelterNames,
   describedElsewhere,
@@ -217,6 +219,9 @@ export function ShelterMap({
    *  coin also takes one size (COUNT_MARKER_RADIUS). Off by
    *  default: the found-animal page asks who to call, not how full they are. */
   countOnMarkers?: boolean;
+  /** A distance from the origin to draw as a ring, in kilometres. Null or
+   *  undefined draws none, and so does a missing or off-map origin. */
+  originRadiusKm?: number | null;
   /** Per-shelter species breakdown, keyed by shelter id, the same map the
    *  panel's pick card reads. The annotation over a single hovered shelter
    *  grows a line of species glyphs from it. Towns and regions never get one:
@@ -1167,6 +1172,9 @@ export function ShelterMap({
         wide={markersVisible}
       />
 
+      {origin && onMap(origin) && originRadiusKm ? (
+        <DistanceRing at={origin} km={originRadiusKm} />
+      ) : null}
       {origin && onMap(origin) && <Origin at={origin} />}
 
       {/* One gate and no class beside it: the measured plate is what decides

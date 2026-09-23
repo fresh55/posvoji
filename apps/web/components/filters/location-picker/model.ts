@@ -108,6 +108,11 @@ export function bringIntoList(
   scroller.scrollTop += above < 0 || box.height > view.height ? above : below;
 }
 
+/** The distances the picker offers to pick by once it knows where the visitor
+ *  is, in kilometres: a short drive, an afternoon, the far side of the
+ *  country from the middle of it. */
+export const PICK_RADII_KM = [20, 50, 100] as const;
+
 export const pickerText = {
   sl: {
     matches: "Zadetki",
@@ -132,6 +137,8 @@ export const pickerText = {
     chooseShelters: "Izberi zavetišča",
     chooseSheltersHint: "Izberi eno ali več zavetišč.",
     showMap: "Pokaži zemljevid",
+    pickWithin: "Izberi zavetišča v razdalji",
+    upTo: "do",
   },
   en: {
     matches: "Matches",
@@ -152,6 +159,8 @@ export const pickerText = {
     chooseShelters: "Choose shelters",
     chooseSheltersHint: "Select one or more shelters.",
     showMap: "Show map",
+    pickWithin: "Pick shelters within",
+    upTo: "within",
   },
 } satisfies Record<Locale, Record<string, string>>;
 

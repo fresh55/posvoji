@@ -39,7 +39,10 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energija",
     coatColor: "Barva",
     coatLength: "Dolžina dlake",
-    waiting: "Čas v zavetišču",
+    // "V zavetišču: nad 1 leto", the way the two household sections read as
+    // sentences. "Čas v zavetišču" with its info mark and the answered mark
+    // ran 9.6px into the Ponastavi beside it in the 224px sidebar.
+    waiting: "V zavetišču",
     shelter: "Zavetišče",
   },
   en: {
@@ -49,7 +52,7 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energy",
     coatColor: "Colour",
     coatLength: "Coat length",
-    waiting: "Time in shelter",
+    waiting: "In the shelter",
     shelter: "Shelter",
   },
 };

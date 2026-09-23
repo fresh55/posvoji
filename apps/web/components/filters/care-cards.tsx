@@ -272,7 +272,9 @@ export function CareCards({
   return (
     <FilterCardSection
       label={messages.care}
-      hint={messages.careFilterHint}
+      // No hint: every row carries its own line saying which animals it
+      // shows, which a touch screen can read and a tooltip it cannot open is
+      // not. The info mark also pushed this heading 3.7px into Ponastavi.
       active={selected.length > 0}
       onReset={() => {
         clearCelebration();

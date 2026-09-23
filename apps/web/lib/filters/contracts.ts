@@ -88,7 +88,7 @@ export const EMPTY_FILTERS: Filters = {
   care: [],
 };
 
-// Čas v zavetišču answers with thresholds, each inside the one before it, so
+// V zavetišču answers with thresholds, each inside the one before it, so
 // two picks ask exactly what the wider one asks alone and the narrower tick
 // would only sit there doing nothing. These groups take one answer at a time.
 export const SINGLE_CHOICE_GROUPS: readonly MultiGroup[] = ["waiting"];

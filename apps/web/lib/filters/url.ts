@@ -176,7 +176,7 @@ function paramValues(params: URLSearchParams, name: string): string[] {
   ].slice(0, MAX_VALUES_PER_PARAM);
 }
 
-// Čas v zavetišču takes one threshold (SINGLE_CHOICE_GROUPS). An address from
+// V zavetišču takes one threshold (SINGLE_CHOICE_GROUPS). An address from
 // before that carrying two asked for the wider, which is all the OR over
 // nested answers ever returned, so that is the one kept.
 function widestWaiting(values: readonly WaitingGroup[]): WaitingGroup[] {

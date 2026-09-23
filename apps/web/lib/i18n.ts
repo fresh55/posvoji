@@ -641,8 +641,6 @@ const sl = {
   // finishes the sentence.
   care: "Lahko ponudim",
   resetCareFilters: "Ponastavi, kar lahko ponudim",
-  careFilterHint:
-    "Označi, kar lahko ponudiš. Pokažemo ti živali, ki potrebujejo prav to.",
   careOutcome:
     "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. {count} od {total}.",
   // The row's words as the animal's need, so the pill a visitor reads on the
@@ -948,8 +946,6 @@ const en: Messages = {
   hintApartmentOk: "The shelter judges that {name} can live in an apartment.",
   care: "I can offer",
   resetCareFilters: "Reset what I can offer",
-  careFilterHint:
-    "Pick what you can offer and we'll show the animals that need exactly that.",
   careOutcome:
     "Showing animals that need what you can offer. {count} of {total}.",
   specialNeedsLabel: "Needs a lot of patience",

@@ -52,11 +52,6 @@ describe("CareCards", () => {
     renderCards();
 
     expect(screen.getByRole("heading", { name: "Lahko ponudim" })).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Označi, kar lahko ponudiš. Pokažemo ti živali, ki potrebujejo prav to.",
-      ),
-    ).toBeTruthy();
   });
 
   // Every row finishes "Lahko ponudim", and they run from what most homes can

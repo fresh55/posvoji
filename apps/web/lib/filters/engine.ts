@@ -1,16 +1,19 @@
 import type { Species } from "@posvoji/schema";
-import type { AnimalFields } from "@/lib/animal";
+import { adoptableNow, type AnimalFields } from "@/lib/animal";
 import {
   TAB_OF_SPECIES,
 } from "@/lib/species";
 import {
   CARE_KEYS,
+  EMPTY_FILTERS,
+  FILTER_TOGGLE_KEYS,
   GOOD_WITH_KEYS,
   GROUPS,
   SINGLE_CHOICE_GROUPS,
   TOGGLE_KEYS,
   filterColour,
   type AgeGroup,
+  type Availability,
   type WaitingGroup,
   type CareKey,
   type FilterFacet,
@@ -20,7 +23,7 @@ import {
   type SpeciesFilter,
   type ToggleKey,
 } from "./contracts";
-import { TOGGLES, type ToggleDef } from "./metadata";
+import { TOGGLES, toggleAsks, type ToggleDef } from "./metadata";
 
 /** Every value the filter state holds, zavetišče included. The panels used to
  *  count a narrower set: shelter had no section in either of them, so a badge
@@ -69,15 +72,34 @@ export function toggleValues(
   return [...new Set([...selected, ...values])];
 }
 
-/** Only a recorded yes counts, so "unknown" and no both drop out. An animal
- *  that has to be the only pet is no match for a home that already has a dog
- *  or a cat, whatever its goodWith says: "Doma imam: Mačko" is the question
+/** The shelter's answer to one household question, or undefined for none.
+ *  An animal that has to be the only pet answers the two animal questions
+ *  with a no, whatever its goodWith says: "Doma imam: Mačko" is the question
  *  such a visitor asks, and it has to rule the animal out on its own. */
-export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean {
+function goodWithAnswer(
+  animal: AnimalFields,
+  key: GoodWithKey,
+): "yes" | "no" | undefined {
   if (key !== "kids" && animal.adoptionRequirements?.onlyPet === true) {
-    return false;
+    return "no";
   }
-  return animal.goodWith?.[key] === "yes";
+  const answer = animal.goodWith?.[key];
+  return answer === "yes" || answer === "no" ? answer : undefined;
+}
+
+/** Only a recorded yes counts, so "unknown" and no both drop out. */
+export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean {
+  return goodWithAnswer(animal, key) === "yes";
+}
+
+// An animal is asked what its own tab asks (groupFitsSpecies below), in a
+// list that mixes species too. Velikost sorts dogs, but for cats it is a
+// distinction nobody shops on, so a size a cat's listing happens to carry is
+// not an answer to it: no cat answers it, and no cat is counted as leaving it
+// unanswered either. Before, seven of the twelve animals "Majhna" brought on
+// Vse were cats.
+function groupAsks(group: MultiGroup, species: Species): boolean {
+  return groupFitsSpecies(group, TAB_OF_SPECIES[species]);
 }
 
 /** Only a shelter that said so counts; an unanswered animal is not one.
@@ -190,9 +212,8 @@ function maskOf(count: number, answers: (bit: number) => boolean): number {
   return mask;
 }
 
-// One bit per group, in GROUPS order. Written out rather than derived, so a
-// sixth group fails to compile here instead of quietly sharing a bit with one
-// of these.
+// One bit per group. Written out rather than derived, so a new group fails to
+// compile here instead of quietly sharing a bit with one of these.
 const GROUP_BITS: Record<MultiGroup, number> = {
   sex: 1 << 0,
   age: 1 << 1,
@@ -202,56 +223,88 @@ const GROUP_BITS: Record<MultiGroup, number> = {
   coatColor: 1 << 5,
   coatLength: 1 << 6,
   waiting: 1 << 7,
+  availability: 1 << 8,
 };
 
 type Column<Value> = readonly (Value | undefined)[];
 
 /** The dataset as the filter reads it: one slot per animal, in the order the
  *  animals were given. Every column here is a property of the animal alone,
- *  which is what lets one index answer for any date. Age is the exception, and
- *  it is held as its two date-free halves. */
+ *  which is what lets one index answer for any date. Age and the time in the
+ *  shelter are the exceptions: each is held as its date-free half, and the
+ *  answer for a date is worked out on demand and kept below. */
 type FilterIndex = {
   readonly species: readonly Species[];
+  readonly availability: readonly Availability[];
   readonly sex: Column<string>;
   readonly size: Column<string>;
   readonly energy: Column<string>;
   readonly coatColor: Column<string>;
   readonly coatLength: Column<string>;
-  readonly intakeDate: Column<string>;
+  /** The intake date as the UTC instant of its midnight, read once rather
+   *  than parsed again on every pass. */
+  readonly intakeStart: Column<number>;
   readonly shelter: readonly string[];
   readonly approximate: Column<number>;
   readonly born: Column<number>;
   readonly toggles: readonly number[];
   readonly goodWith: readonly number[];
   readonly care: readonly number[];
-  /** The age buckets, worked out on demand and kept for as long as the same
-   *  date keeps being asked about. The one column a clock moves. */
+  /** Beside the two AND sections' answers, which of their questions the record
+   *  answers at all, yes or no. What a pick hides for want of an answer is
+   *  read off these (TOGGLES_ASKED says which toggles a species is asked). */
+  readonly togglesAnswered: readonly number[];
+  readonly goodWithAnswered: readonly number[];
+  /** The two columns a clock moves, kept for as long as the same month or
+   *  day keeps being asked about: every question on a render asks the same
+   *  one, so each is worked out once per render at most, and in practice
+   *  once per visit. */
   ages: { at: number; values: Column<AgeGroup> } | null;
+  waiting: {
+    at: number | undefined;
+    values: Column<readonly WaitingGroup[]>;
+  } | null;
+};
+
+/** Which toggles each species is asked, as a mask over TOGGLES: a property
+ *  of the species and not of the animal, so a table and not a column. A dog
+ *  is not missing an FIV result. */
+const askedOf = (species: Species) =>
+  maskOf(TOGGLES.length, (bit) => toggleAsks(TOGGLES[bit], species));
+const TOGGLES_ASKED: Record<Species, number> = {
+  dog: askedOf("dog"),
+  cat: askedOf("cat"),
+  rabbit: askedOf("rabbit"),
+  other: askedOf("other"),
 };
 
 function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const species: Species[] = [];
+  const availability: Availability[] = [];
   const sex: (string | undefined)[] = [];
   const size: (string | undefined)[] = [];
   const energy: (string | undefined)[] = [];
   const coatColor: (string | undefined)[] = [];
   const coatLength: (string | undefined)[] = [];
-  const intakeDate: (string | undefined)[] = [];
+  const intakeStart: (number | undefined)[] = [];
   const shelter: string[] = [];
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
   const toggles: number[] = [];
   const goodWith: number[] = [];
   const care: number[] = [];
+  const togglesAnswered: number[] = [];
+  const goodWithAnswered: number[] = [];
   for (const animal of animals) {
     species.push(animal.species);
+    availability.push(adoptableNow(animal.status) ? "available" : "unavailable");
     // "unknown" sex is semantically the same as absent: we do not know.
     sex.push(animal.sex === "unknown" ? undefined : animal.sex);
-    size.push(animal.size);
+    size.push(groupAsks("size", animal.species) ? animal.size : undefined);
     energy.push(animal.energy);
     coatColor.push(filterColour(animal.coatColor));
     coatLength.push(animal.coatLength);
-    intakeDate.push(animal.intakeDate);
+    intakeStart.push(intakeStartOf(animal.intakeDate));
     shelter.push(animal.shelter.id);
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
@@ -264,22 +317,35 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     care.push(
       maskOf(CARE_KEYS.length, (bit) => careMatches(animal, CARE_KEYS[bit])),
     );
+    togglesAnswered.push(
+      maskOf(TOGGLES.length, (bit) => TOGGLES[bit].answered(animal)),
+    );
+    goodWithAnswered.push(
+      maskOf(
+        GOOD_WITH_KEYS.length,
+        (bit) => goodWithAnswer(animal, GOOD_WITH_KEYS[bit]) !== undefined,
+      ),
+    );
   }
   return {
     species,
+    availability,
     sex,
     size,
     energy,
     shelter,
     coatColor,
     coatLength,
-    intakeDate,
+    intakeStart,
     approximate,
     born,
     toggles,
     goodWith,
     care,
+    togglesAnswered,
+    goodWithAnswered,
     ages: null,
+    waiting: null,
   };
 }
 
@@ -312,6 +378,23 @@ function ageColumn(index: FilterIndex, nowMonths: number): Column<AgeGroup> {
   return values;
 }
 
+/** The V zavetišču thresholds each animal has passed by this day. undefined
+ *  where there is no date to read, which is the question's one missing
+ *  answer: an empty list is a known date under six months. */
+function waitingColumn(
+  index: FilterIndex,
+  today: number | undefined,
+): Column<readonly WaitingGroup[]> {
+  if (index.waiting !== null && index.waiting.at === today) {
+    return index.waiting.values;
+  }
+  const values = index.intakeStart.map((start) =>
+    intakeKnown(start, today) ? waitingFrom(start, today) : undefined,
+  );
+  index.waiting = { at: today, values };
+  return values;
+}
+
 /** A selection resolved once per question rather than once per animal: the
  *  group choices as sets, the key sections as masks. */
 type Query = {
@@ -330,6 +413,7 @@ function queryOf(filters: Filters): Query {
   return {
     species: filters.species,
     groups: {
+      availability: chosen("availability"),
       sex: chosen("sex"),
       age: chosen("age"),
       size: chosen("size"),
@@ -355,7 +439,7 @@ function queryOf(filters: Filters): Query {
 type Pass = {
   index: FilterIndex;
   ages: Column<AgeGroup>;
-  waiting: WaitingGroup[][];
+  waiting: Column<readonly WaitingGroup[]>;
   query: Query;
 };
 
@@ -364,7 +448,7 @@ function passOf(animals: AnimalFields[], filters: Filters, now: Date): Pass {
   return {
     index,
     ages: ageColumn(index, monthsOf(now)),
-    waiting: index.intakeDate.map((date) => waitingGroups(date, now)),
+    waiting: waitingColumn(index, todayOf(now)),
     query: queryOf(filters),
   };
 }
@@ -381,6 +465,8 @@ function valueAt(
   group: MultiGroup,
 ): string | readonly string[] | undefined {
   switch (group) {
+    case "availability":
+      return pass.index.availability[slot];
     case "sex":
       return pass.index.sex[slot];
     case "age":
@@ -458,18 +544,13 @@ function soleBit(mask: number): number {
  *  measuring one means switching it off, while an AND section has to keep the
  *  facets it is not measuring, so sectionCounts measures those with nothing
  *  lifted. The groups are the caller's business too: facetCounts wants the
- *  mask of which ones failed, everyone else only wants it to be zero.
- *
- *  Vrsta is liftable too, because the species tabs are counters and the rule
- *  does not stop at the sidebar. Only speciesFacetCounts lifts it; every other
- *  caller is measuring something within a species tab and wants the tab to
- *  hold. */
+ *  mask of which ones failed, everyone else only wants it to be zero. */
 function sectionsPass(
   pass: Pass,
   slot: number,
-  lift: "care" | "species" | null,
+  lift: "care" | null,
 ): boolean {
-  if (lift !== "species" && !speciesAt(pass, slot)) return false;
+  if (!speciesAt(pass, slot)) return false;
   // The two AND sections are the cheapest guards and the ones that reject
   // most, so they go ahead of the OR section.
   if (andFailedAt(pass, slot, "toggles") !== 0) return false;
@@ -528,6 +609,7 @@ export function facetCounts(
 ): Record<MultiGroup, Map<string, number>> {
   const pass = passOf(animals, filters, now);
   const counts = {
+    availability: new Map<string, number>(),
     sex: new Map<string, number>(),
     age: new Map<string, number>(),
     size: new Map<string, number>(),
@@ -598,6 +680,207 @@ export function careCounts(
   return sectionCounts(passOf(animals, filters, now), "care", CARE_KEYS);
 }
 
+/** Whether this animal answers a group's question at all: undefined is no
+ *  answer in every column, V zavetišču's included (waitingColumn). */
+function answeredAt(pass: Pass, slot: number, group: MultiGroup): boolean {
+  return valueAt(pass, slot, group) !== undefined;
+}
+
+/** How many animals a question was put to, and how many of them it has no
+ *  answer from. */
+export type Unanswered = { readonly asked: number; readonly unanswered: number };
+
+export type UnansweredTally = {
+  readonly groups: Readonly<Record<MultiGroup, Unanswered>>;
+  readonly goodWith: Readonly<Record<GoodWithKey, Unanswered>>;
+  readonly toggles: Readonly<Record<ToggleKey, Unanswered>>;
+};
+
+/** A tenth: past it, the animals a pick hides for want of an answer are a
+ *  part of the list worth saying out loud, and short of it the line would sit
+ *  under nearly every section saying almost nothing (Spol leaves out 8 of
+ *  491). */
+const UNANSWERED_SHARE = 0.1;
+
+export function namesUnanswered({ asked, unanswered }: Unanswered): boolean {
+  return unanswered > 0 && unanswered >= asked * UNANSWERED_SHARE;
+}
+
+/** Half: the share of the animals asked that a question has to leave
+ *  unanswered before the empty state names it as the reason nothing matched.
+ *  A tenth is worth a line under a section, but a question answered for 85%
+ *  of the tab, as Starost is, is not why a combination came back empty. */
+const EMPTY_REASON_SHARE = 0.5;
+
+/** One AND section's facets into their tally, each measured with the rest
+ *  of its section applied and put only to the animals `asked` marks. */
+function tallyFacets<Key extends string>(
+  into: Record<Key, { asked: number; unanswered: number }>,
+  keys: readonly Key[],
+  failed: number,
+  asked: number,
+  answered: number,
+): void {
+  for (let bit = 0; bit < keys.length; bit += 1) {
+    if ((failed & ~(1 << bit)) !== 0) continue;
+    if ((asked & (1 << bit)) === 0) continue;
+    const count = into[keys[bit]];
+    count.asked += 1;
+    if ((answered & (1 << bit)) === 0) count.unanswered += 1;
+  }
+}
+
+function zeroTally<Key extends string>(
+  keys: readonly Key[],
+): Record<Key, { asked: number; unanswered: number }> {
+  return Object.fromEntries(
+    keys.map((key) => [key, { asked: 0, unanswered: 0 }]),
+  ) as Record<Key, { asked: number; unanswered: number }>;
+}
+
+/**
+ * What each question leaves out for want of an answer: the animals a pick
+ * there hides not because they answer otherwise but because nobody said.
+ * "Otroke 8" can read as the other 483 not being good with children, when
+ * 479 of them simply had no answer, and before a pick the panel said so only
+ * in a tooltip a mouse has to find.
+ *
+ * Measured over the population the option's own count is measured over, which
+ * is every filter applied but the question's own, so the two numbers stand
+ * side by side and describe the same animals. A group lifts the whole group,
+ * the faceting rule facetCounts follows. A facet of an AND section lifts only
+ * itself: for a picked facet that is exactly the animals the pick is hiding
+ * for no answer, and for an unpicked one it is the list as it stands.
+ *
+ * Asked is the part of that population the question is put to at all. A cat
+ * is not asked its size (groupAsks), and a dog is not missing an FIV result.
+ */
+export function unansweredCounts(
+  animals: AnimalFields[],
+  filters: Filters,
+  now: Date,
+): UnansweredTally {
+  const pass = passOf(animals, filters, now);
+  const { index, query } = pass;
+  const groups = zeroTally(GROUPS);
+  const goodWith = zeroTally(GOOD_WITH_KEYS);
+  const toggles = zeroTally(TOGGLE_KEYS);
+
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!speciesAt(pass, slot)) continue;
+    if (!answersAny(index.care[slot], query.care)) continue;
+    const groupsFailed = groupsFailedAt(pass, slot);
+    const goodWithFailed = andFailedAt(pass, slot, "goodWith");
+    const togglesFailed = andFailedAt(pass, slot, "toggles");
+
+    if (goodWithFailed === 0 && togglesFailed === 0) {
+      for (const group of GROUPS) {
+        if ((groupsFailed & ~GROUP_BITS[group]) !== 0) continue;
+        if (!groupAsks(group, index.species[slot])) continue;
+        groups[group].asked += 1;
+        if (!answeredAt(pass, slot, group)) groups[group].unanswered += 1;
+      }
+    }
+    if (groupsFailed !== 0) continue;
+
+    // Every household question is put to every animal.
+    if (togglesFailed === 0) {
+      tallyFacets(goodWith, GOOD_WITH_KEYS, goodWithFailed, ~0, index.goodWithAnswered[slot]);
+    }
+    if (goodWithFailed === 0) {
+      tallyFacets(
+        toggles,
+        TOGGLE_KEYS,
+        togglesFailed,
+        TOGGLES_ASKED[index.species[slot]],
+        index.togglesAnswered[slot],
+      );
+    }
+  }
+  return { groups, goodWith, toggles };
+}
+
+/** A question the visitor has answered, and how much of the species tab the
+ *  shelters answered it for. A group is named by its facet; a facet of an
+ *  AND section carries its key as well. */
+export type Coverage =
+  | {
+      readonly facet: Exclude<MultiGroup, "shelter" | "availability">;
+      readonly asked: number;
+      readonly answered: number;
+    }
+  | {
+      readonly facet: "goodWith";
+      readonly key: GoodWithKey;
+      readonly asked: number;
+      readonly answered: number;
+    }
+  | {
+      readonly facet: "toggles";
+      readonly key: ToggleKey;
+      readonly asked: number;
+      readonly answered: number;
+    };
+
+/**
+ * Of the questions the visitor has answered, the one the shelters answered
+ * for the smallest share of the species tab, when it leaves half the animals
+ * asked or more without an answer (EMPTY_REASON_SHARE) and was asked of more
+ * than one. The empty state says it, because "Ni zadetkov" under Psi, Otroke
+ * and Mačko can read as no dog in the country being fine with children, when
+ * 121 of the 124 had no answer at all.
+ *
+ * Over the tab alone, with nothing else applied: it describes the question
+ * and not the combination. "3 of 124 dogs" is why a household filter came
+ * back empty; "4 of the 5 that are also fine with cats" is a smaller truth
+ * that reads as though there were only five dogs. With nothing but the tab
+ * applied, what unansweredCounts says each question leaves out is exactly
+ * that.
+ *
+ * Shelter and availability are never it: every animal answers both.
+ */
+export function thinnestAnswer(
+  animals: AnimalFields[],
+  filters: Filters,
+  now: Date,
+): Coverage | undefined {
+  const tab = unansweredCounts(
+    animals,
+    { ...EMPTY_FILTERS, species: filters.species },
+    now,
+  );
+  const covered = ({ asked, unanswered }: Unanswered) => ({
+    asked,
+    answered: asked - unanswered,
+  });
+
+  const candidates: Coverage[] = [];
+  for (const group of GROUPS) {
+    if (group === "shelter" || group === "availability") continue;
+    if (filters[group].length === 0) continue;
+    candidates.push({ facet: group, ...covered(tab.groups[group]) });
+  }
+  for (const key of filters.goodWith) {
+    candidates.push({ facet: "goodWith", key, ...covered(tab.goodWith[key]) });
+  }
+  for (const key of filters.toggles) {
+    candidates.push({ facet: "toggles", key, ...covered(tab.toggles[key]) });
+  }
+
+  let thinnest: Coverage | undefined;
+  for (const candidate of candidates) {
+    const { asked, answered } = candidate;
+    if (asked < 2 || asked - answered < asked * EMPTY_REASON_SHARE) continue;
+    if (
+      thinnest === undefined ||
+      answered / asked < thinnest.answered / thinnest.asked
+    ) {
+      thinnest = candidate;
+    }
+  }
+  return thinnest;
+}
+
 /** What each active value is costing: how many more animals show if it comes
  *  off, everything else left alone. Keyed the way the chips row keys itself.
  *
@@ -632,6 +915,7 @@ export function chipGains(
   let result = 0;
   // Per section: the population left if that section stopped asking.
   const freedGroup: Record<MultiGroup, number> = {
+    availability: 0,
     sex: 0,
     age: 0,
     size: 0,
@@ -750,6 +1034,11 @@ function toggleFitsSpecies(
   return only === undefined || TAB_OF_SPECIES[only] === species;
 }
 
+/** Whether the panel offers this toggle as a filter at all, on any tab. */
+function isFilterToggle(key: ToggleKey): boolean {
+  return FILTER_TOGGLE_KEYS.includes(key);
+}
+
 /** How many animals answer each key of one section, in a single walk. All four
  *  callers below want the same thing from it: a key every animal answers, or
  *  none do, cannot narrow anything. */
@@ -781,9 +1070,10 @@ export function visibleToggles(
     : answeredCounts(indexOf(animals).toggles, TOGGLES.length);
   return TOGGLES.filter(
     (toggle, bit) =>
-      selected.includes(toggle.key) ||
-      (toggleFitsSpecies(toggle.species, species) &&
-        (counts === null || narrows(counts[bit], animals.length))),
+      isFilterToggle(toggle.key) &&
+      (selected.includes(toggle.key) ||
+        (toggleFitsSpecies(toggle.species, species) &&
+          (counts === null || narrows(counts[bit], animals.length)))),
   );
 }
 
@@ -836,6 +1126,12 @@ export function visibleCare(
  *  would set. The same rule facetCounts follows, and for the same reason a
  *  number next to an option has to be what you get when you press it.
  *
+ *  Which is also why a tab is counted with the filters it keeps once pressed
+ *  (pruneHiddenFilters): Mačke sheds Velikost, and every tab but Mačke sheds
+ *  the cat-only toggles. Counted with them, Velikost picked on Vse left
+ *  "Mačke 0" on the strip, since no cat answers a size, and pressing it gave
+ *  every cat there is.
+ *
  *  The toolbar used to show speciesCounts here, which walks the raw dataset.
  *  With four filters on, the tabs read 127 / 375 / 1 directly above a result
  *  count of 22: three numbers about one population on two different bases,
@@ -852,6 +1148,21 @@ export function speciesFacetCounts(
   now: Date,
 ): Record<SpeciesFilter, number> {
   const pass = passOf(animals, filters, now);
+  // One query per tab, of the filters that tab keeps once pressed: the
+  // columns are the same four times over, and only the question differs.
+  const on = (tab: SpeciesFilter): Pass => ({
+    ...pass,
+    query: queryOf(pruneHiddenFilters({ ...filters, species: tab })),
+  });
+  const passes: Record<SpeciesFilter, Pass> = {
+    all: on("all"),
+    dog: on("dog"),
+    cat: on("cat"),
+    other: on("other"),
+  };
+  const passesOn = (tab: SpeciesFilter, slot: number) =>
+    sectionsPass(passes[tab], slot, null) &&
+    groupsFailedAt(passes[tab], slot) === 0;
   const counts: Record<SpeciesFilter, number> = {
     all: 0,
     dog: 0,
@@ -859,10 +1170,9 @@ export function speciesFacetCounts(
     other: 0,
   };
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
-    if (!sectionsPass(pass, slot, "species")) continue;
-    if (groupsFailedAt(pass, slot) !== 0) continue;
-    counts.all += 1;
-    counts[TAB_OF_SPECIES[pass.index.species[slot]]] += 1;
+    if (passesOn("all", slot)) counts.all += 1;
+    const tab = TAB_OF_SPECIES[pass.index.species[slot]];
+    if (passesOn(tab, slot)) counts[tab] += 1;
   }
   return counts;
 }
@@ -904,7 +1214,9 @@ export function visibleGroups(
 ): Record<MultiGroup, boolean> {
   const index = indexOf(animals);
   const ages = ageColumn(index, monthsOf(now));
+  const waiting = waitingColumn(index, todayOf(now));
   const distinct = {
+    availability: new Set<string>(),
     sex: new Set<string>(),
     age: new Set<string>(),
     size: new Set<string>(),
@@ -918,13 +1230,14 @@ export function visibleGroups(
     if (value !== undefined) distinct[group].add(value);
   };
   for (let slot = 0; slot < animals.length; slot += 1) {
+    add("availability", index.availability[slot]);
     add("sex", index.sex[slot]);
     add("age", ages[slot]);
     add("size", index.size[slot]);
     add("energy", index.energy[slot]);
     add("coatColor", index.coatColor[slot]);
     add("coatLength", index.coatLength[slot]);
-    waitingGroups(index.intakeDate[slot], now).forEach((v) => add("waiting", v));
+    waiting[slot]?.forEach((v) => add("waiting", v));
     add("shelter", index.shelter[slot]);
   }
   // includeUnavailable drops the floor to one answer rather than lifting it
@@ -935,10 +1248,18 @@ export function visibleGroups(
   // zero rows beside it stay and explain the unknowns, and the section comes
   // back on its own the day the field arrives.
   const floor = includeUnavailable ? 1 : 2;
+  // Availability is the exception to that floor. Every animal answers it, so
+  // there is never an unknown for a lone row to explain, and a pool with
+  // nobody on hold offers a row that could take nothing off. It shows only
+  // once there is someone for it to leave out.
+  const floorOf = (group: MultiGroup) =>
+    group === "availability" ? 2 : floor;
   const shown = (group: MultiGroup) =>
     filters[group].length > 0 ||
-    (groupFitsSpecies(group, filters.species) && distinct[group].size >= floor);
+    (groupFitsSpecies(group, filters.species) &&
+      distinct[group].size >= floorOf(group));
   return {
+    availability: shown("availability"),
     sex: shown("sex"),
     age: shown("age"),
     size: shown("size"),
@@ -957,6 +1278,7 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   const keep = (group: MultiGroup) => groupFitsSpecies(group, filters.species);
   return {
     species: filters.species,
+    availability: filters.availability,
     sex: keep("sex") ? filters.sex : [],
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],
@@ -965,11 +1287,16 @@ export function pruneHiddenFilters(filters: Filters): Filters {
     coatLength: filters.coatLength,
     waiting: filters.waiting,
     shelter: keep("shelter") ? filters.shelter : [],
-    toggles: filters.toggles.filter((key) =>
-      toggleFitsSpecies(
-        TOGGLES.find((t) => t.key === key)?.species,
-        filters.species,
-      ),
+    // A toggle the panel no longer offers goes too, the same way: a link
+    // shared while Cepljenje was a filter would otherwise go on narrowing with
+    // no row to take it off.
+    toggles: filters.toggles.filter(
+      (key) =>
+        isFilterToggle(key) &&
+        toggleFitsSpecies(
+          TOGGLES.find((t) => t.key === key)?.species,
+          filters.species,
+        ),
     ),
     // No facet here is pinned to a species, so nothing to prune: a selection
     // made on one tab still has a control on the next. The same holds for
@@ -983,19 +1310,46 @@ function asValues(value: string | readonly string[] | undefined): readonly strin
   return value === undefined ? [] : typeof value === "string" ? [value] : value;
 }
 
+/** An intake date as the UTC instant of its midnight, or undefined for one
+ *  that is not a real calendar date. */
+function intakeStartOf(intakeDate: string | undefined): number | undefined {
+  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return undefined;
+  const start = new Date(intakeDate);
+  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate) return undefined;
+  return start.getTime();
+}
+
+function todayOf(now: Date): number | undefined {
+  if (!Number.isFinite(now.getTime())) return undefined;
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+}
+
+/** Whether the waiting thresholds can be read from this start at all: a real
+ *  date, not after today. */
+function intakeKnown(
+  start: number | undefined,
+  today: number | undefined,
+): start is number {
+  return start !== undefined && today !== undefined && start <= today;
+}
+
+function waitingFrom(
+  start: number | undefined,
+  today: number | undefined,
+): WaitingGroup[] {
+  if (!intakeKnown(start, today) || today === undefined) return [];
+  const date = new Date(start);
+  const thresholds: [WaitingGroup, number][] = [["over-6-months", 6], ["over-1-year", 12], ["over-3-years", 36]];
+  return thresholds.filter(([, months]) => {
+    const month = date.getUTCMonth() + months;
+    const lastDay = new Date(Date.UTC(date.getUTCFullYear(), month + 1, 0)).getUTCDate();
+    return today > Date.UTC(date.getUTCFullYear(), month, Math.min(date.getUTCDate(), lastDay));
+  }).map(([value]) => value);
+}
+
 /** Strictly past the calendar anniversary, using only the shelter intake date.
  * Clamp month-end anniversaries (August 31 + 6 months is February's last day).
  * UTC date arithmetic makes shared links agree across visitor time zones. */
 export function waitingGroups(intakeDate: string | undefined, now: Date): WaitingGroup[] {
-  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return [];
-  const start = new Date(intakeDate);
-  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate || !Number.isFinite(now.getTime())) return [];
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  if (start.getTime() > today) return [];
-  const thresholds: [WaitingGroup, number][] = [["over-6-months", 6], ["over-1-year", 12], ["over-3-years", 36]];
-  return thresholds.filter(([, months]) => {
-    const month = start.getUTCMonth() + months;
-    const lastDay = new Date(Date.UTC(start.getUTCFullYear(), month + 1, 0)).getUTCDate();
-    return today > Date.UTC(start.getUTCFullYear(), month, Math.min(start.getUTCDate(), lastDay));
-  }).map(([value]) => value);
+  return waitingFrom(intakeStartOf(intakeDate), todayOf(now));
 }

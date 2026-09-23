@@ -1,6 +1,7 @@
-import { MapPin, Search, X } from "lucide-react";
+import { ArrowDownNarrowWide, Check, MapPin, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -10,7 +11,9 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
+    sort, onSortChange, toggleNearestSort,
   } = controller;
+  const byDistance = sort === "nearest";
   const copy = pickerText[locale];
   // Spelled out rather than taken from the controller's placeOffered, which is
   // the same test: this one narrows typed, so the row below can name the place.
@@ -132,6 +135,31 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
             <X className="size-3.5 shrink-0" aria-hidden />
           </Button>
           <p className="text-xs leading-snug text-muted-foreground">{copy.distance}</p>
+          {/* The list below is already nearest first; the grid behind the
+              dialog is not, until asked. Offered here, where the place was
+              just set, and never done unasked: an order the visitor chose
+              themselves is theirs to change. A toggle, so pressing it again
+              gives the grid back the order it had (toggleNearestSort).
+
+              The sort control's own mark and not the crosshair: "Najbližje
+              prvo" below wears that, and two pressed controls a row apart in
+              one mark read as one control drawn twice. This one orders the
+              grid, so it carries what the grid's order carries. */}
+          {onSortChange && (
+            <Toggle
+              variant="outline"
+              pressed={byDistance}
+              onPressedChange={toggleNearestSort}
+              // The ground and the 3:1 border of the outline Button above it,
+              // which the Toggle outline draws lighter; the two sit one over
+              // the other and read as a pair.
+              className="h-11 max-w-full justify-start gap-2 border-control-border bg-background px-3 text-left shadow-none dark:bg-input/30"
+            >
+              <ArrowDownNarrowWide className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{messages.sortByDistance}</span>
+              {byDistance && <Check className="size-3.5 shrink-0" aria-hidden />}
+            </Toggle>
+          )}
         </div>
       )}
       <p id={statusId} aria-live="polite" className={cn("text-xs leading-snug text-muted-foreground", !status && "hidden")}>

@@ -30,6 +30,7 @@ import type { ShelterPin } from "@/lib/map-layout";
 import { resolveOrigin } from "@/lib/resolved-origin";
 import { useTypedLocation } from "@/hooks/use-typed-location";
 import { looksLikePostcode } from "@/lib/postcode-input";
+import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
 import {
   SHELTER_SPOTLIGHT_EVENT,
   type ShelterSpotlightDetail,
@@ -62,6 +63,8 @@ export function useLocationPickerController({
   summaries,
   deepLink,
   dress = "toolbar",
+  sort,
+  onSortChange,
   open: controlledOpen,
   onOpenChange,
 }: LocationPickerProps) {
@@ -104,6 +107,22 @@ export function useLocationPickerController({
   // map pick also opens its details so the selected marker has a visible
   // answer in the list; removing a selection leaves those details alone.
   const [expandedShelter, setExpandedShelter] = useState<string | null>(null);
+  // The order the grid was in before "Razvrsti živali po bližini" took it
+  // over, so a second press gives that back rather than the default: a
+  // visitor who had put the list in name order and tried the distance once
+  // should not lose their own choice for it. Held here and not in the dialog, which
+  // unmounts between the two presses.
+  const sortBeforeNearest = useRef<AnimalSort | null>(null);
+  const toggleNearestSort = useCallback(() => {
+    if (!onSortChange) return;
+    if (sort === "nearest") {
+      onSortChange(sortBeforeNearest.current ?? DEFAULT_ANIMAL_SORT);
+      sortBeforeNearest.current = null;
+    } else {
+      sortBeforeNearest.current = sort ?? null;
+      onSortChange("nearest");
+    }
+  }, [onSortChange, sort]);
   // Whether the registry shelters with nothing listed are unfolded. Shut to
   // start with: none of them can be picked, so every row of that group is
   // scroll the picker charges before reaching anything pickable, and the group
@@ -711,6 +730,9 @@ export function useLocationPickerController({
     summaries,
     deepLink,
     dress,
+    sort,
+    onSortChange,
+    toggleNearestSort,
     locale,
     messages,
     t,

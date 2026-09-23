@@ -26,9 +26,14 @@ import {
 } from "@/lib/card-grid";
 import {
   applyFilters,
+  thinnestAnswer,
+  type Coverage,
   type FilterOption,
   type Filters,
+  type GoodWithKey,
+  type MultiGroup,
   type SpeciesFilter,
+  type ToggleKey,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
@@ -104,6 +109,45 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
   cat: "speciesAbsenceCats",
   other: "speciesAbsenceOther",
 };
+
+// The question the empty state names when a thin answer is the likeliest
+// reason nothing matched (thinnestAnswer in lib/filters). Keyed by facet so
+// a new one fails to compile here rather than going unexplained. Only the
+// toggles the panel still offers can be answered, so only they have words.
+const GROUP_TOPIC_KEY: Record<
+  Exclude<MultiGroup, "shelter" | "availability">,
+  TranslationKey
+> = {
+  sex: "knownTopicSex",
+  age: "knownTopicAge",
+  size: "knownTopicSize",
+  energy: "knownTopicEnergy",
+  coatColor: "knownTopicCoatColor",
+  coatLength: "knownTopicCoatLength",
+  waiting: "knownTopicWaiting",
+};
+
+const GOOD_WITH_TOPIC_KEY: Record<GoodWithKey, TranslationKey> = {
+  kids: "knownTopicKids",
+  dogs: "knownTopicDogs",
+  cats: "knownTopicCats",
+};
+
+const TOGGLE_TOPIC_KEY: Partial<Record<ToggleKey, TranslationKey>> = {
+  "brez-fiv": "knownTopicFiv",
+  "brez-felv": "knownTopicFelv",
+};
+
+function topicKey(coverage: Coverage): TranslationKey | undefined {
+  switch (coverage.facet) {
+    case "goodWith":
+      return GOOD_WITH_TOPIC_KEY[coverage.key];
+    case "toggles":
+      return TOGGLE_TOPIC_KEY[coverage.key];
+    default:
+      return GROUP_TOPIC_KEY[coverage.facet];
+  }
+}
 
 // Which of the three shelter-absence sentences a selection takes. The verb
 // agrees with how many shelters are selected and Slovenian counts a dual, so
@@ -421,6 +465,17 @@ export function AnimalGrid({
       applyFilters(animals, { ...shownFilters, shelter: [] }, reference).length > 0,
     [animals, shownFilters, reference, visible.length],
   );
+  // The other reason an empty list can have, for the same list: the question
+  // the visitor answered that the shelters answered least (thinnestAnswer).
+  // Asked only while nothing matches, since there is nothing to explain
+  // while anything does.
+  const thinnest = useMemo(
+    () =>
+      visible.length === 0
+        ? thinnestAnswer(animals, shownFilters, reference)
+        : undefined,
+    [animals, shownFilters, reference, visible.length],
+  );
 
   const handleClearAll = useCallback(() => {
     // The species is not part of what clears (use-animal-filters.ts), so it
@@ -473,6 +528,7 @@ export function AnimalGrid({
     care,
     chips,
     hasSidebar,
+    unanswered,
   } = useAnimalFilterModel({
     animals,
     logos,
@@ -489,6 +545,24 @@ export function AnimalGrid({
       toggleManyCare,
     },
   });
+
+  const emptyTopic = thinnest && topicKey(thinnest);
+  const emptyReason =
+    thinnest && emptyTopic
+      ? t("knownFor", {
+          topic: t(emptyTopic),
+          answered: thinnest.answered,
+          asked: thinnest.asked,
+          // Who {asked} counts. Velikost on Vse is asked of the dogs and the
+          // other animals alone (groupAsks), so "od 40 živali" would take in
+          // cats nobody asked.
+          species: t(
+            thinnest.facet === "size" && shownFilters.species === "all"
+              ? "sizeAskedOf"
+              : SPECIES_ABSENCE_KEY[shownFilters.species],
+          ),
+        })
+      : undefined;
 
   return (
     <>
@@ -571,6 +645,7 @@ export function AnimalGrid({
             onToggleManyProperties={toggleManyProperties}
             onClearAll={handleClearAll}
             onSortChange={setSort}
+            unanswered={unanswered}
           />
 
           {isEmpty ? (
@@ -589,6 +664,13 @@ export function AnimalGrid({
                       })
                     : messages.noResults}
                 </p>
+                {/* Why, before what to do about it, when a thin answer is the
+                    likeliest reason: "Ni zadetkov" under Psi, Otroke and
+                    Mačko can read as no dog being fine with children, when 121
+                    of the 124 had no answer. */}
+                {!shelterOnlyEmpty && emptyReason && (
+                  <p className="text-sm text-muted-foreground">{emptyReason}</p>
+                )}
                 {!shelterOnlyEmpty && (
                   <p className="text-sm text-muted-foreground">
                     {messages.tryFewerFilters}
@@ -784,6 +866,9 @@ export function AnimalGrid({
             onToggleMany={toggleMany}
             onToggleProperty={toggleProperty}
             onToggleManyProperties={toggleManyProperties}
+            unanswered={unanswered}
+            sort={sort}
+            onSortChange={setSort}
           />
         )}
 

@@ -43,6 +43,7 @@ import type {
   MultiGroup,
   SpeciesFilter,
   ToggleDef,
+  UnansweredTally,
 } from "@/lib/filters";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
@@ -147,6 +148,7 @@ export function AnimalFilters({
   onToggleManyProperties,
   onClearAll,
   onSortChange,
+  unanswered,
 }: {
   isEmpty: boolean;
   /** Whether the page draws the filter panel beside the grid at lg. When it
@@ -185,6 +187,8 @@ export function AnimalFilters({
   onSpeciesChange: (species: SpeciesFilter) => void;
   onClearAll: () => void;
   onSortChange: (sort: AnimalSort) => void;
+  /** What each question leaves out for want of an answer, for the sheet. */
+  unanswered?: UnansweredTally;
 } & FilterActionContract) {
   const { locale } = useI18n();
   const reduceMotion = useReducedMotion();
@@ -363,6 +367,8 @@ export function AnimalFilters({
             municipalitiesUrl={municipalitiesUrl}
                   offSite={offSiteShelters}
                   summaries={shelterSummaries}
+                  sort={sort}
+                  onSortChange={onSortChange}
                   deepLink="desktop"
                 />
               </div>
@@ -552,6 +558,7 @@ export function AnimalFilters({
               toggleTally={toggleTally}
               goodWith={goodWith}
               care={care}
+              unanswered={unanswered}
               activeCount={activeCount}
               scope={
                 shelters && {
@@ -589,6 +596,8 @@ export function AnimalFilters({
             municipalitiesUrl={municipalitiesUrl}
                 offSite={offSiteShelters}
                 summaries={shelterSummaries}
+                sort={sort}
+                onSortChange={onSortChange}
                 deepLink="mobile"
                 open={pickerOpen}
                 onOpenChange={setPickerOpen}

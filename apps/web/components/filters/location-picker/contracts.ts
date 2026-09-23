@@ -1,6 +1,7 @@
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type { FilterOption } from "@/lib/filters";
 import type { ShelterSummary } from "@/lib/shelter-summary";
+import type { AnimalSort } from "@/lib/sort";
 
 /** The stable public contract exposed by the LocationPicker facade. */
 export type LocationPickerProps = {
@@ -33,6 +34,11 @@ export type LocationPickerProps = {
   deepLink?: "desktop" | "mobile";
   /** The toolbar button or the filter sidebar's scope row. */
   dress?: "toolbar" | "sidebar";
+  /** The grid's order, for the offer the dialog makes once a place is
+   *  set: the shelter list sorts itself by distance, and until this the
+   *  grid behind the dialog quietly did not. Without it there is no offer. */
+  sort?: AnimalSort;
+  onSortChange?: (sort: AnimalSort) => void;
   /** Optional controlled dialog state. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;

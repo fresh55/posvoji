@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Animal, AnimalSize, EnergyLevel, Sex, Species } from "@posvoji/schema";
+import type {
+  AdoptionStatus,
+  Animal,
+  AnimalSize,
+  EnergyLevel,
+  Sex,
+  Species,
+} from "@posvoji/schema";
 import {
   applyFilters,
   ageInMonths,
@@ -18,6 +25,7 @@ import {
   toggleCounts,
   TOGGLES,
   TOGGLE_KEYS,
+  unansweredCounts,
   type CareKey,
   type Filters,
   type GoodWithKey,
@@ -77,6 +85,14 @@ function dataset(count: number): Animal[] {
     const answer = () => pick(["yes", "no", "unknown", undefined] as const);
     const flag = () => pick([true, false, undefined] as const);
     const months = pick([undefined, 3, 11, 12, 40, 95, 96, 130]);
+    const status = pick<AdoptionStatus>([
+      "available",
+      "available",
+      "unknown",
+      "reserved",
+      "hold",
+      "adopted",
+    ]);
     const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20"]);
     const adoptionRequirements = {
       indoorOnly: flag(),
@@ -109,7 +125,7 @@ function dataset(count: number): Animal[] {
       ...(energy === undefined ? {} : { energy }),
       ...(months === undefined ? {} : { approximateAgeMonths: months }),
       ...(born === undefined ? {} : { birthDate: born }),
-      status: "available",
+      status,
       medical: {
         neutered: flag(),
         vaccinated: flag(),
@@ -137,6 +153,10 @@ function slowGroupValue(
   group: MultiGroup,
 ): string | string[] | undefined {
   switch (group) {
+    case "availability":
+      return animal.status === "available" || animal.status === "unknown"
+        ? "available"
+        : "unavailable";
     case "sex":
       return animal.sex === "unknown" ? undefined : animal.sex;
     case "age": {
@@ -144,7 +164,8 @@ function slowGroupValue(
       return months === undefined ? undefined : ageGroup(months);
     }
     case "size":
-      return animal.size;
+      // Velikost is a question put to dogs and the rest, never to a cat.
+      return animal.species === "cat" ? undefined : animal.size;
     case "coatColor":
       return animal.coatColor === "cream" ? "orange" : animal.coatColor === "cream-white" ? "orange-white" : animal.coatColor;
     case "coatLength":
@@ -241,6 +262,7 @@ function slowFacetCounts(
   filters: Filters,
 ): Record<MultiGroup, Map<string, number>> {
   const counts = {
+    availability: new Map<string, number>(),
     sex: new Map<string, number>(),
     age: new Map<string, number>(),
     size: new Map<string, number>(),
@@ -364,6 +386,84 @@ function slowChipGains(
   return gains;
 }
 
+/** An intake date the thresholds can be read from: one at all, and not after
+ *  the day being asked about. Every date in the dataset is a real one. */
+function slowIntakeKnown(animal: Animal): boolean {
+  return animal.intakeDate !== undefined && animal.intakeDate <= "2026-08-15";
+}
+
+/** Whether the animal answers the question, as opposed to answering it with
+ *  a value the visitor did not pick. */
+function slowAnswered(animal: Animal, group: MultiGroup): boolean {
+  return group === "waiting"
+    ? slowIntakeKnown(animal)
+    : slowGroupValue(animal, group) !== undefined;
+}
+
+type Tally = { asked: number; unanswered: number };
+
+/** What each question leaves out for want of an answer, by its definition:
+ *  over the animals that pass everything but that question, how many it is
+ *  put to and how many of those it has no answer from. */
+function slowUnanswered(animals: Animal[], filters: Filters) {
+  const count = (
+    passes: (animal: Animal) => boolean,
+    asks: (animal: Animal) => boolean,
+    answered: (animal: Animal) => boolean,
+  ): Tally => {
+    let asked = 0;
+    let unanswered = 0;
+    for (const animal of animals) {
+      if (!passes(animal) || !asks(animal)) continue;
+      asked += 1;
+      if (!answered(animal)) unanswered += 1;
+    }
+    return { asked, unanswered };
+  };
+  const groups = Object.fromEntries(
+    GROUPS.map((group) => [
+      group,
+      count(
+        (animal) => slowPasses(animal, filters, { ...filters, skipGroup: group }),
+        (animal) => !(group === "size" && animal.species === "cat"),
+        (animal) => slowAnswered(animal, group),
+      ),
+    ]),
+  );
+  const goodWith = Object.fromEntries(
+    GOOD_WITH_KEYS.map((key) => [
+      key,
+      count(
+        (animal) =>
+          slowPasses(animal, filters, {
+            ...filters,
+            goodWith: filters.goodWith.filter((selected) => selected !== key),
+          }),
+        () => true,
+        (animal) =>
+          (key !== "kids" && animal.adoptionRequirements?.onlyPet === true) ||
+          animal.goodWith?.[key] === "yes" ||
+          animal.goodWith?.[key] === "no",
+      ),
+    ]),
+  );
+  const toggles = Object.fromEntries(
+    TOGGLES.map((toggle) => [
+      toggle.key,
+      count(
+        (animal) =>
+          slowPasses(animal, filters, {
+            ...filters,
+            toggles: filters.toggles.filter((selected) => selected !== toggle.key),
+          }),
+        (animal) => toggle.species === undefined || toggle.species === animal.species,
+        (animal) => toggle.answered(animal),
+      ),
+    ]),
+  );
+  return { groups, goodWith, toggles };
+}
+
 // ---------------------------------------------------------------------------
 // The filter states to try.
 // ---------------------------------------------------------------------------
@@ -371,7 +471,7 @@ function slowChipGains(
 // Read off FILTER_METADATA rather than listed again: this file claims to be
 // the specification, and a hand-copied list quietly stops covering a value the
 // moment one is added to the metadata.
-const values = <Group extends "sex" | "age" | "size" | "energy" | "coatColor" | "coatLength" | "waiting">(
+const values = <Group extends "availability" | "sex" | "age" | "size" | "energy" | "coatColor" | "coatLength" | "waiting">(
   group: Group,
 ): (typeof FILTER_METADATA)[Group][number]["value"][] =>
   FILTER_METADATA[group].map((option) => option.value);
@@ -395,6 +495,8 @@ function states(): Filters[] {
   const only = (part: Partial<Filters>): void => {
     out.push({ ...EMPTY_FILTERS, ...part });
   };
+  only({ availability: ["available"] });
+  only({ availability: ["available"], age: ["mladicek"] });
   only({ sex: ["male"] });
   only({ sex: ["male", "female"] });
   only({ age: ["mladicek"] });
@@ -428,6 +530,7 @@ function states(): Filters[] {
       species: (["all", "all", "dog", "cat", "other"] as SpeciesFilter[])[
         Math.floor(next() * 5)
       ],
+      availability: some(values("availability"), 0.25),
       sex: some(SEXES, 0.35),
       age: some(AGES, 0.3),
       size: some(SIZES, 0.3),
@@ -513,6 +616,14 @@ describe("the indexed engine answers what the definitions do", () => {
         entries(chipGains(ANIMALS, filters, NOW)),
         where(filters, at),
       ).toEqual(entries(slowChipGains(ANIMALS, filters)));
+    });
+  });
+
+  it("agrees on what each question leaves out for want of an answer", () => {
+    STATES.forEach((filters, at) => {
+      expect(unansweredCounts(ANIMALS, filters, NOW), where(filters, at)).toEqual(
+        slowUnanswered(ANIMALS, filters),
+      );
     });
   });
 

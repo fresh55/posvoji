@@ -46,9 +46,11 @@ const SECTION_KEYS = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
  *
  * Shelter answers no section. Kje is the panel's first block and it does not
  * fold, so an address carrying only shelters has not answered anything the
- * panel can make room for.
+ * panel can make room for. Availability, the block under Kje, is the same
+ * case for the same reasons.
  */
 const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
+  availability: null,
   sex: "sex",
   age: "age",
   size: "size",

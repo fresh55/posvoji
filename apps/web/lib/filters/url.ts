@@ -12,6 +12,7 @@ import {
   SINGLE_CHOICE_GROUPS,
   filterColour,
   type AgeGroup,
+  type Availability,
   type WaitingGroup,
   type CareKey,
   type Filters,
@@ -32,6 +33,7 @@ import {
 // the tabs and the portal can read them without pulling this module and its
 // dependencies along.
 const PARAM_NAMES: Record<MultiGroup, string> = {
+  availability: "posvojitev",
   sex: "spol",
   age: "starost",
   size: "velikost",
@@ -220,6 +222,7 @@ export function parseFilters(search: string): Filters {
       .filter((value): value is string => value !== undefined);
   return pruneHiddenFilters({
     species,
+    availability: values("availability") as Availability[],
     sex: values("sex") as Sex[],
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],

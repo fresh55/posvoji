@@ -195,6 +195,12 @@ export function CareCards({
       // No hint: every row carries its own line saying which animals it
       // shows, which a touch screen can read and a tooltip it cannot open is
       // not. The info mark also pushed this heading 3.7px into Ponastavi.
+      //
+      // The lead says which way the section runs before the first press.
+      // Doma imam narrows to animals that fit the visitor's home; this narrows
+      // to animals that need what the visitor offers, and the outcome line
+      // below said so only after the list had already gone from 491 to 14.
+      lead={messages.careLead}
       active={selected.length > 0}
       onReset={() => {
         clearCelebration();

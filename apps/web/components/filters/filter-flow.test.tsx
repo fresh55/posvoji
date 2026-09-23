@@ -343,7 +343,7 @@ describe("filter flow interactions", () => {
     expect(matchingIds()).toBe("male-young");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki se razumejo z otroki in psi. 1 od 3.",
+        "Prikazane so živali, ki se razumejo z otroki in psi. 1 od 3. Živali brez odgovora zavetišča so skrite.",
       ),
     ).toBeTruthy();
   });

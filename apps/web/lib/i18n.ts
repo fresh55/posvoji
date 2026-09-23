@@ -602,7 +602,7 @@ const sl = {
   // The section reads as one sentence, so the phrases are whole and translated,
   // never assembled from parts in the component.
   goodWithOutcome:
-    "Prikazane so živali, ki se razumejo {list}. {count} od {total}.",
+    "Prikazane so živali, ki se razumejo {list}. {count} od {total}. Živali brez odgovora zavetišča so skrite.",
   // Lead carries the preposition, which in Slovenian depends on the word that
   // follows it. Tail is the same noun without it, for the rest of the list.
   goodWithLeadKids: "z otroki",
@@ -916,7 +916,7 @@ const en: Messages = {
   goodWithFilterHint:
     "Tell us who already lives with you. Animals the shelter has not answered for stay hidden.",
   goodWithOutcome:
-    "Showing animals that get on with {list}. {count} of {total}.",
+    "Showing animals that get on with {list}. {count} of {total}. Animals the shelter has not answered for stay hidden.",
   goodWithLeadKids: "kids",
   goodWithLeadDogs: "dogs",
   goodWithLeadCats: "cats",

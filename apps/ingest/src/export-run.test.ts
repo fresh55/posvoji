@@ -181,6 +181,22 @@ describe("the export command's production pipeline", () => {
       .toEqual([{ animalId: animal().id, reason: "evidence-changed" }]);
   });
 
+  it("republishes a dataset written before substantialWhite was retired, keeping firstSeenAt", async () => {
+    const firstSeenAt = "2026-06-01T08:00:00.000Z";
+    const previous = { ...animal(), source: { ...animal().source, firstSeenAt } };
+    const h = harness([previous]);
+    // As on production: the published file carries it, the crawled one never did.
+    writeFileSync(h.paths.datasetPath, JSON.stringify({
+      generatedAt: BEFORE, animals: [{ ...previous, substantialWhite: true }],
+    }));
+    const result = await runExport({ republish: true }, h.services);
+    expect(result.exitCode).toBe(0);
+    expect(result.dataset.animals[0]?.source.firstSeenAt).toBe(firstSeenAt);
+    const written = JSON.parse(readFileSync(h.paths.datasetPath, "utf8"));
+    expect(written.animals[0]).not.toHaveProperty("substantialWhite");
+    expect(written.animals[0].source.firstSeenAt).toBe(firstSeenAt);
+  });
+
   it("reports a cooldown beyond the provider interval as degraded and recovers when it expires", async () => {
     const h = harness();
     expect((await runExport({}, h.services)).exitCode).toBe(0);

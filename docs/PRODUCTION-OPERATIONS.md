@@ -116,6 +116,17 @@ the saved generation and publishes without another crawl. For applying current
 policy/portal changes to saved crawl data, use `--republish`. This still performs
 a full Next build and may need missing media; it is not a five-minute guarantee.
 
+A promotion can remove a field from the `Animal` schema, as #302 removed
+`substantialWhite`. The first export after it drops the field from the previous
+datasets as it reads them (`RETIRED_ANIMAL_FIELDS` in
+`apps/ingest/src/run-guards.ts`) and writes them without it, keeping every
+`firstSeenAt`. No operator step is needed. If an export stops on
+`Unrecognized key` for a removed field, add the field to that list. Do not use
+`--discard-previous`, which resets every `firstSeenAt`. Do not
+`--retry-publish` a generation sealed before such a promotion either: it builds
+the saved datasets unchanged, and the site build rejects the removed field. Run
+the crawl or `--republish` instead.
+
 ## External monitoring without a new account
 
 `.github/workflows/production-health.yml` requests external checks every hour

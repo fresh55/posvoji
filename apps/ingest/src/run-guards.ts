@@ -38,6 +38,36 @@ function discard(
   return undefined;
 }
 
+// Fields the Animal schema no longer has. Animal rejects unknown keys, so a
+// dataset written before a removal could not be read by the code after it: the
+// first run after promotion would stop, and the only way on was
+// --discard-previous, which resets every firstSeenAt. These are dropped from
+// the previous dataset as it is read, and the next write leaves them out.
+//
+// substantialWhite: removed in #302, replaced by the reviewed coatColor pairs.
+//
+// An entry can go once no host can still hold a dataset written before its
+// removal as its previous one.
+const RETIRED_ANIMAL_FIELDS = ["substantialWhite"] as const;
+
+// Only the named fields, and only on animals. Anything else unknown still
+// fails the schema below. Edits the freshly parsed JSON in place and returns
+// how many animals carried each field.
+function dropRetiredFields(parsed: unknown): Map<string, number> {
+  const dropped = new Map<string, number>();
+  const animals = (parsed as { animals?: unknown } | null)?.animals;
+  if (!Array.isArray(animals)) return dropped;
+  for (const animal of animals) {
+    if (animal === null || typeof animal !== "object") continue;
+    for (const field of RETIRED_ANIMAL_FIELDS) {
+      if (!Object.hasOwn(animal, field)) continue;
+      delete (animal as Record<string, unknown>)[field];
+      dropped.set(field, (dropped.get(field) ?? 0) + 1);
+    }
+  }
+  return dropped;
+}
+
 // A missing file is the first run and is fine. A file that is there but
 // unreadable is not: it used to be swallowed, which reset firstSeenAt for
 // every animal and left the truncated file in place to fail the same way
@@ -55,6 +85,7 @@ export function readPreviousDataset(
     return discard(path, `it is not valid JSON (${error})`, options);
   }
 
+  const dropped = dropRetiredFields(parsed);
   const result = Dataset.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues
@@ -62,6 +93,12 @@ export function readPreviousDataset(
       .map((issue) => `${issue.path.join(".") || "dataset"}: ${issue.message}`)
       .join("; ");
     return discard(path, `it does not match the Dataset schema (${issues})`, options);
+  }
+  for (const [field, count] of dropped) {
+    console.log(
+      `previous dataset at ${path}: dropped the retired field ${field} ` +
+        `from ${count} animal(s)`,
+    );
   }
   return result.data;
 }

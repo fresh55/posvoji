@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { AnimationMixer, Mesh, PerspectiveCamera, Raycaster, Vector2, Vector3 } from "three";
+import { AnimationMixer, Box3, BufferGeometry, Mesh, PerspectiveCamera, Raycaster, Sphere, Vector2, Vector3 } from "three";
 import { expect, it, vi } from "vitest";
 import { catLegAtHit, createCatPicker } from "./cat-picking";
 import { loadCatAsset } from "../scripts/cat-asset.mjs";
@@ -40,13 +40,49 @@ it("keeps the nose contact on the moving head and excludes the forehead", async 
 // same call used here, so the reference hits are the ones it would have found
 // rather than an approximation of them. catLegAtHit reads isSkinnedMesh, the
 // skeleton and the skin attributes off the hit, so the bake carries them over.
+//
+// three.js then tries a ray against every triangle of a mesh: 960 rays over
+// 54,236 posed triangles took 4 of this file's 5.6 seconds, and up to 28 of its
+// 30 with the machine busy. So each posed mesh is cut into leaves of nearby
+// triangles, each bounded by its own posed corners. A ray skips a leaf whose
+// bounds it misses, three.js tests the triangles of the rest itself, and every
+// leaf shares the posed attributes, so a hit reads the same corners and skin.
+// Against the uncut meshes every ray found the same triangle at the same
+// distance, once those were bounded by the pose too: the clone kept the
+// loader's box from the bind pose, which three.js culls against, and one ray
+// missed a body triangle the pose had moved out of it and hit the chin behind.
 function bakePose(mesh) {
   const geometry = mesh.geometry.clone(), position = geometry.attributes.position, v = new Vector3();
   for (let i = 0; i < position.count; i++) { mesh.getVertexPosition(i, v); position.setXYZ(i, v.x, v.y, v.z); }
-  geometry.computeBoundingSphere();
-  const baked = new Mesh(geometry, mesh.material);
-  baked.matrixWorld.copy(mesh.matrixWorld);
-  return Object.assign(baked, { isSkinnedMesh: true, skeleton: mesh.skeleton });
+  // Three times each triangle's centre, which is all the halving below compares.
+  const corners = geometry.index.array, centres = new Float32Array(corners.length);
+  for (let i = 0; i < corners.length; i++) {
+    v.fromBufferAttribute(position, corners[i]);
+    const t = i - i % 3; centres[t] += v.x; centres[t + 1] += v.y; centres[t + 2] += v.z;
+  }
+  const leaves = [];
+  const split = triangles => {
+    if (triangles.length > 128) {
+      // In half across the longest side of the box the centres span.
+      const box = new Box3();
+      for (const t of triangles) box.expandByPoint(v.fromArray(centres, t * 3));
+      const size = box.getSize(v), axis = size.x > size.y ? (size.x > size.z ? 0 : 2) : (size.y > size.z ? 1 : 2);
+      triangles.sort((a, b) => centres[a * 3 + axis] - centres[b * 3 + axis]);
+      split(triangles.slice(0, triangles.length >> 1)); split(triangles.slice(triangles.length >> 1));
+      return;
+    }
+    const leaf = new BufferGeometry(), box = new Box3();
+    const index = triangles.flatMap(t => [corners[t * 3], corners[t * 3 + 1], corners[t * 3 + 2]]);
+    for (const i of index) box.expandByPoint(v.fromBufferAttribute(position, i));
+    for (const [name, attribute] of Object.entries(geometry.attributes)) leaf.setAttribute(name, attribute);
+    leaf.setIndex(index);
+    leaf.boundingBox = box; leaf.boundingSphere = box.getBoundingSphere(new Sphere());
+    const baked = new Mesh(leaf, mesh.material);
+    baked.matrixWorld.copy(mesh.matrixWorld);
+    leaves.push(Object.assign(baked, { isSkinnedMesh: true, skeleton: mesh.skeleton }));
+  };
+  split(Array.from({ length: corners.length / 3 }, (_, t) => t));
+  return leaves;
 }
 
 it("tracks animated anatomy from multiple camera angles without adding scene objects", async () => {
@@ -64,7 +100,7 @@ it("tracks animated anatomy from multiple camera angles without adding scene obj
   for (const [name, time] of [["Companion", 0], ["Head pet", 1.2], ["Back warning", 1.2], ["Sleep", 2], ["Stretch", 1.75]]) {
     mixer.stopAllAction(); mixer.clipAction(gltf.animations.find(clip => clip.name === name)).play(); mixer.setTime(time);
     root.updateMatrixWorld(true);
-    const baked = meshes.map(bakePose);
+    const baked = meshes.flatMap(bakePose);
     for (const angle of [-19, 90, 145]) {
       const theta = angle * Math.PI / 180;
       camera.position.set(Math.sin(theta) * 1.45, .48, Math.cos(theta) * 1.45);

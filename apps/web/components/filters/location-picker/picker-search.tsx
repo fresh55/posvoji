@@ -1,4 +1,12 @@
-import { LoaderCircle, MapPin, Navigation, Search, X } from "lucide-react";
+import {
+  ArrowDownNarrowWide,
+  Check,
+  LoaderCircle,
+  MapPin,
+  Navigation,
+  Search,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
@@ -12,7 +20,9 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
     toggleNearby, nearbyOn, state, radiusPicks, pickWithin, setAskedRadius,
+    sort, onSortChange, toggleNearestSort,
   } = controller;
+  const byDistance = sort === "nearest";
   const copy = pickerText[locale];
   const canLocate = resolved.source !== "typed";
   // Spelled out rather than taken from the controller's placeOffered, which is
@@ -151,10 +161,11 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
       )}
       {resolved.at && (
         <div className="space-y-1">
-          {/* The origin and the distances from it on one line where they fit:
-              stacked, they were three rows above the first shelter, and a
-              phone held sideways was left one row of list. The distances wrap
-              to the next line together, never one chip at a time. */}
+          {/* The origin, the distances from it and the grid's order by it, on
+              one line where they fit: stacked, they were four rows above the
+              first shelter, and a phone held sideways was left one row of
+              list. The distances wrap to the next line together, never one
+              chip at a time. */}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -195,6 +206,31 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
                   </Toggle>
                 ))}
               </div>
+            )}
+            {/* The list below is already nearest first; the grid behind the
+                dialog is not, until asked. Offered here, where the place was
+                just set, and never done unasked: an order the visitor chose
+                themselves is theirs to change. A toggle, so pressing it again
+                gives the grid back the order it had (toggleNearestSort).
+
+                The sort control's own mark and not the crosshair: the locate
+                button in the field above wears that, and two pressed controls in
+                one mark read as one control drawn twice. This one orders the
+                grid, so it carries what the grid's order carries. */}
+            {onSortChange && (
+              <Toggle
+                variant="outline"
+                pressed={byDistance}
+                onPressedChange={toggleNearestSort}
+                // The ground and the 3:1 border of the origin's outline Button,
+                // which the Toggle outline draws lighter; the two share a row
+                // where it fits and read as a pair.
+                className="h-11 max-w-full justify-start gap-2 border-control-border bg-background px-3 text-left shadow-none dark:bg-input/30"
+              >
+                <ArrowDownNarrowWide className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{messages.sortByDistance}</span>
+                {byDistance && <Check className="size-3.5 shrink-0" aria-hidden />}
+              </Toggle>
             )}
           </div>
           {/* Dropped where there is no height to spare: the kilometres on

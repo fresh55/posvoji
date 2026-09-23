@@ -310,6 +310,49 @@ describe("animal grid empty state", () => {
     expect(
       screen.queryByRole("button", { name: "Pokaži iz vseh zavetišč" }),
     ).toBeNull();
+    // Nothing was answered, so there is no thin answer to name.
+    expect(screen.queryByText(/poznamo pri/)).toBeNull();
+  });
+
+  it("names the thin answer when it is the likeliest reason nothing matched", () => {
+    // Psi, Otroke and Mačko on the live dataset can read as no dog being fine
+    // with children, when 121 of the 124 had no answer about children at all.
+    window.history.replaceState(null, "", "/?vrsta=pes&druzba=otroci");
+    renderGrid([
+      { ...animal("dog-no", "dog", "muri"), goodWith: { kids: "no" } },
+      animal("dog-silent", "dog", "muri"),
+      animal("dog-quiet", "dog", "tretje"),
+      animal("cat-muri", "cat", "muri"),
+    ]);
+
+    expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
+    expect(
+      screen.getByText("Odnos do otrok poznamo pri 1 od 3 psov."),
+    ).toBeTruthy();
+    expect(screen.getByText("Poskusi z manj filtri.")).toBeTruthy();
+  });
+
+  it("counts Velikost on Vse over the animals it is asked of", () => {
+    // Cats are not asked a size, so "od 4 živali" would take in a cat nobody
+    // asked, and the line would say the size was known for fewer than it is.
+    // The fixture sizes every animal medium, so two of them lose theirs.
+    const unsized = (fixture: Animal): Animal => {
+      const copy = { ...fixture };
+      delete copy.size;
+      return copy;
+    };
+    window.history.replaceState(null, "", "/?velikost=majhna");
+    renderGrid([
+      { ...animal("dog-large", "dog", "muri"), size: "large" },
+      unsized(animal("dog-unsized", "dog", "muri")),
+      unsized(animal("rabbit-unsized", "rabbit", "muri")),
+      { ...animal("cat-small", "cat", "muri"), size: "small" },
+    ]);
+
+    expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
+    expect(
+      screen.getByText("Velikost poznamo pri 1 od 3 psov in drugih živali."),
+    ).toBeTruthy();
   });
 
   it("keeps the generic empty state when dropping the shelter would not help either", () => {
@@ -542,6 +585,44 @@ describe("a filter with nothing left to narrow", () => {
     expect(
       screen.getAllByRole("button", { name: "Filtri, aktivnih: 1" }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("keeps Posvojitev under the press that turns it off", () => {
+    // Nobody on Ostale is on hold here, so the section is drawn only because
+    // its row is on. Pressing it off took the section away, and the keyboard
+    // focus on its row with it.
+    window.history.replaceState(null, "", "/?vrsta=ostalo&posvojitev=na-voljo");
+    const { container } = renderGrid([
+      { ...animal("dog-hold", "dog", "muri"), status: "hold" },
+      animal("rabbit-druga", "rabbit", "druga"),
+    ]);
+    const rail = container.querySelector("aside")!;
+    const row = within(rail).getByRole("button", { name: /^Samo na voljo,/ });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(row);
+  });
+
+  it("keeps any section a selection alone was holding on the tab", () => {
+    // Energija carried to Mačke, where no cat was rated: the section is there
+    // only for its answer, and pressing that off must not take it away.
+    window.history.replaceState(null, "", "/?vrsta=macka&energija=miren");
+    const { container } = renderGrid([
+      { ...animal("dog-calm", "dog", "muri"), energy: "calm" },
+      animal("cat-unrated", "cat", "muri"),
+    ]);
+    const rail = container.querySelector("aside")!;
+    const row = within(rail).getByRole("button", { name: /^Miren,/ });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(document.activeElement).toBe(row);
   });
 });
 

@@ -1,6 +1,6 @@
 import type { LabelKey } from "@/lib/label-messages";
 import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
-import type { AnimalFields } from "@/lib/animal";
+import { adoptableNow, type AnimalFields } from "@/lib/animal";
 import { namesSeveralAnimals } from "@/lib/animal-name";
 import type { Locale } from "@/lib/i18n";
 import { translateLabel as translate } from "@/lib/label-messages";
@@ -455,19 +455,11 @@ export function monthsInShelter(
 // so they cannot disagree about who counts as waiting long.
 export const LONG_STAY_MONTHS = 36;
 
-// An allowlist and not a denylist of the other three. A fifth status added to
-// the schema would silently inherit the plea under a denylist, and the plea is
-// about an animal a visitor can still act on: available, or an unknown that
-// the shelter's own listing still carries. Reserved and held animals are not
-// waiting for this visitor's decision.
-function awaitingAVisitor(status: AdoptionStatus): boolean {
-  return status === "available" || status === "unknown";
-}
-
 // The wait in months of an animal that has waited long and is actually up
 // for adoption, or undefined.
 export function longStayMonths(animal: AnimalFields, now: Date): number | undefined {
-  if (!animal.intakeDate || !awaitingAVisitor(animal.status)) return undefined;
+  // Reserved and held animals are not waiting for this visitor's decision.
+  if (!animal.intakeDate || !adoptableNow(animal.status)) return undefined;
   const months = monthsInShelter(animal.intakeDate, now);
   if (months === undefined || months < LONG_STAY_MONTHS) return undefined;
   return months;
@@ -498,7 +490,7 @@ export function stayStatement(
   if (months === undefined) return undefined;
   const duration = ageLabel(months, locale);
 
-  if (months < LONG_STAY_MONTHS || !awaitingAVisitor(animal.status)) {
+  if (months < LONG_STAY_MONTHS || !adoptableNow(animal.status)) {
     return { tone: "quiet", text: translate(locale, "factStayValue", { duration }) };
   }
 

@@ -53,6 +53,9 @@ export {
   chipGains,
   chipKey,
   facetCounts,
+  namesUnanswered,
+  thinnestAnswer,
+  unansweredCounts,
   goodWithCounts,
   goodWithMatches,
   isDrop,
@@ -66,6 +69,9 @@ export {
   visibleGoodWith,
   visibleGroups,
   visibleToggles,
+  type Coverage,
+  type Unanswered,
+  type UnansweredTally,
 } from "./filters/engine";
 
 export {

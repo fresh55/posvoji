@@ -3,7 +3,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { careOptions, EMPTY_FILTERS, type CareKey } from "@/lib/filters";
+import {
+  careOptions,
+  EMPTY_FILTERS,
+  facetCounts,
+  type CareKey,
+} from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { CareCards } from "./care-cards";
 import {
@@ -195,16 +200,7 @@ describe("FilterGroupList", () => {
         <FilterGroupList
           filters={EMPTY_FILTERS}
           groups={[]}
-          counts={{
-            sex: new Map(),
-            age: new Map(),
-            size: new Map(),
-            energy: new Map(),
-            coatColor: new Map(),
-            coatLength: new Map(),
-            waiting: new Map(),
-            shelter: new Map(),
-          }}
+          counts={facetCounts([], EMPTY_FILTERS, new Date())}
           toggles={[]}
           toggleTally={new Map()}
           care={care}

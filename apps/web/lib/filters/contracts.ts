@@ -7,6 +7,12 @@ export type SpeciesFilter = "all" | SpeciesTab;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
 export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
 
+/** Whether the animal can be adopted now. Only "available" is ever offered as
+ *  an answer; "unavailable" is what reserved, on-hold and adopted animals are
+ *  counted as. An unknown status reads as available, the way the sort ranks
+ *  it: nothing says it is not. */
+export type Availability = "available" | "unavailable";
+
 /** Colours with a paired swatch. Review categories are stored directly. */
 export const TWO_TONED = ["black", "brown", "grey", "orange", "cream"] as const;
 export type CoatColorFacet = CoatColorCategory;
@@ -19,7 +25,7 @@ export function filterColour(category: CoatColorCategory | undefined): CoatColor
   return category;
 }
 export type MultiGroup =
-  | "sex" | "age" | "size" | "energy" | "shelter"
+  | "availability" | "sex" | "age" | "size" | "energy" | "shelter"
   | "coatColor" | "coatLength" | "waiting";
 
 // Yes/no properties an animal either has or doesn't. Every pick here has to
@@ -34,6 +40,15 @@ export const TOGGLE_KEYS = [
   "brez-felv",
 ] as const;
 export type ToggleKey = (typeof TOGGLE_KEYS)[number];
+
+// The toggles the panel offers as filters. Sterilisation, vaccination and the
+// chip stay facts on the animal but are not asked here: across the whole
+// dataset exactly one animal carries a recorded "no" for any of the three, so
+// a tick never told a vaccinated animal from an unvaccinated one. It told the
+// shelters that publish the fact from the ones that do not, and Čip alone
+// emptied five of the eleven. The FIV and FeLV results are real answers with
+// real negatives and positives, and a household with a cat asks for them.
+export const FILTER_TOGGLE_KEYS: readonly ToggleKey[] = ["brez-fiv", "brez-felv"];
 
 // Who the animal can live with. The schema answers each of these with
 // yes/no/unknown; the filter only ever asks for "yes", because a maybe is not
@@ -60,6 +75,7 @@ export type CareKey = (typeof CARE_KEYS)[number];
 
 export type Filters = {
   species: SpeciesFilter;
+  availability: Availability[];
   sex: Sex[];
   age: AgeGroup[];
   size: AnimalSize[];
@@ -75,6 +91,7 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   species: "all",
+  availability: [],
   sex: [],
   age: [],
   size: [],
@@ -93,8 +110,11 @@ export const EMPTY_FILTERS: Filters = {
 // would only sit there doing nothing. These groups take one answer at a time.
 export const SINGLE_CHOICE_GROUPS: readonly MultiGroup[] = ["waiting"];
 
+// Availability first: like Kje above it, it says which animals are in play at
+// all, before any question about what they are like.
 export const GROUPS: MultiGroup[] = [
-  "sex", "age", "size", "energy", "waiting", "coatColor", "coatLength", "shelter",
+  "availability", "sex", "age", "size", "energy", "waiting", "coatColor",
+  "coatLength", "shelter",
 ];
 
 /** All filter categories, used to group and label active chips. */

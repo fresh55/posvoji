@@ -305,6 +305,34 @@ function coinCount(shelters: ShelterPin[]): number {
   return shelters.reduce((sum, shelter) => sum + Math.max(shelter.count, 0), 0);
 }
 
+// Everything layoutTowns reads off a pin, so two pin lists that spell the same
+// key lay out the same map.
+function pinsKey(pins: readonly ShelterPin[]): string {
+  return pins
+    .map((pin) =>
+      [
+        pin.value,
+        pin.label,
+        pin.city,
+        pin.at.lat,
+        pin.at.lon,
+        pin.count,
+        pin.selectable,
+      ].join("\u0001"),
+    )
+    .join("\u0002");
+}
+
+// The last layout, by what it was laid out from. The panel draws two mini
+// maps from the same shelters and the same counts, the Kje row's and the phone
+// dock's, and both lay out afresh on every filter press because the counts
+// move. The collision pass is the expensive half of a layout, and at 4x CPU
+// the second copy was a few milliseconds of the press's first frame spent on
+// an answer already in hand. One entry is enough for that, and it cannot grow.
+// The towns are shared between callers, which every caller already treats as
+// read-only.
+let lastLayout: { key: string; towns: Town[] } | null = null;
+
 export function layoutTowns(
   pins: ShelterPin[],
   { counted = false }: {
@@ -313,6 +341,14 @@ export function layoutTowns(
     counted?: boolean;
   } = {},
 ): Town[] {
+  const key = `${counted ? "counted" : "sized"}\u0003${pinsKey(pins)}`;
+  if (lastLayout !== null && lastLayout.key === key) return lastLayout.towns;
+  const towns = layoutTownsAfresh(pins, counted);
+  lastLayout = { key, towns };
+  return towns;
+}
+
+function layoutTownsAfresh(pins: ShelterPin[], counted: boolean): Town[] {
   // Grouped by town name, not by coordinate. Two shelters in Ljubljana share a
   // marker; two different towns that round to the same point stay two markers
   // and get separated below, rather than silently merging under one name.

@@ -17,6 +17,7 @@ import {
   speciesFacetCounts,
   toggleCounts,
   toggleLabel,
+  unansweredCounts,
   visibleCare,
   visibleGoodWith,
   visibleGroups,
@@ -30,7 +31,7 @@ import {
 } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { summarizeShelters } from "@/lib/shelter-summary";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type FilterActions = Pick<
   ReturnType<typeof useAnimalFilters>,
@@ -126,12 +127,36 @@ export function useAnimalFilterModel({
     () => visibleGroups(pool, filters, reference, true),
     [pool, filters, reference],
   );
+  // A section, once drawn on a tab, stays for as long as the tab does.
+  // visibleGroups keeps one the pool cannot narrow only while it is answered,
+  // and an answer can stand where nothing else would draw the section:
+  // carried over from another tab, or arriving in a link (Posvojitev on a tab
+  // with nobody on hold, Energija carried to a tab nobody rated). Pressing the
+  // last one off there took the section out from under the press, and
+  // keyboard focus with it. Set while rendering, React's own shape for state
+  // that follows a value (use-filter-sections.ts has the same).
+  const [drawn, setDrawn] = useState(() => ({
+    tab: filters.species,
+    groups: GROUPS.filter((group) => shown[group]),
+  }));
+  const sameTab = drawn.tab === filters.species;
+  const gained = GROUPS.filter(
+    (group) => shown[group] && !(sameTab && drawn.groups.includes(group)),
+  );
+  if (!sameTab || gained.length > 0) {
+    setDrawn({
+      tab: filters.species,
+      groups: sameTab ? [...drawn.groups, ...gained] : gained,
+    });
+  }
+  const keptOnTab = drawn.groups;
   const groups = useMemo(
     () =>
       GROUPS.filter(
-        (group): group is CardGroup => group !== "shelter" && shown[group],
+        (group): group is CardGroup =>
+          group !== "shelter" && (shown[group] || keptOnTab.includes(group)),
       ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
-    [locale, pool, shown],
+    [keptOnTab, locale, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which
@@ -158,6 +183,12 @@ export function useAnimalFilterModel({
   );
   const toggleTally = useMemo(
     () => toggleCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
+  // What each question leaves out for want of an answer, beside the counts
+  // above and over the same animals (unansweredCounts in lib/filters).
+  const unanswered = useMemo(
+    () => unansweredCounts(animals, filters, reference),
     [animals, filters, reference],
   );
   // The two sections' counts, each a pass over the dataset, kept apart from
@@ -201,7 +232,11 @@ export function useAnimalFilterModel({
   const care = useMemo(() => {
     const keys = visibleCare(pool, filters.care, true);
     return {
-      options: careOptions(locale).filter((option) => keys.includes(option.key)),
+      // The tab decides one description: Izkušeno roko names the dogs it
+      // holds, and on Mačke it holds two very frightened cats instead.
+      options: careOptions(locale, filters.species).filter((option) =>
+        keys.includes(option.key),
+      ),
       counts: careTally,
       resultCount: resultCount,
       total: pool.length,
@@ -211,6 +246,7 @@ export function useAnimalFilterModel({
   }, [
     careTally,
     filters.care,
+    filters.species,
     locale,
     pool,
     resultCount,
@@ -308,5 +344,6 @@ export function useAnimalFilterModel({
     care,
     chips,
     hasSidebar,
+    unanswered,
   };
 }

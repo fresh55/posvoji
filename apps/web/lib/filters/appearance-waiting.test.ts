@@ -133,6 +133,22 @@ describe("shelter waiting thresholds", () => {
     expect(applyFilters(animals, state, now)).toEqual([]);
     expect(applyFilters(animals, state, new Date("2026-09-22T00:00:00Z"))).toEqual(animals);
   });
+
+  // The buckets are worked out once per list and day and then reused by every
+  // counter, so a later hour, an earlier day and each counter have to read
+  // the same answer a fresh walk would give.
+  it("answers every counter from one reading per day, and reads again for another day", () => {
+    const animals = [animal("threshold", { intakeDate: "2026-03-21" }), animal("long", { intakeDate: "2024-01-01" })];
+    const state = { ...EMPTY_FILTERS, waiting: ["over-6-months"] } as Filters;
+    const lateSameDay = new Date("2026-09-21T23:59:00Z");
+    const nextDay = new Date("2026-09-22T00:00:00Z");
+    expect(facetCounts(animals, EMPTY_FILTERS, now).waiting.get("over-6-months")).toBe(1);
+    expect(applyFilters(animals, state, lateSameDay).map(({ id }) => id)).toEqual(["long"]);
+    expect(facetCounts(animals, EMPTY_FILTERS, nextDay).waiting.get("over-6-months")).toBe(2);
+    expect(visibleGroups([animals[0]], { ...EMPTY_FILTERS, waiting: [] }, nextDay, true).waiting).toBe(true);
+    expect(visibleGroups([animals[0]], { ...EMPTY_FILTERS, waiting: [] }, now, true).waiting).toBe(false);
+    expect(applyFilters(animals, state, now).map(({ id }) => id)).toEqual(["long"]);
+  });
 });
 
 // A chip has no section heading beside it, so "Srednja" there was Velikost's

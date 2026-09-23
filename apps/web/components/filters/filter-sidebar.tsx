@@ -26,9 +26,11 @@ import type {
   MultiGroup,
   SpeciesFilter,
   ToggleDef,
+  UnansweredTally,
 } from "@/lib/filters";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import type { ShelterSummary } from "@/lib/shelter-summary";
+import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 
 /** Everything the panel's Kje row needs, absent when the dataset has no
@@ -60,6 +62,9 @@ export function FilterSidebar({
   onToggleManyProperties,
   onClearAll,
   onSpeciesChange,
+  unanswered,
+  sort,
+  onSortChange,
   className,
 }: {
   filters: Filters;
@@ -75,6 +80,11 @@ export function FilterSidebar({
    *  back (pickerRecoveryActions). The panel draws no species control of
    *  its own; the strip in the toolbar across the gutter is it. */
   onSpeciesChange?: (species: SpeciesFilter) => void;
+  unanswered?: UnansweredTally;
+  /** For the Kje dialog, which offers to order the grid by distance once a
+   *  place is set there. */
+  sort?: AnimalSort;
+  onSortChange?: (sort: AnimalSort) => void;
   className?: string;
 } & FilterActionContract) {
   const { messages, locale } = useI18n();
@@ -180,6 +190,8 @@ export function FilterSidebar({
           municipalitiesUrl={scope.municipalitiesUrl}
           offSite={scope.offSite}
           summaries={scope.summaries}
+          sort={sort}
+          onSortChange={onSortChange}
           deepLink="desktop"
         />
       )}
@@ -192,6 +204,7 @@ export function FilterSidebar({
         toggleTally={toggleTally}
         goodWith={goodWith}
         care={care}
+        unanswered={unanswered}
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         onToggleProperty={onToggleProperty}

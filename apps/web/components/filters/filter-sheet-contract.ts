@@ -11,6 +11,7 @@ import type {
   MultiGroup,
   SpeciesFilter,
   ToggleDef,
+  UnansweredTally,
 } from "@/lib/filters";
 import type { AnimalSort } from "@/lib/sort";
 
@@ -38,6 +39,7 @@ export type FilterSheetProps = FilterActionContract & {
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
   care?: CareSection;
+  unanswered?: UnansweredTally;
   scope?: ShelterScope;
   activeCount: number;
   resultCount: number;

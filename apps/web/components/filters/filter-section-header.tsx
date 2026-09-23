@@ -85,7 +85,13 @@ export function CollapsibleBody({
 
   return (
     <LazyMotion features={domAnimation}>
-      <AnimatePresence initial={false}>
+      {/* presenceAffectsLayout off, because nothing in a section body animates
+          its layout: the fold is a height tween, not a layout projection. Left
+          on, Motion hands the body a new presence context on every render,
+          and every motion component in the section renders again with it, a
+          memoised one included. That was the whole panel's icons redrawn on
+          each filter press, in the render the press's first frame waits for. */}
+      <AnimatePresence initial={false} presenceAffectsLayout={false}>
         {open ? (
           <m.div
             key="body"
@@ -116,33 +122,47 @@ export function CollapsibleBody({
   );
 }
 
+// The voice a section explains itself in when the words are drawn: the hint
+// and the lead above the rows, the notes under them. 12px in the sheet, 11px
+// in the sidebar. The two sizes are one decision about column width and not
+// two tastes: the sidebar is a 224px column beside the grid, while the sheet
+// is a phone held at arm's length, where 11px was the smallest type on the
+// page. The sheet is below lg and the sidebar only from it, so the width gate
+// says which one this is.
+const NOTE_CLASS = "text-xs leading-snug text-muted-foreground lg:text-2xs";
+
 /** The hint sentence a section keeps under its header. A folding section moves
     the hint into the header tooltip, which a touch screen cannot open, so
     coarse pointers keep the sentence in the body; a section that never folds
-    keeps it visible outright. */
+    keeps it visible outright. The id lets the section's rows take it as
+    their description, which a hidden hint still gives. */
 export function SectionHint({
   collapse,
+  id,
   children,
 }: {
   collapse?: SectionCollapse;
+  id?: string;
   children: ReactNode;
 }) {
   return (
     <p
+      id={id}
       className={cn(
-        // 12px in the sheet, 11px in the sidebar. The two sizes are one
-        // decision about column width and not two tastes: the sidebar is a
-        // 224px column beside the grid, while the sheet is a phone held at
-        // arm's length, where 11px was the smallest type on the page. The
-        // sheet is below lg and the sidebar only from it, so the width gate
-        // says which one this is.
-        "mb-2 text-xs leading-snug text-muted-foreground lg:text-2xs",
+        "mb-2",
+        NOTE_CLASS,
         collapse && "hidden [@media(pointer:coarse)]:block",
       )}
     >
       {children}
     </p>
   );
+}
+
+/** A line under a section's rows, saying what they leave out or what a pick
+    does with it (unanswered-note.tsx). */
+export function SectionNote({ children }: { children: ReactNode }) {
+  return <p className={cn("mt-2", NOTE_CLASS)}>{children}</p>;
 }
 
 // Focus walks the headers with the arrow keys, as an accordion is expected to.
@@ -214,7 +234,10 @@ export function FilterSectionHeader({
     }, FOLD_SETTLE_MS);
   };
 
-  const resetButton = (
+  // Kept mounted while hidden so a reset that comes and goes fades rather than
+  // shifting the row. A section with no reset at all has nothing to fade, and
+  // an inert copy of the word would be one more node for nothing.
+  const resetButton = onReset ? (
     <Button
       type="button"
       variant="link"
@@ -234,10 +257,10 @@ export function FilterSectionHeader({
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
         // shapes, because the two placements differ. In the sheet's Kje row,
-        // the one caller with no collapse contract (location-scope-row.tsx),
-        // this sits in the header's flex row and takes the overlay; the
-        // sheet's filter sections fold now and take the absolute branch below
-        // with its 44px coarse floor. A folding section's
+        // the one caller with a reset and no collapse contract
+        // (location-scope-row.tsx), this sits in the header's flex row and
+        // takes the overlay; the sheet's filter sections fold now and take the
+        // absolute branch below with its 44px coarse floor. A folding section's
         // header is a positioned row and the button is absolute inside it, and
         // `tap-target` sets position: relative, which would fight that; there
         // the drawn box is grown instead, which costs the row nothing because
@@ -273,7 +296,7 @@ export function FilterSectionHeader({
     >
       {messages.resetFilters}
     </Button>
-  );
+  ) : null;
 
   if (!collapse) {
     return (

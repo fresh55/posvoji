@@ -3,6 +3,7 @@
 import { m, useReducedMotion } from "motion/react";
 import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
+import { AvailabilityCards } from "@/components/filters/availability-cards";
 import { CareCards } from "@/components/filters/care-cards";
 import {
   CoatColorCards,
@@ -27,6 +28,7 @@ import {
 import {
   CollapsibleBody,
   FilterSectionHeader,
+  SectionNote,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -35,6 +37,10 @@ import {
 } from "@/components/filters/good-with-cards";
 import { SexCards } from "@/components/filters/sex-cards";
 import { SizePawCards } from "@/components/filters/size-paw-cards";
+import {
+  UnansweredNote,
+  useRowNotes,
+} from "@/components/filters/unanswered-note";
 import { WaitingCards } from "@/components/filters/waiting-cards";
 import {
   resetDelayStyle,
@@ -57,6 +63,8 @@ import {
   type MultiGroup,
   type ToggleDef,
   type ToggleKey,
+  type Unanswered,
+  type UnansweredTally,
 } from "@/lib/filters";
 import { useI18n } from "@/components/i18n-context";
 import { HEALTH_ICONS } from "@/lib/animal-icons";
@@ -102,6 +110,11 @@ type GroupProps = {
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   collapse?: SectionCollapse;
+  /** What a pick in this section leaves out for want of an answer. */
+  unanswered?: Unanswered;
+  /** Velikost on Vse, where a pick leaves out every cat (groupAsks in
+   *  lib/filters/engine.ts) and the rows alone do not say so. */
+  leavesOutCats?: boolean;
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
@@ -142,6 +155,7 @@ function HealthToggleCards({
   onToggleMany,
   layout = "sidebar",
   collapse,
+  unanswered,
 }: {
   toggles: ToggleDef[];
   counts: Map<string, number>;
@@ -150,9 +164,16 @@ function HealthToggleCards({
   onToggleMany: (values: ToggleKey[]) => void;
   layout?: FilterCardLayout;
   collapse?: SectionCollapse;
+  /** Per test: a cat can carry an FeLV result and no FIV one. */
+  unanswered?: Readonly<Record<ToggleKey, Unanswered>>;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
+  const rowNotes = useRowNotes(
+    toggles.map(({ key }) => key),
+    unanswered,
+    "unansweredRow",
+  );
   const {
     celebration,
     celebrate,
@@ -178,9 +199,14 @@ function HealthToggleCards({
       resetAriaLabel={messages.resetHealthFilters}
       layout={layout}
       collapse={collapse}
-      // Health labels ("Sterilizacija", "Cepljenje") are long enough that
-      // three sheet columns clip them badly at 320px; two leaves room.
+      // Two columns at most, for the line a tile carries under its label
+      // saying how many cats have no result.
       sheetColumns={sheetColumnsFor(toggles.length, 2)}
+      footer={
+        rowNotes.any ? (
+          <SectionNote>{messages.unansweredHides}</SectionNote>
+        ) : undefined
+      }
     >
       {toggles.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
@@ -189,6 +215,7 @@ function HealthToggleCards({
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
         const exitDelay = resetDelay(index);
+        const note = rowNotes.at(index);
 
         return (
           <button
@@ -206,6 +233,7 @@ function HealthToggleCards({
             {...hoverHandlers(key)}
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
+            aria-describedby={note.description ? note.descriptionId : undefined}
             className={filterCardVariants({
               layout,
               selected: checked,
@@ -269,6 +297,8 @@ function HealthToggleCards({
               layout={layout}
               label={label}
               checked={checked}
+              {...note}
+              descriptionAfterCount
               renderCount={(className) => (
                 <CountRoll value={count} className={className} />
               )}
@@ -288,6 +318,8 @@ function SizeGroup({
   onToggleMany,
   collapse,
   layout,
+  unanswered,
+  leavesOutCats,
 }: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
   const { isResetting, beginReset } = useResetStagger(
@@ -316,6 +348,10 @@ function SizeGroup({
           isResetting={isResetting}
           layout={layout}
         />
+        {/* The cats first: the larger of the two left out, and the count
+            under it is of the animals asked, which cats are not. */}
+        {leavesOutCats && <SectionNote>{messages.sizeLeavesOutCats}</SectionNote>}
+        <UnansweredNote tally={unanswered} />
       </CollapsibleBody>
     </section>
   );
@@ -329,6 +365,7 @@ function SexGroup({
   onToggleMany,
   collapse,
   layout,
+  unanswered,
 }: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
 
@@ -349,6 +386,7 @@ function SexGroup({
           onToggle={onToggle}
           layout={layout}
         />
+        <UnansweredNote tally={unanswered} />
       </CollapsibleBody>
     </section>
   );
@@ -359,6 +397,18 @@ function SexGroup({
 // happens to be last.
 function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
   switch (group) {
+    case "availability":
+      // No collapse and no unanswered line: it does not fold, and every
+      // animal answers it.
+      return (
+        <AvailabilityCards
+          options={rest.options}
+          counts={rest.counts}
+          selected={rest.selected}
+          onToggle={rest.onToggle}
+          layout={rest.layout}
+        />
+      );
     case "coatLength":
       return <CoatLengthCards {...rest} />;
     case "waiting":
@@ -375,6 +425,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggleMany={rest.onToggleMany}
           layout={rest.layout}
           collapse={rest.collapse}
+          unanswered={rest.unanswered}
         />
       );
     case "sex":
@@ -387,6 +438,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggleMany={rest.onToggleMany}
           collapse={rest.collapse}
           layout={rest.layout}
+          unanswered={rest.unanswered}
         />
       );
     case "size":
@@ -399,6 +451,8 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggleMany={rest.onToggleMany}
           collapse={rest.collapse}
           layout={rest.layout}
+          unanswered={rest.unanswered}
+          leavesOutCats={rest.leavesOutCats}
         />
       );
     case "energy":
@@ -411,6 +465,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           onToggleMany={rest.onToggleMany}
           layout={rest.layout}
           collapse={rest.collapse}
+          unanswered={rest.unanswered}
         />
       );
   }
@@ -477,6 +532,7 @@ export function FilterGroupList({
   onToggleProperty,
   onToggleManyProperties,
   layout = "sidebar",
+  unanswered,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -487,6 +543,10 @@ export function FilterGroupList({
   care?: CareSection;
   /** The sheet draws tiles; the sidebar draws rows. */
   layout?: FilterCardLayout;
+  /** What each question leaves out for want of an answer (unansweredCounts).
+   *  Without it the sections say nothing about it, which is all a caller
+   *  that has no dataset behind it can honestly say. */
+  unanswered?: UnansweredTally;
 } & FilterActionContract) {
   const { locale } = useI18n();
   const appearanceGroups = groups.filter(({ group }) => isAppearance(group));
@@ -535,8 +595,10 @@ export function FilterGroupList({
       isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
     );
 
-  // Every section folds, on both surfaces. This was a prop for the pass in
-  // which only the sidebar folded; the phone sheet joined it on 2026-09-17
+  // Every section folds, on both surfaces, but Posvojitev, which holds one
+  // row and would hide the whole of it (availability-cards.tsx). This was a
+  // prop for the pass in which only the sidebar folded; the phone sheet
+  // joined it on 2026-09-17
   // (filter-sheet.tsx has the numbers: nine open sections through a 189px
   // window at 320x568), and with both callers passing the same answer the
   // unfolded list was a configuration the site no longer had.
@@ -591,14 +653,22 @@ export function FilterGroupList({
             selected={selected}
             onToggle={(value) => onToggle(group, value)}
             onToggleMany={(values) => onToggleMany(group, values)}
-            collapse={collapseFor(
-              group,
-              selectionSummary(
-                selected,
-                (value) =>
-                  options.find((option) => option.value === value)?.label,
-              ),
-            )}
+            // Availability is the one group that does not fold
+            // (availability-cards.tsx says why), so it has no fold to give.
+            collapse={
+              group === "availability"
+                ? undefined
+                : collapseFor(
+                    group,
+                    selectionSummary(
+                      selected,
+                      (value) =>
+                        options.find((option) => option.value === value)?.label,
+                    ),
+                  )
+            }
+            unanswered={unanswered?.groups[group]}
+            leavesOutCats={group === "size" && filters.species === "all"}
           />
         );
       })}
@@ -631,10 +701,16 @@ export function FilterGroupList({
                   selected,
                   onToggle: (value: string) => onToggle(group, value),
                   onToggleMany: (values: string[]) => onToggleMany(group, values),
+                  unanswered: unanswered?.groups[group],
                 };
 
                 return group === "coatColor" ? (
-                  <CoatColorCards key={group} {...props} species={filters.species} />
+                  <CoatColorCards
+                    key={group}
+                    {...props}
+                    species={filters.species}
+                    longCoat={filters.coatLength.includes("long")}
+                  />
                 ) : (
                   <FilterGroup key={group} group={group} {...props} />
                 );
@@ -652,6 +728,7 @@ export function FilterGroupList({
           onToggle={onToggleProperty}
           onToggleMany={onToggleManyProperties}
           layout={layout}
+          unanswered={unanswered?.toggles}
           collapse={collapseFor(
             "health",
             selectionSummary(
@@ -675,6 +752,7 @@ export function FilterGroupList({
           total={goodWith.total}
           onToggle={goodWith.onToggle}
           onToggleMany={goodWith.onToggleMany}
+          unanswered={unanswered?.goodWith}
           layout={layout}
           collapse={collapseFor(
             "goodWith",

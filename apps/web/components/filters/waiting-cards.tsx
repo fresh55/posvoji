@@ -1,6 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
+import { useId } from "react";
 import { DrawnGlyph, type DrawTempo } from "@/components/filters/drawn-glyph";
 import {
   CountRoll,
@@ -16,12 +17,18 @@ import {
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
+import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
   useFilterCardGestures,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
-import { groupLabel, type FilterOption, type WaitingGroup } from "@/lib/filters";
+import {
+  groupLabel,
+  type FilterOption,
+  type Unanswered,
+  type WaitingGroup,
+} from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -171,6 +178,7 @@ export function WaitingCards({
   onToggleMany,
   layout,
   collapse,
+  unanswered,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -179,9 +187,11 @@ export function WaitingCards({
   onToggleMany: (values: string[]) => void;
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
+  unanswered?: Unanswered;
 }) {
   const { locale, messages } = useI18n();
   const label = groupLabel("waiting", locale);
+  const hintId = useId();
   const { beginReset, resetDelay } = useResetStagger(
     selected.length,
     options.length,
@@ -196,6 +206,9 @@ export function WaitingCards({
     <FilterCardSection
       label={label}
       hint={messages.waitingFilterHint}
+      // Each row takes the hint as its description: the round marks say one
+      // threshold at a time, and a screen reader hears nothing of them.
+      hintId={hintId}
       active={selected.length > 0}
       onReset={() => {
         beginReset();
@@ -206,6 +219,7 @@ export function WaitingCards({
       collapse={collapse}
       // One row of three on the phone: the three glasses read as one scale.
       sheetColumns={sheetColumnsFor(options.length)}
+      footer={<UnansweredNote tally={unanswered} />}
     >
       {options.map(({ value, label: option }, index) => {
         const count = counts.get(value) ?? 0;
@@ -219,6 +233,7 @@ export function WaitingCards({
             type="button"
             aria-pressed={checked}
             aria-label={option + ", " + animalCount(count, locale)}
+            aria-describedby={hintId}
             disabled={dead}
             {...gestureHandlers(value)}
             onClick={() => {
@@ -235,6 +250,10 @@ export function WaitingCards({
               layout={layout}
               checked={checked}
               appearDelay={CHECK_DELAY}
+              // One threshold at a time (SINGLE_CHOICE_GROUPS), so the round
+              // mark: a tick box that unticks itself when its neighbour is
+              // pressed is a box doing what no other box in the panel does.
+              shape="dot"
             />
             <FilterCardIconWell
               layout={layout}

@@ -204,7 +204,7 @@ describe("AnimalCard status", () => {
   // desaturated photograph and nothing else, which is no signal at all to a
   // visitor who cannot see the difference or does not know to look for one.
   it.each([
-    ["hold", "ni za posvojitev"],
+    ["hold", "trenutno ni na voljo"],
     ["adopted", "posvojeno"],
   ] as const)("says in words that a %s animal is not available", (status, word) => {
     render(

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
-import { groupOptions } from "@/lib/filters";
+import { groupOptions, type Unanswered } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { EnergyCards } from "./energy-cards";
 import {
@@ -26,6 +26,7 @@ function renderCards(
     selected?: string[];
     onToggle?: (value: string) => void;
     onToggleMany?: (values: string[]) => void;
+    unanswered?: Unanswered;
   } = {},
 ) {
   const onToggle = overrides.onToggle ?? vi.fn();
@@ -38,6 +39,7 @@ function renderCards(
         selected={overrides.selected ?? []}
         onToggle={onToggle}
         onToggleMany={onToggleMany}
+        unanswered={overrides.unanswered}
       />
     </I18nProvider>,
   );
@@ -45,22 +47,33 @@ function renderCards(
 }
 
 describe("EnergyCards", () => {
-  it("localizes zero recorded answers without implying the filter includes unknown values", () => {
-    renderCards({ locale: "en", counts: new Map() });
-    expect(screen.getByText(
-      "As judged by the shelter. Recorded energy among animals matching the other filters: 0. Animals with no answer are hidden by this filter.",
-    )).toBeTruthy();
-  });
-
   it("names the section and says where the answers come from", () => {
     renderCards();
 
     expect(screen.getByRole("heading", { name: "Energija" })).toBeTruthy();
+    expect(screen.getByText("Po presoji zavetišča.")).toBeTruthy();
+  });
+
+  // Drawn under the rows rather than folded into the hint, because the hint is
+  // a tooltip on a mouse and this is the one thing about the section a visitor
+  // needs before the press: 380 of 491 animals have no energy on record.
+  it("says how many animals a pick leaves out for having no answer", () => {
+    renderCards({ unanswered: { asked: 491, unanswered: 380 } });
     expect(
-      screen.getByText(
-        "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: 9. Živali brez podatka ta filter skrije.",
-      ),
+      screen.getByText("Brez podatka: 380. Izbira pokaže le živali s podatkom."),
     ).toBeTruthy();
+  });
+
+  it("says it in English too", () => {
+    renderCards({ locale: "en", unanswered: { asked: 491, unanswered: 380 } });
+    expect(
+      screen.getByText("No data: 380. Picking one shows only animals with data."),
+    ).toBeTruthy();
+  });
+
+  it("stays quiet about a gap too small to matter", () => {
+    renderCards({ unanswered: { asked: 491, unanswered: 8 } });
+    expect(screen.queryByText(/^Brez podatka/)).toBeNull();
   });
 
   it("renders one card per level with its label, count and aria-label", () => {
@@ -228,6 +241,7 @@ describe("FilterGroupList energy group", () => {
         <FilterGroupList
           filters={{
             species: "all",
+            availability: [],
             sex: [],
             age: [],
             size: [],
@@ -242,6 +256,7 @@ describe("FilterGroupList energy group", () => {
           }}
           groups={[{ group, options }]}
           counts={{
+            availability: new Map(),
             sex: new Map(),
             age: new Map(),
             size: new Map(),

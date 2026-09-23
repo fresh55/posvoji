@@ -20,6 +20,7 @@ import {
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
+import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
   useFilterCardGestures,
   useFilterCardHover,
@@ -34,6 +35,7 @@ import {
   type CoatColorFacet,
   type FilterOption,
   type SpeciesFilter,
+  type Unanswered,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import type { SpeciesTab } from "@/lib/species";
@@ -301,6 +303,47 @@ const DOG_NOSE =
 // the light ink the ear lines use there.
 const LIGHT_NOSE_ON = new Set<CoatColorFacet>(["black", "brown", "grey"]);
 
+/**
+ * The long coat. When Dolga dlaka is picked beside a colour, the animals the
+ * colours became grow it: a cat's or a rabbit's cheeks puff out into a ruff,
+ * and a dog's long ears grow a feathered fringe. It is the one place the two
+ * halves of Videz meet in a drawing.
+ *
+ * Only for Dolga. A medium coat is most of the catalogue's coats and draws
+ * nothing a short one does not.
+ *
+ * Measured at 36px against the alternatives: tufted tips on a cat's ears were
+ * too small to see, a ruff on a dog is hidden behind its ears, and a cat with
+ * both tips and ruff was busy.
+ */
+function cheekRuff(): string {
+  // Three tufts off the lower left of the head, the left side's; the right is
+  // its mirror like the ears. Each stands on the disc a little inside its edge
+  // and points down and out.
+  return [150, 166, 182]
+    .map((angle) => {
+      const rad = (a: number) => (a * Math.PI) / 180;
+      const base0 = at(rad(angle - 7), DISC_RADIUS - 1.2);
+      const tip = at(rad(angle + 4), DISC_RADIUS + 2.3);
+      const base1 = at(rad(angle + 7), DISC_RADIUS - 1.2);
+      return `M${base0}L${tip}L${base1}Z`;
+    })
+    .join("");
+}
+
+const CHEEK_RUFF = cheekRuff();
+
+// The fringe off the bottom of a dog's long ear, in the ear's own frame: four
+// strands, and a top edge tucked up inside the ear, which is drawn over it.
+const DOG_FRINGE =
+  "M-7.6 12.4L-8.2 15L-6.6 13.9L-6.2 16.1L-5.1 14.3L-4.2 15.8L-3.9 13.2L-5.5 11Z";
+
+type EarFur = {
+  /** On the head beside the ear, or hanging off the ear and moving with it. */
+  at: "cheek" | "ear";
+  shape: string;
+};
+
 type EarPose = { y?: number; rotate?: number; scale?: number; opacity?: number };
 
 type Ear = {
@@ -314,6 +357,8 @@ type Ear = {
   inked?: boolean;
   /** A mark on the face that comes with this animal's ears. */
   nose?: string;
+  /** What this animal grows for a long coat. */
+  fur: EarFur;
   /** Where the pivot sits on the head, and which way the ear points. */
   place: string;
   /**
@@ -337,6 +382,7 @@ type Ear = {
 const EARS: Record<EarKind, Ear> = {
   cat: {
     shape: pointedEar(8.4, 8.2),
+    fur: { at: "cheek", shape: CHEEK_RUFF },
     place: earAt(-128, 6.6, -38),
     inFront: false,
     pose: { stowed: { y: 6.6 }, peeking: { y: 3.8 }, up: { y: 0 } },
@@ -346,6 +392,7 @@ const EARS: Record<EarKind, Ear> = {
     shape: DOG_EAR,
     inked: true,
     nose: DOG_NOSE,
+    fur: { at: "ear", shape: DOG_FRINGE },
     place: "translate(8.6 3.4)",
     inFront: true,
     pose: {
@@ -360,6 +407,7 @@ const EARS: Record<EarKind, Ear> = {
   // first.
   other: {
     shape: longEar(3.9, 7),
+    fur: { at: "cheek", shape: CHEEK_RUFF },
     place: earAt(-106, 7.4, -20),
     inFront: false,
     pose: { stowed: { y: 6.2 }, peeking: { y: 3.6 }, up: { y: 0 } },
@@ -559,6 +607,38 @@ const NOSE_VARIANTS: Variants = {
 };
 const NOSE_ORIGIN = { transformBox: "fill-box", originX: 0.5, originY: 0.5 } as const;
 
+// The long coat arrives after the ears, and leaves with them. A ruff puffs
+// out from behind the head, from the disc's centre, with a spring that
+// overshoots, which is what fur does when it is shaken out; a fringe grows
+// down off the ear from its top edge.
+type FurState = "flat" | "fluffed";
+
+function furVariants(flat: TargetAndTransition, fluffed: TargetAndTransition): Variants {
+  return {
+    flat: (exit: EarExit) => ({ ...flat, transition: tuck(exit) }),
+    fluffed: (exit: EarExit) => ({
+      ...fluffed,
+      transition: timed(exit, { type: "spring", stiffness: 380, damping: 13, delay: 0.12 }),
+    }),
+  };
+}
+
+const FRINGE_ORIGIN = { transformBox: "fill-box", originX: 0.5, originY: 0 } as const;
+
+const FUR: Record<
+  EarFur["at"],
+  { variants: Variants; origin: typeof CENTRE_ORIGIN | typeof FRINGE_ORIGIN }
+> = {
+  cheek: {
+    variants: furVariants({ scale: 0.75, opacity: 0 }, { scale: 1, opacity: 1 }),
+    origin: CENTRE_ORIGIN,
+  },
+  ear: {
+    variants: furVariants({ scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1 }),
+    origin: FRINGE_ORIGIN,
+  },
+};
+
 /**
  * The ring a picked swatch wore, now drawn round the whole animal.
  *
@@ -629,7 +709,12 @@ type EarPairProps = {
   beat: EarBeat;
   noticeDelay: number;
   exit: EarExit;
+  /** Dolga dlaka is picked, so a picked animal grows its long coat. */
+  longCoat: boolean;
 };
+
+/** What one ear's paint callback is asked to draw. */
+type EarPart = "ear" | "fur";
 
 /**
  * Both ears, in one paint.
@@ -645,14 +730,32 @@ function EarPair({
   beat,
   noticeDelay,
   exit,
+  longCoat,
   from = "stowed",
   children,
 }: EarPairProps & {
   /** Where the ears start when this copy mounts. */
   from?: EarState;
-  children: (side: EarSide) => ReactNode;
+  children: (side: EarSide, part: EarPart) => ReactNode;
 }) {
   const ear = EARS[kind];
+  const fur = FUR[ear.fur.at];
+  // Always drawn with the ears and only fluffed out on a pick, rather than
+  // mounted when Dolga is pressed: under the section's presence a node
+  // mounted later plays its entrance already finished.
+  const furState: FurState = longCoat && state === "up" ? "fluffed" : "flat";
+  const coat = (side: EarSide) => (
+    <m.g
+      style={fur.origin}
+      variants={fur.variants}
+      custom={exit}
+      initial="flat"
+      animate={furState}
+      exit="flat"
+    >
+      {children(side, "fur")}
+    </m.g>
+  );
 
   return (
     <>
@@ -660,6 +763,7 @@ function EarPair({
         const flick = earBeat(kind, side, beat, noticeDelay);
         return (
           <g key={side} transform={side === "right" ? MIRROR : undefined}>
+            {ear.fur.at === "cheek" && coat(side)}
             <g transform={ear.place}>
               <m.g
                 style={PIVOT}
@@ -673,7 +777,9 @@ function EarPair({
                     otherwise write one transform: a flick arriving while the
                     ear is still springing up would cut the spring off. */}
                 <m.g style={PIVOT} animate={flick.animate} transition={flick.transition}>
-                  {children(side)}
+                  {/* Under the ear, which covers the fringe's top edge. */}
+                  {ear.fur.at === "ear" && coat(side)}
+                  {children(side, "ear")}
                 </m.g>
               </m.g>
             </g>
@@ -690,10 +796,23 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
   const coats = EAR_COATS[colour];
 
   return (
-    <g data-ears={pair.kind}>
+    <g data-ears={pair.kind} data-long-coat={pair.longCoat ? "" : undefined}>
       <EarPair {...pair}>
-        {(side) => {
+        {(side, part) => {
           const coat = coats[side === "left" ? 0 : 1];
+          if (part === "fur") {
+            // A ruff is edged like the ears behind the head; a fringe hangs in
+            // front of the face and takes the ink its ear is edged in.
+            return (
+              <path
+                d={ear.fur.shape}
+                fill={SWATCHES[coat]}
+                stroke={ear.inked ? EAR_INK[coat] : SWATCH_EDGE}
+                strokeWidth={ear.inked ? 1.1 : 1}
+                strokeLinejoin="round"
+              />
+            );
+          }
           if (!ear.inked) {
             return (
               <path
@@ -765,7 +884,9 @@ function EarOutline({
       exit="off"
     >
       <circle cx={CENTRE} cy={CENTRE} r={DISC_RADIUS} />
-      <EarPair {...pair}>{() => <path d={ear.shape} />}</EarPair>
+      <EarPair {...pair}>
+        {(_side, part) => <path d={part === "fur" ? ear.fur.shape : ear.shape} />}
+      </EarPair>
     </m.g>
   );
 }
@@ -797,11 +918,14 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
   noticeDelay = 0,
   resetDelay,
   outlined,
+  longCoat,
   className,
 }: {
   colour: CoatColorFacet;
   kind: EarKind;
   checked: boolean;
+  /** Dolga dlaka is picked, so this colour's animal grows a long coat. */
+  longCoat: boolean;
   /** A pointer or keyboard focus is on it: the tips of the ears show. */
   peeking: boolean;
   beat: EarBeat;
@@ -823,7 +947,7 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
   const shown = state !== "stowed";
   const exit: EarExit = { delay: resetDelay, instant: shouldReduceMotion };
   const moving = shouldReduceMotion ? null : beat;
-  const pair: EarPairProps = { kind, state, beat: moving, noticeDelay, exit };
+  const pair: EarPairProps = { kind, state, beat: moving, noticeDelay, exit, longCoat };
   const whole = swatchBeat(kind, moving);
   const body = bodyPose(moving, checked && outlined ? PICKED_SCALE : 1, exit);
   const faces = FACES[colour];
@@ -1344,6 +1468,7 @@ type CoatCardsProps = {
   onToggleMany: (values: string[]) => void;
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
+  unanswered?: Unanswered;
 };
 
 /**
@@ -1362,6 +1487,7 @@ function CoatCards({
   onToggleMany,
   layout,
   collapse,
+  unanswered,
   tracksPress = false,
   holdMs,
   checkDelay,
@@ -1432,6 +1558,7 @@ function CoatCards({
       // two lines apiece; two keeps every label on one.
       sheetColumns="grid-cols-2"
       tone="part"
+      footer={<UnansweredNote tally={unanswered} />}
     >
       {options.map(({ value, label: option }, index) => {
         const count = counts.get(value) ?? 0;
@@ -1662,8 +1789,10 @@ function CoatColorPalette({
   onToggleMany,
   layout,
   collapse,
+  unanswered,
   kind,
-}: CoatCardsProps & { kind: EarKind }) {
+  longCoat,
+}: CoatCardsProps & { kind: EarKind; longCoat: boolean }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const {
@@ -1725,12 +1854,15 @@ function CoatColorPalette({
         // One line, held open, so Dolžina dlake below does not move as the
         // pointer crosses the grid. aria-live, because for a keyboard reader
         // this line is the only place the swatch under focus is named.
-        <p
-          aria-live="polite"
-          className="mt-2 min-h-4 truncate text-2xs leading-4 text-muted-foreground"
-        >
-          {readout}
-        </p>
+        <>
+          <p
+            aria-live="polite"
+            className="mt-2 min-h-4 truncate text-2xs leading-4 text-muted-foreground"
+          >
+            {readout}
+          </p>
+          <UnansweredNote tally={unanswered} />
+        </>
       }
     >
       {/* One child of the section's own column: the palette is a grid inside
@@ -1752,8 +1884,15 @@ function CoatColorPalette({
                 ? "right"
                 : "left"
               : null;
+          // Only a turning ear reads the delay (earBeat), so every other
+          // swatch is handed the default. Computed for all of them, it moved
+          // with celebrationIndex on every pick and was the one prop that
+          // made each unpicked swatch, ears and all, draw again in the
+          // press's own render when nothing about it had changed.
           const noticeDelay =
-            NOTICE_DELAY + Math.abs(index - celebrationIndex) * NOTICE_STEP;
+            beat === "left" || beat === "right"
+              ? NOTICE_DELAY + Math.abs(index - celebrationIndex) * NOTICE_STEP
+              : undefined;
 
           return (
             <button
@@ -1806,6 +1945,7 @@ function CoatColorPalette({
                   noticeDelay={noticeDelay}
                   resetDelay={resetDelayOf(index)}
                   outlined
+                  longCoat={longCoat}
                   className="size-9 overflow-visible"
                 />
               </m.span>
@@ -1828,16 +1968,19 @@ function CoatColorPalette({
 
 export function CoatColorCards({
   species,
+  longCoat,
   ...props
 }: CoatCardsProps & {
   /** The tab the visitor is on, which decides whose ears a colour grows. */
   species: SpeciesFilter;
+  /** Dolga dlaka is picked, so picked colours grow a long coat. */
+  longCoat: boolean;
 }) {
   const { locale } = useI18n();
   const kind = earKindOf(species);
 
   if (props.layout === "sidebar") {
-    return <CoatColorPalette {...props} kind={kind} />;
+    return <CoatColorPalette {...props} kind={kind} longCoat={longCoat} />;
   }
 
   return (
@@ -1856,6 +1999,7 @@ export function CoatColorCards({
           beat={motion.celebrating ? "picked" : null}
           resetDelay={motion.resetDelay}
           outlined={false}
+          longCoat={longCoat}
           className={cn(
             // Bigger than the 20px glyph the other sections put in this well.
             // A swatch is the answer itself rather than a picture of it, and

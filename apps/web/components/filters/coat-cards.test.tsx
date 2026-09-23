@@ -33,10 +33,12 @@ function renderColours({
   layout,
   species = "all",
   selected = [],
+  longCoat = false,
 }: {
   layout: FilterCardLayout;
   species?: SpeciesFilter;
   selected?: string[];
+  longCoat?: boolean;
 }) {
   render(
     <I18nProvider locale="sl">
@@ -48,6 +50,7 @@ function renderColours({
         onToggleMany={vi.fn()}
         layout={layout}
         species={species}
+        longCoat={longCoat}
       />
     </I18nProvider>,
   );
@@ -94,6 +97,16 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     expect(swatchOf("Črna").querySelector("[data-nose]")).toBeNull();
   });
 
+  it("grows a long coat on a picked colour only while Dolga is picked", () => {
+    renderColours({ layout, species: "dog", selected: ["black"], longCoat: true });
+    const ears = () => swatchOf("Črna").querySelector("[data-ears]");
+    expect(ears()?.hasAttribute("data-long-coat")).toBe(true);
+    cleanup();
+
+    renderColours({ layout, species: "dog", selected: ["black"] });
+    expect(ears()?.hasAttribute("data-long-coat")).toBe(false);
+  });
+
   it("draws a colour nobody has picked as a plain disc", () => {
     renderColours({ layout, selected: ["black"] });
 
@@ -138,14 +151,19 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
 });
 
 describe("the colour filter in the list", () => {
-  it("takes the species tab from the filters", () => {
+  it("takes the species tab and the long coat from the filters", () => {
     const listCounts = facetCounts([], EMPTY_FILTERS, new Date("2026-09-23"));
     listCounts.coatColor.set("black", 2);
     render(
       <I18nProvider locale="sl">
         <FilterGroupList
           layout="sheet"
-          filters={{ ...EMPTY_FILTERS, species: "dog", coatColor: ["black"] }}
+          filters={{
+            ...EMPTY_FILTERS,
+            species: "dog",
+            coatColor: ["black"],
+            coatLength: ["long"],
+          }}
           groups={[{ group: "coatColor", options }]}
           counts={listCounts}
           toggles={[]}
@@ -160,5 +178,8 @@ describe("the colour filter in the list", () => {
     openFilterSection("Videz");
 
     expect(earsOf("Črna")).toBe("dog");
+    expect(
+      swatchOf("Črna").querySelector("[data-ears]")?.hasAttribute("data-long-coat"),
+    ).toBe(true);
   });
 });

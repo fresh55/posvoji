@@ -102,6 +102,46 @@ describe("readPreviousDataset", () => {
     expect(() => readPreviousDataset(path)).toThrow(/Dataset schema/);
   });
 
+  // A dataset written before #302 removed substantialWhite from Animal.
+  it("drops a retired field from the previous animals and says so", () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    writeFileSync(
+      path,
+      JSON.stringify({
+        generatedAt: "2026-08-27T06:00:00Z",
+        animals: [
+          { ...animal("1"), coatColors: ["black", "white"], substantialWhite: true },
+          { ...animal("2"), substantialWhite: false },
+          animal("3"),
+        ],
+      }),
+    );
+
+    const animals = readPreviousDataset(path)?.animals ?? [];
+    expect(animals.map((a) => a.id)).toEqual([
+      "macja-hisa:1",
+      "macja-hisa:2",
+      "macja-hisa:3",
+    ]);
+    for (const a of animals) expect(a).not.toHaveProperty("substantialWhite");
+    expect(animals[0]?.coatColors).toEqual(["black", "white"]);
+    expect(log).toHaveBeenCalledWith(
+      `previous dataset at ${path}: dropped the retired field ` +
+        `substantialWhite from 2 animal(s)`,
+    );
+  });
+
+  it("still refuses an unknown field that was never retired", () => {
+    writeFileSync(
+      path,
+      JSON.stringify({
+        generatedAt: "2026-08-27T06:00:00Z",
+        animals: [{ ...animal("1"), substantialBlack: true }],
+      }),
+    );
+    expect(() => readPreviousDataset(path)).toThrow(/substantialBlack/);
+  });
+
   it("starts from nothing when the operator asks for it, loudly", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     writeFileSync(path, "not json at all");

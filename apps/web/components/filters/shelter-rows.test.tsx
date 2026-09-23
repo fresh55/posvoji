@@ -837,7 +837,7 @@ describe("ShelterRows link rows", () => {
   });
 
   it("shows the same city-and-distance sublabel a toggle row shows", () => {
-    const html = renderToStaticMarkup(
+    const { container } = render(
       <ShelterRows
         rows={[{ ...linkRows[0], km: 4.2 }]}
         lessThanOneKm="manj kot 1 km"
@@ -845,7 +845,9 @@ describe("ShelterRows link rows", () => {
     );
 
     // As text: the distance rides a span of its own so it never breaks.
-    expect(html.replace(/<[^>]+>/g, "")).toContain("Celje · 4 km");
+    expect(container.querySelector("[data-row-place]")?.textContent).toBe(
+      "Celje · 4 km",
+    );
   });
 
   it("lights up from the map with the same data attribute a toggle row wears", () => {

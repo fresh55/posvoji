@@ -705,7 +705,12 @@ export function FilterGroupList({
                 };
 
                 return group === "coatColor" ? (
-                  <CoatColorCards key={group} {...props} species={filters.species} />
+                  <CoatColorCards
+                    key={group}
+                    {...props}
+                    species={filters.species}
+                    longCoat={filters.coatLength.includes("long")}
+                  />
                 ) : (
                   <FilterGroup key={group} group={group} {...props} />
                 );

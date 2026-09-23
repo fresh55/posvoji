@@ -183,6 +183,10 @@ export type FilterValueDefinition<Value extends string = string> = {
    *  heading that gives the label its sense is not on screen. Only where the
    *  label does not stand alone. */
   readonly chip?: Readonly<Record<Locale, string>>;
+  /** Which animals the option shows, drawn under its label, for a section
+   *  whose labels cannot say it alone (Lahko ponudim). Short: the sidebar
+   *  gives the line 136px. */
+  readonly description?: Readonly<Record<Locale, string>>;
 };
 
 export const FILTER_METADATA = {
@@ -288,24 +292,34 @@ export const FILTER_METADATA = {
       value: "patient",
       slug: "potrpezljiv",
       labels: { sl: "Potrpežljivost", en: "Patience" },
+      // What is left of specialNeeds once the two needs below take their own
+      // animals (careMatches): about two thirds shy, the rest unwell in a way
+      // that asks for time rather than daily care.
+      description: { sl: "Plahe ali občutljive živali", en: "Shy or sensitive animals" },
     },
     {
       value: "bonded-pair",
       slug: "posvojitev-v-paru",
       labels: { sl: "Dom za dva", en: "A home for two" },
       chip: { sl: "Dom za dve živali", en: "A home for two animals" },
+      description: { sl: "Gredo samo v paru", en: "Adopted only as a pair" },
     },
     {
       value: "ongoing-care",
       slug: "potrebuje-redno-oskrbo",
       labels: { sl: "Dnevno nego", en: "Daily care" },
       chip: { sl: "Dnevna nega", en: "Daily care" },
+      description: { sl: "Zdravila, dieta ali pomoč", en: "Medication, diet or help" },
     },
     {
       value: "experienced-carer",
       slug: "izkusen-skrbnik",
       labels: { sl: "Izkušeno roko", en: "Experience" },
       chip: { sl: "Izkušena roka", en: "Experience" },
+      // Nineteen of the twenty are dogs, most of them large guardian breeds or
+      // dogs wary of strangers. Saying so is what stops someone who grew up
+      // with a dog from reading the row as theirs.
+      description: { sl: "Močni ali nezaupljivi psi", en: "Powerful or wary dogs" },
     },
   ],
 } as const satisfies {
@@ -324,41 +338,26 @@ export function goodWithOptions(
   }));
 }
 
-// Which animals each row shows, in words a first-time adopter can check
-// themselves against before ticking. Short, because the sidebar gives the
-// line 136px.
-const CARE_DESCRIPTIONS: Record<CareKey, Record<Locale, string>> = {
-  // What is left of specialNeeds once the two needs below take their own
-  // animals (careMatches): about two thirds shy, the rest unwell in a way that
-  // asks for time rather than daily care.
-  patient: { sl: "Plahe ali občutljive živali", en: "Shy or sensitive animals" },
-  "bonded-pair": { sl: "Gredo samo v paru", en: "Adopted only as a pair" },
-  "ongoing-care": { sl: "Zdravila, dieta ali pomoč", en: "Medication, diet or help" },
-  // Nineteen of the twenty are dogs, most of them large guardian breeds or
-  // dogs wary of strangers. Saying so is what stops someone who grew up with
-  // a dog from reading the row as theirs.
-  "experienced-carer": { sl: "Močni ali nezaupljivi psi", en: "Powerful or wary dogs" },
-};
-
-export type CareOptionDef = {
+export type CareOption = {
   key: CareKey;
   label: string;
   description: string;
 };
 
-export function careOptions(locale: Locale = "sl"): CareOptionDef[] {
-  return FILTER_METADATA.care.map(({ value, labels }) => ({
+export function careOptions(locale: Locale = "sl"): CareOption[] {
+  return FILTER_METADATA.care.map(({ value, labels, description }) => ({
     key: value,
     label: labels[locale],
-    description: CARE_DESCRIPTIONS[value][locale],
+    description: description[locale],
   }));
 }
 
 /** A coded value as its chip says it: the chip wording where the label needs
- *  its heading to make sense, the label otherwise. */
-export function valueChipLabel<Group extends MetadataGroup>(
-  group: Group,
-  value: CodedValueByGroup[Group],
+ *  its heading to make sense, the label otherwise. Every chip but a shelter's
+ *  and Družba's is named here. */
+export function valueChipLabel(
+  group: MetadataGroup,
+  value: string,
   locale: Locale,
 ): string {
   const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
@@ -401,22 +400,6 @@ export function groupOptions(
         label: labels[locale],
       }));
   }
-}
-
-/** A group value as its chip names it: the chip wording where the option's
- *  label leans on its section heading, the label otherwise. */
-export function groupChipLabel(
-  group: MultiGroup,
-  value: string,
-  animals: AnimalFields[],
-  locale: Locale = "sl",
-): string {
-  if (group !== "shelter") {
-    const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
-    const chip = options.find((option) => option.value === value)?.chip;
-    if (chip) return chip[locale];
-  }
-  return optionLabel(group, value, animals, locale);
 }
 
 export function optionLabel(

@@ -281,6 +281,8 @@ const sl = {
   energyFilterHint:
     "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: {count}. Živali brez podatka ta filter skrije.",
   healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
+  waitingFilterHint: "Po znanem datumu sprejema v zavetišče.",
+  resetWaitingFilters: "Ponastavi čas v zavetišču",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
@@ -769,6 +771,8 @@ const en: Messages = {
   energyFilterHint:
     "As judged by the shelter. Recorded energy among animals matching the other filters: {count}. Animals with no answer are hidden by this filter.",
   healthFilterHint: "An animal has to have every trait you pick.",
+  waitingFilterHint: "Based on the recorded shelter intake date.",
+  resetWaitingFilters: "Reset time in the shelter",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",

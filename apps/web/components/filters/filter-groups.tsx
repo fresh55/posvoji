@@ -3,7 +3,7 @@
 import { m, useReducedMotion } from "motion/react";
 import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
-import { CareCards, type CareOption } from "@/components/filters/care-cards";
+import { CareCards } from "@/components/filters/care-cards";
 import {
   CoatColorCards,
   CoatLengthCards,
@@ -50,6 +50,7 @@ import {
 import {
   groupLabel,
   type CareKey,
+  type CareOption,
   type FilterOption,
   type Filters,
   type GoodWithKey,
@@ -362,15 +363,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
       return <CoatLengthCards {...rest} />;
     case "waiting":
       return (
-        <WaitingCards
-          options={rest.options}
-          counts={rest.counts}
-          selected={rest.selected}
-          onToggle={rest.onToggle}
-          onToggleMany={rest.onToggleMany}
-          layout={rest.layout}
-          collapse={rest.collapse}
-        />
+        <WaitingCards {...rest} />
       );
     case "age":
       return (

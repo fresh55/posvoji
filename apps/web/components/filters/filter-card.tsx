@@ -594,13 +594,18 @@ export function countClass(layout: FilterCardLayout, checked: boolean): string {
  * the label and in the count's ink, so on a chosen card it stays legible on
  * the fill for the same reason the count does.
  */
-function descriptionClass(layout: FilterCardLayout, checked: boolean): string {
-  return cn(
-    layout === "sheet" ? "line-clamp-2 max-w-full text-2xs" : "text-2xs",
-    "leading-snug",
-    checked ? "text-brand-foreground/80" : "text-muted-foreground",
-  );
-}
+const DESCRIPTION_CLASS: Readonly<
+  Record<FilterCardLayout, Readonly<{ rest: string; chosen: string }>>
+> = Object.freeze({
+  sheet: Object.freeze({
+    rest: "line-clamp-2 max-w-full text-2xs leading-snug text-muted-foreground",
+    chosen: "line-clamp-2 max-w-full text-2xs leading-snug text-brand-foreground/80",
+  }),
+  sidebar: Object.freeze({
+    rest: "text-2xs leading-snug text-muted-foreground",
+    chosen: "text-2xs leading-snug text-brand-foreground/80",
+  }),
+});
 
 // The label and count after the icon. The count is a render prop because a
 // section may animate it, and its class comes from the layout either way.
@@ -624,7 +629,10 @@ export function FilterCardTail({
 }) {
   const said =
     description === undefined ? null : (
-      <span id={descriptionId} className={descriptionClass(layout, checked)}>
+      <span
+        id={descriptionId}
+        className={DESCRIPTION_CLASS[layout][checked ? "chosen" : "rest"]}
+      >
         {description}
       </span>
     );

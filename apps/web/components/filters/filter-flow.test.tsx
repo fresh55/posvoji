@@ -17,6 +17,7 @@ import {
   optionLabel,
   toggleCounts,
   toggleLabel,
+  valueChipLabel,
   visibleCare,
   visibleGoodWith,
   visibleGroups,
@@ -24,7 +25,7 @@ import {
   type AgeGroup,
   type SpeciesFilter,
 } from "@/lib/filters";
-import { careLabel, goodWithChipLabel } from "@/lib/labels";
+import { goodWithChipLabel } from "@/lib/labels";
 import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
 import {
   installFilterFoldSeams,
@@ -166,7 +167,7 @@ function FilterFlowHarness() {
       key: `care:${key}`,
       facet: "care" as const,
       value: key,
-      label: careLabel(key, "sl"),
+      label: valueChipLabel("care", key, "sl"),
       onRemove: () => toggleCare(key),
     })),
   ];

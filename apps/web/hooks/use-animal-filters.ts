@@ -6,7 +6,7 @@ import { standsOnLayerEntry } from "@/hooks/use-picker-history";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
-  FILTER_PARAM_NAMES,
+  OWNED_PARAM_NAMES,
   parseFilters,
   pruneHiddenFilters,
   serializeFilters,
@@ -107,7 +107,7 @@ function writeFilters(
   commitSearch(
     mergeOwnedParams(
       getSearchSnapshot(),
-      FILTER_PARAM_NAMES,
+      OWNED_PARAM_NAMES,
       serializeFilters(pruneHiddenFilters(filters)),
     ),
     mode,

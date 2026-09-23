@@ -9,6 +9,7 @@ import {
   EMPTY_FILTERS,
   facetCounts,
   FILTER_PARAM_NAMES,
+  OWNED_PARAM_NAMES,
   goodWithCounts,
   parseFilters,
   pruneHiddenFilters,
@@ -626,7 +627,8 @@ describe("URL codec", () => {
     );
     expect(filters.care).toEqual(["patient"]);
     expect(serializeFilters(filters)).toBe("skrb=potrpezljiv");
-    expect(FILTER_PARAM_NAMES).toContain("dom");
+    expect(OWNED_PARAM_NAMES).toContain("dom");
+    expect(FILTER_PARAM_NAMES).not.toContain("dom");
   });
 
   it("degrades a stale cat-only toggle carried onto the dog tab", () => {

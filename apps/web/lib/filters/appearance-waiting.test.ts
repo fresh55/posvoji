@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, groupChipLabel,
+  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, valueChipLabel,
   parseFilters, serializeFilters, toggleGroupValue, visibleGroups, waitingGroups,
   type Filters,
 } from "../filters";
@@ -139,15 +139,15 @@ describe("shelter waiting thresholds", () => {
 // answer and Dolžina dlake's at once.
 describe("coat length chips", () => {
   it("name the coat, so they cannot be read as a size", () => {
-    expect(groupChipLabel("coatLength", "medium", [], "sl")).toBe("Srednja dlaka");
-    expect(groupChipLabel("coatLength", "long", [], "en")).toBe("Long coat");
-    expect(groupChipLabel("coatLength", "hairless", [], "sl")).toBe("Brez dlake");
-    expect(groupChipLabel("size", "medium", [], "sl")).toBe("Srednja");
+    expect(valueChipLabel("coatLength", "medium", "sl")).toBe("Srednja dlaka");
+    expect(valueChipLabel("coatLength", "long", "en")).toBe("Long coat");
+    expect(valueChipLabel("coatLength", "hairless", "sl")).toBe("Brez dlake");
+    expect(valueChipLabel("size", "medium", "sl")).toBe("Srednja");
   });
 
   it("say what a threshold is a wait of, the way the card's badge does", () => {
-    expect(groupChipLabel("waiting", "over-1-year", [], "sl")).toBe("Čaka nad 1 leto");
-    expect(groupChipLabel("waiting", "over-6-months", [], "en")).toBe("Waiting over 6 months");
+    expect(valueChipLabel("waiting", "over-1-year", "sl")).toBe("Čaka nad 1 leto");
+    expect(valueChipLabel("waiting", "over-6-months", "en")).toBe("Waiting over 6 months");
   });
 });
 

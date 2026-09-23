@@ -1158,10 +1158,11 @@ export function CoatColorChipSwatch({ value }: { value: string }) {
  * answers differ in.
  */
 export function CoatLengthMark({
-  value,
+  value = "long",
   className = "size-3.5",
 }: {
-  value: string;
+  /** Absent for a folded run of lengths, which shows the longest. */
+  value?: string;
   className?: string;
 }) {
   const coat = Object.hasOwn(COAT, value) ? COAT[value as CoatLength] : COAT.long;

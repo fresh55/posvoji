@@ -6,7 +6,6 @@ export {
   FILTER_FACETS,
   GOOD_WITH_KEYS,
   GROUPS,
-  SINGLE_CHOICE_GROUPS,
   TOGGLE_KEYS,
   TWO_TONED,
 } from "./filters/contracts";
@@ -28,9 +27,8 @@ export {
   FILTER_METADATA,
   TOGGLES,
   careOptions,
-  type CareOptionDef,
+  type CareOption,
   goodWithOptions,
-  groupChipLabel,
   groupLabel,
   groupOptions,
   optionLabel,
@@ -72,6 +70,7 @@ export {
 
 export {
   FILTER_PARAM_NAMES,
+  OWNED_PARAM_NAMES,
   parseFilters,
   serializeFilters,
   shelterAnimalsPath,

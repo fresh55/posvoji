@@ -102,11 +102,11 @@ export const FACET_ICONS: Record<FilterFacet, LucideIcon> = {
   size: Ruler,
   energy: Gauge,
   coatColor: Palette,
-  // Not scissors: that is Sterilizacija's mark. Chips and the dialog draw the
-  // coat itself (CoatLengthMark); this is only the fallback.
+  // Chips and the dialog draw the coat itself (CoatLengthMark). This entry
+  // only keeps the table total, and is not scissors, which are Sterilizacija's.
   coatLength: WavesVertical,
-  // The site's mark for a long wait, as on the dialog's stay line. Chips draw
-  // the section's own glass with its sand (WaitingMark); this is the fallback.
+  // Chips draw the section's own glass with its sand (WaitingMark). This entry
+  // only keeps the table total, in the site's mark for a long wait.
   waiting: Hourglass,
   shelter: MapPin,
   toggles: HeartPulse,

@@ -7,8 +7,6 @@ import { translateLabel as translate } from "@/lib/label-messages";
 import {
   ageInMonths,
   FILTER_METADATA,
-  valueChipLabel,
-  type CareKey,
   type GoodWithKey,
   type SpeciesFilter,
 } from "@/lib/filters";
@@ -631,12 +629,6 @@ export function shelterChipLabel(name: string): string {
     candidate.trim().length >= 3 ? candidate.trim() : fallback;
   const withoutOperator = keep(name.replace(SHELTER_TRAILING_PAREN, ""), name);
   return keep(withoutOperator.replace(SHELTER_NOUN, ""), withoutOperator);
-}
-
-// The row's words, or the nominative where the row's accusative only reads
-// after its heading ("Lahko ponudim: vsakodnevno nego").
-export function careLabel(key: CareKey, locale: Locale): string {
-  return valueChipLabel("care", key, locale);
 }
 
 export function sizeLabel(size: AnimalSize, locale: Locale): string {

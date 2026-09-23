@@ -891,11 +891,10 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
       {facet === "coatColor" && value !== undefined ? (
         <CoatColorChipSwatch value={value} />
       ) : facet === "coatLength" ? (
-        // The coat drawn, not a lucide stand-in; a folded run of lengths
-        // shows the longest.
-        <CoatLengthMark value={value ?? "long"} />
+        // The section's own drawing, not a lucide stand-in.
+        <CoatLengthMark value={value} />
       ) : facet === "waiting" ? (
-        <WaitingMark value={value ?? "over-3-years"} />
+        <WaitingMark value={value} />
       ) : (
         /* 1.75, the same weight the species tabs draw at. This was 1.8, which
            is invisible on its own and exactly the kind of near-miss that makes

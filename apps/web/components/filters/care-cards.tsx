@@ -2,6 +2,7 @@
 
 import type { TargetAndTransition, Transition } from "motion/react";
 import { m, useReducedMotion } from "motion/react";
+import { DrawnGlyph, type DrawTempo } from "@/components/filters/drawn-glyph";
 import { useId } from "react";
 import {
   CountRoll,
@@ -24,11 +25,9 @@ import {
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
-import type { CareKey, CareOptionDef } from "@/lib/filters";
+import type { CareKey, CareOption } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
-
-export type CareOption = CareOptionDef;
 
 // One drawing per row, each stroke drawn in list order when the row is
 // chosen. Four different marks rather than one heart four times: the section
@@ -39,39 +38,31 @@ export type CareOption = CareOptionDef;
 // (lucide-react, ISC license), so the chip and the animal's requirement pill,
 // which draw lucide, show the same shape. The two hearts are lucide's heart
 // twice at 0.6; lucide has no pair of them.
-type Stroke = { d: string };
-
-const CARE_GLYPHS: Record<CareKey, readonly Stroke[]> = {
+const CARE_GLYPHS: Record<CareKey, readonly string[]> = {
   // A snail: at the animal's pace. It was the hourglass until that turned out
   // to be the site's mark for a long wait in the shelter, drawn beside the
   // stay line in the same dialog this row's pill appears in.
   patient: [
-    { d: "M2 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0" },
-    { d: "M2 13a6 6 0 1 0 12 0 4 4 0 1 0-8 0 2 2 0 0 0 4 0" },
-    { d: "M2 21h12c4.4 0 8-3.6 8-8V7a2 2 0 1 0-4 0v6" },
-    { d: "M18 3 19.1 5.2" },
-    { d: "M22 3 20.9 5.2" },
+    "M2 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0",
+    "M2 13a6 6 0 1 0 12 0 4 4 0 1 0-8 0 2 2 0 0 0 4 0",
+    "M2 21h12c4.4 0 8-3.6 8-8V7a2 2 0 1 0-4 0v6",
+    "M18 3 19.1 5.2",
+    "M22 3 20.9 5.2",
   ],
   "bonded-pair": [
-    {
-      d: "M12 11.4c.894-.876 1.8-1.926 1.8-3.3A3.3 3.3 0 0 0 10.5 4.8c-1.056 0-1.8.3-2.7 1.2-.9-.9-1.644-1.2-2.7-1.2A3.3 3.3 0 0 0 1.8 8.1c0 1.38.9 2.43 1.8 3.3l4.2 4.2Z",
-    },
-    {
-      d: "M19.8 15.6c.894-.876 1.8-1.926 1.8-3.3A3.3 3.3 0 0 0 18.3 9c-1.056 0-1.8.3-2.7 1.2-.9-.9-1.644-1.2-2.7-1.2A3.3 3.3 0 0 0 9.6 12.3c0 1.38.9 2.43 1.8 3.3l4.2 4.2Z",
-    },
+    "M12 11.4c.894-.876 1.8-1.926 1.8-3.3A3.3 3.3 0 0 0 10.5 4.8c-1.056 0-1.8.3-2.7 1.2-.9-.9-1.644-1.2-2.7-1.2A3.3 3.3 0 0 0 1.8 8.1c0 1.38.9 2.43 1.8 3.3l4.2 4.2Z",
+    "M19.8 15.6c.894-.876 1.8-1.926 1.8-3.3A3.3 3.3 0 0 0 18.3 9c-1.056 0-1.8.3-2.7 1.2-.9-.9-1.644-1.2-2.7-1.2A3.3 3.3 0 0 0 9.6 12.3c0 1.38.9 2.43 1.8 3.3l4.2 4.2Z",
   ],
   "ongoing-care": [
-    { d: "m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" },
-    { d: "m8.5 8.5 7 7" },
+    "m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z",
+    "m8.5 8.5 7 7",
   ],
   // A medal, the disc before the ribbon. It was lucide's hand and heart until
   // the section heading's own mark turned out to be the same drawing, so a
   // folded chip for the section and the chip for this row were one picture.
   "experienced-carer": [
-    { d: "M6 8a6 6 0 1 0 12 0a6 6 0 1 0-12 0" },
-    {
-      d: "m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526",
-    },
+    "M6 8a6 6 0 1 0 12 0a6 6 0 1 0-12 0",
+    "m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526",
   ],
 };
 
@@ -84,7 +75,7 @@ const MOST_STROKES = Math.max(
 // in the sidebar on purpose.
 const DRAW_DURATION = 0.5;
 const DRAW_STAGGER = 0.16;
-const FADE_DURATION = 0.14;
+const TEMPO: DrawTempo = { draw: DRAW_DURATION, stagger: DRAW_STAGGER, fade: 0.14 };
 
 // One deep lub-dub. Two beats, the second the fuller of the pair, then still.
 // Six keyframes, so it can only run as a tween carrying its own times.
@@ -143,77 +134,6 @@ const HEARTBEAT_MS = Math.ceil(
       CHECK_DELAY + WATERMARK_IN_DURATION,
     ),
 );
-
-// Two layers: a muted outline that is always there, and an accent copy that
-// draws itself on when the card is chosen, stroke by stroke.
-function CareGlyph({
-  strokes,
-  checked,
-  resetDelay,
-  className,
-}: {
-  strokes: readonly Stroke[];
-  checked: boolean;
-  /** Holds the drawing back so a reset empties the section in order. */
-  resetDelay: number;
-  className: string;
-}) {
-  const shouldReduceMotion = useReducedMotion();
-  // The whole retract waits its turn, fade and drawn length together, so the
-  // section empties one row at a time. The delay used to stop at the icon
-  // well's halo and never reach the heart inside it, so the halos winked out
-  // in order over drawings that had all gone grey at once.
-  const wait = shouldReduceMotion || checked ? 0 : resetDelay;
-
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      strokeWidth={1.65}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <g className="text-muted-foreground" stroke="currentColor">
-        {strokes.map(({ d }) => (
-          <path key={d} d={d} />
-        ))}
-      </g>
-      <m.g
-        stroke="var(--brand-strong)"
-        initial={false}
-        animate={{ opacity: checked ? 1 : 0 }}
-        transition={{
-          duration: shouldReduceMotion || checked ? 0 : FADE_DURATION,
-          delay: wait,
-          ease: "easeOut",
-        }}
-      >
-        {strokes.map(({ d }, index) => (
-          <m.path
-            key={d}
-            d={d}
-            initial={false}
-            animate={{ pathLength: checked ? 1 : 0 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : checked
-                  ? {
-                      duration: DRAW_DURATION,
-                      delay: index * DRAW_STAGGER,
-                      ease: "easeOut",
-                    }
-                  : // The drawn length drops only once the overlay has faded
-                    // out, so unchecking never runs the draw backwards.
-                    { duration: 0, delay: wait + FADE_DURATION }
-            }
-          />
-        ))}
-      </m.g>
-    </svg>
-  );
-}
 
 export function CareCards({
   options,
@@ -395,7 +315,7 @@ export function CareCards({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
-                    {strokes.map(({ d }) => (
+                    {strokes.map((d) => (
                       <path key={d} d={d} />
                     ))}
                   </svg>
@@ -456,10 +376,11 @@ export function CareCards({
                               : REST_TRANSITION
                         }
                       >
-                        <CareGlyph
+                        <DrawnGlyph
                           strokes={strokes}
                           checked={checked}
                           resetDelay={exitDelay}
+                          tempo={TEMPO}
                           className={cn(
                             "size-5 transition-[opacity,transform] duration-200",
                             // A dead option is a drawing nobody is waiting on.

@@ -1,6 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
+import { DrawnGlyph, type DrawTempo } from "@/components/filters/drawn-glyph";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -33,12 +34,12 @@ import { cn } from "@/lib/utils";
 // The glass is lucide's hourglass (lucide-react, ISC license). The sand is
 // filled rather than stroked: at 20px an outline of a heap of sand is a
 // squiggle, and the amount is the whole of what the three rows say.
-const GLASS = [
+const GLASS: readonly string[] = [
   "M5 22h14",
   "M5 2h14",
   "M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22",
   "M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2",
-] as const;
+];
 
 // What is left in the top bulb and what has run into the bottom one, inside
 // the glass's own walls.
@@ -57,7 +58,8 @@ const SAND: Record<WaitingGroup, { top: string; bottom: string }> = {
   },
 };
 
-function sandOf(value: string): { top: string; bottom: string } {
+// A folded run of thresholds in the chips row shows the longest wait.
+function sandOf(value = "over-3-years"): { top: string; bottom: string } {
   return Object.hasOwn(SAND, value)
     ? SAND[value as WaitingGroup]
     : SAND["over-3-years"];
@@ -65,12 +67,12 @@ function sandOf(value: string): { top: string; bottom: string } {
 
 // The glass draws, then the sand settles into it. Quick: this is a threshold
 // being picked, not a gesture with a character of its own.
-const DRAW_DURATION = 0.3;
-const DRAW_STAGGER = 0.05;
-const SAND_DELAY = DRAW_DURATION + 0.05;
+const TEMPO: DrawTempo = { draw: 0.3, stagger: 0.05, fade: 0.12 };
+const SAND_DELAY = TEMPO.draw + 0.05;
 const SAND_DURATION = 0.2;
 const CHECK_DELAY = SAND_DELAY;
 const SAND_REST_OPACITY = 0.45;
+const SAND_LIT_OPACITY = 0.85;
 
 /**
  * The glass and its sand, still, for the active-filters row. The chip for a
@@ -81,10 +83,9 @@ export function WaitingMark({
   value,
   className = "size-3.5",
 }: {
-  value: string;
+  value?: string;
   className?: string;
 }) {
-  const sand = sandOf(value);
   return (
     <svg
       viewBox="0 0 24 24"
@@ -100,16 +101,24 @@ export function WaitingMark({
         <path key={d} d={d} />
       ))}
       <g fill="currentColor" stroke="none" opacity={0.6}>
-        <path d={sand.top} />
-        <path d={sand.bottom} />
+        <Sand value={value} />
       </g>
     </svg>
   );
 }
 
-// Two layers, the way the other drawn sections do it: a muted glass that is
-// always there, and an accent copy that draws itself on when the row is
-// picked, the sand last.
+function Sand({ value }: { value?: string }) {
+  const sand = sandOf(value);
+  return (
+    <>
+      <path d={sand.top} />
+      <path d={sand.bottom} />
+    </>
+  );
+}
+
+// The drawn glass of the other sections, with the sand muted under the
+// outline and lit last in the accent.
 function WaitingGlyph({
   value,
   checked,
@@ -118,84 +127,39 @@ function WaitingGlyph({
 }: {
   value: string;
   checked: boolean;
-  /** Holds the glass back so a reset empties the section in order. */
   resetDelay: number;
   className: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const sand = sandOf(value);
-  const wait = shouldReduceMotion || checked ? 0 : resetDelay;
-
   return (
-    <svg
-      viewBox="0 0 24 24"
+    <DrawnGlyph
+      strokes={GLASS}
+      checked={checked}
+      resetDelay={resetDelay}
+      tempo={TEMPO}
       className={className}
-      fill="none"
-      strokeWidth={1.65}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <g className="text-muted-foreground">
-        <g stroke="currentColor">
-          {GLASS.map((d) => (
-            <path key={d} d={d} />
-          ))}
-        </g>
+      rest={
         <g fill="currentColor" opacity={SAND_REST_OPACITY}>
-          <path d={sand.top} />
-          <path d={sand.bottom} />
+          <Sand value={value} />
         </g>
-      </g>
-      <m.g
-        initial={false}
-        animate={{ opacity: checked ? 1 : 0 }}
-        transition={{
-          duration: shouldReduceMotion || checked ? 0 : 0.12,
-          delay: wait,
-          ease: "easeOut",
-        }}
-      >
-        <g stroke="var(--brand-strong)">
-          {GLASS.map((d, index) => (
-            <m.path
-              key={d}
-              d={d}
-              initial={false}
-              animate={{ pathLength: checked ? 1 : 0 }}
-              transition={
-                shouldReduceMotion
-                  ? { duration: 0 }
-                  : checked
-                    ? {
-                        duration: DRAW_DURATION,
-                        delay: index * DRAW_STAGGER,
-                        ease: "easeOut",
-                      }
-                    : // The length drops once the layer has faded, so letting go
-                      // never runs the draw backwards.
-                      { duration: 0, delay: wait + 0.12 }
-              }
-            />
-          ))}
-        </g>
+      }
+      lit={(wait) => (
         <m.g
           fill="var(--brand-strong)"
           initial={false}
-          animate={{ opacity: checked ? 0.85 : 0 }}
+          animate={{ opacity: checked ? SAND_LIT_OPACITY : 0 }}
           transition={
             shouldReduceMotion
               ? { duration: 0 }
               : checked
                 ? { duration: SAND_DURATION, delay: SAND_DELAY, ease: "easeOut" }
-                : { duration: 0.12, delay: wait, ease: "easeOut" }
+                : { duration: TEMPO.fade, delay: wait, ease: "easeOut" }
           }
         >
-          <path d={sand.top} />
-          <path d={sand.bottom} />
+          <Sand value={value} />
         </m.g>
-      </m.g>
-    </svg>
+      )}
+    />
   );
 }
 
@@ -216,7 +180,7 @@ export function WaitingCards({
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
 }) {
-  const { locale } = useI18n();
+  const { locale, messages } = useI18n();
   const label = groupLabel("waiting", locale);
   const { beginReset, resetDelay } = useResetStagger(
     selected.length,
@@ -231,17 +195,13 @@ export function WaitingCards({
   return (
     <FilterCardSection
       label={label}
-      hint={
-        locale === "sl"
-          ? "Po znanem datumu sprejema v zavetišče."
-          : "Based on the recorded shelter intake date."
-      }
+      hint={messages.waitingFilterHint}
       active={selected.length > 0}
       onReset={() => {
         beginReset();
         onToggleMany(selected);
       }}
-      resetAriaLabel={(locale === "sl" ? "Ponastavi: " : "Reset: ") + label}
+      resetAriaLabel={messages.resetWaitingFilters}
       layout={layout}
       collapse={collapse}
       // One row of three on the phone: the three glasses read as one scale.

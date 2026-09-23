@@ -11,7 +11,6 @@ import {
   facetCounts,
   goodWithCounts,
   goodWithOptions,
-  groupChipLabel,
   groupOptions,
   GROUPS,
   speciesCounts,
@@ -21,11 +20,11 @@ import {
   visibleCare,
   visibleGoodWith,
   visibleGroups,
+  valueChipLabel,
   visibleToggles,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
-  careLabel,
   goodWithChipLabel,
   shelterChipLabel,
 } from "@/lib/labels";
@@ -243,7 +242,7 @@ export function useAnimalFilterModel({
         label:
           group === "shelter"
             ? shelterChipLabel(shelterLabels.get(value) ?? value)
-            : groupChipLabel(group, value, animals, locale),
+            : valueChipLabel(group, value, locale),
         gain: chipGain.get(chipKey(group, value)),
         onRemove: () => toggle(group, value),
       })),
@@ -272,7 +271,7 @@ export function useAnimalFilterModel({
       key: chipKey("care", key),
       facet: "care" as const,
       value: key,
-      label: careLabel(key, locale),
+      label: valueChipLabel("care", key, locale),
       gain: chipGain.get(chipKey("care", key)),
       onRemove: () => toggleCare(key),
     })),

@@ -97,6 +97,7 @@ function renderMap(
   pins: ShelterPin[],
   selected: string[] = [],
   highlightedValue?: string | null,
+  props: { shading?: "density" | "flat"; countOnMarkers?: boolean } = {},
 ): string {
   return renderToStaticMarkup(
     <I18nProvider locale="sl">
@@ -105,6 +106,7 @@ function renderMap(
         selected={selected}
         onPick={() => undefined}
         highlightedValue={highlightedValue}
+        {...props}
       />
     </I18nProvider>,
   );
@@ -586,11 +588,16 @@ describe("ShelterMap satellite markers", () => {
 
 describe("ShelterMap regions", () => {
   it("spreads the density ramp over the live regions by rank", () => {
-    const html = renderMap([
-      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
-      pin("maribor", "Zavetišče Maribor", "Maribor", 40),
-      pin("koper", "Zavetišče Koper", "Koper", 90),
-    ]);
+    const html = renderMap(
+      [
+        pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+        pin("maribor", "Zavetišče Maribor", "Maribor", 40),
+        pin("koper", "Zavetišče Koper", "Koper", 90),
+      ],
+      [],
+      undefined,
+      { shading: "density" },
+    );
 
     const steps = [...html.matchAll(/data-region-density="(\d)"/g)].map(
       ([, step]) => Number(step),
@@ -1667,33 +1674,16 @@ describe("mapFacts: hasFilteredEmpty", () => {
 });
 
 describe("ShelterMap counts on markers", () => {
-  function renderCounted(
-    pins: ShelterPin[],
-    countOnMarkers: boolean,
-    selected: string[] = [],
-  ): string {
-    return renderToStaticMarkup(
-      <I18nProvider locale="sl">
-        <ShelterMap
-          pins={pins}
-          selected={selected}
-          onPick={() => undefined}
-          countOnMarkers={countOnMarkers}
-        />
-      </I18nProvider>,
-    );
-  }
-
   it("writes each shelter's count on its coin only when asked", () => {
     const pins = [
       pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 49),
       pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 178),
     ];
 
-    const counted = renderCounted(pins, true);
+    const counted = renderMap(pins, [], undefined, { countOnMarkers: true });
     expect(counted).toContain('data-marker-count="49"');
     expect(counted).toContain('data-marker-count="178"');
-    expect(renderCounted(pins, false)).not.toContain("data-marker-count");
+    expect(renderMap(pins, [], undefined, { countOnMarkers: false })).not.toContain("data-marker-count");
   });
 
   it("names a picked shelter under its marker, and only a picked one", () => {
@@ -1707,15 +1697,17 @@ describe("ShelterMap counts on markers", () => {
       );
 
     // The chip's short form: no leading noun, no operator in brackets.
-    expect(names(renderCounted(pins, true, ["macji-dol"]))).toEqual(["Mačji dol"]);
-    expect(names(renderCounted(pins, true, []))).toEqual([]);
-    expect(names(renderCounted(pins, false, ["macji-dol"]))).toEqual([]);
+    expect(names(renderMap(pins, ["macji-dol"], undefined, { countOnMarkers: true }))).toEqual(["Mačji dol"]);
+    expect(names(renderMap(pins, [], undefined, { countOnMarkers: true }))).toEqual([]);
+    expect(names(renderMap(pins, ["macji-dol"], undefined, { countOnMarkers: false }))).toEqual([]);
   });
 
   it("writes nothing on a shelter the filters leave empty", () => {
-    const html = renderCounted(
+    const html = renderMap(
       [pin("horjul", "Zavetišče Horjul", "Horjul", 0)],
-      true,
+      [],
+      undefined,
+      { countOnMarkers: true },
     );
     expect(html).not.toContain("data-marker-count");
     expect(html).toContain("data-marker-empty");
@@ -1728,8 +1720,8 @@ describe("ShelterMap counts on markers", () => {
     const overflow = (html: string) =>
       html.match(/data-cluster-overflow="4"[\s\S]*?<text[^>]*>(\d+)<\/text>/)?.[1];
 
-    expect(overflow(renderCounted(pins, true))).toBe("26");
-    expect(overflow(renderCounted(pins, false))).toBe("4");
+    expect(overflow(renderMap(pins, [], undefined, { countOnMarkers: true }))).toBe("26");
+    expect(overflow(renderMap(pins, [], undefined, { countOnMarkers: false }))).toBe("4");
   });
 });
 

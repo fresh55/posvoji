@@ -46,15 +46,10 @@ export function useLocationPickerMotion(open: boolean) {
     if (hasHeightToSpare()) setSheetOpen(true);
   }, []);
 
-  const resetDocks = useCallback(() => {
-    setSheetOpen(true);
-  }, []);
-
   return {
     sheetOpen,
     setSheetOpen,
     landSpotlight,
     revealSelection,
-    resetDocks,
   };
 }

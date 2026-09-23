@@ -65,8 +65,10 @@ function MiniMapImpl({
     () => groupTownsByRegion(towns, (at) => CITY_REGIONS[`${at.lat},${at.lon}`]),
     [towns],
   );
-  // Same density computation the big map draws from (lib/map-layout.ts), so
-  // this preview can never disagree with the map it is a preview of.
+  // The same region statistics the big map is built from (lib/map-layout.ts),
+  // so the two agree on which regions are live and picked. The thumbnail keeps
+  // the density ramp the picker gave up: it has no markers to carry counts,
+  // and at this size the shading is the only way it says where animals are.
   const regions = useMemo(
     () => regionStatsByRegion(byRegion, selected, miniMapData.regions),
     [byRegion, selected],

@@ -24,13 +24,11 @@ import {
 import {
   groupTownsByRegion,
   layoutTowns,
-  placePickedNames,
   regionStatsByRegion,
   townCount,
   townIsLive,
   townLabel,
   townSelectableValues,
-  type NamePlacement,
   type RegionStats,
   type ShelterPin,
   type Town,
@@ -63,6 +61,7 @@ import {
 } from "./shelter-map-region";
 import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { commitKey, Marker, PLATE_MIN_SCALE } from "./map-marker";
+import { placePickedNames, type NamePlacement } from "./map-names";
 import { mapFacts, type MapFacts } from "./shelter-map-facts";
 import { mapAvailabilityText, regionAvailability, shelterAvailability } from "./map-availability";
 import { MapRegionNames, NAMES_MIN_PLATE_WIDTH } from "./map-region-names";
@@ -157,7 +156,7 @@ export function ShelterMap({
   spotlightValues,
   spotlightNote,
   spotlightFrom,
-  shading = "density",
+  shading = "flat",
   countOnMarkers = false,
   originRadiusKm,
   summaries,
@@ -209,13 +208,13 @@ export function ShelterMap({
    *  undefined or a point off the map draws nothing, because a line from
    *  roughly the right place is worse than no line. */
   spotlightFrom?: LatLon | null;
-  /** How a live region is filled. "flat" draws every region with a shelter at
-   *  the ramp's first step and leaves the rest untinted, which is what both
-   *  the picker and the found-animal page draw: the picker carries its counts
-   *  on the markers, and the found-animal page asks who to call. "density"
-   *  ranks each region's animals on the ramp instead; only the /dev/map
-   *  gallery still draws it. The ranking itself is skipped rather than
-   *  overwritten under "flat"; see regionStatsByRegion. */
+  /** How a live region is filled. "flat", the default, tints every region
+   *  with a shelter at the theme's --map-flat-alpha and leaves the rest
+   *  untinted: the picker carries its counts on the markers, and the
+   *  found-animal page asks who to call. "density" ranks each region's
+   *  animals on the ramp instead, which only the /dev/map gallery still
+   *  draws. The ranking itself is skipped rather than overwritten under
+   *  "flat"; see regionStatsByRegion. */
   shading?: "density" | "flat";
   /** Write each shelter's animal count on its marker instead of a paw. The
    *  picker's question is where the animals are, and a number answers it on
@@ -266,16 +265,9 @@ export function ShelterMap({
   const contextFadeId = `map-context-fade-${uid}`;
   const hillshadeClipId = `map-hillshade-clip-${uid}`;
   const towns = useMemo(
-    () => layoutTowns(pins, { uniform: countOnMarkers }),
+    () => layoutTowns(pins, { counted: countOnMarkers }),
     [pins, countOnMarkers],
   );
-  /** What every town paints, as a box each, keyed by the town so an annotation
-   *  can leave its own mark out.
-   *
-   *  reach and not r: a dominated town hangs satellite discs outside its coin,
-   *  and those are as much of the mark as the coin is. The annotations take
-   *  this as the list of things they should not be laid over when they have a
-   *  choice of side; see `avoid` in map-callout.tsx. */
   // The picked towns' names, placed off each other and off every marker.
   const namePlacements = useMemo(
     () =>
@@ -284,6 +276,13 @@ export function ShelterMap({
         : NO_NAMES,
     [countOnMarkers, selected, towns],
   );
+  /** What every town paints, as a box each, keyed by the town so an annotation
+   *  can leave its own mark out.
+   *
+   *  reach and not r: a dominated town hangs satellite discs outside its coin,
+   *  and those are as much of the mark as the coin is. The annotations take
+   *  this as the list of things they should not be laid over when they have a
+   *  choice of side; see `avoid` in map-callout.tsx. */
   const markerBoxes = useMemo(
     () =>
       towns.map((town) => ({
@@ -1202,7 +1201,6 @@ export function ShelterMap({
               interactive={interactive}
               town={town}
               selected={selected}
-              showCount={countOnMarkers}
               name={namePlacements.get(town.key)}
               // Handed straight through, unadapted: Marker already has town as
               // its own prop, and builds the MapPick itself. Same reasoning as

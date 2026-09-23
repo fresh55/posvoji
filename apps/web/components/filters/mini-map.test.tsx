@@ -264,7 +264,7 @@ describe("MiniMap agrees with the big map", () => {
     const miniHtml = renderMini(pins);
     const bigHtml = renderToStaticMarkup(
       <I18nProvider locale="sl">
-        <ShelterMap pins={pins} selected={[]} onPick={() => undefined} />
+        <ShelterMap shading="density" pins={pins} selected={[]} onPick={() => undefined} />
       </I18nProvider>,
     );
 

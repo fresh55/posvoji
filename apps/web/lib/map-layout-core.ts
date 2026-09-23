@@ -29,6 +29,10 @@ export type Town = {
   /** Clickable radius, which is larger than the house the eye sees. */
   hitR: number;
   shelters: ShelterPin[];
+  /** Set on every town of a map that writes its counts on the markers (see
+   *  layoutTowns' `counted`), so each mark can ask its own town rather than
+   *  be told by every component between the map and it. */
+  counted?: true;
 };
 
 // A marker carries its town's animal count in its size, in three bins rather
@@ -57,7 +61,7 @@ const MARKER_RADIUS_STEPS = [4.7, 5.8, 7.2] as const;
 const MIN_MARKER_RADIUS = MARKER_RADIUS_STEPS[0];
 
 /** The one radius every coin takes on a map that writes its counts on the
- *  markers (layoutTowns' `uniform`). The digits carry the count there, so a
+ *  markers (layoutTowns' `counted`). The digits carry the count there, so a
  *  size step only made the quiet shelters' numbers the hardest to read: at
  *  4.7 two digits set at about 10px on a desktop plate. 6.2 fits three digits
  *  and sits between the old middle and top steps, so the collision layout
@@ -303,9 +307,10 @@ function coinCount(shelters: ShelterPin[]): number {
 
 export function layoutTowns(
   pins: ShelterPin[],
-  { uniform = false }: {
-    /** Size every coin at COUNT_MARKER_RADIUS rather than by its count. */
-    uniform?: boolean;
+  { counted = false }: {
+    /** A map that writes its counts: every coin takes COUNT_MARKER_RADIUS
+     *  rather than a size by its count, and every town says so. */
+    counted?: boolean;
   } = {},
 ): Town[] {
   // Grouped by town name, not by coordinate. Two shelters in Ljubljana share a
@@ -328,7 +333,7 @@ export function layoutTowns(
         a.label.localeCompare(b.label, "sl"),
       );
       const { x, y } = project(shelters[0].at);
-      const r = uniform ? COUNT_MARKER_RADIUS : markerRadius(coinCount(shelters));
+      const r = counted ? COUNT_MARKER_RADIUS : markerRadius(coinCount(shelters));
       const town: Placed = {
         key,
         city: shelters[0].city,
@@ -362,108 +367,8 @@ export function layoutTowns(
     reach: town.reach,
     hitR: town.hitR,
     shelters: town.shelters,
+    ...(counted ? { counted: true as const } : {}),
   }));
-}
-
-// --- Names for picked towns, on a map that writes its counts ---
-
-/** The size a picked town's name is set at, in user units. */
-export const PICKED_NAME_SIZE = 3.9;
-// Clear space between a marker's reach and its name.
-const NAME_GAP = 0.8;
-// An estimate of a semibold glyph's advance as a share of the size. Only used
-// to keep names off each other and off markers, so a little over is the safe
-// side: a name drawn narrower than its box leaves air, never an overlap.
-const NAME_ADVANCE = 0.6;
-
-export type NamePlacement = {
-  text: string;
-  x: number;
-  y: number;
-  anchor: "start" | "middle" | "end";
-};
-
-type Box = { left: number; top: number; right: number; bottom: number };
-
-/** The box a placed name is estimated to take, in user units. */
-export function namePlacementBox({ text, x, y, anchor }: NamePlacement): Box {
-  const width = text.length * PICKED_NAME_SIZE * NAME_ADVANCE;
-  const height = PICKED_NAME_SIZE * 1.2;
-  const left = anchor === "start" ? x : anchor === "end" ? x - width : x - width / 2;
-  return { left, top: y - height / 2, right: left + width, bottom: y + height / 2 };
-}
-
-function boxOverlap(a: Box, b: Box): number {
-  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
-  const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-  return w > 0 && h > 0 ? w * h : 0;
-}
-
-export function circleHitsBox(x: number, y: number, r: number, box: Box): boolean {
-  const dx = x - Math.min(Math.max(x, box.left), box.right);
-  const dy = y - Math.min(Math.max(y, box.top), box.bottom);
-  return dx * dx + dy * dy < r * r;
-}
-
-/** Where each picked town's name goes: under its marker if that is clear, else
- *  above, right or left, whichever first keeps off every other marker, every
- *  name already placed and the edge of the plate. A town with nowhere clear
- *  takes the side that costs least. West to east, so the answer is the same
- *  on every render. `label` shortens each shelter's name the way the caller
- *  wants it read; several picked shelters in one town share one line. */
-export function placePickedNames(
-  towns: Town[],
-  selected: readonly string[],
-  label: (name: string) => string,
-): Map<string, NamePlacement> {
-  const placed = new Map<string, NamePlacement>();
-  const taken: Box[] = [];
-  const named = towns
-    .map((town) => ({
-      town,
-      text: town.shelters
-        .filter((shelter) => selected.includes(shelter.value))
-        .map((shelter) => label(shelter.label))
-        .join(", "),
-    }))
-    .filter(({ text }) => text !== "")
-    .sort((a, b) => a.town.x - b.town.x);
-
-  for (const { town, text } of named) {
-    const height = PICKED_NAME_SIZE * 1.2;
-    const reach = town.reach + NAME_GAP;
-    const candidates: NamePlacement[] = [
-      { text, x: town.x, y: town.y + reach + height / 2, anchor: "middle" },
-      { text, x: town.x, y: town.y - reach - height / 2, anchor: "middle" },
-      { text, x: town.x + reach, y: town.y, anchor: "start" },
-      { text, x: town.x - reach, y: town.y, anchor: "end" },
-    ];
-    const cost = (candidate: NamePlacement): number => {
-      const box = namePlacementBox(candidate);
-      let total = 0;
-      for (const other of towns) {
-        if (other !== town && circleHitsBox(other.x, other.y, other.reach, box)) total += 100;
-      }
-      for (const name of taken) total += boxOverlap(box, name) * 10;
-      total +=
-        Math.max(0, -box.left) + Math.max(0, box.right - MAP_WIDTH) +
-        Math.max(0, -box.top) + Math.max(0, box.bottom - MAP_HEIGHT);
-      return total;
-    };
-    let best = candidates[0];
-    let bestCost = cost(best);
-    for (const candidate of candidates.slice(1)) {
-      if (bestCost === 0) break;
-      const next = cost(candidate);
-      if (next < bestCost) {
-        best = candidate;
-        bestCost = next;
-      }
-    }
-    placed.set(town.key, best);
-    taken.push(namePlacementBox(best));
-  }
-  return placed;
 }
 
 export function townCount(town: Town): number {

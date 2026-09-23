@@ -2933,6 +2933,11 @@ describe("LocationPicker audit regressions", () => {
 describe("LocationPicker distance picks", () => {
   const chip = (km: number) =>
     screen.getByRole("button", { name: `do ${km} km` });
+  const pressed = (value: string) =>
+    screen
+      .getByRole("dialog")
+      .querySelector(`[data-shelter-row='${value}'] button`)!
+      .getAttribute("aria-pressed");
 
   it("offers no distance before there is somewhere to measure from", async () => {
     await openPicker();
@@ -2980,11 +2985,6 @@ describe("LocationPicker distance picks", () => {
     });
     await type(input, "1000");
     choosePlace();
-    const pressed = (value: string) =>
-      screen
-        .getByRole("dialog")
-        .querySelector(`[data-shelter-row='${value}'] button`)!
-        .getAttribute("aria-pressed");
 
     // From Ljubljana: Jug is in town, Zahod in Kranj about 25 km off, Sever in
     // Maribor past 100. 50 and 100 hold the same two shelters.
@@ -3008,11 +3008,6 @@ describe("LocationPicker distance picks", () => {
     });
     await type(input, "1000");
     choosePlace();
-    const pressed = (value: string) =>
-      screen
-        .getByRole("dialog")
-        .querySelector(`[data-shelter-row='${value}'] button`)!
-        .getAttribute("aria-pressed");
 
     // Zahod was picked by hand; 50 adds Jug beside it.
     fireEvent.click(chip(50));

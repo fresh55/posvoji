@@ -1,4 +1,3 @@
-import { shelterChipLabel } from "./labels";
 import { describe, expect, it } from "vitest";
 import { cityAt, MAP_HEIGHT, MAP_WIDTH, type LatLon } from "./geo";
 import {
@@ -16,9 +15,6 @@ import {
   markerGeometry,
   markerRadius,
   COUNT_MARKER_RADIUS,
-  circleHitsBox,
-  namePlacementBox,
-  placePickedNames,
   markerVisualReach,
   MARKER_STROKE_WIDTH,
   mergeTownDots,
@@ -358,7 +354,7 @@ describe("layoutTowns", () => {
 
   it("sizes every coin alike on a map that writes its counts", () => {
     const radii = new Set(
-      layoutTowns(REAL_PINS, { uniform: true }).map((town) => town.r),
+      layoutTowns(REAL_PINS, { counted: true }).map((town) => town.r),
     );
     expect(radii).toEqual(new Set([COUNT_MARKER_RADIUS]));
   });
@@ -945,62 +941,5 @@ describe("map selection eligibility", () => {
     const region = regionStatsByRegion(byRegion, ["filtered"]).find(({ stats }) => stats.animals === 5)!;
     expect(region.stats.values).toEqual(expect.arrayContaining(["matching", "filtered"]));
     expect(townSelectableValues(towns.find((town) => town.city === "Horjul")!, ["filtered"])).toEqual(["filtered"]);
-  });
-});
-
-describe("placePickedNames", () => {
-  const towns = layoutTowns(REAL_PINS, { uniform: true });
-
-  // The eleven shelters listing animals today, under their real names, which
-  // is where the crowded middle of the country is.
-  const LIVE_NAMES: Record<string, string> = {
-    "macji-dol": "Mačji dol (Žverca)",
-    meli: "Meli Center Repče",
-    obalno: "Obalno zavetišče (Marjetica Koper)",
-    horjul: "Zavetišče Horjul",
-    ljubljana: "Zavetišče Ljubljana",
-    "macja-hisa": "Zavetišče Mačja hiša",
-    "mala-hisa": "Zavetišče Mala hiša",
-    maribor: "Zavetišče Maribor (Snaga)",
-    turk: "Zavetišče Turk",
-    zonzani: "Zavetišče Zonzani",
-    muri: "Zavod Muri",
-  };
-  const live = layoutTowns(
-    REAL_PINS.filter((p) => p.value in LIVE_NAMES).map((p) => ({ ...p, label: LIVE_NAMES[p.value] })),
-    { uniform: true },
-  );
-
-  it("keeps every name off every other marker and name, with every live shelter picked", () => {
-    const placed = placePickedNames(live, Object.keys(LIVE_NAMES), shelterChipLabel);
-    const towns = live;
-    for (const town of towns) {
-      const box = namePlacementBox(placed.get(town.key)!);
-      for (const other of towns) {
-        if (other === town) continue;
-        expect(circleHitsBox(other.x, other.y, other.reach, box)).toBe(false);
-      }
-    }
-    // And off each other.
-    const boxes = [...placed.values()].map(namePlacementBox);
-    everyPair(boxes, (a, b) => {
-      const apart =
-        a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
-      expect(apart).toBe(true);
-    });
-  });
-
-  it("names only picked towns, joining a town's picked shelters", () => {
-    const [first] = towns;
-    const placed = placePickedNames(towns, [first.shelters[0].value], (name) => name);
-    expect([...placed.keys()]).toEqual([first.key]);
-    expect(placed.get(first.key)!.text).toBe(first.shelters[0].label);
-  });
-
-  it("puts a name under its marker when nothing is in the way", () => {
-    const [solo] = layoutTowns([pin("a", "Ljubljana", 20)], { uniform: true });
-    const placement = placePickedNames([solo], ["a"], () => "Ljubljana").get(solo.key)!;
-    expect(placement.anchor).toBe("middle");
-    expect(placement.y).toBeGreaterThan(solo.y);
   });
 });

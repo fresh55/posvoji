@@ -9,25 +9,19 @@ import { mapAvailabilityText } from "./map-availability";
 const LEGEND_SWATCH_GROUND =
   "color-mix(in oklch, var(--muted) 40%, var(--background))";
 
-/** One square of the map's region fill, at the given alpha.
+/** One square of the map's region fill, at the flat map's alpha.
  *
  *  Two layers, not one. A region's fill composites over the land it sits on,
  *  not over whatever happens to be behind the legend; painting the alpha
  *  straight onto this panel used its own near-black dark background as the
  *  ground instead, which is darker than the land the map actually uses. The
  *  underlay is LEGEND_SWATCH_GROUND, the opaque stand-in for that land; the
- *  map's own ink and alpha ride on top of it unchanged, --map-density-fill at
- *  the given opacity.
+ *  map's own ink and alpha ride on top of it unchanged: --map-density-fill at
+ *  --map-flat-alpha.
  *
  *  `className` is what the caller adds on its own account: the mixed region's
  *  dashed boundary. */
-function RegionSwatch({
-  opacity,
-  className,
-}: {
-  opacity: number | string;
-  className?: string;
-}) {
+function RegionSwatch({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
@@ -39,8 +33,7 @@ function RegionSwatch({
     >
       <span
         aria-hidden
-        className="absolute inset-0 bg-[var(--map-density-fill)]"
-        style={{ opacity }}
+        className="absolute inset-0 bg-[var(--map-density-fill)] opacity-(--map-flat-alpha)"
       />
     </span>
   );
@@ -97,7 +90,6 @@ export function MapLegend({
       {hasMixedRegion && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <RegionSwatch
-            opacity="var(--map-flat-alpha)"
             className="shrink-0 border border-dashed border-brand-strong"
           />
           {messages.mixedRegionLegend}
@@ -105,7 +97,7 @@ export function MapLegend({
       )}
       {hasFilteredMarker && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-          <EmptyMarkerGlyph filtered className="size-3.5 shrink-0" />
+          <EmptyMarkerGlyph className="size-3.5 shrink-0" />
           {mapAvailabilityText[locale].noMatchesLegend}
         </span>
       )}

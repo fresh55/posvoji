@@ -29,7 +29,7 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
 export type MapFacts = {
   hasSelected: boolean;
   hasMixed: boolean;
-  hasFilteredEmpty?: boolean;
+  hasFilteredEmpty: boolean;
 };
 
 /** What one look at the laid-out country says, for the panel and its legend.

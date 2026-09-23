@@ -844,7 +844,8 @@ describe("ShelterRows link rows", () => {
       />,
     );
 
-    expect(html).toContain("Celje · 4 km");
+    // As text: the distance rides a span of its own so it never breaks.
+    expect(html.replace(/<[^>]+>/g, "")).toContain("Celje · 4 km");
   });
 
   it("lights up from the map with the same data attribute a toggle row wears", () => {

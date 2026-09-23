@@ -28,17 +28,20 @@ export function BoundariesCredit({
 /**
  * Keep source names and licences visible at every width, off the plate: over
  * the map, the credit sat on the coast with the sea's name and a marker in the
- * same corner. The default is a quiet footnote line in whatever holds it.
+ * same corner. A quiet footnote line by default; a card with larger text and
+ * touch targets where the credit closes a figure of its own.
  */
 export function MapAttribution({
   messages,
-  inFlow = false,
+  variant = "footnote",
+  className,
 }: {
   messages: Pick<Messages, "regionBoundaries" | "reliefSource" | "newWindow">;
-  /** Place credits below the map with larger text and touch targets. */
-  inFlow?: boolean;
+  variant?: "footnote" | "card";
+  className?: string;
 }) {
-  const linkClassName = inFlow
+  const card = variant === "card";
+  const linkClassName = card
     ? "inline-flex min-h-6 items-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
     : undefined;
   return (
@@ -46,9 +49,10 @@ export function MapAttribution({
       data-slot="map-attribution"
       className={cn(
         "text-muted-foreground",
-        inFlow
+        card
           ? "relative mt-2 rounded-ui border-t bg-card px-2 py-1 text-xs leading-relaxed"
           : "text-3xs leading-tight",
+        className,
       )}
     >
       <span className="max-lg:hidden">{messages.regionBoundaries}: </span>
@@ -56,7 +60,7 @@ export function MapAttribution({
       <span className="max-lg:hidden">{messages.reliefSource}: </span>
       <a
         href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md"
-        className={cn("pointer-events-auto underline underline-offset-2 hover:text-foreground", linkClassName)}
+        className={cn("underline underline-offset-2 hover:text-foreground", linkClassName)}
         target="_blank"
         rel="noreferrer"
       >

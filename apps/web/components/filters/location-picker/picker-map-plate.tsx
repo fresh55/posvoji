@@ -1,8 +1,8 @@
 import { MapAttribution } from "@/components/filters/map-attribution";
 import { MapLegend } from "@/components/filters/map-legend";
-import { ShelterMap } from "@/components/filters/shelter-map";
+import { ShelterMap, type MapFacts } from "@/components/filters/shelter-map";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { LocationPickerController } from "./controller";
 import regionShelterNamesData from "@/lib/region-shelter-names.json";
 import { shelterNamesByRegion } from "./municipality-places";
@@ -28,7 +28,6 @@ export function PickerMapPlate({
     pins,
     selected,
     handlePick,
-    setMapFacts,
     origin,
     expandedShelter,
     hoveredRow,
@@ -36,15 +35,29 @@ export function PickerMapPlate({
     visibleRows,
     spotlitShelterId,
     setHoveredMarkerValues,
-    setMarkersVisible,
     summaries,
     municipalities,
     messages,
-    markersVisible,
-    hasSelected,
-    hasMixed,
-    hasFilteredEmpty,
   } = controller;
+
+  // Whether the map is drawing markers right now, as the map itself answers
+  // it. Two things under the plate talk about markers, the instruction line and
+  // the legend's filtered-out row, and both used to decide from a viewport
+  // breakpoint while the map decided from the plate it had actually measured.
+  // They disagreed wherever the two differ, which is most of the width of a
+  // phone held sideways: the line told a visitor to click a marker on a plate
+  // carrying none, and the legend explained a circle nothing had drawn.
+  //
+  // True to start with, which is what ShelterMap starts at too, so the two are
+  // one answer from the first render rather than converging on the second.
+  // Held here and not in the controller: the plate is the only reader.
+  const [markersVisible, setMarkersVisible] = useState(true);
+  const [{ hasSelected, hasMixed, hasFilteredEmpty }, setMapFacts] =
+    useState<MapFacts>({
+      hasSelected: false,
+      hasMixed: false,
+      hasFilteredEmpty: false,
+    });
 
   // Which shelters answer for the municipalities inside each region, by region
   // id. An empty region on this map is not an empty part of the country:
@@ -97,11 +110,10 @@ export function PickerMapPlate({
             spotlightValues={spotlitShelterId ? [spotlitShelterId] : null}
             onHoverShelters={setHoveredMarkerValues}
             onMarkersVisible={setMarkersVisible}
-            // One flat tint for a region that holds a shelter, and the count
-            // on the marker. The ramp ranked regions by animals, a total for
-            // a boundary no visitor chooses, and drew the same fact the
-            // markers and the list already carry a third time.
-            shading="flat"
+            // The count on the marker, over the map's flat region tint. The
+            // ramp ranked regions by animals, a total for a boundary no
+            // visitor chooses, and drew the same fact the markers and the list
+            // already carry a third time.
             countOnMarkers
             originRadiusKm={controller.ringKm}
             summaries={summaries}
@@ -135,13 +147,11 @@ export function PickerMapPlate({
         <MapLegend
           hasSelectedRegion={hasSelected}
           hasMixedRegion={hasMixed}
-          hasFilteredMarker={Boolean(hasFilteredEmpty) && markersVisible}
+          hasFilteredMarker={hasFilteredEmpty && markersVisible}
           origin={origin}
           messages={messages}
         />
-        <div className="mt-2">
-          <MapAttribution messages={messages} />
-        </div>
+        <MapAttribution messages={messages} className="mt-2" />
       </div>
     </>
   );

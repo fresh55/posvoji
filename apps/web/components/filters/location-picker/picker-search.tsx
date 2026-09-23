@@ -1,6 +1,7 @@
 import { LoaderCircle, MapPin, Navigation, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -177,26 +178,21 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
             {radiusPicks.length > 0 && (
               <div role="group" aria-label={copy.pickWithin} className="flex gap-2">
                 {radiusPicks.map(({ km, values, pressed }) => (
-                  <Button
+                  <Toggle
                     key={km}
-                    type="button"
                     variant="outline"
-                    aria-pressed={pressed}
+                    pressed={pressed}
+                    onPressedChange={() => pickWithin(km)}
                     disabled={values.length === 0}
                     data-picker-radius={km}
-                    onClick={() => pickWithin(km)}
                     onPointerEnter={() => setAskedRadius(km)}
                     onPointerLeave={() => setAskedRadius(null)}
                     onFocus={() => setAskedRadius(km)}
                     onBlur={() => setAskedRadius(null)}
-                    className={cn(
-                      "h-9 px-2.5 text-xs shadow-none pointer-coarse:h-11",
-                      pressed &&
-                        "border-brand-border bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground",
-                    )}
+                    className="text-xs pointer-coarse:h-11"
                   >
                     {copy.upTo} {km} km
-                  </Button>
+                  </Toggle>
                 ))}
               </div>
             )}

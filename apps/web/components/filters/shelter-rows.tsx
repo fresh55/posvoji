@@ -73,6 +73,32 @@ function revealRow(row: ShelterRowElement) {
   }
 }
 
+// A row's town and its distance, the line under the name. It wraps rather than
+// truncates, and the distance never breaks: it is the end of the line and the
+// half that must not be cut.
+function RowPlace({
+  city,
+  km,
+  lessThanOneKm,
+}: {
+  city?: string;
+  km?: number;
+  lessThanOneKm?: string;
+}) {
+  if (!city && km === undefined) return null;
+  return (
+    <span data-row-place className="mt-0.5 block text-xs text-muted-foreground">
+      {city}
+      {km !== undefined && (
+        <span data-row-km className="whitespace-nowrap">
+          {city ? " · " : ""}
+          {formatKm(km, lessThanOneKm)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // Stable empty defaults, so a caller rendering link rows only is not made to
 // fabricate a Map and an array it will never read from.
 const EMPTY_COUNTS = new Map<string, number>();
@@ -314,12 +340,6 @@ export function ShelterRows({
       >
         {rows.map(({ value, label, city, km, href }) => {
           const isHighlighted = highlighted?.includes(value) ?? false;
-          const sublabel = [
-            city,
-            km === undefined ? undefined : formatKm(km, lessThanOneKm),
-          ]
-            .filter(Boolean)
-            .join(" · ");
           const setRef = (node: ShelterRowElement | null) => {
             if (node) localRefs.current.set(value, node);
             else localRefs.current.delete(value);
@@ -364,13 +384,7 @@ export function ShelterRows({
                   >
                     {label}
                   </span>
-                  {/* Wraps rather than truncates: the distance is the end
-                      of the line, and it is the half that must not be cut. */}
-                  {sublabel && (
-                    <span data-row-place className="mt-0.5 block text-xs text-muted-foreground">
-                      {sublabel}
-                    </span>
-                  )}
+                  <RowPlace city={city} km={km} lessThanOneKm={lessThanOneKm} />
                 </span>
                 {/* h-8, not size-11: the 44px target is the whole <a>, and a
                     44px box inside its own py-2 made every off-site row 60px
@@ -493,20 +507,8 @@ export function ShelterRows({
                       for. The longest wait rode this line too, on eight rows
                       of eleven, and a mark on most rows marks none of them;
                       it is in the details under the row, where it names the
-                      animal. The line wraps rather than truncates, and the
-                      distance never breaks: it is the end of the line and the
-                      half that must not be cut. */}
-                  {sublabel && (
-                    <span data-row-place className="mt-0.5 block text-xs text-muted-foreground">
-                      {city}
-                      {km !== undefined && (
-                        <span data-row-km className="whitespace-nowrap">
-                          {city ? " · " : ""}
-                          {formatKm(km, lessThanOneKm)}
-                        </span>
-                      )}
-                    </span>
-                  )}
+                      animal. */}
+                  <RowPlace city={city} km={km} lessThanOneKm={lessThanOneKm} />
                 </span>
                 {/* A stable count column makes the roster easy to compare.
                   The checkbox carries selection; every count keeps the same

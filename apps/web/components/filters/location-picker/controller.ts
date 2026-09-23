@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { MapFacts } from "@/components/filters/shelter-map";
 import type { ShelterRow } from "@/components/filters/shelter-rows";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -163,7 +162,6 @@ export function useLocationPickerController({
     setSheetOpen,
     landSpotlight,
     revealSelection,
-    resetDocks,
   } = useLocationPickerMotion(open);
   // Read here rather than beside the origin it feeds, because the close
   // cleanup below dismisses its error and a dependency cannot be named before
@@ -204,9 +202,9 @@ export function useLocationPickerController({
       // page-session fact the grid's sort reads (usePublishNearbyOrigin
       // below), and only the failure belongs to the visit that caused it.
       dismissError();
-      resetDocks();
+      setSheetOpen(true);
     };
-  }, [chosenPlace, dismissError, resetDocks, setQuery]);
+  }, [chosenPlace, dismissError, setQuery, setSheetOpen]);
 
 
   // An animal card asking for its shelter on the map. Guarded by breakpoint
@@ -310,25 +308,6 @@ export function useLocationPickerController({
     [offSite, origin],
   );
 
-  // Whether the map is drawing markers right now, as the map itself answers
-  // it. Two things in this dialog talk about markers, the instruction under
-  // the map and the legend's filtered-out row, and both used to decide from
-  // a viewport breakpoint while the map decided from the plate it had actually
-  // measured. They disagreed wherever the two differ, which is most of the
-  // width of a phone held sideways: the chip told a visitor to click a marker
-  // on a plate carrying none, and the legend explained a circle nothing had
-  // drawn.
-  //
-  // True to start with, which is what ShelterMap starts at too, so the two are
-  // one answer from the first render rather than converging on the second.
-  const [markersVisible, setMarkersVisible] = useState(true);
-  const [{ hasSelected, hasMixed, hasFilteredEmpty }, setMapFacts] =
-    useState<MapFacts>({
-      hasSelected: false,
-      hasMixed: false,
-      hasFilteredEmpty: false,
-    });
-
   // Only the shelters there is something to pick from. The ones with nothing
   // listed used to stand on the plate as hollow dots with a legend row of
   // their own; they are in the list's folded group, each a link to its page,
@@ -337,6 +316,28 @@ export function useLocationPickerController({
   const pins: ShelterPin[] = useMemo(
     () => toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
     [counts, rows],
+  );
+
+  // Takes picked shelters off in one filter write, and says so when several
+  // go at once: aria-pressed can say one marker, region or chip changed, not
+  // that twelve shelters went with it, and the running total in the live
+  // region is a total, not a difference. A single shelter's own pressed state
+  // is the whole of that news. Every value handed in is picked, so the write
+  // drops exactly them.
+  const dropPicked = useCallback(
+    (values: string[]) => {
+      if (values.length === 0) return;
+      setDropNote(
+        values.length > 1
+          ? {
+              text: sheltersDropped(values.length, locale),
+              after: selected.filter((value) => !values.includes(value)),
+            }
+          : null,
+      );
+      onToggleMany(values);
+    },
+    [locale, onToggleMany, selected],
   );
 
   // Picking by distance, once there is somewhere to measure from. Each chip
@@ -392,27 +393,15 @@ export function useLocationPickerController({
       if (!pick || pick.values.length === 0) return;
       const current = radiusPicks.find((entry) => entry.pressed);
       const added = current ? chosenRadius?.added ?? [] : [];
-      // Taking shelters off says so: aria-pressed can say one chip changed,
-      // not that several shelters went with it.
-      const drop = (values: string[]) => {
-        if (values.length === 0) return;
-        if (values.length > 1) {
-          setDropNote({
-            text: sheltersDropped(values.length, locale),
-            after: selected.filter((value) => !values.includes(value)),
-          });
-        }
-        onToggleMany(values);
-      };
       if (pick.pressed) {
-        drop(added.filter((value) => selected.includes(value)));
+        dropPicked(added.filter((value) => selected.includes(value)));
         setChosenRadius(null);
         return;
       }
       if (isDrop(selected, pick.values)) {
         // Everything within reach is picked already, so this narrows: what
         // the wider chip added beyond this reach comes off.
-        drop(added.filter((value) => !pick.values.includes(value)));
+        dropPicked(added.filter((value) => !pick.values.includes(value)));
         setChosenRadius({
           km,
           from: originKey,
@@ -428,7 +417,7 @@ export function useLocationPickerController({
         added: [...new Set([...added, ...missing])],
       });
     },
-    [chosenRadius, locale, onToggleMany, originKey, radiusPicks, selected],
+    [chosenRadius, dropPicked, onToggleMany, originKey, radiusPicks, selected],
   );
   // The ring the map draws: the chip being asked about, or else the pressed one.
   const ringKm =
@@ -452,28 +441,17 @@ export function useLocationPickerController({
       // The same predicate toggleValues branches on, read before it runs so
       // the live region and the filter cannot disagree about what this click
       // did.
-      setDropNote(null);
-      const dropping = isDrop(selected, values);
-      onToggleMany(values);
-      if (dropping) {
+      if (isDrop(selected, values)) {
         // Dropping asks nothing and moves nothing else: the rest of this
         // dialog's state is about what is being looked at, and taking a
         // shelter out of the filter is not a statement about that. Open
         // details in particular stay open, including the dropped shelter's
         // own, which is the point of keeping the two verbs apart.
-        //
-        // aria-pressed can say one marker came off; it cannot say twelve did,
-        // and the running total in the live region is a total, not a
-        // difference. Only for a region, because a single shelter's own
-        // pressed state is the whole of that news.
-        if (values.length > 1) {
-          setDropNote({
-            text: sheltersDropped(values.length, locale),
-            after: selected.filter((value) => !values.includes(value)),
-          });
-        }
+        dropPicked(values);
         return;
       }
+      setDropNote(null);
+      onToggleMany(values);
       // What was picked is read off the list, as the rows' own accent, so a
       // click on a phone's map view has to bring the list's sheet back. From
       // lg the list is always beside the map and this is a no-op.
@@ -504,7 +482,7 @@ export function useLocationPickerController({
     // whether it drops before the toggle runs, and what the selection it
     // leaves behind looks like. Both are facts about the selection at click
     // time, which the functional setter form cannot carry.
-    [locale, onToggleMany, options, revealSelection, searching, selected, setQuery],
+    [dropPicked, onToggleMany, options, revealSelection, searching, selected, setQuery],
   );
 
   // Opening one shelter closes whichever was open, and pressing the control of
@@ -816,7 +794,6 @@ export function useLocationPickerController({
     setSpotlitShelterId,
     sheetOpen,
     setSheetOpen,
-    resetDocks,
     searchRef,
     placeMode,
     placeOnly,
@@ -839,9 +816,6 @@ export function useLocationPickerController({
     pickWithin,
     setAskedRadius,
     ringKm,
-    markersVisible,
-    setMarkersVisible,
-    setMapFacts,
     pins,
     handlePick,
     hoverScrollTo,
@@ -849,9 +823,6 @@ export function useLocationPickerController({
     visibleRows,
     visibleOffRows,
     searchNews,
-    hasSelected,
-    hasMixed,
-    hasFilteredEmpty,
     nearbyOn,
     status,
     missing,

@@ -5,7 +5,7 @@ import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-context";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import type { Locale } from "@/lib/i18n";
-import { filteredAnimalCount, shelterChipLabel, shelterCount } from "@/lib/labels";
+import { filteredAnimalCount, shelterCount } from "@/lib/labels";
 import {
   clusterDiscs,
   clusterHitWedges,
@@ -17,6 +17,8 @@ import {
   markerRadius,
   MARKER_STROKE_WIDTH,
   MAX_CLUSTER_DISCS,
+  type NamePlacement,
+  PICKED_NAME_SIZE,
   satelliteDiscs,
   satelliteHitCircles,
   type ShelterPin,
@@ -307,6 +309,7 @@ export const Marker = memo(function Marker({
   town,
   selected,
   showCount = false,
+  name,
   onPick,
   onPointerEnter,
   onPointerLeave,
@@ -327,6 +330,9 @@ export const Marker = memo(function Marker({
   /** Draw each mark's animal count in place of the paw. See MarkerDisc's
    *  count. */
   showCount?: boolean;
+  /** This town's picked shelters' name line and where it goes, when any of
+   *  them is picked on a map that writes its counts. */
+  name?: NamePlacement;
   /** The map's own click callback, unadapted: this component already has
    *  town as its own prop, so it builds the MapPick itself rather than being
    *  handed a wrapper that would need a fresh identity on every render. */
@@ -841,15 +847,10 @@ export const Marker = memo(function Marker({
           name was a hover away, which a touch screen large enough to draw the
           markers still never has. Only picked marks, so the crowded middle of
           the country stays a field of numbers until someone chooses. They
-          leave with the counts on a plate too small to read either. */}
-      {showCount && (
-        <PickedName
-          town={town}
-          names={town.shelters
-            .filter((shelter) => selected.includes(shelter.value))
-            .map((shelter) => shelterChipLabel(shelter.label))}
-        />
-      )}
+          leave with the counts on a plate too small to read either. Where the
+          name goes is the map's call (placePickedNames), because keeping it
+          off the neighbours needs every town at once. */}
+      {name && <PickedName placement={name} />}
 
       {/* Drawn after every mark and every target, so a focus ring can never
           end up behind the coin it is meant to be around. It carries no width
@@ -1079,29 +1080,26 @@ function CountText({
   );
 }
 
-// A picked town's name line, set under everything the marker draws. It rides a
+// A picked town's name line, where placePickedNames put it. It rides a
 // translate for the reason CountText does: the town can glide on a species
 // change, and text coordinates would snap while it did. The halo is the page
 // background drawn under the letters, so the name reads over a region fill, a
 // border or the relief alike.
-const PICKED_NAME_SIZE = 3.9;
-function PickedName({ town, names }: { town: Town; names: string[] }) {
-  if (names.length === 0) return null;
-  const y = town.y + town.reach + PICKED_NAME_SIZE * 1.05;
+function PickedName({ placement }: { placement: NamePlacement }) {
   return (
     <g
       data-marker-name=""
       aria-hidden
-      style={{ transform: `translate(${town.x}px, ${y}px)` }}
+      style={{ transform: `translate(${placement.x}px, ${placement.y}px)` }}
       className={cn("pointer-events-none transition-transform", MAP_MORPH, COUNT_TOO_SMALL)}
     >
       <text
-        textAnchor="middle"
+        textAnchor={placement.anchor}
         dominantBaseline="central"
         className="fill-foreground stroke-background font-semibold [paint-order:stroke] [stroke-linejoin:round]"
         style={{ fontSize: PICKED_NAME_SIZE, strokeWidth: 1.1 }}
       >
-        {names.join(", ")}
+        {placement.text}
       </text>
     </g>
   );

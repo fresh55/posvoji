@@ -24,11 +24,13 @@ import {
 import {
   groupTownsByRegion,
   layoutTowns,
+  placePickedNames,
   regionStatsByRegion,
   townCount,
   townIsLive,
   townLabel,
   townSelectableValues,
+  type NamePlacement,
   type RegionStats,
   type ShelterPin,
   type Town,
@@ -36,6 +38,7 @@ import {
 import {
   filteredAnimalCount,
   regionCommitNote,
+  shelterChipLabel,
   shelterCount,
 } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
@@ -137,6 +140,7 @@ export const NO_HOVER = "(hover: none)";
 // A presentation map has no selection by definition. Keep one stable array so
 // its regions and markers do not redraw merely because the parent did.
 const EMPTY_SELECTION: string[] = [];
+const NO_NAMES = new Map<string, NamePlacement>();
 
 // Regions carry the controls on every plate; town markers add pointer precision
 // and their own keyboard roving once the measured plate can draw them clearly.
@@ -272,6 +276,14 @@ export function ShelterMap({
    *  and those are as much of the mark as the coin is. The annotations take
    *  this as the list of things they should not be laid over when they have a
    *  choice of side; see `avoid` in map-callout.tsx. */
+  // The picked towns' names, placed off each other and off every marker.
+  const namePlacements = useMemo(
+    () =>
+      countOnMarkers
+        ? placePickedNames(towns, selected, shelterChipLabel)
+        : NO_NAMES,
+    [countOnMarkers, selected, towns],
+  );
   const markerBoxes = useMemo(
     () =>
       towns.map((town) => ({
@@ -1191,6 +1203,7 @@ export function ShelterMap({
               town={town}
               selected={selected}
               showCount={countOnMarkers}
+              name={namePlacements.get(town.key)}
               // Handed straight through, unadapted: Marker already has town as
               // its own prop, and builds the MapPick itself. Same reasoning as
               // Region's own onPick above.

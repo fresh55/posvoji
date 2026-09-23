@@ -150,52 +150,61 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
       )}
       {resolved.at && (
         <div className="space-y-1">
-          <Button
-            type="button"
-            variant="outline"
-            aria-label={`${copy.removeOrigin}: ${resolved.label ?? messages.myLocation}`}
-            onClick={clearOrigin}
-            className="h-11 max-w-full justify-start gap-2 bg-muted/30 px-3 text-left text-sm shadow-none"
-          >
-            <MapPin className="size-3.5 shrink-0" aria-hidden />
-            {/* A geolocated origin has no label of its own. It used to borrow
-                the "Najbližje prvo" toggle's words, which left two controls
-                80px apart reading the same thing and doing opposite things. */}
-            <span className="truncate">{resolved.label ?? messages.myLocation}</span>
-            <X className="size-3.5 shrink-0" aria-hidden />
-          </Button>
-          {/* How far, as a pick: people choose by how far they will drive,
-              not by the names of shelters they have not heard of. Each chip
-              picks every shelter within its reach that has animals under the
-              current filters, and the map draws the reach as a ring while a
-              chip is pointed at or standing. */}
-          {radiusPicks.length > 0 && (
-            <div role="group" aria-label={copy.pickWithin} className="flex flex-wrap gap-2 pt-1">
-              {radiusPicks.map(({ km, values, pressed }) => (
-                <Button
-                  key={km}
-                  type="button"
-                  variant="outline"
-                  aria-pressed={pressed}
-                  disabled={values.length === 0}
-                  data-picker-radius={km}
-                  onClick={() => pickWithin(km)}
-                  onPointerEnter={() => setAskedRadius(km)}
-                  onPointerLeave={() => setAskedRadius(null)}
-                  onFocus={() => setAskedRadius(km)}
-                  onBlur={() => setAskedRadius(null)}
-                  className={cn(
-                    "h-9 px-3 text-xs shadow-none pointer-coarse:h-11",
-                    pressed &&
-                      "border-brand-border bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground",
-                  )}
-                >
-                  {copy.upTo} {km} km
-                </Button>
-              ))}
-            </div>
-          )}
-          <p className="text-xs leading-snug text-muted-foreground">{copy.distance}</p>
+          {/* The origin and the distances from it on one line where they fit:
+              stacked, they were three rows above the first shelter, and a
+              phone held sideways was left one row of list. The distances wrap
+              to the next line together, never one chip at a time. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              aria-label={`${copy.removeOrigin}: ${resolved.label ?? messages.myLocation}`}
+              onClick={clearOrigin}
+              className="h-11 max-w-full justify-start gap-2 bg-muted/30 px-3 text-left text-sm shadow-none"
+            >
+              <MapPin className="size-3.5 shrink-0" aria-hidden />
+              {/* A geolocated origin has no label of its own. It used to borrow
+                  the "Najbližje prvo" toggle's words, which left two controls
+                  80px apart reading the same thing and doing opposite things. */}
+              <span className="truncate">{resolved.label ?? messages.myLocation}</span>
+              <X className="size-3.5 shrink-0" aria-hidden />
+            </Button>
+            {/* How far, as a pick: people choose by how far they will drive,
+                not by the names of shelters they have not heard of. Each chip
+                picks every shelter within its reach that has animals under the
+                current filters, and the map draws the reach as a ring while a
+                chip is pointed at or standing. */}
+            {radiusPicks.length > 0 && (
+              <div role="group" aria-label={copy.pickWithin} className="flex gap-2">
+                {radiusPicks.map(({ km, values, pressed }) => (
+                  <Button
+                    key={km}
+                    type="button"
+                    variant="outline"
+                    aria-pressed={pressed}
+                    disabled={values.length === 0}
+                    data-picker-radius={km}
+                    onClick={() => pickWithin(km)}
+                    onPointerEnter={() => setAskedRadius(km)}
+                    onPointerLeave={() => setAskedRadius(null)}
+                    onFocus={() => setAskedRadius(km)}
+                    onBlur={() => setAskedRadius(null)}
+                    className={cn(
+                      "h-9 px-2.5 text-xs shadow-none pointer-coarse:h-11",
+                      pressed &&
+                        "border-brand-border bg-brand text-brand-foreground hover:bg-brand hover:text-brand-foreground",
+                    )}
+                  >
+                    {copy.upTo} {km} km
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Dropped where there is no height to spare: the kilometres on
+              every row still say how far, and this only says how it is
+              measured. */}
+          <p className="text-xs leading-snug text-muted-foreground short:hidden">{copy.distance}</p>
         </div>
       )}
       <p id={statusId} aria-live="polite" className={cn("text-xs leading-snug text-muted-foreground", !status && "hidden")}>

@@ -4,12 +4,14 @@ import { DoorOpen } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FilterCardHoverLift,
   FilterCardIconWell,
   FilterCardMark,
   FilterCardRipple,
   FilterCardSection,
   FilterCardTail,
+  countClass,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -29,6 +31,13 @@ import { cn } from "@/lib/utils";
 const SWING = { rotateY: [0, -38, 0], x: [0, -0.6, 0] };
 const REST = { rotateY: 0, x: 0 };
 const SWING_DURATION = 0.42;
+
+// On the phone the one option is a bordered row the height of the Kje row
+// above it, 52px, rather than a tile. A tile is sized for three across, and
+// alone at full width it was a tall box with a door floating in the middle
+// of it, standing between the top of the sheet and Spol, which an earlier
+// pass had folded Kje onto one line to bring above the fold.
+const SHEET_ROW_CLASS = `${DEAD_OPTION_CLASS} min-h-13 flex-row items-center justify-start gap-2.5 px-3 py-2 pr-10 text-left`;
 const SWING_MS = 560;
 const CHECK_DELAY = 0.24;
 
@@ -104,11 +113,17 @@ export function AvailabilityCards({
             className={filterCardVariants({
               layout,
               selected: checked,
-              className: cn("flex", filterCardLayoutClass(layout)),
+              className: cn(
+                "flex",
+                layout === "sheet"
+                  ? SHEET_ROW_CLASS
+                  : filterCardLayoutClass(layout),
+              ),
             })}
           >
             <FilterCardMark
-              layout={layout}
+              // A row either way, so the tick sits where a row keeps it.
+              layout="sidebar"
               checked={checked}
               appearDelay={CHECK_DELAY}
             />
@@ -147,14 +162,33 @@ export function AvailabilityCards({
                 </m.span>
               </FilterCardHoverLift>
             </FilterCardIconWell>
-            <FilterCardTail
-              layout={layout}
-              label={label}
-              checked={checked}
-              renderCount={(className) => (
-                <CountRoll value={count} className={className} />
-              )}
-            />
+            {layout === "sheet" ? (
+              // The row's line in the sheet's own voice: the 14px the Kje row
+              // prints its sentence in, and the 12px count every tile has.
+              <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+                <span
+                  className={cn(
+                    "min-w-0 text-sm leading-tight",
+                    checked && "font-medium",
+                  )}
+                >
+                  {label}
+                </span>
+                <CountRoll
+                  value={count}
+                  className={cn(countClass(layout, checked), "shrink-0")}
+                />
+              </span>
+            ) : (
+              <FilterCardTail
+                layout={layout}
+                label={label}
+                checked={checked}
+                renderCount={(className) => (
+                  <CountRoll value={count} className={className} />
+                )}
+              />
+            )}
           </button>
         );
       })}

@@ -655,6 +655,7 @@ export function FilterCardTail({
   renderCount,
   description,
   descriptionId,
+  descriptionAfterCount = false,
 }: {
   layout: FilterCardLayout;
   label: string;
@@ -663,6 +664,12 @@ export function FilterCardTail({
   description?: string;
   /** Lets the card name the description as its aria-describedby. */
   descriptionId?: string;
+  /** On a tile, draw the line under the count rather than over it. For a
+   *  line that carries a number of its own ("Brez odgovora: 121"): over the
+   *  count it put two bare numbers one above the other, and a tile read
+   *  "Otroke, 121, 2". The sidebar keeps the count on the label's line, so
+   *  there the order is the same either way. */
+  descriptionAfterCount?: boolean;
 }) {
   const said =
     description === undefined ? null : (
@@ -675,6 +682,7 @@ export function FilterCardTail({
     );
 
   if (layout === "sheet") {
+    const count = renderCount(countClass(layout, checked));
     return (
       <>
         {/* line-clamp-2, not truncate: at 320px in two columns a label like
@@ -688,8 +696,17 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {said}
-        {renderCount(countClass(layout, checked))}
+        {descriptionAfterCount ? (
+          <>
+            {count}
+            {said}
+          </>
+        ) : (
+          <>
+            {said}
+            {count}
+          </>
+        )}
       </>
     );
   }

@@ -99,6 +99,20 @@ describe("Posvojitev", () => {
     expect(screen.getByRole("button", { name: /^Samo na voljo,/ })).toBeTruthy();
   });
 
+  // A tile alone at the full width of the sheet was a tall box with a door
+  // floating in it, above Spol; the row is the Kje row's height instead.
+  it("is one row the height of the Kje row on a phone", () => {
+    show({
+      layout: "sheet",
+      groups: ["availability"],
+      counts: { availability: [["available", 118]] },
+    });
+    const row = screen.getByRole("button", { name: /^Samo na voljo,/ });
+    expect(row.className).toContain("min-h-13");
+    expect(row.className).toContain("flex-row");
+    expect(row.textContent).toBe("Samo na voljo118");
+  });
+
   it("stands above every other section", () => {
     show({
       groups: ["availability", "sex"],
@@ -162,10 +176,10 @@ describe("the health rows", () => {
     openFilterSection("Zdravje");
     expect(
       screen.getByRole("button", { name: /^Brez FIV,/ }).textContent,
-    ).toContain("Brez podatka: 134");
+    ).toContain("Brez podatka:\u00a0134");
     expect(
       screen.getByRole("button", { name: /^Brez FeLV,/ }).textContent,
-    ).toContain("Brez podatka: 121");
+    ).toContain("Brez podatka:\u00a0121");
     expect(screen.getByText("Izbira pokaže le živali s podatkom.")).toBeTruthy();
   });
 

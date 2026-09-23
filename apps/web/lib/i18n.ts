@@ -292,11 +292,11 @@ const sl = {
   // to. The count takes a colon so it needs no agreement with the noun, and
   // the second sentence says what a pick does with them, which is what a
   // count alone left the visitor to guess.
-  unansweredLine: "Brez podatka: {count}. Izbira pokaže le živali s podatkom.",
+  unansweredLine: "Brez podatka:\u00a0{count}. Izbira pokaže le živali s podatkom.",
   // The same count under one option, where a section asks several questions
   // and each has its own answers (FIV and FeLV), and the sentence the section
   // then says once under all of them.
-  unansweredRow: "Brez podatka: {count}",
+  unansweredRow: "Brez podatka:\u00a0{count}",
   unansweredHides: "Izbira pokaže le živali s podatkom.",
   // The empty state's reason, when the thinnest question answered is thin
   // enough to be it. The verb is ours, so it agrees with nothing in the
@@ -638,7 +638,7 @@ const sl = {
   // (goodWithUnansweredLine), where a mouse reads it too; this hint is a
   // tooltip there.
   goodWithFilterHint: "Označi, kdo že živi pri tebi.",
-  goodWithUnansweredRow: "Brez odgovora: {count}",
+  goodWithUnansweredRow: "Brez odgovora:\u00a0{count}",
   goodWithUnansweredLine:
     "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
   // The section reads as one sentence, so the phrases are whole and translated,
@@ -820,8 +820,8 @@ const en: Messages = {
   waitingFilterHint: "Based on the recorded shelter intake date.",
   resetWaitingFilters: "Reset time in the shelter",
   resetAvailabilityFilters: "Reset: Adoption",
-  unansweredLine: "No data: {count}. Picking one shows only animals with data.",
-  unansweredRow: "No data: {count}",
+  unansweredLine: "No data:\u00a0{count}. Picking one shows only animals with data.",
+  unansweredRow: "No data:\u00a0{count}",
   unansweredHides: "Picking one shows only animals with data.",
   knownFor: "We know {topic} for {answered} of {asked} {species}.",
   knownTopicSex: "the sex",
@@ -982,7 +982,7 @@ const en: Messages = {
   goodWithFacts: "Good with",
   resetGoodWithFilters: "Reset who lives with you",
   goodWithFilterHint: "Tell us who already lives with you.",
-  goodWithUnansweredRow: "No answer: {count}",
+  goodWithUnansweredRow: "No answer:\u00a0{count}",
   goodWithUnansweredLine:
     "Picking one shows only animals the shelter answered for.",
   goodWithOutcome:

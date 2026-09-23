@@ -270,6 +270,7 @@ export function GoodWithCards({
               checked={checked}
               description={note}
               descriptionId={noteId}
+              descriptionAfterCount
               renderCount={(className) => (
                 <CountRoll value={count} className={className} />
               )}

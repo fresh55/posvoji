@@ -96,14 +96,16 @@ describe("GoodWithCards", () => {
       },
     });
     const kids = screen.getByRole("button", { name: /^Otroke, / });
-    expect(kids.textContent).toContain("Brez odgovora: 121");
+    // A no-break space after the colon, so the number never wraps away from
+    // the words it counts on a tile a third of a phone wide.
+    expect(kids.textContent).toContain("Brez odgovora:\u00a0121");
     expect(
       document.getElementById(kids.getAttribute("aria-describedby") ?? "")
         ?.textContent,
-    ).toBe("Brez odgovora: 121");
+    ).toBe("Brez odgovora:\u00a0121");
     expect(
       screen.getByRole("button", { name: /^Psa, / }).textContent,
-    ).toContain("Brez odgovora: 102");
+    ).toContain("Brez odgovora:\u00a0102");
     // Five of 124 is under the tenth the panel bothers saying.
     const cats = screen.getByRole("button", { name: /^Mačko, / });
     expect(cats.textContent).not.toContain("Brez odgovora");
@@ -114,6 +116,24 @@ describe("GoodWithCards", () => {
         "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
       ),
     ).toBeTruthy();
+  });
+
+  // On a tile the line went between the label and the count, and at a third
+  // of a phone it wrapped, so a tile read "Otroke, Brez odgovora:, 121, 2":
+  // two bare numbers one above the other.
+  it("puts the count before the line on a phone tile", () => {
+    renderCards({
+      layout: "sheet",
+      counts: new Map([["kids", 7], ["dogs", 9], ["cats", 8]]),
+      unanswered: {
+        kids: { asked: 124, unanswered: 121 },
+        dogs: { asked: 124, unanswered: 102 },
+        cats: { asked: 124, unanswered: 5 },
+      },
+    });
+    expect(
+      screen.getByRole("button", { name: /^Otroke, / }).textContent,
+    ).toBe("Otroke7Brez odgovora:\u00a0121");
   });
 
   it("hands that sentence to the outcome once something is picked", () => {

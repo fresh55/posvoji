@@ -14,6 +14,7 @@ import {
   townSelectableValues,
   markerGeometry,
   markerRadius,
+  COUNT_MARKER_RADIUS,
   markerVisualReach,
   MARKER_STROKE_WIDTH,
   mergeTownDots,
@@ -349,6 +350,20 @@ describe("layoutTowns", () => {
 
   it("handles an empty roster", () => {
     expect(layoutTowns([])).toEqual([]);
+  });
+
+  it("sizes every coin alike on a map that writes its counts", () => {
+    const radii = new Set(
+      layoutTowns(REAL_PINS, { counted: true }).map((town) => town.r),
+    );
+    expect(radii).toEqual(new Set([COUNT_MARKER_RADIUS]));
+  });
+
+  it("keeps a counted layout apart from a sized one of the same pins", () => {
+    const sized = layoutTowns(REAL_PINS);
+    const counted = layoutTowns(REAL_PINS, { counted: true });
+    expect(counted).not.toBe(sized);
+    expect(layoutTowns(REAL_PINS)).toEqual(sized);
   });
 
   // The panel's two mini maps ask for the same layout on every press, each

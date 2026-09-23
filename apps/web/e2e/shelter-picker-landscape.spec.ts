@@ -77,7 +77,7 @@ test.describe("narrow portrait (320x568)", () => {
 
   test("switches between an unobstructed list and a full map", async ({ page }) => {
     const dialog = await openPicker(page);
-    const listView = dialog.locator("[data-picker-panel]");
+    const listView = dialog.locator("[data-picker-sheet]");
     const mapView = dialog.locator("[data-map-stage]");
     const showMap = dialog.locator("[data-picker-show-map]");
     const showList = dialog.locator("[data-picker-show-list]");

@@ -529,7 +529,7 @@ describe("animal grid empty state", () => {
     // fraction was the roster reporting it had counted itself, and no press in
     // the dialog acted on it. Each row still wears its own number, which is
     // the number the row is picked on.
-    const panel = dialog.querySelector("[data-picker-panel]")!;
+    const panel = dialog.querySelector("[data-picker-sheet]")!;
     expect(panel.textContent).not.toContain("Zavetišč z živalmi");
     const countOf = (id: string) =>
       panel.querySelector(`[data-shelter-row='${id}'] [data-slot='badge']`)!

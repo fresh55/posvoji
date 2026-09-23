@@ -562,7 +562,7 @@ describe("ShelterRows expansion", () => {
     );
   });
 
-  it("updates the detail match count when filters change without replacing the shelter overview", () => {
+  it("gives the overview its own total only while a filter makes it a different number", () => {
     function FilteredRow({ count }: { count: number }) {
       return (
         <I18nProvider locale="sl">
@@ -580,12 +580,15 @@ describe("ShelterRows expansion", () => {
       );
     }
 
-    const { rerender } = render(<FilteredRow count={2} />);
-    expect(screen.getByText("Ustreza filtrom: 2")).toBeTruthy();
+    // Unfiltered, the row's own pill already says 4: no second 4 under it.
+    const { rerender } = render(<FilteredRow count={4} />);
+    expect(screen.queryByText(/Vse objavljene živali/)).toBeNull();
+    expect(screen.queryByText(/Ustreza filtrom/)).toBeNull();
+
+    rerender(<FilteredRow count={2} />);
     expect(screen.getByText("Vse objavljene živali: 4")).toBeTruthy();
 
     rerender(<FilteredRow count={0} />);
-    expect(screen.getByText("Ustreza filtrom: 0")).toBeTruthy();
     expect(screen.getByText("Vse objavljene živali: 4")).toBeTruthy();
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
@@ -834,14 +837,17 @@ describe("ShelterRows link rows", () => {
   });
 
   it("shows the same city-and-distance sublabel a toggle row shows", () => {
-    const html = renderToStaticMarkup(
+    const { container } = render(
       <ShelterRows
         rows={[{ ...linkRows[0], km: 4.2 }]}
         lessThanOneKm="manj kot 1 km"
       />,
     );
 
-    expect(html).toContain("Celje · 4 km");
+    // As text: the distance rides a span of its own so it never breaks.
+    expect(container.querySelector("[data-row-place]")?.textContent).toBe(
+      "Celje · 4 km",
+    );
   });
 
   it("lights up from the map with the same data attribute a toggle row wears", () => {
@@ -1006,15 +1012,53 @@ describe("ShelterRows two lists sharing one highlight", () => {
 });
 
 
-it("shows a known longest wait only when the shelter has matching animals", () => {
+// The longest wait is said in the details under the row, where it names the
+// animal, and not on the row itself: a mark on most rows marks none of them.
+it("keeps the longest wait off the row", () => {
   const summary = { species: [], longestWaiting: { name: "Test", duration: "10 let" } };
-  const renderWait = (count: number, known: boolean) => renderToStaticMarkup(
-    <ShelterRows rows={[{ value: "test", label: "Test" }]}
-      counts={new Map([["test", count]])}
-      summaries={known ? new Map([["test", summary]]) : undefined}
-      waitLabel={(duration) => `Najdlje čaka: ${duration}`} />,
+  const html = renderToStaticMarkup(
+    <ShelterRows rows={[{ value: "test", label: "Test", city: "Celje" }]}
+      counts={new Map([["test", 1]])}
+      summaries={new Map([["test", summary]])} />,
   );
-  expect(renderWait(1, true)).toContain("Najdlje čaka: 10 let");
-  expect(renderWait(0, true)).not.toContain("data-row-wait");
-  expect(renderWait(1, false)).not.toContain("data-row-wait");
+  expect(html).toContain("Celje");
+  expect(html).not.toContain("10 let");
+});
+
+// The picker shortens a row's name and hands the full one, and the way to the
+// shelter's page, to the details under it.
+describe("ShelterRows short names", () => {
+  const koper = [{ value: "obalno", label: "Obalno zavetišče (Marjetica Koper)", city: "Koper" }];
+  const summary = new Map([["obalno", { species: [{ species: "cat" as const, count: 3 }] }]]);
+
+  it("draws the name without its operator, full in the title", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows rows={koper} counts={new Map([["obalno", 3]])} shortenNames />,
+    );
+    expect(html).toContain('title="Obalno zavetišče (Marjetica Koper)"');
+    expect(html).toContain(">Obalno zavetišče</span>");
+  });
+
+  it("names the shelter in full inside its details, with a link to its page", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={koper}
+          counts={new Map([["obalno", 3]])}
+          summaries={summary}
+          expanded="obalno"
+          onToggle={() => undefined}
+          onToggleExpanded={() => undefined}
+          shortenNames
+          detailsHref={(value) => `/zavetisca/${value}`}
+          detailsLinkText="O zavetišču"
+        />
+      </I18nProvider>,
+    );
+    const panel = document.querySelector("[data-shelter-details-panel]")!;
+    expect(panel.textContent).toContain("Obalno zavetišče (Marjetica Koper)");
+    expect(
+      screen.getByRole("link", { name: "O zavetišču" }).getAttribute("href"),
+    ).toBe("/zavetisca/obalno");
+  });
 });

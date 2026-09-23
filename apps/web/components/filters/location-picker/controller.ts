@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { MapFacts } from "@/components/filters/shelter-map";
 import type { ShelterRow } from "@/components/filters/shelter-rows";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -40,6 +39,7 @@ import {
   bringIntoList,
   fold,
   locateAndSort,
+  PICK_RADII_KM,
   pickerText,
   sameValues,
   toPins,
@@ -177,13 +177,10 @@ export function useLocationPickerController({
   // "where is this one", not "which ones did I choose".
   const [spotlitShelterId, setSpotlitShelterId] = useState<string | null>(null);
   const {
-    panelOpen,
-    setPanelOpen,
     sheetOpen,
     setSheetOpen,
     landSpotlight,
     revealSelection,
-    resetDocks,
   } = useLocationPickerMotion(open);
   // Read here rather than beside the origin it feeds, because the close
   // cleanup below dismisses its error and a dependency cannot be named before
@@ -198,15 +195,12 @@ export function useLocationPickerController({
   // marker and region, a marker lights up its row(s). Keeping them as separate
   // pieces of state means neither can feed back into the other.
   const [hoveredRowValue, setHoveredRowValue] = useState<string | null>(null);
+  // The distance chip under the pointer or the keyboard, whose ring the map
+  // previews before anything is picked.
+  const [askedRadius, setAskedRadius] = useState<number | null>(null);
   const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
     string[] | null
   >(null);
-  // Hovering a legend density square lights up that step on the map, so the
-  // strip becomes a way to ask "where are the busy ones" instead of a static
-  // key. Pointer-only: touch devices never fire it, and that is fine.
-  const [highlightedDensity, setHighlightedDensity] = useState<number | null>(
-    null,
-  );
   useEffect(() => {
     closeCleanup.current = () => {
       // Every dismissal, including Back and a breakpoint change, ends the
@@ -216,21 +210,20 @@ export function useLocationPickerController({
       setSpotlitShelterId(null);
       setOffGroupOpen(false);
       setDropNote(null);
-      // The three hover states, which nothing else can end on a close: the
-      // dialog unmounts its content, so the pointer resting on a marker, a
-      // row or a density square never gets its leave event. Left standing,
-      // they opened the next visit tinted and scrolled to a shelter nobody
-      // was pointing at.
+      // The two hover states, which nothing else can end on a close: the
+      // dialog unmounts its content, so the pointer resting on a marker or a
+      // row never gets its leave event. Left standing, they opened the next
+      // visit tinted and scrolled to a shelter nobody was pointing at.
       setHoveredRowValue(null);
       setHoveredMarkerValues(null);
-      setHighlightedDensity(null);
+      setAskedRadius(null);
       // The geolocation error only, never turnOff: a fix that worked is a
       // page-session fact the grid's sort reads (usePublishNearbyOrigin
       // below), and only the failure belongs to the visit that caused it.
       dismissError();
-      resetDocks();
+      setSheetOpen(true);
     };
-  }, [chosenPlace, dismissError, resetDocks, setQuery]);
+  }, [chosenPlace, dismissError, setQuery, setSheetOpen]);
 
 
   // An animal card asking for its shelter on the map. Guarded by breakpoint
@@ -254,11 +247,11 @@ export function useLocationPickerController({
       // list this is about to scroll.
       setQuery("");
       setOpen(true);
-      // Both docks, because the row below has to have somewhere to be brought
-      // into view; only the one at the current breakpoint is on screen and the
-      // other is a no-op there. Landed here for the same reason the found-
-      // animal entry lands itself: this open arrives with a row to show, and a
-      // short screen folding the list away would fold the answer away with it.
+      // The sheet, because the row below has to have somewhere to be brought
+      // into view; from lg the list always stands beside the map and this is a
+      // no-op there. Landed here for the same reason the found-animal entry
+      // lands itself: this open arrives with a row to show, and a short screen
+      // folding the list away would fold the answer away with it.
       landSpotlight();
     };
     window.addEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
@@ -334,37 +327,120 @@ export function useLocationPickerController({
     [offSite, origin],
   );
 
-  // Whether the map is drawing markers right now, as the map itself answers
-  // it. Two things in this dialog talk about markers, the instruction under
-  // the title and the legend's hollow-circle row, and both used to decide from
-  // a viewport breakpoint while the map decided from the plate it had actually
-  // measured. They disagreed wherever the two differ, which is most of the
-  // width of a phone held sideways: the chip told a visitor to click a marker
-  // on a plate carrying none, and the legend explained a circle nothing had
-  // drawn.
-  //
-  // True to start with, which is what ShelterMap starts at too, so the two are
-  // one answer from the first render rather than converging on the second.
-  const [markersVisible, setMarkersVisible] = useState(true);
-  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty, hasDensityRank }, setMapFacts] =
-    useState<MapFacts>({
-      hasSelected: false,
-      hasMixed: false,
-      hasEmpty: false,
-      hasFilteredEmpty: false,
-      hasDensityRank: false,
-    });
-
+  // Only the shelters there is something to pick from. The ones with nothing
+  // listed used to stand on the plate as hollow dots with a legend row of
+  // their own; they are in the list's folded group, each a link to its page,
+  // and a mark on the map that cannot be picked was one more thing to read
+  // past on the way to the ones that can.
   const pins: ShelterPin[] = useMemo(
-    () => [
-      ...toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
-      // selectable: false is what keeps these out of region picks: a region
-      // click must never select a shelter that has nothing to show.
-      ...toPins(offRows, () => ({ count: 0, selectable: false })),
-    ],
-    [counts, offRows, rows],
+    () => toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
+    [counts, rows],
   );
 
+  // Takes picked shelters off in one filter write, and says so when several
+  // go at once: aria-pressed can say one marker, region or chip changed, not
+  // that twelve shelters went with it, and the running total in the live
+  // region is a total, not a difference. A single shelter's own pressed state
+  // is the whole of that news. Every value handed in is picked, so the write
+  // drops exactly them.
+  const dropPicked = useCallback(
+    (values: string[]) => {
+      if (values.length === 0) return;
+      setDropNote(
+        values.length > 1
+          ? {
+              text: sheltersDropped(values.length, locale),
+              after: selected.filter((value) => !values.includes(value)),
+            }
+          : null,
+      );
+      onToggleMany(values);
+    },
+    [locale, onToggleMany, selected],
+  );
+
+  // Picking by distance, once there is somewhere to measure from. Each chip
+  // stands for the shelters within its reach that have something to show under
+  // the current filters. The rings nest, so the chips work as one choice rather
+  // than three toggles: the one pressed last is the one that reads as pressed,
+  // for as long as everything within it is still picked, and it is tied to the
+  // origin it was measured from. Nested toggles made every wider chip covering
+  // the same shelters light up at once.
+  //
+  // The chip remembers which shelters it added, so taking it off or narrowing
+  // it takes those off and leaves a shelter the visitor had ticked by hand.
+  // A shelter whose count the filters take to nought after the press drops out
+  // of the chip's reach but stays picked; it is a row like any other then.
+  const [chosenRadius, setChosenRadius] = useState<{
+    km: number;
+    from: string;
+    added: string[];
+  } | null>(null);
+  const originKey = origin ? `${origin.lat},${origin.lon}` : "";
+  const radiusPicks = useMemo(
+    () =>
+      origin
+        ? PICK_RADII_KM.map((km) => {
+            const values = rows
+              .filter(
+                (row) =>
+                  row.km !== undefined &&
+                  row.km <= km &&
+                  (counts.get(row.value) ?? 0) > 0,
+              )
+              .map((row) => row.value);
+            return {
+              km,
+              values,
+              pressed:
+                chosenRadius?.km === km &&
+                chosenRadius.from === originKey &&
+                values.length > 0 &&
+                isDrop(selected, values),
+            };
+          })
+        : [],
+    [chosenRadius, counts, origin, originKey, rows, selected],
+  );
+  // One filter write per press, always: the page's toggle reads the selection
+  // it was rendered with, so two writes in a row would lose the first. Every
+  // write here is either all-added or all-already-picked, which is what
+  // toggleValues needs to add or drop exactly the values it is handed.
+  const pickWithin = useCallback(
+    (km: number) => {
+      const pick = radiusPicks.find((entry) => entry.km === km);
+      if (!pick || pick.values.length === 0) return;
+      const current = radiusPicks.find((entry) => entry.pressed);
+      const added = current ? chosenRadius?.added ?? [] : [];
+      if (pick.pressed) {
+        dropPicked(added.filter((value) => selected.includes(value)));
+        setChosenRadius(null);
+        return;
+      }
+      if (isDrop(selected, pick.values)) {
+        // Everything within reach is picked already, so this narrows: what
+        // the wider chip added beyond this reach comes off.
+        dropPicked(added.filter((value) => !pick.values.includes(value)));
+        setChosenRadius({
+          km,
+          from: originKey,
+          added: added.filter((value) => pick.values.includes(value)),
+        });
+        return;
+      }
+      const missing = pick.values.filter((value) => !selected.includes(value));
+      onToggleMany(pick.values);
+      setChosenRadius({
+        km,
+        from: originKey,
+        added: [...new Set([...added, ...missing])],
+      });
+    },
+    [chosenRadius, dropPicked, onToggleMany, originKey, radiusPicks, selected],
+  );
+  // The ring the map draws: the chip being asked about, or else the pressed one.
+  const ringKm =
+    askedRadius ?? radiusPicks.find((pick) => pick.pressed)?.km ?? null;
   // Picking a region picks every shelter in it, which is as fine as a map of a
   // country can honestly be. The list is where you drop the ones you did not
   // mean, and the "Izbrano:" line above it is what says what a region click
@@ -384,32 +460,20 @@ export function useLocationPickerController({
       // The same predicate toggleValues branches on, read before it runs so
       // the live region and the filter cannot disagree about what this click
       // did.
-      setDropNote(null);
-      const dropping = isDrop(selected, values);
-      onToggleMany(values);
-      if (dropping) {
+      if (isDrop(selected, values)) {
         // Dropping asks nothing and moves nothing else: the rest of this
         // dialog's state is about what is being looked at, and taking a
         // shelter out of the filter is not a statement about that. Open
         // details in particular stay open, including the dropped shelter's
         // own, which is the point of keeping the two verbs apart.
-        //
-        // aria-pressed can say one marker came off; it cannot say twelve did,
-        // and the running total in the live region is a total, not a
-        // difference. Only for a region, because a single shelter's own
-        // pressed state is the whole of that news.
-        if (values.length > 1) {
-          setDropNote({
-            text: sheltersDropped(values.length, locale),
-            after: selected.filter((value) => !values.includes(value)),
-          });
-        }
+        dropPicked(values);
         return;
       }
-      // What was picked is read off the panel, as the rows' own accent and as
-      // the "Izbrano:" line, so a click has to bring the panel out wherever it
-      // is folded. Both docks, because only the one at the current breakpoint
-      // is on screen and the other is a no-op there.
+      setDropNote(null);
+      onToggleMany(values);
+      // What was picked is read off the list, as the rows' own accent, so a
+      // click on a phone's map view has to bring the list's sheet back. From
+      // lg the list is always beside the map and this is a no-op.
       //
       // Except on a screen with no height to spare, where the sheet is the
       // map. There the strip the sheet folds to already carries the whole of
@@ -437,7 +501,7 @@ export function useLocationPickerController({
     // whether it drops before the toggle runs, and what the selection it
     // leaves behind looks like. Both are facts about the selection at click
     // time, which the functional setter form cannot carry.
-    [locale, onToggleMany, options, revealSelection, searching, selected, setQuery],
+    [dropPicked, onToggleMany, options, revealSelection, searching, selected, setQuery],
   );
 
   // Opening one shelter closes whichever was open, and pressing the control of
@@ -450,9 +514,10 @@ export function useLocationPickerController({
   // nothing else dropped keyboard focus on the body and the restore was not
   // optional. The control that collapses now is the row's own trigger: it
   // stays mounted, it stays exactly where it was, and it keeps focus by
-  // itself. Nothing inside the panel is focusable either (ShelterDetails
-  // carries no button at all), so a collapse can never strand focus inside the
-  // region it closes. Moving focus here would be the surprise, not the fix.
+  // itself. The panel's one focusable, the link to the shelter's page, can
+  // only be collapsed out from under by Escape, and view.tsx hands focus back
+  // to the row before that collapse. Moving focus here would be the surprise,
+  // not the fix.
   const toggleExpandedShelter = useCallback((value: string) => {
     setExpandedShelter((current) => (current === value ? null : value));
   }, []);
@@ -488,7 +553,7 @@ export function useLocationPickerController({
     bring();
     cell.addEventListener("animationend", bring, { once: true });
     return () => cell.removeEventListener("animationend", bring);
-  }, [expandedShelter, panelOpen, sheetOpen, query, selected]);
+  }, [expandedShelter, sheetOpen, query, selected]);
 
   // The spotlit shelter's own row, brought into view once there is a row. It
   // cannot be done where the event is heard: the list is mounted by the dialog
@@ -593,9 +658,6 @@ export function useLocationPickerController({
   // Open details are an answer someone asked for, and asking outranks a
   // pointer passing over the map: the hover still tints its row, but it stops
   // scrolling the list, which used to carry the answer off the top of it.
-  // Worst on the shelters with nothing listed, whose rows sit at the very
-  // bottom under their own heading, so grazing one of those hollow circles
-  // threw the list all the way down to a row that cannot even be picked.
   //
   // Computed here rather than handed to the lists as a flag they each have to
   // remember: both take this one value, and neither can forget a rule it is
@@ -610,7 +672,7 @@ export function useLocationPickerController({
       : `${pickerText[locale].matches}: ${shelterCount(matched, locale)}`
     : undefined;
 
-  const unplaced = rows.length + offRows.length - pins.length;
+  const unplaced = rows.length - pins.length;
   const nearbyOn = state.status === "on";
   // Two independent facts, so two lines. Sharing one slot meant a geolocation
   // error silently replaced the note about shelters missing from the map.
@@ -623,8 +685,8 @@ export function useLocationPickerController({
   //
   // Neither the plain geolocation case nor the typed one says anything at
   // all now. Both used to, and both were the same fact said a second time:
-  // the Najbližje prvo toggle eight pixels below reports aria-pressed and
-  // goes font-medium while it is on, every row in the list carries its own
+  // the locate button in the field above reports aria-pressed and fills
+  // its mark while it is on, every row in the list carries its own
   // "· 23 km", and a typed place is named by the origin chip directly above
   // this line, with the note about straight-line distance under it. What is
   // left is only news: locationOutsideMap, the origin landing off the map.
@@ -752,11 +814,8 @@ export function useLocationPickerController({
     dropNote,
     spotlitShelterId,
     setSpotlitShelterId,
-    panelOpen,
-    setPanelOpen,
     sheetOpen,
     setSheetOpen,
-    resetDocks,
     searchRef,
     placeMode,
     placeOnly,
@@ -775,11 +834,10 @@ export function useLocationPickerController({
     setHoveredRowValue,
     hoveredMarkerValues,
     setHoveredMarkerValues,
-    highlightedDensity,
-    setHighlightedDensity,
-    markersVisible,
-    setMarkersVisible,
-    setMapFacts,
+    radiusPicks,
+    pickWithin,
+    setAskedRadius,
+    ringKm,
     pins,
     handlePick,
     hoverScrollTo,
@@ -787,11 +845,6 @@ export function useLocationPickerController({
     visibleRows,
     visibleOffRows,
     searchNews,
-    hasSelected,
-    hasMixed,
-    hasEmpty,
-    hasFilteredEmpty,
-    hasDensityRank,
     nearbyOn,
     status,
     missing,

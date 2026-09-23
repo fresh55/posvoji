@@ -29,6 +29,10 @@ export type Town = {
   /** Clickable radius, which is larger than the house the eye sees. */
   hitR: number;
   shelters: ShelterPin[];
+  /** Set on every town of a map that writes its counts on the markers (see
+   *  layoutTowns' `counted`), so each mark can ask its own town rather than
+   *  be told by every component between the map and it. */
+  counted?: true;
 };
 
 // A marker carries its town's animal count in its size, in three bins rather
@@ -55,6 +59,14 @@ export type Town = {
 // count, but the even split may not.
 const MARKER_RADIUS_STEPS = [4.7, 5.8, 7.2] as const;
 const MIN_MARKER_RADIUS = MARKER_RADIUS_STEPS[0];
+
+/** The one radius every coin takes on a map that writes its counts on the
+ *  markers (layoutTowns' `counted`). The digits carry the count there, so a
+ *  size step only made the quiet shelters' numbers the hardest to read: at
+ *  4.7 two digits set at about 10px on a desktop plate. 6.2 fits three digits
+ *  and sits between the old middle and top steps, so the collision layout
+ *  that separated the old sizes still separates these. */
+export const COUNT_MARKER_RADIUS = 6.2;
 
 // Where the bins cut. Town totals in the live roster run 13 15 18 19 23 23 38
 // 46 50 72 186, so 20 and 50 split it four small, four medium, three large.
@@ -321,15 +333,22 @@ function pinsKey(pins: readonly ShelterPin[]): string {
 // read-only.
 let lastLayout: { key: string; towns: Town[] } | null = null;
 
-export function layoutTowns(pins: ShelterPin[]): Town[] {
-  const key = pinsKey(pins);
+export function layoutTowns(
+  pins: ShelterPin[],
+  { counted = false }: {
+    /** A map that writes its counts: every coin takes COUNT_MARKER_RADIUS
+     *  rather than a size by its count, and every town says so. */
+    counted?: boolean;
+  } = {},
+): Town[] {
+  const key = `${counted ? "counted" : "sized"}\u0003${pinsKey(pins)}`;
   if (lastLayout !== null && lastLayout.key === key) return lastLayout.towns;
-  const towns = layoutTownsAfresh(pins);
+  const towns = layoutTownsAfresh(pins, counted);
   lastLayout = { key, towns };
   return towns;
 }
 
-function layoutTownsAfresh(pins: ShelterPin[]): Town[] {
+function layoutTownsAfresh(pins: ShelterPin[], counted: boolean): Town[] {
   // Grouped by town name, not by coordinate. Two shelters in Ljubljana share a
   // marker; two different towns that round to the same point stay two markers
   // and get separated below, rather than silently merging under one name.
@@ -350,7 +369,7 @@ function layoutTownsAfresh(pins: ShelterPin[]): Town[] {
         a.label.localeCompare(b.label, "sl"),
       );
       const { x, y } = project(shelters[0].at);
-      const r = markerRadius(coinCount(shelters));
+      const r = counted ? COUNT_MARKER_RADIUS : markerRadius(coinCount(shelters));
       const town: Placed = {
         key,
         city: shelters[0].city,
@@ -384,6 +403,7 @@ function layoutTownsAfresh(pins: ShelterPin[]): Town[] {
     reach: town.reach,
     hitR: town.hitR,
     shelters: town.shelters,
+    ...(counted ? { counted: true as const } : {}),
   }));
 }
 

@@ -2,7 +2,13 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { useNearby, resetNearbyStore } from "./use-nearby";
+import {
+  CHOSEN_PLACE_KEY,
+  resetNearbyStore,
+  useNearby,
+  useNearbyChosenPlace,
+  useNearbyQuery,
+} from "./use-nearby";
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <I18nProvider locale="en">{children}</I18nProvider>
@@ -97,5 +103,43 @@ describe("page-session geolocation", () => {
     });
     act(() => second.result.current.turnOff());
     expect(second.result.current.state.status).toBe("off");
+  });
+});
+
+describe("the chosen place across visits", () => {
+  const kranj = {
+    location: { status: "matched" as const, at: { lat: 46.24, lon: 14.36 }, label: "Kranj" },
+    query: "Kranj",
+  };
+
+  it("remembers a chosen place in the visitor's own browser", () => {
+    const { result } = renderHook(useNearbyChosenPlace);
+    act(() => result.current[1](kranj));
+    expect(JSON.parse(localStorage.getItem(CHOSEN_PLACE_KEY)!)).toEqual(kranj);
+
+    act(() => result.current[1](null));
+    expect(localStorage.getItem(CHOSEN_PLACE_KEY)).toBeNull();
+  });
+
+  it("reads it back on the next visit, with the field holding its name", () => {
+    localStorage.setItem(CHOSEN_PLACE_KEY, JSON.stringify(kranj));
+    const place = renderHook(useNearbyChosenPlace);
+    const query = renderHook(useNearbyQuery);
+
+    expect(place.result.current[0]).toEqual(kranj);
+    expect(query.result.current[0]).toBe("Kranj");
+  });
+
+  it("ignores a stored value that is not a chosen place", () => {
+    localStorage.setItem(CHOSEN_PLACE_KEY, JSON.stringify({ query: "x" }));
+    expect(renderHook(useNearbyChosenPlace).result.current[0]).toBeNull();
+  });
+
+  it("never stores a geolocated position", () => {
+    const { result } = renderHook(useNearby, { wrapper });
+    act(() => result.current.toggle());
+    act(() => succeed());
+    expect(result.current.state.status).toBe("on");
+    expect(localStorage.length).toBe(0);
   });
 });

@@ -1,6 +1,14 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-context";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
@@ -32,6 +40,7 @@ import {
 // not need even an erased import back into the module that renders Marker.
 import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { cn } from "@/lib/utils";
+import { PICKED_NAME_SIZE, type NamePlacement } from "./map-names";
 import { mapAvailabilityText, shelterAvailability } from "./map-availability";
 
 // The hollow disc a shelter with nothing listed draws: just over half the
@@ -51,15 +60,14 @@ const EMPTY_MARKER_STROKE_WIDTH = 0.7;
 const FILTERED_MARKER_DASH = "1.6 1.2";
 const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
 
-// The same mark at legend size. The viewBox runs in the map's own user units,
+// The dashed mark of a shelter the filters leave empty, at legend size: the
+// one hollow mark the picker's legend explains. The viewBox runs in the map's
+// own user units,
 // so the radius and the stroke keep the proportion they have on the country:
 // markerRadius(0) is the radius a shelter with no animals is sized at, less
 // half the coin stroke, times the scale the hollow disc takes. The box adds a
 // stroke's width of air on each side so the circle is not clipped by it.
-export function EmptyMarkerGlyph({
-  className,
-  filtered = false,
-}: { className?: string; filtered?: boolean }) {
+export function EmptyMarkerGlyph({ className }: { className?: string }) {
   const r =
     (markerRadius(0) - MARKER_STROKE_WIDTH / 2) * EMPTY_MARKER_RADIUS_SCALE;
   const box = (r + EMPTY_MARKER_STROKE_WIDTH) * 2;
@@ -67,7 +75,7 @@ export function EmptyMarkerGlyph({
     <svg aria-hidden viewBox={`0 0 ${box} ${box}`} className={className}>
       <circle
         data-legend-empty=""
-        strokeDasharray={filtered ? FILTERED_MARKER_DASH : undefined}
+        strokeDasharray={FILTERED_MARKER_DASH}
         cx={box / 2}
         cy={box / 2}
         r={r}
@@ -146,12 +154,11 @@ const GLYPH_MORPH = cn("transition-[x,y,width,height]", MAP_MORPH);
 // unit puts that paw at 5.85px, which is the floor. Above it every paw on the
 // plate clears six pixels.
 //
-// A container query and not a viewport breakpoint, for a reason no breakpoint
-// can cover: the panel folds to a rail, and the stage nearly doubles when it
-// does. At a 1024 viewport the same map is 573px wide with the panel out and
-// 909px with it folded, so the paws are wrong at one and right at the other
-// while the viewport never moves. The stage's own width is the only thing that
-// knows, and @container is how a child asks it.
+// A container query and not a viewport breakpoint, because the viewport does
+// not say how wide the plate is drawn: at a 1024 viewport the picker's stage is
+// 573px beside the list, and the found-animal page sets the same map in a
+// column of its own. The stage's own width is the only thing that knows, and
+// @container is how a child asks it.
 // Everything the plate draws small enough to smudge measures itself against
 // the same width, so the paws, the plate's furniture and the marker layer all
 // leave at once rather than at three widths nobody chose together.
@@ -165,6 +172,30 @@ export const PLATE_TOO_SMALL = "@max-[512px]/map-stage:hidden";
 export const PLATE_MIN_SCALE = 1.5;
 
 const GLYPH_TOO_SMALL = PLATE_TOO_SMALL;
+
+// A count in place of the paw is a number someone has to read, so it asks more
+// of the plate than a glyph does. 640px of stage is (640 - 32) / 320 = 1.9px to
+// the user unit, which sets a COUNT_MARKER_RADIUS coin's two digits at about
+// 10px and its three at about 8px. Between PLATE_TOO_SMALL and this the
+// coin wears the paw instead, which asks less of the eye: a coin with nothing
+// in it read as the hollow "nothing listed" mark. The same container query as
+// PLATE_TOO_SMALL, one step further out, and its exact complement for the paw.
+const COUNT_TOO_SMALL = "@max-[640px]/map-stage:hidden";
+const PAW_WHILE_COUNT_TOO_SMALL = "@min-[640px]/map-stage:hidden";
+
+// Under this radius a mark has no room for digits at any plate size. Every
+// coin clears it (a count map's coins draw at 5.75 once markerGeometry takes
+// half the stroke off); most satellites do not, and they stay plain discs
+// whose number is one hover away in the callout.
+const MIN_COUNT_RADIUS = 4;
+
+/** The size the digits are set at inside a disc of radius r, in user units.
+ *  Fewer digits take more of the disc; three still leave a stroke's width of
+ *  air inside the rim at the tabular figures' width of about 0.6em. */
+function countFontSize(r: number, count: number): number {
+  const digits = String(count).length;
+  return r * (digits >= 3 ? 0.74 : digits === 2 ? 0.92 : 1.02);
+}
 
 // The coin's focus ring, and how far outside the marker it sits. town.reach is
 // everything the marker draws, satellites included, so the ring never crosses
@@ -283,6 +314,7 @@ export const Marker = memo(function Marker({
   interactive,
   town,
   selected,
+  name,
   onPick,
   onPointerEnter,
   onPointerLeave,
@@ -300,6 +332,9 @@ export const Marker = memo(function Marker({
   interactive: boolean;
   town: Town;
   selected: string[];
+  /** This town's picked shelters' name line and where it goes, when any of
+   *  them is picked on a map that writes its counts. */
+  name?: NamePlacement;
   /** The map's own click callback, unadapted: this component already has
    *  town as its own prop, so it builds the MapPick itself rather than being
    *  handed a wrapper that would need a fresh identity on every render. */
@@ -724,6 +759,7 @@ export const Marker = memo(function Marker({
           live={live}
           filtered={town.shelters[0].selectable !== false}
           highlighted={highlighted}
+          count={town.counted ? town.shelters[0].count : undefined}
         />
       ) : dominant ? (
         <SatelliteMarker
@@ -805,6 +841,30 @@ export const Marker = memo(function Marker({
         );
       })}
 
+      {/* The picked shelters' names under their coin, on a map that writes
+          its counts. A pick used to be said by the green fill alone, and the
+          name was a hover away, which a touch screen large enough to draw the
+          markers still never has. Only picked marks, so the crowded middle of
+          the country stays a field of numbers until someone chooses. They
+          leave with the counts on a plate too small to read either. Where the
+          name goes is the map's call (placePickedNames), because keeping it
+          off the neighbours needs every town at once. */}
+      {/* The halo is the page background drawn under the letters, so the
+          name reads over a region fill, a border or the relief alike. */}
+      {name && (
+        <MapText
+          data-marker-name=""
+          x={name.x}
+          y={name.y}
+          anchor={name.anchor}
+          fontSize={PICKED_NAME_SIZE}
+          className="fill-foreground stroke-background [paint-order:stroke] [stroke-linejoin:round]"
+          style={{ strokeWidth: 1.1 }}
+        >
+          {name.text}
+        </MapText>
+      )}
+
       {/* Drawn after every mark and every target, so a focus ring can never
           end up behind the coin it is meant to be around. It carries no width
           until the group is focused from the keyboard, which is the only
@@ -851,6 +911,7 @@ function MarkerDisc({
   hoverScope = "group",
   emptyScale = EMPTY_MARKER_RADIUS_SCALE,
   filtered,
+  count,
 }: {
   cx: number;
   cy: number;
@@ -876,8 +937,14 @@ function MarkerDisc({
    *  within a rounding error of the size a lone empty marker draws. */
   emptyScale?: number;
   filtered: boolean;
+  /** The animals this mark stands for, drawn in the disc instead of the paw.
+   *  Undefined keeps the paw: a map that is not a picker (the found-animal
+   *  page) asks where the shelters are, not how many animals each holds. */
+  count?: number;
 }) {
   const glyph = r * glyphScale;
+  // Digits in place of the paw, where there is room for them.
+  const showsCount = count !== undefined && count > 0 && r >= MIN_COUNT_RADIUS;
   const groupHover = hoverScope === "group";
   // A shelter with nothing to pick is a place, not a control. A paw disc a
   // shade fainter still read as a control, so it draws as a different shape
@@ -960,6 +1027,17 @@ function MarkerDisc({
         style={{ strokeWidth: MARKER_STROKE_WIDTH, r, cx, cy }}
         className={DISC_MORPH}
       />
+      {showsCount && (
+        <MapText
+          data-marker-count={count}
+          x={cx}
+          y={cy}
+          fontSize={countFontSize(r, count)}
+          className="fill-current stroke-none tabular-nums transition-[font-size]"
+        >
+          {count}
+        </MapText>
+      )}
       {discFitsGlyph(r) && (
         <PawPrint
           x={cx - glyph / 2}
@@ -975,9 +1053,58 @@ function MarkerDisc({
           fill="currentColor"
           strokeWidth={1.5}
           aria-hidden
-          className={cn("stroke-current", GLYPH_MORPH, GLYPH_TOO_SMALL)}
+          className={cn(
+            "stroke-current",
+            GLYPH_MORPH,
+            GLYPH_TOO_SMALL,
+            showsCount && PAW_WHILE_COUNT_TOO_SMALL,
+          )}
         />
       )}
+    </g>
+  );
+}
+
+// Text set on the plate at a point: the digits inside a disc and a picked
+// town's name. It rides a translate on a group rather than the text's own x
+// and y, which are coordinate lists and cannot transition: the marks under it
+// glide when the species tabs re-run the layout (see DISC_MORPH), and text
+// that snapped while they glided would tear away from them. A transform takes
+// the same timing, so the two land together. Both leave on a plate too small
+// to read them (COUNT_TOO_SMALL).
+function MapText({
+  x,
+  y,
+  anchor = "middle",
+  fontSize,
+  className,
+  style,
+  children,
+  ...data
+}: {
+  x: number;
+  y: number;
+  anchor?: "start" | "middle" | "end";
+  fontSize: number;
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+} & { [key: `data-${string}`]: string | number }) {
+  return (
+    <g
+      {...data}
+      aria-hidden
+      style={{ transform: `translate(${x}px, ${y}px)` }}
+      className={cn("pointer-events-none transition-transform", MAP_MORPH, COUNT_TOO_SMALL)}
+    >
+      <text
+        textAnchor={anchor}
+        dominantBaseline="central"
+        className={cn("font-semibold", MAP_MORPH, className)}
+        style={{ fontSize, ...style }}
+      >
+        {children}
+      </text>
     </g>
   );
 }
@@ -999,9 +1126,11 @@ function markProps(
     highlighted: boolean;
     hoveredShelterValue: string | null;
   },
+  counted = false,
 ) {
   const picked = selected.includes(shelter.value);
   return {
+    count: counted ? shelter.count : undefined,
     selected: picked,
     filtered: shelter.selectable !== false,
     // An off-site shelter keeps its own mark whatever its town holds: the
@@ -1047,7 +1176,7 @@ function ClusterMarker({
         live,
         highlighted,
         hoveredShelterValue,
-      })}
+      }, town.counted)}
     />
   ));
 }
@@ -1080,7 +1209,7 @@ function SatelliteMarker({
   hoveredShelterValue: string | null;
 }) {
   const mark = (shelter: ShelterPin) =>
-    markProps(shelter, { selected, live, highlighted, hoveredShelterValue });
+    markProps(shelter, { selected, live, highlighted, hoveredShelterValue }, town.counted);
 
   return (
     <>
@@ -1144,6 +1273,9 @@ function CountDisc({
   live: boolean;
   highlighted: boolean;
 }) {
+  // The town's animals rather than its shelters on a map that writes counts:
+  // with every other coin carrying animals, a bare shelter count reads as one.
+  const shown = town.counted ? townCount(town) : town.shelters.length;
   return (
     <g
       data-cluster-overflow={town.shelters.length}
@@ -1185,9 +1317,12 @@ function CountDisc({
           "fill-current stroke-none transition-[font-size]",
           MAP_MORPH,
         )}
-        style={{ fontSize: discRadius * 1.1, fontWeight: 600 }}
+        style={{
+          fontSize: town.counted ? countFontSize(discRadius, shown) : discRadius * 1.1,
+          fontWeight: 600,
+        }}
       >
-        {town.shelters.length}
+        {shown}
       </text>
     </g>
   );

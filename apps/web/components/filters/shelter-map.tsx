@@ -36,6 +36,7 @@ import {
 import {
   filteredAnimalCount,
   regionCommitNote,
+  shelterChipLabel,
   shelterCount,
 } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
@@ -43,6 +44,7 @@ import { cn } from "@/lib/utils";
 import {
   DEFAULT_PLATE_SCALE,
   MapCallout,
+  DistanceRing,
   Origin,
 } from "./map-callout";
 import type { CalloutRect } from "./map-callout-layout";
@@ -56,10 +58,10 @@ import { Connector, OriginDistance, SPOTLIGHT_RING } from "./shelter-map-links";
 import {
   coveredByLine,
   Region,
-  regionDensityFocus,
 } from "./shelter-map-region";
 import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { commitKey, Marker, PLATE_MIN_SCALE } from "./map-marker";
+import { placePickedNames, type NamePlacement } from "./map-names";
 import { mapFacts, type MapFacts } from "./shelter-map-facts";
 import { mapAvailabilityText, regionAvailability, shelterAvailability } from "./map-availability";
 import { MapRegionNames, NAMES_MIN_PLATE_WIDTH } from "./map-region-names";
@@ -137,6 +139,7 @@ export const NO_HOVER = "(hover: none)";
 // A presentation map has no selection by definition. Keep one stable array so
 // its regions and markers do not redraw merely because the parent did.
 const EMPTY_SELECTION: string[] = [];
+const NO_NAMES = new Map<string, NamePlacement>();
 
 // Regions carry the controls on every plate; town markers add pointer precision
 // and their own keyboard roving once the measured plate can draw them clearly.
@@ -153,8 +156,9 @@ export function ShelterMap({
   spotlightValues,
   spotlightNote,
   spotlightFrom,
-  highlightedDensity,
-  shading = "density",
+  shading = "flat",
+  countOnMarkers = false,
+  originRadiusKm,
   summaries,
   regionShelterNames,
   describedElsewhere,
@@ -204,19 +208,23 @@ export function ShelterMap({
    *  undefined or a point off the map draws nothing, because a line from
    *  roughly the right place is worse than no line. */
   spotlightFrom?: LatLon | null;
-  /** A density step hovered in the legend, as an index into DENSITY_STEPS.
-   *  Unpicked regions on that step light up and the rest of the ramp fades, so
-   *  the legend answers "which regions are this busy?". Null or undefined
-   *  means no legend hover. Picked and partly picked regions are left alone:
-   *  they carry a selection, which outranks a preview. */
-  highlightedDensity?: number | null;
-  /** How a live region is filled. "density" ranks each region's animals on
-   *  the ramp the legend explains, which is the picker's question. "flat"
-   *  draws every region with a shelter at the ramp's first step and leaves the
-   *  rest untinted: the found-animal page asks where the shelters are, not how
-   *  full they are, and draws no legend to read a ramp by. The ranking itself
-   *  is skipped rather than overwritten; see regionStatsByRegion. */
+  /** How a live region is filled. "flat", the default, tints every region
+   *  with a shelter at the theme's --map-flat-alpha and leaves the rest
+   *  untinted: the picker carries its counts on the markers, and the
+   *  found-animal page asks who to call. "density" ranks each region's
+   *  animals on the ramp instead, which only the /dev/map gallery still
+   *  draws. The ranking itself is skipped rather than overwritten under
+   *  "flat"; see regionStatsByRegion. */
   shading?: "density" | "flat";
+  /** Write each shelter's animal count on its marker instead of a paw. The
+   *  picker's question is where the animals are, and a number answers it on
+   *  sight where a coin sized into three bins could only hint at it, so every
+   *  coin also takes one size (COUNT_MARKER_RADIUS). Off by
+   *  default: the found-animal page asks who to call, not how full they are. */
+  countOnMarkers?: boolean;
+  /** A distance from the origin to draw as a ring, in kilometres. Null or
+   *  undefined draws none, and so does a missing or off-map origin. */
+  originRadiusKm?: number | null;
   /** Per-shelter species breakdown, keyed by shelter id, the same map the
    *  panel's pick card reads. The annotation over a single hovered shelter
    *  grows a line of species glyphs from it. Towns and regions never get one:
@@ -256,7 +264,18 @@ export function ShelterMap({
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const contextFadeId = `map-context-fade-${uid}`;
   const hillshadeClipId = `map-hillshade-clip-${uid}`;
-  const towns = useMemo(() => layoutTowns(pins), [pins]);
+  const towns = useMemo(
+    () => layoutTowns(pins, { counted: countOnMarkers }),
+    [pins, countOnMarkers],
+  );
+  // The picked towns' names, placed off each other and off every marker.
+  const namePlacements = useMemo(
+    () =>
+      countOnMarkers
+        ? placePickedNames(towns, selected, shelterChipLabel)
+        : NO_NAMES,
+    [countOnMarkers, selected, towns],
+  );
   /** What every town paints, as a box each, keyed by the town so an annotation
    *  can leave its own mark out.
    *
@@ -497,8 +516,8 @@ export function ShelterMap({
   // at is whichever axis runs out first, never the width alone.
   //
   // Measured and not derived from the viewport, for the reason the paw layer
-  // gave up on breakpoints too: the panel folds to a rail and the stage nearly
-  // doubles while the viewport never moves. ResizeObserver is absent in the
+  // gave up on breakpoints too: the viewport does not say how wide the plate
+  // is drawn in the box it was handed. ResizeObserver is absent in the
   // test environment, where nothing is laid out and no annotation is measured
   // anyway, so its absence leaves the default standing rather than throwing.
   useEffect(() => {
@@ -1115,6 +1134,7 @@ export function ShelterMap({
         <Region
           key={region.id}
           interactive={interactive}
+          flat={shading === "flat"}
           region={region}
           stats={stats}
           // The raw toggle-and-say-what-was-clicked callback, unadapted:
@@ -1133,7 +1153,6 @@ export function ShelterMap({
           onPointerMove={handleRegionPointerMove}
           onPointerLeave={handleRegionPointerLeave}
           highlighted={region.id === highlightedRegionId}
-          densityFocus={regionDensityFocus(stats, highlightedDensity)}
           // Read straight off the map the picker memoizes, so every region is
           // handed the same array across a render that has nothing to do with
           // it: Region is memoized, and a fresh array per render would undo
@@ -1165,6 +1184,9 @@ export function ShelterMap({
         wide={markersVisible}
       />
 
+      {origin && onMap(origin) && originRadiusKm ? (
+        <DistanceRing at={origin} km={originRadiusKm} />
+      ) : null}
       {origin && onMap(origin) && <Origin at={origin} />}
 
       {/* One gate and no class beside it: the measured plate is what decides
@@ -1179,6 +1201,7 @@ export function ShelterMap({
               interactive={interactive}
               town={town}
               selected={selected}
+              name={namePlacements.get(town.key)}
               // Handed straight through, unadapted: Marker already has town as
               // its own prop, and builds the MapPick itself. Same reasoning as
               // Region's own onPick above.

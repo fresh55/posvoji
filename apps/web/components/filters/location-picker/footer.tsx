@@ -143,6 +143,33 @@ export function PickerFooter({ controller, hug = false }: {
                         </Button>
                       ))}
                     </div>
+                    {/* Everything at once, from the one place that lists
+                        everything. Last and not beside the heading: the
+                        popover opens with focus on its first control, and a
+                        keyboard opening it must land on one shelter's removal,
+                        never on the press that empties the lot. It lived in a
+                        row above the shelter list once, which appeared with
+                        the first pick and pushed the list down under the
+                        pointer that made it. */}
+                    <div className="mt-1 flex justify-end border-t pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          // The summary and the chips unmount with the
+                          // selection, so focus goes to the result button
+                          // here and the popover's own close hand-off stands
+                          // down rather than aiming at a trigger that is gone.
+                          summaryInteractedOutsideRef.current = true;
+                          setSummaryOpen(false);
+                          resultRef.current?.focus();
+                          onToggleMany(selected);
+                        }}
+                        className="h-11 px-2 text-xs text-muted-foreground"
+                      >
+                        {copy.clearSelection}
+                      </Button>
+                    </div>
                   </PopoverContent>
                 </Popover>
             </div>

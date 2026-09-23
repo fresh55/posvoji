@@ -17,14 +17,14 @@ export type NearbyOrigin = {
 
 // In memory, for this page load, and deliberately not in sessionStorage.
 //
-// The writer is the location picker's nearby control, and neither half of it
-// survives a reload: hooks/use-nearby.ts starts every page load "off", and the
-// typed place box starts empty. A stored origin would come back to a picker
-// showing no origin at all, so the grid would sort by a distance nothing on
-// screen admits to and the visitor would have no way to take it back. A
-// geolocation fix is also the visitor's own position, which is not something to
-// write down on their machine for the sake of a sort order. Asking again costs
-// one press of the control that asked the first time.
+// The writer is the location picker, and this store keeps nothing of its own.
+// A geolocation fix starts every page load "off" (hooks/use-nearby.ts): it is
+// the visitor's own position, which is not something to write down on their
+// machine for the sake of a sort order, and asking again costs one press. A
+// place the visitor typed and chose is remembered, but by use-nearby.ts, which
+// restores it into the picker; the picker then publishes it here like any
+// other origin, so the grid never sorts by a distance the picker does not show
+// with a chip to take it back.
 //
 // The store is a module singleton rather than context because the writer and
 // the readers are in different subtrees: the picker is mounted inside the

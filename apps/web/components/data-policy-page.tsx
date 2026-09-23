@@ -81,7 +81,7 @@ const pageText: Record<Locale, PageText> = {
       {
         key: "visitor",
         title: "Zasebnost obiskovalcev",
-        body: "Za ogled ne potrebuješ računa. Na strani ni oglasov ali sledilcev. Če dovoliš uporabo lokacije, jo uporabimo za prikaz živali po bližini in je ne shranimo. Podatkov zasebnih lastnikov, posvojiteljev ali prosilcev ne zbiramo in ne objavljamo.",
+        body: "Za ogled ne potrebuješ računa. Na strani ni oglasov ali sledilcev. Če dovoliš uporabo lokacije, jo uporabimo za prikaz živali po bližini in je ne shranimo. Kraj, ki ga izbereš v iskalniku zavetišč, si zapomni le tvoj brskalnik, da ga ob naslednjem obisku ni treba vpisati znova, dokler ga ne odstraniš. Podatkov zasebnih lastnikov, posvojiteljev ali prosilcev ne zbiramo in ne objavljamo.",
       },
       {
         key: "exit",
@@ -115,7 +115,7 @@ const pageText: Record<Locale, PageText> = {
       {
         key: "visitor",
         title: "Your privacy",
-        body: "You do not need an account to browse. There are no ads or trackers. If you allow location access, we use it to show nearby animals and do not store it. We do not collect or publish information about private owners, adopters or applicants.",
+        body: "You do not need an account to browse. There are no ads or trackers. If you allow location access, we use it to show nearby animals and do not store it. A town you choose in the shelter search is remembered only by your own browser, so you do not have to type it again next time, until you remove it. We do not collect or publish information about private owners, adopters or applicants.",
       },
       {
         key: "exit",

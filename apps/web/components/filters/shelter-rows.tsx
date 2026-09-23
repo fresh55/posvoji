@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Hourglass,
 } from "lucide-react";
 import { ShelterDetails } from "@/components/filters/shelter-details";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatKm } from "@/lib/geo";
+import { shelterListLabel } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +73,32 @@ function revealRow(row: ShelterRowElement) {
   }
 }
 
+// A row's town and its distance, the line under the name. It wraps rather than
+// truncates, and the distance never breaks: it is the end of the line and the
+// half that must not be cut.
+function RowPlace({
+  city,
+  km,
+  lessThanOneKm,
+}: {
+  city?: string;
+  km?: number;
+  lessThanOneKm?: string;
+}) {
+  if (!city && km === undefined) return null;
+  return (
+    <span data-row-place className="mt-0.5 block text-xs text-muted-foreground">
+      {city}
+      {km !== undefined && (
+        <span data-row-km className="whitespace-nowrap">
+          {city ? " · " : ""}
+          {formatKm(km, lessThanOneKm)}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // Stable empty defaults, so a caller rendering link rows only is not made to
 // fabricate a Map and an array it will never read from.
 const EMPTY_COUNTS = new Map<string, number>();
@@ -118,7 +144,6 @@ export function ShelterRows({
   onExitTop,
   lessThanOneKm,
   countLabel,
-  waitLabel,
   labelledBy,
   scrollTo,
   summaries = EMPTY_SUMMARIES,
@@ -128,6 +153,9 @@ export function ShelterRows({
   hideInfoLabel,
   infoText,
   hideInfoText,
+  shortenNames = false,
+  detailsHref,
+  detailsLinkText,
 }: {
   rows: ShelterRow[];
   /** Per-shelter animal count, shown as a badge on a toggle row. Unused by a
@@ -166,7 +194,6 @@ export function ShelterRows({
    *  said what it counted. Given, the digits go aria-hidden and this speaks in
    *  their place. Same caller-supplies-the-words idiom as lessThanOneKm. */
   countLabel?: (count: number) => string;
-  waitLabel?: (duration: string) => string;
   /** Ties the rows to the heading that explains them, by that heading's id. A
    *  screen reader walking this list otherwise hears row after row with
    *  nothing saying which list it is in, which matters most for the off-roster
@@ -212,6 +239,15 @@ export function ShelterRows({
    *  and each is expected to contain its tooltip's string verbatim so the
    *  accessible name still holds the visible label (WCAG 2.5.3). */
   hideInfoText?: string;
+  /** Draw each toggle row's name without its operator parenthetical (see
+   *  shelterListLabel). The full name moves into the row's details, and the
+   *  name's title keeps it for a pointer. */
+  shortenNames?: boolean;
+  /** Where a shelter's own page is, for a link at the foot of its details.
+   *  Omitted, the details carry no link. */
+  detailsHref?: (value: string) => string;
+  /** The words on that link, in the reader's language. */
+  detailsLinkText?: string;
 }) {
   const localRefs = useRef(new Map<string, ShelterRowElement>());
   // True while the pointer sits inside the list. `highlighted` only ever
@@ -252,9 +288,9 @@ export function ShelterRows({
   // the tab order is what reaches the second control inside a row: arrows
   // between items, Tab within one, the same division a composite widget makes.
   // Folded in, ArrowDown would have to answer "the next shelter" and "this
-  // shelter's other control" with one key. Nothing inside the opened panel is
-  // focusable either (ShelterDetails carries no button at all), so opening a
-  // row adds no stop the walk would otherwise strand.
+  // shelter's other control" with one key. The one control inside an opened
+  // panel, the link to the shelter's page, is reached the same way: by Tab
+  // from the row's own controls, never by the arrows.
   const moveFocus = (event: KeyboardEvent, value: string) => {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -304,12 +340,6 @@ export function ShelterRows({
       >
         {rows.map(({ value, label, city, km, href }) => {
           const isHighlighted = highlighted?.includes(value) ?? false;
-          const sublabel = [
-            city,
-            km === undefined ? undefined : formatKm(km, lessThanOneKm),
-          ]
-            .filter(Boolean)
-            .join(" · ");
           const setRef = (node: ShelterRowElement | null) => {
             if (node) localRefs.current.set(value, node);
             else localRefs.current.delete(value);
@@ -354,11 +384,7 @@ export function ShelterRows({
                   >
                     {label}
                   </span>
-                  {sublabel && (
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                      {sublabel}
-                    </span>
-                  )}
+                  <RowPlace city={city} km={km} lessThanOneKm={lessThanOneKm} />
                 </span>
                 {/* h-8, not size-11: the 44px target is the whole <a>, and a
                     44px box inside its own py-2 made every off-site row 60px
@@ -375,6 +401,7 @@ export function ShelterRows({
           const disabled = count === 0 && !checked;
           const summary = summaries.get(value);
           const isExpanded = expanded === value;
+          const shownLabel = shortenNames ? shelterListLabel(label) : label;
           const showDetails = Boolean(onToggleExpanded && hasDetails(summary));
           // Selection puts nothing on the row's surface at all: any shared fill,
           // however faint, makes two adjacent picked rows read as one shape,
@@ -474,35 +501,14 @@ export function ShelterRows({
                       disabled ? "text-inherit" : "text-foreground",
                     )}
                   >
-                    {label}
+                    {shownLabel}
                   </span>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                    {sublabel && (
-                      <span className="min-w-0 truncate">{sublabel}</span>
-                    )}
-                    {count > 0 && summary?.longestWaiting && waitLabel && (
-                      // Two tokens rather than the one amber pair that used to
-                      // colour the whole line, because the line is a sentence
-                      // and an hourglass, and the warm family holds one value
-                      // for each. The 12px text gains by the swap: amber-700
-                      // was 5.07:1 on the white panel, the ink token is
-                      // 7.14:1, and on the sheet's dark popover 10.14:1
-                      // becomes 12.12:1. The hourglass gives some back, 5.07:1
-                      // to 3.21:1 on white, which is a drawing clearing
-                      // SC 1.4.11's 3:1 and is the same mark the dialog and the
-                      // shelter panel already draw beside the same sentence.
-                      <span
-                        data-row-wait
-                        className="inline-flex items-center gap-1 text-warn-foreground"
-                      >
-                        <Hourglass
-                          className="size-3 shrink-0 text-warn-mark"
-                          aria-hidden
-                        />
-                        {waitLabel(summary.longestWaiting.duration)}
-                      </span>
-                    )}
-                  </span>
+                  {/* Where, and how far: the two facts a location picker is
+                      for. The longest wait rode this line too, on eight rows
+                      of eleven, and a mark on most rows marks none of them;
+                      it is in the details under the row, where it names the
+                      animal. */}
+                  <RowPlace city={city} km={km} lessThanOneKm={lessThanOneKm} />
                 </span>
                 {/* A stable count column makes the roster easy to compare.
                   The checkbox carries selection; every count keeps the same
@@ -638,8 +644,27 @@ export function ShelterRows({
               <CollapsibleContent>
                 {/* One quiet inset surface groups the overview without adding
                   another card border or shadow to the shelter list. */}
-                <div className="mb-2 ml-6 mr-2 rounded-ui bg-muted/40 p-3">
+                <div data-shelter-details-panel className="mb-2 ml-6 mr-2 rounded-ui bg-muted/40 p-3">
+                  {/* The name in full when the row shortened it: the
+                      bracket names the operator, which is worth knowing once
+                      somebody asks about the shelter. */}
+                  {shownLabel !== label && (
+                    <p className="mb-3 text-xs text-muted-foreground">{label}</p>
+                  )}
                   <ShelterDetails summary={summary} matchingCount={count} />
+                  {/* A link, not a second action: the footer's count stays
+                      the one thing in the dialog that applies anything. This
+                      answers "who are they" (address, contact, every animal)
+                      before somebody commits to a shelter. */}
+                  {detailsHref && detailsLinkText && (
+                    <a
+                      href={detailsHref(value)}
+                      className="-mb-2 mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                    >
+                      {detailsLinkText}
+                      <ChevronRight className="size-3.5" aria-hidden />
+                    </a>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>

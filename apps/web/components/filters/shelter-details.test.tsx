@@ -81,23 +81,11 @@ describe("ShelterDetails count scope", () => {
   };
 
   it.each([
-    {
-      locale: "sl" as const,
-      matching: "Ustreza filtrom: 0",
-      allPublished: "Vse objavljene živali",
-      previews: "Primeri iz vseh objav",
-    },
-    {
-      locale: "en" as const,
-      matching: "Matching your filters: 0",
-      allPublished: "All published animals",
-      previews: "Examples from all listings",
-    },
-  ])("distinguishes zero matches from the complete overview in $locale", ({
+    { locale: "sl" as const, allPublished: "Vse objavljene živali" },
+    { locale: "en" as const, allPublished: "All published animals" },
+  ])("scopes the complete total apart from a filtered row in $locale", ({
     locale,
-    matching,
     allPublished,
-    previews,
   }) => {
     render(
       <I18nProvider locale={locale}>
@@ -105,12 +93,21 @@ describe("ShelterDetails count scope", () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByText(matching)).toBeTruthy();
     const overview = screen.getByRole("group", { name: allPublished });
     expect(within(overview).getByText(`${allPublished}: 5`)).toBeTruthy();
-    expect(within(overview).getByText(previews)).toBeTruthy();
     expect(within(overview).getByRole("img", { name: "Mila" })).toBeTruthy();
     expect(within(overview).getByText(/Mila/)).toBeTruthy();
+  });
+
+  it("says no total when the row above already shows the same number", () => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterDetails summary={summary} matchingCount={5} />
+      </I18nProvider>,
+    );
+
+    expect(screen.queryByText(/Vse objavljene živali/)).toBeNull();
+    expect(screen.getByLabelText("Pes: 4")).toBeTruthy();
   });
 
   it("does not invent a filtered count for a standalone overview", () => {

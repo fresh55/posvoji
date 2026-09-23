@@ -21,7 +21,7 @@ export function LocationPickerView({
     selected, resultCount,
     locale, messages, open, setOpen, query, setQuery,
     expandedShelter, setExpandedShelter, dropNote, searchRef, label,
-    searchNews, sheetOpen, setSheetOpen, panelOpen,
+    searchNews, sheetOpen, setSheetOpen,
   } = controller;
   // Below lg the two views are one at a time, and the map view is the one
   // whose height its content decides. At lg the panel stands beside the map
@@ -61,7 +61,12 @@ export function LocationPickerView({
           if (target === searchRef.current && query !== "") {
             setQuery("");
             event.preventDefault();
-          } else if (expandedShelter && (window.matchMedia(DESKTOP_QUERY).matches ? panelOpen : sheetOpen)) {
+          } else if (expandedShelter && (window.matchMedia(DESKTOP_QUERY).matches || sheetOpen)) {
+            // Focus on the link inside the panel would go down with it and
+            // land on the dialog root; the row it belongs to takes it first.
+            if (document.activeElement?.closest("[data-shelter-details-panel]")) {
+              controller.rowRefs.current.get(expandedShelter)?.focus();
+            }
             setExpandedShelter(null);
             event.preventDefault();
           }
@@ -104,14 +109,15 @@ export function LocationPickerView({
             map-region-names.tsx starts naming regions; under it the country
             is unlabelled. Every other block in the picker has a short: rule;
             this one had none. Only the padding: the close button is 44px tall
-            and sets the row's height by itself, so hiding the hint beside it
-            was measured at under a pixel and would have cost a sentence. */}
+            and sets the row's height by itself. */}
         <div data-picker-header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b bg-background px-4 py-3 short:py-2 sm:px-6">
           <DialogHeader className="min-w-0 flex-1 gap-1 text-left">
             <DialogTitle className="text-lg font-semibold leading-tight sm:text-xl">
               {pickerText[locale].chooseShelters}
             </DialogTitle>
-            <DialogDescription className="text-[13px] leading-snug">
+            {/* For assistive tech only. On screen it restated the title in
+                grey, a second line nobody needed to read to use the dialog. */}
+            <DialogDescription className="sr-only">
               {pickerText[locale].chooseSheltersHint}
             </DialogDescription>
           </DialogHeader>

@@ -71,7 +71,6 @@ export function FoundAnimalAtlas({
             <ShelterMap
               interactive={false}
               className="@min-[60rem]/atlas:max-h-[calc(100dvh-6rem)]"
-              shading="flat"
               pins={pins}
               // Keep the full fallback shortlist visible, but ring only the
               // callable shelter. Its note preserves the source's uncertainty.
@@ -80,7 +79,7 @@ export function FoundAnimalAtlas({
               spotlightNote={spotlightNote}
               spotlightFrom={from}
             />
-            <MapAttribution messages={messages} inFlow />
+            <MapAttribution messages={messages} variant="card" />
           </figure>
         </RenderBoundary>
       </div>

@@ -14,8 +14,12 @@ export function sameValues(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((value) => b.includes(value));
 }
 
+/** What narrows the counts in the picker, or "" when nothing does. The picker
+ *  draws its note only while this has something in it: with every species and
+ *  no other filter, each count is the whole shelter and needs no footnote. */
 export function pickerFilterSummary(filters: Filters, locale: Locale): string {
   const extra = activeFilterCount({ ...filters, shelter: [] });
+  if (filters.species === "all" && extra === 0) return "";
   return [speciesScopeLabel(filters.species, locale), extra > 0
     ? locale === "sl" ? `Dodatni filtri: ${extra}` : `Additional filters: ${extra}`
     : null].filter(Boolean).join(" · ");
@@ -104,53 +108,59 @@ export function bringIntoList(
   scroller.scrollTop += above < 0 || box.height > view.height ? above : below;
 }
 
+/** The distances the picker offers to pick by once it knows where the visitor
+ *  is, in kilometres: a short drive, an afternoon, the far side of the
+ *  country from the middle of it. */
+export const PICK_RADII_KM = [20, 50, 100] as const;
+
 export const pickerText = {
   sl: {
     matches: "Zadetki",
     showing: "Prikazano",
     done: "Končano",
-    clearSelection: "Počisti izbor",
+    clearSelection: "Počisti vse",
     selected: "Izbrano",
     removeSelection: "Odstrani zavetišče",
     places: "Kraji",
     near: "V bližini",
     removeOrigin: "Odstrani izhodišče",
     distance: "Približna zračna razdalja med kraji.",
-    countsMatch: "Število živali upošteva izbrane filtre.",
+    countsMatch: "Število živali upošteva filtre",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
     // The footer's way out of an empty result, beside "Počisti filtre" and
     // "Pokaži vse živali". Named for the press and not for the state, the same
     // as those two, so it cannot be read as lib/labels.ts allShelters, which
-    // is what the panel head calls having nothing picked.
+    // is what the trigger calls having nothing picked.
     showAllShelters: "Pokaži vsa zavetišča",
     backToResults: "Nazaj k rezultatom",
     showList: "Pokaži seznam",
     chooseShelters: "Izberi zavetišča",
     chooseSheltersHint: "Izberi eno ali več zavetišč.",
     showMap: "Pokaži zemljevid",
+    pickWithin: "Izberi zavetišča v razdalji",
+    upTo: "do",
   },
   en: {
     matches: "Matches",
     showing: "Showing",
     done: "Done",
-    clearSelection: "Clear selection",
+    clearSelection: "Clear all",
     selected: "Selected",
     removeSelection: "Remove shelter",
     places: "Places",
     near: "Near",
     removeOrigin: "Remove starting point",
     distance: "Approximate straight-line distance between towns.",
-    countsMatch: "Animal counts reflect your current filters.",
+    countsMatch: "Counts follow your filters",
     zeroMatches: "No published animals match your selection.",
     showAllShelters: "Show all shelters",
     backToResults: "Back to results",
-    // Not i18n's expandPanel, which the desktop rail says as "Show the list".
-    // This names a view on a switch beside "Zemljevid", not a panel that
-    // unfolds, and the two should be free to read differently.
     showList: "Show list",
     chooseShelters: "Choose shelters",
     chooseSheltersHint: "Select one or more shelters.",
     showMap: "Show map",
+    pickWithin: "Pick shelters within",
+    upTo: "within",
   },
 } satisfies Record<Locale, Record<string, string>>;
 

@@ -9,7 +9,7 @@ import {
 import type { Species } from "@posvoji/schema";
 
 import { SPECIES_ICONS } from "@/lib/animal-icons";
-import { MAP_HEIGHT, MAP_WIDTH, project, type LatLon } from "@/lib/geo";
+import { KM_PER_MAP_UNIT, MAP_HEIGHT, MAP_WIDTH, project, type LatLon } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 import {
   avoidCalloutOverlap,
@@ -391,6 +391,27 @@ export function Origin({ at }: { at: LatLon }) {
       />
       <circle cx={x} cy={y} r={ORIGIN_DOT_RADIUS} className={ORIGIN_DOT_CLASS} />
     </g>
+  );
+}
+
+/** How far "do N km" reaches from the origin, drawn under the markers while a
+ *  distance pick is asked about or standing. The same straight-line distance
+ *  the list sorts by, so a shelter inside the ring is one the pick takes. The
+ *  plate's x axis is squeezed to match its y (lib/geo.ts), so a distance is a
+ *  circle on it. */
+export function DistanceRing({ at, km }: { at: LatLon; km: number }) {
+  const { x, y } = project(at);
+  return (
+    <circle
+      data-distance-ring={km}
+      aria-hidden
+      cx={x}
+      cy={y}
+      r={km / KM_PER_MAP_UNIT}
+      strokeWidth={0.9}
+      strokeDasharray={ORIGIN_DASH}
+      className="pointer-events-none fill-brand-strong/6 stroke-brand-strong"
+    />
   );
 }
 

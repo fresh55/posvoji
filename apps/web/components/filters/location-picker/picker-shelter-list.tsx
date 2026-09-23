@@ -107,8 +107,10 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                         onHoverRow={setHoveredRowValue}
                         onExitTop={() => searchRef.current?.focus()}
                         lessThanOneKm={messages.lessThanOneKm}
-                        waitLabel={(duration) => locale === "sl" ? `Najdlje čaka: ${duration}` : `Longest wait: ${duration}`}
                         countLabel={(count) => filteredAnimalCount(count, locale)}
+                        shortenNames
+                        detailsHref={(value) => `${detailBase}/${value}`}
+                        detailsLinkText={messages.aboutShelter}
                         className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
                       />
                       {visibleOffRows.length > 0 &&

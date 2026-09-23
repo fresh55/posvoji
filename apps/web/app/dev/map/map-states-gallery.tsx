@@ -194,6 +194,7 @@ function DemoGrid() {
           <div data-map-stage="gallery" className="@container/map-stage">
             <div className="flex min-h-0 flex-1 items-center justify-center">
               <ShelterMap
+                shading="density"
                 pins={demo.pins}
                 selected={demo.selected ?? []}
                 onPick={() => undefined}

@@ -29,17 +29,7 @@ function townDrawsEmptyMark(town: Town, selected: string[]): boolean {
 export type MapFacts = {
   hasSelected: boolean;
   hasMixed: boolean;
-  hasEmpty: boolean;
-  hasFilteredEmpty?: boolean;
-  /** Whether the choropleth drew more than one step of the density ramp.
-   *
-   *  The ramp's legend row is a ranking, and a ranking of one shape is not a
-   *  ranking: filtered down to a species one shelter has, the plate held eleven
-   *  inert regions and a single tinted one while the key underneath still
-   *  printed all five steps with "fewer animals" and "more animals" around
-   *  them. The row follows the same rule as every other row in that legend: it
-   *  is drawn while the state it explains is on the map, and not otherwise. */
-  hasDensityRank: boolean;
+  hasFilteredEmpty: boolean;
 };
 
 /** What one look at the laid-out country says, for the panel and its legend.
@@ -47,14 +37,14 @@ export type MapFacts = {
  *  Each is a state the legend grows a row for, and each row waits for the
  *  thing it explains to exist: the solid selection green the moment a region
  *  is picked whole, the dashed border when one is partly picked, and the
- *  hollow circles with their distinct publication or filter explanations.
+ *  dashed hollow circle of a shelter the filters leave empty.
  *
  *  Takes the towns and region stats ShelterMap already memoizes. Laying towns
  *  out and grouping them by region are the expensive parts, so the legend
  *  reads those results instead of doing either job a second time.
  *
- *  hasEmpty is about markers; the caller decides whether the measured plate
- *  is currently large enough to draw and explain them. */
+ *  hasFilteredEmpty is about markers; the caller decides whether the
+ *  measured plate is currently large enough to draw and explain them. */
 export function mapFacts(
   towns: Town[],
   regions: readonly { stats: RegionStats }[],
@@ -67,20 +57,8 @@ export function mapFacts(
     hasMixed: regions.some(
       ({ stats }) => stats.live && stats.state === "mixed",
     ),
-    hasEmpty: towns.some((town) => townDrawsEmptyMark(town, selected) &&
-      town.shelters.some((shelter) => shelter.selectable === false)),
     hasFilteredEmpty: towns.some((town) => townDrawsEmptyMark(town, selected) &&
       town.shelters.some((shelter) => shelter.selectable !== false &&
         shelter.count === 0 && !selected.includes(shelter.value))),
-    // Distinct steps and not the count of live regions: two regions on the
-    // same step are one tint, and one tint is nothing to rank. A wholly
-    // picked region is not counted either, because it gives the ramp up for
-    // the selection fill and so draws none of the steps the row explains.
-    hasDensityRank:
-      new Set(
-        regions
-          .filter(({ stats }) => stats.live && stats.state !== true)
-          .map(({ stats }) => stats.density),
-      ).size > 1,
   };
 }

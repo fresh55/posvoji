@@ -600,6 +600,16 @@ const SHELTER_NOUN = /^[Zz]avetišče\s+(?=\p{Lu})|\s*[—–-]\s*[Zz]avetišče
 // learn the difference.
 const SHELTER_TRAILING_PAREN = /\s*\([^()]*\)\s*$/u;
 
+/** A shelter's name without its trailing operator parenthetical, for a list
+ *  row that has the width for the rest: "Obalno zavetišče (Marjetica Koper)"
+ *  wrapped to two lines in the picker, and the bracket names the company
+ *  behind the shelter rather than the shelter. Left alone when stripping would
+ *  leave a fragment. */
+export function shelterListLabel(name: string): string {
+  const stripped = name.replace(SHELTER_TRAILING_PAREN, "").trim();
+  return stripped.length >= 3 ? stripped : name;
+}
+
 /** A shelter's name with the word "zavetišče" and any trailing operator
  *  parenthetical taken off it, for a chip or a card's shelter line.
  *
@@ -619,7 +629,7 @@ export function shelterChipLabel(name: string): string {
   // what either strip promises.
   const keep = (candidate: string, fallback: string) =>
     candidate.trim().length >= 3 ? candidate.trim() : fallback;
-  const withoutOperator = keep(name.replace(SHELTER_TRAILING_PAREN, ""), name);
+  const withoutOperator = shelterListLabel(name);
   return keep(withoutOperator.replace(SHELTER_NOUN, ""), withoutOperator);
 }
 

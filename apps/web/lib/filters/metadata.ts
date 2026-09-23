@@ -207,10 +207,14 @@ export const FILTER_METADATA = {
     { value: "long", slug: "dolga", labels: { sl: "Dolga", en: "Long" }, chip: { sl: "Dolga dlaka", en: "Long coat" } },
     { value: "hairless", slug: "brez-dlake", labels: { sl: "Brez dlake", en: "Hairless" } },
   ],
+  // "Nad", not "Več kot": with the hourglass beside it, "Več kot 6 mesecev"
+  // no longer fit the sidebar's label slot and broke over two lines. The chip
+  // has no section heading to lean on, so it says what the card's badge says
+  // ("Čaka 4 leta").
   waiting: [
-    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Več kot 6 mesecev", en: "Over 6 months" } },
-    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Več kot 1 leto", en: "Over 1 year" } },
-    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Več kot 3 leta", en: "Over 3 years" } },
+    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6 mesecev", en: "Over 6 months" }, chip: { sl: "Čaka nad 6 mesecev", en: "Waiting over 6 months" } },
+    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1 leto", en: "Over 1 year" }, chip: { sl: "Čaka nad 1 leto", en: "Waiting over 1 year" } },
+    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Nad 3 leta", en: "Over 3 years" }, chip: { sl: "Čaka nad 3 leta", en: "Waiting over 3 years" } },
   ],
   sex: [
     { value: "male", slug: "samec", labels: { sl: "Samec", en: "Male" } },

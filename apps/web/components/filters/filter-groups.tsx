@@ -35,6 +35,7 @@ import {
 } from "@/components/filters/good-with-cards";
 import { SexCards } from "@/components/filters/sex-cards";
 import { SizePawCards } from "@/components/filters/size-paw-cards";
+import { WaitingCards } from "@/components/filters/waiting-cards";
 import {
   resetDelayStyle,
   useFilterCardHover,
@@ -350,66 +351,6 @@ function SexGroup({
   );
 }
 
-function OptionGroup({
-  group,
-  options,
-  counts,
-  selected,
-  onToggle,
-  onToggleMany,
-  layout,
-  collapse,
-}: GroupProps) {
-  const { locale } = useI18n();
-  const label = groupLabel(group, locale);
-  const hint =
-    group === "waiting"
-      ? locale === "sl"
-        ? "Po znanem datumu sprejema v zavetišče."
-        : "Based on the recorded shelter intake date."
-      : undefined;
-  return (
-    <FilterCardSection
-      label={label}
-      hint={hint}
-      active={selected.length > 0}
-      onReset={() => onToggleMany(selected)}
-      resetAriaLabel={(locale === "sl" ? "Ponastavi: " : "Reset: ") + label}
-      layout={layout}
-      collapse={collapse}
-      sheetColumns="grid-cols-2"
-    >
-      {options.map(({ value, label: option }) => {
-        const count = counts.get(value) ?? 0;
-        const checked = selected.includes(value);
-        return (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={checked}
-            aria-label={option + ", " + animalCount(count, locale)}
-            disabled={isDeadOption(count, checked)}
-            onClick={() => onToggle(value)}
-            className={filterCardVariants({
-              layout,
-              selected: checked,
-              className: cn("flex", filterCardLayoutClass(layout)),
-            })}
-          >
-            <FilterCardMark layout={layout} checked={checked} appearDelay={0} />
-            <FilterCardTail
-              layout={layout}
-              label={option}
-              checked={checked}
-              renderCount={(className) => <CountRoll value={count} className={className} />}
-            />
-          </button>
-        );
-      })}
-    </FilterCardSection>
-  );
-}
-
 // Every group names its own renderer. The declared return type is what makes a
 // new CardGroup fail to compile here rather than inherit whichever branch
 // happens to be last.
@@ -420,7 +361,17 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
     case "coatLength":
       return <CoatLengthCards {...rest} />;
     case "waiting":
-      return <OptionGroup group={group} {...rest} />;
+      return (
+        <WaitingCards
+          options={rest.options}
+          counts={rest.counts}
+          selected={rest.selected}
+          onToggle={rest.onToggle}
+          onToggleMany={rest.onToggleMany}
+          layout={rest.layout}
+          collapse={rest.collapse}
+        />
+      );
     case "age":
       return (
         <AgeGrowthControl

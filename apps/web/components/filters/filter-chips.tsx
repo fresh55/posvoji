@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CoatColorChipSwatch, CoatLengthMark } from "@/components/filters/coat-cards";
+import { WaitingMark } from "@/components/filters/waiting-cards";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
 import { jumpToFilterSection } from "@/components/filters/filter-section-header";
@@ -893,6 +894,8 @@ function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
         // The coat drawn, not a lucide stand-in; a folded run of lengths
         // shows the longest.
         <CoatLengthMark value={value ?? "long"} />
+      ) : facet === "waiting" ? (
+        <WaitingMark value={value ?? "over-3-years"} />
       ) : (
         /* 1.75, the same weight the species tabs draw at. This was 1.8, which
            is invisible on its own and exactly the kind of near-miss that makes

@@ -2,13 +2,13 @@ import {
   Award,
   Baby,
   Palette,
-  Clock,
   Cat,
   Dog,
   Gauge,
   HandHeart,
   Heart,
   HeartPulse,
+  Hourglass,
   MapPin,
   Mars,
   Moon,
@@ -105,7 +105,9 @@ export const FACET_ICONS: Record<FilterFacet, LucideIcon> = {
   // Not scissors: that is Sterilizacija's mark. Chips and the dialog draw the
   // coat itself (CoatLengthMark); this is only the fallback.
   coatLength: WavesVertical,
-  waiting: Clock,
+  // The site's mark for a long wait, as on the dialog's stay line. Chips draw
+  // the section's own glass with its sand (WaitingMark); this is the fallback.
+  waiting: Hourglass,
   shelter: MapPin,
   toggles: HeartPulse,
   goodWith: Users,

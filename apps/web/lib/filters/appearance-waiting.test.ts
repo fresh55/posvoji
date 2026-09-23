@@ -144,6 +144,11 @@ describe("coat length chips", () => {
     expect(groupChipLabel("coatLength", "hairless", [], "sl")).toBe("Brez dlake");
     expect(groupChipLabel("size", "medium", [], "sl")).toBe("Srednja");
   });
+
+  it("say what a threshold is a wait of, the way the card's badge does", () => {
+    expect(groupChipLabel("waiting", "over-1-year", [], "sl")).toBe("Čaka nad 1 leto");
+    expect(groupChipLabel("waiting", "over-6-months", [], "en")).toBe("Waiting over 6 months");
+  });
 });
 
 // The thresholds nest, so a second pick asks what the wider one already asks

@@ -12,6 +12,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { LocationPicker } from "@/components/filters/location-picker";
 import { resetNearbyOriginStore } from "@/hooks/use-nearby-origin";
 import { toggleValues } from "@/lib/filters";
+import "@/test/picker-chunks";
 
 /**
  * The seams, the roster and the door every location-picker suite opens with.
@@ -141,11 +142,16 @@ export const dialog = () => screen.getByRole("dialog");
  * The plate is a dynamic import, so the dialog lands a tick before the country
  * does. Waiting for the attribution rather than the dialog alone is what keeps
  * a test that reads a marker or a region from racing the chunk.
+ *
+ * The act awaits nothing but the press. A test that times out while an act is
+ * still waiting leaves React's act scope open, and every render in every later
+ * test in the file then queues behind it and draws nothing. The chunks are
+ * loaded with the harness (test/picker-chunks.ts), so what they resolve to
+ * still lands inside this act.
  */
 export async function reopenPicker() {
   await act(async () => {
     fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
-    await import("@/lib/origin");
   });
   await screen.findByRole("dialog");
   await waitFor(() =>

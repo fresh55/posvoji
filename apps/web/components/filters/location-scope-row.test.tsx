@@ -19,6 +19,11 @@ import type { ResolvedOrigin } from "@/lib/origin";
 import type { Chip } from "./filter-chips";
 import { FilterSheet } from "./filter-sheet";
 import { FilterSidebar } from "./filter-sidebar";
+// The chunks a press on the sheet or the picker fetches, loaded with the file
+// so the first test to open either does not wait for them inside its find
+// (test/picker-chunks.ts says why).
+import "./filter-sheet-content";
+import "@/test/picker-chunks";
 
 // The Kje row, in the two panels that draw it. Where shelter used to live only
 // behind the map's own trigger, both panels now open with the question, and a

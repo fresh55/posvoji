@@ -20,6 +20,11 @@ import {
   DESKTOP_FAN_QUERY,
   PHONE_SHELL_QUERY,
 } from "./fan-layout";
+// The dialog is a chunk the grid fetches when an animal is asked for
+// (animal-grid.tsx). Imported here it loads while the file is collected,
+// which has no time limit. Under the full suite, loading it inside the first
+// test took longer than the one second its find waits.
+import "./animal-dialog";
 
 // The dismiss gesture and the filter dock both read the viewport before they
 // render, and jsdom reports 1024px. Copied from animal-dialog.test.tsx rather

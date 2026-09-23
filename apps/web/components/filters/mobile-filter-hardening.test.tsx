@@ -18,6 +18,11 @@ import { LocationPicker } from "./location-picker";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import { SpeciesTabs } from "./species-tabs";
 import { resetFilterSectionsStore } from "./use-filter-sections";
+// The chunks a press on the sheet or the picker fetches, loaded with the file
+// so the first test to open either does not wait for them inside its find
+// (test/picker-chunks.ts says why).
+import "./filter-sheet-content";
+import "@/test/picker-chunks";
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,

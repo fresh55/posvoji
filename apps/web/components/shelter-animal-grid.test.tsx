@@ -26,6 +26,11 @@ import {
   stubGridColumns,
   stubIntersectionObserver,
 } from "@/test/grid-stubs";
+// The dialog is a chunk the grid fetches when an animal is asked for
+// (shelter-animal-grid.tsx). Imported here it loads while the file is
+// collected, which has no time limit. Under the full suite, loading it inside
+// the test that opens it took longer than that test's five seconds.
+import "@/components/animal-dialog/animal-dialog";
 
 const BASE_PATH = "/zavetisca/velika-hisa";
 
@@ -204,6 +209,6 @@ describe("how much of a shelter's grid is drawn", () => {
     expect(screen.getAllByRole("article", { hidden: true })).toHaveLength(
       INITIAL_CARDS,
     );
-    expect((await screen.findByRole("dialog", {}, { timeout: 5000 })).textContent).toContain(last.name);
+    expect((await screen.findByRole("dialog")).textContent).toContain(last.name);
   });
 });

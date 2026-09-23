@@ -1123,6 +1123,7 @@ export function ShelterMap({
         <Region
           key={region.id}
           interactive={interactive}
+          flat={shading === "flat"}
           region={region}
           stats={stats}
           // The raw toggle-and-say-what-was-clicked callback, unadapted:

@@ -416,6 +416,10 @@
      Empty regions are not on this ramp. They stay neutral foreground, because
      "no shelters here" is a different statement from "few animals here". */
   --map-density-fill: oklch(0.52 0.085 151);
+  /* The flat map's one tint, and its hover: the ramp's first two steps here,
+     where they read on a white page. */
+  --map-flat-alpha: 0.12;
+  --map-flat-alpha-hover: 0.17;
   /* The chosen region's own fill, apart from --brand-border. That
      token sits in the same luminance band as the ramp's darkest step: at its
      usual 0.9 fill-opacity it composited to a contrast of only 1.09:1 against
@@ -611,6 +615,11 @@
      saturated of the two, and less than half the weight the grey ramp used to
      reach on dark. */
   --map-density-fill: oklch(0.6 0.065 151);
+  /* Twice the light alpha: at 0.12 over the near-black land a region with a
+     shelter was barely apart from one without, and the flat map has no other
+     step to say it with. Still under the selected fill's 0.9. */
+  --map-flat-alpha: 0.24;
+  --map-flat-alpha-hover: 0.32;
   /* Same reasoning as the light block, mirrored: --brand-border on
      dark composited to a contrast of only 1.15:1 against the top density
      step, and the audit measured it reading darker than the busiest region
@@ -691,6 +700,11 @@
     --warn-solid: oklch(0.279 0.077 45.635);
     --warn-solid-foreground: oklch(0.924 0.12 95.746);
     --map-density-fill: oklch(0.6 0.065 151);
+  /* Twice the light alpha: at 0.12 over the near-black land a region with a
+     shelter was barely apart from one without, and the flat map has no other
+     step to say it with. Still under the selected fill's 0.9. */
+  --map-flat-alpha: 0.24;
+  --map-flat-alpha-hover: 0.32;
     --map-selected-fill: oklch(0.56 0.06 151);
     --map-sea: oklch(0.245 0.032 230);
     --map-abroad: oklch(0.215 0 0);

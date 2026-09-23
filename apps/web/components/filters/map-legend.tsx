@@ -2,7 +2,6 @@ import { EmptyMarkerGlyph } from "@/components/filters/map-marker";
 import { OriginGlyph } from "@/components/filters/map-callout";
 import type { LatLon } from "@/lib/geo";
 import type { Messages } from "@/lib/i18n";
-import { DENSITY_STEPS } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-context";
 import { mapAvailabilityText } from "./map-availability";
@@ -26,7 +25,7 @@ function RegionSwatch({
   opacity,
   className,
 }: {
-  opacity: number;
+  opacity: number | string;
   className?: string;
 }) {
   return (
@@ -98,7 +97,7 @@ export function MapLegend({
       {hasMixedRegion && (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           <RegionSwatch
-            opacity={DENSITY_STEPS[0]}
+            opacity="var(--map-flat-alpha)"
             className="shrink-0 border border-dashed border-brand-strong"
           />
           {messages.mixedRegionLegend}

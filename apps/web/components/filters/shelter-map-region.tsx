@@ -50,6 +50,15 @@ const REGION_STROKE = "stroke-foreground/30";
 // --map-density and --map-density-hover are alphas, not colours. The colour is
 // --map-density-fill, which the theme owns and every step shares; only the
 // alpha moves with the ranking.
+// A flat map (ShelterMap's shading="flat") gives every live region the same
+// tint, and the alpha for it is the theme's: the ramp's first step was chosen
+// to sit quietly under four steps above it, and on a dark page alone it all
+// but vanished. The tokens are in globals.css beside --map-density-fill.
+const FLAT_STYLE = {
+  "--map-density": "var(--map-flat-alpha)",
+  "--map-density-hover": "var(--map-flat-alpha-hover)",
+} as CSSProperties;
+
 function densityStyle(density: number): CSSProperties {
   const next = Math.min(density + 1, DENSITY_STEPS.length - 1);
   return {
@@ -154,9 +163,13 @@ export const Region = memo(function Region({
   coveredBy,
   armedNote,
   emptyMessage,
+  flat = false,
 }: {
   /** False when the whole plate is a labelled graphic rather than a picker. */
   interactive: boolean;
+  /** Tint a live region with the theme's flat alpha rather than its step on
+   *  the ramp. See FLAT_STYLE. */
+  flat?: boolean;
   region: RegionShape;
   stats: RegionStats;
   /** The map's own click callback, unadapted: this component already has
@@ -401,7 +414,7 @@ export const Region = memo(function Region({
       // fully selected region gives the ramp up, because the answer it is
       // wearing has replaced the question the rank belonged to.
       style={
-        stats.state === true ? undefined : densityStyle(stats.density)
+        stats.state === true ? undefined : flat ? FLAT_STYLE : densityStyle(stats.density)
       }
       className={cn(
         // fill-opacity was already in the list and already animated a species

@@ -4,13 +4,7 @@ import { type ComponentProps } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import {
-  chipCross,
-  chipPill,
-  chipStop,
-  phoneRow,
-  stickyRow,
-} from "@/test/filter-rows";
+import { chipPill, phoneRow, stickyRow } from "@/test/filter-rows";
 import {
   EMPTY_FILTERS,
   FILTER_FACETS,
@@ -714,7 +708,7 @@ describe("mobile filter hardening", () => {
     await waitFor(() => expect(document.activeElement).toBe(other));
   });
 
-  it("gives a finger 44px on each half of a pill rather than a circle inside it", () => {
+  it("gives a finger the whole pill at 44px rather than a circle inside it", () => {
     render(
       <I18nProvider locale="en">
         <FilterChips
@@ -742,29 +736,18 @@ describe("mobile filter hardening", () => {
     // There used to be a 24px circle inside a 28px pill, with the rest of the
     // pill inert, and below md an invisible 44px overlay over the circle that
     // reached into the next chip's row gap. What replaced it was the pill
-    // itself as the target, and the pill now holds two: the label goes to the
-    // section that set this filter, the cross takes it off. Neither is that
-    // circle -- no overlay, no overhang -- and a finger is owed 44px by
-    // whichever of them it lands on.
-    const removeDogs = chipCross("Dogs");
-    const showDogs = chipStop("Dogs");
+    // itself as the target: one button, the press that takes the filter off.
     const pill = chipPill("Dogs");
     // The pointer and not the width: the bar's other controls ask the same
     // question now, and at 1180x820 with a coarse pointer every pill in this
     // row measured 28px while a 1024px mouse window was getting 44.
     expect(pill.className).toContain("pointer-coarse:min-h-11");
-    // Both halves take that height, and the cross takes a width with it: one
-    // 12px mark in a box a thumb can find.
-    expect(removeDogs.className).toContain("self-stretch");
-    expect(removeDogs.className).toContain("pointer-coarse:min-w-11");
-    expect(showDogs.className).toContain("self-stretch");
     // One pill shape in the bar. rounded-full is reserved for counts now.
     expect(pill.className).toContain("rounded-ui");
     expect(pill.className).not.toContain("rounded-full");
     expect(pill.className).not.toContain("tap-target");
-    // Still no control inside a control.
-    expect(removeDogs.querySelector("button")).toBeNull();
-    expect(showDogs.querySelector("button")).toBeNull();
+    // No control inside a control.
+    expect(pill.querySelector("button")).toBeNull();
 
     // And the row still keeps adjacent pills apart.
     expect(pill.parentElement?.parentElement?.className).toContain(

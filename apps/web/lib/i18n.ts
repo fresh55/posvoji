@@ -205,8 +205,11 @@ const sl = {
   // grid that is three quarters cats. "Rezervirano" and "posvojeno" describe
   // the state of a thing and carry no gender.
   //
-  // statusHold loses "trenutno": at 11px the old string was wider than a phone
-  // card's whole content box, and the shorter one says the same thing.
+  // statusHold is "trenutno ni na voljo" (label-messages.ts). "Ni za
+  // posvojitev" read as final, and hold is not final: Zonzani and Horjul put
+  // a quarantine there and Muri a mother still nursing her litter. Nor is it
+  // always a wait, since Ljubljana's trial placements are hold too, so "še
+  // ni" would promise too much. "Trenutno" is true of both.
 
 
 
@@ -278,11 +281,43 @@ const sl = {
   resetHealthFilters: "Ponastavi zdravstvene filtre",
   resetShelterFilters: "Ponastavi izbor zavetišč",
   ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, odrasla žival od 1 do manj kot 8 let, starejša žival od 8 let naprej.",
-  energyFilterHint:
-    "Po presoji zavetišča. S podatkom ob drugih izbranih filtrih: {count}. Živali brez podatka ta filter skrije.",
+  // Where the answer comes from, and nothing else: how many animals have no
+  // answer is said under the rows, where a mouse can read it too.
+  energyFilterHint: "Po presoji zavetišča.",
   healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
   waitingFilterHint: "Po znanem datumu sprejema v zavetišče.",
   resetWaitingFilters: "Ponastavi čas v zavetišču",
+  resetAvailabilityFilters: "Ponastavi: Posvojitev",
+  // Under a section whose question a tenth or more of the list has no answer
+  // to. The count takes a colon so it needs no agreement with the noun, and
+  // the second sentence says what a pick does with them, which is what a
+  // count alone left the visitor to guess.
+  unansweredLine: "Brez podatka: {count}. Izbira pokaže le živali s podatkom.",
+  // The same count under one option, where a section asks several questions
+  // and each has its own answers (FIV and FeLV), and the sentence the section
+  // then says once under all of them.
+  unansweredRow: "Brez podatka: {count}",
+  unansweredHides: "Izbira pokaže le živali s podatkom.",
+  // The empty state's reason, when the thinnest question answered is thin
+  // enough to be it. The verb is ours, so it agrees with nothing in the
+  // count, and {species} is the genitive plural speciesAbsence* already has.
+  knownFor: "{topic} poznamo za {answered} od {asked} {species}.",
+  knownTopicSex: "Spol",
+  knownTopicAge: "Starost",
+  knownTopicSize: "Velikost",
+  knownTopicEnergy: "Energijo",
+  knownTopicCoatColor: "Barvo",
+  knownTopicCoatLength: "Dolžino dlake",
+  knownTopicWaiting: "Datum sprejema",
+  knownTopicKids: "Odnos do otrok",
+  knownTopicDogs: "Odnos do psov",
+  knownTopicCats: "Odnos do mačk",
+  knownTopicFiv: "Izvid FIV",
+  knownTopicFelv: "Izvid FeLV",
+  // The picker's offer once a place is set. "Živali" and not bare "po
+  // bližini": the list under it is shelters, already nearest first, and the
+  // press orders the grid behind the dialog, not the list in it.
+  sortByDistance: "Razvrsti živali po bližini",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
@@ -599,8 +634,13 @@ const sl = {
   goodWith: "Doma imam",
   goodWithFacts: "Družba",
   resetGoodWithFilters: "Ponastavi, kdo živi pri tebi",
-  goodWithFilterHint:
-    "Označi, kdo že živi pri tebi. Živali brez odgovora zavetišča so skrite.",
+  // What happens to the animals nobody answered for is said under the rows
+  // (goodWithUnansweredLine), where a mouse reads it too; this hint is a
+  // tooltip there.
+  goodWithFilterHint: "Označi, kdo že živi pri tebi.",
+  goodWithUnansweredRow: "Brez odgovora: {count}",
+  goodWithUnansweredLine:
+    "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
   // The section reads as one sentence, so the phrases are whole and translated,
   // never assembled from parts in the component.
   goodWithOutcome:
@@ -645,6 +685,13 @@ const sl = {
   resetCareFilters: "Ponastavi, kar lahko ponudim",
   careOutcome:
     "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. {count} od {total}.",
+  // Drawn above the rows before anything is picked, so the direction is read
+  // before the first press rather than learned from it: every other section
+  // narrows to animals that fit the visitor, and this one to the animals that
+  // need what the visitor has. The rows finish the sentence in the accusative
+  // they already take after "Lahko ponudim". "Pokaži", the one verb for
+  // revealing a list (showMoreAnimals).
+  careLead: "Pokaži živali, ki potrebujejo:",
   // The row's words as the animal's need, so the pill a visitor reads on the
   // animal is the row they ticked.
   specialNeedsLabel: "Potrebuje veliko potrpežljivosti",
@@ -768,11 +815,28 @@ const en: Messages = {
   resetHealthFilters: "Reset health filters",
   resetShelterFilters: "Reset the shelter selection",
   ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
-  energyFilterHint:
-    "As judged by the shelter. Recorded energy among animals matching the other filters: {count}. Animals with no answer are hidden by this filter.",
+  energyFilterHint: "As judged by the shelter.",
   healthFilterHint: "An animal has to have every trait you pick.",
   waitingFilterHint: "Based on the recorded shelter intake date.",
   resetWaitingFilters: "Reset time in the shelter",
+  resetAvailabilityFilters: "Reset: Adoption",
+  unansweredLine: "No data: {count}. Picking one shows only animals with data.",
+  unansweredRow: "No data: {count}",
+  unansweredHides: "Picking one shows only animals with data.",
+  knownFor: "We know {topic} for {answered} of {asked} {species}.",
+  knownTopicSex: "the sex",
+  knownTopicAge: "the age",
+  knownTopicSize: "the size",
+  knownTopicEnergy: "the energy level",
+  knownTopicCoatColor: "the colour",
+  knownTopicCoatLength: "the coat length",
+  knownTopicWaiting: "the intake date",
+  knownTopicKids: "how they are with children",
+  knownTopicDogs: "how they are with dogs",
+  knownTopicCats: "how they are with cats",
+  knownTopicFiv: "the FIV result",
+  knownTopicFelv: "the FeLV result",
+  sortByDistance: "Sort animals by distance",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",
@@ -917,8 +981,10 @@ const en: Messages = {
   goodWith: "At home I have",
   goodWithFacts: "Good with",
   resetGoodWithFilters: "Reset who lives with you",
-  goodWithFilterHint:
-    "Tell us who already lives with you. Animals the shelter has not answered for stay hidden.",
+  goodWithFilterHint: "Tell us who already lives with you.",
+  goodWithUnansweredRow: "No answer: {count}",
+  goodWithUnansweredLine:
+    "Picking one shows only animals the shelter answered for.",
   goodWithOutcome:
     "Showing animals that get on with {list}. {count} of {total}. Animals the shelter has not answered for stay hidden.",
   goodWithLeadKids: "kids",
@@ -952,6 +1018,7 @@ const en: Messages = {
   resetCareFilters: "Reset what I can offer",
   careOutcome:
     "Showing animals that need what you can offer. {count} of {total}.",
+  careLead: "Show animals that need:",
   specialNeedsLabel: "Needs a lot of patience",
 };
 

@@ -310,6 +310,26 @@ describe("animal grid empty state", () => {
     expect(
       screen.queryByRole("button", { name: "Pokaži iz vseh zavetišč" }),
     ).toBeNull();
+    // Nothing was answered, so there is no thin answer to name.
+    expect(screen.queryByText(/poznamo za/)).toBeNull();
+  });
+
+  it("names the thin answer when it is the likeliest reason nothing matched", () => {
+    // Psi, Otroke and Mačko on the live dataset read as no dog being fine with
+    // children, when 121 of the 124 had no answer about children at all.
+    window.history.replaceState(null, "", "/?vrsta=pes&druzba=otroci");
+    renderGrid([
+      { ...animal("dog-no", "dog", "muri"), goodWith: { kids: "no" } },
+      animal("dog-silent", "dog", "muri"),
+      animal("dog-quiet", "dog", "tretje"),
+      animal("cat-muri", "cat", "muri"),
+    ]);
+
+    expect(screen.getByText("Ni zadetkov.")).toBeTruthy();
+    expect(
+      screen.getByText("Odnos do otrok poznamo za 1 od 3 psov."),
+    ).toBeTruthy();
+    expect(screen.getByText("Poskusi z manj filtri.")).toBeTruthy();
   });
 
   it("keeps the generic empty state when dropping the shelter would not help either", () => {

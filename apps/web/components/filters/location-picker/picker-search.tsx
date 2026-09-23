@@ -1,6 +1,7 @@
-import { MapPin, Search, X } from "lucide-react";
+import { Check, MapPin, Navigation, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DEFAULT_ANIMAL_SORT } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -10,7 +11,9 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
+    sort, onSortChange,
   } = controller;
+  const byDistance = sort === "nearest";
   const copy = pickerText[locale];
   // Spelled out rather than taken from the controller's placeOffered, which is
   // the same test: this one narrows typed, so the row below can name the place.
@@ -132,6 +135,26 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
             <X className="size-3.5 shrink-0" aria-hidden />
           </Button>
           <p className="text-xs leading-snug text-muted-foreground">{copy.distance}</p>
+          {/* The list below is already nearest first; the grid behind the
+              dialog is not, until asked. Offered here, where the place was
+              just set, and never done unasked: an order the visitor chose
+              themselves is theirs to change. A toggle, so pressing it again
+              takes the grid back to the default order. */}
+          {onSortChange && (
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={byDistance}
+              onClick={() =>
+                onSortChange(byDistance ? DEFAULT_ANIMAL_SORT : "nearest")
+              }
+              className="h-11 max-w-full justify-start gap-2 px-3 text-left text-sm shadow-none aria-pressed:border-brand-border aria-pressed:bg-brand aria-pressed:text-brand-foreground"
+            >
+              <Navigation className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{messages.sortByDistance}</span>
+              {byDistance && <Check className="size-3.5 shrink-0" aria-hidden />}
+            </Button>
+          )}
         </div>
       )}
       <p id={statusId} aria-live="polite" className={cn("text-xs leading-snug text-muted-foreground", !status && "hidden")}>

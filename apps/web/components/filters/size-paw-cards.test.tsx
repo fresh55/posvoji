@@ -121,6 +121,7 @@ describe("size section reset", () => {
         <FilterGroupList
           filters={{
             species: "all",
+            availability: [],
             sex: [],
             age: [],
             size: selected as AnimalSize[],
@@ -135,6 +136,7 @@ describe("size section reset", () => {
           }}
           groups={[{ group, options }]}
           counts={{
+            availability: new Map(),
             sex: new Map(),
             age: new Map(),
             size: counts,

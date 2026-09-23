@@ -196,6 +196,7 @@ describe("FilterGroupList", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={{
+            availability: new Map(),
             sex: new Map(),
             age: new Map(),
             size: new Map(),

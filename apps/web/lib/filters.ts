@@ -4,6 +4,7 @@ export {
   CARE_KEYS,
   EMPTY_FILTERS,
   FILTER_FACETS,
+  FILTER_TOGGLE_KEYS,
   GOOD_WITH_KEYS,
   GROUPS,
   TOGGLE_KEYS,
@@ -11,6 +12,7 @@ export {
 } from "./filters/contracts";
 export type {
   AgeGroup,
+  Availability,
   CoatColorFacet,
   WaitingGroup,
   CareKey,
@@ -53,6 +55,10 @@ export {
   chipGains,
   chipKey,
   facetCounts,
+  namesUnanswered,
+  thinnestAnswer,
+  UNANSWERED_SHARE,
+  unansweredCounts,
   goodWithCounts,
   goodWithMatches,
   isDrop,
@@ -66,6 +72,9 @@ export {
   visibleGoodWith,
   visibleGroups,
   visibleToggles,
+  type Coverage,
+  type Unanswered,
+  type UnansweredTally,
 } from "./filters/engine";
 
 export {

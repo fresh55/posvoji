@@ -20,6 +20,7 @@ import {
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
+import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
   useFilterCardGestures,
   useFilterCardHover,
@@ -33,6 +34,7 @@ import {
   TWO_TONED,
   type CoatColorFacet,
   type FilterOption,
+  type Unanswered,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
@@ -959,6 +961,7 @@ type CoatCardsProps = {
   onToggleMany: (values: string[]) => void;
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
+  unanswered?: Unanswered;
 };
 
 /**
@@ -977,6 +980,7 @@ function CoatCards({
   onToggleMany,
   layout,
   collapse,
+  unanswered,
   tracksPress = false,
 }: CoatCardsProps & {
   group: "coatColor" | "coatLength";
@@ -1039,6 +1043,7 @@ function CoatCards({
       // two lines apiece; two keeps every label on one.
       sheetColumns="grid-cols-2"
       tone="part"
+      footer={<UnansweredNote tally={unanswered} />}
     >
       {options.map(({ value, label: option }, index) => {
         const count = counts.get(value) ?? 0;
@@ -1344,6 +1349,7 @@ function CoatColorPalette({
   onToggleMany,
   layout,
   collapse,
+  unanswered,
 }: CoatCardsProps) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -1402,12 +1408,15 @@ function CoatColorPalette({
         // One line, held open, so Dolžina dlake below does not move as the
         // pointer crosses the grid. aria-live, because for a keyboard reader
         // this line is the only place the swatch under focus is named.
-        <p
-          aria-live="polite"
-          className="mt-2 min-h-4 truncate text-2xs leading-4 text-muted-foreground"
-        >
-          {readout}
-        </p>
+        <>
+          <p
+            aria-live="polite"
+            className="mt-2 min-h-4 truncate text-2xs leading-4 text-muted-foreground"
+          >
+            {readout}
+          </p>
+          <UnansweredNote tally={unanswered} />
+        </>
       }
     >
       {/* One child of the section's own column: the palette is a grid inside

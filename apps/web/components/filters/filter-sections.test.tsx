@@ -16,6 +16,7 @@ import {
   groupOptions,
   toggleCounts,
   toggleLabel,
+  unansweredCounts,
   visibleGoodWith,
   visibleGroups,
   visibleToggles,
@@ -126,6 +127,7 @@ function sidebarProps(filters: Filters) {
       options: groupOptions(group, ANIMALS, "sl"),
     })),
     counts: facetCounts(ANIMALS, filters, NOW),
+    unanswered: unansweredCounts(ANIMALS, filters, NOW),
     toggles: visibleToggles(ANIMALS, filters.species, filters.toggles).map(
       (definition) => ({
         ...definition,
@@ -273,20 +275,23 @@ describe("collapsible filter sections", () => {
     expect(expanded("Starost")).toBe("true");
   });
 
-  it("counts recorded energy with other filters applied and its own selection lifted", () => {
+  // Drawn text under the rows, where a mouse reads it too: it used to be the
+  // hint, which folds into the heading's tooltip on a mouse.
+  it("says what energy leaves out, with other filters applied and its own selection lifted", () => {
     renderSidebar();
     fireEvent.click(header("Energija"));
-    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 2\./)).toBeTruthy();
+    const line = /^Brez podatka: 1\. Izbira pokaže le živali s podatkom\.$/;
+    expect(screen.getByText(line)).toBeTruthy();
 
+    // Its own pick lifted: Miren does not hide the senior from the count.
     fireEvent.click(screen.getByRole("button", { name: /^Miren,/ }));
-    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 2\./)).toBeTruthy();
+    expect(screen.getByText(line)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /^Samec,/ }));
-    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 1\./)).toBeTruthy();
-
+    // Another section's pick applied: among the females every energy is
+    // known. Miren comes off first, or it would leave Samica with no one.
     fireEvent.click(screen.getByRole("button", { name: /^Miren,/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Senior,/ }));
-    expect(screen.getByText(/S podatkom ob drugih izbranih filtrih: 0\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Samica,/ }));
+    expect(screen.queryByText(/^Brez podatka/)).toBeNull();
   });
 
   it("opens what a visitor reaches for first and folds the rest away", () => {
@@ -304,52 +309,53 @@ describe("collapsible filter sections", () => {
     expect(expanded("Velikost")).toBe("false");
     expect(card(/^Majhna/)).toBeNull();
     expect(expanded("Energija")).toBe("false");
-    expect(expanded("Zdravje")).toBe("false");
     expect(expanded("Doma imam")).toBe("false");
     expect(card(/^Miren/)).toBeNull();
-    expect(card(/^Sterilizacija/)).toBeNull();
     expect(card(/^Otroke/)).toBeNull();
+    // No health section on Vse: FIV and FeLV are cat questions, and the three
+    // a dog could be asked are facts on the animal, not filters.
+    expect(screen.queryByRole("button", { name: /^Zdravje/ })).toBeNull();
   });
 
   it("unfolds a section from its header and folds it back", async () => {
     renderSidebar();
 
-    fireEvent.click(header("Zdravje"));
-    expect(expanded("Zdravje")).toBe("true");
-    expect(card(/^Sterilizacija/)).toBeTruthy();
+    fireEvent.click(header("Energija"));
+    expect(expanded("Energija")).toBe("true");
+    expect(card(/^Miren/)).toBeTruthy();
 
-    fireEvent.click(header("Zdravje"));
-    expect(expanded("Zdravje")).toBe("false");
-    await waitFor(() => expect(card(/^Sterilizacija/)).toBeNull());
+    fireEvent.click(header("Energija"));
+    expect(expanded("Energija")).toBe("false");
+    await waitFor(() => expect(card(/^Miren/)).toBeNull());
   });
 
   it("points the header at the body it controls", () => {
     renderSidebar();
 
-    const contentId = header("Zdravje").getAttribute("aria-controls");
+    const contentId = header("Energija").getAttribute("aria-controls");
     expect(contentId).toBeTruthy();
     expect(document.getElementById(contentId ?? "")).toBeNull();
 
-    fireEvent.click(header("Zdravje"));
+    fireEvent.click(header("Energija"));
     const body = document.getElementById(contentId ?? "");
-    expect(body?.contains(card(/^Sterilizacija/))).toBe(true);
+    expect(body?.contains(card(/^Miren/))).toBe(true);
   });
 
   it("keeps a folded selection visible in the header", async () => {
     renderSidebar();
 
-    fireEvent.click(header("Zdravje"));
-    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    fireEvent.click(header("Zdravje"));
-    expect(header("Zdravje").textContent).toContain("Sterilizacija");
+    fireEvent.click(header("Energija"));
+    fireEvent.click(screen.getByRole("button", { name: /^Miren/ }));
+    fireEvent.click(header("Energija"));
+    expect(header("Energija").textContent).toContain("Miren");
 
-    fireEvent.click(header("Zdravje"));
+    fireEvent.click(header("Energija"));
     await waitFor(() =>
-      expect(card(/^Cepljenje/)).toBeTruthy(),
+      expect(card(/^Živahen/)).toBeTruthy(),
     );
-    fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
-    fireEvent.click(header("Zdravje"));
-    expect(header("Zdravje").textContent).toContain("Sterilizacija +1");
+    fireEvent.click(screen.getByRole("button", { name: /^Živahen/ }));
+    fireEvent.click(header("Energija"));
+    expect(header("Energija").textContent).toContain("Miren +1");
   });
 
   it("opens a folded section when its answer arrives with the address", async () => {
@@ -414,13 +420,13 @@ describe("collapsible filter sections", () => {
 
   it("hands the reset back only once the section is open", () => {
     renderSidebar();
-    const resetName = "Ponastavi zdravstvene filtre";
+    const resetName = "Ponastavi filter energije";
 
-    fireEvent.click(header("Zdravje"));
-    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
+    fireEvent.click(header("Energija"));
+    fireEvent.click(screen.getByRole("button", { name: /^Miren/ }));
     expect(screen.getByRole("button", { name: resetName })).toBeTruthy();
 
-    fireEvent.click(header("Zdravje"));
+    fireEvent.click(header("Energija"));
     expect(screen.queryByRole("button", { name: resetName })).toBeNull();
     expect(
       screen.getByLabelText(resetName).getAttribute("aria-hidden"),
@@ -456,9 +462,9 @@ describe("collapsible filter sections", () => {
     expect(document.activeElement).toBe(header("Doma imam"));
 
     fireEvent.keyDown(header("Doma imam"), { key: "ArrowUp" });
-    expect(document.activeElement).toBe(header("Zdravje"));
+    expect(document.activeElement).toBe(header("Energija"));
 
-    fireEvent.keyDown(header("Zdravje"), { key: "Home" });
+    fireEvent.keyDown(header("Energija"), { key: "Home" });
     expect(document.activeElement).toBe(header("Spol"));
   });
 
@@ -469,19 +475,19 @@ describe("collapsible filter sections", () => {
   it("prints a folding heading in the case every other heading uses", () => {
     renderSidebar();
 
-    expect(header("Zdravje").classList.contains("uppercase")).toBe(true);
-    expect(header("Zdravje").classList.contains("tracking-wide")).toBe(true);
+    expect(header("Energija").classList.contains("uppercase")).toBe(true);
+    expect(header("Energija").classList.contains("tracking-wide")).toBe(true);
   });
 
   it("leaves the folded summary in its own case", () => {
     renderSidebar();
 
-    fireEvent.click(header("Zdravje"));
-    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    fireEvent.click(header("Zdravje"));
+    fireEvent.click(header("Energija"));
+    fireEvent.click(screen.getByRole("button", { name: /^Miren/ }));
+    fireEvent.click(header("Energija"));
 
-    const summary = [...header("Zdravje").querySelectorAll("span")].find(
-      (span) => span.textContent === "Sterilizacija",
+    const summary = [...header("Energija").querySelectorAll("span")].find(
+      (span) => span.textContent === "Miren",
     );
     expect(summary?.classList.contains("normal-case")).toBe(true);
     expect(summary?.classList.contains("tracking-normal")).toBe(true);
@@ -505,16 +511,16 @@ describe("remembered folds", () => {
   it("stores only what departs from the defaults", () => {
     renderSidebar();
 
-    fireEvent.click(header("Zdravje"));
-    expect(stored()).toEqual({ health: true });
+    fireEvent.click(header("Energija"));
+    expect(stored()).toEqual({ energy: true });
 
     fireEvent.click(header("Spol"));
-    expect(stored()).toEqual({ health: true, sex: false });
+    expect(stored()).toEqual({ energy: true, sex: false });
   });
 
   it("restores the stored folds in a fresh render", () => {
     const { unmount } = renderSidebar();
-    fireEvent.click(header("Zdravje"));
+    fireEvent.click(header("Energija"));
     fireEvent.click(header("Spol"));
     unmount();
 
@@ -522,7 +528,7 @@ describe("remembered folds", () => {
     resetFilterSectionsStore();
     renderSidebar();
 
-    expect(expanded("Zdravje")).toBe("true");
+    expect(expanded("Energija")).toBe("true");
     expect(expanded("Spol")).toBe("false");
     expect(expanded("Starost")).toBe("true");
   });
@@ -539,7 +545,7 @@ describe("the sidebar heading", () => {
     renderStatic({
       ...EMPTY_FILTERS,
       sex: ["male", "female"],
-      toggles: ["sterilizacija"],
+      goodWith: ["kids"],
     });
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri3");
   });
@@ -579,9 +585,9 @@ describe("the sidebar's surfaces", () => {
       '[data-slot="toggle-group-item"], button[aria-pressed]',
     );
     // Two sexes, three ages, three sizes, two of three energies (no animal in
-    // the fixture is Uravnotežen, and the sidebar leaves a dead option out),
-    // two health traits and two household answers.
-    expect(options).toHaveLength(14);
+    // the fixture is Uravnotežen, and the sidebar leaves a dead option out)
+    // and two household answers. No health traits: this fixture is dogs.
+    expect(options).toHaveLength(12);
 
     for (const option of options) {
       expect(option.className).toContain("border-transparent");

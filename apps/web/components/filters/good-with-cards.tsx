@@ -1,6 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
+import { useId } from "react";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -21,13 +22,21 @@ import {
   LONGEST_GOOD_WITH_GESTURE_MS,
 } from "@/components/filters/good-with-glyphs";
 import {
+  UnansweredHides,
+  useUnansweredRow,
+} from "@/components/filters/unanswered-note";
+import {
   resetDelayStyle,
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
-import { GOOD_WITH_KEYS, type GoodWithKey } from "@/lib/filters";
+import {
+  GOOD_WITH_KEYS,
+  type GoodWithKey,
+  type Unanswered,
+} from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -72,6 +81,7 @@ export function GoodWithCards({
   onToggleMany,
   layout = "sidebar",
   collapse,
+  unanswered,
 }: {
   options: GoodWithOption[];
   counts: Map<string, number>;
@@ -83,9 +93,14 @@ export function GoodWithCards({
   onToggleMany: (values: GoodWithKey[]) => void;
   layout?: FilterCardLayout;
   collapse?: SectionCollapse;
+  /** Per question, what a pick leaves out for having no answer. */
+  unanswered?: Readonly<Record<GoodWithKey, Unanswered>>;
 }) {
   const { locale, messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
+  const unansweredRow = useUnansweredRow("goodWithUnansweredRow");
+  const describedBy = useId();
+  const rowNotes = options.map(({ key }) => unansweredRow(unanswered?.[key]));
   const {
     celebration,
     celebrate,
@@ -136,14 +151,21 @@ export function GoodWithCards({
       // two of them (today: psi and mačke) left a third of the row empty.
       sheetColumns={sheetColumnsFor(options.length)}
       // The one place the section says its choices hold at once, and the one
-      // the screen reader hears. Nothing selected says nothing.
+      // the screen reader hears. Before a pick, and only while a row names
+      // animals with no answer, it says what a pick will do with them: the
+      // sentence the hint used to carry where a mouse never saw it.
       footer={
-        <p
-          aria-live="polite"
-          className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0"
-        >
-          {outcome}
-        </p>
+        <>
+          <p
+            aria-live="polite"
+            className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0"
+          >
+            {outcome}
+          </p>
+          {outcome === null && rowNotes.some(Boolean) && (
+            <UnansweredHides message="goodWithUnansweredLine" />
+          )}
+        </>
       }
     >
       {options.map(({ key, label }, index) => {
@@ -155,6 +177,8 @@ export function GoodWithCards({
         const reacting = celebrationIndex >= 0 && !celebrating;
         const tiltDirection = Math.sign(index - celebrationIndex) || 1;
         const exitDelay = resetDelay(index);
+        const note = rowNotes[index];
+        const noteId = `${describedBy}-${key}`;
 
         return (
           <button
@@ -172,6 +196,7 @@ export function GoodWithCards({
             {...hoverHandlers(key)}
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
+            aria-describedby={note ? noteId : undefined}
             className={filterCardVariants({
               layout,
               selected: checked,
@@ -243,6 +268,8 @@ export function GoodWithCards({
               layout={layout}
               label={label}
               checked={checked}
+              description={note}
+              descriptionId={noteId}
               renderCount={(className) => (
                 <CountRoll value={count} className={className} />
               )}

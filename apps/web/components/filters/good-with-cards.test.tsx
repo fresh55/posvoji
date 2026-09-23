@@ -3,7 +3,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
-import { EMPTY_FILTERS, goodWithOptions, type GoodWithKey } from "@/lib/filters";
+import {
+  EMPTY_FILTERS,
+  goodWithOptions,
+  type GoodWithKey,
+  type Unanswered,
+} from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
   installFilterFoldSeams,
@@ -28,6 +33,7 @@ function renderCards(
     layout?: "sidebar" | "sheet";
     onToggle?: (key: GoodWithKey) => void;
     onToggleMany?: (keys: GoodWithKey[]) => void;
+    unanswered?: Record<GoodWithKey, Unanswered>;
   } = {},
 ) {
   const onToggle = overrides.onToggle ?? vi.fn();
@@ -44,6 +50,7 @@ function renderCards(
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         layout={overrides.layout}
+        unanswered={overrides.unanswered}
       />
     </I18nProvider>,
   );
@@ -74,10 +81,57 @@ describe("GoodWithCards", () => {
     renderCards();
 
     expect(screen.getByRole("heading", { name: "Doma imam" })).toBeTruthy();
+    expect(screen.getByText("Označi, kdo že živi pri tebi.")).toBeTruthy();
+  });
+
+  // Per question, because each has its own answers: on the live dataset 12
+  // animals had any answer about children and 190 about cats, and one count
+  // for the section would have described neither.
+  it("says beside each question how many animals it has no answer from", () => {
+    renderCards({
+      unanswered: {
+        kids: { asked: 124, unanswered: 121 },
+        dogs: { asked: 124, unanswered: 102 },
+        cats: { asked: 124, unanswered: 5 },
+      },
+    });
+    const kids = screen.getByRole("button", { name: /^Otroke, / });
+    expect(kids.textContent).toContain("Brez odgovora: 121");
+    expect(
+      document.getElementById(kids.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toBe("Brez odgovora: 121");
+    expect(
+      screen.getByRole("button", { name: /^Psa, / }).textContent,
+    ).toContain("Brez odgovora: 102");
+    // Five of 124 is under the tenth the panel bothers saying.
+    const cats = screen.getByRole("button", { name: /^Mačko, / });
+    expect(cats.textContent).not.toContain("Brez odgovora");
+    expect(cats.getAttribute("aria-describedby")).toBeNull();
+    // What a pick does with them, said once under the rows before any pick.
     expect(
       screen.getByText(
-        "Označi, kdo že živi pri tebi. Živali brez odgovora zavetišča so skrite.",
+        "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
       ),
+    ).toBeTruthy();
+  });
+
+  it("hands that sentence to the outcome once something is picked", () => {
+    renderCards({
+      selected: ["kids"],
+      unanswered: {
+        kids: { asked: 124, unanswered: 121 },
+        dogs: { asked: 2, unanswered: 1 },
+        cats: { asked: 2, unanswered: 1 },
+      },
+    });
+    expect(
+      screen.queryByText(
+        "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
+      ),
+    ).toBeNull();
+    expect(
+      screen.getByText(/Živali brez odgovora zavetišča so skrite\.$/),
     ).toBeTruthy();
   });
 
@@ -261,6 +315,7 @@ describe("FilterGroupList", () => {
           filters={EMPTY_FILTERS}
           groups={[]}
           counts={{
+            availability: new Map(),
             sex: new Map(),
             age: new Map(),
             size: new Map(),

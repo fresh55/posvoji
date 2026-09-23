@@ -186,6 +186,13 @@ describe("localized labels", () => {
     expect(statusLabel("adopted", "en")).toBe("adopted");
     expect(statusLabel("unknown", "sl")).toBeUndefined();
   });
+
+  // Hold is a quarantine, a nursing mother or a trial placement, none of them
+  // final and not all of them a wait, so the words promise neither.
+  it("says a hold is for now, without promising later", () => {
+    expect(statusLabel("hold", "sl")).toBe("trenutno ni na voljo");
+    expect(statusLabel("hold", "en")).toBe("not available now");
+  });
 });
 
 // One verb for every control that reveals a list. The site carried both

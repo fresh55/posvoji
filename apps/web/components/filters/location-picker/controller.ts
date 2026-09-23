@@ -62,6 +62,8 @@ export function useLocationPickerController({
   summaries,
   deepLink,
   dress = "toolbar",
+  sort,
+  onSortChange,
   open: controlledOpen,
   onOpenChange,
 }: LocationPickerProps) {
@@ -711,6 +713,8 @@ export function useLocationPickerController({
     summaries,
     deepLink,
     dress,
+    sort,
+    onSortChange,
     locale,
     messages,
     t,

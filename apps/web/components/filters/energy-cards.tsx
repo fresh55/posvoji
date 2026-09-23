@@ -17,13 +17,18 @@ import {
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
+import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
   useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
-import { groupLabel, type FilterOption } from "@/lib/filters";
+import {
+  groupLabel,
+  type FilterOption,
+  type Unanswered,
+} from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -468,6 +473,7 @@ export function EnergyCards({
   onToggleMany,
   layout = "sidebar",
   collapse,
+  unanswered,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -476,8 +482,9 @@ export function EnergyCards({
   onToggleMany: (values: string[]) => void;
   layout?: FilterCardLayout;
   collapse?: SectionCollapse;
+  unanswered?: Unanswered;
 }) {
-  const { locale, messages, t } = useI18n();
+  const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
   const {
     celebration,
@@ -506,9 +513,7 @@ export function EnergyCards({
   return (
     <FilterCardSection
       label={groupLabel("energy", locale)}
-      hint={t("energyFilterHint", {
-        count: Array.from(counts.values()).reduce((total, count) => total + count, 0),
-      })}
+      hint={messages.energyFilterHint}
       active={selected.length > 0}
       onReset={() => {
         clearCelebration();
@@ -518,6 +523,7 @@ export function EnergyCards({
       resetAriaLabel={messages.resetEnergyFilters}
       layout={layout}
       collapse={collapse}
+      footer={<UnansweredNote tally={unanswered} />}
     >
       {options.map(({ value, label }, index) => {
             const count = counts.get(value) ?? 0;

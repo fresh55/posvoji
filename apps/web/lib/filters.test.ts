@@ -349,17 +349,36 @@ describe("visibleToggles", () => {
   });
 
   it("keeps a selected toggle once every animal answers it", () => {
-    // ?lastnosti=cepljenje over a pool where everybody is vaccinated. The
+    // ?lastnosti=brez-fiv over a pool where every cat tested negative. The
     // toggle narrows nothing, but it is on, and a control nobody can see is a
     // filter nobody can switch off.
-    const vaccinated = [
-      animal("dog", { medical: { vaccinated: true } }),
-      animal("dog", { medical: { vaccinated: true } }),
+    const tested = [
+      animal("cat", { medical: { fiv: "negative" } }),
+      animal("cat", { medical: { fiv: "negative" } }),
     ];
-    expect(toggleKeys(vaccinated, "all")).toEqual([]);
+    expect(toggleKeys(tested, "cat")).toEqual([]);
     expect(
-      visibleToggles(vaccinated, "all", ["cepljenje"]).map((t) => t.key),
-    ).toEqual(["cepljenje"]);
+      visibleToggles(tested, "cat", ["brez-fiv"]).map((t) => t.key),
+    ).toEqual(["brez-fiv"]);
+  });
+
+  // One animal in the whole dataset carried a recorded "no" for any of the
+  // three, so ticking one only hid the shelters that do not publish it.
+  it("offers sterilisation, vaccination and the chip on no tab", () => {
+    const records = [
+      animal("dog", { medical: { vaccinated: true, neutered: true, microchipped: true } }),
+      animal("dog"),
+      animal("cat", { medical: { vaccinated: true } }),
+      animal("cat"),
+    ];
+    for (const species of ["all", "dog", "cat"] as const) {
+      expect(toggleKeys(records, species)).not.toContain("cepljenje");
+      expect(toggleKeys(records, species)).not.toContain("sterilizacija");
+      expect(toggleKeys(records, species)).not.toContain("cip");
+    }
+    expect(
+      visibleToggles(records, "all", ["cepljenje"]).map((t) => t.key),
+    ).toEqual([]);
   });
 });
 
@@ -500,9 +519,27 @@ describe("pruneHiddenFilters", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
       species: "dog",
-      toggles: ["cepljenje", "brez-fiv", "brez-felv"],
+      toggles: ["brez-fiv", "brez-felv"],
     });
-    expect(pruned.toggles).toEqual(["cepljenje"]);
+    expect(pruned.toggles).toEqual([]);
+  });
+
+  it("drops a toggle the panel no longer offers, on every tab", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      species: "cat",
+      toggles: ["cepljenje", "sterilizacija", "cip", "brez-fiv"],
+    });
+    expect(pruned.toggles).toEqual(["brez-fiv"]);
+  });
+
+  it("keeps availability across a species change", () => {
+    const pruned = pruneHiddenFilters({
+      ...EMPTY_FILTERS,
+      species: "dog",
+      availability: ["available"],
+    });
+    expect(pruned.availability).toEqual(["available"]);
   });
 
   it("keeps the družba selection across a species change", () => {
@@ -633,13 +670,36 @@ describe("URL codec", () => {
 
   it("degrades a stale cat-only toggle carried onto the dog tab", () => {
     const filters = parseFilters(
-      "vrsta=pes&velikost=majhna&lastnosti=cip,brez-fiv",
+      "vrsta=pes&velikost=majhna&lastnosti=brez-fiv",
     );
-    expect(filters.toggles).toEqual(["cip"]);
-    expect(activeFilterCount(filters)).toBe(2);
-    expect(serializeFilters(filters)).toBe(
-      "vrsta=pes&velikost=majhna&lastnosti=cip",
+    expect(filters.toggles).toEqual([]);
+    expect(activeFilterCount(filters)).toBe(1);
+    expect(serializeFilters(filters)).toBe("vrsta=pes&velikost=majhna");
+  });
+
+  it("lets a link shared while Cepljenje was a filter degrade to the rest", () => {
+    const filters = parseFilters(
+      "vrsta=macka&lastnosti=cip,cepljenje,sterilizacija,brez-fiv",
     );
+    expect(filters.toggles).toEqual(["brez-fiv"]);
+    expect(serializeFilters(filters)).toBe("vrsta=macka&lastnosti=brez-fiv");
+    // The param is still read and written for FIV and FeLV.
+    expect(FILTER_PARAM_NAMES).toContain("lastnosti");
+  });
+
+  it("round-trips availability under its own param", () => {
+    const filters: Filters = { ...EMPTY_FILTERS, availability: ["available"] };
+    const query = serializeFilters(filters);
+    expect(query).toBe("posvojitev=na-voljo");
+    expect(parseFilters(query)).toEqual(filters);
+    expect(activeFilterCount(filters)).toBe(1);
+    // Watched by the prehydration script like every other filter, so a
+    // shared link holds the grid back until the filter has been applied.
+    expect(FILTER_PARAM_NAMES).toContain("posvojitev");
+  });
+
+  it("drops an availability slug it does not know", () => {
+    expect(parseFilters("posvojitev=ni-na-voljo").availability).toEqual([]);
   });
 
   it("parses the legacy zajcek slug into the merged Ostale tab", () => {
@@ -737,7 +797,9 @@ describe("URL codec", () => {
     expect(parseFilters("zavetisce=horjul,horjul,horjul").shelter).toEqual([
       "horjul",
     ]);
-    expect(parseFilters("lastnosti=cip,cip").toggles).toEqual(["cip"]);
+    expect(
+      parseFilters("vrsta=macka&lastnosti=brez-fiv,brez-fiv").toggles,
+    ).toEqual(["brez-fiv"]);
   });
 });
 
@@ -750,7 +812,7 @@ describe("active filter count", () => {
         sex: ["male", "female"],
         age: ["mladicek", "odrasel", "senior"],
         shelter: ["s1", "s2"],
-        toggles: ["cepljenje", "sterilizacija"],
+        toggles: ["brez-fiv", "brez-felv"],
       }),
     ).toBe(9);
   });
@@ -820,21 +882,22 @@ describe("multi-select behavior", () => {
     ).toEqual([young, adult, senior]);
   });
 
-  // Each trait is a guarantee of its own, so every one ticked has to hold.
+  // Each result is a guarantee of its own, so every one ticked has to hold.
   it("requires every choice within health", () => {
-    const vaccinated = animal("dog", { medical: { vaccinated: true } });
-    const neutered = animal("dog", { medical: { neutered: true } });
-    const both = animal("dog", {
-      medical: { vaccinated: true, neutered: true },
+    const fiv = animal("cat", { medical: { fiv: "negative" } });
+    const felv = animal("cat", { medical: { felv: "negative" } });
+    const both = animal("cat", {
+      medical: { fiv: "negative", felv: "negative" },
     });
-    const neither = animal("dog");
+    const neither = animal("cat");
 
     expect(
       applyFilters(
-        [vaccinated, neutered, both, neither],
+        [fiv, felv, both, neither],
         {
           ...EMPTY_FILTERS,
-          toggles: ["cepljenje", "sterilizacija"],
+          species: "cat",
+          toggles: ["brez-fiv", "brez-felv"],
         },
         NOW,
       ),
@@ -1020,19 +1083,19 @@ describe("multi-select behavior", () => {
   });
 
   it("prices each health choice on top of the ones already picked", () => {
-    const vaccinated = animal("dog", { medical: { vaccinated: true } });
-    const neutered = animal("dog", { medical: { neutered: true } });
-    const both = animal("dog", {
-      medical: { vaccinated: true, neutered: true },
+    const fiv = animal("cat", { medical: { fiv: "negative" } });
+    const felv = animal("cat", { medical: { felv: "negative" } });
+    const both = animal("cat", {
+      medical: { fiv: "negative", felv: "negative" },
     });
     const counts = toggleCounts(
-      [vaccinated, neutered, both],
-      { ...EMPTY_FILTERS, toggles: ["cepljenje"] },
+      [fiv, felv, both],
+      { ...EMPTY_FILTERS, species: "cat", toggles: ["brez-fiv"] },
       NOW,
     );
 
-    expect(counts.get("cepljenje")).toBe(2);
-    expect(counts.get("sterilizacija")).toBe(1);
+    expect(counts.get("brez-fiv")).toBe(2);
+    expect(counts.get("brez-felv")).toBe(1);
   });
 
   // FIV and FeLV are the one question these filters exist to answer, and a

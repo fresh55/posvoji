@@ -11,12 +11,14 @@ import type { Locale } from "@/lib/i18n";
 import {
   filterColour,
   type AgeGroup,
+  type Availability,
   type CoatColorFacet,
   type WaitingGroup,
   type CareKey,
   type FilterOption,
   type GoodWithKey,
   type MultiGroup,
+  type SpeciesFilter,
   type ToggleKey,
 } from "./contracts";
 
@@ -33,6 +35,8 @@ export const ADOPTION_REQUIREMENT_LABELS = {
 
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
   sl: {
+    // "Posvojitev: samo na voljo", read as a sentence like the others.
+    availability: "Posvojitev",
     sex: "Spol",
     age: "Starost",
     size: "Velikost",
@@ -46,6 +50,7 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     shelter: "Zavetišče",
   },
   en: {
+    availability: "Adoption",
     sex: "Sex",
     age: "Age",
     size: "Size",
@@ -72,7 +77,16 @@ export type ToggleDef = {
   label: string;
   species?: Species;
   matches: (animal: AnimalFields) => boolean;
+  /** Whether the record says anything either way. What a filter hides for
+   *  having no answer is counted from this, not from a failed match: a "no"
+   *  is an answer. */
+  answered: (animal: AnimalFields) => boolean;
 };
+
+// A test result is an answer when it came back one way or the other.
+function tested(result: string | undefined): boolean {
+  return result === "positive" || result === "negative";
+}
 
 // Nouns, not adjectives: Slovenian would force a gender on "cepljen" that
 // "živali" doesn't share.
@@ -81,16 +95,19 @@ const TOGGLE_DEFS: ToggleDef[] = [
     key: "sterilizacija",
     label: "Sterilizacija",
     matches: (animal) => animal.medical?.neutered === true,
+    answered: (animal) => animal.medical?.neutered !== undefined,
   },
   {
     key: "cepljenje",
     label: "Cepljenje",
     matches: (animal) => animal.medical?.vaccinated === true,
+    answered: (animal) => animal.medical?.vaccinated !== undefined,
   },
   {
     key: "cip",
     label: "Čip",
     matches: (animal) => animal.medical?.microchipped === true,
+    answered: (animal) => animal.medical?.microchipped !== undefined,
   },
   // Only a recorded negative counts. An untested cat is "unknown", and letting
   // that through would sell a maybe as an all-clear on the one question these
@@ -100,12 +117,14 @@ const TOGGLE_DEFS: ToggleDef[] = [
     label: "Brez FIV",
     species: "cat",
     matches: (animal) => animal.medical?.fiv === "negative",
+    answered: (animal) => tested(animal.medical?.fiv),
   },
   {
     key: "brez-felv",
     label: "Brez FeLV",
     species: "cat",
     matches: (animal) => animal.medical?.felv === "negative",
+    answered: (animal) => tested(animal.medical?.felv),
   },
 ];
 
@@ -123,13 +142,21 @@ function appliesToSpecies(
 // definition, so every reader of matches inherits it: the dialog's badges, the
 // poster's tiles and the filter index.
 function pinned(toggle: ToggleDef): ToggleDef {
-  const { species, matches } = toggle;
+  const { species, matches, answered } = toggle;
   if (!species) return toggle;
   return {
     ...toggle,
     matches: (animal) =>
       appliesToSpecies(species, animal.species) && matches(animal),
+    answered: (animal) =>
+      appliesToSpecies(species, animal.species) && answered(animal),
   };
+}
+
+/** Whether a toggle is a question this animal can be asked at all. A dog is
+ *  not missing an FIV result; nobody asked. */
+export function toggleAsks(toggle: ToggleDef, species: Species): boolean {
+  return appliesToSpecies(toggle.species, species);
 }
 
 export const TOGGLES: readonly ToggleDef[] = TOGGLE_DEFS.map(pinned);
@@ -163,6 +190,7 @@ type CodedGroup = Exclude<MultiGroup, "shelter">;
 type ValueGroup = "goodWith" | "care";
 type MetadataGroup = CodedGroup | ValueGroup;
 type CodedValueByGroup = {
+  availability: Extract<Availability, "available">;
   sex: Exclude<Sex, "unknown">;
   age: AgeGroup;
   size: AnimalSize;
@@ -187,9 +215,18 @@ export type FilterValueDefinition<Value extends string = string> = {
    *  whose labels cannot say it alone (Lahko ponudim). Short: the sidebar
    *  gives the line 136px. */
   readonly description?: Readonly<Record<Locale, string>>;
+  /** The same line on a species tab whose animals it would misdescribe. */
+  readonly descriptionOnTab?: Partial<
+    Readonly<Record<Exclude<SpeciesFilter, "all">, Readonly<Record<Locale, string>>>>
+  >;
 };
 
 export const FILTER_METADATA = {
+  // The label is the other side of the badge a card wears when the answer is
+  // no ("trenutno ni na voljo"), so the row says which cards go.
+  availability: [
+    { value: "available", slug: "na-voljo", labels: { sl: "Samo na voljo", en: "Available only" } },
+  ],
   // Each paired colour follows its solid colour; multicolour stays last.
   coatColor: [
     { value: "black", slug: "crna", labels: { sl: "Črna", en: "Black" } },
@@ -320,6 +357,13 @@ export const FILTER_METADATA = {
       // dogs wary of strangers. Saying so is what stops someone who grew up
       // with a dog from reading the row as theirs.
       description: { sl: "Močni ali nezaupljivi psi", en: "Powerful or wary dogs" },
+      // The cats this row holds are the other two, and both are cats so
+      // frightened of people that their shelters ask for someone who has
+      // won one over before. "Psi" on the cat tab described nobody there.
+      descriptionOnTab: {
+        cat: { sl: "Zelo plahe mačke", en: "Very fearful cats" },
+        other: { sl: "Zahtevnejše živali", en: "Demanding animals" },
+      },
     },
   ],
 } as const satisfies {
@@ -344,12 +388,21 @@ export type CareOption = {
   description: string;
 };
 
-export function careOptions(locale: Locale = "sl"): CareOption[] {
-  return FILTER_METADATA.care.map(({ value, labels, description }) => ({
-    key: value,
-    label: labels[locale],
-    description: description[locale],
-  }));
+export function careOptions(
+  locale: Locale = "sl",
+  species: SpeciesFilter = "all",
+): CareOption[] {
+  return FILTER_METADATA.care.map((option) => {
+    const onTab: FilterValueDefinition["descriptionOnTab"] =
+      "descriptionOnTab" in option ? option.descriptionOnTab : undefined;
+    const description =
+      (species === "all" ? undefined : onTab?.[species]) ?? option.description;
+    return {
+      key: option.value,
+      label: option.labels[locale],
+      description: description[locale],
+    };
+  });
 }
 
 /** A coded value as its chip says it: the chip wording where the label needs
@@ -389,6 +442,7 @@ export function groupOptions(
       return FILTER_METADATA.coatColor
         .filter(({ value }) => filterColour(value) === value)
         .map(({ value, labels }) => ({ value, label: labels[locale] }));
+    case "availability":
     case "sex":
     case "age":
     case "size":

@@ -4,6 +4,7 @@ import {
   Palette,
   Cat,
   Dog,
+  DoorOpen,
   Gauge,
   HandHeart,
   Heart,
@@ -97,6 +98,9 @@ export const SPECIES_ICONS: Record<Species, LucideIcon> = {
 // +3"), or a facet whose values have no mark of their own. Keyed by
 // FilterFacet, so a new facet fails to compile.
 export const FACET_ICONS: Record<FilterFacet, LucideIcon> = {
+  // The door is open: these animals can go home now. Taken by nothing else
+  // on the site (site-icon vocabulary).
+  availability: DoorOpen,
   sex: VenusAndMars,
   age: Sprout,
   size: Ruler,

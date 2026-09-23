@@ -285,16 +285,15 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?starost=mladicek,odrasel,senior");
   });
 
-  // Every health trait ticked has to hold: Sterilizacija keeps both neutered
-  // animals, and Cepljenje on top of it leaves the one that has both.
-  it("requires every health trait ticked", () => {
+  // Sterilisation, vaccination and the chip stay facts on the animal and are
+  // no longer asked here: the fixture records all three and the panel offers
+  // none of them. FIV and FeLV, the two it does offer, are cat questions, and
+  // this fixture is dogs (lib/filters.test.ts covers their AND).
+  it("offers no health toggle a dog could be asked", () => {
     renderFilters();
-    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
-    expect(matchingIds()).toBe("male-young,female-adult");
-
-    fireEvent.click(screen.getByRole("button", { name: /^Cepljenje/ }));
-    expect(matchingIds()).toBe("female-adult");
-    expect(query()).toBe("?lastnosti=sterilizacija,cepljenje");
+    expect(screen.queryByRole("button", { name: /^Sterilizacija/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Cepljenje/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Zdravje/ })).toBeNull();
   });
 
   it("removes one chip without clearing its section", () => {
@@ -314,7 +313,6 @@ describe("filter flow interactions", () => {
       [/^Samec/, /^Samica/, "Ponastavi filter spola"],
       [/^Mladiček/, /^Odrasel/, "Ponastavi filter starosti"],
       [/^Majhna/, /^Srednja/, "Ponastavi filter velikosti"],
-      [/^Sterilizacija/, /^Cepljenje/, "Ponastavi zdravstvene filtre"],
     ];
 
     for (const [first, second, reset] of selections) {
@@ -328,7 +326,7 @@ describe("filter flow interactions", () => {
   it("clears all selected sections", () => {
     renderFilters();
     fireEvent.click(screen.getByRole("button", { name: /^Samec/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Sterilizacija/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Majhna/ }));
     fireEvent.click(screen.getByRole("button", { name: "Počisti filtre" }));
 
     expect(matchingIds()).toBe("male-young,female-adult,male-senior");
@@ -464,10 +462,22 @@ describe("filter flow interactions", () => {
     renderFilters();
     expect(matchingIds()).toBe("female-adult");
 
-    window.history.pushState(null, "", "/?spol=samec&lastnosti=sterilizacija");
+    window.history.pushState(null, "", "/?spol=samec&starost=mladicek");
     act(() => window.dispatchEvent(new PopStateEvent("popstate")));
     expect(matchingIds()).toBe("male-young");
-    expect(query()).toBe("?spol=samec&lastnosti=sterilizacija");
+    expect(query()).toBe("?spol=samec&starost=mladicek");
+  });
+
+  it("lets a link carrying a retired health toggle narrow by the rest alone", () => {
+    // Shared while Sterilizacija was a filter. It narrowed to the shelters that
+    // publish the fact; now it narrows by nothing, and the next write drops it
+    // from the address rather than carrying it around.
+    window.history.replaceState(null, "", "/?spol=samec&lastnosti=sterilizacija");
+    renderFilters();
+    expect(matchingIds()).toBe("male-young,male-senior");
+
+    fireEvent.click(screen.getByRole("button", { name: /^Majhna/ }));
+    expect(query()).toBe("?spol=samec&velikost=majhna");
   });
 
   it("writes and reads the sort order through the URL, keeping the default clean", () => {

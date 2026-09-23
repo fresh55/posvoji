@@ -669,11 +669,16 @@ export const AnimalCard = memo(function AnimalCard({
           orphaned between the two links, inside neither. */}
       {/* 8px in from the corner, which the 14px radius asks for: at 6px
           the pill's own corner sat on the photo's curve. */}
+      {/* "trenutno ni na voljo" is 128px at the badge's own 12px, and a
+          card at 320px is 136px wide, so below 360px the pill gives up 2px
+          of padding a side rather than a pixel of type (status-badge.tsx
+          says why the size is one tier everywhere) and keeps 4px clear of
+          the photo's far edge. */}
       <StatusBadge
         status={animal.status}
         locale={locale}
         overlay
-        className="absolute left-2 top-2"
+        className="absolute left-2 top-2 max-[359px]:px-1.5"
       />
       {showWaitMark && waitMonths !== undefined && (
         // On the photo, opposite the counter, for the same reason the

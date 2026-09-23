@@ -28,6 +28,7 @@ import {
   FilterSectionHeader,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
+import { UnansweredNote } from "@/components/filters/unanswered-note";
 import { useFilterCardHover } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -37,7 +38,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { FilterOption } from "@/lib/filters";
+import type { FilterOption, Unanswered } from "@/lib/filters";
 import { groupLabel } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -141,6 +142,7 @@ export function AgeGrowthControl({
   onToggleMany,
   layout = "sidebar",
   collapse,
+  unanswered,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
@@ -149,6 +151,7 @@ export function AgeGrowthControl({
   onToggleMany: (values: string[]) => void;
   layout?: "sidebar" | "sheet";
   collapse?: SectionCollapse;
+  unanswered?: Unanswered;
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -573,6 +576,7 @@ export function AgeGrowthControl({
               })}
             </ToggleGroup>
           </TooltipProvider>
+          <UnansweredNote tally={unanswered} />
         </CollapsibleBody>
       </section>
     </LazyMotion>

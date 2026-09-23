@@ -263,17 +263,28 @@ export function CountRoll({
   );
 }
 
+/**
+ * "box" is a tick box, for a section whose answers add up. "dot" is the round
+ * mark a single-choice section wears (SINGLE_CHOICE_GROUPS): V zavetišču takes
+ * one threshold at a time, and in tick boxes the second press quietly unticked
+ * the first, which a box never does anywhere else in the panel.
+ */
+export type SelectionShape = "box" | "dot";
+
 export function FilterSelectionMark({
   checked,
   className,
   // Lets a caller hold the check back until its own gesture has landed.
   appearDelay = 0,
+  shape = "box",
 }: {
   checked: boolean;
   className?: string;
   appearDelay?: number;
+  shape?: SelectionShape;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  const dot = shape === "dot";
 
   return (
     <LazyMotion features={domAnimation}>
@@ -284,8 +295,14 @@ export function FilterSelectionMark({
           // The card is the group, and a disabled card in the filters is one
           // the current narrowing has no animals for; see DEAD_OPTION_CLASS
           // for why the rest of that dress is not in the cva.
-          "relative grid size-4.5 shrink-0 place-items-center rounded-sm border transition-[border-color,background-color,color] duration-150 group-disabled:hidden",
-          checked
+          "relative grid size-4.5 shrink-0 place-items-center border transition-[border-color,background-color,color] duration-150 group-disabled:hidden",
+          dot ? "rounded-full" : "rounded-sm",
+          checked && dot
+            ? // A ring and its dot rather than a filled disc, the shape a
+              // single choice is read as. The dot is the same ink as the
+              // filled box's ground, so the two marks carry one accent.
+              "border-brand-strong bg-background text-brand-strong"
+            : checked
             ? // The ink is a token and not text-white, because this is the one
               // place the strong accent is a ground and that ground is light in
               // dark mode: a white tick on it measured 2.39:1. See
@@ -323,7 +340,11 @@ export function FilterSelectionMark({
                 : { duration: 0.1, ease: "easeOut" }
           }
         >
-          <Check className="size-3" strokeWidth={2.6} />
+          {dot ? (
+            <span className="block size-2 rounded-full bg-current" />
+          ) : (
+            <Check className="size-3" strokeWidth={2.6} />
+          )}
         </m.span>
       </span>
     </LazyMotion>
@@ -336,12 +357,19 @@ export function FilterSelectionMark({
  * The columns exist to fit several short labels side by side, so a section the
  * dataset answers only one facet of is a full-width tile rather than a third of
  * a row nothing is in. max is the section's own ceiling: three is for short
- * labels, and health and the household questions keep two because
- * "Sterilizacija" clips badly in a third of a 320px sheet.
+ * labels, and health and Lahko ponudim keep two for the line their tiles carry
+ * under the label.
  *
  * The class names are written out rather than built, because Tailwind reads
  * this file as text and generates only what it can see.
  */
+/** The voice a section explains itself in when the words are drawn rather
+ *  than tucked into the heading's tooltip: a lead above the rows, or the
+ *  line under them saying what the rows leave out (unanswered-note.tsx).
+ *  12px on a phone and 11px in the 224px sidebar, as SectionHint is. */
+export const NOTE_CLASS =
+  "text-xs leading-snug text-muted-foreground lg:text-2xs";
+
 export function sheetColumnsFor(count: number, max: 2 | 3 = 3): string {
   if (max === 3 && count > 2) return "grid-cols-3";
   return count > 1 ? "grid-cols-2" : "grid-cols-1";
@@ -355,6 +383,7 @@ export function sheetColumnsFor(count: number, max: 2 | 3 = 3): string {
 export function FilterCardSection({
   label,
   hint,
+  lead,
   active,
   onReset,
   resetAriaLabel,
@@ -367,6 +396,10 @@ export function FilterCardSection({
 }: {
   label: string;
   hint?: string;
+  /** What the rows answer, drawn above them on every surface. Unlike the
+   *  hint it never folds into a tooltip, so it is for the one thing a
+   *  section cannot be used without. */
+  lead?: string;
   active: boolean;
   onReset: () => void;
   resetAriaLabel: string;
@@ -393,6 +426,7 @@ export function FilterCardSection({
       />
       <CollapsibleBody collapse={collapse}>
         {hint && <SectionHint collapse={collapse}>{hint}</SectionHint>}
+        {lead && <p className={cn("mb-2", NOTE_CLASS)}>{lead}</p>}
         <LazyMotion features={domAnimation}>
           <div
             className={cn(
@@ -414,15 +448,18 @@ export function FilterCardMark({
   layout,
   checked,
   appearDelay,
+  shape,
 }: {
   layout: FilterCardLayout;
   checked: boolean;
   appearDelay: number;
+  shape?: SelectionShape;
 }) {
   return (
     <FilterSelectionMark
       checked={checked}
       appearDelay={appearDelay}
+      shape={shape}
       className={markClass(layout)}
     />
   );

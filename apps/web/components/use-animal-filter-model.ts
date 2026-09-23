@@ -15,8 +15,10 @@ import {
   GROUPS,
   speciesCounts,
   speciesFacetCounts,
+  thinnestAnswer,
   toggleCounts,
   toggleLabel,
+  unansweredCounts,
   visibleCare,
   visibleGoodWith,
   visibleGroups,
@@ -160,6 +162,22 @@ export function useAnimalFilterModel({
     () => toggleCounts(animals, filters, reference),
     [animals, filters, reference],
   );
+  // What each question leaves out for want of an answer, beside the counts
+  // above and over the same animals (unansweredCounts in lib/filters).
+  const unanswered = useMemo(
+    () => unansweredCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
+  // The empty state's reason, asked only when the list is empty: it is one
+  // more walk per answered question, and there is nothing to explain while
+  // anything matches.
+  const thinnest = useMemo(
+    () =>
+      resultCount === 0
+        ? thinnestAnswer(animals, filters, reference)
+        : undefined,
+    [animals, filters, reference, resultCount],
+  );
   // Every option of a live section stays visible; counts indicate which answers
   // are confirmed. visible* answers only whether the section is live at all,
   // so it returns every key or none (visibleFacet in lib/filters.ts).
@@ -174,6 +192,7 @@ export function useAnimalFilterModel({
       total: pool.length,
       onToggle: toggleGoodWith,
       onToggleMany: toggleManyGoodWith,
+      unanswered: unanswered.goodWith,
     };
   }, [
     animals,
@@ -184,12 +203,17 @@ export function useAnimalFilterModel({
     resultCount,
     toggleGoodWith,
     toggleManyGoodWith,
+    unanswered,
   ]);
 
   const care = useMemo(() => {
     const keys = visibleCare(pool, filters.care, true);
     return {
-      options: careOptions(locale).filter((option) => keys.includes(option.key)),
+      // The tab decides one description: Izkušeno roko names the dogs it
+      // holds, and on Mačke it holds two very frightened cats instead.
+      options: careOptions(locale, filters.species).filter((option) =>
+        keys.includes(option.key),
+      ),
       counts: careCounts(animals, filters, reference),
       resultCount: resultCount,
       total: pool.length,
@@ -297,5 +321,7 @@ export function useAnimalFilterModel({
     care,
     chips,
     hasSidebar,
+    unanswered,
+    thinnest,
   };
 }

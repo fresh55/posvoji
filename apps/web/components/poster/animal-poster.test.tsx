@@ -368,7 +368,7 @@ describe("a status the sheet has to name", () => {
   it("names a hold the same way", () => {
     const { container } = poster({ animal: animal({ status: "hold" }) });
     expect(container.querySelector(".poster-status")?.textContent).toBe(
-      "ni za posvojitev",
+      "trenutno ni na voljo",
     );
   });
 

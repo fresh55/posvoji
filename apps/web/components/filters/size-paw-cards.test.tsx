@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { PawPrint } from "lucide-react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -190,6 +192,68 @@ describe("SizePawCards watermark", () => {
       // The paw itself stays. Quieting the surface never takes the drawing.
       expect(button.querySelector("svg.lucide-paw-print")).not.toBeNull();
     }
+  });
+
+  it("draws the paw with the shapes lucide's PawPrint is drawn from", () => {
+    // The toes are copied out of lucide so they can spread on a landing. A
+    // lucide upgrade that redraws the paw has to fail here rather than leave
+    // this section drawing last year's icon.
+    const shapes = (svg: Element | null) =>
+      [...(svg?.children ?? [])].map((shape) =>
+        [
+          shape.tagName,
+          ...["cx", "cy", "r", "d"].map((name) => shape.getAttribute(name)),
+        ].join(" "),
+      );
+    const lucide = render(<PawPrint />);
+    const drawn = shapes(lucide.container.querySelector("svg"));
+    cleanup();
+
+    renderCards();
+
+    expect(drawn.length).toBeGreaterThan(0);
+    for (const { label } of options) {
+      const button = screen.getByRole("button", {
+        name: new RegExp(`^${label}, `),
+      });
+      expect(shapes(button.querySelector("svg.lucide-paw-print"))).toEqual(
+        drawn,
+      );
+    }
+  });
+
+  it("leaves a print where a paw was taken off", () => {
+    function Harness() {
+      const [selected, setSelected] = useState([options[0].value]);
+      return (
+        <I18nProvider locale="sl">
+          <SizePawCards
+            options={options}
+            counts={counts}
+            selected={selected}
+            onToggle={(value) =>
+              setSelected((current) =>
+                current.includes(value)
+                  ? current.filter((item) => item !== value)
+                  : [...current, value],
+              )
+            }
+          />
+        </I18nProvider>
+      );
+    }
+    render(<Harness />);
+    const button = screen.getByRole("button", {
+      name: new RegExp(`^${options[0].label}, `),
+    });
+    const prints = () =>
+      button.querySelectorAll('svg.lucide-paw-print[fill="currentColor"]');
+    expect(prints()).toHaveLength(0);
+
+    fireEvent.click(button);
+
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    expect(prints()).toHaveLength(1);
   });
 
   // The row treatment filter-card.tsx describes: a transparent border, no

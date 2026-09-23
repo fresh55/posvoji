@@ -467,16 +467,19 @@ export function FilterCardMark({
 }
 
 // The icon column: a halo that lights when the card is chosen, and whatever the
-// section draws over it. exitDelay lets a reset wink the cards out in order
-// rather than all at once.
+// section draws over it. appearDelay lets a section light the halo once its
+// gesture lands; exitDelay lets a reset wink the cards out in order rather
+// than all at once.
 export function FilterCardIconWell({
   layout,
   checked,
+  appearDelay = 0,
   exitDelay = 0,
   children,
 }: {
   layout: FilterCardLayout;
   checked: boolean;
+  appearDelay?: number;
   exitDelay?: number;
   children: ReactNode;
 }) {
@@ -496,7 +499,12 @@ export function FilterCardIconWell({
           shouldReduceMotion
             ? { duration: 0 }
             : checked
-              ? { type: "spring", stiffness: 380, damping: 26 }
+              ? {
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 26,
+                  delay: appearDelay,
+                }
               : { duration: 0.15, delay: exitDelay, ease: "easeOut" }
         }
       />

@@ -54,7 +54,8 @@ const SHEET_ROW_CLASS = `${DEAD_OPTION_CLASS} min-h-13 flex-row items-center jus
  *
  * A section that does not fold, like Kje above it: it holds one control, and
  * folding it would hide the whole of it behind its own heading. It is drawn
- * only while the list has someone to leave out (visibleGroups).
+ * once the list has someone to leave out (visibleGroups), and then stays
+ * until the species tab changes (use-animal-filter-model.ts).
  */
 export function AvailabilityCards({
   options,

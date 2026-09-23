@@ -286,8 +286,9 @@ const sl = {
   // answer is said under the rows, where a mouse can read it too.
   energyFilterHint: "Po presoji zavetišča.",
   healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
-  // The second sentence is the one thing the round marks say that a screen
-  // reader does not hear from them: a second pick replaces the first.
+  // The second sentence says what the round marks show: a second pick
+  // replaces the first. Each row reads the whole hint out as its description
+  // (waiting-cards.tsx), since a screen reader hears nothing of the marks.
   waitingFilterHint:
     "Po znanem datumu sprejema v zavetišče. Izbereš lahko eno mejo.",
   resetWaitingFilters: "Ponastavi čas v zavetišču",

@@ -151,6 +151,16 @@ describe("V zavetišču takes one threshold at a time", () => {
     openFilterSection("Videz");
     expect(mark(/^Dolga,/)?.classList.contains("rounded-sm")).toBe(true);
   });
+
+  it("says so to a screen reader on every row, which hears nothing of the mark", () => {
+    show({ groups: ["waiting"], counts: { waiting: [["over-1-year", 4]] } });
+    openFilterSection("V zavetišču");
+    const row = screen.getByRole("button", { name: /^Nad 1 leto,/ });
+    const description = document.getElementById(row.getAttribute("aria-describedby")!);
+    expect(description?.textContent).toBe(
+      "Po znanem datumu sprejema v zavetišče. Izbereš lahko eno mejo.",
+    );
+  });
 });
 
 describe("Velikost on Vse", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
+import { useId } from "react";
 import { DrawnGlyph, type DrawTempo } from "@/components/filters/drawn-glyph";
 import {
   CountRoll,
@@ -190,6 +191,7 @@ export function WaitingCards({
 }) {
   const { locale, messages } = useI18n();
   const label = groupLabel("waiting", locale);
+  const hintId = useId();
   const { beginReset, resetDelay } = useResetStagger(
     selected.length,
     options.length,
@@ -214,7 +216,18 @@ export function WaitingCards({
       collapse={collapse}
       // One row of three on the phone: the three glasses read as one scale.
       sheetColumns={sheetColumnsFor(options.length)}
-      footer={<UnansweredNote tally={unanswered} />}
+      footer={
+        <>
+          {/* The hint as each row's description, as Starost gives its own
+              (age-growth-control.tsx). The round marks say one threshold at
+              a time and a screen reader hears nothing of them, and the
+              heading's tooltip is only heard on the way past the heading. */}
+          <p id={hintId} className="sr-only">
+            {messages.waitingFilterHint}
+          </p>
+          <UnansweredNote tally={unanswered} />
+        </>
+      }
     >
       {options.map(({ value, label: option }, index) => {
         const count = counts.get(value) ?? 0;
@@ -228,6 +241,7 @@ export function WaitingCards({
             type="button"
             aria-pressed={checked}
             aria-label={option + ", " + animalCount(count, locale)}
+            aria-describedby={hintId}
             disabled={dead}
             {...gestureHandlers(value)}
             onClick={() => {

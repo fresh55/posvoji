@@ -586,6 +586,26 @@ describe("a filter with nothing left to narrow", () => {
       screen.getAllByRole("button", { name: "Filtri, aktivnih: 1" }).length,
     ).toBeGreaterThan(0);
   });
+
+  it("keeps Posvojitev under the press that turns it off", () => {
+    // Nobody on Ostale is on hold here, so the section is drawn only because
+    // its row is on. Pressing it off took the section away, and the keyboard
+    // focus on its row with it.
+    window.history.replaceState(null, "", "/?vrsta=ostalo&posvojitev=na-voljo");
+    const { container } = renderGrid([
+      { ...animal("dog-hold", "dog", "muri"), status: "hold" },
+      animal("rabbit-druga", "rabbit", "druga"),
+    ]);
+    const rail = container.querySelector("aside")!;
+    const row = within(rail).getByRole("button", { name: /^Samo na voljo,/ });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(row);
+  });
 });
 
 describe("the pre-hydration mark", () => {

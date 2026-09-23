@@ -223,7 +223,8 @@ export type FilterValueDefinition<Value extends string = string> = {
 
 export const FILTER_METADATA = {
   // The label answers the badges a card wears when it cannot be adopted now
-  // ("rezervirano", "trenutno ni na voljo"), so the row says which cards go.
+  // ("rezervirano", "trenutno ni na voljo", "posvojeno"), so the row says
+  // which cards go.
   availability: [
     { value: "available", slug: "na-voljo", labels: { sl: "Samo na voljo", en: "Available only" } },
   ],

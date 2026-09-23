@@ -24,6 +24,7 @@ import {
   visibleGroups,
   valueChipLabel,
   visibleToggles,
+  type SpeciesFilter,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -32,7 +33,7 @@ import {
 } from "@/lib/labels";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { summarizeShelters } from "@/lib/shelter-summary";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type FilterActions = Pick<
   ReturnType<typeof useAnimalFilters>,
@@ -128,12 +129,27 @@ export function useAnimalFilterModel({
     () => visibleGroups(pool, filters, reference, true),
     [pool, filters, reference],
   );
+  // Posvojitev, once drawn on a tab, stays for as long as the tab does. It is
+  // drawn while the tab has someone to leave out or while its row is on, and
+  // the row can be on where nobody is: carried over from Vse, or arriving in
+  // a link. Pressing it off there took the section out from under the press,
+  // and keyboard focus with it. Set while rendering, React's own shape for
+  // state that follows a value (use-filter-sections.ts has the same).
+  const [availabilityTab, setAvailabilityTab] = useState<SpeciesFilter | null>(
+    null,
+  );
+  if (shown.availability && availabilityTab !== filters.species) {
+    setAvailabilityTab(filters.species);
+  }
+  const keepsAvailability = availabilityTab === filters.species;
   const groups = useMemo(
     () =>
       GROUPS.filter(
-        (group): group is CardGroup => group !== "shelter" && shown[group],
+        (group): group is CardGroup =>
+          group !== "shelter" &&
+          (shown[group] || (group === "availability" && keepsAvailability)),
       ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
-    [locale, pool, shown],
+    [keepsAvailability, locale, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which

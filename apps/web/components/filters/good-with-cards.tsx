@@ -1,7 +1,6 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import { useId } from "react";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -16,15 +15,15 @@ import {
   sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
-import type { SectionCollapse } from "@/components/filters/filter-section-header";
+import {
+  SectionNote,
+  type SectionCollapse,
+} from "@/components/filters/filter-section-header";
 import {
   GoodWithGlyph,
   LONGEST_GOOD_WITH_GESTURE_MS,
 } from "@/components/filters/good-with-glyphs";
-import {
-  UnansweredHides,
-  useUnansweredRow,
-} from "@/components/filters/unanswered-note";
+import { useRowNotes } from "@/components/filters/unanswered-note";
 import {
   resetDelayStyle,
   useFilterCardHover,
@@ -98,9 +97,11 @@ export function GoodWithCards({
 }) {
   const { locale, messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  const unansweredRow = useUnansweredRow("goodWithUnansweredRow");
-  const describedBy = useId();
-  const rowNotes = options.map(({ key }) => unansweredRow(unanswered?.[key]));
+  const rowNotes = useRowNotes(
+    options.map(({ key }) => key),
+    unanswered,
+    "goodWithUnansweredRow",
+  );
   const {
     celebration,
     celebrate,
@@ -162,8 +163,8 @@ export function GoodWithCards({
           >
             {outcome}
           </p>
-          {outcome === null && rowNotes.some(Boolean) && (
-            <UnansweredHides message="goodWithUnansweredLine" />
+          {outcome === null && rowNotes.any && (
+            <SectionNote>{messages.goodWithUnansweredLine}</SectionNote>
           )}
         </>
       }
@@ -177,8 +178,7 @@ export function GoodWithCards({
         const reacting = celebrationIndex >= 0 && !celebrating;
         const tiltDirection = Math.sign(index - celebrationIndex) || 1;
         const exitDelay = resetDelay(index);
-        const note = rowNotes[index];
-        const noteId = `${describedBy}-${key}`;
+        const note = rowNotes.at(index);
 
         return (
           <button
@@ -196,7 +196,7 @@ export function GoodWithCards({
             {...hoverHandlers(key)}
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
-            aria-describedby={note ? noteId : undefined}
+            aria-describedby={note.description ? note.descriptionId : undefined}
             className={filterCardVariants({
               layout,
               selected: checked,
@@ -268,8 +268,7 @@ export function GoodWithCards({
               layout={layout}
               label={label}
               checked={checked}
-              description={note}
-              descriptionId={noteId}
+              {...note}
               descriptionAfterCount
               renderCount={(className) => (
                 <CountRoll value={count} className={className} />

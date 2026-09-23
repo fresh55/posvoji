@@ -1,4 +1,9 @@
-import type { Animal, AnimalSource } from "@posvoji/schema";
+import type {
+  AdoptionStatus,
+  Animal,
+  AnimalSource,
+  TestResult,
+} from "@posvoji/schema";
 import type { PermittedPhoto } from "@/lib/animal-images";
 
 /**
@@ -36,6 +41,22 @@ export type ClientAnimalSource = Pick<AnimalSource, "sourceUrl"> &
 export type AnimalFields = Omit<Animal, "images" | "source"> & {
   source?: ClientAnimalSource;
 };
+
+/** Whether a visitor can act on this animal now: available, or an unknown
+ *  that the shelter's own listing still carries. An allowlist and not a
+ *  denylist of the other three, so a status added to the schema is not taken
+ *  for adoptable until someone says it is. The long-stay plea (lib/labels.ts)
+ *  and Samo na voljo (lib/filters/engine.ts) both ask it. */
+export function adoptableNow(status: AdoptionStatus): boolean {
+  return status === "available" || status === "unknown";
+}
+
+/** Whether a test was done: a positive or a negative. Absent and a recorded
+ *  "unknown" are both no result. The FIV and FeLV rows count what they leave
+ *  out by it (lib/filters/metadata.ts), and the dialog names the same gap. */
+export function hasTestResult(result: TestResult | undefined): boolean {
+  return result === "positive" || result === "negative";
+}
 
 /** An animal as a client component receives it: photos already resolved to
  *  the file each one is drawn from, the ones no surface may draw already

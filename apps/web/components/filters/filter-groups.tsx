@@ -19,7 +19,6 @@ import {
   FilterCardRipple,
   FilterCardSection,
   FilterCardTail,
-  NOTE_CLASS,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -29,6 +28,7 @@ import {
 import {
   CollapsibleBody,
   FilterSectionHeader,
+  SectionNote,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import {
@@ -38,9 +38,8 @@ import {
 import { SexCards } from "@/components/filters/sex-cards";
 import { SizePawCards } from "@/components/filters/size-paw-cards";
 import {
-  UnansweredHides,
   UnansweredNote,
-  useUnansweredRow,
+  useRowNotes,
 } from "@/components/filters/unanswered-note";
 import { WaitingCards } from "@/components/filters/waiting-cards";
 import {
@@ -136,9 +135,6 @@ export type GoodWithSection = {
   total: number;
   onToggle: (key: GoodWithKey) => void;
   onToggleMany: (values: GoodWithKey[]) => void;
-  /** Per question, since each has its own answers: "Otroke" had 12 of 491
-   *  and "Mačko" 190. One count for the section would describe neither. */
-  unanswered?: Readonly<Record<GoodWithKey, Unanswered>>;
 };
 
 /** Everything Lahko ponudim needs, absent while no animal answers it. */
@@ -173,9 +169,11 @@ function HealthToggleCards({
 }) {
   const { locale, messages } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  const unansweredRow = useUnansweredRow("unansweredRow");
-  const describedBy = useId();
-  const rowNotes = toggles.map(({ key }) => unansweredRow(unanswered?.[key]));
+  const rowNotes = useRowNotes(
+    toggles.map(({ key }) => key),
+    unanswered,
+    "unansweredRow",
+  );
   const {
     celebration,
     celebrate,
@@ -205,8 +203,8 @@ function HealthToggleCards({
       // saying how many cats have no result.
       sheetColumns={sheetColumnsFor(toggles.length, 2)}
       footer={
-        rowNotes.some(Boolean) ? (
-          <UnansweredHides message="unansweredHides" />
+        rowNotes.any ? (
+          <SectionNote>{messages.unansweredHides}</SectionNote>
         ) : undefined
       }
     >
@@ -217,8 +215,7 @@ function HealthToggleCards({
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
         const exitDelay = resetDelay(index);
-        const note = rowNotes[index];
-        const noteId = `${describedBy}-${key}`;
+        const note = rowNotes.at(index);
 
         return (
           <button
@@ -236,7 +233,7 @@ function HealthToggleCards({
             {...hoverHandlers(key)}
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
-            aria-describedby={note ? noteId : undefined}
+            aria-describedby={note.description ? note.descriptionId : undefined}
             className={filterCardVariants({
               layout,
               selected: checked,
@@ -300,8 +297,7 @@ function HealthToggleCards({
               layout={layout}
               label={label}
               checked={checked}
-              description={note}
-              descriptionId={noteId}
+              {...note}
               descriptionAfterCount
               renderCount={(className) => (
                 <CountRoll value={count} className={className} />
@@ -354,9 +350,7 @@ function SizeGroup({
         />
         {/* The cats first: the larger of the two left out, and the count
             under it is of the animals asked, which cats are not. */}
-        {leavesOutCats && (
-          <p className={cn("mt-2", NOTE_CLASS)}>{messages.sizeLeavesOutCats}</p>
-        )}
+        {leavesOutCats && <SectionNote>{messages.sizeLeavesOutCats}</SectionNote>}
         <UnansweredNote tally={unanswered} />
       </CollapsibleBody>
     </section>
@@ -753,7 +747,7 @@ export function FilterGroupList({
           total={goodWith.total}
           onToggle={goodWith.onToggle}
           onToggleMany={goodWith.onToggleMany}
-          unanswered={goodWith.unanswered}
+          unanswered={unanswered?.goodWith}
           layout={layout}
           collapse={collapseFor(
             "goodWith",

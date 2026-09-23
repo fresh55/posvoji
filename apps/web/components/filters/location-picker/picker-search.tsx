@@ -1,6 +1,7 @@
 import { ArrowDownNarrowWide, Check, MapPin, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -145,17 +146,19 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
               one mark read as one control drawn twice. This one orders the
               grid, so it carries what the grid's order carries. */}
           {onSortChange && (
-            <Button
-              type="button"
+            <Toggle
               variant="outline"
-              aria-pressed={byDistance}
-              onClick={toggleNearestSort}
-              className="h-11 max-w-full justify-start gap-2 px-3 text-left text-sm shadow-none aria-pressed:border-brand-border aria-pressed:bg-brand aria-pressed:text-brand-foreground"
+              pressed={byDistance}
+              onPressedChange={toggleNearestSort}
+              // The ground and the 3:1 border of the outline Button above it,
+              // which the Toggle outline draws lighter; the two sit one over
+              // the other and read as a pair.
+              className="h-11 max-w-full justify-start gap-2 border-control-border bg-background px-3 text-left shadow-none dark:bg-input/30"
             >
               <ArrowDownNarrowWide className="size-3.5 shrink-0" aria-hidden />
               <span className="truncate">{messages.sortByDistance}</span>
               {byDistance && <Check className="size-3.5 shrink-0" aria-hidden />}
-            </Button>
+            </Toggle>
           )}
         </div>
       )}

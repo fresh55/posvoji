@@ -116,33 +116,47 @@ export function CollapsibleBody({
   );
 }
 
+// The voice a section explains itself in when the words are drawn: the hint
+// and the lead above the rows, the notes under them. 12px in the sheet, 11px
+// in the sidebar. The two sizes are one decision about column width and not
+// two tastes: the sidebar is a 224px column beside the grid, while the sheet
+// is a phone held at arm's length, where 11px was the smallest type on the
+// page. The sheet is below lg and the sidebar only from it, so the width gate
+// says which one this is.
+const NOTE_CLASS = "text-xs leading-snug text-muted-foreground lg:text-2xs";
+
 /** The hint sentence a section keeps under its header. A folding section moves
     the hint into the header tooltip, which a touch screen cannot open, so
     coarse pointers keep the sentence in the body; a section that never folds
-    keeps it visible outright. */
+    keeps it visible outright. The id lets the section's rows take it as
+    their description, which a hidden hint still gives. */
 export function SectionHint({
   collapse,
+  id,
   children,
 }: {
   collapse?: SectionCollapse;
+  id?: string;
   children: ReactNode;
 }) {
   return (
     <p
+      id={id}
       className={cn(
-        // 12px in the sheet, 11px in the sidebar. The two sizes are one
-        // decision about column width and not two tastes: the sidebar is a
-        // 224px column beside the grid, while the sheet is a phone held at
-        // arm's length, where 11px was the smallest type on the page. The
-        // sheet is below lg and the sidebar only from it, so the width gate
-        // says which one this is.
-        "mb-2 text-xs leading-snug text-muted-foreground lg:text-2xs",
+        "mb-2",
+        NOTE_CLASS,
         collapse && "hidden [@media(pointer:coarse)]:block",
       )}
     >
       {children}
     </p>
   );
+}
+
+/** A line under a section's rows, saying what they leave out or what a pick
+    does with it (unanswered-note.tsx). */
+export function SectionNote({ children }: { children: ReactNode }) {
+  return <p className={cn("mt-2", NOTE_CLASS)}>{children}</p>;
 }
 
 // Focus walks the headers with the arrow keys, as an accordion is expected to.

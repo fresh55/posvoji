@@ -9,6 +9,7 @@ import {
   groupOptions,
   TOGGLES,
   toggleLabel,
+  unansweredCounts,
   type Filters,
   type MultiGroup,
   type UnansweredTally,
@@ -194,21 +195,11 @@ describe("Lahko ponudim", () => {
 });
 
 describe("the health rows", () => {
+  const none = unansweredCounts([], EMPTY_FILTERS, now);
   const unanswered: UnansweredTally = {
-    groups: Object.fromEntries(
-      (["availability", "sex", "age", "size", "energy", "shelter", "coatColor", "coatLength", "waiting"] as const).map(
-        (group) => [group, { asked: 0, unanswered: 0 }],
-      ),
-    ) as UnansweredTally["groups"],
-    goodWith: {
-      kids: { asked: 0, unanswered: 0 },
-      dogs: { asked: 0, unanswered: 0 },
-      cats: { asked: 0, unanswered: 0 },
-    },
+    ...none,
     toggles: {
-      sterilizacija: { asked: 0, unanswered: 0 },
-      cepljenje: { asked: 0, unanswered: 0 },
-      cip: { asked: 0, unanswered: 0 },
+      ...none.toggles,
       "brez-fiv": { asked: 363, unanswered: 134 },
       "brez-felv": { asked: 363, unanswered: 121 },
     },

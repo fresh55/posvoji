@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
-import { groupOptions } from "@/lib/filters";
+import { EMPTY_FILTERS, facetCounts, groupOptions } from "@/lib/filters";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -119,33 +119,9 @@ describe("size section reset", () => {
     render(
       <I18nProvider locale="sl">
         <FilterGroupList
-          filters={{
-            species: "all",
-            availability: [],
-            sex: [],
-            age: [],
-            size: selected as AnimalSize[],
-            energy: [],
-            coatColor: [],
-            coatLength: [],
-            waiting: [],
-            shelter: [],
-            toggles: [],
-            goodWith: [],
-            care: [],
-          }}
+          filters={{ ...EMPTY_FILTERS, size: selected as AnimalSize[] }}
           groups={[{ group, options }]}
-          counts={{
-            availability: new Map(),
-            sex: new Map(),
-            age: new Map(),
-            size: counts,
-            energy: new Map(),
-            coatColor: new Map(),
-            coatLength: new Map(),
-            waiting: new Map(),
-            shelter: new Map(),
-          }}
+          counts={{ ...facetCounts([], EMPTY_FILTERS, new Date()), size: counts }}
           toggles={[]}
           toggleTally={new Map()}
           onToggle={(_group, value) => onToggle(value)}

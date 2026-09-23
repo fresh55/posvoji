@@ -269,7 +269,7 @@ export function CountRoll({
  * one threshold at a time, and in tick boxes the second press quietly unticked
  * the first, which a box never does anywhere else in the panel.
  */
-export type SelectionShape = "box" | "dot";
+type SelectionShape = "box" | "dot";
 
 export function FilterSelectionMark({
   checked,
@@ -351,13 +351,6 @@ export function FilterSelectionMark({
   );
 }
 
-/** The voice a section explains itself in when the words are drawn rather
- *  than tucked into the heading's tooltip: a lead above the rows, or the
- *  line under them saying what the rows leave out (unanswered-note.tsx).
- *  12px on a phone and 11px in the 224px sidebar, as SectionHint is. */
-export const NOTE_CLASS =
-  "text-xs leading-snug text-muted-foreground lg:text-2xs";
-
 /**
  * The sheetColumns a section with this many answers asks for.
  *
@@ -384,6 +377,7 @@ export function FilterCardSection({
   label,
   hint,
   lead,
+  hintId,
   active,
   onReset,
   resetAriaLabel,
@@ -400,6 +394,8 @@ export function FilterCardSection({
    *  hint it never folds into a tooltip, so it is for the one thing a
    *  section cannot be used without. */
   lead?: string;
+  /** Names the hint, for rows that take it as their description. */
+  hintId?: string;
   active: boolean;
   /** Absent for a section of one row, which is its own way off. */
   onReset?: () => void;
@@ -426,8 +422,12 @@ export function FilterCardSection({
         tone={tone}
       />
       <CollapsibleBody collapse={collapse}>
-        {hint && <SectionHint collapse={collapse}>{hint}</SectionHint>}
-        {lead && <p className={cn("mb-2", NOTE_CLASS)}>{lead}</p>}
+        {hint && (
+          <SectionHint collapse={collapse} id={hintId}>
+            {hint}
+          </SectionHint>
+        )}
+        {lead && <SectionHint>{lead}</SectionHint>}
         <LazyMotion features={domAnimation}>
           <div
             className={cn(
@@ -697,17 +697,9 @@ export function FilterCardTail({
         >
           {label}
         </span>
-        {descriptionAfterCount ? (
-          <>
-            {count}
-            {said}
-          </>
-        ) : (
-          <>
-            {said}
-            {count}
-          </>
-        )}
+        {!descriptionAfterCount && said}
+        {count}
+        {descriptionAfterCount && said}
       </>
     );
   }

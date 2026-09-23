@@ -1,6 +1,5 @@
 "use client";
 
-import { Key } from "lucide-react";
 import { m, useReducedMotion } from "motion/react";
 import {
   CountRoll,
@@ -22,13 +21,14 @@ import {
   useOneShotCelebration,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
+import { FACET_ICONS } from "@/lib/animal-icons";
 import { groupLabel, type FilterOption } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// The key to a new home, turned once in its lock as the row is switched on.
-// A key and not an open door: the door is Najnovejši sprejemi's in the sort
-// menu, an animal that has just come in.
+// The facet's mark, as its chip wears it (lib/animal-icons.ts): the key to
+// a new home, turned once in its lock as the row is switched on.
+const AvailabilityIcon = FACET_ICONS.availability;
 const TURN = { rotate: [0, 70, 0] };
 const REST = { rotate: 0 };
 const TURN_DURATION = 0.36;
@@ -146,7 +146,7 @@ export function AvailabilityCards({
                       : { duration: 0.16 }
                   }
                 >
-                  <Key
+                  <AvailabilityIcon
                     aria-hidden
                     className={cn(
                       "size-5 transition-colors duration-150",

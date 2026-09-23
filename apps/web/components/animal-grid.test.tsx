@@ -606,6 +606,24 @@ describe("a filter with nothing left to narrow", () => {
     expect(row.getAttribute("aria-pressed")).toBe("false");
     expect(document.activeElement).toBe(row);
   });
+
+  it("keeps any section a selection alone was holding on the tab", () => {
+    // Energija carried to Mačke, where no cat was rated: the section is there
+    // only for its answer, and pressing that off must not take it away.
+    window.history.replaceState(null, "", "/?vrsta=macka&energija=miren");
+    const { container } = renderGrid([
+      { ...animal("dog-calm", "dog", "muri"), energy: "calm" },
+      animal("cat-unrated", "cat", "muri"),
+    ]);
+    const rail = container.querySelector("aside")!;
+    const row = within(rail).getByRole("button", { name: /^Miren,/ });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(document.activeElement).toBe(row);
+  });
 });
 
 describe("the pre-hydration mark", () => {

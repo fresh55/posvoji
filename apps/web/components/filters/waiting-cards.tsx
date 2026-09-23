@@ -206,6 +206,9 @@ export function WaitingCards({
     <FilterCardSection
       label={label}
       hint={messages.waitingFilterHint}
+      // Each row takes the hint as its description: the round marks say one
+      // threshold at a time, and a screen reader hears nothing of them.
+      hintId={hintId}
       active={selected.length > 0}
       onReset={() => {
         beginReset();
@@ -216,18 +219,7 @@ export function WaitingCards({
       collapse={collapse}
       // One row of three on the phone: the three glasses read as one scale.
       sheetColumns={sheetColumnsFor(options.length)}
-      footer={
-        <>
-          {/* The hint as each row's description, as Starost gives its own
-              (age-growth-control.tsx). The round marks say one threshold at
-              a time and a screen reader hears nothing of them, and the
-              heading's tooltip is only heard on the way past the heading. */}
-          <p id={hintId} className="sr-only">
-            {messages.waitingFilterHint}
-          </p>
-          <UnansweredNote tally={unanswered} />
-        </>
-      }
+      footer={<UnansweredNote tally={unanswered} />}
     >
       {options.map(({ value, label: option }, index) => {
         const count = counts.get(value) ?? 0;

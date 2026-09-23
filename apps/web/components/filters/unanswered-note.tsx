@@ -1,9 +1,9 @@
 "use client";
 
-import { NOTE_CLASS } from "@/components/filters/filter-card";
+import { useId } from "react";
+import { SectionNote } from "@/components/filters/filter-section-header";
 import { useI18n } from "@/components/i18n-context";
 import { namesUnanswered, type Unanswered } from "@/lib/filters";
-import { cn } from "@/lib/utils";
 
 /**
  * The line under a section's rows once a tenth or more of the animals it is
@@ -21,32 +21,34 @@ export function UnansweredNote({ tally }: { tally?: Unanswered }) {
   const { t } = useI18n();
   if (!tally || !namesUnanswered(tally)) return null;
   return (
-    <p className={cn("mt-2", NOTE_CLASS)}>
-      {t("unansweredLine", { count: tally.unanswered })}
-    </p>
+    <SectionNote>{t("unansweredLine", { count: tally.unanswered })}</SectionNote>
   );
 }
 
-/** The sentence a section asking several questions says once under all of
- *  them, when any of its rows names a count. */
-export function UnansweredHides({
-  message,
-}: {
-  message: "unansweredHides" | "goodWithUnansweredLine";
-}) {
-  const { messages } = useI18n();
-  return <p className={cn("mt-2", NOTE_CLASS)}>{messages[message]}</p>;
-}
-
-/** The count for one option of a section that asks several questions, for
- *  the line under that option's label, or nothing where it is not worth
- *  saying. */
-export function useUnansweredRow(
+/**
+ * The same for a section that asks several questions, one per row: the line
+ * under each row that has a count worth saying, and the id the row names it
+ * by as its description. `any` is whether a row says one at all, which is
+ * when the section says once, under all of them, what a pick does with them.
+ */
+export function useRowNotes<Key extends string>(
+  keys: readonly Key[],
+  tally: Readonly<Record<Key, Unanswered>> | undefined,
   message: "unansweredRow" | "goodWithUnansweredRow",
 ) {
   const { t } = useI18n();
-  return (tally: Unanswered | undefined): string | undefined =>
-    tally && namesUnanswered(tally)
-      ? t(message, { count: tally.unanswered })
+  const id = useId();
+  const notes = keys.map((key) => {
+    const count = tally?.[key];
+    return count && namesUnanswered(count)
+      ? t(message, { count: count.unanswered })
       : undefined;
+  });
+  return {
+    any: notes.some((note) => note !== undefined),
+    at: (index: number) => ({
+      description: notes[index],
+      descriptionId: `${id}-${keys[index]}`,
+    }),
+  };
 }

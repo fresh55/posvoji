@@ -15,7 +15,6 @@ import {
   GROUPS,
   speciesCounts,
   speciesFacetCounts,
-  thinnestAnswer,
   toggleCounts,
   toggleLabel,
   unansweredCounts,
@@ -24,7 +23,6 @@ import {
   visibleGroups,
   valueChipLabel,
   visibleToggles,
-  type SpeciesFilter,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -129,27 +127,36 @@ export function useAnimalFilterModel({
     () => visibleGroups(pool, filters, reference, true),
     [pool, filters, reference],
   );
-  // Posvojitev, once drawn on a tab, stays for as long as the tab does. It is
-  // drawn while the tab has someone to leave out or while its row is on, and
-  // the row can be on where nobody is: carried over from Vse, or arriving in
-  // a link. Pressing it off there took the section out from under the press,
-  // and keyboard focus with it. Set while rendering, React's own shape for
-  // state that follows a value (use-filter-sections.ts has the same).
-  const [availabilityTab, setAvailabilityTab] = useState<SpeciesFilter | null>(
-    null,
+  // A section, once drawn on a tab, stays for as long as the tab does.
+  // visibleGroups keeps one the pool cannot narrow only while it is answered,
+  // and an answer can stand where nothing else would draw the section:
+  // carried over from another tab, or arriving in a link (Posvojitev on a tab
+  // with nobody on hold, Energija carried to a tab nobody rated). Pressing the
+  // last one off there took the section out from under the press, and
+  // keyboard focus with it. Set while rendering, React's own shape for state
+  // that follows a value (use-filter-sections.ts has the same).
+  const [drawn, setDrawn] = useState(() => ({
+    tab: filters.species,
+    groups: GROUPS.filter((group) => shown[group]),
+  }));
+  const sameTab = drawn.tab === filters.species;
+  const gained = GROUPS.filter(
+    (group) => shown[group] && !(sameTab && drawn.groups.includes(group)),
   );
-  if (shown.availability && availabilityTab !== filters.species) {
-    setAvailabilityTab(filters.species);
+  if (!sameTab || gained.length > 0) {
+    setDrawn({
+      tab: filters.species,
+      groups: sameTab ? [...drawn.groups, ...gained] : gained,
+    });
   }
-  const keepsAvailability = availabilityTab === filters.species;
+  const keptOnTab = drawn.groups;
   const groups = useMemo(
     () =>
       GROUPS.filter(
         (group): group is CardGroup =>
-          group !== "shelter" &&
-          (shown[group] || (group === "availability" && keepsAvailability)),
+          group !== "shelter" && (shown[group] || keptOnTab.includes(group)),
       ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
-    [keepsAvailability, locale, pool, shown],
+    [keptOnTab, locale, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which
@@ -184,16 +191,6 @@ export function useAnimalFilterModel({
     () => unansweredCounts(animals, filters, reference),
     [animals, filters, reference],
   );
-  // The empty state's reason, asked only when the list is empty: it is one
-  // more walk per answered question, and there is nothing to explain while
-  // anything matches.
-  const thinnest = useMemo(
-    () =>
-      resultCount === 0
-        ? thinnestAnswer(animals, filters, reference)
-        : undefined,
-    [animals, filters, reference, resultCount],
-  );
   // The two sections' counts, each a pass over the dataset, kept apart from
   // the result count they are drawn beside. That count follows the grid a
   // render behind (animal-grid.tsx), and in one memo with it the passes ran
@@ -221,7 +218,6 @@ export function useAnimalFilterModel({
       total: pool.length,
       onToggle: toggleGoodWith,
       onToggleMany: toggleManyGoodWith,
-      unanswered: unanswered.goodWith,
     };
   }, [
     filters.goodWith,
@@ -231,7 +227,6 @@ export function useAnimalFilterModel({
     resultCount,
     toggleGoodWith,
     toggleManyGoodWith,
-    unanswered,
   ]);
 
   const care = useMemo(() => {
@@ -350,6 +345,5 @@ export function useAnimalFilterModel({
     chips,
     hasSidebar,
     unanswered,
-    thinnest,
   };
 }

@@ -6,7 +6,7 @@ import type {
   Sex,
   Species,
 } from "@posvoji/schema";
-import type { AnimalFields } from "@/lib/animal";
+import { hasTestResult, type AnimalFields } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import {
   filterColour,
@@ -84,10 +84,6 @@ export type ToggleDef = {
 };
 
 // A test result is an answer when it came back one way or the other.
-function tested(result: string | undefined): boolean {
-  return result === "positive" || result === "negative";
-}
-
 // Nouns, not adjectives: Slovenian would force a gender on "cepljen" that
 // "živali" doesn't share.
 const TOGGLE_DEFS: ToggleDef[] = [
@@ -117,14 +113,14 @@ const TOGGLE_DEFS: ToggleDef[] = [
     label: "Brez FIV",
     species: "cat",
     matches: (animal) => animal.medical?.fiv === "negative",
-    answered: (animal) => tested(animal.medical?.fiv),
+    answered: (animal) => hasTestResult(animal.medical?.fiv),
   },
   {
     key: "brez-felv",
     label: "Brez FeLV",
     species: "cat",
     matches: (animal) => animal.medical?.felv === "negative",
-    answered: (animal) => tested(animal.medical?.felv),
+    answered: (animal) => hasTestResult(animal.medical?.felv),
   },
 ];
 

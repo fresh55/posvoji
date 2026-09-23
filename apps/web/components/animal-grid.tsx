@@ -26,6 +26,7 @@ import {
 } from "@/lib/card-grid";
 import {
   applyFilters,
+  thinnestAnswer,
   type Coverage,
   type FilterOption,
   type Filters,
@@ -464,6 +465,17 @@ export function AnimalGrid({
       applyFilters(animals, { ...shownFilters, shelter: [] }, reference).length > 0,
     [animals, shownFilters, reference, visible.length],
   );
+  // The other reason an empty list can have, for the same list: the question
+  // the visitor answered that the shelters answered least (thinnestAnswer).
+  // Asked only while nothing matches, since there is nothing to explain
+  // while anything does.
+  const thinnest = useMemo(
+    () =>
+      visible.length === 0
+        ? thinnestAnswer(animals, shownFilters, reference)
+        : undefined,
+    [animals, shownFilters, reference, visible.length],
+  );
 
   const handleClearAll = useCallback(() => {
     // The species is not part of what clears (use-animal-filters.ts), so it
@@ -517,7 +529,6 @@ export function AnimalGrid({
     chips,
     hasSidebar,
     unanswered,
-    thinnest,
   } = useAnimalFilterModel({
     animals,
     logos,
@@ -546,9 +557,9 @@ export function AnimalGrid({
           // other animals alone (groupAsks), so "od 40 živali" would take in
           // cats nobody asked.
           species: t(
-            thinnest.facet === "size" && filters.species === "all"
+            thinnest.facet === "size" && shownFilters.species === "all"
               ? "sizeAskedOf"
-              : SPECIES_ABSENCE_KEY[filters.species],
+              : SPECIES_ABSENCE_KEY[shownFilters.species],
           ),
         })
       : undefined;

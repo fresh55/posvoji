@@ -20,7 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { AnimalFields } from "@/lib/animal";
+import { hasTestResult, type AnimalFields } from "@/lib/animal";
 import { useAnimalDescription } from "@/lib/animal-descriptions";
 import {
   CARE_ICONS,
@@ -234,12 +234,6 @@ function RequirementFact({
 // shelter recorded and the one it did not are visibly the same question.
 const UnknownTestIcon = HEALTH_ICONS["brez-fiv"];
 
-// Absent and a recorded "unknown" both mean no result. A positive is a result,
-// and the shelter's own words carry it, so it is never a gap.
-function untested(result: TestResult | undefined): boolean {
-  return result !== "negative" && result !== "positive";
-}
-
 // An itemised health row lists only what the record answers, so a cat missing
 // its FIV or FeLV result shows three green pills and nothing about the two
 // tests a visitor with a resident cat came for. The gap gets a name. Cats
@@ -250,8 +244,10 @@ function healthGapKey(
   medical: { fiv?: TestResult; felv?: TestResult } | undefined,
 ): TranslationKey | undefined {
   if (species !== "cat") return undefined;
-  const fiv = untested(medical?.fiv);
-  const felv = untested(medical?.felv);
+  // A positive is a result, and the shelter's own words carry it, so it is
+  // never a gap.
+  const fiv = !hasTestResult(medical?.fiv);
+  const felv = !hasTestResult(medical?.felv);
   if (fiv && felv) return "healthUnknownFivFelv";
   if (fiv) return "healthUnknownFiv";
   if (felv) return "healthUnknownFelv";

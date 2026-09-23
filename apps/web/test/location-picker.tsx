@@ -95,12 +95,18 @@ export const offSite = [
 
 // Stateful because the picker is controlled: the pick card folds once nothing
 // it stands for is selected, so toggles have to land in the next render's
-// `selected` the way animal-grid's real handlers land them.
+// `selected` the way animal-grid's real handlers land them. The grid's order
+// is held the same way, since the distance toggle reads the order it replaced
+// from what it is handed next; a suite that passes no onSortChange gets a
+// picker with no order to change, as a page without a grid does.
 function Harness({
   selected: initialSelected = [],
+  sort: initialSort,
+  onSortChange,
   ...props
 }: Partial<ComponentProps<typeof LocationPicker>>) {
   const [selected, setSelected] = useState<string[]>(initialSelected);
+  const [sort, setSort] = useState(initialSort);
   const toggleMany = (values: string[]) =>
     setSelected((current) => toggleValues(current, values));
   return (
@@ -112,6 +118,14 @@ function Harness({
         onToggle={(value) => toggleMany([value])}
         onToggleMany={toggleMany}
         resultCount={11}
+        sort={sort}
+        onSortChange={
+          onSortChange &&
+          ((next) => {
+            setSort(next);
+            onSortChange(next);
+          })
+        }
         {...props}
       />
     </I18nProvider>

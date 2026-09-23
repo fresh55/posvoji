@@ -1541,12 +1541,8 @@ describe("MapLegend rows", () => {
     const { container } = render(
       <I18nProvider locale="sl">
         <MapLegend
-          highlightedDensity={null}
-          onHoverDensity={() => undefined}
-          onLeaveDensity={() => undefined}
           hasSelectedRegion={false}
           hasMixedRegion={false}
-          hasEmptyMarker={false}
           origin={undefined}
           messages={messages}
           {...props}
@@ -1556,28 +1552,21 @@ describe("MapLegend rows", () => {
     return container.querySelector("[data-map-legend]")!;
   }
 
-  it("explains each hollow-circle state when it occurs", () => {
-    expect(renderLegend({ hasEmptyMarker: true }).textContent).toContain(
-      "Brez objavljenih živali",
-    );
-    cleanup();
+  it("draws nothing at rest, with no scale left to explain", () => {
+    expect(renderLegend().textContent).toBe("");
+  });
+
+  it("explains the dashed circle while a filtered-out shelter is on the map", () => {
     expect(renderLegend({ hasFilteredMarker: true }).textContent).toContain(
       "Brez zadetkov s temi filtri",
     );
   });
 
-  it("distinguishes unlisted shelters from filtered shelters in both legend and map", () => {
-    const legend = renderLegend({
-      hasEmptyMarker: true,
-      hasFilteredMarker: true,
-    });
+  it("draws the legend's dashed circle the way the map draws a filtered-out shelter", () => {
+    const legend = renderLegend({ hasFilteredMarker: true });
 
-    expect(legend.querySelectorAll("svg").length).toBe(2);
-    expect(legend.textContent).toContain("Brez objavljenih živali");
-    expect(legend.textContent).toContain("Brez zadetkov s temi filtri");
-    const circles = legend.querySelectorAll("circle");
-    expect(circles[0].getAttribute("stroke-dasharray")).toBeNull();
-    const dash = circles[1].getAttribute("stroke-dasharray");
+    expect(legend.querySelectorAll("svg").length).toBe(1);
+    const dash = legend.querySelector("circle")!.getAttribute("stroke-dasharray");
     expect(dash).toBeTruthy();
     for (const sharedTown of [false, true]) {
       const html = renderMap([
@@ -1588,40 +1577,6 @@ describe("MapLegend rows", () => {
       expect(marks).toHaveLength(2);
       expect(marks.filter(([mark]) => mark.includes(`stroke-dasharray="${dash}"`))).toHaveLength(1);
     }
-  });
-});
-
-describe("mapFacts: hasDensityRank", () => {
-  it("asks what the choropleth drew, not how many regions are live", () => {
-    // Two shelters in one region: one live region, one tint, nothing to rank.
-    expect(
-      factsFor(
-        [
-          pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
-          pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
-        ],
-        [],
-      ).hasDensityRank,
-    ).toBe(false);
-
-    // Two regions with different totals rank against each other, so the ramp
-    // has something to explain.
-    expect(
-      factsFor(
-        [
-          pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
-          pin("maribor", "Zavetišče Maribor", "Maribor", 40),
-        ],
-        [],
-      ).hasDensityRank,
-    ).toBe(true);
-  });
-
-  it("is false while a filter leaves a single region tinted", () => {
-    expect(
-      factsFor([pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)], [])
-        .hasDensityRank,
-    ).toBe(false);
   });
 });
 
@@ -1668,7 +1623,7 @@ describe("mapFacts: hasMixed", () => {
   });
 });
 
-describe("mapFacts: hasEmpty", () => {
+describe("mapFacts: hasFilteredEmpty", () => {
   it("is false while every shelter on the map lists animals", () => {
     expect(
       factsFor(
@@ -1677,17 +1632,16 @@ describe("mapFacts: hasEmpty", () => {
           pin("maribor", "Zavetišče Maribor", "Maribor", 40),
         ],
         [],
-      ).hasEmpty,
+      ).hasFilteredEmpty,
     ).toBe(false);
   });
 
-  it("separates no filtered matches from no published listings", () => {
+  it("is true for a shelter the filters leave empty, which draws hollow", () => {
     const pins = [
       pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(factsFor(pins, []).hasEmpty).toBe(false);
     expect(factsFor(pins, []).hasFilteredEmpty).toBe(true);
     expect(renderMap(pins, [])).toContain("data-marker-empty");
   });
@@ -1698,73 +1652,64 @@ describe("mapFacts: hasEmpty", () => {
       pin("horjul", "Zavetišče Horjul", "Horjul", 0),
     ];
 
-    expect(factsFor(pins, ["horjul"]).hasEmpty).toBe(false);
+    expect(factsFor(pins, ["horjul"]).hasFilteredEmpty).toBe(false);
     expect(renderMap(pins, ["horjul"])).not.toContain("data-marker-empty");
   });
 
-  it("catches an off-site shelter sharing a town with a busy one", () => {
+  it("leaves an off-site shelter out, which no filter emptied", () => {
     const pins = [
       pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
       { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
     ];
 
-    expect(factsFor(pins, []).hasEmpty).toBe(true);
-    expect(renderMap(pins, [])).toContain("data-marker-empty");
+    expect(factsFor(pins, []).hasFilteredEmpty).toBe(false);
   });
 });
 
-describe("ShelterMap legend hover", () => {
-  const pins = [
-    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
-    pin("maribor", "Zavetišče Maribor", "Maribor", 40),
-  ];
-
-  function renderWithDensity(density: number | null): string {
+describe("ShelterMap counts on markers", () => {
+  function renderCounted(pins: ShelterPin[], countOnMarkers: boolean): string {
     return renderToStaticMarkup(
       <I18nProvider locale="sl">
         <ShelterMap
           pins={pins}
           selected={[]}
           onPick={() => undefined}
-          highlightedDensity={density}
+          countOnMarkers={countOnMarkers}
         />
       </I18nProvider>,
     );
   }
 
-  it("lights the regions on the hovered step and fades the rest", () => {
-    const html = renderWithDensity(DENSITY_STEPS.length - 1);
+  it("writes each shelter's count on its coin only when asked", () => {
+    const pins = [
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 49),
+      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 178),
+    ];
 
-    // Maribor holds the most animals, so it sits on the top step.
-    const lit = regionTag(html, "Podravska");
-    const dim = regionTag(html, "Osrednjeslovenska");
-    expect(lit).toContain('data-region-density-focus="match"');
-    expect(lit).toContain("stroke-foreground/45");
-    expect(dim).toContain('data-region-density-focus="dim"');
-    // The dimmed region keeps its hover value, so a pointer still lifts it out.
-    expect(dim).toContain(`--map-density:${DENSITY_STEPS[0] * 0.4}`);
-    expect(dim).toContain(`--map-density-hover:${DENSITY_STEPS[1]}`);
+    const counted = renderCounted(pins, true);
+    expect(counted).toContain('data-marker-count="49"');
+    expect(counted).toContain('data-marker-count="178"');
+    expect(renderCounted(pins, false)).not.toContain("data-marker-count");
   });
 
-  it("renders exactly as before when no step is hovered", () => {
-    expect(renderWithDensity(null)).toBe(renderMap(pins));
+  it("writes nothing on a shelter the filters leave empty", () => {
+    const html = renderCounted(
+      [pin("horjul", "Zavetišče Horjul", "Horjul", 0)],
+      true,
+    );
+    expect(html).not.toContain("data-marker-count");
+    expect(html).toContain("data-marker-empty");
   });
 
-  it("leaves a picked region out of the legend preview", () => {
-    const html = renderToStaticMarkup(
-      <I18nProvider locale="sl">
-        <ShelterMap
-          pins={pins}
-          selected={["ljubljana"]}
-          onPick={() => undefined}
-          highlightedDensity={DENSITY_STEPS.length - 1}
-        />
-      </I18nProvider>,
+  it("says animals, not shelters, on a town too full for a disc each", () => {
+    const pins = [5, 6, 7, 8].map((count, index) =>
+      pin(`s${index}`, `Zavetišče ${index}`, "Ljubljana", count),
     );
+    const overflow = (html: string) =>
+      html.match(/data-cluster-overflow="4"[\s\S]*?<text[^>]*>(\d+)<\/text>/)?.[1];
 
-    expect(regionTag(html, "Osrednjeslovenska")).not.toContain(
-      "data-region-density-focus",
-    );
+    expect(overflow(renderCounted(pins, true))).toBe("26");
+    expect(overflow(renderCounted(pins, false))).toBe("4");
   });
 });
 

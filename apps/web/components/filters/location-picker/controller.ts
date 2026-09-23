@@ -158,8 +158,6 @@ export function useLocationPickerController({
   // "where is this one", not "which ones did I choose".
   const [spotlitShelterId, setSpotlitShelterId] = useState<string | null>(null);
   const {
-    panelOpen,
-    setPanelOpen,
     sheetOpen,
     setSheetOpen,
     landSpotlight,
@@ -182,12 +180,6 @@ export function useLocationPickerController({
   const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
     string[] | null
   >(null);
-  // Hovering a legend density square lights up that step on the map, so the
-  // strip becomes a way to ask "where are the busy ones" instead of a static
-  // key. Pointer-only: touch devices never fire it, and that is fine.
-  const [highlightedDensity, setHighlightedDensity] = useState<number | null>(
-    null,
-  );
   useEffect(() => {
     closeCleanup.current = () => {
       // Every dismissal, including Back and a breakpoint change, ends the
@@ -197,14 +189,12 @@ export function useLocationPickerController({
       setSpotlitShelterId(null);
       setOffGroupOpen(false);
       setDropNote(null);
-      // The three hover states, which nothing else can end on a close: the
-      // dialog unmounts its content, so the pointer resting on a marker, a
-      // row or a density square never gets its leave event. Left standing,
-      // they opened the next visit tinted and scrolled to a shelter nobody
-      // was pointing at.
+      // The two hover states, which nothing else can end on a close: the
+      // dialog unmounts its content, so the pointer resting on a marker or a
+      // row never gets its leave event. Left standing, they opened the next
+      // visit tinted and scrolled to a shelter nobody was pointing at.
       setHoveredRowValue(null);
       setHoveredMarkerValues(null);
-      setHighlightedDensity(null);
       // The geolocation error only, never turnOff: a fix that worked is a
       // page-session fact the grid's sort reads (usePublishNearbyOrigin
       // below), and only the failure belongs to the visit that caused it.
@@ -235,11 +225,11 @@ export function useLocationPickerController({
       // list this is about to scroll.
       setQuery("");
       setOpen(true);
-      // Both docks, because the row below has to have somewhere to be brought
-      // into view; only the one at the current breakpoint is on screen and the
-      // other is a no-op there. Landed here for the same reason the found-
-      // animal entry lands itself: this open arrives with a row to show, and a
-      // short screen folding the list away would fold the answer away with it.
+      // The sheet, because the row below has to have somewhere to be brought
+      // into view; from lg the list always stands beside the map and this is a
+      // no-op there. Landed here for the same reason the found-animal entry
+      // lands itself: this open arrives with a row to show, and a short screen
+      // folding the list away would fold the answer away with it.
       landSpotlight();
     };
     window.addEventListener(SHELTER_SPOTLIGHT_EVENT, spotlight);
@@ -317,7 +307,7 @@ export function useLocationPickerController({
 
   // Whether the map is drawing markers right now, as the map itself answers
   // it. Two things in this dialog talk about markers, the instruction under
-  // the title and the legend's hollow-circle row, and both used to decide from
+  // the map and the legend's filtered-out row, and both used to decide from
   // a viewport breakpoint while the map decided from the plate it had actually
   // measured. They disagreed wherever the two differ, which is most of the
   // width of a phone held sideways: the chip told a visitor to click a marker
@@ -327,23 +317,21 @@ export function useLocationPickerController({
   // True to start with, which is what ShelterMap starts at too, so the two are
   // one answer from the first render rather than converging on the second.
   const [markersVisible, setMarkersVisible] = useState(true);
-  const [{ hasSelected, hasMixed, hasEmpty, hasFilteredEmpty, hasDensityRank }, setMapFacts] =
+  const [{ hasSelected, hasMixed, hasFilteredEmpty }, setMapFacts] =
     useState<MapFacts>({
       hasSelected: false,
       hasMixed: false,
-      hasEmpty: false,
       hasFilteredEmpty: false,
-      hasDensityRank: false,
     });
 
+  // Only the shelters there is something to pick from. The ones with nothing
+  // listed used to stand on the plate as hollow dots with a legend row of
+  // their own; they are in the list's folded group, each a link to its page,
+  // and a mark on the map that cannot be picked was one more thing to read
+  // past on the way to the ones that can.
   const pins: ShelterPin[] = useMemo(
-    () => [
-      ...toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
-      // selectable: false is what keeps these out of region picks: a region
-      // click must never select a shelter that has nothing to show.
-      ...toPins(offRows, () => ({ count: 0, selectable: false })),
-    ],
-    [counts, offRows, rows],
+    () => toPins(rows, (row) => ({ count: counts.get(row.value) ?? 0 })),
+    [counts, rows],
   );
 
   // Picking a region picks every shelter in it, which is as fine as a map of a
@@ -387,10 +375,9 @@ export function useLocationPickerController({
         }
         return;
       }
-      // What was picked is read off the panel, as the rows' own accent and as
-      // the "Izbrano:" line, so a click has to bring the panel out wherever it
-      // is folded. Both docks, because only the one at the current breakpoint
-      // is on screen and the other is a no-op there.
+      // What was picked is read off the list, as the rows' own accent, so a
+      // click on a phone's map view has to bring the list's sheet back. From
+      // lg the list is always beside the map and this is a no-op.
       //
       // Except on a screen with no height to spare, where the sheet is the
       // map. There the strip the sheet folds to already carries the whole of
@@ -469,7 +456,7 @@ export function useLocationPickerController({
     bring();
     cell.addEventListener("animationend", bring, { once: true });
     return () => cell.removeEventListener("animationend", bring);
-  }, [expandedShelter, panelOpen, sheetOpen, query, selected]);
+  }, [expandedShelter, sheetOpen, query, selected]);
 
   // The spotlit shelter's own row, brought into view once there is a row. It
   // cannot be done where the event is heard: the list is mounted by the dialog
@@ -574,9 +561,6 @@ export function useLocationPickerController({
   // Open details are an answer someone asked for, and asking outranks a
   // pointer passing over the map: the hover still tints its row, but it stops
   // scrolling the list, which used to carry the answer off the top of it.
-  // Worst on the shelters with nothing listed, whose rows sit at the very
-  // bottom under their own heading, so grazing one of those hollow circles
-  // threw the list all the way down to a row that cannot even be picked.
   //
   // Computed here rather than handed to the lists as a flag they each have to
   // remember: both take this one value, and neither can forget a rule it is
@@ -591,7 +575,7 @@ export function useLocationPickerController({
       : `${pickerText[locale].matches}: ${shelterCount(matched, locale)}`
     : undefined;
 
-  const unplaced = rows.length + offRows.length - pins.length;
+  const unplaced = rows.length - pins.length;
   const nearbyOn = state.status === "on";
   // Two independent facts, so two lines. Sharing one slot meant a geolocation
   // error silently replaced the note about shelters missing from the map.
@@ -604,8 +588,8 @@ export function useLocationPickerController({
   //
   // Neither the plain geolocation case nor the typed one says anything at
   // all now. Both used to, and both were the same fact said a second time:
-  // the Najbližje prvo toggle eight pixels below reports aria-pressed and
-  // goes font-medium while it is on, every row in the list carries its own
+  // the locate button in the field above reports aria-pressed and fills
+  // its mark while it is on, every row in the list carries its own
   // "· 23 km", and a typed place is named by the origin chip directly above
   // this line, with the note about straight-line distance under it. What is
   // left is only news: locationOutsideMap, the origin landing off the map.
@@ -730,8 +714,6 @@ export function useLocationPickerController({
     dropNote,
     spotlitShelterId,
     setSpotlitShelterId,
-    panelOpen,
-    setPanelOpen,
     sheetOpen,
     setSheetOpen,
     resetDocks,
@@ -753,8 +735,6 @@ export function useLocationPickerController({
     setHoveredRowValue,
     hoveredMarkerValues,
     setHoveredMarkerValues,
-    highlightedDensity,
-    setHighlightedDensity,
     markersVisible,
     setMarkersVisible,
     setMapFacts,
@@ -767,9 +747,7 @@ export function useLocationPickerController({
     searchNews,
     hasSelected,
     hasMixed,
-    hasEmpty,
     hasFilteredEmpty,
-    hasDensityRank,
     nearbyOn,
     status,
     missing,

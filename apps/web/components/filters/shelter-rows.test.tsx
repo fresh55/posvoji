@@ -562,7 +562,7 @@ describe("ShelterRows expansion", () => {
     );
   });
 
-  it("updates the detail match count when filters change without replacing the shelter overview", () => {
+  it("gives the overview its own total only while a filter makes it a different number", () => {
     function FilteredRow({ count }: { count: number }) {
       return (
         <I18nProvider locale="sl">
@@ -580,12 +580,15 @@ describe("ShelterRows expansion", () => {
       );
     }
 
-    const { rerender } = render(<FilteredRow count={2} />);
-    expect(screen.getByText("Ustreza filtrom: 2")).toBeTruthy();
+    // Unfiltered, the row's own pill already says 4: no second 4 under it.
+    const { rerender } = render(<FilteredRow count={4} />);
+    expect(screen.queryByText(/Vse objavljene živali/)).toBeNull();
+    expect(screen.queryByText(/Ustreza filtrom/)).toBeNull();
+
+    rerender(<FilteredRow count={2} />);
     expect(screen.getByText("Vse objavljene živali: 4")).toBeTruthy();
 
     rerender(<FilteredRow count={0} />);
-    expect(screen.getByText("Ustreza filtrom: 0")).toBeTruthy();
     expect(screen.getByText("Vse objavljene živali: 4")).toBeTruthy();
     expect(
       screen.getByRole<HTMLButtonElement>("button", {
@@ -1006,15 +1009,15 @@ describe("ShelterRows two lists sharing one highlight", () => {
 });
 
 
-it("shows a known longest wait only when the shelter has matching animals", () => {
+// The longest wait is said in the details under the row, where it names the
+// animal, and not on the row itself: a mark on most rows marks none of them.
+it("keeps the longest wait off the row", () => {
   const summary = { species: [], longestWaiting: { name: "Test", duration: "10 let" } };
-  const renderWait = (count: number, known: boolean) => renderToStaticMarkup(
-    <ShelterRows rows={[{ value: "test", label: "Test" }]}
-      counts={new Map([["test", count]])}
-      summaries={known ? new Map([["test", summary]]) : undefined}
-      waitLabel={(duration) => `Najdlje čaka: ${duration}`} />,
+  const html = renderToStaticMarkup(
+    <ShelterRows rows={[{ value: "test", label: "Test", city: "Celje" }]}
+      counts={new Map([["test", 1]])}
+      summaries={new Map([["test", summary]])} />,
   );
-  expect(renderWait(1, true)).toContain("Najdlje čaka: 10 let");
-  expect(renderWait(0, true)).not.toContain("data-row-wait");
-  expect(renderWait(1, false)).not.toContain("data-row-wait");
+  expect(html).toContain("Celje");
+  expect(html).not.toContain("10 let");
 });

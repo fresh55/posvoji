@@ -47,37 +47,13 @@ export function coveredByLine(
 // empty region still reads as part of the silhouette rather than as a hole.
 const REGION_STROKE = "stroke-foreground/30";
 
-/** What a legend hover asks of one region: wear the hover look, fade back, or
- *  nothing. */
-type DensityFocus = "match" | "dim";
-
-// Only an idle live region answers the legend. A selection is an answer the
-// visitor already gave, and dimming or lighting it would overwrite it.
-export function regionDensityFocus(
-  stats: RegionStats,
-  highlightedDensity: number | null | undefined,
-): DensityFocus | undefined {
-  if (highlightedDensity == null || !stats.live || stats.state !== false) {
-    return undefined;
-  }
-  return stats.density === highlightedDensity ? "match" : "dim";
-}
-
-// Enough to push the rest of the ramp behind the step being asked about, not
-// so much that the country loses its shape.
-const DENSITY_DIM = 0.4;
-
 // --map-density and --map-density-hover are alphas, not colours. The colour is
 // --map-density-fill, which the theme owns and every step shares; only the
 // alpha moves with the ranking.
-function densityStyle(density: number, dimmed = false): CSSProperties {
+function densityStyle(density: number): CSSProperties {
   const next = Math.min(density + 1, DENSITY_STEPS.length - 1);
   return {
-    // Only the resting value dims. The hover value stays whole, so a pointer
-    // still lifts a dimmed region out and beats the legend.
-    "--map-density": dimmed
-      ? DENSITY_STEPS[density] * DENSITY_DIM
-      : DENSITY_STEPS[density],
+    "--map-density": DENSITY_STEPS[density],
     "--map-density-hover": DENSITY_STEPS[next],
   } as CSSProperties;
 }
@@ -175,7 +151,6 @@ export const Region = memo(function Region({
   onPointerMove,
   onPointerLeave,
   highlighted,
-  densityFocus,
   coveredBy,
   armedNote,
   emptyMessage,
@@ -213,9 +188,6 @@ export const Region = memo(function Region({
   /** A shelter in this region is hovered in the list, so it wears the same
    *  look pointer hover would give it. */
   highlighted: boolean;
-  /** The legend is pointing at a density step: "match" means this region is on
-   *  it, "dim" means it is not. Undefined when no step is hovered. */
-  densityFocus?: DensityFocus;
   /** Shelters answering for the municipalities inside this region. Only an
    *  inert region has anything to do with them: they are what its label says
    *  after "no shelters here", so a screen reader hears what the annotation
@@ -281,8 +253,7 @@ export const Region = memo(function Region({
         }
         strokeLinejoin="round"
         className={cn(
-          // cursor-help, matching the legend's density swatches: this answers
-          // with information and does nothing else. cursor-pointer would
+          // cursor-help: this answers with information and does nothing else. cursor-pointer would
           // promise a click that never lands.
           "transition-[fill] motion-reduce:transition-none",
           interactive ? "cursor-help" : "pointer-events-none",
@@ -341,10 +312,6 @@ export const Region = memo(function Region({
     );
   }
 
-  // A list hover already asked for this region by name, so the legend never
-  // fades it back.
-  const dimmed = densityFocus === "dim" && !highlighted;
-  const lit = highlighted || densityFocus === "match";
 
   return (
     <path
@@ -379,7 +346,6 @@ export const Region = memo(function Region({
       }
       data-region-density={stats.density}
       data-region-highlighted={highlighted || undefined}
-      data-region-density-focus={densityFocus}
       strokeLinejoin="round"
       onClick={
         interactive
@@ -435,7 +401,7 @@ export const Region = memo(function Region({
       // fully selected region gives the ramp up, because the answer it is
       // wearing has replaced the question the rank belonged to.
       style={
-        stats.state === true ? undefined : densityStyle(stats.density, dimmed)
+        stats.state === true ? undefined : densityStyle(stats.density)
       }
       className={cn(
         // fill-opacity was already in the list and already animated a species
@@ -453,7 +419,7 @@ export const Region = memo(function Region({
         "outline-none transition-[fill,stroke,fill-opacity,stroke-width] motion-reduce:transition-none",
         interactive ? "cursor-pointer" : "pointer-events-none",
         MAP_MORPH,
-        REGION_LOOK[stateName][lit || armedNote ? "highlighted" : "rest"],
+        REGION_LOOK[stateName][highlighted || armedNote ? "highlighted" : "rest"],
         armedNote && "stroke-brand-strong [stroke-width:1.8]",
         // 2.1: the selected region's own hover/highlighted stroke now runs at
         // 1.8, so the old 1.75 focus ring would have tied it rather than

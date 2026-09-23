@@ -81,7 +81,7 @@ test.describe("desktop", () => {
     await expect(donePill(page)).toBeVisible();
   });
 
-  test("keeps selected names and the result action usable with the desktop list folded", async ({ page }) => {
+  test("keeps selected names and the result action usable", async ({ page }) => {
     const dialog = await openPicker(page);
     await rows(dialog).first().click();
     const footer = dialog.locator("[data-picker-footer]");
@@ -91,8 +91,6 @@ test.describe("desktop", () => {
     expect(selectedName).toBeTruthy();
     // While modal, the background trigger is correctly hidden from assistive technology.
     await expect(pickerTrigger(page)).toHaveAttribute("aria-label", `Zavetišče: ${selectedName}. Izberi zavetišča.`);
-    await dialog.getByRole("button", { name: "Skrij seznam", exact: true }).click();
-    await expect(dialog.locator("[data-picker-panel]")).toHaveAttribute("data-picker-panel", "collapsed");
     expect(await isReachable(donePill(page))).toBe(true);
     expect(await isReachable(chip)).toBe(true);
 
@@ -206,7 +204,9 @@ test.describe("desktop", () => {
     // about the press: it is what is already behind the map.
     await rows(dialog).first().click();
     await expect(
-      dialog.getByRole("button", { name: /Počisti izbor/ }),
+      dialog
+        .locator("[data-picker-footer]")
+        .getByRole("button", { name: /^Odstrani zavetišče:/ }),
     ).toBeVisible();
 
     await expect.poll(() => pill.textContent()).not.toBe(before);

@@ -1,4 +1,4 @@
-import { MapPin, Search, X } from "lucide-react";
+import { LoaderCircle, MapPin, Navigation, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -10,8 +10,10 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
+    toggleNearby, nearbyOn, state,
   } = controller;
   const copy = pickerText[locale];
+  const canLocate = resolved.source !== "typed";
   // Spelled out rather than taken from the controller's placeOffered, which is
   // the same test: this one narrows typed, so the row below can name the place.
   const canChoosePlace = typed.status === "matched" && !placeMode;
@@ -76,7 +78,10 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
           aria-label={messages.placeOrShelter}
           aria-describedby={statusId}
           className={cn(
-            "h-11 bg-background pl-9 pr-11 text-base shadow-none",
+            "h-11 bg-background pl-9 text-base shadow-none",
+            // Room for the controls drawn over the field's right end: the
+            // locate button always, the clear button while there is text.
+            canLocate && query !== "" ? "pr-22" : "pr-11",
             // md:text-base beats ui/input.tsx's own md:text-sm, which otherwise
             // drops this field to 14px from 768 up and makes iOS zoom the page
             // on focus across every touch tablet and landscape phone.
@@ -94,9 +99,37 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
               searchRef.current?.focus();
             }}
             aria-label={messages.clearField}
-            className="absolute right-0 top-0 size-11 text-muted-foreground"
+            className={cn("absolute top-0 size-11 text-muted-foreground", canLocate ? "right-11" : "right-0")}
           >
             <X className="size-4" aria-hidden />
+          </Button>
+        )}
+        {/* The other way to say where: the visitor's own position. Inside the
+            field that takes a place, so both answers to "where" sit in one
+            control, and the list re-sorts by distance under it either way. It
+            used to be a row of its own under the field. Not offered while a
+            typed place is the origin: that place's chip below is the origin
+            then, and removing it is how to go back. */}
+        {canLocate && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={toggleNearby}
+            aria-pressed={nearbyOn}
+            aria-label={state.status === "locating" ? messages.locating : messages.nearestFirst}
+            title={messages.nearestFirst}
+            data-picker-locate
+            className={cn(
+              "absolute right-0 top-0 size-11",
+              nearbyOn ? "text-brand-strong" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {state.status === "locating" ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Navigation className={cn("size-4", nearbyOn && "fill-current")} aria-hidden />
+            )}
           </Button>
         )}
       </div>

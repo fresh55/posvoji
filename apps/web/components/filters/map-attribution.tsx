@@ -26,9 +26,9 @@ export function BoundariesCredit({
 }
 
 /**
- * Keep source names and licences visible at every width. The opaque card
- * background keeps small text readable over terrain in both themes.
- * In overlay mode, only the links intercept taps; the map stays interactive.
+ * Keep source names and licences visible at every width, off the plate: over
+ * the map, the credit sat on the coast with the sea's name and a marker in the
+ * same corner. The default is a quiet footnote line in whatever holds it.
  */
 export function MapAttribution({
   messages,
@@ -45,10 +45,10 @@ export function MapAttribution({
     <p
       data-slot="map-attribution"
       className={cn(
-        "rounded-ui bg-card text-muted-foreground",
+        "text-muted-foreground",
         inFlow
-          ? "relative mt-2 border-t px-2 py-1 text-xs leading-relaxed"
-          : "pointer-events-none absolute bottom-0 left-0 max-w-[26rem] px-1.5 py-0.5 text-3xs leading-tight",
+          ? "relative mt-2 rounded-ui border-t bg-card px-2 py-1 text-xs leading-relaxed"
+          : "text-3xs leading-tight",
       )}
     >
       <span className="max-lg:hidden">{messages.regionBoundaries}: </span>

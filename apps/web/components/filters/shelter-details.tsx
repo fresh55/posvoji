@@ -10,16 +10,8 @@ import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 
 const DETAIL_LABELS = {
-  sl: {
-    matching: "Ustreza filtrom",
-    allPublished: "Vse objavljene živali",
-    previews: "Primeri iz vseh objav",
-  },
-  en: {
-    matching: "Matching your filters",
-    allPublished: "All published animals",
-    previews: "Examples from all listings",
-  },
+  sl: { allPublished: "Vse objavljene živali" },
+  en: { allPublished: "All published animals" },
 } as const;
 
 // What one shelter is, beyond the name and the filtered count its row already
@@ -49,7 +41,8 @@ export function ShelterDetails({
    *  it (the map gallery, tests), and the panel then has nothing to say. */
   summary?: ShelterSummary;
   /** The row's count under the current filters. The summary remains the
-   *  complete shelter overview, so each number needs its own visible scope. */
+   *  complete shelter overview, so its total is drawn, with its own scope,
+   *  wherever it differs from this. */
   matchingCount?: number;
   className?: string;
 }) {
@@ -65,90 +58,86 @@ export function ShelterDetails({
     return null;
   }
 
+  const total = species.reduce((sum, item) => sum + item.count, 0);
+  // The row above already shows the count under the current filters, so the
+  // panel says a total only where it is a different number: with a filter
+  // narrowing the row, or with no row above it at all. Unfiltered, the two
+  // were the same number twice, a line apart.
+  const showTotal =
+    species.length > 0 && (matchingCount === undefined || matchingCount !== total);
+
   return (
-    <div data-shelter-details className={cn("space-y-3", className)}>
-      {matchingCount !== undefined && (
-        <p className="text-sm font-medium tabular-nums">
-          {labels.matching}: {matchingCount}
+    <div
+      data-shelter-details
+      role="group"
+      aria-label={labels.allPublished}
+      className={cn("space-y-3", className)}
+    >
+      {showTotal && (
+        <p className="text-xs font-medium text-muted-foreground tabular-nums">
+          {labels.allPublished}: {total}
         </p>
       )}
-      <div
-        role="group"
-        aria-label={labels.allPublished}
-        className={cn(
-          "space-y-3",
-          matchingCount !== undefined && "border-t border-border/60 pt-3",
-        )}
-      >
-        <p className="text-xs font-medium text-muted-foreground tabular-nums">
-          {labels.allPublished}
-          {species.length > 0 &&
-            `: ${species.reduce((total, item) => total + item.count, 0)}`}
+      {/* Who lives here, in the icons the species tabs and the result count
+          already use. Every species the shelter has, whatever the species tab
+          is set to: see summarizeShelters for why. */}
+      {species.length > 0 && (
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs tabular-nums">
+          {species.map(({ species: kind, count }) => {
+            const Icon = SPECIES_ICONS[kind];
+            return (
+              <span
+                key={kind}
+                data-pick-species={kind}
+                role="img"
+                className="inline-flex items-center gap-1.5"
+                aria-label={`${speciesLabel(kind, locale)}: ${count}`}
+              >
+                <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                {speciesLabel(kind, locale)}: {count}
+              </span>
+            );
+          })}
         </p>
-        {/* Who lives here, in the icons the species tabs and the result count
-            already use. Every species the shelter has, whatever the species tab
-            is set to: see summarizeShelters for why. */}
-        {species.length > 0 && (
-          <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs tabular-nums">
-            {species.map(({ species: kind, count }) => {
-              const Icon = SPECIES_ICONS[kind];
-              return (
-                <span
-                  key={kind}
-                  data-pick-species={kind}
-                  role="img"
-                  className="inline-flex items-center gap-1.5"
-                  aria-label={`${speciesLabel(kind, locale)}: ${count}`}
-                >
-                  <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                  {speciesLabel(kind, locale)}: {count}
-                </span>
-              );
-            })}
-          </p>
-        )}
+      )}
 
-        {/* Equal thumbnails keep every face unobscured. The first photo still
-            belongs to the longest-waiting animal when one is available. */}
-        {faces.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{labels.previews}</p>
-            <div className="grid max-w-72 grid-cols-3 gap-2">
-              {faces.map((face) => (
-                <span
-                  key={face.src}
-                  className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-ui border border-border/60 bg-muted"
-                >
-                  <Image
-                    src={thumbnailUrl(face.src)}
-                    alt={face.name}
-                    fill
-                    sizes="6rem"
-                    className="object-cover"
-                  />
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* The one animal a number cannot stand in for. Same hourglass and same
-            warm mark the animal card gives a long wait, so the two marks are
-            one mark. The token carries the dark value the raw amber pair spelled
-            by hand. */}
-        {summary?.longestWaiting && (
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <Hourglass
-              className="mt-0.5 size-3.5 shrink-0 text-warn-mark"
-              strokeWidth={1.75}
-              aria-hidden
-            />
-            <span className="min-w-0 leading-relaxed">
-              {t("longestWaiting", summary.longestWaiting)}
+      {/* Equal thumbnails keep every face unobscured. The first photo still
+          belongs to the longest-waiting animal when one is available. */}
+      {faces.length > 0 && (
+        <div className="grid max-w-72 grid-cols-3 gap-2">
+          {faces.map((face) => (
+            <span
+              key={face.src}
+              className="relative aspect-[4/3] min-w-0 overflow-hidden rounded-ui border border-border/60 bg-muted"
+            >
+              <Image
+                src={thumbnailUrl(face.src)}
+                alt={face.name}
+                fill
+                sizes="6rem"
+                className="object-cover"
+              />
             </span>
-          </p>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {/* The one animal a number cannot stand in for. Same hourglass and same
+          warm mark the animal card gives a long wait, so the two marks are
+          one mark. The token carries the dark value the raw amber pair spelled
+          by hand. */}
+      {summary?.longestWaiting && (
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <Hourglass
+            className="mt-0.5 size-3.5 shrink-0 text-warn-mark"
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          <span className="min-w-0 leading-relaxed">
+            {t("longestWaiting", summary.longestWaiting)}
+          </span>
+        </p>
+      )}
     </div>
   );
 }

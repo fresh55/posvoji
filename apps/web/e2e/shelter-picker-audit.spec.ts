@@ -3,7 +3,7 @@ import { pickerTrigger, donePill } from "./picker";
 
 test.use({ hasTouch: true });
 for (const width of [375, 640, 800]) {
-  test(`search and wait metadata remain readable at ${width}px`, async ({
+  test(`search and the distance line remain readable at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -13,11 +13,26 @@ for (const width of [375, 640, 800]) {
     await expect(search).toHaveCSS("font-size", "16px");
     await search.fill("1000");
     await page.getByRole("button", { name: /^V bližini Ljubljana/ }).click();
-    const waits = page.locator("[data-row-wait]");
-    expect(await waits.count()).toBeGreaterThan(0);
-    for (const wait of await waits.all()) {
+    // The distance under each name once a place is chosen: whole, on one
+    // line and inside the row, however the town beside it wraps.
+    const distances = page.locator("[data-row-km]");
+    expect(await distances.count()).toBeGreaterThan(0);
+    for (const distance of await distances.all()) {
+      await expect(distance).toContainText("km");
+      // One line tall, whatever number of fragments the engine reports.
       expect(
-        await wait.evaluate((el) => el.scrollWidth <= el.clientWidth),
+        await distance.evaluate(
+          (el) =>
+            el.getBoundingClientRect().height <
+            1.5 * parseFloat(getComputedStyle(el).lineHeight),
+        ),
+      ).toBe(true);
+      expect(
+        await distance.evaluate((el) => {
+          const row = el.closest("[data-shelter-row]")!.getBoundingClientRect();
+          const box = el.getBoundingClientRect();
+          return box.left >= row.left && box.right <= row.right;
+        }),
       ).toBe(true);
     }
     await expect(page.getByRole("dialog")).toBeVisible();

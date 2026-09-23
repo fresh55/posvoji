@@ -11,13 +11,6 @@ export { SHORT_VIEWPORT_QUERY };
  */
 export const FINE_POINTER = "(pointer: fine)";
 
-/** The map and dock transition together; keeping both timings here prevents
- * one half of the recentering animation from drifting away from the other. */
-export const MAP_STAGE_TRANSITION_CLASS =
-  "transition-[width,bottom] duration-500 ease-out motion-reduce:transition-none";
-export const PANEL_TRANSITION_CLASS =
-  "transition-[height,width] duration-500 ease-out motion-reduce:transition-none";
-
 export function hasHeightToSpare(): boolean {
   if (typeof window === "undefined") return true;
   return !window.matchMedia?.(SHORT_VIEWPORT_QUERY).matches;
@@ -28,9 +21,9 @@ export function hasFinePointer(): boolean {
   return window.matchMedia?.(FINE_POINTER).matches ?? false;
 }
 
-/** Owns the two responsive docks and the once-per-open landing decision. */
+/** Owns the phone sheet and the once-per-open landing decision. From lg the
+ *  list always stands beside the map, so there is no dock state there. */
 export function useLocationPickerMotion(open: boolean) {
-  const [panelOpen, setPanelOpen] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(true);
   const landedRef = useRef(false);
 
@@ -46,23 +39,18 @@ export function useLocationPickerMotion(open: boolean) {
 
   const landSpotlight = useCallback(() => {
     landedRef.current = true;
-    setPanelOpen(true);
     setSheetOpen(true);
   }, []);
 
   const revealSelection = useCallback(() => {
-    setPanelOpen(true);
     if (hasHeightToSpare()) setSheetOpen(true);
   }, []);
 
   const resetDocks = useCallback(() => {
-    setPanelOpen(true);
     setSheetOpen(true);
   }, []);
 
   return {
-    panelOpen,
-    setPanelOpen,
     sheetOpen,
     setSheetOpen,
     landSpotlight,

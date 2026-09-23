@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Hourglass,
 } from "lucide-react";
 import { ShelterDetails } from "@/components/filters/shelter-details";
 import { Badge } from "@/components/ui/badge";
@@ -118,7 +117,6 @@ export function ShelterRows({
   onExitTop,
   lessThanOneKm,
   countLabel,
-  waitLabel,
   labelledBy,
   scrollTo,
   summaries = EMPTY_SUMMARIES,
@@ -166,7 +164,6 @@ export function ShelterRows({
    *  said what it counted. Given, the digits go aria-hidden and this speaks in
    *  their place. Same caller-supplies-the-words idiom as lessThanOneKm. */
   countLabel?: (count: number) => string;
-  waitLabel?: (duration: string) => string;
   /** Ties the rows to the heading that explains them, by that heading's id. A
    *  screen reader walking this list otherwise hears row after row with
    *  nothing saying which list it is in, which matters most for the off-roster
@@ -354,8 +351,10 @@ export function ShelterRows({
                   >
                     {label}
                   </span>
+                  {/* Wraps rather than truncates: the distance is the end
+                      of the line, and it is the half that must not be cut. */}
                   {sublabel && (
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    <span data-row-place className="mt-0.5 block text-xs text-muted-foreground">
                       {sublabel}
                     </span>
                   )}
@@ -476,33 +475,24 @@ export function ShelterRows({
                   >
                     {label}
                   </span>
-                  <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                    {sublabel && (
-                      <span className="min-w-0 truncate">{sublabel}</span>
-                    )}
-                    {count > 0 && summary?.longestWaiting && waitLabel && (
-                      // Two tokens rather than the one amber pair that used to
-                      // colour the whole line, because the line is a sentence
-                      // and an hourglass, and the warm family holds one value
-                      // for each. The 12px text gains by the swap: amber-700
-                      // was 5.07:1 on the white panel, the ink token is
-                      // 7.14:1, and on the sheet's dark popover 10.14:1
-                      // becomes 12.12:1. The hourglass gives some back, 5.07:1
-                      // to 3.21:1 on white, which is a drawing clearing
-                      // SC 1.4.11's 3:1 and is the same mark the dialog and the
-                      // shelter panel already draw beside the same sentence.
-                      <span
-                        data-row-wait
-                        className="inline-flex items-center gap-1 text-warn-foreground"
-                      >
-                        <Hourglass
-                          className="size-3 shrink-0 text-warn-mark"
-                          aria-hidden
-                        />
-                        {waitLabel(summary.longestWaiting.duration)}
-                      </span>
-                    )}
-                  </span>
+                  {/* Where, and how far: the two facts a location picker is
+                      for. The longest wait rode this line too, on eight rows
+                      of eleven, and a mark on most rows marks none of them;
+                      it is in the details under the row, where it names the
+                      animal. The line wraps rather than truncates, and the
+                      distance never breaks: it is the end of the line and the
+                      half that must not be cut. */}
+                  {sublabel && (
+                    <span data-row-place className="mt-0.5 block text-xs text-muted-foreground">
+                      {city}
+                      {km !== undefined && (
+                        <span data-row-km className="whitespace-nowrap">
+                          {city ? " · " : ""}
+                          {formatKm(km, lessThanOneKm)}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </span>
                 {/* A stable count column makes the roster easy to compare.
                   The checkbox carries selection; every count keeps the same

@@ -1,7 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
-import { MAP_STAGE_TRANSITION_CLASS } from "./motion";
 import type { LocationPickerController } from "./controller";
 
 // The country plate and everything printed on it: the regions, the relief, the
@@ -47,10 +46,10 @@ export function PickerMapStage({ controller, hug = false }: {
    *  tall as the dialog, with the map floating in the middle of it. */
   hug?: boolean;
 }) {
-  const { panelOpen, sheetOpen } = controller;
+  const { sheetOpen } = controller;
   return (
           <div
-            data-map-stage={panelOpen ? "panel" : "rail"}
+            data-map-stage
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) flex flex-col gap-3 p-3 sm:p-4",
               "@container/map-stage",
@@ -73,11 +72,7 @@ export function PickerMapStage({ controller, hug = false }: {
               // pixels and everything under it stays on screen.
               hug && "max-lg:static max-lg:min-h-0",
               sheetOpen && "max-lg:hidden",
-              "lg:right-auto",
-              MAP_STAGE_TRANSITION_CLASS,
-              panelOpen
-                ? "lg:w-[calc(100%-24rem)]"
-                : "lg:w-[calc(100%-3rem)]",
+              "lg:right-auto lg:w-[calc(100%-24rem)]",
             )}
           >
             <PickerMapPlate controller={controller} />

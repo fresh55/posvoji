@@ -546,8 +546,6 @@ const sl = {
   showShelterDetailsShort: "Pokaži podrobnosti",
   hideShelterDetails: "Skrij podrobnosti",
   lessThanOneKm: "manj kot 1 km",
-  fewerAnimals: "Manj živali",
-  moreAnimals: "Več živali",
   shelter: "Zavetišče",
   noAnimalsListed: "Trenutno brez objavljenih živali",
   // The heading now carries how many, because the group folds shut and a
@@ -572,7 +570,6 @@ const sl = {
   regionCoveredByMany: "Zanje skrbijo {shelters}",
   selectedRegionLegend: "Izbrana regija",
   mixedRegionLegend: "Delno izbrana regija",
-  emptyShelterLegend: "Zavetišče brez živali",
   originLegend: "Izhodišče",
   regionBoundaries: "Meje statističnih regij in poštni okoliši",
   // The shelter page draws the country's edge and nothing else, so its credit
@@ -583,10 +580,6 @@ const sl = {
   // credit it stands next to.
   reliefSource: "Senčenje reliefa",
   shelterMapLabel: "Zemljevid zavetišč po statističnih regijah",
-  // The picker's floating panel, which folds away to a rail so the map can
-  // have the whole plate back.
-  collapsePanel: "Skrij seznam",
-  expandPanel: "Pokaži seznam",
   geolocationDenied: "Dostop do lokacije je zavrnjen.",
   geolocationUnavailable: "Lokacije ni bilo mogoče določiti.",
   geolocationTimeout: "Iskanje lokacije je trajalo predolgo.",
@@ -887,8 +880,6 @@ const en: Messages = {
   showShelterDetailsShort: "Show details",
   hideShelterDetails: "Hide details",
   lessThanOneKm: "less than 1 km",
-  fewerAnimals: "Fewer animals",
-  moreAnimals: "More animals",
   shelter: "Shelter",
   noAnimalsListed: "No animals listed right now",
   noAnimalsListedHeadingCount: "No animals listed right now ({count})",
@@ -898,14 +889,11 @@ const en: Messages = {
   regionCoveredByMany: "Covered by {shelters}",
   selectedRegionLegend: "Selected region",
   mixedRegionLegend: "Partly selected region",
-  emptyShelterLegend: "Shelter with no animals",
   originLegend: "Starting point",
   regionBoundaries: "Statistical region boundaries and postal districts",
   countryOutline: "Country outline",
   reliefSource: "Relief shading",
   shelterMapLabel: "Map of shelters by statistical region",
-  collapsePanel: "Hide the list",
-  expandPanel: "Show the list",
   geolocationDenied: "Location access was denied.",
   geolocationUnavailable: "Your location could not be determined.",
   geolocationTimeout: "Finding your location took too long.",

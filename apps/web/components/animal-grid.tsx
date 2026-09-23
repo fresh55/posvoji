@@ -51,6 +51,7 @@ import { PawPrint } from "lucide-react";
 import dynamic from "next/dynamic";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useMemo,
   useState,
@@ -352,9 +353,16 @@ export function AnimalGrid({
   // renders could bucket an animal differently. Ages here are a property of
   // the export, so they are read off the export.
   const reference = useMemo(() => new Date(referenceDate), [referenceDate]);
+  // The results follow the filters a render behind, at a priority React can
+  // interrupt. The panel answers a press at once from `filters`; the grid
+  // behind it is the expensive half, and drawn in the same render it held the
+  // press's first frame for 150-225ms at 4x CPU, which is exactly where every
+  // section's pick gesture plays. Measured on the built site, colour picks
+  // on Vse and Psi.
+  const shownFilters = useDeferredValue(filters);
   const visible = useMemo(
-    () => applyFilters(animals, filters, reference),
-    [animals, filters, reference],
+    () => applyFilters(animals, shownFilters, reference),
+    [animals, shownFilters, reference],
   );
   // Where Najbližje measures from, granted by the location picker's nearby
   // control and by nothing else. Null on the server and on the first client
@@ -452,9 +460,9 @@ export function AnimalGrid({
   const shelterOnlyEmpty = useMemo(
     () =>
       visible.length === 0 &&
-      filters.shelter.length > 0 &&
-      applyFilters(animals, { ...filters, shelter: [] }, reference).length > 0,
-    [animals, filters, reference, visible.length],
+      shownFilters.shelter.length > 0 &&
+      applyFilters(animals, { ...shownFilters, shelter: [] }, reference).length > 0,
+    [animals, shownFilters, reference, visible.length],
   );
 
   const handleClearAll = useCallback(() => {
@@ -640,8 +648,8 @@ export function AnimalGrid({
               <div className="space-y-1">
                 <p className="text-sm font-medium">
                   {shelterOnlyEmpty
-                    ? t(shelterAbsenceKey(filters.shelter.length), {
-                        species: t(SPECIES_ABSENCE_KEY[filters.species]),
+                    ? t(shelterAbsenceKey(shownFilters.shelter.length), {
+                        species: t(SPECIES_ABSENCE_KEY[shownFilters.species]),
                       })
                     : messages.noResults}
                 </p>
@@ -671,7 +679,7 @@ export function AnimalGrid({
               {/* Filter clearing stays in the chip rows. This action widens
                   the species scope while keeping the remaining filters, and
                   is offered only when the existing facet count promises results. */}
-              {filters.species !== "all" && speciesTally.all > 0 && (
+              {shownFilters.species !== "all" && speciesTally.all > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -736,7 +744,7 @@ export function AnimalGrid({
                   style={STAGGER_STYLE[ordinal]}
                   // The tab already named the species, so the card's one fact
                   // line does not have to spend itself saying it again.
-                  species={filters.species}
+                  species={shownFilters.species}
                   // The first row, which is the largest image on the screen and
                   // was queueing behind the bundle like the other 499.
                   eager={ordinal < 4}

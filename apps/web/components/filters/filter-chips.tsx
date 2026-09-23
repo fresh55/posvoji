@@ -14,7 +14,6 @@ import {
   useState,
   type KeyboardEvent,
   type MouseEvent,
-  type ReactElement,
 } from "react";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -23,12 +22,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CoatColorChipSwatch, CoatLengthMark } from "@/components/filters/coat-cards";
+import {
+  CoatColorChipSwatch,
+  CoatColorDots,
+  CoatLengthMark,
+} from "@/components/filters/coat-cards";
 import { WaitingMark } from "@/components/filters/waiting-cards";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
-import { jumpToFilterSection } from "@/components/filters/filter-section-header";
-import { SECTION_OF_FACET } from "@/components/filters/use-filter-sections";
 import { groupLabel, type FilterFacet } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import {
@@ -107,66 +108,10 @@ const SCOPE_VISIBLE = 3;
 // their border still say it over this: the "+N" adds border-dashed and a
 // marked pill takes --brand-border, which is 3.27:1 since the same audit.
 //
-// The height, the radius, the border and the coarse-pointer floor are the
-// pill, whichever of the two shapes below is drawn; only the padding and where
-// the ring is answered differ. Stated once, so a row that has already had to
-// settle rounded-full against rounded-ui once does not get to drift again.
-const CHIP_FRAME =
-  "inline-flex h-7 shrink-0 items-center rounded-ui border border-control-border text-xs transition-colors pointer-coarse:min-h-11";
-
-const CHIP_PILL = cn(
-  CHIP_FRAME,
-  "gap-1.5 px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:px-3",
-);
-
-// The same pill with two controls in it, for the row beside a panel a filter
-// can be gone back to. The label half goes to the section that set this
-// filter; the cross takes it off, which is what the whole pill did and what
-// the cross alone has always looked like it did.
-//
-// The padding and the ring move out of the shape and into the halves: each
-// half carries its own, so pressing near an edge cannot land on the pill's
-// own border rather than on either control, and the keyboard ring follows
-// whichever half has focus (focus-within, since the shape is a span now).
-//
-// overflow-hidden and no radius on the halves: rounded-ui is one custom
-// utility and there is no rounded-l-ui to pair it with, so the shape clips
-// the hover fills to its own corners instead. A ring is drawn outside the box
-// and is the element's own, so the clip never reaches it.
-const CHIP_SPLIT = cn(
-  CHIP_FRAME,
-  "overflow-hidden focus-within:border-ring focus-within:ring-3 focus-within:ring-ring",
-);
-
-/** What both halves are: a box filling the pill's height, answering a pointer
- *  in its own half of it and nowhere else. */
-const CHIP_HALF =
-  "flex items-center self-stretch outline-none transition-colors hover:bg-muted";
-
-/** The label half: everything the pill says, and the press that goes to it. */
-const CHIP_JUMP = cn(CHIP_HALF, "min-w-0 shrink gap-1.5 pl-2.5 pr-1.5");
-
-/** The cross half. Narrower than the label's, because it holds one 12px mark,
- *  and 44px wide on a finger.
- *
- *  Both halves take the pill's own coarse-pointer floor rather than splitting
- *  it. What that floor was won for still holds: the row used to draw a 24px
- *  circle inside a 28px pill with an invisible 44px overlay over it, and the
- *  fix was to make the pill itself the target, measured at 1180x820 where
- *  every pill in this row came to 28px (mobile-filter-hardening.test.tsx).
- *  Two controls in one pill is not that circle -- neither is an overlay, and
- *  neither overhangs its neighbour -- but a finger is owed 44px by whichever
- *  of them it lands on, so self-stretch gives both the pill's height and
- *  min-w-11 gives this one its width. */
-//
-// `group` on the half and not on the pill: the mark inside it darkens for a
-// pointer on the cross, which is the control that mark belongs to. On the
-// single-button shape the same class comes from CHIP_REMOVABLE, where the
-// whole pill is that control.
-const CHIP_CROSS = cn(
-  CHIP_HALF,
-  "group shrink-0 justify-center pl-1.5 pr-2.5 pointer-coarse:min-w-11 pointer-coarse:px-0",
-);
+// Stated once, so a row that has already had to settle rounded-full against
+// rounded-ui once does not get to drift again.
+const CHIP_PILL =
+  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border border-control-border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
 
 /** The ground a pill takes while it is the one worth dropping. */
 const CHIP_BLOCKED = "border-brand-border bg-brand text-brand-foreground";
@@ -199,7 +144,6 @@ const PLACEMENT: Record<
   {
     visible: number;
     scrolls: boolean;
-    jumps: boolean;
     box: string;
     pills: string;
     pill?: string;
@@ -208,11 +152,6 @@ const PLACEMENT: Record<
   band: {
     visible: MAX_VISIBLE,
     scrolls: true,
-    // Beside the panel, so a pill has a section to go back to and is drawn as
-    // two controls. Below lg the filters are in a sheet the visitor opens
-    // instead, there is nowhere to go, and the pill keeps the single press it
-    // has always had over its whole 44px.
-    jumps: true,
     // SCROLL_STRIP is the fade, the scroll padding that keeps a focused pill
     // out from under it, and the horizontal room the focus ring needs; the
     // couplings between those three are on the constant. The -my/py pair is
@@ -229,7 +168,6 @@ const PLACEMENT: Record<
   flow: {
     visible: FLOW_VISIBLE,
     scrolls: false,
-    jumps: false,
     // min-w-0 and nothing else: the box is as wide as the column and the
     // pills wrap inside it.
     box: "min-w-0",
@@ -544,14 +482,6 @@ export function FilterChips({
   // measured 110, 112 and 111 wide at px-3 and missed one line by 6px.
   const pill = cn(CHIP_PILL, shape.pill);
 
-  // Whether this placement offers a way back at all is the table's answer;
-  // whether this facet has a section to go back to is SECTION_OF_FACET's.
-  const jumpFor = (chip: Chip) => {
-    const section = SECTION_OF_FACET[chip.facet];
-    if (!shape.jumps || !section) return undefined;
-    return () => jumpToFilterSection(section, !reduceMotion);
-  };
-
   // "Show me all of these" belonged to a filter state that is about to stop
   // existing. Carried over, the next pills a visitor picks would arrive
   // already unfolded and uncapped for no reason they could see.
@@ -616,7 +546,6 @@ export function FilterChips({
                         restoreFocusAfterRemove(stops.indexOf(item.id));
                       item.chip.onRemove();
                     }}
-                    onJump={jumpFor(item.chip)}
                     className={shape.pill}
                   />
                 ) : item.kind === "group" ? (
@@ -641,7 +570,12 @@ export function FilterChips({
                           "bg-background text-foreground hover:bg-muted",
                         )}
                       >
-                        <ChipGlyph facet={item.run.facet} />
+                        <ChipGlyph
+                          facet={item.run.facet}
+                          values={item.run.chips.flatMap(({ value }) =>
+                            value === undefined ? [] : [value],
+                          )}
+                        />
                         <span className="max-w-[11rem] truncate">
                           {item.run.chips[0].label}
                         </span>
@@ -878,18 +812,28 @@ export function RemovableChips({
  *
  *  Accent-coloured, the same green a chosen card wears: it says "this is on"
  *  without turning nine pills into nine green blocks. */
-function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
+function ChipGlyph({
+  facet,
+  value,
+  values,
+}: {
+  facet: FilterFacet;
+  value?: string;
+  /** Every value a folded run stands for, which only colour draws. */
+  values?: readonly string[];
+}) {
   const { Icon, className } =
     value === undefined
       ? { Icon: FACET_ICONS[facet], className: undefined }
       : filterValueGlyph(facet, value);
   return (
     <span className="grid size-[1.125rem] shrink-0 place-items-center text-brand-strong">
-      {/* A colour chip shows the colour. Only where the chip names one value:
-          a folded run of them is the facet speaking, and the palette mark is
-          right for that. */}
+      {/* A colour chip shows the colour, and a folded run of colours shows
+          the colours it folds rather than the facet's palette mark. */}
       {facet === "coatColor" && value !== undefined ? (
         <CoatColorChipSwatch value={value} />
+      ) : facet === "coatColor" && values ? (
+        <CoatColorDots values={values} dense />
       ) : facet === "coatLength" ? (
         // The section's own drawing, not a lucide stand-in.
         <CoatLengthMark value={value} />
@@ -939,7 +883,6 @@ function ChipButton({
   tabIndex,
   onFocus,
   onRemove,
-  onJump,
   className,
 }: {
   stop: string;
@@ -949,13 +892,7 @@ function ChipButton({
   onFocus: () => void;
   /** Takes the filter off, and says whether a keypress asked for it. */
   onRemove: (fromKeyboard: boolean) => void;
-  /** Where this pill's filter was set, when there is a panel to go back to.
-   *  Absent, the pill is the single remove button it has always been. */
-  onJump?: () => void;
-  /** What this placement adds to the pill, over whichever shape onJump picks.
-   *  The shape itself is not passed in: which of the two is drawn is what
-   *  onJump decides, and handing it a class for the other one is how the flow
-   *  row's own narrowing came to be dropped on the floor. */
+  /** What this placement adds to the pill. */
   className?: string;
 }) {
   const { locale, t } = useI18n();
@@ -971,8 +908,57 @@ function ChipButton({
     blocked && gain > 0
       ? `${removeLabel}: +${animalCount(gain, locale)}`
       : removeLabel;
-  const handleRemove = (event: MouseEvent<HTMLButtonElement>) =>
-    onRemove(fromKeyboard(event));
+  // One control over the whole pill, at every width: the pill reads as one
+  // thing with an x on it.
+  const button = (
+    <button
+      {...{ [STOP]: stop }}
+      type="button"
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      onClick={(event: MouseEvent<HTMLButtonElement>) =>
+        onRemove(fromKeyboard(event))
+      }
+      aria-label={removeName}
+      // The row is walked with the arrows, so a screen reader announcing
+      // "Delete" on arrival is what tells someone the key does anything here.
+      aria-keyshortcuts="Delete"
+      className={cn(CHIP_PILL, className, CHIP_REMOVABLE, blocked && CHIP_BLOCKED)}
+    >
+      <ChipGlyph facet={chip.facet} value={chip.value} />
+      {/* A shelter's full name is forty characters. Untruncated, one of them
+          filled a phone's whole row and the rest of the filter state was off
+          the end of it. The title attribute keeps the full name reachable on a
+          pointer, and the button's own aria-label carries it regardless. */}
+      <span className="max-w-[11rem] truncate" title={chip.label}>
+        {chip.label}
+      </span>
+      {/* The paw, because a bare "+1" in this row already means something
+          else: a folded facet's "+3" counts the values it stands for. This one
+          counts animals, and the paw is the mark the result count above uses
+          for exactly that. */}
+      {blocked && (
+        <span className="inline-flex shrink-0 items-center gap-0.5 font-medium tabular-nums">
+          +{gain}
+          <PawPrint className="size-3" strokeWidth={2} aria-hidden />
+        </span>
+      )}
+      {/* Kept even on the marked pill. Every pill in this shape takes
+          something off when pressed, and dropping the one mark that says so
+          would have made the way out look like a different kind of control. */}
+      <X
+        className={cn(
+          "size-3 shrink-0 transition-colors",
+          blocked
+            ? "text-brand-foreground"
+            : "text-muted-foreground group-hover:text-foreground",
+        )}
+        strokeWidth={2}
+        aria-hidden
+      />
+    </button>
+  );
+
   // No tooltip when there is nothing to add to the label. A pill that says
   // "Mlad" under a pointer, with a tooltip that says "remove Mlad", is a
   // second copy of what the cursor already implies.
@@ -981,121 +967,14 @@ function ChipButton({
   // were. It draws "+2" and a paw and nothing on the page says what either
   // means; the sentence the tooltip carries is the only place "the two animals
   // this brings back" is written. So it keeps it, and the number is in its
-  // accessible name as well. Where the pill is two controls, the sentence
-  // goes on the one it is about.
-  const withGainTooltip = (control: ReactElement) =>
-    gain > 0 ? (
-      <Tooltip>
-        <TooltipTrigger asChild>{control}</TooltipTrigger>
-        <TooltipContent>
-          {t("removeShowsMore", { count: animalCount(gain, locale) })}
-        </TooltipContent>
-      </Tooltip>
-    ) : (
-      control
-    );
-
-  const glyph = <ChipGlyph facet={chip.facet} value={chip.value} />;
-  // A shelter's full name is forty characters. Untruncated, one of them filled
-  // a phone's whole row and the rest of the filter state was off the end of
-  // it. The title attribute keeps the full name reachable on a pointer, and
-  // the button's own aria-label carries it regardless.
-  const name = (
-    <span className="max-w-[11rem] truncate" title={chip.label}>
-      {chip.label}
-    </span>
+  // accessible name as well.
+  if (gain <= 0) return button;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent>
+        {t("removeShowsMore", { count: animalCount(gain, locale) })}
+      </TooltipContent>
+    </Tooltip>
   );
-  // The paw, because a bare "+1" in this row already means something else: a
-  // folded facet's "+3" counts the values it stands for. This one counts
-  // animals, and the paw is the mark the result count above uses for exactly
-  // that.
-  const gainMark = blocked && (
-    <span className="inline-flex shrink-0 items-center gap-0.5 font-medium tabular-nums">
-      +{gain}
-      <PawPrint className="size-3" strokeWidth={2} aria-hidden />
-    </span>
-  );
-  const cross = (
-    <X
-      className={cn(
-        "size-3 shrink-0 transition-colors",
-        blocked
-          ? "text-brand-foreground"
-          : "text-muted-foreground group-hover:text-foreground",
-      )}
-      strokeWidth={2}
-      aria-hidden
-    />
-  );
-
-  if (onJump) {
-    return (
-      <span
-        className={cn(
-          CHIP_SPLIT,
-          className,
-          blocked ? CHIP_BLOCKED : "bg-background text-foreground",
-        )}
-      >
-        <button
-          {...{ [STOP]: stop }}
-          type="button"
-          tabIndex={tabIndex}
-          onFocus={onFocus}
-          onClick={onJump}
-          aria-label={t("showFilterSection", { label: chip.label })}
-          // The row is walked with the arrows, so a screen reader announcing
-          // "Delete" on arrival is what tells someone the key does anything
-          // here. On this half, because this half is the stop.
-          aria-keyshortcuts="Delete"
-          className={CHIP_JUMP}
-        >
-          {glyph}
-          {name}
-          {gainMark}
-        </button>
-        {withGainTooltip(
-          <button
-            type="button"
-            // Not a stop of its own. The row is walked with the arrows, one
-            // press per pill, and Delete on the label half already takes the
-            // filter off (the row's own key handler); a second stop per pill
-            // would double the length of that walk to reach a key that works
-            // from where focus already is.
-            tabIndex={-1}
-            onClick={handleRemove}
-            aria-label={removeName}
-            className={CHIP_CROSS}
-          >
-            {cross}
-          </button>,
-        )}
-      </span>
-    );
-  }
-
-  const button = (
-    <button
-      {...{ [STOP]: stop }}
-      type="button"
-      tabIndex={tabIndex}
-      onFocus={onFocus}
-      onClick={handleRemove}
-      aria-label={removeName}
-      // The row is walked with the arrows, so a screen reader announcing
-      // "Delete" on arrival is what tells someone the key does anything here.
-      aria-keyshortcuts="Delete"
-      className={cn(CHIP_PILL, className, CHIP_REMOVABLE, blocked && CHIP_BLOCKED)}
-    >
-      {glyph}
-      {name}
-      {gainMark}
-      {/* Kept even on the marked pill. Every pill in this shape takes
-          something off when pressed, and dropping the one mark that says so
-          would have made the way out look like a different kind of control. */}
-      {cross}
-    </button>
-  );
-
-  return withGainTooltip(button);
 }

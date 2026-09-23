@@ -178,6 +178,19 @@ export function useAnimalFilterModel({
         : undefined,
     [animals, filters, reference, resultCount],
   );
+  // The two sections' counts, each a pass over the dataset, kept apart from
+  // the result count they are drawn beside. That count follows the grid a
+  // render behind (animal-grid.tsx), and in one memo with it the passes ran
+  // twice per press: once for the filters and again when the count caught up.
+  const goodWithTally = useMemo(
+    () => goodWithCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
+  const careTally = useMemo(
+    () => careCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
+
   // Every option of a live section stays visible; counts indicate which answers
   // are confirmed. visible* answers only whether the section is live at all,
   // so it returns every key or none (visibleFacet in lib/filters.ts).
@@ -187,7 +200,7 @@ export function useAnimalFilterModel({
       options: goodWithOptions(locale).filter((option) =>
         keys.includes(option.key),
       ),
-      counts: goodWithCounts(animals, filters, reference),
+      counts: goodWithTally,
       resultCount: resultCount,
       total: pool.length,
       onToggle: toggleGoodWith,
@@ -195,10 +208,9 @@ export function useAnimalFilterModel({
       unanswered: unanswered.goodWith,
     };
   }, [
-    animals,
-    filters,
+    filters.goodWith,
+    goodWithTally,
     locale,
-    reference,
     pool,
     resultCount,
     toggleGoodWith,
@@ -214,17 +226,17 @@ export function useAnimalFilterModel({
       options: careOptions(locale, filters.species).filter((option) =>
         keys.includes(option.key),
       ),
-      counts: careCounts(animals, filters, reference),
+      counts: careTally,
       resultCount: resultCount,
       total: pool.length,
       onToggle: toggleCare,
       onToggleMany: toggleManyCare,
     };
   }, [
-    animals,
-    filters,
+    careTally,
+    filters.care,
+    filters.species,
     locale,
-    reference,
     pool,
     resultCount,
     toggleCare,

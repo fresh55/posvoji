@@ -101,7 +101,9 @@ const RIPPLE_SCALE = 1.35;
 const RIPPLE_DURATION = 0.35;
 
 type GroupProps = {
-  group: CardGroup;
+  // Barva is drawn by the Videz block itself, which also hands it the species
+  // tab its swatches grow the ears of. No other group reads the species.
+  group: Exclude<CardGroup, "coatColor">;
   layout: FilterCardLayout;
   options: FilterOption[];
   counts: Map<string, number>;
@@ -413,8 +415,6 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           layout={rest.layout}
         />
       );
-    case "coatColor":
-      return <CoatColorCards {...rest} />;
     case "coatLength":
       return <CoatLengthCards {...rest} />;
     case "waiting":
@@ -616,7 +616,6 @@ export function FilterGroupList({
     onToggle: () => toggleSection(key),
     summary,
     contentId: `${idBase}-${key}`,
-    section: key,
   });
   const appearanceOptions = appearanceGroups.flatMap(({ options }) => options);
   const appearanceCollapse = collapseFor(
@@ -692,28 +691,29 @@ export function FilterGroupList({
               {appearanceGroups.map(({ group, options }) => {
                 const selected: string[] = filters[group];
                 const groupCounts = counts[group];
+                const props = {
+                  layout,
+                  // The same rule the groups above get. Without it this was
+                  // the one block in the sidebar that drew rows the current
+                  // narrowing has no animals for: with no hairless animal in
+                  // the catalogue, Brez dlake sat there reading 0.
+                  options: drawn(options, ({ value }) =>
+                    isDeadOption(
+                      groupCounts.get(value) ?? 0,
+                      selected.includes(value),
+                    ),
+                  ),
+                  counts: groupCounts,
+                  selected,
+                  onToggle: (value: string) => onToggle(group, value),
+                  onToggleMany: (values: string[]) => onToggleMany(group, values),
+                  unanswered: unanswered?.groups[group],
+                };
 
-                return (
-                  <FilterGroup
-                    key={group}
-                    group={group}
-                    layout={layout}
-                    // The same rule the groups above get. Without it this was
-                    // the one block in the sidebar that drew rows the current
-                    // narrowing has no animals for: with no hairless animal in
-                    // the catalogue, Brez dlake sat there reading 0.
-                    options={drawn(options, ({ value }) =>
-                      isDeadOption(
-                        groupCounts.get(value) ?? 0,
-                        selected.includes(value),
-                      ),
-                    )}
-                    counts={groupCounts}
-                    selected={selected}
-                    onToggle={(value) => onToggle(group, value)}
-                    onToggleMany={(values) => onToggleMany(group, values)}
-                    unanswered={unanswered?.groups[group]}
-                  />
+                return group === "coatColor" ? (
+                  <CoatColorCards key={group} {...props} species={filters.species} />
+                ) : (
+                  <FilterGroup key={group} group={group} {...props} />
                 );
               })}
             </div>

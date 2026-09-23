@@ -370,9 +370,6 @@ const sl = {
   // picker opened from this sheet carries: one flow, one word.
   show: "Pokaži",
   removeFilter: "Odstrani filter {label}",
-  // The other half of a pill in the active-filter row: the × takes the
-  // filter off, the label goes to the section that set it.
-  showFilterSection: "Pokaži filter {label}",
   health: "Zdravje",
   // The scope row's heading, in the panels and in the sheet. One word, because
   // the row under it already names the answer ("Vsa Slovenija", "3 od 17
@@ -874,7 +871,6 @@ const en: Messages = {
   originFrom: "From {place}",
   show: "Show",
   removeFilter: "Remove filter {label}",
-  showFilterSection: "Show filter {label}",
   health: "Health",
   where: "Where",
   whereMapInvite: "Pick shelters",

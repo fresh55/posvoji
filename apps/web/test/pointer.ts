@@ -11,6 +11,7 @@ import { vi } from "vitest";
  */
 
 export type PointerKind =
+  | "pointerover"
   | "pointerdown"
   | "pointermove"
   | "pointerup"

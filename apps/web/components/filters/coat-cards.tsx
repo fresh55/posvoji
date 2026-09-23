@@ -2,7 +2,7 @@
 
 import type { TargetAndTransition, Transition, Variants } from "motion/react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import type { CoatColorCategory, CoatLength } from "@posvoji/schema";
 import {
   CountRoll,
@@ -36,6 +36,7 @@ import {
   type SpeciesFilter,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
+import type { SpeciesTab } from "@/lib/species";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -122,8 +123,10 @@ const COLOUR_HINT: Record<Locale, string> = {
 };
 
 const CENTRE = 12;
+// Every coordinate this file writes into a path, to two places.
+const p2 = (n: number) => n.toFixed(2);
 const at = (angle: number, r: number) =>
-  `${(CENTRE + r * Math.cos(angle)).toFixed(2)} ${(CENTRE + r * Math.sin(angle)).toFixed(2)}`;
+  `${p2(CENTRE + r * Math.cos(angle))} ${p2(CENTRE + r * Math.sin(angle))}`;
 
 /**
  * Multicolour is three wedges and not a conic gradient. The gradient was
@@ -229,17 +232,15 @@ const HOVER_LIFT = -1.5;
  * idea rather than a colour's, and at 36px the difference between the
  * heaviest and the lightest landing was too small to see.
  *
- * Ostale draws the rabbit its own tab draws. Vse has to draw something and
- * draws the cat: most of the catalogue is cats (363 of 491 animals on
- * 23 September 2026).
+ * Keyed by the tab, so Ostale draws the rabbit its own tab draws
+ * (species-glyph.tsx) and a new tab fails to compile here. Vse has to draw
+ * something and draws the cat: most of the catalogue is cats (363 of 491
+ * animals on 23 September 2026).
  */
-type EarKind = "cat" | "dog" | "rabbit";
+type EarKind = SpeciesTab;
 
-function earKindOf(species: SpeciesFilter): EarKind {
-  if (species === "dog") return "dog";
-  if (species === "other") return "rabbit";
-  return "cat";
-}
+const earKindOf = (species: SpeciesFilter): EarKind =>
+  species === "all" ? "cat" : species;
 
 /** Tucked behind the head, the tips showing under a pointer, and up. */
 type EarState = "stowed" | "peeking" | "up";
@@ -251,8 +252,6 @@ const EAR_SIDES: readonly EarSide[] = ["left", "right"];
 // one ear. A turn written for the left ear turns the right one the opposite
 // way, which is what a pair of ears does.
 const MIRROR = "translate(24 0) scale(-1 1)";
-
-const p2 = (n: number) => n.toFixed(2);
 
 /**
  * A pointed ear: a triangle with bowed sides and a rounded tip, standing on
@@ -339,9 +338,10 @@ const EARS: Record<EarKind, Ear> = {
     },
     spring: { type: "spring", stiffness: 320, damping: 14 },
   },
-  // Shorter than a rabbit's ear wants to be. Any taller and the tips of a
-  // picked swatch on the second row reach the count under the first.
-  rabbit: {
+  // A rabbit's ears, shorter than a rabbit's ear wants to be. Any taller and
+  // the tips of a picked swatch on the second row reach the count under the
+  // first.
+  other: {
     shape: longEar(3.9, 7),
     place: earAt(-106, 7.4, -20),
     inFront: false,
@@ -382,13 +382,10 @@ const EAR_INK: Record<SwatchKey, string> = {
 
 /**
  * Why a swatch moves on its own: it has just been picked, or another one has
- * and this one, picked already, turns an ear towards it.
+ * and this one, picked already, turns its ear on that side towards it. A
+ * string rather than an object, so the memoised swatch can compare it.
  */
-type EarBeat =
-  | { kind: "picked" }
-  | { kind: "noticed"; toward: EarSide; delay: number };
-
-const JUST_PICKED: EarBeat = { kind: "picked" };
+type EarBeat = "picked" | EarSide | null;
 
 // Once the ears are up, each species plays the gesture its tab plays: the cat
 // flicks an ear, the dog tilts its head while its ears swing, the rabbit hops.
@@ -397,19 +394,25 @@ const CAT_FLICK: Pose = {
   animate: { rotate: [0, -24, 7, 0] },
   transition: { duration: 0.3, delay: 0.62, times: [0, 0.3, 0.65, 1], ease: "easeInOut" },
 };
-// A rabbit's ears trail its hop.
-const RABBIT_EARS_TRAIL: Pose = {
-  animate: { rotate: [0, 10, -4, 0] },
-  transition: { duration: 0.42, delay: 0.42, times: [0, 0.45, 0.8, 1], ease: "easeInOut" },
-};
 const DOG_TILT: Pose = {
   animate: { rotate: [0, -9, 3, 0] },
   transition: { duration: 0.62, delay: 0.38, times: [0, 0.35, 0.7, 1], ease: "easeInOut" },
 };
+// The rabbit's hop and its ears trailing it share one clock.
+const RABBIT_BEAT: Transition = {
+  duration: 0.42,
+  delay: 0.42,
+  times: [0, 0.45, 0.8, 1],
+  ease: "easeInOut",
+};
+const RABBIT_EARS_TRAIL: Pose = {
+  animate: { rotate: [0, 10, -4, 0] },
+  transition: RABBIT_BEAT,
+};
 // Three and a half units is 5px on the palette's 36px swatch.
 const RABBIT_HOP: Pose = {
   animate: { y: [0, -3.4, 0, 0], scaleY: [1, 1, 0.92, 1] },
-  transition: { duration: 0.42, delay: 0.42, times: [0, 0.45, 0.8, 1], ease: "easeInOut" },
+  transition: RABBIT_BEAT,
 };
 const EAR_STILL: Pose = { animate: { rotate: 0 }, transition: { duration: 0.2 } };
 const SWATCH_STILL: Pose = {
@@ -420,26 +423,28 @@ const SWATCH_STILL: Pose = {
 // The neighbours' answer, in place of the shove the old pick sent through the
 // grid: every colour already picked turns the ear nearer the new one towards
 // it, a beat after it lands, the far ones a little later. Energija's
-// neighbours lean away; these listen.
+// neighbours lean away; these listen. A dog's floppy ear turns less.
 const NOTICE_DELAY = 0.2;
 const NOTICE_STEP = 0.06;
-const NOTICE_TURN: Record<EarKind, TargetAndTransition> = {
-  cat: { rotate: [0, -16, 0] },
-  dog: { rotate: [0, -9, 0] },
-  rabbit: { rotate: [0, -16, 0] },
-};
+const EAR_NOTICE: TargetAndTransition = { rotate: [0, -16, 0] };
+const DOG_EAR_NOTICE: TargetAndTransition = { rotate: [0, -9, 0] };
 
-function earBeat(kind: EarKind, side: EarSide, beat: EarBeat | null): Pose {
-  if (beat?.kind === "picked") {
+function earBeat(
+  kind: EarKind,
+  side: EarSide,
+  beat: EarBeat,
+  noticeDelay: number,
+): Pose {
+  if (beat === "picked") {
     if (kind === "cat" && side === "right") return CAT_FLICK;
-    if (kind === "rabbit") return RABBIT_EARS_TRAIL;
+    if (kind === "other") return RABBIT_EARS_TRAIL;
   }
-  if (beat?.kind === "noticed" && beat.toward === side) {
+  if (beat === side) {
     return {
-      animate: NOTICE_TURN[kind],
+      animate: kind === "dog" ? DOG_EAR_NOTICE : EAR_NOTICE,
       transition: {
         duration: 0.26,
-        delay: beat.delay,
+        delay: noticeDelay,
         times: [0, 0.35, 1],
         ease: "easeInOut",
       },
@@ -448,10 +453,10 @@ function earBeat(kind: EarKind, side: EarSide, beat: EarBeat | null): Pose {
   return EAR_STILL;
 }
 
-function swatchBeat(kind: EarKind, beat: EarBeat | null): Pose {
-  if (beat?.kind !== "picked") return SWATCH_STILL;
+function swatchBeat(kind: EarKind, beat: EarBeat): Pose {
+  if (beat !== "picked") return SWATCH_STILL;
   if (kind === "dog") return DOG_TILT;
-  if (kind === "rabbit") return RABBIT_HOP;
+  if (kind === "other") return RABBIT_HOP;
   return SWATCH_STILL;
 }
 
@@ -482,48 +487,44 @@ const FOOT_ORIGIN = { transformBox: "view-box", originX: 0.5, originY: 1 } as co
  */
 type EarExit = { delay: number; instant: boolean };
 
-const tuck = ({ delay, instant }: EarExit): Transition =>
-  instant ? { duration: 0 } : { duration: 0.17, ease: "easeIn", delay };
+const INSTANT: Transition = { duration: 0 };
+
+/** The transition asked for, or none at all under reduced motion. */
+const timed = ({ instant }: EarExit, transition: Transition): Transition =>
+  instant ? INSTANT : transition;
+
+const tuck = (exit: EarExit): Transition =>
+  timed(exit, { duration: 0.17, ease: "easeIn", delay: exit.delay });
 
 function poseVariants(ear: Ear): Variants {
   return {
     stowed: (exit: EarExit) => ({ ...ear.pose.stowed, transition: tuck(exit) }),
-    peeking: ({ instant }: EarExit) => ({
+    peeking: (exit: EarExit) => ({
       ...ear.pose.peeking,
-      transition: instant ? { duration: 0 } : FILTER_HOVER_SPRING,
+      transition: timed(exit, FILTER_HOVER_SPRING),
     }),
-    up: ({ instant }: EarExit) => ({
-      ...ear.pose.up,
-      transition: instant ? { duration: 0 } : ear.spring,
-    }),
+    up: (exit: EarExit) => ({ ...ear.pose.up, transition: timed(exit, ear.spring) }),
   };
 }
 
-const POSE_VARIANTS: Record<EarKind, Variants> = {
-  cat: poseVariants(EARS.cat),
-  dog: poseVariants(EARS.dog),
-  rabbit: poseVariants(EARS.rabbit),
-};
+const POSE_VARIANTS = Object.fromEntries(
+  Object.entries(EARS).map(([kind, ear]) => [kind, poseVariants(ear)]),
+) as Record<EarKind, Variants>;
 
-// A floppy ear's line draws itself down the ear as the ear comes up, the way
-// the species tabs ink their glyphs in. The opacity is the switch: a
-// pathLength of 0 with a round cap still paints a dot.
+// A floppy ear's line draws itself down the ear as the ear comes up, with the
+// same draw the coat strands use. The opacity is the switch: a pathLength of
+// 0 with a round cap still paints a dot.
 const INK_VARIANTS: Variants = {
   stowed: (exit: EarExit) => ({ pathLength: 0, opacity: 0, transition: tuck(exit) }),
-  peeking: ({ instant }: EarExit) => ({
+  peeking: (exit: EarExit) => ({
     pathLength: 0.6,
     opacity: 1,
-    transition: instant ? { duration: 0 } : { pathLength: { duration: 0.2 }, opacity: { duration: 0.08 } },
+    transition: timed(exit, DRAW_IN(0.2, 0)),
   }),
-  up: ({ instant }: EarExit) => ({
+  up: (exit: EarExit) => ({
     pathLength: 1,
     opacity: 1,
-    transition: instant
-      ? { duration: 0 }
-      : {
-          pathLength: { duration: 0.3, delay: 0.03, ease: "easeOut" },
-          opacity: { duration: 0.08, delay: 0.03 },
-        },
+    transition: timed(exit, DRAW_IN(0.3, 0.03)),
   }),
 };
 
@@ -542,17 +543,19 @@ const OUTLINE_GAP = 1.9;
 const OUTLINE_RING = 1.4;
 
 type OutlinePaint = "ring" | "gap";
+// Ring first, so the gap is drawn over it.
+const OUTLINE_PAINTS: readonly OutlinePaint[] = ["ring", "gap"];
 
 function outlineVariants(width: number): Variants {
   return {
-    off: ({ delay, instant }: EarExit) => ({
+    off: (exit: EarExit) => ({
       strokeWidth: 0,
-      transition: instant ? { duration: 0 } : { duration: 0.15, ease: "easeOut", delay },
+      transition: timed(exit, { duration: 0.15, ease: "easeOut", delay: exit.delay }),
     }),
     // It follows the ears out rather than arriving with them.
-    on: ({ instant }: EarExit) => ({
+    on: (exit: EarExit) => ({
       strokeWidth: width,
-      transition: instant ? { duration: 0 } : { duration: 0.26, delay: 0.12, ease: "easeOut" },
+      transition: timed(exit, { duration: 0.26, delay: 0.12, ease: "easeOut" }),
     }),
   };
 }
@@ -565,14 +568,35 @@ const OUTLINE: Record<OutlinePaint, { stroke: string; variants: Variants }> = {
   gap: { stroke: "var(--background)", variants: outlineVariants(2 * OUTLINE_GAP) },
 };
 
-// The body settles back to its size after a pick through a squash and an
-// overshoot, the one landing every colour shares now.
-const PICK_POP: Transition = { duration: 0.42, times: [0, 0.22, 0.58, 1], ease: "easeOut" };
+/**
+ * How big the body sits. A pick gets there through a squash and an
+ * overshoot, the one landing every colour shares now; a reset waits its turn.
+ */
+function bodyPose(
+  beat: EarBeat,
+  rest: number,
+  exit: EarExit,
+): { scale: number | number[]; transition: Transition } {
+  if (beat === "picked") {
+    return {
+      scale: [1, 0.93, 1.12, rest],
+      transition: timed(exit, { duration: 0.42, times: [0, 0.22, 0.58, 1], ease: "easeOut" }),
+    };
+  }
+  return {
+    scale: rest,
+    transition: timed(
+      exit,
+      rest > 1 ? FILTER_HOVER_SPRING : { duration: 0.18, ease: "easeOut", delay: exit.delay },
+    ),
+  };
+}
 
 type EarPairProps = {
   kind: EarKind;
   state: EarState;
-  beat: EarBeat | null;
+  beat: EarBeat;
+  noticeDelay: number;
   exit: EarExit;
 };
 
@@ -588,15 +612,21 @@ function EarPair({
   kind,
   state,
   beat,
+  noticeDelay,
   exit,
+  from = "stowed",
   children,
-}: EarPairProps & { children: (side: EarSide) => ReactNode }) {
+}: EarPairProps & {
+  /** Where the ears start when this copy mounts. */
+  from?: EarState;
+  children: (side: EarSide) => ReactNode;
+}) {
   const ear = EARS[kind];
 
   return (
     <>
       {EAR_SIDES.map((side) => {
-        const flick = exit.instant ? EAR_STILL : earBeat(kind, side, beat);
+        const flick = earBeat(kind, side, beat, noticeDelay);
         return (
           <g key={side} transform={side === "right" ? MIRROR : undefined}>
             <g transform={ear.place}>
@@ -604,7 +634,7 @@ function EarPair({
                 style={PIVOT}
                 variants={POSE_VARIANTS[kind]}
                 custom={exit}
-                initial="stowed"
+                initial={from}
                 animate={state}
                 exit="stowed"
               >
@@ -668,15 +698,14 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
 }
 
 /**
- * One of the outline's two strokes: round the disc and round both ears. Only
- * a picked swatch draws it; a peeking one keeps the copies at zero width so
- * they have followed the ears the whole way when a click turns them on.
+ * One of the outline's two strokes: round the disc and round both ears. It
+ * mounts with the pick, and its copies of the ears start from wherever the
+ * coat's ears were, peeking under the pointer that clicked or stowed.
  */
 function EarOutline({
   paint,
-  checked,
   ...pair
-}: EarPairProps & { paint: OutlinePaint; checked: boolean }) {
+}: EarPairProps & { paint: OutlinePaint; from: EarState }) {
   const ear = EARS[pair.kind];
   const { stroke, variants } = OUTLINE[paint];
 
@@ -688,7 +717,7 @@ function EarOutline({
       variants={variants}
       custom={pair.exit}
       initial="off"
-      animate={checked ? "on" : "off"}
+      animate="on"
       exit="off"
     >
       <circle cx={CENTRE} cy={CENTRE} r={DISC_RADIUS} />
@@ -701,26 +730,29 @@ function EarOutline({
  * A colour, as the palette and the sheet's tiles both draw it: a disc at rest,
  * and the animal wearing it once it is picked.
  *
- * The ears exist only while they are showing. Each ear is two motion nodes in
- * up to three layers, and the palette and the sheet are both mounted below
- * lg, so ears drawn stowed at rest would be idle motion nodes on every colour
- * nobody has touched.
+ * The ears exist only while they are showing, and the outline only once the
+ * colour is picked. Each ear is two motion nodes in up to three layers, and
+ * the palette and the sheet are both mounted below lg, so drawing them hidden
+ * at rest would be idle motion nodes on every colour nobody has touched.
  *
  * Each presence says initial={false}: the ears of a colour already picked when
  * the section opens are simply there, and only a pick or a pointer brings them
  * up. The boundary is also what lets them come up at all. The splash this
  * palette used to throw mounted on demand under the same parents and played
  * its entrance already finished until it had a presence of its own.
+ *
+ * Memoised, and every prop is a primitive for it: the palette re-renders all
+ * ten swatches whenever the pointer crosses one.
  */
-function CoatColorSwatch({
+const CoatColorSwatch = memo(function CoatColorSwatch({
   colour,
   kind,
   checked,
   peeking,
   beat,
+  noticeDelay = 0,
   resetDelay,
   outlined,
-  pickedScale,
   className,
 }: {
   colour: CoatColorFacet;
@@ -728,13 +760,17 @@ function CoatColorSwatch({
   checked: boolean;
   /** A pointer or keyboard focus is on it: the tips of the ears show. */
   peeking: boolean;
-  beat: EarBeat | null;
+  beat: EarBeat;
+  /** When a colour picked earlier turns its ear, for the beats that do. */
+  noticeDelay?: number;
   /** Holds this swatch back so a reset empties the section in order. */
   resetDelay: number;
-  /** Draws the chosen state as an outline round the animal. */
+  /**
+   * The palette's swatch: picked, it rests larger than the others and wears
+   * an outline round the animal. The sheet's tile turns green instead, which
+   * is the chosen state every sheet tile wears.
+   */
   outlined: boolean;
-  /** How large a picked swatch rests. */
-  pickedScale: number;
   className: string;
 }) {
   const shouldReduceMotion = useReducedMotion() ?? false;
@@ -743,15 +779,15 @@ function CoatColorSwatch({
   const shown = state !== "stowed";
   const exit: EarExit = { delay: resetDelay, instant: shouldReduceMotion };
   const moving = shouldReduceMotion ? null : beat;
-  const pair: EarPairProps = { kind, state, beat: moving, exit };
+  const pair: EarPairProps = { kind, state, beat: moving, noticeDelay, exit };
   const whole = swatchBeat(kind, moving);
-  const rest = checked ? pickedScale : 1;
+  const body = bodyPose(moving, checked && outlined ? PICKED_SCALE : 1, exit);
   const faces = FACES[colour];
 
   return (
     <svg viewBox="0 0 24 24" data-swatch={colour} className={className} aria-hidden>
       <m.g
-        style={kind === "rabbit" ? FOOT_ORIGIN : CENTRE_ORIGIN}
+        style={kind === "other" ? FOOT_ORIGIN : CENTRE_ORIGIN}
         initial={false}
         animate={whole.animate}
         transition={whole.transition}
@@ -759,33 +795,21 @@ function CoatColorSwatch({
         <m.g
           style={CENTRE_ORIGIN}
           initial={false}
-          animate={{
-            scale: moving?.kind === "picked" ? [1, 0.93, 1.12, rest] : rest,
-          }}
-          transition={
-            shouldReduceMotion
-              ? { duration: 0 }
-              : moving?.kind === "picked"
-                ? PICK_POP
-                : checked
-                  ? FILTER_HOVER_SPRING
-                  : { duration: 0.18, ease: "easeOut", delay: resetDelay }
-          }
+          animate={{ scale: body.scale }}
+          transition={body.transition}
         >
-          {outlined && (
-            <>
-              <AnimatePresence initial={false} custom={exit}>
-                {shown && (
-                  <EarOutline key={kind} paint="ring" checked={checked} {...pair} />
-                )}
-              </AnimatePresence>
-              <AnimatePresence initial={false} custom={exit}>
-                {shown && (
-                  <EarOutline key={kind} paint="gap" checked={checked} {...pair} />
-                )}
-              </AnimatePresence>
-            </>
-          )}
+          <AnimatePresence initial={false} custom={exit}>
+            {outlined &&
+              checked &&
+              OUTLINE_PAINTS.map((paint) => (
+                <EarOutline
+                  key={`${paint}-${kind}`}
+                  paint={paint}
+                  from={peeking ? "peeking" : "stowed"}
+                  {...pair}
+                />
+              ))}
+          </AnimatePresence>
           {/* Both presences stay mounted whichever way the ears are drawn, so
               switching from Mačke to Psi sends the cat's ears down behind the
               head while the dog's come up in front of it. */}
@@ -815,7 +839,7 @@ function CoatColorSwatch({
       </m.g>
     </svg>
   );
-}
+});
 
 const RIPPLE_OPACITY = 0.45;
 const RIPPLE_SCALE = 1.45;
@@ -900,8 +924,7 @@ function strandPath(t: number, fall: number): string {
   // inside the line it hangs from.
   const y = edgeY(t) + 0.35;
   const drift = fall * LEAN;
-  const p = (n: number) => n.toFixed(2);
-  return `M${p(x)} ${p(y)}C${p(x + drift * 0.04)} ${p(y + fall * 0.45)} ${p(x + drift * 0.35)} ${p(y + fall * 0.8)} ${p(x + drift)} ${p(y + fall * 0.94)}`;
+  return `M${p2(x)} ${p2(y)}C${p2(x + drift * 0.04)} ${p2(y + fall * 0.45)} ${p2(x + drift * 0.35)} ${p2(y + fall * 0.8)} ${p2(x + drift)} ${p2(y + fall * 0.94)}`;
 }
 
 const strandsFalling = (fall: number): string[] =>
@@ -1278,9 +1301,9 @@ type CoatCardsProps = {
 };
 
 /**
- * One list for both halves of Videz. They differ only in what goes in the
- * icon well and what the hint says, and writing them twice is how the two
- * sub-sections drifted apart in the first place.
+ * One list for both halves of Videz. They differ in what goes in the icon
+ * well, what the hint says and how long the icon's gesture runs, and writing
+ * them twice is how the two sub-sections drifted apart in the first place.
  */
 function CoatCards({
   group,
@@ -1294,9 +1317,15 @@ function CoatCards({
   layout,
   collapse,
   tracksPress = false,
+  holdMs,
+  checkDelay,
 }: CoatCardsProps & {
   group: "coatColor" | "coatLength";
   hint?: string;
+  /** How long a pick holds its gesture open; its tail snaps to rest after. */
+  holdMs: number;
+  /** When the tick lands, which is once the icon's gesture has. */
+  checkDelay: number;
   /**
    * One object rather than four positional booleans. Dolžina dlake needs to
    * know whether the pointer is on the card, and a fourth bare boolean beside
@@ -1317,15 +1346,11 @@ function CoatCards({
 }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
-  // A colour's beat outlasts a coat's draught, and the hold is what the tail
-  // of either snaps back at.
   const {
     celebration,
     celebrate,
     clear: clearCelebration,
-  } = useOneShotCelebration<string>(
-    group === "coatColor" ? EAR_BEAT_MS : CELEBRATION_MS,
-  );
+  } = useOneShotCelebration<string>(holdMs);
   const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
     selected.length,
     options.length,
@@ -1402,7 +1427,7 @@ function CoatCards({
             <FilterCardMark
               layout={layout}
               checked={checked}
-              appearDelay={group === "coatColor" ? EAR_CHECK_DELAY : CHECK_DELAY}
+              appearDelay={checkDelay}
             />
             <FilterCardIconWell
               layout={layout}
@@ -1624,17 +1649,15 @@ function CoatColorPalette({
           const hovered = hoveredValue === value;
           // A colour picked earlier hears the new one land and turns the ear
           // on its side, later the further away it is.
-          const beat: EarBeat | null = celebrating
-            ? JUST_PICKED
+          const beat: EarBeat = celebrating
+            ? "picked"
             : checked && celebrationIndex >= 0
-              ? {
-                  kind: "noticed",
-                  toward: index < celebrationIndex ? "right" : "left",
-                  delay:
-                    NOTICE_DELAY +
-                    Math.abs(index - celebrationIndex) * NOTICE_STEP,
-                }
+              ? index < celebrationIndex
+                ? "right"
+                : "left"
               : null;
+          const noticeDelay =
+            NOTICE_DELAY + Math.abs(index - celebrationIndex) * NOTICE_STEP;
 
           return (
             <button
@@ -1683,9 +1706,9 @@ function CoatColorPalette({
                   checked={checked}
                   peeking={hovered}
                   beat={beat}
+                  noticeDelay={noticeDelay}
                   resetDelay={resetDelayOf(index)}
                   outlined
-                  pickedScale={PICKED_SCALE}
                   className="size-9 overflow-visible"
                 />
               </m.span>
@@ -1725,19 +1748,17 @@ export function CoatColorCards({
       {...props}
       group="coatColor"
       hint={COLOUR_HINT[locale]}
+      holdMs={EAR_BEAT_MS}
+      checkDelay={EAR_CHECK_DELAY}
       renderIcon={({ value, checked, dead, motion }) => (
         <CoatColorSwatch
           colour={colourOf(value)}
           kind={kind}
           checked={checked}
           peeking={motion.hovered}
-          beat={motion.celebrating ? JUST_PICKED : null}
+          beat={motion.celebrating ? "picked" : null}
           resetDelay={motion.resetDelay}
-          // The tile turns green when it is picked, which is the chosen state
-          // every sheet tile wears; an outline inside it would say it twice.
-          // It keeps its size for the same reason.
           outlined={false}
-          pickedScale={1}
           className={cn(
             // Bigger than the 20px glyph the other sections put in this well.
             // A swatch is the answer itself rather than a picture of it, and
@@ -1760,6 +1781,8 @@ export function CoatLengthCards(props: CoatCardsProps) {
     <CoatCards
       {...props}
       group="coatLength"
+      holdMs={CELEBRATION_MS}
+      checkDelay={CHECK_DELAY}
       // Length needs no explanation beyond its labels.
       // The coat is the one icon here that answers a held pointer.
       tracksPress

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -13,6 +13,7 @@ import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
+import { pointer } from "@/test/pointer";
 import { CoatColorCards } from "./coat-cards";
 import type { FilterCardLayout } from "./filter-card";
 import { FilterGroupList } from "./filter-groups";
@@ -56,22 +57,18 @@ const earsOf = (label: string) =>
   swatchOf(label).querySelector("[data-ears]")?.getAttribute("data-ears") ??
   null;
 
-// jsdom has no PointerEvent, so the pointer arrives as a MouseEvent under the
-// pointer event's name, carrying the one field the hover gate reads. React
-// makes its pointerenter out of pointerover.
-function pointerOnto(element: HTMLElement, pointerType: "mouse" | "touch") {
-  const event = new MouseEvent("pointerover", { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "pointerType", { value: pointerType });
-  fireEvent(element, event);
-}
+// React makes its pointerenter out of pointerover.
+const pointerOnto = (element: HTMLElement, pointerType: "mouse" | "touch") =>
+  pointer(element, "pointerover", { x: 0, y: 0, pointerType });
 
 describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layout) => {
   it.each([
     ["all", "cat"],
     ["cat", "cat"],
     ["dog", "dog"],
-    ["other", "rabbit"],
-  ] as const)("a colour picked on the %s tab grows %s ears", (species, ears) => {
+    // Ostale's ears are a rabbit's, keyed by the tab like its glyph.
+    ["other", "other"],
+  ] as const)("a colour picked on the %s tab grows the %s ears", (species, ears) => {
     renderColours({ layout, species, selected: ["black"] });
 
     expect(earsOf("Črna")).toBe(ears);

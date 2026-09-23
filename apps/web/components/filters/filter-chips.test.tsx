@@ -124,6 +124,20 @@ describe("the active filters row", () => {
     ]);
   });
 
+  it("stacks the colours a folded run of colours stands for", () => {
+    // The facet's palette mark said some colour was on and nothing about
+    // which, so the pill had to be opened to find out.
+    renderChips(
+      ["black", "white", "multicolour"].map((value) =>
+        chip({ key: `coatColor:${value}`, facet: "coatColor", value, label: value }),
+      ),
+    );
+
+    const folded = screen.getByRole("button", { name: /^Show all/ });
+    expect(folded.querySelectorAll("svg circle[fill='none']")).toHaveLength(3);
+    expect(folded.querySelector(".lucide-palette")).toBeNull();
+  });
+
   it.each(["band", "flow"] as const)(
     "takes the filter off from a press anywhere on the pill in the %s",
     (placement) => {

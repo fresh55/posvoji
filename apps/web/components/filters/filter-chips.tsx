@@ -23,7 +23,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CoatColorChipSwatch, CoatLengthMark } from "@/components/filters/coat-cards";
+import {
+  CoatColorChipSwatch,
+  CoatColorStack,
+  CoatLengthMark,
+} from "@/components/filters/coat-cards";
 import { WaitingMark } from "@/components/filters/waiting-cards";
 import { useScrollEdgeFadesX } from "@/hooks/use-scroll-edge-fades";
 import { FACET_ICONS, filterValueGlyph } from "@/lib/animal-icons";
@@ -573,7 +577,12 @@ export function FilterChips({
                           "bg-background text-foreground hover:bg-muted",
                         )}
                       >
-                        <ChipGlyph facet={item.run.facet} />
+                        <ChipGlyph
+                          facet={item.run.facet}
+                          values={item.run.chips.flatMap(({ value }) =>
+                            value === undefined ? [] : [value],
+                          )}
+                        />
                         <span className="max-w-[11rem] truncate">
                           {item.run.chips[0].label}
                         </span>
@@ -810,18 +819,28 @@ export function RemovableChips({
  *
  *  Accent-coloured, the same green a chosen card wears: it says "this is on"
  *  without turning nine pills into nine green blocks. */
-function ChipGlyph({ facet, value }: { facet: FilterFacet; value?: string }) {
+function ChipGlyph({
+  facet,
+  value,
+  values,
+}: {
+  facet: FilterFacet;
+  value?: string;
+  /** Every value a folded run stands for, which only colour draws. */
+  values?: readonly string[];
+}) {
   const { Icon, className } =
     value === undefined
       ? { Icon: FACET_ICONS[facet], className: undefined }
       : filterValueGlyph(facet, value);
   return (
     <span className="grid size-[1.125rem] shrink-0 place-items-center text-brand-strong">
-      {/* A colour chip shows the colour. Only where the chip names one value:
-          a folded run of them is the facet speaking, and the palette mark is
-          right for that. */}
+      {/* A colour chip shows the colour, and a folded run of colours shows
+          the colours it folds rather than the facet's palette mark. */}
       {facet === "coatColor" && value !== undefined ? (
         <CoatColorChipSwatch value={value} />
+      ) : facet === "coatColor" && values ? (
+        <CoatColorStack values={values} />
       ) : facet === "coatLength" ? (
         // The section's own drawing, not a lucide stand-in.
         <CoatLengthMark value={value} />

@@ -1667,12 +1667,16 @@ describe("mapFacts: hasFilteredEmpty", () => {
 });
 
 describe("ShelterMap counts on markers", () => {
-  function renderCounted(pins: ShelterPin[], countOnMarkers: boolean): string {
+  function renderCounted(
+    pins: ShelterPin[],
+    countOnMarkers: boolean,
+    selected: string[] = [],
+  ): string {
     return renderToStaticMarkup(
       <I18nProvider locale="sl">
         <ShelterMap
           pins={pins}
-          selected={[]}
+          selected={selected}
           onPick={() => undefined}
           countOnMarkers={countOnMarkers}
         />
@@ -1690,6 +1694,22 @@ describe("ShelterMap counts on markers", () => {
     expect(counted).toContain('data-marker-count="49"');
     expect(counted).toContain('data-marker-count="178"');
     expect(renderCounted(pins, false)).not.toContain("data-marker-count");
+  });
+
+  it("names a picked shelter under its marker, and only a picked one", () => {
+    const pins = [
+      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 49),
+      pin("macji-dol", "Mačji dol (Žverca)", "Škofja Loka", 15),
+    ];
+    const names = (html: string) =>
+      [...html.matchAll(/data-marker-name[^>]*>\s*<text[^>]*>([^<]*)<\/text>/g)].map(
+        ([, name]) => name,
+      );
+
+    // The chip's short form: no leading noun, no operator in brackets.
+    expect(names(renderCounted(pins, true, ["macji-dol"]))).toEqual(["Mačji dol"]);
+    expect(names(renderCounted(pins, true, []))).toEqual([]);
+    expect(names(renderCounted(pins, false, ["macji-dol"]))).toEqual([]);
   });
 
   it("writes nothing on a shelter the filters leave empty", () => {

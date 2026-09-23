@@ -5,7 +5,7 @@ import { PawPrint } from "lucide-react";
 import { useI18n } from "@/components/i18n-context";
 import { useDeferredBlur } from "@/hooks/use-deferred-blur";
 import type { Locale } from "@/lib/i18n";
-import { filteredAnimalCount, shelterCount } from "@/lib/labels";
+import { filteredAnimalCount, shelterChipLabel, shelterCount } from "@/lib/labels";
 import {
   clusterDiscs,
   clusterHitWedges,
@@ -836,6 +836,20 @@ export const Marker = memo(function Marker({
         );
       })}
 
+      {/* The picked shelters' names under their coin, on a map that writes
+          its counts. A pick used to be said by the green fill alone, and the
+          name was a hover away, which a finger never has. Only picked marks,
+          so the crowded middle of the country stays a field of numbers until
+          someone chooses. */}
+      {showCount && (
+        <PickedName
+          town={town}
+          names={town.shelters
+            .filter((shelter) => selected.includes(shelter.value))
+            .map((shelter) => shelterChipLabel(shelter.label))}
+        />
+      )}
+
       {/* Drawn after every mark and every target, so a focus ring can never
           end up behind the coin it is meant to be around. It carries no width
           until the group is focused from the keyboard, which is the only
@@ -1059,6 +1073,34 @@ function CountText({
         style={{ fontSize: countFontSize(r, count) }}
       >
         {count}
+      </text>
+    </g>
+  );
+}
+
+// A picked town's name line, set under everything the marker draws. It rides a
+// translate for the reason CountText does: the town can glide on a species
+// change, and text coordinates would snap while it did. The halo is the
+// plate's own ground drawn under the letters, so the name reads over a region
+// fill, a border or the relief alike.
+const PICKED_NAME_SIZE = 3.9;
+function PickedName({ town, names }: { town: Town; names: string[] }) {
+  if (names.length === 0) return null;
+  const y = town.y + town.reach + PICKED_NAME_SIZE * 1.05;
+  return (
+    <g
+      data-marker-name=""
+      aria-hidden
+      style={{ transform: `translate(${town.x}px, ${y}px)` }}
+      className={cn("pointer-events-none transition-transform", MAP_MORPH, COUNT_TOO_SMALL)}
+    >
+      <text
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-foreground stroke-background font-semibold [paint-order:stroke] [stroke-linejoin:round]"
+        style={{ fontSize: PICKED_NAME_SIZE, strokeWidth: 1.1 }}
+      >
+        {names.join(", ")}
       </text>
     </g>
   );

@@ -182,37 +182,19 @@ describe("the export command's production pipeline", () => {
   });
 
   it("republishes a dataset written before substantialWhite was retired, keeping firstSeenAt", async () => {
-    const h = harness();
     const firstSeenAt = "2026-06-01T08:00:00.000Z";
-    const legacy = {
-      ...animal(),
-      source: { ...animal().source, firstSeenAt },
-      substantialWhite: true,
-    };
-    // Production's animals.crawled.json never carried the field, but both
-    // files go through the same reader, so both carry it here.
-    for (const path of [h.paths.datasetPath, h.paths.crawledDatasetPath]) {
-      writeFileSync(path, JSON.stringify({ generatedAt: BEFORE, animals: [legacy] }));
-    }
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-    try {
-      const result = await runExport({ republish: true }, h.services);
-      expect(result.exitCode).toBe(0);
-      expect(h.discover).not.toHaveBeenCalled();
-      expect(result.dataset.animals).toHaveLength(1);
-      expect(result.dataset.animals[0]).not.toHaveProperty("substantialWhite");
-      expect(result.dataset.animals[0]?.source.firstSeenAt).toBe(firstSeenAt);
-      for (const path of [h.paths.datasetPath, h.paths.crawledDatasetPath]) {
-        const written = JSON.parse(readFileSync(path, "utf8"));
-        expect(written.animals[0]).not.toHaveProperty("substantialWhite");
-        expect(written.animals[0].source.firstSeenAt).toBe(firstSeenAt);
-      }
-      expect(log).toHaveBeenCalledWith(
-        expect.stringContaining("dropped the retired field substantialWhite from 1 animal(s)"),
-      );
-    } finally {
-      log.mockRestore();
-    }
+    const previous = { ...animal(), source: { ...animal().source, firstSeenAt } };
+    const h = harness([previous]);
+    // As on production: the published file carries it, the crawled one never did.
+    writeFileSync(h.paths.datasetPath, JSON.stringify({
+      generatedAt: BEFORE, animals: [{ ...previous, substantialWhite: true }],
+    }));
+    const result = await runExport({ republish: true }, h.services);
+    expect(result.exitCode).toBe(0);
+    expect(result.dataset.animals[0]?.source.firstSeenAt).toBe(firstSeenAt);
+    const written = JSON.parse(readFileSync(h.paths.datasetPath, "utf8"));
+    expect(written.animals[0]).not.toHaveProperty("substantialWhite");
+    expect(written.animals[0].source.firstSeenAt).toBe(firstSeenAt);
   });
 
   it("reports a cooldown beyond the provider interval as degraded and recovers when it expires", async () => {

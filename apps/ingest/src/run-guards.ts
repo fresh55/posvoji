@@ -51,32 +51,21 @@ function discard(
 const RETIRED_ANIMAL_FIELDS = ["substantialWhite"] as const;
 
 // Only the named fields, and only on animals. Anything else unknown still
-// fails the schema below.
-function dropRetiredFields(parsed: unknown): {
-  value: unknown;
-  dropped: Map<string, number>;
-} {
+// fails the schema below. Edits the freshly parsed JSON in place and returns
+// how many animals carried each field.
+function dropRetiredFields(parsed: unknown): Map<string, number> {
   const dropped = new Map<string, number>();
-  if (parsed === null || typeof parsed !== "object") {
-    return { value: parsed, dropped };
-  }
-  const { animals } = parsed as { animals?: unknown };
-  if (!Array.isArray(animals)) return { value: parsed, dropped };
-
-  const cleaned = animals.map((animal: unknown) => {
-    if (animal === null || typeof animal !== "object") return animal;
-    const retired = RETIRED_ANIMAL_FIELDS.filter((field) =>
-      Object.hasOwn(animal, field),
-    );
-    if (retired.length === 0) return animal;
-    const copy: Record<string, unknown> = { ...animal };
-    for (const field of retired) {
-      delete copy[field];
+  const animals = (parsed as { animals?: unknown } | null)?.animals;
+  if (!Array.isArray(animals)) return dropped;
+  for (const animal of animals) {
+    if (animal === null || typeof animal !== "object") continue;
+    for (const field of RETIRED_ANIMAL_FIELDS) {
+      if (!Object.hasOwn(animal, field)) continue;
+      delete (animal as Record<string, unknown>)[field];
       dropped.set(field, (dropped.get(field) ?? 0) + 1);
     }
-    return copy;
-  });
-  return { value: { ...parsed, animals: cleaned }, dropped };
+  }
+  return dropped;
 }
 
 // A missing file is the first run and is fine. A file that is there but
@@ -96,8 +85,8 @@ export function readPreviousDataset(
     return discard(path, `it is not valid JSON (${error})`, options);
   }
 
-  const { value, dropped } = dropRetiredFields(parsed);
-  const result = Dataset.safeParse(value);
+  const dropped = dropRetiredFields(parsed);
+  const result = Dataset.safeParse(parsed);
   if (!result.success) {
     const issues = result.error.issues
       .slice(0, 3)

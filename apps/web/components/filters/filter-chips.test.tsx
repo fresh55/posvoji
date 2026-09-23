@@ -5,11 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { FILTER_FACETS } from "@/lib/filters";
 import { fakeStripLayout } from "@/test/strip-layout";
-import {
-  chipCross as cross,
-  chipPill as pillOf,
-  chipStop as stop,
-} from "@/test/filter-rows";
+import { chipPill as pillOf } from "@/test/filter-rows";
 import { FilterChips, type Chip } from "./filter-chips";
 
 afterEach(() => cleanup());
@@ -26,11 +22,8 @@ function renderChips(chips: Chip[], props: Partial<Parameters<typeof FilterChips
   );
 }
 
-/** The row's own stops. A pill beside the panel is two controls, the label
- *  that goes to the section and the cross that takes the filter off; only the
- *  first is a stop, so the crosses are not pills for any question this file
- *  asks. The attribute and not tabIndex: the row roves, so every stop but the
- *  active one carries -1 as well. */
+/** The row's own stops. The attribute and not tabIndex: the row roves, so
+ *  every stop but the active one carries -1 as well. */
 function pills() {
   return [
     ...screen
@@ -67,7 +60,7 @@ describe("the active filters row", () => {
     ]);
 
     const marks = ["Samec", "Samica", "Mladiček", "Odrasel"].map((label) =>
-      glyphOf(stop(label)),
+      glyphOf(pillOf(label)),
     );
     expect(new Set(marks).size).toBe(4);
   });
@@ -78,8 +71,8 @@ describe("the active filters row", () => {
       chip({ key: "size:large", facet: "size", value: "large", label: "Velika" }),
     ]);
 
-    const small = glyphOf(stop("Majhna"));
-    const large = glyphOf(stop("Velika"));
+    const small = glyphOf(pillOf("Majhna"));
+    const large = glyphOf(pillOf("Velika"));
     expect(small).toContain("size-2.5");
     expect(large).toContain("size-[1.125rem]");
   });
@@ -98,7 +91,7 @@ describe("the active filters row", () => {
     expect(shelter.querySelector("span")?.className).toContain(
       "text-brand-strong",
     );
-    expect(glyphOf(shelter)).not.toBe(glyphOf(stop("Odrasel")));
+    expect(glyphOf(shelter)).not.toBe(glyphOf(pillOf("Odrasel")));
   });
 
   it("truncates a long shelter name instead of letting it eat the row", () => {
@@ -131,27 +124,36 @@ describe("the active filters row", () => {
     ]);
   });
 
-  it("draws the way back to a filter only where there is a panel to go to", () => {
-    renderChips([chip({ key: "a", label: "Dogs" })], { placement: "flow" });
+  it("stacks the colours a folded run of colours stands for", () => {
+    // The facet's palette mark said some colour was on and nothing about
+    // which, so the pill had to be opened to find out.
+    renderChips(
+      ["black", "white", "multicolour"].map((value) =>
+        chip({ key: `coatColor:${value}`, facet: "coatColor", value, label: value }),
+      ),
+    );
 
-    // The phone answers a pill with a sheet it opens, not a panel standing
-    // beside the grid, so the pill keeps the one press it has always had over
-    // its whole 44px.
-    expect(screen.queryByRole("button", { name: "Show filter Dogs" })).toBeNull();
-    expect(cross("Dogs")).toBeTruthy();
+    const folded = screen.getByRole("button", { name: /^Show all/ });
+    expect(folded.querySelectorAll("svg circle[fill='none']")).toHaveLength(3);
+    expect(folded.querySelector(".lucide-palette")).toBeNull();
   });
 
-  it("leaves a shelter pill whole, having no folding section to open", () => {
-    renderChips([
-      chip({ key: "shelter:a", facet: "shelter", value: "a", label: "Meli" }),
-      chip({ key: "age:b", facet: "age", value: "odrasel", label: "Odrasel" }),
-    ]);
+  it.each(["band", "flow"] as const)(
+    "takes the filter off from a press anywhere on the pill in the %s",
+    (placement) => {
+      // Beside the panel the pill's name used to go to the section that set
+      // the filter, and only the cross took it off. It reads as one control
+      // with an x on it, and a press on the name that left the filter on read
+      // as the row being broken.
+      const onRemove = vi.fn();
+      renderChips([chip({ key: "a", label: "Dogs", onRemove })], { placement });
 
-    // Kje is the panel's first block and it does not fold: a pill pointing at
-    // it would open nothing and scroll to where the panel already starts.
-    expect(screen.queryByRole("button", { name: "Show filter Meli" })).toBeNull();
-    expect(stop("Odrasel")).toBeTruthy();
-  });
+      const pill = pillOf("Dogs");
+      expect(pill.textContent).toContain("Dogs");
+      fireEvent.click(pill);
+      expect(onRemove).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("brings a single new pill into view, and stays put for a whole restored set", () => {
     // Never scrollIntoView: it moves Chrome's sequential focus navigation
@@ -251,7 +253,7 @@ describe("the active filters row", () => {
     expect(stops.filter((button) => button.tabIndex === 0)).toHaveLength(1);
 
     fireEvent.keyDown(toolbar, { key: "ArrowRight" });
-    expect(document.activeElement).toBe(stop("Cats"));
+    expect(document.activeElement).toBe(pillOf("Cats"));
 
     fireEvent.keyDown(toolbar, { key: "Delete" });
     expect(onRemove).toHaveBeenCalledTimes(1);
@@ -268,11 +270,11 @@ describe("the active filters row", () => {
     ]);
 
     const toolbar = screen.getByRole("toolbar");
-    stop("Dogs").focus();
+    pillOf("Dogs").focus();
 
     fireEvent.keyDown(toolbar, { key: "End" });
     fireEvent.keyDown(toolbar, { key: "ArrowRight" });
-    expect(document.activeElement).toBe(stop("Dogs"));
+    expect(document.activeElement).toBe(pillOf("Dogs"));
   });
 
   it("hands focus to the next pill along when a key takes one off", () => {
@@ -283,7 +285,7 @@ describe("the active filters row", () => {
     ]);
 
     const toolbar = screen.getByRole("toolbar");
-    stop("Dogs").focus();
+    pillOf("Dogs").focus();
     fireEvent.keyDown(toolbar, { key: "Delete" });
 
     rerender(
@@ -295,7 +297,7 @@ describe("the active filters row", () => {
       </I18nProvider>,
     );
 
-    expect(document.activeElement).toBe(stop("Cats"));
+    expect(document.activeElement).toBe(pillOf("Cats"));
   });
 
   it("hands focus on when Enter or Space on the pill takes it off", () => {
@@ -310,14 +312,10 @@ describe("the active filters row", () => {
         chip({ key: "a", label: "Dogs", onRemove }),
         chip({ key: "b", facet: "age", label: "Cats" }),
       ],
-      // In flow, where the pill is one button and pressing it is what takes
-      // the filter off. Beside the panel that press goes to the section
-      // instead and the keyboard removes with Delete, which the test above
-      // covers.
       { placement: "flow" },
     );
 
-    const dogs = cross("Dogs");
+    const dogs = pillOf("Dogs");
     dogs.focus();
     fireEvent.click(dogs, { detail: 0 });
     expect(onRemove).toHaveBeenCalledTimes(1);
@@ -332,7 +330,7 @@ describe("the active filters row", () => {
       </I18nProvider>,
     );
 
-    expect(document.activeElement).toBe(cross("Cats"));
+    expect(document.activeElement).toBe(pillOf("Cats"));
   });
 
   it("hands focus past the row when a keypress takes the last pill off", () => {
@@ -492,7 +490,7 @@ describe("the active filters row", () => {
     expect(pillOf("Cats").textContent).toContain("+9");
     expect(pillOf("Cats").className).toContain("bg-brand");
     // Only the one. Five numbers over five labels is not a way out.
-    expect(stop("Dogs").textContent).not.toContain("+2");
+    expect(pillOf("Dogs").textContent).not.toContain("+2");
   });
 
   it("offers the cleared state back, and nothing else, while the offer stands", () => {
@@ -574,7 +572,7 @@ describe("the active filters row", () => {
 
     try {
       const toolbar = screen.getByRole("toolbar");
-      stop("Dogs").focus();
+      pillOf("Dogs").focus();
       fireEvent.keyDown(toolbar, { key: "Delete" });
 
       // Focus moves before the removal, while there is still a row to leave.

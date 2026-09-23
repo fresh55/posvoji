@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,7 +24,6 @@ import {
 import { scrollChildIntoViewY } from "@/lib/scroll-strip";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import type { CardGroup } from "./filter-groups";
-import { jumpToFilterSection } from "./filter-section-header";
 import { FilterSidebar } from "./filter-sidebar";
 import { resetFilterSectionsStore } from "./use-filter-sections";
 
@@ -659,44 +658,5 @@ describe("the room an arriving answer is given", () => {
     await waitFor(() => expect(card(/^Samec/)).toBeTruthy());
     expect(expanded("Spol")).toBe("true");
     expect(expanded("Starost")).toBe("true");
-  });
-});
-
-describe("going to a section from outside the panel", () => {
-  it("opens a folded section and puts the keyboard on its heading", () => {
-    renderSidebar();
-    expect(expanded("Velikost")).toBe("false");
-
-    // act, because the jump presses the heading through the DOM rather than
-    // through fireEvent, and React flushes that on its own only in a browser.
-    act(() => jumpToFilterSection("size", false));
-
-    expect(expanded("Velikost")).toBe("true");
-    expect(document.activeElement).toBe(header("Velikost"));
-  });
-
-  it("only brings an open one into view", async () => {
-    renderSidebar();
-    expect(expanded("Spol")).toBe("true");
-
-    act(() => jumpToFilterSection("sex", false));
-
-    // Not toggled shut: a press meant "take me there", and the section it
-    // names was already the one open.
-    expect(expanded("Spol")).toBe("true");
-    expect(document.activeElement).toBe(header("Spol"));
-    await waitFor(() => expect(broughtIntoView).toHaveBeenCalled());
-  });
-
-  it("does nothing when no panel is drawn", () => {
-    // Below lg there is no sidebar, and the row that presses this draws no way
-    // back there either.
-    const { unmount } = renderSidebar();
-    unmount();
-    const before = document.activeElement;
-
-    act(() => jumpToFilterSection("size", false));
-
-    expect(document.activeElement).toBe(before);
   });
 });

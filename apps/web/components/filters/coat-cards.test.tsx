@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -95,6 +95,25 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     pointerOnto(button("Rjava"), "touch");
     expect(earsOf("Rjava")).toBeNull();
 
+    pointerOnto(button("Rjava"), "mouse");
+    expect(earsOf("Rjava")).toBe("cat");
+  });
+});
+
+describe("a press in the palette", () => {
+  it("keeps the ear tips down under the pointer until it leaves", async () => {
+    // Unpicking a colour with the mouse still on it dropped the ears only as
+    // far as the hover's peek, which read as a pick that had not come off.
+    renderColours({ layout: "sidebar" });
+
+    pointerOnto(button("Rjava"), "mouse");
+    expect(earsOf("Rjava")).toBe("cat");
+
+    fireEvent.click(button("Rjava"));
+    // The ears tuck away before they leave the document.
+    await waitFor(() => expect(earsOf("Rjava")).toBeNull());
+
+    pointer(button("Rjava"), "pointerout", { x: 0, y: 0, pointerType: "mouse" });
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
   });

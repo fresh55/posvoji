@@ -14,7 +14,6 @@ import {
   useState,
   type KeyboardEvent,
   type MouseEvent,
-  type ReactElement,
 } from "react";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -25,7 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   CoatColorChipSwatch,
-  CoatColorStack,
+  CoatColorDots,
   CoatLengthMark,
 } from "@/components/filters/coat-cards";
 import { WaitingMark } from "@/components/filters/waiting-cards";
@@ -109,16 +108,10 @@ const SCOPE_VISIBLE = 3;
 // their border still say it over this: the "+N" adds border-dashed and a
 // marked pill takes --brand-border, which is 3.27:1 since the same audit.
 //
-// The height, the radius, the border and the coarse-pointer floor are the
-// pill. Stated once, so a row that has already had to settle rounded-full
-// against rounded-ui once does not get to drift again.
-const CHIP_FRAME =
-  "inline-flex h-7 shrink-0 items-center rounded-ui border border-control-border text-xs transition-colors pointer-coarse:min-h-11";
-
-const CHIP_PILL = cn(
-  CHIP_FRAME,
-  "gap-1.5 px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:px-3",
-);
+// Stated once, so a row that has already had to settle rounded-full against
+// rounded-ui once does not get to drift again.
+const CHIP_PILL =
+  "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-ui border border-control-border px-2.5 text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:min-h-11 pointer-coarse:px-3";
 
 /** The ground a pill takes while it is the one worth dropping. */
 const CHIP_BLOCKED = "border-brand-border bg-brand text-brand-foreground";
@@ -840,7 +833,7 @@ function ChipGlyph({
       {facet === "coatColor" && value !== undefined ? (
         <CoatColorChipSwatch value={value} />
       ) : facet === "coatColor" && values ? (
-        <CoatColorStack values={values} />
+        <CoatColorDots values={values} dense />
       ) : facet === "coatLength" ? (
         // The section's own drawing, not a lucide stand-in.
         <CoatLengthMark value={value} />
@@ -915,8 +908,57 @@ function ChipButton({
     blocked && gain > 0
       ? `${removeLabel}: +${animalCount(gain, locale)}`
       : removeLabel;
-  const handleRemove = (event: MouseEvent<HTMLButtonElement>) =>
-    onRemove(fromKeyboard(event));
+  // One control over the whole pill, at every width: the pill reads as one
+  // thing with an x on it.
+  const button = (
+    <button
+      {...{ [STOP]: stop }}
+      type="button"
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      onClick={(event: MouseEvent<HTMLButtonElement>) =>
+        onRemove(fromKeyboard(event))
+      }
+      aria-label={removeName}
+      // The row is walked with the arrows, so a screen reader announcing
+      // "Delete" on arrival is what tells someone the key does anything here.
+      aria-keyshortcuts="Delete"
+      className={cn(CHIP_PILL, className, CHIP_REMOVABLE, blocked && CHIP_BLOCKED)}
+    >
+      <ChipGlyph facet={chip.facet} value={chip.value} />
+      {/* A shelter's full name is forty characters. Untruncated, one of them
+          filled a phone's whole row and the rest of the filter state was off
+          the end of it. The title attribute keeps the full name reachable on a
+          pointer, and the button's own aria-label carries it regardless. */}
+      <span className="max-w-[11rem] truncate" title={chip.label}>
+        {chip.label}
+      </span>
+      {/* The paw, because a bare "+1" in this row already means something
+          else: a folded facet's "+3" counts the values it stands for. This one
+          counts animals, and the paw is the mark the result count above uses
+          for exactly that. */}
+      {blocked && (
+        <span className="inline-flex shrink-0 items-center gap-0.5 font-medium tabular-nums">
+          +{gain}
+          <PawPrint className="size-3" strokeWidth={2} aria-hidden />
+        </span>
+      )}
+      {/* Kept even on the marked pill. Every pill in this shape takes
+          something off when pressed, and dropping the one mark that says so
+          would have made the way out look like a different kind of control. */}
+      <X
+        className={cn(
+          "size-3 shrink-0 transition-colors",
+          blocked
+            ? "text-brand-foreground"
+            : "text-muted-foreground group-hover:text-foreground",
+        )}
+        strokeWidth={2}
+        aria-hidden
+      />
+    </button>
+  );
+
   // No tooltip when there is nothing to add to the label. A pill that says
   // "Mlad" under a pointer, with a tooltip that says "remove Mlad", is a
   // second copy of what the cursor already implies.
@@ -926,78 +968,13 @@ function ChipButton({
   // means; the sentence the tooltip carries is the only place "the two animals
   // this brings back" is written. So it keeps it, and the number is in its
   // accessible name as well.
-  const withGainTooltip = (control: ReactElement) =>
-    gain > 0 ? (
-      <Tooltip>
-        <TooltipTrigger asChild>{control}</TooltipTrigger>
-        <TooltipContent>
-          {t("removeShowsMore", { count: animalCount(gain, locale) })}
-        </TooltipContent>
-      </Tooltip>
-    ) : (
-      control
-    );
-
-  const glyph = <ChipGlyph facet={chip.facet} value={chip.value} />;
-  // A shelter's full name is forty characters. Untruncated, one of them filled
-  // a phone's whole row and the rest of the filter state was off the end of
-  // it. The title attribute keeps the full name reachable on a pointer, and
-  // the button's own aria-label carries it regardless.
-  const name = (
-    <span className="max-w-[11rem] truncate" title={chip.label}>
-      {chip.label}
-    </span>
+  if (gain <= 0) return button;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent>
+        {t("removeShowsMore", { count: animalCount(gain, locale) })}
+      </TooltipContent>
+    </Tooltip>
   );
-  // The paw, because a bare "+1" in this row already means something else: a
-  // folded facet's "+3" counts the values it stands for. This one counts
-  // animals, and the paw is the mark the result count above uses for exactly
-  // that.
-  const gainMark = blocked && (
-    <span className="inline-flex shrink-0 items-center gap-0.5 font-medium tabular-nums">
-      +{gain}
-      <PawPrint className="size-3" strokeWidth={2} aria-hidden />
-    </span>
-  );
-  const cross = (
-    <X
-      className={cn(
-        "size-3 shrink-0 transition-colors",
-        blocked
-          ? "text-brand-foreground"
-          : "text-muted-foreground group-hover:text-foreground",
-      )}
-      strokeWidth={2}
-      aria-hidden
-    />
-  );
-
-  // One control over the whole pill, beside the panel as on a phone. At lg the
-  // label half used to go to the section that set the filter and only the
-  // cross took it off, but the pill reads as one thing with an x on it, and a
-  // press on its name that left the filter on read as the row being broken.
-  // The section heading's own mark already says where a filter was set.
-  const button = (
-    <button
-      {...{ [STOP]: stop }}
-      type="button"
-      tabIndex={tabIndex}
-      onFocus={onFocus}
-      onClick={handleRemove}
-      aria-label={removeName}
-      // The row is walked with the arrows, so a screen reader announcing
-      // "Delete" on arrival is what tells someone the key does anything here.
-      aria-keyshortcuts="Delete"
-      className={cn(CHIP_PILL, className, CHIP_REMOVABLE, blocked && CHIP_BLOCKED)}
-    >
-      {glyph}
-      {name}
-      {gainMark}
-      {/* Kept even on the marked pill. Every pill in this shape takes
-          something off when pressed, and dropping the one mark that says so
-          would have made the way out look like a different kind of control. */}
-      {cross}
-    </button>
-  );
-
-  return withGainTooltip(button);
 }

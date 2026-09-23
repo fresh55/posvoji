@@ -2,7 +2,7 @@
 
 import type { TargetAndTransition, Transition, Variants } from "motion/react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import { memo, useState, type ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import type { CoatColorCategory, CoatLength } from "@posvoji/schema";
 import {
   CountRoll,
@@ -1066,6 +1066,8 @@ const SWAY_ORIGIN = {
  */
 export type CoatIconMotion = {
   hovered: boolean;
+  /** A click has just landed on this card and the pointer has not left. */
+  settled: boolean;
   pressed: boolean;
   /** This card has just been picked and its gesture is still playing. */
   celebrating: boolean;
@@ -1357,6 +1359,8 @@ function CoatCards({
   );
   const {
     hoveredValue,
+    settledValue,
+    settle,
     pressedValue,
     release: releasePress,
     handlers: gestureHandlers,
@@ -1397,6 +1401,7 @@ function CoatCards({
         // glyph, which is the split energy and size already use.
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
+          settled: settledValue === value,
           pressed: pressedValue === value,
           celebrating,
           ruffling: celebrationIndex >= 0 && !celebrating,
@@ -1416,6 +1421,7 @@ function CoatCards({
               if (checked) clearCelebration();
               else celebrate(value);
               releasePress(value);
+              settle(value);
               onToggle(value);
             }}
             className={filterCardVariants({
@@ -1501,41 +1507,6 @@ export function CoatColorChipSwatch({
 }
 
 /**
- * The colours of a folded run, stacked, for the pill that stands for them.
- *
- * The facet's palette mark said "some colours are on" and made the visitor
- * open the pill to learn which. The stack says which, three at most, in the
- * 18px box every pill's mark takes, so the label still starts where the
- * others do: three 10px discs 4px apart. A colour joining the run drops in.
- */
-export function CoatColorStack({ values }: { values: readonly string[] }) {
-  const shouldReduceMotion = useReducedMotion();
-
-  return (
-    <span className="flex -space-x-1.5">
-      <AnimatePresence initial={false}>
-        {values.slice(0, 3).map((value) => (
-          <m.span
-            key={value}
-            className="flex"
-            initial={{ y: -4, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : { type: "spring", stiffness: 520, damping: 20 }
-            }
-          >
-            <CoatColorChipSwatch value={value} className="size-2.5" />
-          </m.span>
-        ))}
-      </AnimatePresence>
-    </span>
-  );
-}
-
-/**
  * The coat at chip size, for the active-filters row and the animal's facts.
  *
  * Both drew the facet's scissors, which is also Sterilizacija's mark, so a row
@@ -1574,18 +1545,50 @@ export function CoatLengthMark({
 }
 
 /**
- * The animal's own colours, for the fact pill that lists them.
+ * Several colours, overlapped: the animal's own colours on its fact pill, and
+ * the colours a folded run of pills stands for in the active-filter row.
  *
  * Capped at three. coatColors holds up to six, and six 14px discs is wider
  * than the words beside them; the pill's text names every one regardless, so
  * the swatches are there to be recognised rather than counted.
+ *
+ * `dense` fits the three into the 18px box every pill's mark takes, so the
+ * folded pill's label still starts where the others do: 10px discs 4px apart.
+ * A colour joining the run drops in; the ones already there when the stack
+ * mounts do not.
  */
-export function CoatColorDots({ values }: { values: readonly string[] }) {
+export function CoatColorDots({
+  values,
+  dense = false,
+}: {
+  values: readonly string[];
+  dense?: boolean;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+
   return (
-    <span className="flex shrink-0 -space-x-1">
-      {values.slice(0, 3).map((value) => (
-        <CoatColorChipSwatch key={value} value={value} />
-      ))}
+    <span className={cn("flex shrink-0", dense ? "-space-x-1.5" : "-space-x-1")}>
+      <AnimatePresence initial={false}>
+        {values.slice(0, 3).map((value) => (
+          <m.span
+            key={value}
+            className="flex"
+            initial={{ y: -4, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={
+              shouldReduceMotion
+                ? { duration: 0 }
+                : { type: "spring", stiffness: 520, damping: 20 }
+            }
+          >
+            <CoatColorChipSwatch
+              value={value}
+              className={dense ? "size-2.5" : "size-3.5"}
+            />
+          </m.span>
+        ))}
+      </AnimatePresence>
     </span>
   );
 }
@@ -1632,13 +1635,16 @@ function CoatColorPalette({
   // gated on :focus-visible. A second piece of focus state here overrode that
   // gate, because a later onFocus prop wins over the one the hook spreads in,
   // and a swatch stayed lifted and named after a mouse click.
-  const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover();
+  //
+  // settledValue is the swatch a click last landed on: its ear tips stay down
+  // until the pointer or focus leaves (useFilterCardHover says why).
+  const {
+    hoveredValue,
+    settledValue,
+    settle,
+    handlers: hoverHandlers,
+  } = useFilterCardHover();
   const label = groupLabel("coatColor", locale);
-  // The swatch a press last landed on keeps its ear tips down until the
-  // pointer or focus leaves it. Unpicking a colour under the mouse otherwise
-  // dropped its ears only as far as the hover's peek, and a swatch still
-  // showing ears read as a pick that had not come off.
-  const [pressedValue, setPressedValue] = useState<string | null>(null);
 
   // Which swatch was just picked, so the colours already picked know which
   // way to turn an ear. Read once per render rather than per swatch.
@@ -1704,9 +1710,6 @@ function CoatColorPalette({
               : null;
           const noticeDelay =
             NOTICE_DELAY + Math.abs(index - celebrationIndex) * NOTICE_STEP;
-          const hover = hoverHandlers(value);
-          const letGo = () =>
-            setPressedValue((current) => (current === value ? null : current));
 
           return (
             <button
@@ -1715,19 +1718,11 @@ function CoatColorPalette({
               aria-pressed={checked}
               aria-label={`${option}, ${animalCount(count, locale)}`}
               disabled={dead}
-              {...hover}
-              onPointerLeave={() => {
-                hover.onPointerLeave();
-                letGo();
-              }}
-              onBlur={() => {
-                hover.onBlur();
-                letGo();
-              }}
+              {...hoverHandlers(value)}
               onClick={() => {
                 if (checked) clearCelebration();
                 else celebrate(value);
-                setPressedValue(value);
+                settle(value);
                 onToggle(value);
               }}
               // The same press, focus and dead-option answers a filter card
@@ -1762,7 +1757,7 @@ function CoatColorPalette({
                   colour={colourOf(value)}
                   kind={kind}
                   checked={checked}
-                  peeking={hovered && pressedValue !== value}
+                  peeking={hovered && settledValue !== value}
                   beat={beat}
                   noticeDelay={noticeDelay}
                   resetDelay={resetDelayOf(index)}
@@ -1813,7 +1808,7 @@ export function CoatColorCards({
           colour={colourOf(value)}
           kind={kind}
           checked={checked}
-          peeking={motion.hovered}
+          peeking={motion.hovered && !motion.settled}
           beat={motion.celebrating ? "picked" : null}
           resetDelay={motion.resetDelay}
           outlined={false}

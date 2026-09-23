@@ -19,7 +19,6 @@ import {
 import { useI18n } from "@/components/i18n-context";
 import { scrollChildIntoViewY } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
-import type { FilterSectionKey } from "./use-filter-sections";
 
 /** Everything a section needs to fold: whether it is open, how to flip that,
     the short text a closed header shows so an active filter never disappears
@@ -29,10 +28,6 @@ export type SectionCollapse = {
   onToggle: () => void;
   summary: string | null;
   contentId: string;
-  /** Which section this is, published on the heading as a handle for anything
-   *  outside the panel that has to reach it -- today the active-filter row,
-   *  whose pills go to the section that set them. */
-  section?: FilterSectionKey;
 };
 
 /** The panel's section-heading voice. The sheet's sort caption borrows it on
@@ -304,7 +299,6 @@ export function FilterSectionHeader({
       onKeyDown={moveSectionFocus}
       aria-expanded={collapse.open}
       aria-controls={collapse.contentId}
-      data-filter-section={collapse.section}
       // uppercase and tracking-wide repeat what the h3 around this button
       // already sets. The browser's own button rules reset text-transform and
       // letter-spacing, so without them a folding heading printed in sentence

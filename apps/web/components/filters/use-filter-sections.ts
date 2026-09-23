@@ -42,16 +42,13 @@ const SECTION_KEYS = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
  *
  * One table, because two of these are not the identity they look like: Videz
  * holds both coat facets, and the health toggles answer under their own
- * section name. Read by the panel to know which sections are answered and by
- * the active-filter row to know where a pill goes back to; spelled twice, a
- * facet added to a section would have opened one and not the other.
+ * section name. Read to know which sections are answered.
  *
- * Shelter answers no section. Kje is the panel's first block, it does not
- * fold, and it is already where a visitor scrolling up arrives -- so a pill
- * for it has nowhere to go, and an address carrying only shelters has not
- * answered anything the panel can make room for.
+ * Shelter answers no section. Kje is the panel's first block and it does not
+ * fold, so an address carrying only shelters has not answered anything the
+ * panel can make room for.
  */
-export const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
+const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
   sex: "sex",
   age: "age",
   size: "size",

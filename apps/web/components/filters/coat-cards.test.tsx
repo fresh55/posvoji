@@ -57,9 +57,12 @@ const earsOf = (label: string) =>
   swatchOf(label).querySelector("[data-ears]")?.getAttribute("data-ears") ??
   null;
 
-// React makes its pointerenter out of pointerover.
+// React makes its pointerenter out of pointerover, and pointerleave out of
+// pointerout.
 const pointerOnto = (element: HTMLElement, pointerType: "mouse" | "touch") =>
   pointer(element, "pointerover", { x: 0, y: 0, pointerType });
+const pointerOff = (element: HTMLElement) =>
+  pointer(element, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
 
 describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layout) => {
   it.each([
@@ -98,13 +101,11 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
   });
-});
 
-describe("a press in the palette", () => {
-  it("keeps the ear tips down under the pointer until it leaves", async () => {
+  it("keeps the ear tips down after a press until the pointer leaves", async () => {
     // Unpicking a colour with the mouse still on it dropped the ears only as
     // far as the hover's peek, which read as a pick that had not come off.
-    renderColours({ layout: "sidebar" });
+    renderColours({ layout });
 
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
@@ -113,7 +114,7 @@ describe("a press in the palette", () => {
     // The ears tuck away before they leave the document.
     await waitFor(() => expect(earsOf("Rjava")).toBeNull());
 
-    pointer(button("Rjava"), "pointerout", { x: 0, y: 0, pointerType: "mouse" });
+    pointerOff(button("Rjava"));
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
   });

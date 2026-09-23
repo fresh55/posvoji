@@ -120,31 +120,42 @@ type HoverHandlers = {
 
 // A tap leaves focus on the button, so the lift is limited to a real mouse and
 // to keyboard focus. Anything else would leave a card lit after a touch.
+//
+// settle(value) marks the card a press just landed on, until the pointer or
+// focus leaves it. Most sections ignore it: a lift after a click is ordinary
+// hover feedback. Barva reads it, because its hover draws the ear tips halfway
+// to the picked pose, and a colour unpicked under the mouse that kept them up
+// read as a pick that had not come off.
 export function useFilterCardHover<T extends string = string>(): {
   hoveredValue: T | null;
+  settledValue: T | null;
+  settle: (value: T) => void;
   handlers: (value: T) => HoverHandlers;
 } {
   const [hoveredValue, setHoveredValue] = useState<T | null>(null);
+  const [settledValue, setSettledValue] = useState<T | null>(null);
 
-  const handlers = useCallback(
-    (value: T): HoverHandlers => ({
+  const handlers = useCallback((value: T): HoverHandlers => {
+    const leave = () => {
+      const drop = (current: T | null) => (current === value ? null : current);
+      setHoveredValue(drop);
+      setSettledValue(drop);
+    };
+    return {
       onPointerEnter: (event) => {
         if (event.pointerType !== "mouse") return;
         setHoveredValue(value);
       },
-      onPointerLeave: () =>
-        setHoveredValue((current) => (current === value ? null : current)),
+      onPointerLeave: leave,
       onFocus: (event) => {
         if (!event.currentTarget.matches(":focus-visible")) return;
         setHoveredValue(value);
       },
-      onBlur: () =>
-        setHoveredValue((current) => (current === value ? null : current)),
-    }),
-    [],
-  );
+      onBlur: leave,
+    };
+  }, []);
 
-  return { hoveredValue, handlers };
+  return { hoveredValue, settledValue, settle: setSettledValue, handlers };
 }
 
 type PressHandlers = {
@@ -221,12 +232,20 @@ export function useFilterCardGestures<T extends string = string>({
   press = true,
 }: { press?: boolean } = {}): {
   hoveredValue: T | null;
+  /** The card a click last landed on, until the pointer leaves it. */
+  settledValue: T | null;
+  settle: (value: T) => void;
   pressedValue: T | null;
   /** Clears the press if this value still owns it. Safe to call from onClick. */
   release: (value: T) => void;
   handlers: (value: T) => FilterCardGestureHandlers;
 } {
-  const { hoveredValue, handlers: hoverHandlers } = useFilterCardHover<T>();
+  const {
+    hoveredValue,
+    settledValue,
+    settle,
+    handlers: hoverHandlers,
+  } = useFilterCardHover<T>();
   const {
     pressedValue,
     release,
@@ -250,5 +269,5 @@ export function useFilterCardGestures<T extends string = string>({
     [hoverHandlers, pressHandlers, press],
   );
 
-  return { hoveredValue, pressedValue, release, handlers };
+  return { hoveredValue, settledValue, settle, pressedValue, release, handlers };
 }

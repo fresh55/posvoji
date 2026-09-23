@@ -548,7 +548,6 @@ export function FilterGroupList({
     onToggle: () => toggleSection(key),
     summary,
     contentId: `${idBase}-${key}`,
-    section: key,
   });
   const appearanceOptions = appearanceGroups.flatMap(({ options }) => options);
   const appearanceCollapse = collapseFor(

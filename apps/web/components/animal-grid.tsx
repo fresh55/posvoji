@@ -584,8 +584,8 @@ export function AnimalGrid({
               <div className="space-y-1">
                 <p className="text-sm font-medium">
                   {shelterOnlyEmpty
-                    ? t(shelterAbsenceKey(filters.shelter.length), {
-                        species: t(SPECIES_ABSENCE_KEY[filters.species]),
+                    ? t(shelterAbsenceKey(shownFilters.shelter.length), {
+                        species: t(SPECIES_ABSENCE_KEY[shownFilters.species]),
                       })
                     : messages.noResults}
                 </p>
@@ -608,7 +608,7 @@ export function AnimalGrid({
               {/* Filter clearing stays in the chip rows. This action widens
                   the species scope while keeping the remaining filters, and
                   is offered only when the existing facet count promises results. */}
-              {filters.species !== "all" && speciesTally.all > 0 && (
+              {shownFilters.species !== "all" && speciesTally.all > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -673,7 +673,7 @@ export function AnimalGrid({
                   style={STAGGER_STYLE[ordinal]}
                   // The tab already named the species, so the card's one fact
                   // line does not have to spend itself saying it again.
-                  species={filters.species}
+                  species={shownFilters.species}
                   // The first row, which is the largest image on the screen and
                   // was queueing behind the bundle like the other 499.
                   eager={ordinal < 4}

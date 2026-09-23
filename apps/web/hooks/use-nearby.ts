@@ -19,7 +19,8 @@ export type NearbyChosenPlace = {
 const TIMEOUT_MS = 10000;
 const MAX_AGE_MS = 300000;
 const OFF: NearbyState = { status: "off" };
-// Both responsive pickers control one page-session location. Never persisted.
+// Both responsive pickers control one page-session location. The geolocated
+// position is never persisted; a place the visitor typed and chose is, below.
 let state: NearbyState = OFF;
 let query = "";
 let chosenPlace: NearbyChosenPlace = null;
@@ -51,19 +52,68 @@ function setQuery(next: string) {
 export function useNearbyQuery() {
   const value = useSyncExternalStore(
     subscribe,
-    () => query,
+    // Either read may be the page's first, and the restore sets both values,
+    // so both ask for it before answering.
+    () => {
+      restoreChosenPlace();
+      return query;
+    },
     () => "",
   );
   return [value, setQuery] as const;
 }
+// The town or postcode a visitor chose, kept in their own browser so the next
+// visit opens the picker already measuring from it and the grid's Najbližje
+// sort already has somewhere to sort from. Only a place they typed and
+// confirmed: a position from geolocation stays with the page it was asked on.
+// Every read and write is guarded, because storage can be missing, full or
+// refused, and the picker has to work the same without it.
+export const CHOSEN_PLACE_KEY = "posvoji:chosen-place";
+let restored = false;
+
+function isChosenPlace(value: unknown): value is Exclude<NearbyChosenPlace, null> {
+  if (!value || typeof value !== "object") return false;
+  const { location, query: text } = value as Record<string, unknown>;
+  if (typeof text !== "string" || !location || typeof location !== "object") return false;
+  const { status, at, label } = location as Record<string, unknown>;
+  if (status !== "matched" || typeof label !== "string" || !at || typeof at !== "object") return false;
+  const { lat, lon } = at as Record<string, unknown>;
+  return typeof lat === "number" && typeof lon === "number";
+}
+
+// Once per page, on the first client read. The server and the hydrating render
+// read null, so a stored place arrives as an ordinary update after hydration.
+function restoreChosenPlace() {
+  if (restored || typeof window === "undefined") return;
+  restored = true;
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(CHOSEN_PLACE_KEY) ?? "null");
+    if (isChosenPlace(stored)) {
+      chosenPlace = stored;
+      query = stored.query;
+    }
+  } catch {
+    // Unreadable or refused: start without a place, as before.
+  }
+}
+
 function setChosenPlace(next: NearbyChosenPlace) {
   chosenPlace = next;
+  try {
+    if (next) window.localStorage.setItem(CHOSEN_PLACE_KEY, JSON.stringify(next));
+    else window.localStorage.removeItem(CHOSEN_PLACE_KEY);
+  } catch {
+    // Not remembered this time; the page session still has it.
+  }
   emit();
 }
 export function useNearbyChosenPlace() {
   const value = useSyncExternalStore(
     subscribe,
-    () => chosenPlace,
+    () => {
+      restoreChosenPlace();
+      return chosenPlace;
+    },
     () => null,
   );
   return [value, setChosenPlace] as const;
@@ -73,6 +123,12 @@ export function resetNearbyStore() {
   cancel();
   query = "";
   chosenPlace = null;
+  restored = false;
+  try {
+    window.localStorage.removeItem(CHOSEN_PLACE_KEY);
+  } catch {
+    // Nothing stored to clear.
+  }
   setState(OFF);
 }
 

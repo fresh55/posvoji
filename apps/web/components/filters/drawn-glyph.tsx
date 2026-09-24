@@ -3,6 +3,22 @@
 import { m, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
+/**
+ * Drawing one stroke in: the length is the gesture, the opacity only takes the
+ * stroke away while none of it is drawn yet. A pathLength of 0 with a round
+ * cap still paints a dot, so a stroke waiting for its turn needs the switch.
+ *
+ * Both on one transition, which is what the energy glyphs do, faded the whole
+ * stroke up over the draw's own duration and the wash of colour arrived ahead
+ * of the tip. The draws there run 0.2s, where the two are the same event; a
+ * long coat runs 0.46 and they are not. Opacity is the switch and pathLength
+ * is the animation. The coat strands and the Spol signs both draw this way.
+ */
+export const DRAW_IN = (duration: number, delay: number) => ({
+  pathLength: { duration, delay, ease: "easeOut" as const },
+  opacity: { duration: 0.08, delay },
+});
+
 /** How a section's drawing inks in: how long each stroke takes, how far apart
  *  the strokes start, and how long the accent takes to fade on the way out. */
 export type DrawTempo = { draw: number; stagger: number; fade: number };

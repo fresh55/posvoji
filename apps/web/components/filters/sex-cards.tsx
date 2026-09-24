@@ -10,6 +10,7 @@ import {
 } from "motion/react";
 import type { ReactNode } from "react";
 import { LazyMotion } from "@/components/motion-scope";
+import { DRAW_IN } from "@/components/filters/drawn-glyph";
 import {
   CountRoll,
   DEAD_OPTION_CLASS,
@@ -39,22 +40,26 @@ type SexKind = "male" | "female";
 /**
  * Lucide's outlines, split in construction order: the ring, the stroke that
  * leaves it, then the two branches, each drawn out from its junction rather
- * than across it. The stroke and its branches are one part, because the
- * finishing gesture moves them together and leaves the ring where it is.
+ * than across it. The stroke and its branches are the reach, one part,
+ * because the gestures move them together and leave the ring where it is.
  */
-const SEX_GLYPHS: Record<
-  SexKind,
-  { ring: string; stem: string; branches: readonly [string, string] }
-> = {
+type Stroke = { d: string; step: "stem" | "branches" };
+const SEX_GLYPHS: Record<SexKind, { ring: string; reach: readonly Stroke[] }> = {
   male: {
     ring: "M16 14a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
-    stem: "M14.25 9.75 21 3",
-    branches: ["M21 3H16", "M21 3V8"],
+    reach: [
+      { d: "M14.25 9.75 21 3", step: "stem" },
+      { d: "M21 3H16", step: "branches" },
+      { d: "M21 3V8", step: "branches" },
+    ],
   },
   female: {
     ring: "M18 9a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
-    stem: "M12 15v7",
-    branches: ["M12 19H9", "M12 19H15"],
+    reach: [
+      { d: "M12 15v7", step: "stem" },
+      { d: "M12 19H9", step: "branches" },
+      { d: "M12 19H15", step: "branches" },
+    ],
   },
 };
 
@@ -62,14 +67,8 @@ function isSexKind(value: string): value is SexKind {
   return value in SEX_GLYPHS;
 }
 
-/**
- * The draw, one step per part. The last branch lands at 0.40s.
- *
- * It ran 0.52s before, and the pop that went with it peaked at 0.28s, while
- * only the ring and half the stroke were down. The branches, which are what
- * make the sign read as one sex or the other, then drew on a glyph that had
- * already settled, so nothing marked the moment the sign was finished.
- */
+// The draw, one step per part. The last branch lands at 0.40s, which is where
+// the pop peaks.
 const DRAW = {
   ring: { duration: 0.18, delay: 0 },
   stem: { duration: 0.16, delay: 0.12 },
@@ -80,41 +79,15 @@ const LANDED = DRAW.branches.delay + DRAW.branches.duration;
 const FADE_DURATION = 0.15;
 const DESELECT_DURATION = 0.24;
 
-// The pop rises into the landing and peaks as the last branch lands.
 const POP = { duration: 0.36, peak: 1.08 } as const;
 const POP_DELAY = LANDED - POP.duration / 2;
 
-/**
- * What each sign does once it is whole, taken from what the sign is drawn
- * after. ♂ is Mars's shield and spear: the spear thrusts out along its
- * diagonal and the shield takes the recoil the other way. ♀ is Venus's hand
- * mirror: it tilts on its handle as if raised to look into, a glint crosses
- * the glass and a spark catches its rim.
- *
- * The thrust and the recoil part the arrow from the ring by 1.7 units at
- * most. The arrow's round cap reaches one unit back from its root and the
- * ring's stroke one unit out from its path, so the two stay joined under 2.
- *
- * Every finish starts a little before the landing, so it reads as the draw's
- * follow-through rather than a second event after it. Tweens, because these
- * have more than two keyframes.
- */
 type Move = {
   pose: TargetAndTransition;
   transition: Transition;
   style?: MotionStyle;
 };
 type Part = "whole" | "ring" | "reach";
-
-const THRUST_UNITS = 1.2;
-const RECOIL_UNITS = 0.5;
-const THRUST: Transition = {
-  duration: 0.36,
-  times: [0, 0.3, 0.7, 1],
-  ease: "easeOut",
-};
-const TILT_DURATION = 0.7;
-const FINISH_DELAY = LANDED - 0.06;
 
 // The end of the handle, (12, 22) in the 24-unit box, where a hand would hold
 // the mirror. Motion owns transform-origin, so the pivot is spelled as
@@ -125,6 +98,32 @@ const HANDLE_END: MotionStyle = {
   originY: 22 / 24,
 };
 
+const THRUST_UNITS = 1.2;
+const RECOIL_UNITS = 0.5;
+const TILT_DURATION = 0.7;
+const FINISH_DELAY = LANDED - 0.06;
+const THRUST: Transition = {
+  duration: 0.36,
+  times: [0, 0.3, 0.7, 1],
+  ease: "easeOut",
+  delay: FINISH_DELAY,
+};
+
+/**
+ * What each sign does once it is whole, taken from what the sign is drawn
+ * after. ♂ is Mars's shield and spear: the spear thrusts out along its
+ * diagonal and the shield takes the recoil the other way. ♀ is Venus's hand
+ * mirror: it tilts on its handle as if raised to look into, a glint crosses
+ * the glass and a spark catches its rim (MirrorLight).
+ *
+ * The thrust and the recoil part the arrow from the ring by 1.7 units at
+ * most. The arrow's round cap reaches one unit back from its root and the
+ * ring's stroke one unit out from its path, so the two stay joined under 2.
+ *
+ * Every finish starts a little before the landing, so it reads as the draw's
+ * follow-through rather than a second event after it. Tweens, because these
+ * have more than two keyframes.
+ */
 const FINISH: Record<SexKind, Partial<Record<Part, Move>>> = {
   male: {
     reach: {
@@ -149,6 +148,7 @@ const FINISH: Record<SexKind, Partial<Record<Part, Move>>> = {
         duration: TILT_DURATION,
         times: [0, 0.25, 0.6, 0.85, 1],
         ease: "easeInOut",
+        delay: FINISH_DELAY,
       },
       style: HANDLE_END,
     },
@@ -162,11 +162,14 @@ const FINISH: Record<SexKind, Partial<Record<Part, Move>>> = {
  * never hovers. Two keyframes, so springs; the release overshoots a little,
  * which is what makes letting go read as the spring being let off.
  *
- * The spear drawn back overlaps the ring rather than parting from it.
+ * It sits on its own element inside the finish's, so the two poses never
+ * share a property and the press springs back under the finish rather than
+ * being held until the finish takes over. The spear drawn back overlaps the
+ * ring rather than parting from it.
  */
-const PRESS: Record<SexKind, { part: Part; pose: TargetAndTransition }> = {
+const PRESS: Record<SexKind, { part: Part } & Omit<Move, "transition">> = {
   male: { part: "reach", pose: { x: -0.5, y: 0.5 } },
-  female: { part: "whole", pose: { rotate: 3, y: 0.4 } },
+  female: { part: "whole", pose: { rotate: 3, y: 0.4 }, style: HANDLE_END },
 };
 const PRESS_SPRING: Transition = { type: "spring", stiffness: 520, damping: 30 };
 const RELEASE_SPRING: Transition = {
@@ -183,19 +186,18 @@ const RELEASE_SPRING: Transition = {
  */
 const EXIT: Record<
   SexKind,
-  { part: "reach" | "all"; pose: TargetAndTransition; style?: MotionStyle }
+  { part: "reach" | "all" } & Omit<Move, "transition">
 > = {
   male: { part: "reach", pose: { x: -0.9, y: 0.9 } },
   female: { part: "all", pose: { rotate: 5, y: 1 }, style: HANDLE_END },
 };
 
 /**
- * The mirror's light, drawn only while it finishes. The glint is an arc
- * inside the glass on its upper left, the side a highlight sits on in line
- * art, one step thinner than the sign so it reads as light and not as part
- * of the frame. The spark is a small cross clear of the rim on the upper
- * right, where the ring's outer edge is 7 units from the centre and the
- * cross comes no nearer than 7.2.
+ * The mirror's light. The glint is an arc inside the glass on its upper left,
+ * the side a highlight sits on in line art, one step thinner than the sign so
+ * it reads as light and not as part of the frame. The spark is a small cross
+ * clear of the rim on the upper right, where the ring's outer edge is 7 units
+ * from the centre and the cross comes no nearer than 7.2.
  */
 const GLINT = "M8.52 8.07A3.6 3.6 0 0 1 10.77 5.62";
 const SPARK = "M18.4 1.4v2.4M17.2 2.6h2.4";
@@ -213,22 +215,6 @@ const HOLD_MS = Math.ceil((FINISH_DELAY + TILT_DURATION) * 1000) + 50;
 
 const AT_REST = { x: 0, y: 0, rotate: 0 } as const;
 const OFF: Transition = { duration: 0 };
-
-/**
- * The finish's own timing for what it moves, and the release for the rest.
- * The mirror's tilt moves only rotate, so without the second half the dip a
- * press left in y stayed put through the whole tilt.
- */
-function finishTransition(move: Move): Transition {
-  const released = Object.keys(AT_REST)
-    .filter((key) => !(key in move.pose))
-    .map((key) => [key, RELEASE_SPRING]);
-  return {
-    ...move.transition,
-    delay: FINISH_DELAY,
-    ...Object.fromEntries(released),
-  };
-}
 
 function changedValue(selected: string[], nextSelected: string[]) {
   return (
@@ -251,65 +237,62 @@ function SexGlyph({
   resetDelay: number;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  const { ring, stem, branches } = SEX_GLYPHS[kind];
+  const { ring, reach } = SEX_GLYPHS[kind];
   const finish = FINISH[kind];
-  const leaving = DESELECT_DURATION + resetDelay;
+  const press = PRESS[kind];
+  const exit = EXIT[kind];
+  const moving = finishing && !shouldReduceMotion;
+  const held = pressing && !shouldReduceMotion;
+  // What an untick waits before it starts, so a reset leaves in turn.
+  const wait = shouldReduceMotion || checked ? 0 : resetDelay;
 
-  // One rule for every drawn stroke: opacity is the switch and pathLength is
-  // the draw. A pathLength of 0 with a round cap still paints a dot, and the
-  // arrow's two branches start at its tip, so without the switch a green dot
-  // sat at the tip from the first frame until the branches drew.
   const drawn = (step: { duration: number; delay: number }) => ({
     initial: false as const,
     animate: { pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 },
     transition: shouldReduceMotion
-      ? { duration: 0 }
+      ? OFF
       : checked
-        ? {
-            pathLength: { ...step, ease: "easeOut" as const },
-            opacity: { duration: 0.05, delay: step.delay },
-          }
+        ? DRAW_IN(step.duration, step.delay)
         : // The stroke comes off only once the layer has faded out, so
           // unticking never runs the draw backwards.
-          { duration: 0, delay: leaving },
+          { duration: 0, delay: DESELECT_DURATION + resetDelay },
   });
 
-  const moving = finishing && !shouldReduceMotion;
-  const press = PRESS[kind];
-  const exit = EXIT[kind];
-
-  // A part of the sign that takes its share of the finish or the wind-up.
-  // The same moves run in both layers, so the faint outline underneath goes
-  // with the ink.
+  // A part of the sign that takes its share of the finish, the wind-up, or
+  // both, on nested elements. The same moves run in both layers, so the faint
+  // outline underneath goes with the ink.
   const part = (name: Part, children: ReactNode) => {
     const move = finish[name];
-    const winds = press.part === name;
-    if (!move && !winds) return children;
-    const held = winds && pressing && !shouldReduceMotion;
-    return (
-      <m.g
-        initial={false}
-        style={move?.style}
-        animate={
-          moving && move
-            ? { ...AT_REST, ...move.pose }
-            : held
-              ? press.pose
-              : AT_REST
-        }
-        transition={
-          shouldReduceMotion
-            ? OFF
-            : moving && move
-              ? finishTransition(move)
-              : held
-                ? PRESS_SPRING
-                : RELEASE_SPRING
-        }
-      >
-        {children}
-      </m.g>
-    );
+    let node = children;
+    if (press.part === name) {
+      node = (
+        <m.g
+          initial={false}
+          style={press.style}
+          animate={held ? press.pose : AT_REST}
+          transition={
+            shouldReduceMotion ? OFF : held ? PRESS_SPRING : RELEASE_SPRING
+          }
+        >
+          {node}
+        </m.g>
+      );
+    }
+    if (move) {
+      node = (
+        <m.g
+          initial={false}
+          style={move.style}
+          animate={moving ? move.pose : AT_REST}
+          transition={
+            moving ? move.transition : shouldReduceMotion ? OFF : RELEASE_SPRING
+          }
+        >
+          {node}
+        </m.g>
+      );
+    }
+    return node;
   };
 
   // The ink's way out; see EXIT. It snaps back while the ink is hidden, so a
@@ -329,18 +312,10 @@ function SexGlyph({
     </m.g>
   );
 
-  const reach = (paths: (d: string, step: "stem" | "branches") => ReactNode) =>
-    part(
-      "reach",
-      <>
-        {paths(stem, "stem")}
-        {branches.map((d) => paths(d, "branches"))}
-      </>,
-    );
-
-  const reachInk = reach((d, step) => (
-    <m.path key={d} d={d} {...drawn(DRAW[step])} />
-  ));
+  const reachInk = part(
+    "reach",
+    reach.map(({ d, step }) => <m.path key={d} d={d} {...drawn(DRAW[step])} />),
+  );
   const ink = (
     <>
       {part("ring", <m.path d={ring} {...drawn(DRAW.ring)} />)}
@@ -362,14 +337,15 @@ function SexGlyph({
             : checked
               ? FADE_DURATION
               : DESELECT_DURATION,
-          delay: shouldReduceMotion || checked ? 0 : resetDelay,
+          delay: wait,
           ease: "easeOut",
         }}
       >
         {part("ring", <path d={ring} />)}
-        {reach((d) => (
-          <path key={d} d={d} />
-        ))}
+        {part(
+          "reach",
+          reach.map(({ d }) => <path key={d} d={d} />),
+        )}
       </m.g>
       <m.g
         stroke="var(--brand-strong)"
@@ -377,7 +353,7 @@ function SexGlyph({
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
           duration: shouldReduceMotion || checked ? 0 : DESELECT_DURATION,
-          delay: shouldReduceMotion || checked ? 0 : resetDelay,
+          delay: wait,
           ease: "easeOut",
         }}
       >
@@ -406,7 +382,11 @@ function SexGlyph({
   );
 }
 
-/** The glint across the mirror's glass and the spark on its rim. */
+/**
+ * The glint across the mirror's glass and the spark on its rim, hidden at
+ * rest. Always mounted: mounted only for the finish, the keyframes landed
+ * on their last values at once and neither light was ever seen.
+ */
 function MirrorLight({ moving }: { moving: boolean }) {
   return (
     <>
@@ -544,7 +524,7 @@ export function SexCards({
                 transition={
                   !shouldReduceMotion && celebrating
                     ? { duration: POP.duration, delay: POP_DELAY, ease: "easeOut" }
-                    : { duration: 0 }
+                    : OFF
                 }
               >
                 <SexGlyph

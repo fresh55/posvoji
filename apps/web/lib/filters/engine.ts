@@ -867,10 +867,13 @@ export function thinnestAnswer(
     answered: asked - unanswered,
   });
 
+  const asked = queryOf(filters).groups;
   const candidates: Coverage[] = [];
   for (const group of GROUPS) {
     if (group === "shelter") continue;
-    if (filters[group].length === 0) continue;
+    // A section the visitor ticked but that asks nothing (Spol with both)
+    // cannot be why nothing matched.
+    if (asked[group] === null) continue;
     candidates.push({ facet: group, ...covered(tab.groups[group]) });
   }
   for (const key of filters.goodWith) {
@@ -944,7 +947,9 @@ export function chipGains(
   const freedToggles = new Map<string, number>();
   // Inside the result, what each picked value is holding up on its own.
   const sole = new Map<string, number>();
-  // Inside the result, how many of each sex, for Spol with both ticked.
+  // Inside the result, how many of each sex, counted only for Spol with both
+  // ticked, the one case that reads it.
+  const everySex = picksEverySex(filters.sex);
   const sexShown = new Map<string, number>();
 
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
@@ -983,8 +988,10 @@ export function chipGains(
     // Everything passes, so this animal is in the result, and the result is
     // the only place a value can be the sole reason something is showing.
     result += 1;
-    const sex = index.sex[slot];
-    if (sex !== undefined) bump(sexShown, sex);
+    if (everySex) {
+      const sex = index.sex[slot];
+      if (sex !== undefined) bump(sexShown, sex);
+    }
     for (const group of GROUPS) {
       const chosen = query.groups[group];
       if (chosen === null) continue;
@@ -1005,20 +1012,21 @@ export function chipGains(
     gains.set(key, last ? freed - result : -(sole.get(key) ?? 0));
   };
   for (const group of GROUPS) {
+    if (group === "sex" && everySex) continue;
     const chosen = filters[group];
-    // Spol with both ticked asks nothing (SEX_ANSWERS), so dropping one sex is
-    // neither case above: the other becomes the whole question, and what
-    // leaves is every animal shown that is not that sex, unknown included.
-    const asksNothing = group === "sex" && chosen.length > 1 && query.groups.sex === null;
     for (const value of chosen) {
-      if (asksNothing) {
-        const kept = chosen
-          .filter((other) => other !== value)
-          .reduce((sum, other) => sum + (sexShown.get(other) ?? 0), 0);
-        gains.set(chipKey(group, value), kept - result);
-        continue;
-      }
       price(chipKey(group, value), chosen.length === 1, freedGroup[group]);
+    }
+  }
+  // Spol with both ticked asks nothing (picksEverySex), so dropping one sex is
+  // neither case above: the other becomes the whole question, and what
+  // leaves is every animal shown that is not that sex, unknown included.
+  if (everySex) {
+    for (const value of filters.sex) {
+      const kept = filters.sex
+        .filter((other) => other !== value)
+        .reduce((sum, other) => sum + (sexShown.get(other) ?? 0), 0);
+      gains.set(chipKey("sex", value), kept - result);
     }
   }
   for (const key of filters.toggles) {

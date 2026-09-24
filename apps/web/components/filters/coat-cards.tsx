@@ -19,6 +19,7 @@ import {
   isDeadOption,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
+import { DRAW_IN } from "@/components/filters/drawn-glyph";
 import type { SectionCollapse } from "@/components/filters/filter-section-header";
 import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
@@ -1189,20 +1190,6 @@ const RUFFLE_DURATION = 0.5;
 // shortening the celebration, has to move one of these three numbers.
 const RUFFLE_STEP_DELAY = 0.06;
 
-/**
- * Growing a strand in: the length is the gesture, the opacity only takes the
- * stroke away when there is none of it drawn yet.
- *
- * Both on one transition, which is what the energy glyphs do, faded the whole
- * strand up over the draw's own duration and the wash of colour arrived ahead
- * of the tip. The draws there run 0.2s, where the two are the same event; a
- * long coat runs 0.46 and they are not. Opacity is the switch and pathLength
- * is the animation.
- */
-const DRAW_IN = (duration: number, delay: number) => ({
-  pathLength: { duration, delay, ease: "easeOut" as const },
-  opacity: { duration: 0.08, delay },
-});
 
 /**
  * The origin the coat turns about: the top of the strands' own bounding box,

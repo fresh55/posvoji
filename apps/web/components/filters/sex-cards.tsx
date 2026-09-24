@@ -85,54 +85,94 @@ const POP = { duration: 0.36, peak: 1.08 } as const;
 const POP_DELAY = LANDED - POP.duration / 2;
 
 /**
- * What each sign does once it is whole. The arrow flicks out along its own
- * diagonal and back, which is what an arrow is for. The stem and its crossbar
- * swing from the foot of the ring like a pendant and come to rest.
+ * What each sign does once it is whole, taken from what the sign is drawn
+ * after. ♂ is Mars's shield and spear: the spear thrusts out along its
+ * diagonal and the shield takes the recoil the other way. ♀ is Venus's hand
+ * mirror: it tilts on its handle as if raised to look into, a glint crosses
+ * the glass and a spark catches its rim.
  *
- * The flick moves the arrow by 1.3 units. The stroke's round cap reaches one
- * unit back from its root and the ring's stroke one unit out from its path,
- * so the arrow stays joined to the ring at the far end of the flick.
+ * The thrust and the recoil part the arrow from the ring by 1.7 units at
+ * most. The arrow's round cap reaches one unit back from its root and the
+ * ring's stroke one unit out from its path, so the two stay joined under 2.
  *
- * Both start a little before the landing, so the gesture reads as the draw's
+ * Every finish starts a little before the landing, so it reads as the draw's
  * follow-through rather than a second event after it. Tweens, because these
  * have more than two keyframes.
  */
-const FLICK_UNITS = 1.3;
-const FLICK_DURATION = 0.36;
-const SWING_DURATION = 0.6;
+type Move = {
+  pose: TargetAndTransition;
+  transition: Transition;
+  style?: MotionStyle;
+};
+type Part = "whole" | "ring" | "reach";
+
+const THRUST_UNITS = 1.2;
+const RECOIL_UNITS = 0.5;
+const THRUST: Transition = {
+  duration: 0.36,
+  times: [0, 0.3, 0.7, 1],
+  ease: "easeOut",
+};
+const TILT_DURATION = 0.7;
 const FINISH_DELAY = LANDED - 0.06;
-const FINISH: Record<
-  SexKind,
-  { pose: TargetAndTransition; transition: Transition; style?: MotionStyle }
-> = {
+
+const FINISH: Record<SexKind, Partial<Record<Part, Move>>> = {
   male: {
-    pose: {
-      x: [0, FLICK_UNITS, -0.3, 0],
-      y: [0, -FLICK_UNITS, 0.3, 0],
+    reach: {
+      pose: {
+        x: [0, THRUST_UNITS, -0.3, 0],
+        y: [0, -THRUST_UNITS, 0.3, 0],
+      },
+      transition: THRUST,
     },
-    transition: {
-      duration: FLICK_DURATION,
-      times: [0, 0.3, 0.7, 1],
-      ease: "easeOut",
+    ring: {
+      pose: {
+        x: [0, -RECOIL_UNITS, 0.15, 0],
+        y: [0, RECOIL_UNITS, -0.15, 0],
+      },
+      transition: THRUST,
     },
   },
   female: {
-    pose: { rotate: [0, 10, -6, 2.5, 0] },
-    transition: {
-      duration: SWING_DURATION,
-      times: [0, 0.22, 0.5, 0.76, 1],
-      ease: "easeInOut",
+    whole: {
+      pose: { rotate: [0, -6, -6, 1.5, 0] },
+      transition: {
+        duration: TILT_DURATION,
+        times: [0, 0.25, 0.6, 0.85, 1],
+        ease: "easeInOut",
+      },
+      // The end of the handle, (12, 22) in the 24-unit box, where a hand
+      // would hold it. Motion owns transform-origin, so the pivot is spelled
+      // as originX and originY.
+      style: { transformBox: "view-box", originX: 0.5, originY: 22 / 24 },
     },
-    // The foot of the ring, (12, 15) in the 24-unit box. Motion owns
-    // transform-origin, so the pivot is spelled as originX and originY.
-    style: { transformBox: "view-box", originX: 0.5, originY: 15 / 24 },
   },
 };
 
-// The gesture state clears once the longer finish, the swing, has run.
-const HOLD_MS = Math.ceil((FINISH_DELAY + SWING_DURATION) * 1000) + 50;
+/**
+ * The mirror's light, drawn only while it finishes. The glint is an arc
+ * inside the glass on its upper left, the side a highlight sits on in line
+ * art, one step thinner than the sign so it reads as light and not as part
+ * of the frame. The spark is a small cross clear of the rim on the upper
+ * right, where the ring's outer edge is 7 units from the centre and the
+ * cross comes no nearer than 7.2.
+ */
+const GLINT = "M8.52 8.07A3.6 3.6 0 0 1 10.77 5.62";
+const SPARK = "M18.4 1.4v2.4M17.2 2.6h2.4";
+const GLINT_DELAY = FINISH_DELAY + 0.1;
+const SPARK_DELAY = FINISH_DELAY + 0.3;
+const SPARK_DURATION = 0.36;
+const LIGHT_ORIGIN: MotionStyle = {
+  transformBox: "fill-box",
+  originX: 0.5,
+  originY: 0.5,
+};
+
+// The gesture state clears once the longest finish, the tilt, has run.
+const HOLD_MS = Math.ceil((FINISH_DELAY + TILT_DURATION) * 1000) + 50;
 
 const AT_REST: TargetAndTransition = { x: 0, y: 0, rotate: 0 };
+const OFF: Transition = { duration: 0 };
 
 function changedValue(selected: string[], nextSelected: string[]) {
   return (
@@ -176,22 +216,73 @@ function SexGlyph({
           { duration: 0, delay: leaving },
   });
 
-  // The ring stays put and the rest of the sign takes the gesture, in both
-  // layers, so the faint outline underneath moves with the ink over it.
-  const reach = (paths: (d: string, step: "stem" | "branches") => ReactNode) => (
-    <m.g
-      initial={false}
-      style={finish.style}
-      animate={!shouldReduceMotion && finishing ? finish.pose : AT_REST}
-      transition={
-        !shouldReduceMotion && finishing
-          ? { ...finish.transition, delay: FINISH_DELAY }
-          : { duration: 0 }
-      }
-    >
-      {paths(stem, "stem")}
-      {branches.map((d) => paths(d, "branches"))}
-    </m.g>
+  const moving = finishing && !shouldReduceMotion;
+
+  // A part of the sign that takes its share of the finish. The same moves
+  // run in both layers, so the faint outline underneath goes with the ink.
+  const part = (name: Part, children: ReactNode) => {
+    const move = finish[name];
+    if (!move) return children;
+    return (
+      <m.g
+        initial={false}
+        style={move.style}
+        animate={moving ? move.pose : AT_REST}
+        transition={moving ? { ...move.transition, delay: FINISH_DELAY } : OFF}
+      >
+        {children}
+      </m.g>
+    );
+  };
+
+  const reach = (paths: (d: string, step: "stem" | "branches") => ReactNode) =>
+    part(
+      "reach",
+      <>
+        {paths(stem, "stem")}
+        {branches.map((d) => paths(d, "branches"))}
+      </>,
+    );
+
+  const layers = (
+    <>
+      <m.g
+        className="text-muted-foreground"
+        stroke="currentColor"
+        initial={false}
+        animate={{ opacity: checked ? 0.2 : 1 }}
+        transition={{
+          duration: shouldReduceMotion
+            ? 0
+            : checked
+              ? FADE_DURATION
+              : DESELECT_DURATION,
+          delay: shouldReduceMotion || checked ? 0 : resetDelay,
+          ease: "easeOut",
+        }}
+      >
+        {part("ring", <path d={ring} />)}
+        {reach((d) => (
+          <path key={d} d={d} />
+        ))}
+      </m.g>
+      <m.g
+        stroke="var(--brand-strong)"
+        initial={false}
+        animate={{ opacity: checked ? 1 : 0 }}
+        transition={{
+          duration: shouldReduceMotion || checked ? 0 : DESELECT_DURATION,
+          delay: shouldReduceMotion || checked ? 0 : resetDelay,
+          ease: "easeOut",
+        }}
+      >
+        {part("ring", <m.path d={ring} {...drawn(DRAW.ring)} />)}
+        {reach((d, step) => (
+          <m.path key={d} d={d} {...drawn(DRAW[step])} />
+        ))}
+        {kind === "female" && <MirrorLight moving={moving} />}
+      </m.g>
+    </>
   );
 
   return (
@@ -209,42 +300,52 @@ function SexGlyph({
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <m.g
-        className="text-muted-foreground"
-        stroke="currentColor"
-        initial={false}
-        animate={{ opacity: checked ? 0.2 : 1 }}
-        transition={{
-          duration: shouldReduceMotion
-            ? 0
-            : checked
-              ? FADE_DURATION
-              : DESELECT_DURATION,
-          delay: shouldReduceMotion || checked ? 0 : resetDelay,
-          ease: "easeOut",
-        }}
-      >
-        <path d={ring} />
-        {reach((d) => (
-          <path key={d} d={d} />
-        ))}
-      </m.g>
-      <m.g
-        stroke="var(--brand-strong)"
-        initial={false}
-        animate={{ opacity: checked ? 1 : 0 }}
-        transition={{
-          duration: shouldReduceMotion || checked ? 0 : DESELECT_DURATION,
-          delay: shouldReduceMotion || checked ? 0 : resetDelay,
-          ease: "easeOut",
-        }}
-      >
-        <m.path d={ring} {...drawn(DRAW.ring)} />
-        {reach((d, step) => (
-          <m.path key={d} d={d} {...drawn(DRAW[step])} />
-        ))}
-      </m.g>
+      {part("whole", layers)}
     </svg>
+  );
+}
+
+/** The glint across the mirror's glass and the spark on its rim. */
+function MirrorLight({ moving }: { moving: boolean }) {
+  return (
+    <>
+      <m.path
+        d={GLINT}
+        strokeWidth={1.5}
+        initial={false}
+        animate={
+          moving
+            ? { pathLength: [0, 1, 1, 1], opacity: [0, 0.7, 0.7, 0] }
+            : { pathLength: 0, opacity: 0 }
+        }
+        transition={
+          moving
+            ? {
+                duration: 0.42,
+                times: [0, 0.4, 0.6, 1],
+                delay: GLINT_DELAY,
+                ease: "easeOut",
+              }
+            : OFF
+        }
+      />
+      <m.path
+        d={SPARK}
+        strokeWidth={1.25}
+        style={LIGHT_ORIGIN}
+        initial={false}
+        animate={
+          moving
+            ? { scale: [0, 1, 0], rotate: [0, 45], opacity: [0, 1, 0] }
+            : { scale: 0, rotate: 0, opacity: 0 }
+        }
+        transition={
+          moving
+            ? { duration: SPARK_DURATION, delay: SPARK_DELAY, ease: "easeOut" }
+            : OFF
+        }
+      />
+    </>
   );
 }
 

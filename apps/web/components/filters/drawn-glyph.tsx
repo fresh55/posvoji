@@ -12,7 +12,8 @@ import type { ReactNode } from "react";
  * stroke up over the draw's own duration and the wash of colour arrived ahead
  * of the tip. The draws there run 0.2s, where the two are the same event; a
  * long coat runs 0.46 and they are not. Opacity is the switch and pathLength
- * is the animation. The coat strands and the Spol signs both draw this way.
+ * is the animation. The coat strands, the Spol signs and DrawnGlyph all draw
+ * this way.
  */
 export const DRAW_IN = (duration: number, delay: number) => ({
   pathLength: { duration, delay, ease: "easeOut" as const },
@@ -90,16 +91,13 @@ export function DrawnGlyph({
               key={d}
               d={d}
               initial={false}
-              animate={{ pathLength: checked ? 1 : 0 }}
+              // A stroke waiting for its turn is hidden, not a round-cap dot.
+              animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
               transition={
                 shouldReduceMotion
                   ? { duration: 0 }
                   : checked
-                    ? {
-                        duration: tempo.draw,
-                        delay: index * tempo.stagger,
-                        ease: "easeOut",
-                      }
+                    ? DRAW_IN(tempo.draw, index * tempo.stagger)
                     : // The drawn length drops only once the layer has faded
                       // out, so letting go never runs the draw backwards.
                       { duration: 0, delay: wait + tempo.fade }

@@ -17,6 +17,10 @@ import {
 } from "@/components/filters/location-picker/model";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/i18n-context";
+import {
+  PRESSED_ROW_BOX_CLASS,
+  usePressedRowAnchor,
+} from "@/hooks/use-pressed-row-anchor";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
 import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
@@ -89,6 +93,7 @@ export function FilterSidebar({
 } & FilterActionContract) {
   const { messages, locale } = useI18n();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
+  const anchorPressedRow = usePressedRowAnchor();
   // The chips row scrolls away with the page while the sidebar stays, so this
   // count keeps the state in view after the pills have gone. Selected values
   // and not sections, so it agrees with the row it outlives: a badge reading 1
@@ -102,6 +107,9 @@ export function FilterSidebar({
       // lib/scroll-strip.ts says why, and this panel is the case it says it
       // about.
       {...{ [SCROLL_BOX_MARK]: "" }}
+      // A pick can grow a section above the row that took it; the row stays
+      // under the pointer (hooks/use-pressed-row-anchor.ts).
+      onClickCapture={anchorPressedRow}
       // The negative margin and padding give focus rings room inside the
       // overflow clip. Hairlines between sections read the stack as one list.
       //
@@ -126,6 +134,7 @@ export function FilterSidebar({
       // same edge mask and adds a thin scrollbar (globals.css).
       className={cn(
         "fade-scroll-thin -mx-1 space-y-3 px-1 pb-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
+        PRESSED_ROW_BOX_CLASS,
         className,
       )}
     >

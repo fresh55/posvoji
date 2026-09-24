@@ -6,6 +6,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 import {
+  FilterSelectionMark,
   countClass,
   filterCardLayoutClass,
   filterCardVariants,
@@ -175,5 +176,35 @@ describe("the sex cards' keyboard model", () => {
     for (const item of items) {
       expect(item.getAttribute("tabindex")).not.toBe("-1");
     }
+  });
+});
+
+// The tick waits for the section's gesture to land (appearDelay). The box it
+// sits in filled on the press all the same, and a large paw's wait left a
+// solid green square with nothing in it for 0.42s.
+describe("the selection mark's fill", () => {
+  const box = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>("span[aria-hidden]");
+
+  it("fills a ticked box when its tick arrives", () => {
+    const { container } = render(
+      <FilterSelectionMark checked appearDelay={0.42} />,
+    );
+
+    expect(box(container)?.style.transitionDelay).toBe("0.42s");
+  });
+
+  it("empties a box at once", () => {
+    const { container } = render(
+      <FilterSelectionMark checked={false} appearDelay={0.42} />,
+    );
+
+    expect(box(container)?.style.transitionDelay).toBe("");
+  });
+
+  it("fills at once where nothing is waited for", () => {
+    const { container } = render(<FilterSelectionMark checked />);
+
+    expect(box(container)?.style.transitionDelay).toBe("");
   });
 });

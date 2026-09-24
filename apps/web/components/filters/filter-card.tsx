@@ -285,11 +285,21 @@ export function FilterSelectionMark({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const dot = shape === "dot";
+  // The box fills when its tick arrives. It filled on the press while the tick
+  // waited for the gesture, and a large paw's 0.42s left a solid green square
+  // with nothing in it, which reads as a control stuck mid-state. The card's
+  // own fill still answers the press at once. Only the way in waits, so a box
+  // unticked during another card's gesture empties straight away.
+  const fillDelay =
+    checked && appearDelay > 0 && !shouldReduceMotion
+      ? { transitionDelay: `${appearDelay}s` }
+      : undefined;
 
   return (
     <LazyMotion features={domAnimation}>
       <span
         aria-hidden
+        style={fillDelay}
         className={cn(
           // group-disabled:hidden, because a dead option has nothing to tick.
           // The card is the group, and a disabled card in the filters is one

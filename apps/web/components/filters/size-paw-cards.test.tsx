@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { PawPrint } from "lucide-react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, facetCounts, groupOptions } from "@/lib/filters";
+import { pointer as pointerAt } from "@/test/pointer";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -378,4 +385,91 @@ describe("SizePawCards under reduced motion", () => {
       });
     }
   });
+});
+
+describe("SizePawCards under the pointer", () => {
+  const tipped = (label: string) =>
+    screen
+      .getByRole("button", { name: new RegExp(`^${label}, `) })
+      .querySelector("[data-tipped]") !== null;
+  // React makes its pointerenter out of pointerover, and pointerleave out of
+  // pointerout.
+  const onto = (element: HTMLElement, pointerType: "mouse" | "touch") =>
+    pointerAt(element, "pointerover", { x: 0, y: 0, pointerType });
+  const off = (element: HTMLElement) =>
+    pointerAt(element, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
+
+  it("tips the paw onto its heel under a mouse and not under a finger", () => {
+    renderCards();
+    const card = screen.getByRole("button", {
+      name: new RegExp(`^${options[1].label}, `),
+    });
+
+    onto(card, "touch");
+    expect(tipped(options[1].label)).toBe(false);
+
+    onto(card, "mouse");
+    expect(tipped(options[1].label)).toBe(true);
+  });
+
+  // A landing takes the weight on the toes. With the mouse resting on the
+  // card, the paw hopped and landed 8 degrees back on its heel and stayed
+  // there.
+  it("stands the paw flat from a click until the pointer leaves", async () => {
+    renderCards();
+    const card = screen.getByRole("button", {
+      name: new RegExp(`^${options[1].label}, `),
+    });
+
+    onto(card, "mouse");
+    expect(tipped(options[1].label)).toBe(true);
+
+    fireEvent.click(card);
+    await waitFor(() => expect(tipped(options[1].label)).toBe(false));
+
+    off(card);
+    onto(card, "mouse");
+    expect(tipped(options[1].label)).toBe(true);
+  });
+
+  it("stands the paw flat while it is held down", () => {
+    renderCards();
+    const card = screen.getByRole("button", {
+      name: new RegExp(`^${options[2].label}, `),
+    });
+
+    onto(card, "mouse");
+    pointer(card, "pointerdown");
+    expect(tipped(options[2].label)).toBe(false);
+  });
+});
+
+describe("SizePawCards line weight", () => {
+  // The paws differ in size and not in ink. Lucide's 1.75 units scale with
+  // the icon, and the small paw drew 0.875px lines against the large paw's
+  // 1.46px.
+  it.each(["sidebar", "sheet"] as const)(
+    "draws every paw's outline at one width on screen in the %s",
+    (layout) => {
+      renderCards({ layout });
+
+      const widths = options.map(({ label }) => {
+        const paw = screen
+          .getByRole("button", { name: new RegExp(`^${label}, `) })
+          .querySelector<SVGSVGElement>(
+            'svg.lucide-paw-print:not(.size-12):not([fill="currentColor"])',
+          );
+        const size = /(?:^|\s)size-(\d+)(?:\s|$)/.exec(
+          paw?.getAttribute("class") ?? "",
+        );
+        expect(size).not.toBeNull();
+        const px = Number(size?.[1]) * 4;
+        return (Number(paw?.getAttribute("stroke-width")) * px) / 24;
+      });
+
+      expect(new Set(widths.map((width) => width.toFixed(3))).size).toBe(1);
+      // Three sizes, or the check above compares one paw with itself.
+      expect(options).toHaveLength(3);
+    },
+  );
 });

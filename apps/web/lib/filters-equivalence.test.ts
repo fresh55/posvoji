@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type {
-  AdoptionStatus,
   Animal,
   AnimalSize,
   EnergyLevel,
@@ -85,14 +84,6 @@ function dataset(count: number): Animal[] {
     const answer = () => pick(["yes", "no", "unknown", undefined] as const);
     const flag = () => pick([true, false, undefined] as const);
     const months = pick([undefined, 3, 11, 12, 40, 95, 96, 130]);
-    const status = pick<AdoptionStatus>([
-      "available",
-      "available",
-      "unknown",
-      "reserved",
-      "hold",
-      "adopted",
-    ]);
     const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20"]);
     const adoptionRequirements = {
       indoorOnly: flag(),
@@ -125,7 +116,7 @@ function dataset(count: number): Animal[] {
       ...(energy === undefined ? {} : { energy }),
       ...(months === undefined ? {} : { approximateAgeMonths: months }),
       ...(born === undefined ? {} : { birthDate: born }),
-      status,
+      status: "available",
       medical: {
         neutered: flag(),
         vaccinated: flag(),
@@ -153,10 +144,6 @@ function slowGroupValue(
   group: MultiGroup,
 ): string | string[] | undefined {
   switch (group) {
-    case "availability":
-      return animal.status === "available" || animal.status === "unknown"
-        ? "available"
-        : "unavailable";
     case "sex":
       return animal.sex === "unknown" ? undefined : animal.sex;
     case "age": {
@@ -262,7 +249,6 @@ function slowFacetCounts(
   filters: Filters,
 ): Record<MultiGroup, Map<string, number>> {
   const counts = {
-    availability: new Map<string, number>(),
     sex: new Map<string, number>(),
     age: new Map<string, number>(),
     size: new Map<string, number>(),
@@ -471,7 +457,7 @@ function slowUnanswered(animals: Animal[], filters: Filters) {
 // Read off FILTER_METADATA rather than listed again: this file claims to be
 // the specification, and a hand-copied list quietly stops covering a value the
 // moment one is added to the metadata.
-const values = <Group extends "availability" | "sex" | "age" | "size" | "energy" | "coatColor" | "coatLength" | "waiting">(
+const values = <Group extends "sex" | "age" | "size" | "energy" | "coatColor" | "coatLength" | "waiting">(
   group: Group,
 ): (typeof FILTER_METADATA)[Group][number]["value"][] =>
   FILTER_METADATA[group].map((option) => option.value);
@@ -495,8 +481,6 @@ function states(): Filters[] {
   const only = (part: Partial<Filters>): void => {
     out.push({ ...EMPTY_FILTERS, ...part });
   };
-  only({ availability: ["available"] });
-  only({ availability: ["available"], age: ["mladicek"] });
   only({ sex: ["male"] });
   only({ sex: ["male", "female"] });
   only({ age: ["mladicek"] });
@@ -530,7 +514,6 @@ function states(): Filters[] {
       species: (["all", "all", "dog", "cat", "other"] as SpeciesFilter[])[
         Math.floor(next() * 5)
       ],
-      availability: some(values("availability"), 0.25),
       sex: some(SEXES, 0.35),
       age: some(AGES, 0.3),
       size: some(SIZES, 0.3),

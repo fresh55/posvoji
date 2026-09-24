@@ -130,11 +130,11 @@ export function useAnimalFilterModel({
   // A section, once drawn on a tab, stays for as long as the tab does.
   // visibleGroups keeps one the pool cannot narrow only while it is answered,
   // and an answer can stand where nothing else would draw the section:
-  // carried over from another tab, or arriving in a link (Posvojitev on a tab
-  // with nobody on hold, Energija carried to a tab nobody rated). Pressing the
-  // last one off there took the section out from under the press, and
-  // keyboard focus with it. Set while rendering, React's own shape for state
-  // that follows a value (use-filter-sections.ts has the same).
+  // carried over from another tab, or arriving in a link (Energija carried to
+  // a tab nobody rated). Pressing the last one off there took the section out
+  // from under the press, and keyboard focus with it. Set while rendering,
+  // React's own shape for state that follows a value (use-filter-sections.ts
+  // has the same).
   const [drawn, setDrawn] = useState(() => ({
     tab: filters.species,
     groups: GROUPS.filter((group) => shown[group]),

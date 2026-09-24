@@ -11,7 +11,6 @@ import type { Locale } from "@/lib/i18n";
 import {
   filterColour,
   type AgeGroup,
-  type Availability,
   type CoatColorFacet,
   type WaitingGroup,
   type CareKey,
@@ -35,8 +34,6 @@ export const ADOPTION_REQUIREMENT_LABELS = {
 
 const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
   sl: {
-    // "Posvojitev: samo na voljo", read as a sentence like the others.
-    availability: "Posvojitev",
     sex: "Spol",
     age: "Starost",
     size: "Velikost",
@@ -50,7 +47,6 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     shelter: "Zavetišče",
   },
   en: {
-    availability: "Adoption",
     sex: "Sex",
     age: "Age",
     size: "Size",
@@ -186,7 +182,6 @@ type CodedGroup = Exclude<MultiGroup, "shelter">;
 type ValueGroup = "goodWith" | "care";
 type MetadataGroup = CodedGroup | ValueGroup;
 type CodedValueByGroup = {
-  availability: Extract<Availability, "available">;
   sex: Exclude<Sex, "unknown">;
   age: AgeGroup;
   size: AnimalSize;
@@ -218,12 +213,6 @@ export type FilterValueDefinition<Value extends string = string> = {
 };
 
 export const FILTER_METADATA = {
-  // The label answers the badges a card wears when it cannot be adopted now
-  // ("rezervirano", "trenutno ni na voljo", "posvojeno"), so the row says
-  // which cards go.
-  availability: [
-    { value: "available", slug: "na-voljo", labels: { sl: "Samo na voljo", en: "Available only" } },
-  ],
   // Each paired colour follows its solid colour; multicolour stays last.
   coatColor: [
     { value: "black", slug: "crna", labels: { sl: "Črna", en: "Black" } },
@@ -439,7 +428,6 @@ export function groupOptions(
       return FILTER_METADATA.coatColor
         .filter(({ value }) => filterColour(value) === value)
         .map(({ value, labels }) => ({ value, label: labels[locale] }));
-    case "availability":
     case "sex":
     case "age":
     case "size":

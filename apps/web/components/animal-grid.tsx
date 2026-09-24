@@ -114,10 +114,7 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
 // reason nothing matched (thinnestAnswer in lib/filters). Keyed by facet so
 // a new one fails to compile here rather than going unexplained. Only the
 // toggles the panel still offers can be answered, so only they have words.
-const GROUP_TOPIC_KEY: Record<
-  Exclude<MultiGroup, "shelter" | "availability">,
-  TranslationKey
-> = {
+const GROUP_TOPIC_KEY: Record<Exclude<MultiGroup, "shelter">, TranslationKey> = {
   sex: "knownTopicSex",
   age: "knownTopicAge",
   size: "knownTopicSize",

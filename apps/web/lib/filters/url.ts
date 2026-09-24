@@ -12,7 +12,6 @@ import {
   SINGLE_CHOICE_GROUPS,
   filterColour,
   type AgeGroup,
-  type Availability,
   type WaitingGroup,
   type CareKey,
   type Filters,
@@ -33,7 +32,6 @@ import {
 // the tabs and the portal can read them without pulling this module and its
 // dependencies along.
 const PARAM_NAMES: Record<MultiGroup, string> = {
-  availability: "posvojitev",
   sex: "spol",
   age: "starost",
   size: "velikost",
@@ -53,10 +51,12 @@ const VALUE_PARAM_NAMES: Record<ValueGroup, string> = {
   care: "skrb",
 };
 
-// Dom was its own section, and none of its three answers is a filter any
-// more. The param is still owned, so a link shared from then loses it on the
-// next write rather than carrying a dead "dom=" around for good.
-const RETIRED_PARAMS = ["dom"];
+// Sections that are gone, with params still owned so a link shared from then
+// loses them on the next write rather than carrying a dead one around for
+// good. Dom's three answers stopped being filters. Posvojitev ("Samo na
+// voljo") went because the sort already puts every animal that cannot be
+// adopted now after the ones that can, and the card says so.
+const RETIRED_PARAMS = ["dom", "posvojitev"];
 
 function valueSlug(group: ValueGroup, value: string): string {
   const options: readonly FilterValueDefinition[] = FILTER_METADATA[group];
@@ -222,7 +222,6 @@ export function parseFilters(search: string): Filters {
       .filter((value): value is string => value !== undefined);
   return pruneHiddenFilters({
     species,
-    availability: values("availability") as Availability[],
     sex: values("sex") as Sex[],
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],

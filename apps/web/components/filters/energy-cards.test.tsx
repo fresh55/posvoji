@@ -241,7 +241,6 @@ describe("FilterGroupList energy group", () => {
         <FilterGroupList
           filters={{
             species: "all",
-            availability: [],
             sex: [],
             age: [],
             size: [],
@@ -256,7 +255,6 @@ describe("FilterGroupList energy group", () => {
           }}
           groups={[{ group, options }]}
           counts={{
-            availability: new Map(),
             sex: new Map(),
             age: new Map(),
             size: new Map(),

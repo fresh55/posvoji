@@ -46,7 +46,7 @@ export type AnimalFields = Omit<Animal, "images" | "source"> & {
  *  that the shelter's own listing still carries. An allowlist and not a
  *  denylist of the other three, so a status added to the schema is not taken
  *  for adoptable until someone says it is. The long-stay plea (lib/labels.ts)
- *  and Samo na voljo (lib/filters/engine.ts) both ask it. */
+ *  asks it. */
 export function adoptableNow(status: AdoptionStatus): boolean {
   return status === "available" || status === "unknown";
 }

@@ -7,12 +7,6 @@ export type SpeciesFilter = "all" | SpeciesTab;
 export type AgeGroup = "mladicek" | "odrasel" | "senior";
 export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
 
-/** Whether the animal can be adopted now. Only "available" is ever offered as
- *  an answer; "unavailable" is what reserved, on-hold and adopted animals are
- *  counted as. An unknown status reads as available, the way the sort ranks
- *  it: nothing says it is not. */
-export type Availability = "available" | "unavailable";
-
 /** Colours with a paired swatch. Review categories are stored directly. */
 export const TWO_TONED = ["black", "brown", "grey", "orange", "cream"] as const;
 export type CoatColorFacet = CoatColorCategory;
@@ -25,7 +19,7 @@ export function filterColour(category: CoatColorCategory | undefined): CoatColor
   return category;
 }
 export type MultiGroup =
-  | "availability" | "sex" | "age" | "size" | "energy" | "shelter"
+  | "sex" | "age" | "size" | "energy" | "shelter"
   | "coatColor" | "coatLength" | "waiting";
 
 // Yes/no properties an animal either has or doesn't. Every pick here has to
@@ -75,7 +69,6 @@ export type CareKey = (typeof CARE_KEYS)[number];
 
 export type Filters = {
   species: SpeciesFilter;
-  availability: Availability[];
   sex: Sex[];
   age: AgeGroup[];
   size: AnimalSize[];
@@ -91,7 +84,6 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   species: "all",
-  availability: [],
   sex: [],
   age: [],
   size: [],
@@ -110,11 +102,9 @@ export const EMPTY_FILTERS: Filters = {
 // would only sit there doing nothing. These groups take one answer at a time.
 export const SINGLE_CHOICE_GROUPS: readonly MultiGroup[] = ["waiting"];
 
-// Availability first: like Kje above it, it says which animals are in play at
-// all, before any question about what they are like.
 export const GROUPS: MultiGroup[] = [
-  "availability", "sex", "age", "size", "energy", "waiting", "coatColor",
-  "coatLength", "shelter",
+  "sex", "age", "size", "energy", "waiting", "coatColor", "coatLength",
+  "shelter",
 ];
 
 /** All filter categories, used to group and label active chips. */

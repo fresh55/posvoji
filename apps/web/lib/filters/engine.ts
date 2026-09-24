@@ -1,5 +1,5 @@
 import type { Species } from "@posvoji/schema";
-import { adoptableNow, type AnimalFields } from "@/lib/animal";
+import type { AnimalFields } from "@/lib/animal";
 import {
   TAB_OF_SPECIES,
 } from "@/lib/species";
@@ -13,7 +13,6 @@ import {
   TOGGLE_KEYS,
   filterColour,
   type AgeGroup,
-  type Availability,
   type WaitingGroup,
   type CareKey,
   type FilterFacet,
@@ -223,7 +222,6 @@ const GROUP_BITS: Record<MultiGroup, number> = {
   coatColor: 1 << 5,
   coatLength: 1 << 6,
   waiting: 1 << 7,
-  availability: 1 << 8,
 };
 
 type Column<Value> = readonly (Value | undefined)[];
@@ -235,7 +233,6 @@ type Column<Value> = readonly (Value | undefined)[];
  *  answer for a date is worked out on demand and kept below. */
 type FilterIndex = {
   readonly species: readonly Species[];
-  readonly availability: readonly Availability[];
   readonly sex: Column<string>;
   readonly size: Column<string>;
   readonly energy: Column<string>;
@@ -280,7 +277,6 @@ const TOGGLES_ASKED: Record<Species, number> = {
 
 function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const species: Species[] = [];
-  const availability: Availability[] = [];
   const sex: (string | undefined)[] = [];
   const size: (string | undefined)[] = [];
   const energy: (string | undefined)[] = [];
@@ -297,7 +293,6 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const goodWithAnswered: number[] = [];
   for (const animal of animals) {
     species.push(animal.species);
-    availability.push(adoptableNow(animal.status) ? "available" : "unavailable");
     // "unknown" sex is semantically the same as absent: we do not know.
     sex.push(animal.sex === "unknown" ? undefined : animal.sex);
     size.push(groupAsks("size", animal.species) ? animal.size : undefined);
@@ -329,7 +324,6 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   }
   return {
     species,
-    availability,
     sex,
     size,
     energy,
@@ -413,7 +407,6 @@ function queryOf(filters: Filters): Query {
   return {
     species: filters.species,
     groups: {
-      availability: chosen("availability"),
       sex: chosen("sex"),
       age: chosen("age"),
       size: chosen("size"),
@@ -465,8 +458,6 @@ function valueAt(
   group: MultiGroup,
 ): string | readonly string[] | undefined {
   switch (group) {
-    case "availability":
-      return pass.index.availability[slot];
     case "sex":
       return pass.index.sex[slot];
     case "age":
@@ -609,7 +600,6 @@ export function facetCounts(
 ): Record<MultiGroup, Map<string, number>> {
   const pass = passOf(animals, filters, now);
   const counts = {
-    availability: new Map<string, number>(),
     sex: new Map<string, number>(),
     age: new Map<string, number>(),
     size: new Map<string, number>(),
@@ -805,7 +795,7 @@ export function unansweredCounts(
  *  AND section carries its key as well. */
 export type Coverage =
   | {
-      readonly facet: Exclude<MultiGroup, "shelter" | "availability">;
+      readonly facet: Exclude<MultiGroup, "shelter">;
       readonly asked: number;
       readonly answered: number;
     }
@@ -837,7 +827,7 @@ export type Coverage =
  * applied, what unansweredCounts says each question leaves out is exactly
  * that.
  *
- * Shelter and availability are never it: every animal answers both.
+ * Shelter is never it: every animal answers it.
  */
 export function thinnestAnswer(
   animals: AnimalFields[],
@@ -856,7 +846,7 @@ export function thinnestAnswer(
 
   const candidates: Coverage[] = [];
   for (const group of GROUPS) {
-    if (group === "shelter" || group === "availability") continue;
+    if (group === "shelter") continue;
     if (filters[group].length === 0) continue;
     candidates.push({ facet: group, ...covered(tab.groups[group]) });
   }
@@ -915,7 +905,6 @@ export function chipGains(
   let result = 0;
   // Per section: the population left if that section stopped asking.
   const freedGroup: Record<MultiGroup, number> = {
-    availability: 0,
     sex: 0,
     age: 0,
     size: 0,
@@ -1216,7 +1205,6 @@ export function visibleGroups(
   const ages = ageColumn(index, monthsOf(now));
   const waiting = waitingColumn(index, todayOf(now));
   const distinct = {
-    availability: new Set<string>(),
     sex: new Set<string>(),
     age: new Set<string>(),
     size: new Set<string>(),
@@ -1230,7 +1218,6 @@ export function visibleGroups(
     if (value !== undefined) distinct[group].add(value);
   };
   for (let slot = 0; slot < animals.length; slot += 1) {
-    add("availability", index.availability[slot]);
     add("sex", index.sex[slot]);
     add("age", ages[slot]);
     add("size", index.size[slot]);
@@ -1248,18 +1235,11 @@ export function visibleGroups(
   // zero rows beside it stay and explain the unknowns, and the section comes
   // back on its own the day the field arrives.
   const floor = includeUnavailable ? 1 : 2;
-  // Availability is the exception to that floor. Every animal answers it, so
-  // there is never an unknown for a lone row to explain, and a pool with
-  // nobody on hold offers a row that could take nothing off. It shows only
-  // once there is someone for it to leave out.
-  const floorOf = (group: MultiGroup) =>
-    group === "availability" ? 2 : floor;
   const shown = (group: MultiGroup) =>
     filters[group].length > 0 ||
     (groupFitsSpecies(group, filters.species) &&
-      distinct[group].size >= floorOf(group));
+      distinct[group].size >= floor);
   return {
-    availability: shown("availability"),
     sex: shown("sex"),
     age: shown("age"),
     size: shown("size"),
@@ -1278,7 +1258,6 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   const keep = (group: MultiGroup) => groupFitsSpecies(group, filters.species);
   return {
     species: filters.species,
-    availability: filters.availability,
     sex: keep("sex") ? filters.sex : [],
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],

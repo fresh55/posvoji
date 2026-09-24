@@ -54,6 +54,7 @@ import {
 } from "@/components/filters/use-filter-sections";
 import {
   groupLabel,
+  picksEverySex,
   type CareKey,
   type CareOption,
   type FilterOption,
@@ -395,7 +396,13 @@ function SexGroup({
           layout={layout}
           resetDelay={resetDelay}
         />
-        <UnansweredNote tally={unanswered} />
+        {/* Both ticked leave nobody out, so the unanswered line would be
+            saying something untrue; this one says what both do. */}
+        {picksEverySex(selected) ? (
+          <SectionNote>{messages.sexBothLine}</SectionNote>
+        ) : (
+          <UnansweredNote tally={unanswered} />
+        )}
       </CollapsibleBody>
     </section>
   );

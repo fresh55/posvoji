@@ -54,6 +54,7 @@ export {
   chipKey,
   facetCounts,
   namesUnanswered,
+  picksEverySex,
   thinnestAnswer,
   unansweredCounts,
   goodWithCounts,

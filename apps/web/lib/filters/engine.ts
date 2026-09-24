@@ -416,6 +416,12 @@ const SEX_ANSWERS: readonly string[] = FILTER_METADATA.sex.map(
   (option) => option.value,
 );
 
+/** Whether Spol has every answer ticked, and so asks nothing. Exported for
+ *  the line under the section that says so. */
+export function picksEverySex(sex: readonly string[]): boolean {
+  return SEX_ANSWERS.every((value) => sex.includes(value));
+}
+
 function queryOf(filters: Filters): Query {
   // null and not an empty set: the difference between a section asking nothing
   // and a section asking for something no animal has.
@@ -424,9 +430,7 @@ function queryOf(filters: Filters): Query {
   return {
     species: filters.species,
     groups: {
-      sex: SEX_ANSWERS.every((value) => filters.sex.some((sex) => sex === value))
-        ? null
-        : chosen("sex"),
+      sex: picksEverySex(filters.sex) ? null : chosen("sex"),
       age: chosen("age"),
       size: chosen("size"),
       energy: chosen("energy"),

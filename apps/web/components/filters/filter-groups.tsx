@@ -367,13 +367,22 @@ function SexGroup({
   unanswered,
 }: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
+  // The reset lives on the heading here, so the stagger does too, and the
+  // cards are handed their turns.
+  const { beginReset, resetDelay } = useResetStagger(
+    selected.length,
+    options.length,
+  );
 
   return (
     <section>
       <FilterSectionHeader
         label={groupLabel("sex", locale)}
         active={selected.length > 0}
-        onReset={() => onToggleMany(selected)}
+        onReset={() => {
+          beginReset();
+          onToggleMany(selected);
+        }}
         resetAriaLabel={messages.resetSexFilters}
         collapse={collapse}
       />
@@ -384,6 +393,7 @@ function SexGroup({
           selected={selected}
           onToggle={onToggle}
           layout={layout}
+          resetDelay={resetDelay}
         />
         <UnansweredNote tally={unanswered} />
       </CollapsibleBody>

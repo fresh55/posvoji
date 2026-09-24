@@ -1,6 +1,14 @@
 "use client";
 
-import { domAnimation, m, useReducedMotion } from "motion/react";
+import {
+  domAnimation,
+  m,
+  useReducedMotion,
+  type MotionStyle,
+  type TargetAndTransition,
+  type Transition,
+} from "motion/react";
+import type { ReactNode } from "react";
 import { LazyMotion } from "@/components/motion-scope";
 import {
   CountRoll,
@@ -26,34 +34,105 @@ import { groupLabel, type FilterOption } from "@/lib/filters";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-// Lucide outlines split in construction order: circle, shaft/stem, then two
-// branches. Each branch draws out from its junction rather than across it.
-const SEX_GLYPHS: Record<string, string[]> = {
-  male: [
-    "M16 14a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
-    "M14.25 9.75 21 3",
-    "M21 3H16",
-    "M21 3V8",
-  ],
-  female: [
-    "M18 9a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
-    "M12 15v7",
-    "M12 19H9",
-    "M12 19H15",
-  ],
+type SexKind = "male" | "female";
+
+/**
+ * Lucide's outlines, split in construction order: the ring, the stroke that
+ * leaves it, then the two branches, each drawn out from its junction rather
+ * than across it. The stroke and its branches are one part, because the
+ * finishing gesture moves them together and leaves the ring where it is.
+ */
+const SEX_GLYPHS: Record<
+  SexKind,
+  { ring: string; stem: string; branches: readonly [string, string] }
+> = {
+  male: {
+    ring: "M16 14a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
+    stem: "M14.25 9.75 21 3",
+    branches: ["M21 3H16", "M21 3V8"],
+  },
+  female: {
+    ring: "M18 9a6 6 0 1 0-12 0 6 6 0 1 0 12 0",
+    stem: "M12 15v7",
+    branches: ["M12 19H9", "M12 19H15"],
+  },
 };
 
-// Give the stroke time to read at 24px, then settle with the same ease-out
-// used by the other filter gestures.
-const DRAW_STEPS = [
-  { duration: 0.22, delay: 0 },
-  { duration: 0.24, delay: 0.14 },
-  { duration: 0.18, delay: 0.34 },
-] as const;
+function isSexKind(value: string): value is SexKind {
+  return value in SEX_GLYPHS;
+}
+
+/**
+ * The draw, one step per part. The last branch lands at 0.40s.
+ *
+ * It ran 0.52s before, and the pop that went with it peaked at 0.28s, while
+ * only the ring and half the stroke were down. The branches, which are what
+ * make the sign read as one sex or the other, then drew on a glyph that had
+ * already settled, so nothing marked the moment the sign was finished.
+ */
+const DRAW = {
+  ring: { duration: 0.18, delay: 0 },
+  stem: { duration: 0.16, delay: 0.12 },
+  branches: { duration: 0.14, delay: 0.26 },
+} as const;
+const LANDED = DRAW.branches.delay + DRAW.branches.duration;
+
 const FADE_DURATION = 0.15;
 const DESELECT_DURATION = 0.24;
-const POP_DURATION = 0.52;
-const POP_MS = 600;
+
+// The pop rises into the landing and peaks as the last branch lands.
+const POP = { duration: 0.36, peak: 1.08 } as const;
+const POP_DELAY = LANDED - POP.duration / 2;
+
+/**
+ * What each sign does once it is whole. The arrow flicks out along its own
+ * diagonal and back, which is what an arrow is for. The stem and its crossbar
+ * swing from the foot of the ring like a pendant and come to rest.
+ *
+ * The flick moves the arrow by 1.3 units. The stroke's round cap reaches one
+ * unit back from its root and the ring's stroke one unit out from its path,
+ * so the arrow stays joined to the ring at the far end of the flick.
+ *
+ * Both start a little before the landing, so the gesture reads as the draw's
+ * follow-through rather than a second event after it. Tweens, because these
+ * have more than two keyframes.
+ */
+const FLICK_UNITS = 1.3;
+const FLICK_DURATION = 0.36;
+const SWING_DURATION = 0.6;
+const FINISH_DELAY = LANDED - 0.06;
+const FINISH: Record<
+  SexKind,
+  { pose: TargetAndTransition; transition: Transition; style?: MotionStyle }
+> = {
+  male: {
+    pose: {
+      x: [0, FLICK_UNITS, -0.3, 0],
+      y: [0, -FLICK_UNITS, 0.3, 0],
+    },
+    transition: {
+      duration: FLICK_DURATION,
+      times: [0, 0.3, 0.7, 1],
+      ease: "easeOut",
+    },
+  },
+  female: {
+    pose: { rotate: [0, 10, -6, 2.5, 0] },
+    transition: {
+      duration: SWING_DURATION,
+      times: [0, 0.22, 0.5, 0.76, 1],
+      ease: "easeInOut",
+    },
+    // The foot of the ring, (12, 15) in the 24-unit box. Motion owns
+    // transform-origin, so the pivot is spelled as originX and originY.
+    style: { transformBox: "view-box", originX: 0.5, originY: 15 / 24 },
+  },
+};
+
+// The gesture state clears once the longer finish, the swing, has run.
+const HOLD_MS = Math.ceil((FINISH_DELAY + SWING_DURATION) * 1000) + 50;
+
+const AT_REST: TargetAndTransition = { x: 0, y: 0, rotate: 0 };
 
 function changedValue(selected: string[], nextSelected: string[]) {
   return (
@@ -62,8 +141,58 @@ function changedValue(selected: string[], nextSelected: string[]) {
   );
 }
 
-function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
+function SexGlyph({
+  kind,
+  checked,
+  finishing,
+  resetDelay,
+}: {
+  kind: SexKind;
+  checked: boolean;
+  finishing: boolean;
+  resetDelay: number;
+}) {
   const shouldReduceMotion = useReducedMotion();
+  const { ring, stem, branches } = SEX_GLYPHS[kind];
+  const finish = FINISH[kind];
+  const leaving = DESELECT_DURATION + resetDelay;
+
+  // One rule for every drawn stroke: opacity is the switch and pathLength is
+  // the draw. A pathLength of 0 with a round cap still paints a dot, and the
+  // arrow's two branches start at its tip, so without the switch a green dot
+  // sat at the tip from the first frame until the branches drew.
+  const drawn = (step: { duration: number; delay: number }) => ({
+    initial: false as const,
+    animate: { pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 },
+    transition: shouldReduceMotion
+      ? { duration: 0 }
+      : checked
+        ? {
+            pathLength: { ...step, ease: "easeOut" as const },
+            opacity: { duration: 0.05, delay: step.delay },
+          }
+        : // The stroke comes off only once the layer has faded out, so
+          // unticking never runs the draw backwards.
+          { duration: 0, delay: leaving },
+  });
+
+  // The ring stays put and the rest of the sign takes the gesture, in both
+  // layers, so the faint outline underneath moves with the ink over it.
+  const reach = (paths: (d: string, step: "stem" | "branches") => ReactNode) => (
+    <m.g
+      initial={false}
+      style={finish.style}
+      animate={!shouldReduceMotion && finishing ? finish.pose : AT_REST}
+      transition={
+        !shouldReduceMotion && finishing
+          ? { ...finish.transition, delay: FINISH_DELAY }
+          : { duration: 0 }
+      }
+    >
+      {paths(stem, "stem")}
+      {branches.map((d) => paths(d, "branches"))}
+    </m.g>
+  );
 
   return (
     <svg
@@ -91,10 +220,12 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
             : checked
               ? FADE_DURATION
               : DESELECT_DURATION,
+          delay: shouldReduceMotion || checked ? 0 : resetDelay,
           ease: "easeOut",
         }}
       >
-        {paths.map((d) => (
+        <path d={ring} />
+        {reach((d) => (
           <path key={d} d={d} />
         ))}
       </m.g>
@@ -104,33 +235,20 @@ function SexGlyph({ paths, checked }: { paths: string[]; checked: boolean }) {
         animate={{ opacity: checked ? 1 : 0 }}
         transition={{
           duration: shouldReduceMotion || checked ? 0 : DESELECT_DURATION,
+          delay: shouldReduceMotion || checked ? 0 : resetDelay,
           ease: "easeOut",
         }}
       >
-        {paths.map((d, index) => (
-          <m.path
-            key={d}
-            d={d}
-            initial={false}
-            animate={{ pathLength: checked ? 1 : 0 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : checked
-                  ? {
-                      ...DRAW_STEPS[Math.min(index, 2)],
-                      ease: "easeOut",
-                    }
-                  : // The drawn length drops only once the overlay has faded
-                    // out, so unchecking never runs the draw backwards.
-                    { duration: 0, delay: DESELECT_DURATION }
-            }
-          />
+        <m.path d={ring} {...drawn(DRAW.ring)} />
+        {reach((d, step) => (
+          <m.path key={d} d={d} {...drawn(DRAW[step])} />
         ))}
       </m.g>
     </svg>
   );
 }
+
+const NO_RESET_DELAY = () => 0;
 
 export function SexCards({
   options,
@@ -138,12 +256,15 @@ export function SexCards({
   selected,
   onToggle,
   layout = "sidebar",
+  resetDelay = NO_RESET_DELAY,
 }: {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
   onToggle: (value: string) => void;
   layout?: FilterCardLayout;
+  /** The turn each card takes when the section's Ponastavi clears it. */
+  resetDelay?: (index: number) => number;
 }) {
   const { locale } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -151,7 +272,7 @@ export function SexCards({
     celebration,
     celebrate,
     clear: clearCelebration,
-  } = useOneShotCelebration<string>(POP_MS);
+  } = useOneShotCelebration<string>(HOLD_MS);
   const { hoveredValue: hoveredSex, handlers: hoverHandlers } =
     useFilterCardHover();
 
@@ -188,17 +309,16 @@ export function SexCards({
           layout === "sheet" && "grid grid-cols-2",
         )}
       >
-        {options.map(({ value, label }) => {
+        {options.map(({ value, label }, index) => {
+          if (!isSexKind(value)) return null;
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
-          const paths = SEX_GLYPHS[value];
-          if (!paths) return null;
-
           const celebrating = celebration?.value === value && checked;
           const hovered = hoveredSex === value;
+          const exitDelay = resetDelay(index);
 
-          // The glyph and its two gestures are the same drawing on both
-          // surfaces; only what stands around it changes.
+          // The glyph and its gestures are the same drawing on both surfaces;
+          // only what stands around it changes.
           const glyph = (
             <FilterCardHoverLift hovered={hovered}>
               <m.span
@@ -206,16 +326,21 @@ export function SexCards({
                 initial={false}
                 animate={
                   !shouldReduceMotion && celebrating
-                    ? { scale: [1, 1.1, 1] }
+                    ? { scale: [1, POP.peak, 1] }
                     : { scale: 1 }
                 }
                 transition={
-                  shouldReduceMotion
-                    ? { duration: 0 }
-                    : { duration: POP_DURATION, ease: "easeOut" }
+                  !shouldReduceMotion && celebrating
+                    ? { duration: POP.duration, delay: POP_DELAY, ease: "easeOut" }
+                    : { duration: 0 }
                 }
               >
-                <SexGlyph paths={paths} checked={checked} />
+                <SexGlyph
+                  kind={value}
+                  checked={checked}
+                  finishing={celebrating}
+                  resetDelay={exitDelay}
+                />
               </m.span>
             </FilterCardHoverLift>
           );
@@ -268,7 +393,11 @@ export function SexCards({
                     checked={checked}
                     appearDelay={0}
                   />
-                  <FilterCardIconWell layout={layout} checked={checked}>
+                  <FilterCardIconWell
+                    layout={layout}
+                    checked={checked}
+                    exitDelay={exitDelay}
+                  >
                     {glyph}
                   </FilterCardIconWell>
                   <FilterCardTail

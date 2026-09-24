@@ -10,6 +10,7 @@ import {
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
+  waitThen,
 } from "./use-filter-motion";
 
 const HOLD_MS = 500;
@@ -289,5 +290,41 @@ describe("useFilterCardGestures", () => {
     act(() => handlers.onPointerEnter(pointerEvent("mouse")));
     expect(result.current.hoveredValue).toBe("small");
     expect(result.current.pressedValue).toBeNull();
+  });
+});
+
+describe("waitThen", () => {
+  it("holds the first keyframe through the wait, then plays the track", () => {
+    const { keyframes, transition } = waitThen(0.3, [0, 0.4, 0], {
+      duration: 0.2,
+      times: [0, 0.5, 1],
+      ease: ["linear", "easeOut"],
+    });
+
+    expect(keyframes).toEqual([0, 0, 0.4, 0]);
+    expect(transition.duration).toBeCloseTo(0.5);
+    expect(transition.times?.map((time) => +time.toFixed(3))).toEqual([
+      0, 0.6, 0.8, 1,
+    ]);
+    expect(transition.ease).toEqual(["linear", "linear", "easeOut"]);
+  });
+
+  it("comes to the first keyframe from wherever the value is when told to settle", () => {
+    const { keyframes, transition } = waitThen(0.3, [0, -2, 0], {
+      duration: 0.2,
+      ease: "easeInOut",
+      settle: 0.1,
+    });
+
+    expect(keyframes).toEqual([null, 0, 0, -2, 0]);
+    expect(transition.times?.map((time) => +time.toFixed(3))).toEqual([
+      0, 0.2, 0.6, 0.8, 1,
+    ]);
+    expect(transition.ease).toEqual([
+      "easeIn",
+      "linear",
+      "easeInOut",
+      "easeInOut",
+    ]);
   });
 });

@@ -191,6 +191,8 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  */
 const LAYOUT_CLASS: Readonly<Record<FilterCardLayout, string>> = Object.freeze({
   sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center`,
+  // PAW_BOX_TOP in size-paw-cards.tsx is worked out from this py-1.5 and the
+  // icon well's size-7.5: the room the size paw has to hop in.
   sidebar: `${DEAD_OPTION_CLASS} min-h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
 });
 
@@ -283,11 +285,21 @@ export function FilterSelectionMark({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const dot = shape === "dot";
+  // The box fills when its tick arrives. It filled on the press while the tick
+  // waited for the gesture, and a large paw's 0.42s left a solid green square
+  // with nothing in it, which reads as a control stuck mid-state. The card's
+  // own fill still answers the press at once. Only the way in waits, so a box
+  // unticked during another card's gesture empties straight away.
+  const fillDelay =
+    checked && appearDelay > 0 && !shouldReduceMotion
+      ? { transitionDelay: `${appearDelay}s` }
+      : undefined;
 
   return (
     <LazyMotion features={domAnimation}>
       <span
         aria-hidden
+        style={fillDelay}
         className={cn(
           // group-disabled:hidden, because a dead option has nothing to tick.
           // The card is the group, and a disabled card in the filters is one

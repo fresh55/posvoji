@@ -68,6 +68,16 @@ export function pointer(
   fireEvent(element, event);
 }
 
+/**
+ * A pointer arriving over a card, and leaving it. React makes its
+ * pointerenter out of pointerover and its pointerleave out of pointerout, so
+ * dispatching pointerenter or pointerleave themselves reaches no handler.
+ */
+export const pointerOnto = (element: Element, pointerType: "mouse" | "touch") =>
+  pointer(element, "pointerover", { x: 0, y: 0, pointerType });
+export const pointerOff = (element: Element) =>
+  pointer(element, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
+
 /** Where a gesture's clock starts. Any number but zero would do. */
 export const GESTURE_T0 = 1000;
 

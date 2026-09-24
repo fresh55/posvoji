@@ -19,7 +19,7 @@ import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
-import { pointer } from "@/test/pointer";
+import { pointerOff, pointerOnto } from "@/test/pointer";
 import { CoatColorCards } from "./coat-cards";
 import type { FilterCardLayout } from "./filter-card";
 import { FilterGroupList } from "./filter-groups";
@@ -65,13 +65,6 @@ const swatchOf = (label: string) =>
 const earsOf = (label: string) =>
   swatchOf(label).querySelector("[data-ears]")?.getAttribute("data-ears") ??
   null;
-
-// React makes its pointerenter out of pointerover, and pointerleave out of
-// pointerout.
-const pointerOnto = (element: HTMLElement, pointerType: "mouse" | "touch") =>
-  pointer(element, "pointerover", { x: 0, y: 0, pointerType });
-const pointerOff = (element: HTMLElement) =>
-  pointer(element, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
 
 describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layout) => {
   it.each([

@@ -1,12 +1,19 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { PawPrint } from "lucide-react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, facetCounts, groupOptions } from "@/lib/filters";
+import { pointer, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -149,16 +156,8 @@ describe("size section reset", () => {
   });
 });
 
-// jsdom has no PointerEvent, so pointer gestures are built on MouseEvent by
-// hand, dispatched under the pointer event name. React listens by event
-// name, so the onPointer* handlers still receive these even though the
-// event object itself is not a real PointerEvent.
-function pointer(
-  element: HTMLElement,
-  type: "pointerdown" | "pointerup" | "pointerleave" | "pointercancel",
-) {
-  fireEvent(element, new MouseEvent(type, { bubbles: true, cancelable: true }));
-}
+const press = (element: HTMLElement, type: "pointerdown" | "pointerup") =>
+  pointer(element, type, { x: 0, y: 0, pointerType: "mouse" });
 
 describe("SizePawCards watermark", () => {
   it("gives every sheet tile an aria-hidden watermark paw that does not carry the card's label", () => {
@@ -325,8 +324,8 @@ describe("SizePawCards press-crouch", () => {
       name: new RegExp(`^${options[1].label}, `),
     });
 
-    pointer(button, "pointerdown");
-    pointer(button, "pointerup");
+    press(button, "pointerdown");
+    press(button, "pointerup");
     fireEvent.click(button);
 
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -339,8 +338,8 @@ describe("SizePawCards press-crouch", () => {
       name: new RegExp(`^${options[2].label}, `),
     });
 
-    pointer(button, "pointerdown");
-    pointer(button, "pointerleave");
+    press(button, "pointerdown");
+    pointerOff(button);
     fireEvent.click(button);
 
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -378,4 +377,81 @@ describe("SizePawCards under reduced motion", () => {
       });
     }
   });
+});
+
+describe("SizePawCards under the pointer", () => {
+  const tipped = (label: string) =>
+    screen
+      .getByRole("button", { name: new RegExp(`^${label}, `) })
+      .querySelector("[data-tipped]") !== null;
+
+  it("tips the paw onto its heel under a mouse and not under a finger", () => {
+    renderCards();
+    const card = screen.getByRole("button", {
+      name: new RegExp(`^${options[1].label}, `),
+    });
+
+    pointerOnto(card, "touch");
+    expect(tipped(options[1].label)).toBe(false);
+
+    pointerOnto(card, "mouse");
+    expect(tipped(options[1].label)).toBe(true);
+  });
+
+  // Why: the comment on `tipped` in size-paw-cards.tsx.
+  it("stands the paw flat from a click until the pointer leaves", async () => {
+    renderCards();
+    const card = screen.getByRole("button", {
+      name: new RegExp(`^${options[1].label}, `),
+    });
+
+    pointerOnto(card, "mouse");
+    expect(tipped(options[1].label)).toBe(true);
+
+    fireEvent.click(card);
+    await waitFor(() => expect(tipped(options[1].label)).toBe(false));
+
+    pointerOff(card);
+    pointerOnto(card, "mouse");
+    expect(tipped(options[1].label)).toBe(true);
+  });
+
+  it("stands the paw flat while it is held down", () => {
+    renderCards();
+    const card = screen.getByRole("button", {
+      name: new RegExp(`^${options[2].label}, `),
+    });
+
+    pointerOnto(card, "mouse");
+    press(card, "pointerdown");
+    expect(tipped(options[2].label)).toBe(false);
+  });
+});
+
+describe("SizePawCards line weight", () => {
+  // Why: PAW_STROKE_PX in size-paw-cards.tsx.
+  it.each(["sidebar", "sheet"] as const)(
+    "draws every paw's outline at one width on screen in the %s",
+    (layout) => {
+      renderCards({ layout });
+
+      const widths = options.map(({ label }) => {
+        const paw = screen
+          .getByRole("button", { name: new RegExp(`^${label}, `) })
+          .querySelector<SVGSVGElement>(
+            'svg.lucide-paw-print:not(.size-12):not([fill="currentColor"])',
+          );
+        const size = /(?:^|\s)size-(\d+)(?:\s|$)/.exec(
+          paw?.getAttribute("class") ?? "",
+        );
+        expect(size).not.toBeNull();
+        const px = Number(size?.[1]) * 4;
+        return (Number(paw?.getAttribute("stroke-width")) * px) / 24;
+      });
+
+      expect(new Set(widths.map((width) => width.toFixed(3))).size).toBe(1);
+      // Three sizes, or the check above compares one paw with itself.
+      expect(options).toHaveLength(3);
+    },
+  );
 });

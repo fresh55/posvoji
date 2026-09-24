@@ -1,9 +1,68 @@
 "use client";
 
+import type { Easing, Transition } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties, FocusEvent, PointerEvent } from "react";
 
 export type Celebration<T> = { value: T; id: number };
+
+/**
+ * A keyframe track that waits before it plays, with the wait written into the
+ * keyframes rather than passed as a delay.
+ *
+ * Motion paints a delayed keyframe animation's first keyframe for the whole of
+ * the delay. That put the size section's dust under a paw still in the air,
+ * and dropped a paw caught mid-hop by another's landing to the ground in one
+ * frame. Here the value comes to the track's first keyframe over `settle`
+ * seconds, from wherever it is, holds it until the wait is over, and then
+ * plays the track. Without a settle it holds where it starts, which suits a
+ * track mounted with the gesture.
+ *
+ * `times` and `ease` describe the track alone, as they would with a delay.
+ */
+export function waitThen(
+  wait: number,
+  keyframes: number[],
+  {
+    duration,
+    times,
+    ease = "easeOut",
+    settle = 0,
+  }: {
+    duration: number;
+    times?: number[];
+    ease?: Easing | Easing[];
+    settle?: number;
+  },
+): { keyframes: (number | null)[]; transition: Transition } {
+  const total = wait + duration;
+  const trackTimes =
+    times ?? keyframes.map((_, index) => index / (keyframes.length - 1));
+  const trackEase = Array.isArray(ease)
+    ? ease
+    : keyframes.slice(1).map(() => ease);
+  const played = trackTimes.map((time) => (wait + time * duration) / total);
+  const [first] = keyframes;
+
+  if (settle > 0) {
+    return {
+      keyframes: [null, first, ...keyframes],
+      transition: {
+        duration: total,
+        times: [0, Math.min(settle, wait) / total, ...played],
+        ease: ["easeIn", "linear", ...trackEase],
+      },
+    };
+  }
+  return {
+    keyframes: [first, ...keyframes],
+    transition: {
+      duration: total,
+      times: [0, ...played],
+      ease: ["linear", ...trackEase],
+    },
+  };
+}
 
 // One-shot celebrations are held as {value, id} so repeating the same choice
 // still restarts the gesture: the id changes even when the value does not.
@@ -125,7 +184,8 @@ type HoverHandlers = {
 // focus leaves it. Most sections ignore it: a lift after a click is ordinary
 // hover feedback. Barva reads it, because its hover draws the ear tips halfway
 // to the picked pose, and a colour unpicked under the mouse that kept them up
-// read as a pick that had not come off.
+// read as a pick that had not come off. Velikost reads it, because its hover
+// tips the paw onto its heel and a landing has to take the weight flat.
 export function useFilterCardHover<T extends string = string>(): {
   hoveredValue: T | null;
   settledValue: T | null;

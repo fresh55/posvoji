@@ -22,6 +22,7 @@ import {
   resetDelayStyle,
   useFilterCardGestures,
   useOneShotCelebration,
+  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import type { FilterOption } from "@/lib/filters";
@@ -30,9 +31,20 @@ import { cn } from "@/lib/utils";
 
 type Spring = { stiffness: number; damping: number; mass: number };
 
+// The paw's drawn size, in px, and the class that draws it at that size.
+// Written out rather than built, because Tailwind generates only the class
+// names it can read in the source.
+type PawPx = 12 | 16 | 20;
+const PAW_SIZE_CLASS: Record<PawPx, string> = {
+  12: "size-3",
+  16: "size-4",
+  20: "size-5",
+};
+
 type Landing = {
-  iconClassName: string;
-  // The height of the hop, in px.
+  px: PawPx;
+  // The height of the hop where the card has the room for it, in px. See
+  // hopHeight.
   drop: number;
   // The hop, in seconds: up, down, and one rebound off the ground. A heavier
   // paw hangs longer and does not rebound at all.
@@ -71,7 +83,7 @@ type Landing = {
 // paw bounces off the ground and a large one lands and stays.
 const LANDINGS: Record<string, Landing> = {
   small: {
-    iconClassName: "size-3",
+    px: 12,
     drop: 6,
     rise: 0.07,
     fall: 0.08,
@@ -93,7 +105,7 @@ const LANDINGS: Record<string, Landing> = {
     countJolt: false,
   },
   medium: {
-    iconClassName: "size-4",
+    px: 16,
     drop: 10,
     rise: 0.09,
     fall: 0.11,
@@ -115,7 +127,7 @@ const LANDINGS: Record<string, Landing> = {
     countJolt: false,
   },
   large: {
-    iconClassName: "size-5",
+    px: 20,
     drop: 15,
     rise: 0.12,
     fall: 0.15,
@@ -165,12 +177,22 @@ const PAW_TOES = [
 
 type ToeSpread = { id: number; distance: number; impact: number };
 
+// The outline in screen pixels, the same at every size, so the three paws
+// differ in size and not in ink. Lucide's 1.75 units scale with the icon: the
+// small paw drew 0.875px lines, which at 1x antialias to a grey smudge, while
+// the large drew 1.46px. 1.35 keeps the large paw at the weight of the other
+// glyphs in the column without closing the small paw's toes into blobs, which
+// 1.46 did at 12px.
+const PAW_STROKE_PX = 1.35;
+
 function PawGlyph({
+  px,
   className,
   style,
   filled = false,
   spread,
 }: {
+  px: PawPx;
   className?: string;
   style?: CSSProperties;
   // A print rather than an outline: the shape the paw leaves in the ground.
@@ -179,17 +201,13 @@ function PawGlyph({
   // so six idle motion elements are not left on the page.
   spread?: ToeSpread;
 }) {
-  const duration = spread
-    ? spread.impact + TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE
-    : 0;
-  const times = spread
-    ? [
-        0,
-        spread.impact / duration,
-        (spread.impact + TOE_SPREAD_OPEN) / duration,
-        1,
-      ]
-    : [];
+  // The toes wait for the impact, open fast under the weight and close slowly.
+  const toeTrack = (distance: number) =>
+    waitThen(spread?.impact ?? 0, [0, distance, 0], {
+      duration: TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE,
+      times: [0, TOE_SPREAD_OPEN / (TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE), 1],
+      ease: ["easeOut", "easeInOut"],
+    });
 
   return (
     <svg
@@ -197,11 +215,11 @@ function PawGlyph({
       viewBox="0 0 24 24"
       // The lucide classes stay: the drawing is lucide's, and the sheet's
       // watermark still is the lucide component.
-      className={cn("lucide lucide-paw-print", className)}
+      className={cn("lucide lucide-paw-print", PAW_SIZE_CLASS[px], className)}
       style={style}
       fill={filled ? "currentColor" : "none"}
       stroke={filled ? "none" : "currentColor"}
-      strokeWidth={1.75}
+      strokeWidth={(24 * PAW_STROKE_PX) / px}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
@@ -209,26 +227,21 @@ function PawGlyph({
       {spread ? (
         // Keyed on the landing, so a second pick replays the spread.
         <g key={spread.id}>
-          {PAW_TOES.map(({ cx, cy, away }) => (
-            <m.circle
-              key={`${cx}-${cy}`}
-              cx={cx}
-              cy={cy}
-              r={PAW_TOE_RADIUS}
-              initial={false}
-              // The wait for the impact is a keyframe, not a delay, for the
-              // same reason as the dust.
-              animate={{
-                x: [0, 0, away.x * spread.distance, 0],
-                y: [0, 0, away.y * spread.distance, 0],
-              }}
-              transition={{
-                duration,
-                times,
-                ease: ["linear", "easeOut", "easeInOut"],
-              }}
-            />
-          ))}
+          {PAW_TOES.map(({ cx, cy, away }) => {
+            const x = toeTrack(away.x * spread.distance);
+            const y = toeTrack(away.y * spread.distance);
+            return (
+              <m.circle
+                key={`${cx}-${cy}`}
+                cx={cx}
+                cy={cy}
+                r={PAW_TOE_RADIUS}
+                initial={false}
+                animate={{ x: x.keyframes, y: y.keyframes }}
+                transition={x.transition}
+              />
+            );
+          })}
         </g>
       ) : (
         PAW_TOES.map(({ cx, cy }) => (
@@ -278,6 +291,8 @@ const NEIGHBOR_LEAN_DURATION = 0.45;
 const NEIGHBOR_JOLT_DURATION = 0.22;
 // The thud reaches the far paw a beat after the near one.
 const NEIGHBOR_JOLT_STAGGER = 0.06;
+// How long a paw caught mid-hop by another's landing takes to come down.
+const REACTION_FALL = 0.08;
 // A step off the ground is a small share of the paw's own hop.
 const STEP_SHARE = 0.3;
 // On a reset the paw lifts its toes as it steps off, so the three paws walk
@@ -297,11 +312,38 @@ const PAW_HEEL_X = 0.35;
 // after its impact.
 const LANDING_MS = 900;
 const CROUCH_DURATION = 0.1;
-// The tallest fall a sidebar row can show. The row is 44px and centres a 30px
-// icon well in it, which leaves the paw's box starting 12px down; the large
-// landing's own 15px would release it 3px above the row's top edge, where the
-// card's overflow cuts it. Ten keeps the whole arc inside the line.
-const ROW_DROP_CEILING = 10;
+// The paw stands at the bottom of an h-5 box, so a paw smaller than the box has
+// the rest of it free above.
+const PAW_BOX = 20;
+// How far below the card's top edge that box starts, in px. A row is 44px and
+// centres a 30px icon well, and the box is centred in the well: 7 + 5. A tile's
+// content fills it, so the box starts under the border and the py-2: 1 + 8. A
+// label that wraps only makes either card taller, which moves the box down.
+const PAW_BOX_TOP: Record<FilterCardLayout, number> = { sidebar: 12, sheet: 9 };
+// The air left between the paw at the top of its hop and the card's edge.
+const HOP_CLEARANCE = 1;
+
+/**
+ * How high the paw can hop on this card without leaving it.
+ *
+ * The card clips its own overflow, so the room is what lies between the paw
+ * and the card's top edge. The large paw fills its box, which leaves it the
+ * tile's 9px: its full 15px peaked 7px past the tile's edge and cut its toes
+ * off mid-hop on every phone. The stretch in the air grows the paw upward from
+ * its bottom edge, so it spends some of the room as well.
+ *
+ * Only the height gives way. The timings and the squash are the landing's own
+ * on either card, so a large paw on a phone still hangs longest and lands
+ * hardest, from a lower hop than the medium one's.
+ */
+function hopHeight(landing: Landing, layout: FilterCardLayout): number {
+  const room = PAW_BOX_TOP[layout] + (PAW_BOX - landing.px);
+  const stretch = landing.px * (landing.stretch - 1);
+  return Math.max(
+    0,
+    Math.min(landing.drop, room - stretch - HOP_CLEARANCE),
+  );
+}
 // The mark the paw leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
 const WATERMARK_IN_DURATION = 0.3;
@@ -319,13 +361,20 @@ function shadowDuration(landing: Landing): number {
 }
 
 // Nothing until the impact, then a puff that spreads and fades.
-function dustTransition(landing: Landing): Transition {
-  const impact = impactDelay(landing);
-  const duration = impact + DUST_DURATION;
+function dustPose(landing: Landing): Pose {
+  const track = (keyframes: number[]) =>
+    waitThen(impactDelay(landing), keyframes, {
+      duration: DUST_DURATION,
+      times: [0, 0.01 / DUST_DURATION, 1],
+      ease: ["linear", "easeOut"],
+    });
+  const opacity = track([0, 0.4, 0]);
   return {
-    duration,
-    times: [0, impact / duration, (impact + 0.01) / duration, 1],
-    ease: ["linear", "linear", "easeOut"],
+    animate: {
+      opacity: opacity.keyframes,
+      scaleX: track([0.7, 0.7, 1.6]).keyframes,
+    },
+    transition: opacity.transition,
   };
 }
 
@@ -336,11 +385,8 @@ const REST_TRANSITION: Transition = { duration: 0.16 };
 // The paw hops on its own landing, or is jostled by the one that landed.
 type DropPose = "celebrating" | "reacting" | "rest";
 
-// distance rather than landing.drop, because a sidebar row is 44px against
-// the sheet tile's 76 and the card clips its own overflow: the largest hop
-// would rise above the line it is drawn in. Only the height of the hop is
-// capped there. The timings and the squash are the landing's own either way,
-// so the three weights still read.
+// distance rather than landing.drop: the height the card has room for
+// (hopHeight).
 function dropPose(
   pose: DropPose,
   landing: Landing,
@@ -369,28 +415,26 @@ function dropPose(
         },
       };
     }
-    case "reacting":
+    case "reacting": {
       // The thud lifts the paw off the ground and pushes it away from the
-      // one that landed.
+      // one that landed. A paw still in the air from its own hop comes down
+      // first (waitThen's settle).
+      const y = waitThen(reaction.delay, [0, -reaction.jolt, 0], {
+        duration: NEIGHBOR_JOLT_DURATION,
+        times: [0, 0.35, 1],
+        ease: ["easeOut", "easeIn"],
+        settle: REACTION_FALL,
+      });
+      const x = waitThen(reaction.delay, [0, reaction.shift, 0], {
+        duration: NEIGHBOR_LEAN_DURATION,
+        ease: "easeInOut",
+        settle: REACTION_FALL,
+      });
       return {
-        animate: {
-          y: [0, -reaction.jolt, 0],
-          x: [0, reaction.shift, 0],
-        },
-        transition: {
-          y: {
-            duration: NEIGHBOR_JOLT_DURATION,
-            delay: reaction.delay,
-            times: [0, 0.35, 1],
-            ease: ["easeOut", "easeIn"],
-          },
-          x: {
-            duration: NEIGHBOR_LEAN_DURATION,
-            delay: reaction.delay,
-            ease: "easeInOut",
-          },
-        },
+        animate: { y: y.keyframes, x: x.keyframes },
+        transition: { y: y.transition, x: x.transition },
       };
+    }
     case "rest":
       return { animate: { y: 0, x: 0 }, transition: REST_TRANSITION };
   }
@@ -496,6 +540,8 @@ export function SizePawCards({
     useOneShotCelebration<string>(FOOTPRINT_MS);
   const {
     hoveredValue,
+    settledValue,
+    settle,
     pressedValue,
     release: releasePress,
     handlers: gestureHandlers,
@@ -521,7 +567,15 @@ export function SizePawCards({
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
           const landing = landingFor(value);
-          const hovered = hoveredValue === value;
+          // Tipped onto the heel under the pointer or keyboard focus, and flat
+          // from the press until the pointer or focus has left. A landing
+          // takes the weight on the toes, and a click made with the mouse
+          // resting on the card landed the paw 8 degrees back on its heel and
+          // left it there.
+          const tipped =
+            hoveredValue === value &&
+            pressedValue !== value &&
+            settledValue !== value;
           const dead = isDeadOption(count, checked);
           const celebrating = celebration?.value === value && checked;
           const departing = departure?.value === value && !checked;
@@ -549,9 +603,7 @@ export function SizePawCards({
           };
           // A reset walks the paws off in order rather than all at once.
           const resetDelay = isResetting ? index * RESET_STAGGER : 0;
-          const distance = sheet
-            ? landing.drop
-            : Math.min(landing.drop, ROW_DROP_CEILING);
+          const distance = hopHeight(landing, layout);
           const drop = dropPose(
             celebrating ? "celebrating" : reacting ? "reacting" : "rest",
             landing,
@@ -625,6 +677,7 @@ export function SizePawCards({
                 // off, and pointercancel does not cover every path, so the
                 // click clears the crouch too.
                 releasePress(value);
+                settle(value);
                 onToggle(value);
               }}
               disabled={dead}
@@ -729,16 +782,9 @@ export function SizePawCards({
                     <m.span
                       key={`dust-${celebration?.id}`}
                       className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full bg-brand-strong"
-                      // Hidden until the impact. The wait is a keyframe, not a
-                      // delay: a delay shows the first keyframe while it
-                      // waits, which left the dust under a paw still in the
-                      // air.
+                      // Hidden until the impact (waitThen).
                       initial={{ opacity: 0, scaleX: 0.7 }}
-                      animate={{
-                        opacity: [0, 0, 0.4, 0],
-                        scaleX: [0.7, 0.7, 0.7, 1.6],
-                      }}
-                      transition={dustTransition(landing)}
+                      {...dustPose(landing)}
                     />
                   ) : null}
                   {departing && !shouldReduceMotion ? (
@@ -754,17 +800,18 @@ export function SizePawCards({
                         ease: "easeIn",
                       }}
                     >
-                      <PawGlyph className={landing.iconClassName} filled />
+                      <PawGlyph px={landing.px} filled />
                     </m.span>
                   ) : null}
                   <m.span
                     className="flex items-end"
                     // The heel is the pad's lower left; the toes lift off it.
                     style={{ originX: PAW_HEEL_X, originY: 1 }}
+                    data-tipped={tipped ? "" : undefined}
                     initial={false}
                     animate={{
-                      y: hovered ? -1 : 0,
-                      rotate: hovered ? -landing.hoverTip : 0,
+                      y: tipped ? -1 : 0,
+                      rotate: tipped ? -landing.hoverTip : 0,
                     }}
                     transition={
                       shouldReduceMotion
@@ -806,6 +853,7 @@ export function SizePawCards({
                           transition={step.transition}
                         >
                           <PawGlyph
+                            px={landing.px}
                             spread={
                               celebrating && celebration && !shouldReduceMotion
                                 ? {
@@ -820,7 +868,6 @@ export function SizePawCards({
                             // stepped away in order and went grey all at once.
                             style={resetDelayStyle(checked, resetDelay)}
                             className={cn(
-                              landing.iconClassName,
                               "transition-[color,transform,opacity] duration-200",
                               checked
                                 ? "text-brand-strong"

@@ -8,7 +8,6 @@ import {
   namesUnanswered,
   thinnestAnswer,
   unansweredCounts,
-  visibleGroups,
   type Filters,
 } from "../filters";
 
@@ -34,44 +33,6 @@ const animal = (species: Species, extra: Partial<Animal> = {}): Animal => {
   };
 };
 const only = (part: Partial<Filters>): Filters => ({ ...EMPTY_FILTERS, ...part });
-
-describe("availability", () => {
-  const free = animal("dog");
-  const unsure = animal("dog", { status: "unknown" });
-  const quarantine = animal("dog", { status: "hold" });
-  const reserved = animal("dog", { status: "reserved" });
-  const gone = animal("dog", { status: "adopted" });
-  const animals = [free, unsure, quarantine, reserved, gone];
-
-  it("keeps the animals that can be adopted now, an unknown status among them", () => {
-    expect(
-      applyFilters(animals, only({ availability: ["available"] }), now),
-    ).toEqual([free, unsure]);
-  });
-
-  it("counts them before anything is pressed", () => {
-    expect(facetCounts(animals, EMPTY_FILTERS, now).availability.get("available")).toBe(2);
-  });
-
-  it("shows the section only while the list has someone to leave out", () => {
-    const panel = (pool: Animal[]) =>
-      visibleGroups(pool, EMPTY_FILTERS, now, true).availability;
-    expect(panel(animals)).toBe(true);
-    expect(panel([free, unsure])).toBe(false);
-    // A pick holds it open, so it can be taken off.
-    expect(
-      visibleGroups([free], only({ availability: ["available"] }), now, true)
-        .availability,
-    ).toBe(true);
-  });
-
-  it("is never a question with an unanswered part", () => {
-    expect(unansweredCounts(animals, EMPTY_FILTERS, now).groups.availability).toEqual({
-      asked: 5,
-      unanswered: 0,
-    });
-  });
-});
 
 describe("size is a question for dogs and the rest, never for a cat", () => {
   const smallDog = animal("dog", { size: "small" });

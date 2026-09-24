@@ -594,26 +594,6 @@ describe("a filter with nothing left to narrow", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("keeps Posvojitev under the press that turns it off", () => {
-    // Nobody on Ostale is on hold here, so the section is drawn only because
-    // its row is on. Pressing it off took the section away, and the keyboard
-    // focus on its row with it.
-    window.history.replaceState(null, "", "/?vrsta=ostalo&posvojitev=na-voljo");
-    const { container } = renderGrid([
-      { ...animal("dog-hold", "dog", "muri"), status: "hold" },
-      animal("rabbit-druga", "rabbit", "druga"),
-    ]);
-    const rail = container.querySelector("aside")!;
-    const row = within(rail).getByRole("button", { name: /^Samo na voljo,/ });
-    row.focus();
-
-    fireEvent.click(row);
-
-    expect(row.isConnected).toBe(true);
-    expect(row.getAttribute("aria-pressed")).toBe("false");
-    expect(document.activeElement).toBe(row);
-  });
-
   it("keeps any section a selection alone was holding on the tab", () => {
     // Energija carried to Mačke, where no cat was rated: the section is there
     // only for its answer, and pressing that off must not take it away.
@@ -630,6 +610,32 @@ describe("a filter with nothing left to narrow", () => {
 
     expect(row.isConnected).toBe(true);
     expect(document.activeElement).toBe(row);
+  });
+});
+
+describe("a link shared while Samo na voljo was a filter", () => {
+  it("stops filtering and loses the param on the next write, keeping the rest", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/?vrsta=pes&posvojitev=na-voljo&spol=samec",
+    );
+    const { container } = renderGrid([
+      { ...animal("dog-hold", "dog", "muri"), status: "hold" },
+      animal("dog-free", "dog", "druga"),
+      { ...animal("dog-female", "dog", "druga"), sex: "female" },
+    ]);
+
+    expect(screen.getByRole("link", { name: /dog-hold/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /dog-female/ })).toBeNull();
+    expect(
+      screen.getAllByRole("button", { name: "Filtri, aktivnih: 1" }).length,
+    ).toBeGreaterThan(0);
+
+    const rail = container.querySelector("aside")!;
+    fireEvent.click(within(rail).getByRole("button", { name: /^Samica,/ }));
+
+    expect(query()).toBe("?vrsta=pes&spol=samec,samica");
   });
 });
 

@@ -3,7 +3,6 @@
 import { m, useReducedMotion } from "motion/react";
 import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
-import { AvailabilityCards } from "@/components/filters/availability-cards";
 import { CareCards } from "@/components/filters/care-cards";
 import {
   CoatColorCards,
@@ -397,18 +396,6 @@ function SexGroup({
 // happens to be last.
 function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
   switch (group) {
-    case "availability":
-      // No collapse and no unanswered line: it does not fold, and every
-      // animal answers it.
-      return (
-        <AvailabilityCards
-          options={rest.options}
-          counts={rest.counts}
-          selected={rest.selected}
-          onToggle={rest.onToggle}
-          layout={rest.layout}
-        />
-      );
     case "coatLength":
       return <CoatLengthCards {...rest} />;
     case "waiting":
@@ -595,10 +582,8 @@ export function FilterGroupList({
       isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
     );
 
-  // Every section folds, on both surfaces, but Posvojitev, which holds one
-  // row and would hide the whole of it (availability-cards.tsx). This was a
-  // prop for the pass in which only the sidebar folded; the phone sheet
-  // joined it on 2026-09-17
+  // Every section folds, on both surfaces. This was a prop for the pass in
+  // which only the sidebar folded; the phone sheet joined it on 2026-09-17
   // (filter-sheet.tsx has the numbers: nine open sections through a 189px
   // window at 320x568), and with both callers passing the same answer the
   // unfolded list was a configuration the site no longer had.
@@ -653,20 +638,14 @@ export function FilterGroupList({
             selected={selected}
             onToggle={(value) => onToggle(group, value)}
             onToggleMany={(values) => onToggleMany(group, values)}
-            // Availability is the one group that does not fold
-            // (availability-cards.tsx says why), so it has no fold to give.
-            collapse={
-              group === "availability"
-                ? undefined
-                : collapseFor(
-                    group,
-                    selectionSummary(
-                      selected,
-                      (value) =>
-                        options.find((option) => option.value === value)?.label,
-                    ),
-                  )
-            }
+            collapse={collapseFor(
+              group,
+              selectionSummary(
+                selected,
+                (value) =>
+                  options.find((option) => option.value === value)?.label,
+              ),
+            )}
             unanswered={unanswered?.groups[group]}
             leavesOutCats={group === "size" && filters.species === "all"}
           />

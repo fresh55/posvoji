@@ -84,59 +84,6 @@ function show({
   return { onToggle, onToggleManyProperties };
 }
 
-describe("Posvojitev", () => {
-  it("offers the animals that can be adopted now, counted before the press", () => {
-    const { onToggle } = show({
-      groups: ["availability", "sex"],
-      counts: { availability: [["available", 460]], sex: [["male", 3], ["female", 2]] },
-    });
-    expect(screen.getByRole("heading", { name: "Posvojitev" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Samo na voljo, 460 živali" }));
-    expect(onToggle).toHaveBeenLastCalledWith("availability", "available");
-  });
-
-  it("does not fold, since folding would hide its only control", () => {
-    show({ groups: ["availability"], counts: { availability: [["available", 460]] } });
-    expect(screen.queryByRole("button", { name: /^Posvojitev/ })).toBeNull();
-    expect(screen.getByRole("button", { name: /^Samo na voljo,/ })).toBeTruthy();
-  });
-
-  it("has no Ponastavi, the row being its own way off", () => {
-    show({
-      groups: ["availability"],
-      filters: { ...EMPTY_FILTERS, availability: ["available"] },
-      counts: { availability: [["available", 460]] },
-    });
-    expect(
-      screen.getByRole("button", { name: /^Samo na voljo,/ }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    expect(screen.queryByText("Ponastavi")).toBeNull();
-  });
-
-  // A tile alone at the full width of the sheet was a tall box with its icon
-  // floating in it, above Spol; the row is the Kje row's height instead.
-  it("is one row the height of the Kje row on a phone", () => {
-    show({
-      layout: "sheet",
-      groups: ["availability"],
-      counts: { availability: [["available", 118]] },
-    });
-    const row = screen.getByRole("button", { name: /^Samo na voljo,/ });
-    expect(row.className).toContain("min-h-13");
-    expect(row.className).toContain("flex-row");
-    expect(row.textContent).toBe("Samo na voljo118");
-  });
-
-  it("stands above every other section", () => {
-    show({
-      groups: ["availability", "sex"],
-      counts: { availability: [["available", 460]], sex: [["male", 3]] },
-    });
-    const headings = screen.getAllByRole("heading").map((heading) => heading.textContent);
-    expect(headings[0]).toBe("Posvojitev");
-  });
-});
-
 describe("V zavetišču takes one threshold at a time", () => {
   it.each(["sidebar", "sheet"] as const)("and says so with a round mark in the %s", (layout) => {
     show({

@@ -140,7 +140,7 @@ test.describe("approved mobile filter regressions", () => {
   });
 
   test("wraps active filters in flow without a second horizontal scroller", async ({ page }) => {
-    await page.goto("/?spol=samec&starost=odrasel&velikost=majhna&posvojitev=na-voljo");
+    await page.goto("/?spol=samec&starost=odrasel&velikost=majhna&cakanje=nad-1-leto");
     const row = page.locator('[data-slot="mobile-filter-row"]');
     await expect(row).toBeVisible();
     await expect(row.getByRole("button", { name: /^Odstrani filter/ })).toHaveCount(4);

@@ -397,9 +397,8 @@ export function FilterCardSection({
   /** Names the hint, for rows that take it as their description. */
   hintId?: string;
   active: boolean;
-  /** Absent for a section of one row, which is its own way off. */
-  onReset?: () => void;
-  resetAriaLabel?: string;
+  onReset: () => void;
+  resetAriaLabel: string;
   layout: FilterCardLayout;
   collapse?: SectionCollapse;
   /** The sheet's columns, for a section whose labels are too long for three. */

@@ -570,15 +570,6 @@ describe("pruneHiddenFilters", () => {
     expect(pruned.toggles).toEqual(["brez-fiv"]);
   });
 
-  it("keeps availability across a species change", () => {
-    const pruned = pruneHiddenFilters({
-      ...EMPTY_FILTERS,
-      species: "dog",
-      availability: ["available"],
-    });
-    expect(pruned.availability).toEqual(["available"]);
-  });
-
   it("keeps the družba selection across a species change", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
@@ -724,19 +715,12 @@ describe("URL codec", () => {
     expect(FILTER_PARAM_NAMES).toContain("lastnosti");
   });
 
-  it("round-trips availability under its own param", () => {
-    const filters: Filters = { ...EMPTY_FILTERS, availability: ["available"] };
-    const query = serializeFilters(filters);
-    expect(query).toBe("posvojitev=na-voljo");
-    expect(parseFilters(query)).toEqual(filters);
-    expect(activeFilterCount(filters)).toBe(1);
-    // Watched by the prehydration script like every other filter, so a
-    // shared link holds the grid back until the filter has been applied.
-    expect(FILTER_PARAM_NAMES).toContain("posvojitev");
-  });
-
-  it("drops an availability slug it does not know", () => {
-    expect(parseFilters("posvojitev=ni-na-voljo").availability).toEqual([]);
+  it("lets a link shared while Samo na voljo was a filter degrade to the rest", () => {
+    const filters = parseFilters("vrsta=pes&posvojitev=na-voljo&spol=samec");
+    expect(filters).toEqual({ ...EMPTY_FILTERS, species: "dog", sex: ["male"] });
+    expect(serializeFilters(filters)).toBe("vrsta=pes&spol=samec");
+    expect(OWNED_PARAM_NAMES).toContain("posvojitev");
+    expect(FILTER_PARAM_NAMES).not.toContain("posvojitev");
   });
 
   it("parses the legacy zajcek slug into the merged Ostale tab", () => {

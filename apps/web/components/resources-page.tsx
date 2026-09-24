@@ -4,7 +4,7 @@ import { SiteShell } from "@/components/site-shell";
 import { getMessages, type Locale, quotedLang } from "@/lib/i18n";
 import { RESOURCES_PATHS } from "@/lib/site-links";
 import { Card } from "@/components/ui/card";
-import { PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
+import { PAGE_LEAD, PAGE_TITLE, SECTION_TITLE } from "@/lib/link-styles";
 
 type LocalizedText = Record<Locale, string>;
 
@@ -316,7 +316,7 @@ export function ResourcesPage({ locale }: { locale: Locale }) {
 
       {sections.map((section) => (
         <section key={section.id} id={section.id} className="space-y-5">
-          <h2 className="border-b pb-3 text-xl font-medium tracking-tight sm:text-2xl">
+          <h2 className={`border-b pb-3 ${SECTION_TITLE}`}>
             {section.title[locale]}
           </h2>
           <div className="grid gap-4 md:grid-cols-2">

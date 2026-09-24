@@ -30,7 +30,7 @@ import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
-import { PAGE_TITLE } from "@/lib/link-styles";
+import { PAGE_TITLE, SECTION_TITLE } from "@/lib/link-styles";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -383,7 +383,7 @@ export function ShelterDetailPage({
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b pb-3">
             {/* One step under the h1 rather than level with it: the page is
                 about the shelter, and this is the heading of its list. */}
-            <h2 className="text-lg font-medium tracking-tight sm:text-xl">
+            <h2 className={SECTION_TITLE}>
               {text.animalsTitle}
             </h2>
             {/* The grid here carries this shelter's animals and no filters.

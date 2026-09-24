@@ -110,14 +110,16 @@ export const PAGE_LEAD =
   "text-base leading-relaxed text-muted-foreground sm:text-lg";
 
 /**
- * The heading of a section inside a page: 20px, between the lead above it
- * and a 16px row heading below. It is the rung PAGE_LEAD is measured
- * against, so the two move together or neither does.
+ * The heading of a section inside a page: 20px on a phone and 24px from sm
+ * up, between the lead above it and a 16px row heading below. It is the rung
+ * PAGE_LEAD is measured against, so the two move together or neither does.
  *
- * Not yet the whole site. The pages that stack titled sections of their own
- * still spell their own heading (resources 20 to 24 medium, a shelter's own
- * page 18 to 20), and converting them changes what they draw, so each is a
- * decision rather than a sweep. What this owns is the pages whose headings
- * were sized against the block under them instead of against the page.
+ * The desktop step is what makes a section outrank its rows. At 20px beside
+ * an 18px lead and 16px medium rows with an icon each, the About page read as
+ * five rows of one rank instead of two groups.
+ *
+ * Every page that stacks titled sections uses this one string: About, the
+ * resources page and a shelter's own page. They were 20, 20 to 24 medium and
+ * 18 to 20 before, three answers to one question.
  */
-export const SECTION_TITLE = "text-xl font-semibold";
+export const SECTION_TITLE = "text-xl font-semibold tracking-tight sm:text-2xl";

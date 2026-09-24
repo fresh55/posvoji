@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   Building2,
   Clock3,
   HeartHandshake,
@@ -36,7 +37,9 @@ type AboutPoint = {
   key: PointKey;
   title: string;
   body: string;
-  link?: { label: string; href: string };
+  /** primary marks the one thing a section's reader came to do, drawn as a
+   *  button. Every other link stays a quiet text link under its row. */
+  link?: { label: string; href: string; primary?: true };
 };
 
 /** One audience: its heading, and the facts addressed to it. The rows under
@@ -50,8 +53,9 @@ type PageText = {
   lead: string;
   adopters: AboutSectionText;
   shelters: AboutSectionText;
-  /** The closing line. The address follows it as a button and is not
-   *  translated. */
+  /** The closing section's heading and line. The address follows the line
+   *  as a button and is not translated. */
+  contact: string;
   report: string;
 };
 
@@ -91,7 +95,7 @@ const pageText: Record<Locale, PageText> = {
           key: "shelterDecides",
           title: "Kako poteka posvojitev?",
           body: "Ob vsaki objavi je navedeno zavetišče, ki za žival skrbi. Z njim se pogovori o njenih potrebah, svojem vsakdanu in spoznavanju. Zavetišče ti pojasni pogoje in morebitne stroške ter vodi posvojitev.",
-          link: { label: "Poišči žival, ki išče dom", href: "/" },
+          link: { label: "Poišči žival, ki išče dom", href: "/", primary: true },
         },
         {
           key: "freshness",
@@ -117,11 +121,12 @@ const pageText: Record<Locale, PageText> = {
         {
           key: "shelterJoin",
           title: "Kako se zavetišče vključi?",
-          body: "Pišite nam na spodnji naslov. Dogovorimo se o objavah z vaše spletne strani ali neposrednem vnosu pri nas, če svojega seznama živali nimate. Za ureditev dostopa do prijave nam prav tako pišite.",
+          body: "Pišite nam na naslov pod Kontakt spodaj. Dogovorimo se o objavah z vaše spletne strani ali neposrednem vnosu pri nas, če svojega seznama živali nimate. Za ureditev dostopa do prijave nam prav tako pišite.",
           link: { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
         },
       ],
     },
+    contact: "Kontakt",
     report:
       "Si opazil napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti. Na isti naslov pišejo tudi zavetišča za sodelovanje, umik vsebin ali predlog.",
   },
@@ -134,7 +139,7 @@ const pageText: Record<Locale, PageText> = {
           key: "shelterDecides",
           title: "How does adoption work?",
           body: "Each listing names the shelter caring for the animal. Talk to them about the animal’s needs, your daily routine and arranging a meeting. The shelter explains the requirements and any costs, and handles the adoption.",
-          link: { label: "Find an animal looking for a home", href: "/en" },
+          link: { label: "Find an animal looking for a home", href: "/en", primary: true },
         },
         {
           key: "freshness",
@@ -160,11 +165,12 @@ const pageText: Record<Locale, PageText> = {
         {
           key: "shelterJoin",
           title: "How can a shelter join?",
-          body: "Email us at the address below. We can arrange to use listings from your website, or help you list animals here if you do not have a catalogue of your own. Email us to arrange login access too.",
+          body: "Email us at the address under Contact below. We can arrange to use listings from your website, or help you list animals here if you do not have a catalogue of your own. Email us to arrange login access too.",
           link: { label: "Already have access? Shelter login", href: "/portal/prijava" },
         },
       ],
     },
+    contact: "Contact",
     report:
       "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting. Use the same address to join, request content removal or share a suggestion.",
   },
@@ -183,13 +189,14 @@ const POINT_LINK = `${QUIET_DOC_LINK} w-fit`;
 // A whole section: the heading and the rows it governs, so the two cannot be
 // written at odds. The rows are h3s under the section's h2, one style for
 // every row, which makes the ladder on a phone the 24px title, a 20px
-// section heading, a 16px row and its 14px body. When the adopter rows were
-// h2s at 20px they outweighed the "Za zavetišča" heading under them and the
-// page read as one size again.
+// section heading, a 16px row and its 14px body, and 24px from sm up. When
+// the adopter rows were h2s at 20px they outweighed the "Za zavetišča"
+// heading under them and the page read as one size again.
 //
-// divide-y and border-b, no top rule: the heading opens the section and a
-// rule above the first row boxed it in against the rule that closed the
-// section before. The bottom rule closes each section the same way.
+// Rules between rows only. A rule under the last row looked exactly like the
+// rules between rows, so the break between sections was carried by a little
+// extra air alone. Now the heading and the gap mark the section, and the
+// rules only separate facts inside it.
 //
 // mt-px on the media: text-base carries its own 24px line-height and beats
 // ItemTitle's leading-snug, so the line box is 24px against a 20px glyph
@@ -209,11 +216,11 @@ function AboutSection({
       <h2 id={id} className={SECTION_TITLE}>
         {section.title}
       </h2>
-      <div className="divide-y border-b">
+      <div className="divide-y">
         {section.points.map((point) => {
           const Icon = pointIcons[point.key];
           return (
-            <Item key={point.key} layout="row" className="px-0 py-5">
+            <Item key={point.key} layout="row" className="px-0 py-4 last:pb-0">
               <ItemMedia className="mt-px">
                 <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
               </ItemMedia>
@@ -224,11 +231,22 @@ function AboutSection({
                 <ItemDescription className="text-sm leading-relaxed">
                   {point.body}
                 </ItemDescription>
-                {point.link && (
+                {point.link?.primary ? (
+                  <Button
+                    asChild
+                    size="wrap"
+                    className={`${THUMB_BUTTON} mt-2 w-fit max-w-full`}
+                  >
+                    <a href={point.link.href}>
+                      {point.link.label}
+                      <ArrowRight aria-hidden data-icon="inline-end" />
+                    </a>
+                  </Button>
+                ) : point.link ? (
                   <a href={point.link.href} className={POINT_LINK}>
                     {point.link.label}
                   </a>
-                )}
+                ) : null}
               </ItemContent>
             </Item>
           );
@@ -301,7 +319,13 @@ export function AboutPage({ locale }: { locale: Locale }) {
           GitHubu" at the same size and weight beside it. A repository is not
           an answer to the sentence above, and the footer of this very page
           already invites developers, in the small print where that belongs. */}
-      <div className="space-y-3 lg:col-start-1 lg:row-start-4">
+      <section
+        aria-labelledby="about-contact"
+        className="space-y-3 lg:col-start-1 lg:row-start-4"
+      >
+        <h2 id="about-contact" className={SECTION_TITLE}>
+          {text.contact}
+        </h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
           {text.report}
         </p>
@@ -322,12 +346,17 @@ export function AboutPage({ locale }: { locale: Locale }) {
             </a>
           </Button>
         </div>
-      </div>
+      </section>
 
       {/* Keep the practical information first in mobile and keyboard
           reading order. On desktop the cat sits beside all four text
-          rows, with the dedication directly beneath the model. */}
-      <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:flex lg:items-center">
+          rows, with the dedication directly beneath the model.
+
+          Top-aligned with the title and sticky, not centred. Centred on the
+          whole column it floated beside the second row with empty space
+          above it, level with nothing. Sticky keeps the dedication in view
+          while the facts beside it scroll. */}
+      <div className="lg:sticky lg:top-8 lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-start">
         <AboutCat locale={locale} />
       </div>
     </SiteShell>

@@ -145,6 +145,25 @@ describe("reviewed photo appearance", () => {
     expect(result.animals[0]?.coatColor).toBeUndefined();
   });
 
+  it("records only a young stage from photos, under its own reviewers, and never over an age", () => {
+    const young = (): AppearanceManifest => {
+      const manifest = review();
+      return { ...manifest, records: [{ ...manifest.records[0]!, lifeStage: "young", lifeStageReviewedBy: ["stage-first", "stage-second"] }] };
+    };
+    const result = applyAppearance([source], young(), policies, photos);
+    expect(result.animals[0]?.lifeStage).toBe("young");
+    expect(result.applied).toContainEqual({ animalId: source.id, field: "lifeStage" });
+    const aged = applyAppearance([{ ...source, approximateAgeMonths: 30 }], young(), policies, photos);
+    expect(aged.animals[0]?.lifeStage).toBeUndefined();
+    expect(aged.issues).toContainEqual({ animalId: source.id, field: "lifeStage", reason: "existing-value" });
+    const unreviewed = young();
+    delete unreviewed.records[0]!.lifeStageReviewedBy;
+    expect(AppearanceManifest.safeParse(unreviewed).success).toBe(false);
+    const adult = young();
+    (adult.records[0] as Record<string, unknown>).lifeStage = "adult";
+    expect(AppearanceManifest.safeParse(adult).success).toBe(false);
+  });
+
   it("preserves explicit structured and description-reviewed answers", () => {
     const animal = { ...source, coatColors: ["grey" as const], coatColor: "grey" as const, coatLength: "long" as const };
     const result = applyAppearance([animal], review(), policies, photos);

@@ -74,6 +74,26 @@ For newly introduced requirements, a shelter can correct its published
 description through the existing portal; direct requirement editing is not yet
 part of the portal form.
 
+## Life stage
+
+`lifeStage` (young, adult, senior: the site's Mladiček, Odrasel and Senior)
+records a stage the shelter states where it gives no age a number can carry.
+It comes from a claim here with text evidence ("odrasel", "senior", a kitten
+from a litter taken in with its mother), from a provider parser reading a
+range that stays inside one stage ("8–10 let"), or from a photo review in
+`data/animal-appearance.json`. A photo review may only record young, under
+its own two reviewers: a photo cannot tell five years from nine, and it can be
+as old as the listing.
+
+A claim needs the whole possible range of the animal's current age inside the
+stage. Text is dated no earlier than the intake, so "7 let" on a listing from
+2020 could now be 13 and is left unknown.
+
+A stated age or birth date always wins. The export drops a young stage six
+months after the earlier of the intake and finding dates, and at once when
+the animal has neither, because a listing keeps calling an animal a kitten
+long after it has grown.
+
 ## Verification and release
 
 Run `pnpm check` before release. Enrichment tests cover stale evidence, permission,

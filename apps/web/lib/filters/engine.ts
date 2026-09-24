@@ -1,4 +1,4 @@
-import type { Species } from "@posvoji/schema";
+import type { LifeStage, Species } from "@posvoji/schema";
 import type { AnimalFields } from "@/lib/animal";
 import {
   TAB_OF_SPECIES,
@@ -133,9 +133,17 @@ export function careMatches(animal: AnimalFields, key: CareKey): boolean {
   }
 }
 
-// Boundaries in months: under a year is a baby, past eight a senior.
+// Boundaries in months: under a year is a baby, past eight a senior. The
+// schema's lifeStageOf draws the same lines for ingest. Importing it here
+// would ship zod to the browser, so a test holds the two together instead.
 const PUPPY_MAX_EXCLUSIVE = 12;
 const ADULT_MAX_EXCLUSIVE = 96;
+
+const GROUP_OF_STAGE: Record<LifeStage, AgeGroup> = {
+  young: "mladicek",
+  adult: "odrasel",
+  senior: "senior",
+};
 
 // A date-only ISO string parses as UTC midnight, so both sides of the
 // subtraction have to be read in UTC. Reading one of them locally shifted the
@@ -184,6 +192,22 @@ export function ageGroup(months: number): AgeGroup {
   if (months < PUPPY_MAX_EXCLUSIVE) return "mladicek";
   if (months < ADULT_MAX_EXCLUSIVE) return "odrasel";
   return "senior";
+}
+
+/** The stage the filter files an animal under: from its age where one is
+ *  known, otherwise from the stage the shelter stated without a number. The
+ *  dialog and the poster read this too, so all three agree. */
+export function ageStage(
+  animal: {
+    birthDate?: string;
+    approximateAgeMonths?: number;
+    lifeStage?: LifeStage;
+  },
+  now: Date,
+): AgeGroup | undefined {
+  const months = ageInMonths(animal, now);
+  if (months !== undefined) return ageGroup(months);
+  return animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage];
 }
 
 function matchesSpecies(animal: AnimalFields, species: SpeciesFilter): boolean {
@@ -249,6 +273,8 @@ type FilterIndex = {
   readonly shelter: readonly string[];
   readonly approximate: Column<number>;
   readonly born: Column<number>;
+  /** The stated stage, read only where neither of the two above answers. */
+  readonly stage: Column<AgeGroup>;
   readonly toggles: readonly number[];
   readonly goodWith: readonly number[];
   readonly care: readonly number[];
@@ -291,6 +317,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const shelter: string[] = [];
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
+  const stage: (AgeGroup | undefined)[] = [];
   const toggles: number[] = [];
   const goodWith: number[] = [];
   const care: number[] = [];
@@ -308,6 +335,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     shelter.push(animal.shelter.id);
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
+    stage.push(animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage]);
     toggles.push(maskOf(TOGGLES.length, (bit) => TOGGLES[bit].matches(animal)));
     goodWith.push(
       maskOf(GOOD_WITH_KEYS.length, (bit) =>
@@ -338,6 +366,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     intakeStart,
     approximate,
     born,
+    stage,
     toggles,
     goodWith,
     care,
@@ -371,7 +400,7 @@ function ageColumn(index: FilterIndex, nowMonths: number): Column<AgeGroup> {
   }
   const values = index.approximate.map((approximate, slot) => {
     const months = ageFrom(approximate, index.born[slot], nowMonths);
-    return months === undefined ? undefined : ageGroup(months);
+    return months === undefined ? index.stage[slot] : ageGroup(months);
   });
   index.ages = { at: nowMonths, values };
   return values;

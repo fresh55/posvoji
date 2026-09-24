@@ -31,6 +31,7 @@ allowedFields:
   - status
   - breed
   - approximateAgeMonths
+  - lifeStage
   - size
   - foundDate
   - originMunicipality

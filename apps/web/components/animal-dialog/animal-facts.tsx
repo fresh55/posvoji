@@ -32,6 +32,7 @@ import { namesSeveralAnimals } from "@/lib/animal-name";
 import {
   ageGroup,
   ageInMonths,
+  ageStage,
   careMatches,
   GOOD_WITH_KEYS,
   groupLabel,
@@ -472,6 +473,10 @@ export function AnimalFacts({
     healthRow.current?.querySelector("button")?.focus();
   }, [showHealthDetails]);
   const months = ageInMonths(animal, reference);
+  // The stage the shelter stated where it gave no number, so the filter that
+  // found this animal under Senior is not contradicted by a missing age.
+  const statedStage =
+    months === undefined ? ageStage(animal, reference) : undefined;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
   // "Complete" is measured against what the species can answer: FIV and FeLV
   // are cat questions, so a dog is not two answers short for never having been
@@ -486,7 +491,7 @@ export function AnimalFacts({
   const severalAnimals = namesSeveralAnimals(animal.name);
   const hasIdentity =
     !severalAnimals &&
-    (sex !== undefined || months !== undefined || animal.size !== undefined ||
+    (sex !== undefined || months !== undefined || statedStage !== undefined || animal.size !== undefined ||
       animal.energy !== undefined || animal.coatColors !== undefined || animal.coatLength !== undefined);
   const fullRecord = medical.length === applicable.length;
   // Named only beside an itemised row: a full record has no gap to name, and a
@@ -567,6 +572,19 @@ export function AnimalFacts({
                   }
                 >
                   {t("factAgeValue", { age: ageLabel(months, locale) })}
+                </Fact>
+              )}
+              {statedStage !== undefined && (
+                <Fact
+                  iconNode={
+                    <AgeStageIcon
+                      stage={statedStage}
+                      className="size-3.5 opacity-70"
+                    />
+                  }
+                  prefix={groupLabel("age", locale)}
+                >
+                  {optionLabel("age", statedStage, [], locale)}
                 </Fact>
               )}
               {animal.size && (

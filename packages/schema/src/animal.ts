@@ -38,6 +38,19 @@ export const CoatColors = z.array(CoatColor).min(1).max(6).refine(
 export const EnergyLevel = z.enum(["calm", "balanced", "lively"]);
 export type EnergyLevel = z.infer<typeof EnergyLevel>;
 
+// Young is under a year, senior from eight years. The site's age filter buckets
+// by these, and a stage recorded without a number has to mean the same thing.
+export const LifeStage = z.enum(["young", "adult", "senior"]);
+export type LifeStage = z.infer<typeof LifeStage>;
+export const YOUNG_BELOW_MONTHS = 12;
+export const SENIOR_FROM_MONTHS = 96;
+
+export function lifeStageOf(months: number): LifeStage {
+  if (months < YOUNG_BELOW_MONTHS) return "young";
+  if (months < SENIOR_FROM_MONTHS) return "adult";
+  return "senior";
+}
+
 export const TestResult = z.enum(["positive", "negative", "unknown"]);
 export type TestResult = z.infer<typeof TestResult>;
 
@@ -169,6 +182,10 @@ export const Animal = z.strictObject({
   breed: z.string().optional(),
   birthDate: z.iso.date().optional(),
   approximateAgeMonths: z.number().int().nonnegative().optional(),
+  // The stage where the shelter gives no number to carry it: a word such as
+  // "odrasel", a range inside one stage, or a reviewed photo of a recent
+  // intake. An age or a birth date wins, and ingest drops this beside either.
+  lifeStage: LifeStage.optional(),
 
   size: AnimalSize.optional(),
   // Visible appearance, recorded only from explicit text or reviewed photos.

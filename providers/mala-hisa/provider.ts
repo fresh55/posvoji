@@ -3,13 +3,15 @@ import {
   type AdoptionProvider,
   type SourceAnimalRef,
 } from "@posvoji/provider-sdk";
-import type {
-  AdoptionStatus,
-  AnimalSize,
-  ImagePolicy,
-  ImageRights,
-  Sex,
-  Species,
+import {
+  lifeStageOf,
+  type AdoptionStatus,
+  type AnimalSize,
+  type ImagePolicy,
+  type ImageRights,
+  type LifeStage,
+  type Sex,
+  type Species,
 } from "@posvoji/schema";
 
 const BASE_URL = "https://zavetisce-malahisa.si";
@@ -26,6 +28,7 @@ export interface DetailFacts {
   sex?: Sex;
   breed?: string;
   approximateAgeMonths?: number;
+  lifeStage?: LifeStage;
   size?: AnimalSize;
   status: AdoptionStatus;
   description?: string;
@@ -94,13 +97,14 @@ function normalizedText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+const AGE_RANGE =
+  /\b(\d+(?:[.,]\d+)?)\s*[–—-]\s*(\d+(?:[.,]\d+)?)\s*(mesec|meseca|mesece|mesecev|let|leta)\b/iu;
+
 export function parseApproximateAgeMonths(
   value: string,
 ): number | undefined {
   // A single integer cannot faithfully preserve ranges such as 5–6 months.
-  if (/\b\d+\s*[–—-]\s*\d+\s*(?:mesec|meseca|mesece|mesecev|let|leta)\b/iu.test(value)) {
-    return undefined;
-  }
+  if (AGE_RANGE.test(value)) return undefined;
 
   // "1,5 letna" is one and a half years. The lookbehind keeps a bare \b from
   // matching the "5" after the comma and reading it as five.
@@ -118,6 +122,17 @@ export function parseApproximateAgeMonths(
     /\bstar(?:a|o)?\s+(?:približno\s+)?(\d+(?:[.,]\d+)?)\s*(?:mesec|meseca|mesece|mesecev)\b/iu,
   );
   return months ? Math.round(ageCount(months[1])) : undefined;
+}
+
+// What a range does preserve is the stage when both ends share one: "8–10
+// let" is senior whichever end is true. A range across a stage line stays
+// unknown.
+export function parseRangeLifeStage(value: string): LifeStage | undefined {
+  const range = value.match(AGE_RANGE);
+  if (!range) return undefined;
+  const scale = /^mesec/iu.test(range[3]!) ? 1 : 12;
+  const low = lifeStageOf(ageCount(range[1]) * scale);
+  return low === lifeStageOf(ageCount(range[2]) * scale) ? low : undefined;
 }
 
 function ageCount(raw: string | undefined): number {
@@ -293,6 +308,7 @@ export function parseDetail(html: string): DetailFacts {
     sex: parseSex(species, content),
     breed: parseBreed(content),
     approximateAgeMonths: parseApproximateAgeMonths(content),
+    lifeStage: parseRangeLifeStage(content),
     size: parseSize(content),
     // Only adoption-list detail URLs enter the pipeline.
     status: "available",
@@ -373,6 +389,7 @@ const provider: AdoptionProvider = {
       sex: facts.sex,
       breed: facts.breed,
       approximateAgeMonths: facts.approximateAgeMonths,
+      lifeStage: facts.lifeStage,
       size: facts.size,
       status: facts.status,
       images:

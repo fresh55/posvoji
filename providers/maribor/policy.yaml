@@ -32,6 +32,7 @@ allowedFields:
   - sex
   - breed
   - approximateAgeMonths
+  - lifeStage
   - size
   - status
   - intakeDate

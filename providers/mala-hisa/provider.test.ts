@@ -8,6 +8,7 @@ import provider, {
   parseApproximateAgeMonths,
   parseDetail,
   parseList,
+  parseRangeLifeStage,
 } from "./provider";
 
 const policy = ProviderPolicy.parse(
@@ -124,6 +125,15 @@ describe("detail facts", () => {
     expect(parseApproximateAgeMonths("1,5 letna psička")).toBe(18);
     expect(parseApproximateAgeMonths("stara 2.5 leta")).toBe(30);
     expect(parseApproximateAgeMonths("star približno 1,5 meseca")).toBe(2);
+  });
+
+  it("keeps the stage a published range stays inside", () => {
+    expect(parseRangeLifeStage("star približno 8–10 let")).toBe("senior");
+    expect(parseRangeLifeStage("stara približno 5-6 mesecev")).toBe("young");
+    expect(parseRangeLifeStage("star 2-3 leta")).toBe("adult");
+    expect(parseRangeLifeStage("star približno 7–9 let")).toBeUndefined();
+    expect(parseRangeLifeStage("stara 10-14 mesecev")).toBeUndefined();
+    expect(parseRangeLifeStage("10-letni srnin pinč")).toBeUndefined();
   });
 
   it("does not read a dog as male from a sentence about a male cat companion", () => {

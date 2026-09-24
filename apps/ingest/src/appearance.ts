@@ -27,15 +27,23 @@ export const AppearanceManifest = z.strictObject({
     substantialWhiteReviewedBy: Reviewers.optional(),
     coatColorReviewedBy: Reviewers.optional(),
     coatLength: CoatLength.optional(),
+    // A photo shows a kitten or a puppy. It cannot tell five years from nine,
+    // and it can be as old as the listing, so the only stage it records is
+    // young, under its own reviewers, and the export keeps that only while
+    // the intake is recent (life-stage.ts).
+    lifeStage: z.literal("young").optional(),
+    lifeStageReviewedBy: Reviewers.optional(),
     evidence: z.array(PhotoEvidence).min(1).refine(
       (photos) => new Set(photos.map((photo) => photo.sourceUrl)).size === photos.length,
       "duplicate photo evidence",
     ),
     reviewedBy: Reviewers,
-  }).refine((record) => record.coatColors !== undefined || record.coatLength !== undefined || record.coatColor !== undefined || record.substantialWhite !== undefined,
+  }).refine((record) => record.coatColors !== undefined || record.coatLength !== undefined || record.coatColor !== undefined || record.substantialWhite !== undefined || record.lifeStage !== undefined,
     "an appearance review must record a supported field")
     .refine((record) => (record.coatColor !== undefined) === (record.coatColorReviewedBy !== undefined),
       "a filter colour requires its own independent reviewers")
+    .refine((record) => (record.lifeStage !== undefined) === (record.lifeStageReviewedBy !== undefined),
+      "a life stage requires its own independent reviewers")
     .refine((record) => (record.substantialWhite !== undefined) === (record.substantialWhiteReviewedBy !== undefined),
       "white markings require their own independent reviewers")
     .refine((record) => record.substantialWhite !== true || record.coatColors === undefined || record.coatColors.includes("white"),
@@ -50,7 +58,7 @@ export function loadAppearance(): AppearanceManifest {
 
 /** The reviewed fields a record can carry, for the apply loop, the issue
     type and the provider permission check, which each listed them. */
-export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "coatLength"] as const;
+export const APPEARANCE_FIELDS = ["coatColors", "coatColor", "coatLength", "lifeStage"] as const;
 type AppearanceField = (typeof APPEARANCE_FIELDS)[number];
 
 export type AppearanceIssue = {
@@ -89,8 +97,12 @@ export function applyAppearance(
     for (const field of APPEARANCE_FIELDS) {
       if (record[field] === undefined) continue;
       if (policy.allowedFields?.length && !policy.allowedFields.includes(field)) { reject("permission", field); continue; }
-      // Explicit shelter facts and description-backed corrections take precedence.
-      if (animal[field] !== undefined) { reject("existing-value", field); continue; }
+      // Explicit shelter facts and description-backed corrections take
+      // precedence, and a stated age answers what a photo's stage would.
+      if (animal[field] !== undefined || (field === "lifeStage" &&
+        (animal.approximateAgeMonths !== undefined || animal.birthDate !== undefined))) {
+        reject("existing-value", field); continue;
+      }
       Object.assign(enriched, { [field]: record[field] });
       applied.push({ animalId: animal.id, field });
     }

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  Animal, AnimalSize, CoatColors, CoatLength, Compatibility, EnergyLevel, Sex, TestResult,
+  Animal, AnimalSize, CoatColors, CoatLength, Compatibility, EnergyLevel, LifeStage, Sex, TestResult,
   type ProviderPolicy,
 } from "@posvoji/schema";
 import { z } from "zod";
@@ -25,6 +25,7 @@ const fields = {
   breed: Animal.shape.breed.unwrap(),
   birthDate: Animal.shape.birthDate.unwrap(),
   approximateAgeMonths: Animal.shape.approximateAgeMonths.unwrap(),
+  lifeStage: LifeStage,
   status: Animal.shape.status.exclude(["unknown"]),
   intakeDate: Animal.shape.intakeDate.unwrap(),
   foundDate: Animal.shape.foundDate.unwrap(),
@@ -180,6 +181,12 @@ export function applyEnrichment(
       const existing = nested ? parent?.[nested] : enriched[top];
       // Existing answers require an explicit matching correction baseline.
       if (claim.replaces === undefined ? existing !== undefined : JSON.stringify(existing) !== JSON.stringify(claim.replaces)) {
+        reject("existing-value", claim.field);
+        continue;
+      }
+      // A stage stands in for an age the shelter did not give as a number, so
+      // one that did give it has already answered.
+      if (claim.field === "lifeStage" && (enriched.approximateAgeMonths !== undefined || enriched.birthDate !== undefined)) {
         reject("existing-value", claim.field);
         continue;
       }

@@ -110,6 +110,14 @@ export function parseSlovenianDate(value: string): string | undefined {
   return parsed.toISOString().slice(0, 10) === iso ? iso : undefined;
 }
 
+// A whole count, optionally with the one fraction the shelter writes: a half,
+// as "2,5" or "2 in pol".
+const COUNT = String.raw`(\d+)([,.]5|\s+in\s+pol)?`;
+
+function countOf(whole: string, half: string | undefined): number {
+  return Number(whole) + (half ? 0.5 : 0);
+}
+
 // Only exact numeric ages are mapped. Prose such as "mlada odrasla" and
 // "nekaj ur" stays unknown rather than being turned into a guessed number.
 export function parseAgeMonths(value: string): number | undefined {
@@ -118,15 +126,17 @@ export function parseAgeMonths(value: string): number | undefined {
     /^(\d+)\s*(?:let|leta|leti|leto)\s+(?:in\s+)?(\d+)\s*(?:mesecev|mesece|meseca|mesec)$/,
   );
   if (combined) return Number(combined[1]) * 12 + Number(combined[2]);
-  const years = normalized.match(/^(\d+)(?:[,.](5))?\s*(?:let|leta|leti|leto)$/);
-  if (years) return Number(years[1]) * 12 + (years[2] ? 6 : 0);
-  const months = normalized.match(/^(\d+)\s*(?:mesecev|mesece|meseca|mesec)$/);
-  if (months) return Number(months[1]);
-  const weeks = normalized.match(/^(\d+)\s*(?:teden|tedna|tedne|tednov)$/);
-  // approximateAgeMonths is intentionally month-granular. Convert an exact
-  // stated week count to the nearest month rather than dropping useful age
-  // evidence (8–9 weeks is approximately two months).
-  return weeks ? Math.round((Number(weeks[1]) * 12) / 52) : undefined;
+  const years = normalized.match(new RegExp(`^${COUNT}\\s*(?:let|leta|leti|leto)$`));
+  if (years) return Math.round(countOf(years[1]!, years[2]) * 12);
+  // approximateAgeMonths is intentionally month-granular. A stated count of
+  // months, weeks or days goes to the nearest month rather than dropping
+  // useful age evidence (8–9 weeks is approximately two months).
+  const months = normalized.match(new RegExp(`^${COUNT}\\s*(?:mesecev|mesece|meseca|mesec)$`));
+  if (months) return Math.round(countOf(months[1]!, months[2]));
+  const weeks = normalized.match(new RegExp(`^${COUNT}\\s*(?:teden|tedna|tedne|tednov)$`));
+  if (weeks) return Math.round((countOf(weeks[1]!, weeks[2]) * 12) / 52);
+  const days = normalized.match(/^(\d+)\s*(?:dan|dneva|dni)$/);
+  return days ? Math.round((Number(days[1]) * 12) / 365) : undefined;
 }
 
 const SEX: Record<string, Sex> = {

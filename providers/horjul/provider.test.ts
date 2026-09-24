@@ -64,6 +64,14 @@ describe("fact parsers", () => {
     ["5 mesecev", 5],
     ["8 tednov", 2],
     ["9 tednov", 2],
+    // The forms on the kitten listings of summer 2026.
+    ["2,5 meseca", 3],
+    ["2 in pol meseca", 3],
+    ["3,5 tedne", 1],
+    ["14 dni", 0],
+    ["10 dni", 0],
+    ["45 dni", 1],
+    ["2,7 meseca", undefined],
     ["Mlada odrasla", undefined],
     ["Nekaj ur", undefined],
   ])("parses intake age %s conservatively", (input, expected) => {

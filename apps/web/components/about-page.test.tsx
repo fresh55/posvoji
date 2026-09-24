@@ -29,7 +29,7 @@ describe("the about page", () => {
   it("explains shelter adoption before site details in Slovenian", () => {
     render(<AboutPage locale="sl" />);
     expect(screen.getAllByRole("heading", { level: 2 }).map(node => node.textContent)).toEqual([
-      "Za posvojitelje", "Za zavetišča",
+      "Za posvojitelje", "Za zavetišča", "Kontakt",
     ]);
     expect(screen.getAllByRole("heading", { level: 3 }).map(node => node.textContent)).toEqual([
       "Kako poteka posvojitev?", "Ali žival še išče dom?", "Brezplačna uporaba",
@@ -50,7 +50,7 @@ describe("the about page", () => {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
         getMessages(locale).about,
       );
-      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(2);
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
       expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(5);
     },
   );
@@ -143,6 +143,23 @@ describe("the about page", () => {
     const policy = screen.getByRole("link", { name: label });
     expect(policy.getAttribute("href")).toBe(href);
     expect(policy.getAttribute("target")).toBeNull();
+  });
+
+  // The one thing an adopter came to do is drawn as a button, and the other
+  // row links stay quiet: a primary action styled like a footnote was the
+  // hierarchy fault this pins.
+  it.each<[Locale, string, string]>([
+    ["sl", "Poišči žival, ki išče dom", "/"],
+    ["en", "Find an animal looking for a home", "/en"],
+  ])("draws the adopter's action as a button (%s)", (locale, label, href) => {
+    render(<AboutPage locale={locale} />);
+
+    const action = screen.getByRole("link", { name: label });
+    expect(action.getAttribute("href")).toBe(href);
+    expect(action.getAttribute("data-slot")).toBe("button");
+    expect(
+      screen.getByRole("link", { name: /O vsebinah|Content and/ }).getAttribute("data-slot"),
+    ).toBeNull();
   });
 
   // The phone step the five content pages were missing; resources-page's own

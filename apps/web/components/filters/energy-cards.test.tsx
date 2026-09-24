@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { Transition } from "motion/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions, type Unanswered } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { EnergyCards } from "./energy-cards";
+import { EnergyCards, iconPose, TEMPOS } from "./energy-cards";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -229,6 +230,31 @@ describe("EnergyCards", () => {
       });
     }
   });
+});
+
+describe("iconPose", () => {
+  // Why: the reacting case of iconPose in energy-cards.tsx.
+  it.each([-1, 1])(
+    "leans a neighbour from wherever its icon is, the wait inside the track (direction %i)",
+    (direction) => {
+      const { animate, transition } = iconPose(
+        "reacting",
+        TEMPOS.calm,
+        TEMPOS.balanced,
+        direction,
+      );
+      const timing = transition as Record<"rotate" | "y", Transition>;
+      const rotate = animate.rotate as (number | null)[];
+
+      for (const value of ["rotate", "y"] as const) {
+        expect((animate[value] as (number | null)[])[0]).toBeNull();
+        expect(timing[value].delay).toBeUndefined();
+      }
+      // The same lean as before, ending level.
+      expect(rotate).toContain(direction * TEMPOS.balanced.neighborTilt);
+      expect(rotate.at(-1)).toBe(0);
+    },
+  );
 });
 
 describe("FilterGroupList energy group", () => {

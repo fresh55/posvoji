@@ -176,6 +176,10 @@ function slowGroupOk(
   selected: readonly string[],
 ): boolean {
   if (selected.length === 0) return true;
+  // Samec and Samica together mean either, unknown included.
+  if (group === "sex" && selected.includes("male") && selected.includes("female")) {
+    return true;
+  }
   const value = slowGroupValue(animal, group);
   return value !== undefined && (Array.isArray(value) ? value.some(v => selected.includes(v)) : selected.includes(value));
 }

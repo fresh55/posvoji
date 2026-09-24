@@ -22,7 +22,12 @@ import {
   type SpeciesFilter,
   type ToggleKey,
 } from "./contracts";
-import { TOGGLES, toggleAsks, type ToggleDef } from "./metadata";
+import {
+  FILTER_METADATA,
+  TOGGLES,
+  toggleAsks,
+  type ToggleDef,
+} from "./metadata";
 
 /** Every value the filter state holds, zavetišče included. The panels used to
  *  count a narrower set: shelter had no section in either of them, so a badge
@@ -399,6 +404,18 @@ type Query = {
   care: number;
 };
 
+/**
+ * Every answer Spol offers. Ticking all of them asks nothing: Samec and Samica
+ * together read as "either", and matching them strictly hid the animals whose
+ * sex nobody recorded (8 of 491) with no line saying so, since that share is
+ * under the tenth UnansweredNote waits for. Spol alone, because its unknown is
+ * the only one no visitor could mean to rule out; Starost with every stage
+ * ticked still names what it leaves out.
+ */
+const SEX_ANSWERS: readonly string[] = FILTER_METADATA.sex.map(
+  (option) => option.value,
+);
+
 function queryOf(filters: Filters): Query {
   // null and not an empty set: the difference between a section asking nothing
   // and a section asking for something no animal has.
@@ -407,7 +424,9 @@ function queryOf(filters: Filters): Query {
   return {
     species: filters.species,
     groups: {
-      sex: chosen("sex"),
+      sex: SEX_ANSWERS.every((value) => filters.sex.some((sex) => sex === value))
+        ? null
+        : chosen("sex"),
       age: chosen("age"),
       size: chosen("size"),
       energy: chosen("energy"),
@@ -921,6 +940,8 @@ export function chipGains(
   const freedToggles = new Map<string, number>();
   // Inside the result, what each picked value is holding up on its own.
   const sole = new Map<string, number>();
+  // Inside the result, how many of each sex, for Spol with both ticked.
+  const sexShown = new Map<string, number>();
 
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
     if (!speciesAt(pass, slot)) continue;
@@ -958,6 +979,8 @@ export function chipGains(
     // Everything passes, so this animal is in the result, and the result is
     // the only place a value can be the sole reason something is showing.
     result += 1;
+    const sex = index.sex[slot];
+    if (sex !== undefined) bump(sexShown, sex);
     for (const group of GROUPS) {
       const chosen = query.groups[group];
       if (chosen === null) continue;
@@ -979,7 +1002,18 @@ export function chipGains(
   };
   for (const group of GROUPS) {
     const chosen = filters[group];
+    // Spol with both ticked asks nothing (SEX_ANSWERS), so dropping one sex is
+    // neither case above: the other becomes the whole question, and what
+    // leaves is every animal shown that is not that sex, unknown included.
+    const asksNothing = group === "sex" && chosen.length > 1 && query.groups.sex === null;
     for (const value of chosen) {
+      if (asksNothing) {
+        const kept = chosen
+          .filter((other) => other !== value)
+          .reduce((sum, other) => sum + (sexShown.get(other) ?? 0), 0);
+        gains.set(chipKey(group, value), kept - result);
+        continue;
+      }
       price(chipKey(group, value), chosen.length === 1, freedGroup[group]);
     }
   }

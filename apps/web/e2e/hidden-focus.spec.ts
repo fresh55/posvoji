@@ -44,24 +44,37 @@ test("offers no unnamed tab stop in the animal dialog", async ({ page }) => {
   expect(await hiddenFocusables(page)).toEqual([]);
 });
 
-// The cat, held at the state he spends his whole life in wherever WebGL or
-// the network never delivers him. Aborting the .glb is what makes that state
-// the one under test: with it loading normally the viewer becomes a real
-// image with a real name within a second or two on this machine, and the
-// window in which the fault exists closes before a sweep can see it.
+// The cat in both states short of loaded. While the .glb is on its way,
+// <model-viewer> sits in a host that stays aria-hidden until he is ready, and
+// its shadow root holds focusable parts of its own. Holding the request open
+// keeps him there for the first sweep; with it answered, the viewer either
+// becomes a named image or is gone within a few frames, before a sweep can
+// see it.
 //
-// The viewer is what has to be on the page, not the cat. model-viewer is
-// appended as soon as its module lands and its stage is on screen, which is
-// the moment the shadow root and its poster button exist, and nothing later
-// about the model arriving changes the two facts being read here.
+// Once the request fails, the stage removes the viewer and waits for a reach
+// to retry under a fresh URL, because model-viewer caches a failed load. The
+// second sweep reads the failed stage as it is left.
 test("offers no unnamed tab stop on the about page while the cat is missing", async ({
   page,
 }) => {
-  await page.route("**/models/our-cat/cat.glb*", (route) => route.abort());
+  let fail = () => {};
+  const failed = new Promise<void>((resolve) => {
+    fail = resolve;
+  });
+  await page.route("**/models/our-cat/cat.glb*", async (route) => {
+    await failed;
+    await route.abort();
+  });
   await page.goto("/o-nas");
   const stage = page.locator('img[src*="/models/our-cat/poster.webp"]');
   await stage.scrollIntoViewIfNeeded();
-  await expect(page.locator("model-viewer")).toBeAttached();
+  const viewer = page.locator("model-viewer");
+  await expect(viewer).toBeAttached();
+
+  expect(await hiddenFocusables(page)).toEqual([]);
+
+  fail();
+  await expect(viewer).not.toBeAttached();
 
   expect(await hiddenFocusables(page)).toEqual([]);
 });

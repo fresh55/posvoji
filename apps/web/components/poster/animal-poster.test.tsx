@@ -338,9 +338,10 @@ describe("the fact tiles", () => {
     });
     // The stage marks are Motion components on screen, so the sheet reads
     // their geometry from the module both of them share
-    // (components/filters/age-stage-paths.ts). Three paths is the sprout.
+    // (components/filters/age-stage-paths.ts). Four paths is the sprout:
+    // its soil, the stem and a leaf either side.
     const age = container.querySelectorAll('[data-fact="age"] svg path');
-    expect(age.length).toBe(3);
+    expect(age.length).toBe(4);
     cleanup();
 
     // And a tree for an animal past the adult bucket.
@@ -349,7 +350,7 @@ describe("the fact tiles", () => {
     });
     expect(
       old.querySelectorAll('[data-fact="age"] svg path'),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
 });
 

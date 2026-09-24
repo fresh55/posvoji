@@ -45,10 +45,8 @@ export type FilterCardLayout = "sidebar" | "sheet";
  * data-[state=on]:bg-muted and toggleVariants its accent spelled against both
  * selectors, all ahead of this string; an attribute selector outranks a bare
  * utility, so the ones a row must not wear are overridden here by name. Both
- * spellings are needed: sex is a toggle group item and carries data-state,
- * while age wraps its items in a tooltip trigger whose own data-state="closed"
- * takes the attribute over, leaving aria-pressed as the only thing that says
- * the row is chosen. Plain buttons carry aria-pressed and nothing else.
+ * spellings are needed: sex and age are toggle group items and carry
+ * data-state, while plain buttons carry aria-pressed and nothing else.
  */
 // touch-manipulation and select-none in the base: a tile is a bare button or a
 // toggle item and inherits neither from ui/button. A tile that computes

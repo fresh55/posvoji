@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-21T14:56:23.984Z",
+  "reviewedAt": "2026-09-24T19:25:38.512Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -390,6 +390,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "adult",
+          "evidence": {
+            "start": 0,
+            "end": 35,
+            "sha256": "4396b5cc6be524257bed13ccd4f7edcd780c1cb6e7ca36023b334388ca0320ed"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -3748,6 +3761,19 @@
             "/root/review_b",
             "/root/review_c"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 34,
+            "sha256": "f7de9de9847f2d74b0030916bba04169de5bfe99d9289e46f89a621468867659"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -3907,6 +3933,27 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:139",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=139",
+      "descriptionSha256": "177cfcda6206cc69434c7eca748406288d5a9244dec84a9de0286e744e0716dc",
+      "claims": [
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 23,
+            "end": 35,
+            "sha256": "9ac65b22ec4956cf45331cc60330a69cb9ae47d0989458bcd27211a053124e96"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -4210,6 +4257,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "senior",
+          "evidence": {
+            "start": 0,
+            "end": 23,
+            "sha256": "5d06a3abd0da29933df03a4ba387349e7f6964a1ca15c533982a3ffa1cebea35"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -11529,6 +11589,19 @@
             "/root/review_b",
             "/root/review_c"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "adult",
+          "evidence": {
+            "start": 0,
+            "end": 78,
+            "sha256": "37bb868c1f5b2a52d4fc09162d148bbe3a6fcf6dd084d0c8a591a2ad339d89f3"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -11588,6 +11661,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "adult",
+          "evidence": {
+            "start": 26,
+            "end": 77,
+            "sha256": "32c20c24fe8ebfafe4df7b5ccc74424f50f8db496d33d8a2b7d0937b26ce0dc5"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -11811,6 +11897,19 @@
             "/root/review_b",
             "/root/review_c"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "adult",
+          "evidence": {
+            "start": 19,
+            "end": 97,
+            "sha256": "2cf0747f60db7b5a9c3bf3356deb6c24fd10d3d0de57257cf2254f64beb3c121"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -11909,6 +12008,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "senior",
+          "evidence": {
+            "start": 20,
+            "end": 50,
+            "sha256": "86777979122e1be6ab5f36bdc0bcd719dc264c60cfffee99010479e3dd1192d2"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -15108,6 +15220,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 41,
+            "end": 64,
+            "sha256": "2d2f6e0957451afafe28cadc2ef0d24356c6dff38965ab25b9b7e942a8276392"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -15167,6 +15292,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 41,
+            "end": 64,
+            "sha256": "2d2f6e0957451afafe28cadc2ef0d24356c6dff38965ab25b9b7e942a8276392"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -15280,6 +15418,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 38,
+            "sha256": "e6f9247e439a11353301de3df481b5967355c4f0c64c22ff81a1f04a0f574a2a"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -15314,6 +15465,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 37,
+            "sha256": "11525b81b813e1cea73ed61cc40e8132bedf5d0a4b6fafca00593d7ea398d75f"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -15350,6 +15514,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 36,
+            "sha256": "4f8bb1437d82737952af3d6962a32b67a1cdcb848c864c0a69772468259d06e0"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -15385,6 +15562,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 33,
+            "sha256": "16787760005b28a6baa2572a596b1c8aba1128f1dfa5858f180c39155134f80f"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -15419,6 +15609,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 34,
+            "sha256": "711f7fcf81a3a53c528d93b74c6f090870bb3604faee78e3e978b9f32bb4b6ef"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]
@@ -15462,6 +15665,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 218,
+            "end": 236,
+            "sha256": "23ae8b510b86a3ff5a8af468b1deb4a6ac3fd6c2d269ec70a16e29b26569ee68"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
+          ]
         }
       ]
     },
@@ -15503,6 +15719,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        },
+        {
+          "field": "lifeStage",
+          "value": "young",
+          "evidence": {
+            "start": 0,
+            "end": 40,
+            "sha256": "e0637de96fedfc4e7d692fbee144c50d6cdf275df0b61cf2e05fdc28bf24c1df"
+          },
+          "reviewedBy": [
+            "/root/age_review_a",
+            "/root/age_review_b"
           ]
         }
       ]

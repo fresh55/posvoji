@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-22T21:05:15.788Z",
+  "reviewedAt": "2026-09-24T19:25:38.512Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -18402,6 +18402,11 @@
         "/root/category_review_b"
       ],
       "coatLength": "short",
+      "lifeStage": "young",
+      "lifeStageReviewedBy": [
+        "/root/age_review_a",
+        "/root/age_review_b"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_9019.jpeg",
@@ -18509,6 +18514,11 @@
         "/root/category_review_b"
       ],
       "coatLength": "short",
+      "lifeStage": "young",
+      "lifeStageReviewedBy": [
+        "/root/age_review_a",
+        "/root/age_review_b"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_9196.jpeg",
@@ -18623,6 +18633,11 @@
         "/root/category_review_b"
       ],
       "coatLength": "short",
+      "lifeStage": "young",
+      "lifeStageReviewedBy": [
+        "/root/age_review_a",
+        "/root/age_review_b"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_9190.jpeg",
@@ -18660,6 +18675,11 @@
         "/root"
       ],
       "coatLength": "short",
+      "lifeStage": "young",
+      "lifeStageReviewedBy": [
+        "/root/age_review_a",
+        "/root/age_review_b"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_9186.jpeg",
@@ -18704,6 +18724,11 @@
         "/root"
       ],
       "coatLength": "short",
+      "lifeStage": "young",
+      "lifeStageReviewedBy": [
+        "/root/age_review_a",
+        "/root/age_review_b"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_9191.jpeg",

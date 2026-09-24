@@ -277,6 +277,10 @@ const sl = {
   resetFilters: "Ponastavi",
   resetAgeFilters: "Ponastavi filter starosti",
   resetSexFilters: "Ponastavi filter spola",
+  // Under Spol once both are ticked, which asks nothing (SEX_ANSWERS in
+  // lib/filters/engine.ts), so the second tick is not read as a press that
+  // did nothing.
+  sexBothLine: "Izbrana sta oba, zato vidiš vse živali.",
   resetSizeFilters: "Ponastavi filter velikosti",
   resetEnergyFilters: "Ponastavi filter energije",
   resetHealthFilters: "Ponastavi zdravstvene filtre",
@@ -813,6 +817,7 @@ const en: Messages = {
   resetFilters: "Reset",
   resetAgeFilters: "Reset age filters",
   resetSexFilters: "Reset sex filters",
+  sexBothLine: "Both are picked, so you see every animal.",
   resetSizeFilters: "Reset size filters",
   resetEnergyFilters: "Reset energy filters",
   resetHealthFilters: "Reset health filters",

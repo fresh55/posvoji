@@ -293,6 +293,19 @@ describe("collapsible filter sections", () => {
     expect(screen.queryByText(/^Brez podatka/)).toBeNull();
   });
 
+  // Both ticked ask nothing, so the second tick changes no count on the page.
+  // The line is what tells a visitor that the press was taken.
+  it("says under Spol that both ticked show every animal", () => {
+    renderSidebar();
+    const line = "Izbrana sta oba, zato vidiš vse živali.";
+    fireEvent.click(screen.getByRole("button", { name: /^Samec,/ }));
+    expect(screen.queryByText(line)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Samica,/ }));
+    expect(screen.getByText(line)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Samec,/ }));
+    expect(screen.queryByText(line)).toBeNull();
+  });
+
   it("opens what a visitor reaches for first and folds the rest away", () => {
     // Two sections and no more. The panel scrolls on its own, so anything
     // past its fold is reached by scrolling the panel and not the page, and

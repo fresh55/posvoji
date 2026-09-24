@@ -871,18 +871,27 @@ describe("active filter count", () => {
 });
 
 describe("multi-select behavior", () => {
-  it("uses OR for choices within sex", () => {
+  it("reads Samec and Samica together as either, unknown sex included", () => {
     const male = animal("dog", { sex: "male" });
     const female = animal("dog", { sex: "female" });
     const unknown = animal("dog", { sex: "unknown" });
+    const unsaid = animal("dog");
 
     expect(
       applyFilters(
-        [male, female, unknown],
+        [male, female, unknown, unsaid],
         { ...EMPTY_FILTERS, sex: ["male", "female"] },
         NOW,
       ),
-    ).toEqual([male, female]);
+    ).toEqual([male, female, unknown, unsaid]);
+    // One sex on its own is still a requirement.
+    expect(
+      applyFilters(
+        [male, female, unknown, unsaid],
+        { ...EMPTY_FILTERS, sex: ["female"] },
+        NOW,
+      ),
+    ).toEqual([female]);
   });
 
   it("uses OR for choices within age and keeps all three selected", () => {

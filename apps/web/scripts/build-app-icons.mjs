@@ -14,9 +14,8 @@ const compactMark = readFileSync(join(webRoot, "app/icon.svg"));
 
 // GitHub picks the README logo with <picture> and prefers-color-scheme, so each
 // file carries its own ink. The dark ink is GitHub's dark-theme text colour.
-const readmeMark = mark.toString("utf8").replace(/\s*<!--.*?-->/g, "");
 for (const [file, ink] of [["logo.svg", "#313941"], ["logo-dark.svg", "#E6EDF3"]]) {
-  const svg = readmeMark.replace('color="#313941"', `color="${ink}"`);
+  const svg = mark.toString("utf8").replace('color="#313941"', `color="${ink}"`);
   writeFileSync(join(webRoot, "../../docs/assets", file), svg);
   console.log(`docs/assets/${file}: ${ink}`);
 }

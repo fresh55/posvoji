@@ -1,10 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 120.8" fill="none" color="#313941" role="img" aria-label="Posvoji.si">
+  <!-- Full mark. Transparent background is required by the header and poster masks. -->
   <g stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- The long roof is optically lighter than the shorter animal contours. -->
     <path stroke-width="3.2" d="M4 43 60.5 5.5Q64 3.1 67.5 5.5L124 43"/>
+    <!-- Dog: smooth ear, muzzle and chest, ending tangent to the shared baseline. -->
     <path d="M37 49C35.8 53 35.5 57 36.4 60.5C37.1 63.3 39.7 64.6 42.1 64C47 62.8 49 57.7 49 53.2C49 45.5 43 40 35.5 40C29.2 40 24.8 43.3 22 48.7C20.5 51.6 18 52.5 14 52.5C12 52.5 11 53.8 11 56C11 62 15.8 65.3 22.8 66.3C28.1 67 29.4 70.6 27.3 75.9C26.5 77.9 25.1 80.2 23.3 82.9C17.7 91.5 15.4 99.9 18.1 107C20.4 113.3 25.9 117 34 117H110"/>
     <path d="M44 87C37 91 34 99 36.5 106"/>
+    <!-- Cat: mirrored ears and cheeks, flowing shoulders, no miniature toe joins. -->
     <path d="M51 117C43 117 40.5 109.5 44.5 101C46.5 96.8 50 94 53.5 90.8C58 86.7 58 83.3 54.5 79.4C51.6 76.2 50.8 71.4 53 66.5L54.8 58.8Q55 57.8 55.8 58.5L61.3 63.5Q65 62.8 68.7 63.5L74.2 58.5Q75 57.8 75.2 58.8L77 66.5C79.2 71.4 78.4 76.2 75.5 79.4C73.5 81.7 73.3 84.2 74.3 87.4C76 92.8 77 98 77 104V117"/>
     <path d="M69 103V117"/>
+    <!-- Rabbit: separated ear silhouettes, rounded chest and one simple haunch. -->
     <path d="M77 101C82 94 88 89 95 89C95 85.5 95.5 83.5 97 81C90 78.5 86 74 85 68.5C90.5 68.5 95 71.5 99 76C95.5 71.5 94.5 66 96 60C103 62.5 106.5 70 106.5 77C113.5 78 119 83 119 88.5C119 92.5 115.5 95 111 97C113 104 110 109 107 113C106 114.5 107 117 110 117"/>
     <path d="M96 104C99 107 100 112 98 117"/>
     <path stroke-width="2.2" d="M27 53Q28.5 51.5 30 53M58.5 72.5Q60 71 61.5 72.5M68.5 72.5Q70 71 71.5 72.5"/>

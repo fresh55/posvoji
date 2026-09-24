@@ -336,6 +336,11 @@ const sl = {
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
+  // The same ranges printed under the grove's three plants, where a column
+  // is about 72px wide in the sidebar. "do 1 leta" is the hint's own wording.
+  ageCaptionYoung: "do 1 leta",
+  ageCaptionAdult: "1–8 let",
+  ageCaptionSenior: "8 let ali več",
   filters: "Filtri",
   // Selected values, not sections. The chips row counts the same things, and
   // two numbers on one screen that both read as "how many filters" have to
@@ -850,6 +855,9 @@ const en: Messages = {
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",
+  ageCaptionYoung: "under 1 year",
+  ageCaptionAdult: "1–8 years",
+  ageCaptionSenior: "8+ years",
   filters: "Filters",
   filtersWithCount: "Filters, {count} active",
   activeFilters: "Active filters",

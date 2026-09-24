@@ -9,6 +9,8 @@ import {
   AgeGrowthControl,
   groundSink,
   isAgeStageActive,
+  plantMotion,
+  type PlantCue,
 } from "./age-growth-control";
 import { agePathTransition } from "./age-stage-icon";
 import { AGE_STAGE_PATHS, type AgeStage } from "./age-stage-paths";
@@ -204,6 +206,78 @@ describe("AgeGrowthControl grove", () => {
   });
 });
 
+describe("plantMotion", () => {
+  const cue = (overrides: Partial<PlantCue>): PlantCue => ({
+    stage: "mladicek",
+    index: 0,
+    lastIndex: 2,
+    reduceMotion: false,
+    growing: false,
+    leaving: false,
+    gusting: false,
+    grown: null,
+    ...overrides,
+  });
+  const peak = (values: unknown) => Math.max(...(values as number[]));
+  const rotateDelay = (transition: unknown) =>
+    (transition as { rotate: { delay?: number } }).rotate.delay ?? 0;
+
+  // Each stage says goodbye in its own register rather than all fading alike.
+  it("wilts an unpicked sprout and shivers an unpicked shrub", () => {
+    const sprout = plantMotion(cue({ leaving: true })).animate;
+    const shrub = plantMotion(
+      cue({ stage: "odrasel", index: 1, leaving: true }),
+    ).animate;
+
+    expect(Math.min(...(sprout.scaleY as number[]))).toBeLessThan(0.95);
+    // A shiver goes both ways, several times, and never far.
+    const turns = shrub.rotate as number[];
+    expect(turns.filter((degrees) => degrees < 0).length).toBeGreaterThan(1);
+    expect(turns.filter((degrees) => degrees > 0).length).toBeGreaterThan(1);
+    expect(peak(turns.map(Math.abs))).toBeLessThan(2);
+  });
+
+  it("blows a reset's gust through the grove from the left", () => {
+    const moves = (["mladicek", "odrasel", "senior"] as const).map(
+      (stage, index) => plantMotion(cue({ stage, index, gusting: true })),
+    );
+    const delays = moves.map(({ transition }) => rotateDelay(transition));
+    const bends = moves.map(({ animate }) => peak(animate.rotate));
+
+    // Every plant bends the same way, downwind, one after another.
+    expect(delays).toEqual([...delays].sort((a, b) => a - b));
+    expect(new Set(delays).size).toBe(3);
+    expect(bends.every((degrees) => degrees > 0)).toBe(true);
+    // The sprout bends furthest and the tree least.
+    expect(bends).toEqual([...bends].sort((a, b) => b - a));
+  });
+
+  it("lets a pick outrank a gust and a gust outrank a farewell", () => {
+    const picked = plantMotion(
+      cue({ growing: true, gusting: true, leaving: true }),
+    );
+    const gusted = plantMotion(cue({ gusting: true, leaving: true }));
+
+    expect(picked.animate.scaleY).toEqual(expect.any(Array));
+    expect(gusted.animate.scaleY).toBe(1);
+  });
+
+  it("leaves every plant at rest when reduced motion is requested", () => {
+    for (const overrides of [
+      { growing: true },
+      { leaving: true },
+      { gusting: true },
+      { grown: { stage: "senior" as const, index: 2 } },
+    ]) {
+      const { animate, transition } = plantMotion(
+        cue({ ...overrides, reduceMotion: true }),
+      );
+      expect(animate).toEqual({ rotate: 0, x: 0, scaleX: 1, scaleY: 1 });
+      expect(transition).toEqual({ duration: 0 });
+    }
+  });
+});
+
 describe("AgeGrowthControl keyboard model", () => {
   // Half the panel's sections are plain buttons, where Tab stops on every
   // option. Radix's roving focus would make this group one stop that arrow
@@ -299,6 +373,20 @@ describe("age path motion", () => {
       expect(canopy[0].delay).toBe(canopy[1].delay);
       expect(startOf(canopy[0].d).x).toBe(12);
     }
+  });
+
+  // A wilting leaf folds down about the point where it meets the stem, so
+  // the two leaves turn opposite ways and only leaves carry a fold.
+  it("folds only the sprout's two leaves, and both of them downward", () => {
+    const folds = STAGES.flatMap((stage) =>
+      AGE_STAGE_PATHS[stage].flatMap((path) => (path.fold ? [path] : [])),
+    );
+
+    expect(folds).toHaveLength(2);
+    const [right, left] = folds;
+    expect(startOf(right.d).x).toBeGreaterThan(12);
+    expect(right.fold?.rotate).toBeGreaterThan(0);
+    expect(left.fold?.rotate).toBeLessThan(0);
   });
 
   // A path waiting for its turn is held off by opacity, because pathLength 0

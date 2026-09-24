@@ -6,10 +6,13 @@ import {
   domAnimation,
   m,
   useReducedMotion,
+  type TargetAndTransition,
+  type Transition,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import {
+  AGE_WILT,
   AgeStageIcon,
   ageDrawSeconds,
   type AgeStage,
@@ -29,7 +32,10 @@ import {
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import { UnansweredNote } from "@/components/filters/unanswered-note";
-import { useFilterCardHover } from "@/components/filters/use-filter-motion";
+import {
+  useFilterCardHover,
+  useOneShotCelebration,
+} from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FilterOption, Unanswered } from "@/lib/filters";
@@ -38,6 +44,20 @@ import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 type Keyframes = { values: number[]; times: number[]; duration: number };
+
+/** A pose over time: degrees times the plant's lean, px times the same, and
+ *  a vertical squash, all on one clock. */
+type Gesture = {
+  rotate: number[];
+  x: number[];
+  scaleY: number[];
+  times: number[];
+  duration: number;
+};
+
+function still(length: number, value: number): number[] {
+  return Array.from({ length }, () => value);
+}
 
 // Each stage grows at its own tempo, the way each paw in Velikost lands with
 // its own weight. The sprout shoots up past its height and flutters; the shrub
@@ -54,6 +74,12 @@ type Growth = {
   /** When the row's check confirms: once the plant has its leaves, not while
    *  the stem is still drawing. */
   checkDelay: number;
+  /** What it does when it is unpicked, each in its own register: the sprout
+   *  wilts and folds its leaves (the icon folds them on AGE_WILT's clock),
+   *  the shrub shivers, the tree gives a little as its leaf lets go. */
+  farewell: Gesture;
+  /** Degrees a reset's gust bends it: the sprout furthest, the tree least. */
+  gust: number;
 };
 
 type Stage = {
@@ -90,6 +116,13 @@ const STAGES: Record<AgeStage, Stage> = {
         duration: 0.66,
       },
       checkDelay: 0.3,
+      farewell: {
+        rotate: [0, 7, 5, 0],
+        x: still(4, 0),
+        scaleY: [1, 0.88, 0.91, 1],
+        ...AGE_WILT,
+      },
+      gust: 10,
     },
   },
   odrasel: {
@@ -112,6 +145,14 @@ const STAGES: Record<AgeStage, Stage> = {
         duration: 0.84,
       },
       checkDelay: 0.36,
+      farewell: {
+        rotate: [0, -1.6, 1.6, -1.2, 1.2, -0.6, 0.6, 0],
+        x: [0, -0.4, 0.4, -0.3, 0.3, -0.15, 0.15, 0],
+        scaleY: still(8, 1),
+        times: [0, 0.14, 0.28, 0.42, 0.56, 0.7, 0.85, 1],
+        duration: 0.5,
+      },
+      gust: 6,
     },
   },
   senior: {
@@ -134,6 +175,14 @@ const STAGES: Record<AgeStage, Stage> = {
         duration: 1.2,
       },
       checkDelay: 0.42,
+      farewell: {
+        rotate: [0, 1.2, -0.5, 0],
+        x: still(4, 0),
+        scaleY: still(4, 1),
+        times: [0, 0.35, 0.7, 1],
+        duration: 1,
+      },
+      gust: 4,
     },
   },
 };
@@ -224,7 +273,166 @@ const SHED_AT =
 // unpicked is shrinking to as the leaf leaves it.
 const WILTED_SCALE = 0.84;
 
-type FallingLeaf = { id: number; delay: number; scale: number };
+type FallingLeaf = { id: number; delay: number; scale: number; side: number };
+
+// A reset is a gust through the grove from the left: each plant bends with it
+// in turn and springs back, the way Velikost's reset walks its paws off.
+const GUST = {
+  shape: [0, 1, -0.35, 0.12, 0],
+  times: [0, 0.3, 0.6, 0.82, 1],
+  duration: 0.7,
+  // Slower than the reset's own 0.045s turn-taking, so it reads as wind
+  // crossing the row rather than three plants moving together.
+  stagger: 0.09,
+};
+const STAGE_COUNT = Object.keys(STAGES).length;
+const GUST_HOLD_MS =
+  ((STAGE_COUNT - 1) * GUST.stagger + GUST.duration) * 1000 +
+  CELEBRATION_GUARD_MS;
+const FAREWELL_HOLD_MS =
+  Math.max(
+    ...Object.values(STAGES).map(({ growth }) => growth.farewell.duration),
+  ) *
+    1000 +
+  CELEBRATION_GUARD_MS;
+
+// When the gust reaches the plant at this index and bends it furthest.
+function gustPeakAt(index: number): number {
+  return index * GUST.stagger + GUST.times[1] * GUST.duration;
+}
+
+// Neighbours answer the grown plant's first push, not the click.
+function swayStart(stage: AgeStage): number {
+  const { sway } = STAGES[stage].growth;
+  return sway.times[1] * sway.duration;
+}
+
+/**
+ * Which way a plant leans when it moves by itself: right, except the last in
+ * the row, which leans into the grove rather than off its edge.
+ */
+export function leanOf(index: number, lastIndex: number): 1 | -1 {
+  return index === lastIndex ? -1 : 1;
+}
+
+const REST = { rotate: 0, x: 0, scaleX: 1, scaleY: 1 };
+const SETTLE: Transition = { duration: 0.16 };
+
+export type PlantCue = {
+  stage: AgeStage;
+  index: number;
+  lastIndex: number;
+  reduceMotion: boolean;
+  /** This plant was just picked. */
+  growing: boolean;
+  /** This plant was just unpicked. */
+  leaving: boolean;
+  /** A reset is blowing through the grove. */
+  gusting: boolean;
+  /** Another plant was just picked, and where it stands. */
+  grown: { stage: AgeStage; index: number } | null;
+};
+
+/**
+ * What a plant's body does now, as Motion's target and its timing. One place
+ * decides between the gestures, so a pick outranks a gust, a gust outranks a
+ * farewell, and a farewell outranks leaning away from a neighbour.
+ *
+ * Keyframed values get a transition of their own and everything else settles
+ * on SETTLE: a flat transition carrying `times` would be applied to values
+ * that have only a start and an end.
+ */
+export function plantMotion(cue: PlantCue): {
+  animate: TargetAndTransition;
+  transition: Transition;
+} {
+  if (cue.reduceMotion) return { animate: REST, transition: { duration: 0 } };
+
+  const { growth } = STAGES[cue.stage];
+  const lean = leanOf(cue.index, cue.lastIndex);
+
+  if (cue.growing) {
+    const rise = {
+      duration: growth.rise.duration,
+      times: growth.rise.times,
+      ease: "easeOut" as const,
+    };
+    return {
+      animate: {
+        ...REST,
+        scaleY: growth.rise.values,
+        scaleX: growth.rise.widths,
+        rotate: growth.sway.values.map((degrees) => lean * degrees),
+      },
+      transition: {
+        default: SETTLE,
+        scaleY: rise,
+        scaleX: rise,
+        rotate: {
+          duration: growth.sway.duration,
+          times: growth.sway.times,
+          ease: "easeInOut",
+        },
+      },
+    };
+  }
+
+  if (cue.gusting) {
+    return {
+      animate: {
+        ...REST,
+        rotate: GUST.shape.map((share) => share * growth.gust),
+      },
+      transition: {
+        default: SETTLE,
+        rotate: {
+          duration: GUST.duration,
+          times: GUST.times,
+          delay: cue.index * GUST.stagger,
+          ease: "easeInOut",
+        },
+      },
+    };
+  }
+
+  if (cue.leaving) {
+    const { farewell } = growth;
+    const clock = {
+      duration: farewell.duration,
+      times: farewell.times,
+      ease: "easeInOut" as const,
+    };
+    return {
+      animate: {
+        ...REST,
+        rotate: farewell.rotate.map((degrees) => lean * degrees),
+        x: farewell.x.map((px) => lean * px),
+        scaleY: farewell.scaleY,
+      },
+      transition: { default: SETTLE, rotate: clock, x: clock, scaleY: clock },
+    };
+  }
+
+  if (cue.grown) {
+    // Neighbours lean away from the plant that just grew.
+    const away = Math.sign(cue.index - cue.grown.index) || 1;
+    return {
+      animate: { ...REST, rotate: [0, away * 2.2, 0] },
+      transition: {
+        default: SETTLE,
+        rotate: {
+          duration: 0.42,
+          delay:
+            swayStart(cue.grown.stage) +
+            Math.abs(cue.index - cue.grown.index) * 0.06,
+          ease: "easeInOut",
+        },
+      },
+    };
+  }
+
+  return { animate: REST, transition: SETTLE };
+}
 
 function leafKeyframes(scale: number, side: number) {
   const startY = LEAF_SHOULDER.y * scale;
@@ -288,6 +496,8 @@ export function AgeGrowthControl({
   const { hoveredValue: hoveredAge, handlers: hoverHandlers } =
     useFilterCardHover();
   const [fallingLeaf, setFallingLeaf] = useState<FallingLeaf | null>(null);
+  const farewell = useOneShotCelebration<AgeStage>(FAREWELL_HOLD_MS);
+  const gust = useOneShotCelebration<"reset">(GUST_HOLD_MS);
   const celebratingAge = celebration?.value ?? null;
 
   useEffect(() => {
@@ -312,13 +522,15 @@ export function AgeGrowthControl({
     ({ value }) => value === celebratingAge,
   );
   const lastIndex = options.length - 1;
+  const seniorIndex = options.findIndex(({ value }) => value === "senior");
 
-  function dropLeaf(delay: number, scale: number) {
+  function dropLeaf(delay: number, scale: number, side: number) {
     if (shouldReduceMotion) return;
     setFallingLeaf((current) => ({
       id: (current?.id ?? 0) + 1,
       delay,
       scale,
+      side,
     }));
   }
 
@@ -334,17 +546,26 @@ export function AgeGrowthControl({
       !isAgeStage(changed)
     ) {
       setCelebration(null);
+      if (isAgeStage(changed) && !nextSelected.includes(changed)) {
+        farewell.celebrate(changed);
+      }
       if (changed === "senior" && !nextSelected.includes(changed)) {
         // An empty selection is every stage again, so the tree keeps its
         // size and only a narrower one shrinks away under the leaf.
-        dropLeaf(0, nextSelected.length === 0 ? 1 : WILTED_SCALE);
+        dropLeaf(
+          0,
+          nextSelected.length === 0 ? 1 : WILTED_SCALE,
+          leanOf(seniorIndex, lastIndex),
+        );
       }
     } else {
       setCelebration((current) => ({
         value: changed,
         id: (current?.id ?? 0) + 1,
       }));
-      if (changed === "senior") dropLeaf(SHED_AT, 1);
+      if (changed === "senior") {
+        dropLeaf(SHED_AT, 1, leanOf(seniorIndex, lastIndex));
+      }
     }
     onToggle(changed);
   }
@@ -366,8 +587,17 @@ export function AgeGrowthControl({
           active={selected.length > 0}
           onReset={() => {
             setCelebration(null);
-            setFallingLeaf(null);
+            farewell.clear();
             setIsResetting(true);
+            if (!shouldReduceMotion) gust.celebrate("reset");
+            // The gust takes a leaf with it when the tree was among the
+            // picks, the way unpicking the tree by hand drops one, and blows
+            // it downwind rather than to the side the tree leans to.
+            if (selected.includes("senior")) {
+              dropLeaf(gustPeakAt(seniorIndex), 1, 1);
+            } else {
+              setFallingLeaf(null);
+            }
             onToggleMany(selected);
           }}
           resetAriaLabel={messages.resetAgeFilters}
@@ -403,27 +633,29 @@ export function AgeGrowthControl({
               if (!isAgeStage(value)) return null;
 
               const stage = STAGES[value];
-              const { growth } = stage;
               const active = isAgeStageActive(selected, value);
               const checked = selected.includes(value);
               const pressable = checked || (counts.get(value) ?? 0) > 0;
               const celebrating = celebratingAge === value && active;
-              const reacting = celebrationIndex >= 0 && !celebrating;
-              // Neighbours lean away from the plant that just grew; the plant
-              // itself leans right unless it is the last in the row.
-              const windDirection = celebrating
-                ? index === lastIndex
-                  ? -1
-                  : 1
-                : Math.sign(index - celebrationIndex) || 1;
-              // A leaf leaves the side the tree leans to on a pick, which is
-              // into the grove for the last plant rather than off its edge.
-              const leafSide = index === lastIndex ? -1 : 1;
+              const leaving = farewell.celebration?.value === value;
+              const body = plantMotion({
+                stage: value,
+                index,
+                lastIndex,
+                reduceMotion: shouldReduceMotion,
+                growing: celebrating,
+                leaving,
+                gusting: gust.celebration !== null,
+                grown:
+                  celebratingAge && !celebrating && celebrationIndex >= 0
+                    ? { stage: celebratingAge, index: celebrationIndex }
+                    : null,
+              });
               const hovered = hoveredAge === value;
               // A reset wakes the columns in order rather than all at once.
               const settleDelay = isResetting ? index * RESET_STAGGER : 0;
               const leafFall = fallingLeaf
-                ? leafKeyframes(fallingLeaf.scale, leafSide)
+                ? leafKeyframes(fallingLeaf.scale, fallingLeaf.side)
                 : null;
 
               return (
@@ -547,60 +779,13 @@ export function AgeGrowthControl({
                       <m.span
                         className="flex origin-bottom items-end justify-center"
                         initial={false}
-                        animate={
-                          shouldReduceMotion
-                            ? { rotate: 0, scaleX: 1, scaleY: 1 }
-                            : celebrating
-                              ? {
-                                  scaleY: growth.rise.values,
-                                  scaleX: growth.rise.widths,
-                                  rotate: growth.sway.values.map(
-                                    (degrees) => windDirection * degrees,
-                                  ),
-                                }
-                              : reacting
-                                ? {
-                                    rotate: [0, windDirection * 2.2, 0],
-                                    scaleX: 1,
-                                    scaleY: 1,
-                                  }
-                                : { rotate: 0, scaleX: 1, scaleY: 1 }
-                        }
-                        transition={
-                          shouldReduceMotion
-                            ? { duration: 0 }
-                            : celebrating
-                              ? {
-                                  scaleY: {
-                                    duration: growth.rise.duration,
-                                    times: growth.rise.times,
-                                    ease: "easeOut",
-                                  },
-                                  scaleX: {
-                                    duration: growth.rise.duration,
-                                    times: growth.rise.times,
-                                    ease: "easeOut",
-                                  },
-                                  rotate: {
-                                    duration: growth.sway.duration,
-                                    times: growth.sway.times,
-                                    ease: "easeInOut",
-                                  },
-                                }
-                              : reacting
-                                ? {
-                                    duration: 0.42,
-                                    delay:
-                                      celebrationSwayStart(celebratingAge) +
-                                      Math.abs(index - celebrationIndex) * 0.06,
-                                    ease: "easeInOut",
-                                  }
-                                : { duration: 0.16 }
-                        }
+                        animate={body.animate}
+                        transition={body.transition}
                       >
                         <AgeStageIcon
                           stage={value}
                           draw={celebrating}
+                          wilt={leaving}
                           soil={false}
                           reduceMotion={shouldReduceMotion}
                           className={cn(LEAF_CLASS, stage.groveClassName)}
@@ -774,11 +959,4 @@ export function AgeGrowthControl({
       </section>
     </LazyMotion>
   );
-}
-
-// Neighbours answer the grown plant's first push, not the click.
-function celebrationSwayStart(stage: AgeStage | null): number {
-  if (!stage) return 0;
-  const { sway } = STAGES[stage].growth;
-  return sway.times[1] * sway.duration;
 }

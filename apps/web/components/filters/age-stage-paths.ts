@@ -13,6 +13,10 @@ export type AgeStagePath = {
   /** The sprout's own strip of soil. The grove leaves it out, because the
    *  grove draws one ground line under all three plants. */
   soil?: true;
+  /** How a leaf folds down when the sprout wilts: the pivot where it meets
+   *  the stem, as a fraction of the path's own box, and the degrees it
+   *  swings through. Animated copy only. */
+  fold?: { originX: number; originY: number; rotate: number };
 };
 
 /**
@@ -45,12 +49,21 @@ export const AGE_STAGE_PATHS: Record<AgeStage, AgeStagePath[]> = {
       delay: 0.02,
       duration: 0.2,
     },
+    // The pivots are measured, not guessed: getBBox gives the right leaf the
+    // box (14, 3, 6 x 6.536) with (14, 9.536) at its bottom-left corner, and
+    // the left leaf (4, 8, 8 x 6) with (12, 13) on its right edge, 83% down.
     {
       d: "M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-2 .536",
       delay: 0.17,
       duration: 0.18,
+      fold: { originX: 0, originY: 1, rotate: 35 },
     },
-    { d: "M12 13a5 5 0 0 1-8-4 5 5 0 0 1 8 4", delay: 0.2, duration: 0.16 },
+    {
+      d: "M12 13a5 5 0 0 1-8-4 5 5 0 0 1 8 4",
+      delay: 0.2,
+      duration: 0.16,
+      fold: { originX: 1, originY: 0.833, rotate: -35 },
+    },
   ],
   odrasel: [
     {

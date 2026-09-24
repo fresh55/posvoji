@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+} from "@testing-library/react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -63,7 +69,7 @@ function Panel({ grows = 38, portal = false }: { grows?: number; portal?: boolea
     </button>
   );
   return (
-    <div data-testid="box" onClickCapture={anchor}>
+    <div data-testid="box" {...anchor}>
       <button type="button" aria-expanded={false}>
         Velikost
       </button>
@@ -89,6 +95,12 @@ function renderPanel(props: { grows?: number; portal?: boolean } = {}) {
 const row = () => screen.getByRole("button", { name: "Velika" });
 
 describe("usePressedRowAnchor", () => {
+  it("turns the browser's own scroll anchoring off on the box", () => {
+    const { result } = renderHook(() => usePressedRowAnchor());
+
+    expect(result.current.style).toEqual({ overflowAnchor: "none" });
+  });
+
   it("scrolls the box by as far as the press moved the row", () => {
     const box = renderPanel();
 
@@ -98,8 +110,7 @@ describe("usePressedRowAnchor", () => {
     expect(box.scrollTop).toBe(138);
   });
 
-  // The scroll does not move the row in the box's content, so a hold that
-  // kept measuring from the press scrolled the same 38px again every frame.
+  // A hold that re-read the same move every frame kept scrolling by it.
   it("scrolls once for one move, however many frames the hold lasts", () => {
     const box = renderPanel();
 
@@ -154,8 +165,6 @@ describe("usePressedRowAnchor", () => {
     expect(box.scrollTop).toBe(100);
   });
 
-  // React hands the box a click from anything portalled out of it, the Kje
-  // dialog's rows among them, and the box's scroll does not carry those.
   it("leaves a row the box does not contain alone", () => {
     const box = renderPanel({ portal: true });
 

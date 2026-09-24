@@ -193,6 +193,8 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  */
 const LAYOUT_CLASS: Readonly<Record<FilterCardLayout, string>> = Object.freeze({
   sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center`,
+  // PAW_BOX_TOP in size-paw-cards.tsx is worked out from this py-1.5 and the
+  // icon well's size-7.5: the room the size paw has to hop in.
   sidebar: `${DEAD_OPTION_CLASS} min-h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
 });
 

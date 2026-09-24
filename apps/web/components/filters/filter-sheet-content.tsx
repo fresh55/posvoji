@@ -18,10 +18,7 @@ import {
 } from "@/components/ui/drawer";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { SpeciesGlyphIcon } from "@/components/filters/species-glyph";
-import {
-  PRESSED_ROW_BOX_CLASS,
-  usePressedRowAnchor,
-} from "@/hooks/use-pressed-row-anchor";
+import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
 
 import { speciesScopeLabel } from "@/lib/labels";
 import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
@@ -75,7 +72,7 @@ export function FilterSheetContent({
   const [scrolled, setScrolled] = useState(false);
 
   const sortCaptionId = useId();
-  const anchorPressedRow = usePressedRowAnchor();
+  const pressedRowAnchor = usePressedRowAnchor();
 
   // Keep focus in the drawer when a filter removes its own control.
   const contentRef = useRef<HTMLDivElement>(null);
@@ -156,11 +153,10 @@ export function FilterSheetContent({
           {...{ [SCROLL_BOX_MARK]: "" }}
           // A pick can grow a section above the tile that took it; the tile
           // stays under the finger (hooks/use-pressed-row-anchor.ts).
-          onClickCapture={anchorPressedRow}
+          {...pressedRowAnchor}
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
           className={cn(
             "flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 pt-4 pb-6 scrollbar-thin",
-            PRESSED_ROW_BOX_CLASS,
             SHEET_BLOCK_CHILDREN_CLASS,
           )}
         >

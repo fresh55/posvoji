@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, facetCounts, groupOptions } from "@/lib/filters";
-import { pointer as pointerAt } from "@/test/pointer";
+import { pointer, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -156,16 +156,8 @@ describe("size section reset", () => {
   });
 });
 
-// jsdom has no PointerEvent, so pointer gestures are built on MouseEvent by
-// hand, dispatched under the pointer event name. React listens by event
-// name, so the onPointer* handlers still receive these even though the
-// event object itself is not a real PointerEvent.
-function pointer(
-  element: HTMLElement,
-  type: "pointerdown" | "pointerup" | "pointerleave" | "pointercancel",
-) {
-  fireEvent(element, new MouseEvent(type, { bubbles: true, cancelable: true }));
-}
+const press = (element: HTMLElement, type: "pointerdown" | "pointerup") =>
+  pointer(element, type, { x: 0, y: 0, pointerType: "mouse" });
 
 describe("SizePawCards watermark", () => {
   it("gives every sheet tile an aria-hidden watermark paw that does not carry the card's label", () => {
@@ -332,8 +324,8 @@ describe("SizePawCards press-crouch", () => {
       name: new RegExp(`^${options[1].label}, `),
     });
 
-    pointer(button, "pointerdown");
-    pointer(button, "pointerup");
+    press(button, "pointerdown");
+    press(button, "pointerup");
     fireEvent.click(button);
 
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -346,8 +338,8 @@ describe("SizePawCards press-crouch", () => {
       name: new RegExp(`^${options[2].label}, `),
     });
 
-    pointer(button, "pointerdown");
-    pointer(button, "pointerleave");
+    press(button, "pointerdown");
+    pointerOff(button);
     fireEvent.click(button);
 
     expect(onToggle).toHaveBeenCalledTimes(1);
@@ -392,12 +384,6 @@ describe("SizePawCards under the pointer", () => {
     screen
       .getByRole("button", { name: new RegExp(`^${label}, `) })
       .querySelector("[data-tipped]") !== null;
-  // React makes its pointerenter out of pointerover, and pointerleave out of
-  // pointerout.
-  const onto = (element: HTMLElement, pointerType: "mouse" | "touch") =>
-    pointerAt(element, "pointerover", { x: 0, y: 0, pointerType });
-  const off = (element: HTMLElement) =>
-    pointerAt(element, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
 
   it("tips the paw onto its heel under a mouse and not under a finger", () => {
     renderCards();
@@ -405,30 +391,28 @@ describe("SizePawCards under the pointer", () => {
       name: new RegExp(`^${options[1].label}, `),
     });
 
-    onto(card, "touch");
+    pointerOnto(card, "touch");
     expect(tipped(options[1].label)).toBe(false);
 
-    onto(card, "mouse");
+    pointerOnto(card, "mouse");
     expect(tipped(options[1].label)).toBe(true);
   });
 
-  // A landing takes the weight on the toes. With the mouse resting on the
-  // card, the paw hopped and landed 8 degrees back on its heel and stayed
-  // there.
+  // Why: the comment on `tipped` in size-paw-cards.tsx.
   it("stands the paw flat from a click until the pointer leaves", async () => {
     renderCards();
     const card = screen.getByRole("button", {
       name: new RegExp(`^${options[1].label}, `),
     });
 
-    onto(card, "mouse");
+    pointerOnto(card, "mouse");
     expect(tipped(options[1].label)).toBe(true);
 
     fireEvent.click(card);
     await waitFor(() => expect(tipped(options[1].label)).toBe(false));
 
-    off(card);
-    onto(card, "mouse");
+    pointerOff(card);
+    pointerOnto(card, "mouse");
     expect(tipped(options[1].label)).toBe(true);
   });
 
@@ -438,16 +422,14 @@ describe("SizePawCards under the pointer", () => {
       name: new RegExp(`^${options[2].label}, `),
     });
 
-    onto(card, "mouse");
-    pointer(card, "pointerdown");
+    pointerOnto(card, "mouse");
+    press(card, "pointerdown");
     expect(tipped(options[2].label)).toBe(false);
   });
 });
 
 describe("SizePawCards line weight", () => {
-  // The paws differ in size and not in ink. Lucide's 1.75 units scale with
-  // the icon, and the small paw drew 0.875px lines against the large paw's
-  // 1.46px.
+  // Why: PAW_STROKE_PX in size-paw-cards.tsx.
   it.each(["sidebar", "sheet"] as const)(
     "draws every paw's outline at one width on screen in the %s",
     (layout) => {

@@ -179,9 +179,7 @@ describe("the sex cards' keyboard model", () => {
   });
 });
 
-// The tick waits for the section's gesture to land (appearDelay). The box it
-// sits in filled on the press all the same, and a large paw's wait left a
-// solid green square with nothing in it for 0.42s.
+// Why the fill waits: FilterSelectionMark.
 describe("the selection mark's fill", () => {
   const box = (container: HTMLElement) =>
     container.querySelector<HTMLElement>("span[aria-hidden]");

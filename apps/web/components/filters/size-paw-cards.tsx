@@ -22,6 +22,7 @@ import {
   resetDelayStyle,
   useFilterCardGestures,
   useOneShotCelebration,
+  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import type { FilterOption } from "@/lib/filters";
@@ -200,17 +201,13 @@ function PawGlyph({
   // so six idle motion elements are not left on the page.
   spread?: ToeSpread;
 }) {
-  const duration = spread
-    ? spread.impact + TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE
-    : 0;
-  const times = spread
-    ? [
-        0,
-        spread.impact / duration,
-        (spread.impact + TOE_SPREAD_OPEN) / duration,
-        1,
-      ]
-    : [];
+  // The toes wait for the impact, open fast under the weight and close slowly.
+  const toeTrack = (distance: number) =>
+    waitThen(spread?.impact ?? 0, [0, distance, 0], {
+      duration: TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE,
+      times: [0, TOE_SPREAD_OPEN / (TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE), 1],
+      ease: ["easeOut", "easeInOut"],
+    });
 
   return (
     <svg
@@ -230,26 +227,21 @@ function PawGlyph({
       {spread ? (
         // Keyed on the landing, so a second pick replays the spread.
         <g key={spread.id}>
-          {PAW_TOES.map(({ cx, cy, away }) => (
-            <m.circle
-              key={`${cx}-${cy}`}
-              cx={cx}
-              cy={cy}
-              r={PAW_TOE_RADIUS}
-              initial={false}
-              // The wait for the impact is a keyframe, not a delay, for the
-              // same reason as the dust.
-              animate={{
-                x: [0, 0, away.x * spread.distance, 0],
-                y: [0, 0, away.y * spread.distance, 0],
-              }}
-              transition={{
-                duration,
-                times,
-                ease: ["linear", "easeOut", "easeInOut"],
-              }}
-            />
-          ))}
+          {PAW_TOES.map(({ cx, cy, away }) => {
+            const x = toeTrack(away.x * spread.distance);
+            const y = toeTrack(away.y * spread.distance);
+            return (
+              <m.circle
+                key={`${cx}-${cy}`}
+                cx={cx}
+                cy={cy}
+                r={PAW_TOE_RADIUS}
+                initial={false}
+                animate={{ x: x.keyframes, y: y.keyframes }}
+                transition={x.transition}
+              />
+            );
+          })}
         </g>
       ) : (
         PAW_TOES.map(({ cx, cy }) => (
@@ -369,13 +361,20 @@ function shadowDuration(landing: Landing): number {
 }
 
 // Nothing until the impact, then a puff that spreads and fades.
-function dustTransition(landing: Landing): Transition {
-  const impact = impactDelay(landing);
-  const duration = impact + DUST_DURATION;
+function dustPose(landing: Landing): Pose {
+  const track = (keyframes: number[]) =>
+    waitThen(impactDelay(landing), keyframes, {
+      duration: DUST_DURATION,
+      times: [0, 0.01 / DUST_DURATION, 1],
+      ease: ["linear", "easeOut"],
+    });
+  const opacity = track([0, 0.4, 0]);
   return {
-    duration,
-    times: [0, impact / duration, (impact + 0.01) / duration, 1],
-    ease: ["linear", "linear", "easeOut"],
+    animate: {
+      opacity: opacity.keyframes,
+      scaleX: track([0.7, 0.7, 1.6]).keyframes,
+    },
+    transition: opacity.transition,
   };
 }
 
@@ -418,47 +417,22 @@ function dropPose(
     }
     case "reacting": {
       // The thud lifts the paw off the ground and pushes it away from the
-      // one that landed.
-      //
-      // The wait for the thud is the first stretch of the keyframes and not
-      // a delay, for the reason the dust gives. The first keyframe was 0, so
-      // a paw still in the air from its own hop, picked 90ms before this
-      // one, painted it at once and fell 5px in a single frame. null starts
-      // from wherever the paw is, and one still in the air comes down before
-      // the wait.
-      const { delay } = reaction;
-      const down = Math.min(REACTION_FALL, delay);
-      const jolt = delay + NEIGHBOR_JOLT_DURATION;
-      const lean = delay + NEIGHBOR_LEAN_DURATION;
+      // one that landed. A paw still in the air from its own hop comes down
+      // first (waitThen's settle).
+      const y = waitThen(reaction.delay, [0, -reaction.jolt, 0], {
+        duration: NEIGHBOR_JOLT_DURATION,
+        times: [0, 0.35, 1],
+        ease: ["easeOut", "easeIn"],
+        settle: REACTION_FALL,
+      });
+      const x = waitThen(reaction.delay, [0, reaction.shift, 0], {
+        duration: NEIGHBOR_LEAN_DURATION,
+        ease: "easeInOut",
+        settle: REACTION_FALL,
+      });
       return {
-        animate: {
-          y: [null, 0, 0, -reaction.jolt, 0],
-          x: [null, 0, 0, reaction.shift, 0],
-        },
-        transition: {
-          y: {
-            duration: jolt,
-            times: [
-              0,
-              down / jolt,
-              delay / jolt,
-              (delay + NEIGHBOR_JOLT_DURATION * 0.35) / jolt,
-              1,
-            ],
-            ease: ["easeIn", "linear", "easeOut", "easeIn"],
-          },
-          x: {
-            duration: lean,
-            times: [
-              0,
-              down / lean,
-              delay / lean,
-              (delay + NEIGHBOR_LEAN_DURATION / 2) / lean,
-              1,
-            ],
-            ease: ["easeIn", "linear", "easeInOut", "easeInOut"],
-          },
-        },
+        animate: { y: y.keyframes, x: x.keyframes },
+        transition: { y: y.transition, x: x.transition },
       };
     }
     case "rest":
@@ -808,16 +782,9 @@ export function SizePawCards({
                     <m.span
                       key={`dust-${celebration?.id}`}
                       className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1.5 w-5 -translate-x-1/2 rounded-full bg-brand-strong"
-                      // Hidden until the impact. The wait is a keyframe, not a
-                      // delay: a delay shows the first keyframe while it
-                      // waits, which left the dust under a paw still in the
-                      // air.
+                      // Hidden until the impact (waitThen).
                       initial={{ opacity: 0, scaleX: 0.7 }}
-                      animate={{
-                        opacity: [0, 0, 0.4, 0],
-                        scaleX: [0.7, 0.7, 0.7, 1.6],
-                      }}
-                      transition={dustTransition(landing)}
+                      {...dustPose(landing)}
                     />
                   ) : null}
                   {departing && !shouldReduceMotion ? (

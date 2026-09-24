@@ -40,6 +40,7 @@ allowedFields:
   - shortDescription
   # Reviewed facts from the already-permitted descriptions and photographs.
   - approximateAgeMonths
+  - lifeStage
   - foundDate
   - originMunicipality
   - energy

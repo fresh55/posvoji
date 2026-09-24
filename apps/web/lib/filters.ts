@@ -46,6 +46,7 @@ export {
   waitingGroups,
   ageGroup,
   ageInMonths,
+  ageStage,
   applyFilters,
   bySpecies,
   careCounts,

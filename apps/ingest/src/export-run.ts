@@ -16,6 +16,7 @@ import { exitCodeForRun } from "./exit-codes";
 import { preparePublication } from "./export-animals";
 import { loadEnrichment } from "./enrichment";
 import { applyAppearance, currentPhotoHashes, loadAppearance } from "./appearance";
+import { settleLifeStages } from "./life-stage";
 import { crawlProviders } from "./export-crawl";
 import { CrawlSchedule, hostCooldowns } from "./crawl-schedule";
 import { writeGenerationReceipt } from "./generation-receipt";
@@ -589,11 +590,17 @@ export async function runExport(
 
     const generatedAt = now().toISOString();
 
+    // One answer to "how old" per animal, from the same clock as the cards: a
+    // stage gives way to an age, and a young stage past its window is dropped.
+    const staged = settleLifeStages(animals, new Date(generatedAt));
+    const expired = staged.dropped.filter((drop) => drop.reason === "young-expired").length;
+    logger.log(`life stages: ${staged.dropped.length - expired} gave way to an age, ${expired} young expired`);
+
     // Share cards are drawn from the cached photos, so they come after the image
     // sync and read the dataset's own build time: an age on a card and the same
     // age on the page are measured from one clock. A targeted run needs no
     // special case, since an unchanged animal keeps its fingerprint and its card.
-    const cards = await writeShareCards(animals, {
+    const cards = await writeShareCards(staged.animals, {
       reference: new Date(generatedAt),
     });
     logger.log(
@@ -605,7 +612,7 @@ export async function runExport(
     // that just went through the image cache carries cachedUrl and its derived
     // fields appended, and JSON.stringify follows insertion order, so every cached
     // animal showed up as updated on every run.
-    const dataset: Dataset = Dataset.parse({ generatedAt, animals });
+    const dataset: Dataset = Dataset.parse({ generatedAt, animals: staged.animals });
 
     // The same run's crawl, stamped with the same generatedAt even though it was
     // captured several phases earlier: the two files describe one run, and a

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Animal, Species, TestResult } from "@posvoji/schema";
+import { lifeStageOf, type Animal, type Species, type TestResult } from "@posvoji/schema";
 import {
   activeFilterCount,
+  ageGroup,
   applyFilters,
   bySpecies,
   careCounts,
@@ -910,6 +911,33 @@ describe("multi-select behavior", () => {
         NOW,
       ),
     ).toEqual([young, adult, senior]);
+  });
+
+  it("files a stated stage where no age is known, and lets an age win", () => {
+    const kitten = animal("cat", { lifeStage: "young" });
+    const oldDog = animal("dog", { lifeStage: "senior" });
+    const aged = animal("dog", { lifeStage: "senior", approximateAgeMonths: 36 });
+    const unknown = animal("dog");
+    const all = [kitten, oldDog, aged, unknown];
+    const only = (age: Filters["age"]) =>
+      applyFilters(all, { ...EMPTY_FILTERS, age }, NOW);
+
+    expect(only(["mladicek"])).toEqual([kitten]);
+    expect(only(["senior"])).toEqual([oldDog]);
+    expect(only(["odrasel"])).toEqual([aged]);
+    expect(Object.fromEntries(facetCounts(all, EMPTY_FILTERS, NOW).age)).toEqual({
+      mladicek: 1,
+      odrasel: 1,
+      senior: 1,
+    });
+  });
+
+  it("draws the stage lines where the schema draws them", () => {
+    for (let months = 0; months <= 200; months += 1) {
+      expect(ageGroup(months)).toBe(
+        { young: "mladicek", adult: "odrasel", senior: "senior" }[lifeStageOf(months)],
+      );
+    }
   });
 
   // Each result is a guarantee of its own, so every one ticked has to hold.

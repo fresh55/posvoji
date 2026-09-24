@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Animal } from "./animal";
+import { Animal, lifeStageOf } from "./animal";
 
 const validAnimal = {
   id: "macja-hisa:luna",
@@ -367,5 +367,20 @@ describe("Animal", () => {
   it("rejects an energy level outside calm/balanced/lively", () => {
     const result = Animal.safeParse({ ...validAnimal, energy: "hyper" });
     expect(result.success).toBe(false);
+  });
+
+  it("accepts a life stage and rejects one outside young/adult/senior", () => {
+    expect(Animal.parse({ ...validAnimal, lifeStage: "senior" }).lifeStage).toBe("senior");
+    expect(Animal.safeParse({ ...validAnimal, lifeStage: "kitten" }).success).toBe(false);
+  });
+});
+
+describe("lifeStageOf", () => {
+  it("draws the stage lines at one year and at eight years", () => {
+    expect(lifeStageOf(0)).toBe("young");
+    expect(lifeStageOf(11)).toBe("young");
+    expect(lifeStageOf(12)).toBe("adult");
+    expect(lifeStageOf(95)).toBe("adult");
+    expect(lifeStageOf(96)).toBe("senior");
   });
 });

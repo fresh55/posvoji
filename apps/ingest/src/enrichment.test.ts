@@ -149,6 +149,20 @@ describe("reviewed description enrichment", () => {
     expect(result.applied).toEqual([]);
   });
 
+  it("fills a stated life stage only where the shelter gave no age", () => {
+    const reviewed = manifest();
+    reviewed.records[0]!.claims[0] = { ...reviewed.records[0]!.claims[0]!, field: "lifeStage", value: "senior" };
+    expect(applyEnrichment([animal()], reviewed, policies).animals[0]?.lifeStage).toBe("senior");
+    for (const aged of [animal({ approximateAgeMonths: 30 }), animal({ birthDate: "2024-01-01" })]) {
+      const result = applyEnrichment([aged], reviewed, policies);
+      expect(result.animals[0]?.lifeStage).toBeUndefined();
+      expect(result.issues).toEqual([{ animalId: "fixture:1", field: "lifeStage", reason: "existing-value" }]);
+    }
+    const invalid = manifest();
+    invalid.records[0]!.claims[0] = { ...invalid.records[0]!.claims[0]!, field: "lifeStage", value: "kitten" };
+    expect(EnrichmentManifest.safeParse(invalid).success).toBe(false);
+  });
+
   it("merges nested leaves while preserving explicit unknown, false and sibling values", () => {
     const reviewed = manifest();
     const claim = reviewed.records[0]!.claims[0]!;

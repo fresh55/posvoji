@@ -105,6 +105,28 @@ describe("recorded energy", () => {
   });
 });
 
+describe("a stated life stage", () => {
+  it.each([
+    ["young", "sl", "Mladiček"],
+    ["adult", "sl", "Odrasel"],
+    ["senior", "en", "Senior"],
+  ] as const)("names %s in %s where the shelter gave no age", (lifeStage, locale, label) => {
+    renderFacts({ lifeStage }, locale);
+    const row = screen.getByRole("list", {
+      name: locale === "sl" ? "Podrobnosti o živali" : "Animal details",
+    });
+    expect(within(row).getByText(label)).toBeTruthy();
+    expect(within(row).getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("gives way to a stated age", () => {
+    renderFacts({ lifeStage: "senior", approximateAgeMonths: 30 });
+    const row = screen.getByRole("list", { name: "Podrobnosti o živali" });
+    expect(within(row).queryByText("Senior")).toBeNull();
+    expect(within(row).getAllByRole("listitem")).toHaveLength(1);
+  });
+});
+
 describe("the zdravje row", () => {
   // FIV and FeLV are cat viruses. A dog's record can carry a negative all the
   // same, a field filled in rather than a test run.

@@ -30,6 +30,7 @@ allowedFields:
   - species
   - sex
   - approximateAgeMonths
+  - lifeStage
   - size
   - status
   - intakeDate

@@ -85,6 +85,7 @@ function dataset(count: number): Animal[] {
     const flag = () => pick([true, false, undefined] as const);
     const months = pick([undefined, 3, 11, 12, 40, 95, 96, 130]);
     const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20"]);
+    const lifeStage = pick([undefined, "young", "adult", "senior"] as const);
     const adoptionRequirements = {
       indoorOnly: flag(),
       onlyPet: flag(),
@@ -116,6 +117,7 @@ function dataset(count: number): Animal[] {
       ...(energy === undefined ? {} : { energy }),
       ...(months === undefined ? {} : { approximateAgeMonths: months }),
       ...(born === undefined ? {} : { birthDate: born }),
+      ...(lifeStage === undefined ? {} : { lifeStage }),
       status: "available",
       medical: {
         neutered: flag(),
@@ -148,7 +150,10 @@ function slowGroupValue(
       return animal.sex === "unknown" ? undefined : animal.sex;
     case "age": {
       const months = ageInMonths(animal, NOW);
-      return months === undefined ? undefined : ageGroup(months);
+      if (months !== undefined) return ageGroup(months);
+      if (animal.lifeStage === "young") return "mladicek";
+      if (animal.lifeStage === "adult") return "odrasel";
+      return animal.lifeStage;
     }
     case "size":
       // Velikost is a question put to dogs and the rest, never to a cat.

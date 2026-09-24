@@ -244,6 +244,11 @@ describe("the fact tiles", () => {
     expect(bare.textContent).not.toMatch(/ni znano|not known/i);
   });
 
+  it("prints a stage the shelter stated without a number in the age tile", () => {
+    const { container } = poster({ animal: animal({ lifeStage: "senior" }) });
+    expect(tiles(container)).toEqual(["Mačka", "Starost: senior"]);
+  });
+
   // A sheet read across a room cannot be corrected by the description beside
   // it, because there is none: the identity three describe one animal and the
   // listing covers three. The species and the health record stay, both being

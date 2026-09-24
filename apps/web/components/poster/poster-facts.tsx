@@ -15,7 +15,9 @@ import {
 import {
   ageGroup,
   ageInMonths,
+  ageStage,
   GOOD_WITH_KEYS,
+  optionLabel,
   TOGGLES,
   toggleLabel,
 } from "@/lib/filters";
@@ -141,6 +143,20 @@ export function posterTiles(
       tone: "identity",
       // The same sprout, shrub or tree the age filter buckets by.
       glyph: { kind: "age", stage: ageGroup(months) },
+    });
+  }
+  // A stage the shelter stated without a number, worded as the filter's own
+  // choice: "Starost: odrasel".
+  const statedStage =
+    months === undefined ? ageStage(animal, reference) : undefined;
+  if (!severalAnimals && statedStage !== undefined) {
+    tiles.push({
+      key: "age",
+      label: translate(locale, "factAgeValue", {
+        age: optionLabel("age", statedStage, [], locale).toLocaleLowerCase(locale),
+      }),
+      tone: "identity",
+      glyph: { kind: "age", stage: statedStage },
     });
   }
 

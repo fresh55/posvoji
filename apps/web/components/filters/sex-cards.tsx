@@ -25,7 +25,7 @@ import {
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
-  useFilterCardHover,
+  useFilterCardGestures,
   useOneShotCelebration,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
@@ -116,6 +116,15 @@ const THRUST: Transition = {
 const TILT_DURATION = 0.7;
 const FINISH_DELAY = LANDED - 0.06;
 
+// The end of the handle, (12, 22) in the 24-unit box, where a hand would hold
+// the mirror. Motion owns transform-origin, so the pivot is spelled as
+// originX and originY.
+const HANDLE_END: MotionStyle = {
+  transformBox: "view-box",
+  originX: 0.5,
+  originY: 22 / 24,
+};
+
 const FINISH: Record<SexKind, Partial<Record<Part, Move>>> = {
   male: {
     reach: {
@@ -141,12 +150,43 @@ const FINISH: Record<SexKind, Partial<Record<Part, Move>>> = {
         times: [0, 0.25, 0.6, 0.85, 1],
         ease: "easeInOut",
       },
-      // The end of the handle, (12, 22) in the 24-unit box, where a hand
-      // would hold it. Motion owns transform-origin, so the pivot is spelled
-      // as originX and originY.
-      style: { transformBox: "view-box", originX: 0.5, originY: 22 / 24 },
+      style: HANDLE_END,
     },
   },
+};
+
+/**
+ * The wind-up while a pointer is held on the card, on the part that then
+ * finishes: the spear draws back into the shield, the mirror dips on its
+ * handle. It is the one gesture a phone gets before the pick, since a touch
+ * never hovers. Two keyframes, so springs; the release overshoots a little,
+ * which is what makes letting go read as the spring being let off.
+ *
+ * The spear drawn back overlaps the ring rather than parting from it.
+ */
+const PRESS: Record<SexKind, { part: Part; pose: TargetAndTransition }> = {
+  male: { part: "reach", pose: { x: -0.5, y: 0.5 } },
+  female: { part: "whole", pose: { rotate: 3, y: 0.4 } },
+};
+const PRESS_SPRING: Transition = { type: "spring", stiffness: 520, damping: 30 };
+const RELEASE_SPRING: Transition = {
+  type: "spring",
+  stiffness: 700,
+  damping: 18,
+};
+
+/**
+ * What the ink does as a card is unticked, while it fades: the spear is
+ * sheathed back through the shield, the mirror is lowered. Ink only: the
+ * faint outline the card rests with stays where it is, so the sign is seen
+ * going back into it. It runs on Ponastavi too, in each card's turn.
+ */
+const EXIT: Record<
+  SexKind,
+  { part: "reach" | "all"; pose: TargetAndTransition; style?: MotionStyle }
+> = {
+  male: { part: "reach", pose: { x: -0.9, y: 0.9 } },
+  female: { part: "all", pose: { rotate: 5, y: 1 }, style: HANDLE_END },
 };
 
 /**
@@ -171,8 +211,24 @@ const LIGHT_ORIGIN: MotionStyle = {
 // The gesture state clears once the longest finish, the tilt, has run.
 const HOLD_MS = Math.ceil((FINISH_DELAY + TILT_DURATION) * 1000) + 50;
 
-const AT_REST: TargetAndTransition = { x: 0, y: 0, rotate: 0 };
+const AT_REST = { x: 0, y: 0, rotate: 0 } as const;
 const OFF: Transition = { duration: 0 };
+
+/**
+ * The finish's own timing for what it moves, and the release for the rest.
+ * The mirror's tilt moves only rotate, so without the second half the dip a
+ * press left in y stayed put through the whole tilt.
+ */
+function finishTransition(move: Move): Transition {
+  const released = Object.keys(AT_REST)
+    .filter((key) => !(key in move.pose))
+    .map((key) => [key, RELEASE_SPRING]);
+  return {
+    ...move.transition,
+    delay: FINISH_DELAY,
+    ...Object.fromEntries(released),
+  };
+}
 
 function changedValue(selected: string[], nextSelected: string[]) {
   return (
@@ -185,11 +241,13 @@ function SexGlyph({
   kind,
   checked,
   finishing,
+  pressing,
   resetDelay,
 }: {
   kind: SexKind;
   checked: boolean;
   finishing: boolean;
+  pressing: boolean;
   resetDelay: number;
 }) {
   const shouldReduceMotion = useReducedMotion();
@@ -217,23 +275,59 @@ function SexGlyph({
   });
 
   const moving = finishing && !shouldReduceMotion;
+  const press = PRESS[kind];
+  const exit = EXIT[kind];
 
-  // A part of the sign that takes its share of the finish. The same moves
-  // run in both layers, so the faint outline underneath goes with the ink.
+  // A part of the sign that takes its share of the finish or the wind-up.
+  // The same moves run in both layers, so the faint outline underneath goes
+  // with the ink.
   const part = (name: Part, children: ReactNode) => {
     const move = finish[name];
-    if (!move) return children;
+    const winds = press.part === name;
+    if (!move && !winds) return children;
+    const held = winds && pressing && !shouldReduceMotion;
     return (
       <m.g
         initial={false}
-        style={move.style}
-        animate={moving ? move.pose : AT_REST}
-        transition={moving ? { ...move.transition, delay: FINISH_DELAY } : OFF}
+        style={move?.style}
+        animate={
+          moving && move
+            ? { ...AT_REST, ...move.pose }
+            : held
+              ? press.pose
+              : AT_REST
+        }
+        transition={
+          shouldReduceMotion
+            ? OFF
+            : moving && move
+              ? finishTransition(move)
+              : held
+                ? PRESS_SPRING
+                : RELEASE_SPRING
+        }
       >
         {children}
       </m.g>
     );
   };
+
+  // The ink's way out; see EXIT. It snaps back while the ink is hidden, so a
+  // card ticked again draws in place.
+  const sheathe = (children: ReactNode) => (
+    <m.g
+      initial={false}
+      style={exit.style}
+      animate={checked || shouldReduceMotion ? AT_REST : exit.pose}
+      transition={
+        checked || shouldReduceMotion
+          ? OFF
+          : { duration: DESELECT_DURATION, delay: resetDelay, ease: "easeIn" }
+      }
+    >
+      {children}
+    </m.g>
+  );
 
   const reach = (paths: (d: string, step: "stem" | "branches") => ReactNode) =>
     part(
@@ -243,6 +337,17 @@ function SexGlyph({
         {branches.map((d) => paths(d, "branches"))}
       </>,
     );
+
+  const reachInk = reach((d, step) => (
+    <m.path key={d} d={d} {...drawn(DRAW[step])} />
+  ));
+  const ink = (
+    <>
+      {part("ring", <m.path d={ring} {...drawn(DRAW.ring)} />)}
+      {exit.part === "reach" ? sheathe(reachInk) : reachInk}
+      {kind === "female" && <MirrorLight moving={moving} />}
+    </>
+  );
 
   const layers = (
     <>
@@ -276,11 +381,7 @@ function SexGlyph({
           ease: "easeOut",
         }}
       >
-        {part("ring", <m.path d={ring} {...drawn(DRAW.ring)} />)}
-        {reach((d, step) => (
-          <m.path key={d} d={d} {...drawn(DRAW[step])} />
-        ))}
-        {kind === "female" && <MirrorLight moving={moving} />}
+        {exit.part === "all" ? sheathe(ink) : ink}
       </m.g>
     </>
   );
@@ -374,8 +475,12 @@ export function SexCards({
     celebrate,
     clear: clearCelebration,
   } = useOneShotCelebration<string>(HOLD_MS);
-  const { hoveredValue: hoveredSex, handlers: hoverHandlers } =
-    useFilterCardHover();
+  const {
+    hoveredValue: hoveredSex,
+    pressedValue,
+    release: releasePress,
+    handlers: gestureHandlers,
+  } = useFilterCardGestures();
 
   return (
     <LazyMotion features={domAnimation}>
@@ -391,6 +496,10 @@ export function SexCards({
           } else {
             clearCelebration();
           }
+          // Touch browsers can skip pointerleave when the finger slides off,
+          // and pointercancel does not cover every path, so the click clears
+          // the press too.
+          releasePress(changed);
           onToggle(changed);
         }}
         aria-label={groupLabel("sex", locale)}
@@ -416,6 +525,8 @@ export function SexCards({
           const checked = selected.includes(value);
           const celebrating = celebration?.value === value && checked;
           const hovered = hoveredSex === value;
+          // The wind-up yields the moment the finish takes over.
+          const pressing = pressedValue === value && !celebrating;
           const exitDelay = resetDelay(index);
 
           // The glyph and its gestures are the same drawing on both surfaces;
@@ -440,6 +551,7 @@ export function SexCards({
                   kind={value}
                   checked={checked}
                   finishing={celebrating}
+                  pressing={pressing}
                   resetDelay={exitDelay}
                 />
               </m.span>
@@ -451,7 +563,7 @@ export function SexCards({
               key={value}
               value={value}
               disabled={isDeadOption(count, checked)}
-              {...hoverHandlers(value)}
+              {...gestureHandlers(value)}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({
                 layout,

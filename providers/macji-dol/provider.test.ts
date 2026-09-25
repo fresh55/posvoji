@@ -99,8 +99,11 @@ describe("parseIntakeBy", () => {
     // Winter may run into the next year, and only its end is a safe floor.
     ["Igor in Vladimir sta bila sprejeta pozimi 2022 kot skoraj odrasla.", "2023-02-28"],
     ["Pozimi 2023 je bila sprejeta.", "2024-02-29"],
-    // The nearest period to the arrival word, not the first in the sentence.
-    ["Rojena spomladi 2020, sprejeta jeseni 2021.", "2021-11-30"],
+    // The clause with the arrival word, not the first period in the sentence.
+    ["Potomka mačke iz Železnikov, sprejeta jeseni 2021, zdaj išče dom.", "2021-11-30"],
+    // A sentence without the space after its full stop is still two.
+    ["Je zelo plaha.Sprejeta je bila poleti 2023.", "2023-08-31"],
+    ["Prišla je maja 2025. Pred tem je bila ponovno cepljena.", "2025-05-31"],
   ])("%s → %s", (input, expected) => {
     expect(parseIntakeBy(input)).toBe(expected);
   });
@@ -112,6 +115,15 @@ describe("parseIntakeBy", () => {
     "Mira je v zavetišče prišla kot dudarka v maju 2014. Sedaj je zopet pri nas.",
     "V zavetišče je bil ta plahi fant sprejet z lokacije ob glavni cesti.",
     "Rodila se je maja 2024 in je zelo igriva.",
+    // Another event in the sentence: a birth, a life elsewhere, an adoption.
+    "Rojena spomladi 2020, sprejeta jeseni 2021.",
+    "Prišla je k nam, rojena maja 2024, v zavetišče pa julija 2024.",
+    "Mama je prišla aprila 2025, mladiči so se rodili junija 2025 v zavetišču.",
+    "Najdena je bila v Kranju, kjer je živela od leta 2015.",
+    "Rojena je bila maja 2015.Prišla je k nam lani.",
+    "Leta 2018 je bila sprejeta v nov dom, letos pa so jo lastniki pripeljali nazaj.",
+    // Two periods in the arrival's clause.
+    "Sprejeta je bila maja 2020 ali pozimi 2021.",
   ])("%s → undefined", (input) => {
     expect(parseIntakeBy(input)).toBeUndefined();
   });

@@ -752,8 +752,8 @@ export function namesUnanswered({ asked, unanswered }: Unanswered): boolean {
 
 /** Whether not one of the animals asked has an answer. Every option of the
  *  question then counts 0, since the counts are taken over the same animals,
- *  so there is nothing for the visitor to pick. /?zavetisce=macji-dol: none
- *  of its 15 animals has an intake date. */
+ *  so there is nothing for the visitor to pick. /?zavetisce=turk: none of its
+ *  18 animals has a date to read a wait from. */
 export function answeredByNone(tally: Unanswered | undefined): boolean {
   return tally !== undefined && tally.asked > 0 && tally.unanswered === tally.asked;
 }

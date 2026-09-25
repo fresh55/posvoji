@@ -105,8 +105,11 @@ intake dates in that order. Where there is neither, it reads `intakeBy`.
 the arrival ("od maja 2025" is 2025-05-31, "pozimi 2022" is 2023-02-28, "v
 letu 2019" is 2019-12-31), and never later than the day the page was read. A
 wait read from it is a floor, so the dialog and the card say "vsaj", and a
-threshold is passed only once the latest possible arrival has passed it. The
-Mačji dol parser sets it; it is not a claim field.
+threshold is passed only once the latest possible arrival has passed it.
+"Najnovejši sprejemi" leaves it out, since it would rank an old animal as new.
+The Mačji dol parser sets it; it is not a claim field. The period has to be
+the only one in a clause with an arrival word, and a sentence that also dates
+a birth, a life elsewhere or an adoption gives none.
 
 Not used: a post's publish date, because sites reuse old posts for new animals
 (Mačji dol's Vinko and Oniks share one), a date from a text about a returned

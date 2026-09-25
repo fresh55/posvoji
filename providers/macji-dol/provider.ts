@@ -210,10 +210,17 @@ export function parseIntakeDate(text: string): string | undefined {
 // The words that tie a period to the arrival. "Najden" counts: a cat found on
 // the street is brought in the same day or close to it.
 const ARRIVAL =
-  /(?<!\p{L})(?:prišel|prišl\p{L}*|sprejet\p{L}*|sprejel\p{L}*|najden\p{L}*|pri nas od|v zavetišču od|v mačjem dolu od)(?!\p{L})/giu;
+  /(?<!\p{L})(?:prišel|prišl\p{L}*|sprejet\p{L}*|sprejel\p{L}*|najden\p{L}*|pri nas od|v zavetišču od|v mačjem dolu od)(?!\p{L})/iu;
 // A text about a cat that came back names the first stay's date, which says
-// nothing about the current one ("v maju 2014 ... zopet pri nas").
-const RETURN = /(?<!\p{L})(?:zopet|ponovno|vrnil\p{L}*|vrnjen\p{L}*)(?!\p{L})/iu;
+// nothing about the current one ("v maju 2014 ... zopet pri nas"). Bare
+// "ponovno" is left out: it is also "ponovno cepljena".
+const RETURN =
+  /(?<!\p{L})(?:zopet|nazaj|vrnil\p{L}*|vrnjen\p{L}*|ponovno (?:pri nas|k nam|v zavetišč\p{L}*))(?!\p{L})/iu;
+// A sentence that also dates a birth, a life elsewhere or an adoption may be
+// dating that event, or another animal's ("Mama je prišla aprila 2025,
+// mladiči so se rodili junija 2025"), so it gives no date at all.
+const OTHER_EVENT =
+  /(?<!\p{L})(?:rojen\p{L}*|rodil\p{L}*|skotil\p{L}*|kotil\p{L}*|živel\p{L}*|posvoj\p{L}*|nov\p{L}* dom\p{L}*)(?!\p{L})/iu;
 
 const MONTHS: Record<string, number> = {};
 [
@@ -256,32 +263,31 @@ function lastDayOf(year: number, month: number): string {
 // Mačji dol names the arrival as a month, a season or a year ("od maja
 // 2025", "pozimi 2022", "V letu 2019 ... sprejet"). This is the last day that
 // period allows, so a wait read from it is never longer than the real one.
-// The period taken is the one nearest to an arrival word in the same
-// sentence; a sentence with no such word says when something else happened.
+// The period has to share a clause with an arrival word and be the only one
+// there: "najdena v Kranju, kjer je živela od leta 2015" dates the life
+// before, not the arrival. Anything less clear-cut gives no date.
 export function parseIntakeBy(text: string): string | undefined {
   const normalized = text.normalize("NFC").replace(/\s+/g, " ");
   if (RETURN.test(normalized)) return undefined;
-  // A full stop ends a sentence after a word or a year, never after the day
-  // of a date ("za 1. maj 2023").
-  for (const sentence of normalized.split(/(?<=(?:\p{L}|\d{4})[.!?])\s+/u)) {
-    const arrivals = [...sentence.matchAll(ARRIVAL)].map((match) => match.index);
-    if (arrivals.length === 0) continue;
-    let nearest: { distance: number; iso: string } | undefined;
-    for (const match of sentence.matchAll(PERIOD)) {
-      const { month, season, value } = match.groups!;
+  // A full stop ends a sentence after a word or a year, with or without the
+  // space the site sometimes leaves out ("poudariti.Mama"), and never after
+  // the day of a date ("za 1. maj 2023").
+  const sentences = normalized.split(/(?<=(?:\p{L}|\d{4})[.!?])\s*(?=\p{Lu})/u);
+  for (const sentence of sentences) {
+    if (OTHER_EVENT.test(sentence)) continue;
+    for (const clause of sentence.split(/[,;:]/)) {
+      if (!ARRIVAL.test(clause)) continue;
+      const periods = [...clause.matchAll(PERIOD)];
+      if (periods.length !== 1) continue;
+      const { month, season, value } = periods[0]!.groups!;
       const year = Number(value);
-      let iso: string;
-      if (month) iso = lastDayOf(year, MONTHS[month.toLowerCase()]!);
-      else if (season) {
+      if (month) return lastDayOf(year, MONTHS[month.toLowerCase()]!);
+      if (season) {
         const end = SEASON_END[season.toLowerCase()]!;
-        iso = lastDayOf(end.nextYear ? year + 1 : year, end.month);
-      } else iso = `${year}-12-31`;
-      const distance = Math.min(
-        ...arrivals.map((arrival) => Math.abs(arrival - match.index)),
-      );
-      if (!nearest || distance < nearest.distance) nearest = { distance, iso };
+        return lastDayOf(end.nextYear ? year + 1 : year, end.month);
+      }
+      return `${year}-12-31`;
     }
-    if (nearest) return nearest.iso;
   }
   return undefined;
 }

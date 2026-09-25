@@ -84,6 +84,11 @@ export function effectiveSort(
 // the date the V zavetišču filter reads. firstSeenAt is not a substitute: it
 // says when Posvoji.si found the listing, not when the animal entered the
 // shelter.
+function exactStart(animal: AnimalFields): string | undefined {
+  const start = stayStart(animal);
+  return start && !start.floor ? start.date : undefined;
+}
+
 function compareOptional(
   left: string | undefined,
   right: string | undefined,
@@ -174,7 +179,9 @@ export function sortAnimals<T extends AnimalFields>(
         compared = compareOptional(stayStart(left)?.date, stayStart(right)?.date, 1);
         break;
       case "newest-arrivals":
-        compared = compareOptional(stayStart(left)?.date, stayStart(right)?.date, -1);
+        // A floor is the latest day the arrival can have been, so it would
+        // rank an old animal as new; only an exact date says who came last.
+        compared = compareOptional(exactStart(left), exactStart(right), -1);
         break;
       case "youngest":
         compared = compareOptionalNumber(

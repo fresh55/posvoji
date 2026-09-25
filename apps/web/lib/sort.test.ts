@@ -71,6 +71,10 @@ describe("sortAnimals", () => {
       "new",
       "unknown",
     ]);
+    // A floor is not an arrival, so it cannot rank anyone as newest.
+    const newest = sortAnimals(withFallbacks, "newest-arrivals").map(({ id }) => id);
+    expect(newest.slice(0, 3)).toEqual(["new", "found", "old"]);
+    expect(newest.slice(3).sort()).toEqual(["by", "unknown"]);
   });
 
   it("sorts known names using the selected locale and keeps unnamed animals last", () => {

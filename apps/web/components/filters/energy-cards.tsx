@@ -79,16 +79,17 @@ type Tempo = {
   glyph: string[];
   drawDuration: number;
   drawStagger: number;
-  // Played once, as the card is switched on. Every array here is a keyframe
-  // list, which only a tween can carry: a spring takes at most two values.
-  gesture: TargetAndTransition;
-  duration: number;
-  // One entry per keyframe, so every array in gesture is this long.
-  times: number[];
-  ease: "easeOut" | "easeInOut";
-  // Held back when the gesture is the tail of the draw rather than its
-  // accompaniment.
-  gestureDelay: number;
+  // Played once, as the card is switched on, alongside the draw. Absent for a
+  // level whose draw carries its tempo alone.
+  gesture?: {
+    // Every array here is a keyframe list, which only a tween can carry: a
+    // spring takes at most two values.
+    pose: TargetAndTransition;
+    duration: number;
+    // One entry per keyframe, so every array in pose is this long.
+    times: number[];
+    ease: "easeOut" | "easeInOut";
+  };
   // The check confirms as the gesture lands, or sooner when the gesture runs
   // longer than a box should sit empty.
   checkDelay: number;
@@ -120,7 +121,7 @@ type Tempo = {
     duration: number;
     ease: Easing;
   };
-  // How long the mark the level leaves on a selected card takes to appear.
+  // How long the mark the level leaves on a selected tile takes to appear.
   watermarkDuration: number;
   // The posture of a dead option. CSS only, no animation.
   deadClassName: string;
@@ -137,14 +138,15 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     drawStagger: 0.1,
     // Two rocks of a cradle, the second smaller, then still.
     gesture: {
-      rotate: [0, -7, 5, -2.5, 0],
-      scale: [1, 1.05, 1.01, 1.03, 1],
-      y: [0, 0.5, 0, 0.5, 0],
+      pose: {
+        rotate: [0, -7, 5, -2.5, 0],
+        scale: [1, 1.05, 1.01, 1.03, 1],
+        y: [0, 0.5, 0, 0.5, 0],
+      },
+      duration: 1,
+      times: [0, 0.24, 0.52, 0.78, 1],
+      ease: "easeInOut",
     },
-    duration: 1,
-    times: [0, 0.24, 0.52, 0.78, 1],
-    ease: "easeInOut",
-    gestureDelay: 0,
     // The rock runs a whole second, and waiting for it left a phone's tapped
     // card green around an empty box for 0.6s. The tick lands after the first
     // swing and the rock carries on around it.
@@ -179,16 +181,12 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
       "M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
       "M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1",
     ],
-    // The wave flows through left to right, one line behind the next.
+    // The wave flows through left to right, one line behind the next, and
+    // that is the whole gesture. A settle used to follow it, rocking the
+    // lines 2.2 degrees once the last one was down, which at 20px moved the
+    // tips of the waves 0.32px half a second after the pick. Nobody saw it.
     drawDuration: 0.34,
     drawStagger: 0.1,
-    // Scales settling: two shrinking corrections, then dead level.
-    gesture: { rotate: [0, 2.2, -1.2, 0.5, 0] },
-    duration: 0.45,
-    times: [0, 0.26, 0.52, 0.78, 1],
-    ease: "easeInOut",
-    // The settle is the tail of the draw, so it waits for the last line.
-    gestureDelay: 0.5,
     checkDelay: 0.42,
     rippleOpacity: 0.42,
     rippleScale: 1.35,
@@ -221,13 +219,14 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     // A static discharge: four flickers inside a fifth of a second, then the
     // bolt holds.
     gesture: {
-      opacity: [1, 0.2, 1, 0.3, 1, 0.65, 1],
-      scale: [1, 1.14, 1.02, 1.12, 1, 1.05, 1],
+      pose: {
+        opacity: [1, 0.2, 1, 0.3, 1, 0.65, 1],
+        scale: [1, 1.14, 1.02, 1.12, 1, 1.05, 1],
+      },
+      duration: 0.34,
+      times: [0, 0.07, 0.14, 0.23, 0.32, 0.46, 1],
+      ease: "easeOut",
     },
-    duration: 0.34,
-    times: [0, 0.07, 0.14, 0.23, 0.32, 0.46, 1],
-    ease: "easeOut",
-    gestureDelay: 0,
     checkDelay: 0.2,
     rippleOpacity: 0.55,
     rippleScale: 1.5,
@@ -273,7 +272,7 @@ const CARD_HOP_RECOIL = 0.25;
 const COUNT_JOLT_DURATION = 0.18;
 // Matches FilterSelectionMark's own appear duration.
 const CHECK_DURATION = 0.14;
-// The mark the level leaves behind on a selected card.
+// The mark the level leaves behind on a selected tile.
 const WATERMARK_OPACITY = 0.08;
 const WATERMARK_OUT_DURATION = 0.12;
 
@@ -290,7 +289,7 @@ function lastParticleEnd(tempo: Tempo): number {
 // celebration snaps whatever is still running back to rest.
 function tempoEnd(tempo: Tempo): number {
   return Math.max(
-    tempo.gestureDelay + tempo.duration,
+    tempo.gesture?.duration ?? 0,
     tempo.rippleDuration,
     (tempo.glyph.length - 1) * tempo.drawStagger + tempo.drawDuration,
     tempo.checkDelay + CHECK_DURATION,
@@ -324,17 +323,16 @@ const LEAVE_REST: TargetAndTransition = { y: 0, scaleY: 1 };
 const REST_TRANSITION: Transition = { duration: 0.16 };
 
 // Only the card that changed moves; the others stay still.
-function iconPose(celebrating: boolean, tempo: Tempo): Pose {
-  if (!celebrating) {
+function iconPose(celebrating: boolean, { gesture }: Tempo): Pose {
+  if (!celebrating || !gesture) {
     return { animate: ICON_REST, transition: REST_TRANSITION };
   }
   return {
-    animate: tempo.gesture,
+    animate: gesture.pose,
     transition: {
-      duration: tempo.duration,
-      times: tempo.times,
-      delay: tempo.gestureDelay,
-      ease: tempo.ease,
+      duration: gesture.duration,
+      times: gesture.times,
+      ease: gesture.ease,
     },
   };
 }
@@ -483,6 +481,8 @@ export function EnergyCards({
   );
   const {
     hoveredValue,
+    settledValue,
+    settle,
     pressedValue,
     release: releasePress,
     handlers: gestureHandlers,
@@ -516,9 +516,16 @@ export function EnergyCards({
             const pressing =
               pressedValue === value && !celebrating && !shouldReduceMotion;
             // The hover shows the tempo a pick would play, so a chosen level
-            // has nothing left to preview. Its own span keeps it off the
-            // gesture's and the press's transforms.
-            const previewing = hovered && !checked && !shouldReduceMotion;
+            // has nothing left to preview, and neither has one the pointer
+            // has just unticked: until the pointer leaves, the preview would
+            // play on top of the colour leaving, a moon nodding while it sank
+            // and a bolt twitching while it fizzled. Its own span keeps it
+            // off the gesture's and the press's transforms.
+            const previewing =
+              hovered &&
+              !checked &&
+              settledValue !== value &&
+              !shouldReduceMotion;
             const resetDelay = resetDelayOf(index);
             const icon = iconPose(celebrating, tempo);
             const card = cardPose(celebrating, tempo);
@@ -541,6 +548,7 @@ export function EnergyCards({
                   // off, and pointercancel does not cover every path, so the
                   // click clears the press too.
                   releasePress(value);
+                  settle(value);
                   onToggle(value);
                 }}
                 disabled={dead}
@@ -558,62 +566,67 @@ export function EnergyCards({
                   className: cn(
                     // isolate keeps the watermark's negative z-index above the
                     // card's own background instead of behind it.
-                    "isolate flex",
+                    layout === "sheet" && "isolate",
+                    "flex",
                     filterCardLayoutClass(layout),
                   ),
                 })}
               >
                 {/* The mark the chosen level leaves on the card, clipped by
-                    the card's own overflow. */}
-                <m.span
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute -z-10",
-                    layout === "sheet"
-                      ? "-bottom-2 -right-1.5"
-                      : "-bottom-1 -right-1",
-                  )}
-                  // A real initial, so a card checked from the URL stamps its
-                  // mark on load instead of having it already there.
-                  initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
-                  animate={{
-                    opacity: checked ? WATERMARK_OPACITY : 0,
-                    scale: shouldReduceMotion || checked ? 1 : 1.06,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : checked
-                        ? {
-                            duration: tempo.watermarkDuration,
-                            delay: tempo.checkDelay,
-                            ease: "easeOut",
-                          }
-                        : {
-                            duration: WATERMARK_OUT_DURATION,
-                            delay: resetDelay,
-                            ease: "easeOut",
-                          }
-                  }
-                >
-                  {/* The rotation stays on the svg; the span owns transform. */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className={cn(
-                      "rotate-[-12deg]",
-                      layout === "sheet" ? "size-12" : "size-9",
-                    )}
-                    fill="none"
-                    stroke="var(--brand-strong)"
-                    strokeWidth={1.75}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    the card's own overflow. The tile only, as in Velikost: it
+                    is a stamp on a card ground, and a row has no ground to
+                    stamp. On a sidebar row the mark filled the row's height
+                    at the end the tick box stands on, and a quarter of it sat
+                    under the box, so the one control on the row stood on a
+                    smudge. The row says "chosen" the way every other row in
+                    the column does. */}
+                {layout === "sheet" && (
+                  <m.span
+                    aria-hidden
+                    className="pointer-events-none absolute -bottom-2 -right-1.5 -z-10"
+                    // A real initial, so a card checked from the URL stamps
+                    // its mark on load instead of having it already there.
+                    initial={{
+                      opacity: 0,
+                      scale: shouldReduceMotion ? 1 : 1.06,
+                    }}
+                    animate={{
+                      opacity: checked ? WATERMARK_OPACITY : 0,
+                      scale: shouldReduceMotion || checked ? 1 : 1.06,
+                    }}
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : checked
+                          ? {
+                              duration: tempo.watermarkDuration,
+                              delay: tempo.checkDelay,
+                              ease: "easeOut",
+                            }
+                          : {
+                              duration: WATERMARK_OUT_DURATION,
+                              delay: resetDelay,
+                              ease: "easeOut",
+                            }
+                    }
                   >
-                    {tempo.glyph.map((d) => (
-                      <path key={d} d={d} />
-                    ))}
-                  </svg>
-                </m.span>
+                    {/* The rotation stays on the svg; the span owns
+                        transform. */}
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-12 rotate-[-12deg]"
+                      fill="none"
+                      stroke="var(--brand-strong)"
+                      strokeWidth={1.75}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {tempo.glyph.map((d) => (
+                        <path key={d} d={d} />
+                      ))}
+                    </svg>
+                  </m.span>
+                )}
 
                 <FilterCardMark
                   layout={layout}

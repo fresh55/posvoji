@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
@@ -8,12 +8,13 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions, type Unanswered } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { EnergyCards, TEMPOS } from "./energy-cards";
+import type { FilterCardLayout } from "./filter-card";
 import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
-import { pointerOnto } from "@/test/pointer";
+import { pointerOff, pointerOnto } from "@/test/pointer";
 
 installFilterFoldSeams();
 // fireEvent's click carries detail 0, which is a keyboard's, so a reset
@@ -34,6 +35,7 @@ function renderCards(
     onToggle?: (value: string) => void;
     onToggleMany?: (values: string[]) => void;
     unanswered?: Unanswered;
+    layout?: FilterCardLayout;
   } = {},
 ) {
   const onToggle = overrides.onToggle ?? vi.fn();
@@ -47,10 +49,62 @@ function renderCards(
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         unanswered={overrides.unanswered}
+        layout={overrides.layout}
       />
     </I18nProvider>,
   );
   return { onToggle, onToggleMany };
+}
+
+// The cards with their own selection, so a click really picks and unpicks.
+function StatefulCards() {
+  const [selected, setSelected] = useState<string[]>([]);
+  return (
+    <I18nProvider locale="sl">
+      <EnergyCards
+        options={options}
+        counts={counts}
+        selected={selected}
+        onToggle={(value) =>
+          setSelected((current) =>
+            current.includes(value)
+              ? current.filter((entry) => entry !== value)
+              : [...current, value],
+          )
+        }
+        onToggleMany={() => undefined}
+      />
+    </I18nProvider>
+  );
+}
+
+const card = (label: string) =>
+  screen.getByRole("button", { name: new RegExp(`^${label}, `) });
+
+const glyphOf = (button: HTMLElement) =>
+  button.querySelector("svg[data-energy-glyph]") as SVGSVGElement;
+
+// The glyph sits in three spans, innermost first: the press, the gesture a
+// pick plays, and the hover preview. Each owns its own transform.
+const gestureSpan = (button: HTMLElement) =>
+  glyphOf(button).parentElement?.parentElement as HTMLElement;
+const previewSpan = (button: HTMLElement) =>
+  gestureSpan(button).parentElement as HTMLElement;
+
+const rotation = (element: HTMLElement) =>
+  Number(/rotate\((-?[\d.]+)deg\)/.exec(element.style.transform)?.[1] ?? 0);
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Every transform Motion writes to the element until stop() is called. */
+function recordTransforms(element: HTMLElement) {
+  const seen: string[] = [];
+  const observer = new MutationObserver(() => seen.push(element.style.transform));
+  observer.observe(element, { attributes: true, attributeFilter: ["style"] });
+  return {
+    seen,
+    stop: () => observer.disconnect(),
+  };
 }
 
 describe("EnergyCards", () => {
@@ -169,31 +223,7 @@ describe("EnergyCards", () => {
   // preview actually run: a keyframe array reaching a spring would throw here
   // rather than in review.
   it("plays every level's gesture without a motion error", () => {
-    function StatefulCards() {
-      const [selected, setSelected] = useState<string[]>([]);
-      return (
-        <I18nProvider locale="sl">
-          <EnergyCards
-            options={options}
-            counts={counts}
-            selected={selected}
-            onToggle={(value) =>
-              setSelected((current) =>
-                current.includes(value)
-                  ? current.filter((entry) => entry !== value)
-                  : [...current, value],
-              )
-            }
-            onToggleMany={() => undefined}
-          />
-        </I18nProvider>
-      );
-    }
-
     render(<StatefulCards />);
-
-    const card = (label: string) =>
-      screen.getByRole("button", { name: new RegExp(`^${label}, `) });
 
     for (const { label } of options) {
       const button = card(label);
@@ -205,7 +235,7 @@ describe("EnergyCards", () => {
       expect(button.getAttribute("aria-pressed")).toBe("true");
     }
 
-    // Unchecking puts a hovered card back into its preview.
+    // Unchecking drives each level's leave.
     for (const { label } of [...options].reverse()) {
       fireEvent.click(card(label));
       expect(card(label).getAttribute("aria-pressed")).toBe("false");
@@ -215,6 +245,67 @@ describe("EnergyCards", () => {
       fireEvent.click(button);
       expect(button.getAttribute("aria-pressed")).toBe("true");
     }
+  });
+
+  // The preview shows what a pick would play. Unticking a level with the
+  // mouse still on it replayed it over the colour leaving: Miren nodded while
+  // it sank, Živahen twitched while it fizzled.
+  it("holds a level's preview back after an untick until the pointer leaves", async () => {
+    render(<StatefulCards />);
+    const miren = card("Miren");
+
+    pointerOnto(miren, "mouse");
+    await waitFor(() => expect(rotation(previewSpan(miren))).toBeCloseTo(-12));
+
+    fireEvent.click(miren);
+    fireEvent.click(miren);
+    expect(miren.getAttribute("aria-pressed")).toBe("false");
+    // Longer than the nod's own 0.5s.
+    await wait(700);
+    expect(rotation(previewSpan(miren))).toBe(0);
+
+    pointerOff(miren);
+    pointerOnto(miren, "mouse");
+    await waitFor(() => expect(rotation(previewSpan(miren))).toBeCloseTo(-12));
+  });
+
+  it("draws Uravnotežen on without a settle after the draw", async () => {
+    render(<StatefulCards />);
+
+    // Miren rocks as it is picked, which is what makes the silence below
+    // mean something: the recording does catch a turning glyph.
+    const calm = recordTransforms(gestureSpan(card("Miren")));
+    fireEvent.click(card("Miren"));
+    await wait(400);
+    calm.stop();
+    expect(calm.seen.some((transform) => transform.includes("rotate"))).toBe(true);
+
+    const balanced = recordTransforms(gestureSpan(card("Uravnotežen")));
+    fireEvent.click(card("Uravnotežen"));
+    // Past the end of the settle that used to follow the draw (0.5 + 0.45s).
+    await wait(1100);
+    balanced.stop();
+    expect(balanced.seen.filter((transform) => transform.includes("rotate"))).toEqual([]);
+  });
+
+  // The watermark is a stamp on a card ground. A sidebar row has none, and
+  // its mark sat a quarter under the tick box.
+  it("stamps a chosen level's glyph on a sheet tile and not on a sidebar row", () => {
+    const selected = options.map(({ value }) => value);
+    const drawings = (value: string) => {
+      const [stroke] = TEMPOS[value as EnergyLevel].glyph;
+      const label = options.find((option) => option.value === value)?.label ?? value;
+      return [...card(label).querySelectorAll("svg")].filter((svg) =>
+        [...svg.querySelectorAll("path")].some((path) => path.getAttribute("d") === stroke),
+      ).length;
+    };
+
+    renderCards({ selected, layout: "sheet" });
+    for (const value of selected) expect(drawings(value)).toBe(2);
+    cleanup();
+
+    renderCards({ selected, layout: "sidebar" });
+    for (const value of selected) expect(drawings(value)).toBe(1);
   });
 
   it("renders and toggles under reduced motion", () => {

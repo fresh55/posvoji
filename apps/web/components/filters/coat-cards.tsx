@@ -318,6 +318,17 @@ const DOG_NOSE =
 const LIGHT_NOSE_ON = new Set<CoatColorFacet>(["black", "brown", "grey"]);
 
 /**
+ * The light edge a dark nose wears on a two-toned coat.
+ *
+ * The nose sits on the line where the two colours meet. On Črno-bela its dark
+ * half vanished into the black half of the face, and what was left on the
+ * white half read as a notch in the split. Stroked under the fill, so only its
+ * outer half shows, the edge gives the nose back its shape on the dark side
+ * and is lost against the white one.
+ */
+const NOSE_HALO = 1.3;
+
+/**
  * The long coat. When Dolga dlaka is picked beside a colour, the animals the
  * colours became grow it: a cat's or a rabbit's cheeks puff out into a ruff,
  * and a dog's long ears grow a feathered fringe. It is the one place the two
@@ -326,37 +337,56 @@ const LIGHT_NOSE_ON = new Set<CoatColorFacet>(["black", "brown", "grey"]);
  * Only for Dolga. A medium coat is most of the catalogue's coats and draws
  * nothing a short one does not.
  *
- * Measured at 36px against the alternatives: tufted tips on a cat's ears were
- * too small to see, a ruff on a dog is hidden behind its ears, and a cat with
- * both tips and ruff was busy.
+ * Both are the silhouette itself, rounded lobes that widen the head at the
+ * cheeks and carry the ears' ends down, rather than marks drawn on it. The
+ * ruff started as three thin tufts per cheek, which at 36px and on the
+ * phone's 26px tile read as a cat's whiskers, and the dog's fringe was four
+ * strands that barely showed at 1x. Measured at 36px against other
+ * alternatives: tufted tips on a cat's ears were too small to see, a ruff on
+ * a dog is hidden behind its ears, and a cat with both tips and ruff was busy.
  */
-function cheekRuff(): string {
-  // Three tufts off the lower left of the head, the left side's; the right is
-  // its mirror like the ears. Each stands on the disc a little inside its edge
-  // and points down and out.
-  return [150, 166, 182]
-    .map((angle) => {
-      const rad = (a: number) => (a * Math.PI) / 180;
-      const base0 = at(rad(angle - 7), DISC_RADIUS - 1.2);
-      const tip = at(rad(angle + 4), DISC_RADIUS + 2.3);
-      const base1 = at(rad(angle + 7), DISC_RADIUS - 1.2);
-      return `M${base0}L${tip}L${base1}Z`;
-    })
-    .join("");
+function cheekRuff(): { shape: string; edge: string } {
+  // The left cheek's; the right is its mirror, like the ears. Three lobes
+  // between 122 and 200 degrees, each leaving the head just inside its edge
+  // and bulging about two units past it.
+  const from = 122;
+  const to = 200;
+  const lobes = 3;
+  const step = (to - from) / lobes;
+  const rad = (a: number) => (a * Math.PI) / 180;
+  const valley = DISC_RADIUS - 0.2;
+  const bulge = DISC_RADIUS + 2.9;
+  let scallops = "";
+  for (let i = 0; i < lobes; i++) {
+    const start = from + i * step;
+    const end = start + step;
+    scallops += `C${at(rad(start + step * 0.05), bulge)} ${at(rad(end - step * 0.05), bulge)} ${at(rad(end), valley)}`;
+  }
+  // Drawn over the head, and closed along an arc just inside the disc's
+  // hairline, so the hairline stops where the ruff starts and head and fur
+  // are one outline. Behind the head, the hairline ran across the join and
+  // the lobes read as something stuck to a disc.
+  const inner = DISC_RADIUS - 0.7;
+  return {
+    shape: `M${at(rad(from), inner)}L${at(rad(from), valley)}${scallops}L${at(rad(to), inner)}A${inner} ${inner} 0 0 0 ${at(rad(from), inner)}Z`,
+    // Only the outer edge is inked: the closing arc lies on the face.
+    edge: `M${at(rad(from), valley)}${scallops}`,
+  };
 }
 
 const CHEEK_RUFF = cheekRuff();
 
-// The fringe off the bottom of a dog's long ear, in the ear's own frame: four
-// strands, and a top edge tucked up inside the ear, which is drawn over it.
+// The long coat on a dog's ear, in the ear's own frame: two rounded lobes
+// that carry the ear's end down and a little out, the way a spaniel's ear
+// feathers. The top edge is tucked up inside the ear, which is drawn over it.
 const DOG_FRINGE =
-  "M-7.6 12.4L-8.2 15L-6.6 13.9L-6.2 16.1L-5.1 14.3L-4.2 15.8L-3.9 13.2L-5.5 11Z";
+  "M-7.3 10.8C-8.4 12.3 -8.8 14.8 -8.3 16.2C-7.9 17.4 -6.6 17.7 -5.9 16.5C-5.4 17.7 -3.9 17.9 -3.3 16.7C-2.8 15.6 -3 13.6 -3.4 12.2Z";
 
-type EarFur = {
-  /** On the head beside the ear, or hanging off the ear and moving with it. */
-  at: "cheek" | "ear";
-  shape: string;
-};
+type EarFur =
+  /** Over the head at the cheeks. `edge` is the part of its outline inked. */
+  | { at: "cheek"; shape: string; edge: string }
+  /** Hanging off the ear and moving with it, under the ear's own edge. */
+  | { at: "ear"; shape: string };
 
 type EarPose = { y?: number; rotate?: number; scale?: number; opacity?: number };
 
@@ -396,7 +426,7 @@ type Ear = {
 const EARS: Record<EarKind, Ear> = {
   cat: {
     shape: pointedEar(8.4, 8.2),
-    fur: { at: "cheek", shape: CHEEK_RUFF },
+    fur: { at: "cheek", ...CHEEK_RUFF },
     place: earAt(-128, 6.6, -38),
     inFront: false,
     pose: { stowed: { y: 6.6 }, peeking: { y: 3.8 }, up: { y: 0 } },
@@ -409,19 +439,32 @@ const EARS: Record<EarKind, Ear> = {
     fur: { at: "ear", shape: DOG_FRINGE },
     place: "translate(8.6 3.4)",
     inFront: true,
+    // Stowed turned in over the face only a little further than the peek, so
+    // the ear comes up through a short arc. From -80 degrees the swing
+    // overshot 21 degrees outward while the spring carried the ear's size
+    // past 1.18, and the ears came up as a pair of wings 64px across, 7px
+    // past the palette's 50px cell, crossing the neighbours' on a switch to
+    // Psi.
     pose: {
-      stowed: { rotate: -80, scale: 0.3, opacity: 0 },
-      peeking: { rotate: -40, scale: 0.75, opacity: 1 },
+      stowed: { rotate: -45, scale: 0.3, opacity: 0 },
+      peeking: { rotate: -25, scale: 0.75, opacity: 1 },
       up: { rotate: 0, scale: 1, opacity: 1 },
     },
-    spring: { type: "spring", stiffness: 320, damping: 14 },
+    // The flop is the rotation's. The ear's size grows in on a spring of its
+    // own that does not overshoot.
+    spring: {
+      type: "spring",
+      stiffness: 320,
+      damping: 14,
+      scale: { type: "spring", stiffness: 320, damping: 36 },
+    },
   },
   // A rabbit's ears, shorter than a rabbit's ear wants to be. Any taller and
   // the tips of a picked swatch on the second row reach the count under the
   // first.
   other: {
     shape: longEar(3.9, 7),
-    fur: { at: "cheek", shape: CHEEK_RUFF },
+    fur: { at: "cheek", ...CHEEK_RUFF },
     place: earAt(-106, 7.4, -20),
     inFront: false,
     pose: { stowed: { y: 6.2 }, peeking: { y: 3.6 }, up: { y: 0 } },
@@ -624,18 +667,26 @@ const NOSE_VARIANTS: Variants = {
 const NOSE_ORIGIN = { transformBox: "fill-box", originX: 0.5, originY: 0.5 } as const;
 
 // The long coat arrives after the ears, and leaves with them. A ruff puffs
-// out from behind the head, from the disc's centre, with a spring that
-// overshoots, which is what fur does when it is shaken out; a fringe grows
-// down off the ear from its top edge.
+// out over the cheeks, from the disc's centre, with a spring that overshoots,
+// which is what fur does when it is shaken out; a fringe grows down off the
+// ear from its top edge. The ruff starts only a little inside its place: it
+// is drawn over the face, and from further in it would sweep across it.
 type FurState = "flat" | "fluffed";
 
-function furVariants(flat: TargetAndTransition, fluffed: TargetAndTransition): Variants {
+// Always drawn with the ears and only fluffed out on a pick, rather than
+// mounted when Dolga is pressed: under the section's presence a node mounted
+// later plays its entrance already finished.
+const furStateOf = (longCoat: boolean, state: EarState): FurState =>
+  longCoat && state === "up" ? "fluffed" : "flat";
+
+function furVariants(
+  flat: TargetAndTransition,
+  fluffed: TargetAndTransition,
+  spring: Transition,
+): Variants {
   return {
     flat: (exit: EarExit) => ({ ...flat, transition: tuck(exit) }),
-    fluffed: (exit: EarExit) => ({
-      ...fluffed,
-      transition: timed(exit, { type: "spring", stiffness: 380, damping: 13, delay: 0.12 }),
-    }),
+    fluffed: (exit: EarExit) => ({ ...fluffed, transition: timed(exit, spring) }),
   };
 }
 
@@ -646,11 +697,23 @@ const FUR: Record<
   { variants: Variants; origin: typeof CENTRE_ORIGIN | typeof FRINGE_ORIGIN }
 > = {
   cheek: {
-    variants: furVariants({ scale: 0.75, opacity: 0 }, { scale: 1, opacity: 1 }),
+    variants: furVariants(
+      { scale: 0.94, opacity: 0 },
+      { scale: 1, opacity: 1 },
+      { type: "spring", stiffness: 380, damping: 13, delay: 0.12 },
+    ),
     origin: CENTRE_ORIGIN,
   },
+  // The fringe waits for the ear to swing down. Grown during the swing it
+  // hung off the end of an ear still turned outward and took the ear's reach
+  // to the edge of the palette's cell. It overshoots less than the ruff: it
+  // grows toward the count under the swatch.
   ear: {
-    variants: furVariants({ scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1 }),
+    variants: furVariants(
+      { scaleY: 0, opacity: 0 },
+      { scaleY: 1, opacity: 1 },
+      { type: "spring", stiffness: 380, damping: 20, delay: 0.3 },
+    ),
     origin: FRINGE_ORIGIN,
   },
 };
@@ -756,17 +819,13 @@ function EarPair({
 }) {
   const ear = EARS[kind];
   const fur = FUR[ear.fur.at];
-  // Always drawn with the ears and only fluffed out on a pick, rather than
-  // mounted when Dolga is pressed: under the section's presence a node
-  // mounted later plays its entrance already finished.
-  const furState: FurState = longCoat && state === "up" ? "fluffed" : "flat";
   const coat = (side: EarSide) => (
     <m.g
       style={fur.origin}
       variants={fur.variants}
       custom={exit}
       initial="flat"
-      animate={furState}
+      animate={furStateOf(longCoat, state)}
       exit="flat"
     >
       {children(side, "fur")}
@@ -779,7 +838,6 @@ function EarPair({
         const flick = earBeat(kind, side, beat, noticeDelay);
         return (
           <g key={side} transform={side === "right" ? MIRROR : undefined}>
-            {ear.fur.at === "cheek" && coat(side)}
             <g transform={ear.place}>
               <m.g
                 style={PIVOT}
@@ -793,7 +851,8 @@ function EarPair({
                     otherwise write one transform: a flick arriving while the
                     ear is still springing up would cut the spring off. */}
                 <m.g style={PIVOT} animate={flick.animate} transition={flick.transition}>
-                  {/* Under the ear, which covers the fringe's top edge. */}
+                  {/* Under the ear, which covers the fringe's top edge. A
+                      ruff grows on the cheeks instead: see CheekFur. */}
                   {ear.fur.at === "ear" && coat(side)}
                   {children(side, "ear")}
                 </m.g>
@@ -806,10 +865,82 @@ function EarPair({
   );
 }
 
+/**
+ * Both cheeks' ruff, in one paint, puffing out with the long coat.
+ *
+ * Its own component rather than a part of EarPair, because a ruff is drawn
+ * over the head while the ears it comes with are drawn behind it. Like the
+ * ears, the outline and the coat each draw a copy, and one component is how
+ * the two copies stay one ruff.
+ */
+function CheekFur({
+  state,
+  exit,
+  longCoat,
+  children,
+}: Pick<EarPairProps, "state" | "exit" | "longCoat"> & {
+  children: (side: EarSide) => ReactNode;
+}) {
+  const fur = FUR.cheek;
+
+  return (
+    <>
+      {EAR_SIDES.map((side) => (
+        <g key={side} transform={side === "right" ? MIRROR : undefined}>
+          <m.g
+            style={fur.origin}
+            variants={fur.variants}
+            custom={exit}
+            initial="flat"
+            animate={furStateOf(longCoat, state)}
+            exit="flat"
+          >
+            {children(side)}
+          </m.g>
+        </g>
+      ))}
+    </>
+  );
+}
+
+/** A ruff in the coat's own colours, over the edge of the head. */
+function CheekCoat({
+  colour,
+  ruff,
+  ...pair
+}: EarPairProps & {
+  colour: CoatColorFacet;
+  ruff: { shape: string; edge: string };
+}) {
+  const coats = EAR_COATS[colour];
+
+  return (
+    <g data-ruff="">
+      <CheekFur {...pair}>
+        {(side) => (
+          <>
+            <path d={ruff.shape} fill={SWATCHES[coats[side === "left" ? 0 : 1]]} />
+            <path
+              d={ruff.edge}
+              fill="none"
+              stroke={SWATCH_EDGE}
+              strokeWidth={1}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </>
+        )}
+      </CheekFur>
+    </g>
+  );
+}
+
 /** The ears in the coat's own colours. */
 function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet }) {
   const ear = EARS[pair.kind];
   const coats = EAR_COATS[colour];
+  // The nose sits on the split of a two-toned coat. See NOSE_HALO.
+  const halo = twoTonedOf(colour) !== undefined;
 
   return (
     <g data-ears={pair.kind} data-long-coat={pair.longCoat ? "" : undefined}>
@@ -817,8 +948,8 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
         {(side, part) => {
           const coat = coats[side === "left" ? 0 : 1];
           if (part === "fur") {
-            // A ruff is edged like the ears behind the head; a fringe hangs in
-            // front of the face and takes the ink its ear is edged in.
+            // A fringe hangs in front of the face and takes the ink its ear
+            // is edged in.
             return (
               <path
                 d={ear.fur.shape}
@@ -864,6 +995,10 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
           d={ear.nose}
           data-nose=""
           fill={LIGHT_NOSE_ON.has(colour) ? EAR_INK.black : SWATCHES.black}
+          stroke={halo ? EAR_INK.black : undefined}
+          strokeWidth={halo ? NOSE_HALO : undefined}
+          strokeLinejoin="round"
+          paintOrder="stroke"
           style={NOSE_ORIGIN}
           variants={NOSE_VARIANTS}
           custom={pair.exit}
@@ -877,9 +1012,10 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
 }
 
 /**
- * One of the outline's two strokes: round the disc and round both ears. It
- * mounts with the pick, and its copies of the ears start from wherever the
- * coat's ears were, peeking under the pointer that clicked or stowed.
+ * One of the outline's two strokes: round the disc, both ears and whatever
+ * long coat the animal wears. It mounts with the pick, and its copies of the
+ * ears start from wherever the coat's ears were, peeking under the pointer
+ * that clicked or stowed.
  */
 function EarOutline({
   paint,
@@ -900,6 +1036,9 @@ function EarOutline({
       exit="off"
     >
       <circle cx={CENTRE} cy={CENTRE} r={DISC_RADIUS} />
+      {ear.fur.at === "cheek" && (
+        <CheekFur {...pair}>{() => <path d={ear.fur.shape} />}</CheekFur>
+      )}
       <EarPair {...pair}>
         {(_side, part) => <path d={part === "fur" ? ear.fur.shape : ear.shape} />}
       </EarPair>
@@ -1025,8 +1164,14 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
             stroke={SWATCH_EDGE}
             strokeWidth={faces ? 1.2 : 1}
           />
+          {/* Over the face and its hairline: a dog's ears, which hang in
+              front of the face, and a ruff, which carries the head's outline
+              out, so the hairline has to stop where the ruff starts. */}
           <AnimatePresence initial={false} custom={exit}>
             {shown && ear.inFront && <EarCoat key={kind} colour={colour} {...pair} />}
+            {shown && ear.fur.at === "cheek" && (
+              <CheekCoat key={`${kind}-cheeks`} colour={colour} ruff={ear.fur} {...pair} />
+            )}
           </AnimatePresence>
         </m.g>
       </m.g>

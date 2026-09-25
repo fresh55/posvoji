@@ -7,6 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -145,6 +146,111 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     pointerOff(button("Rjava"));
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
+  });
+});
+
+describe("the animal a colour becomes", () => {
+  function StatefulColours({ species }: { species: SpeciesFilter }) {
+    const [selected, setSelected] = useState<string[]>([]);
+    return (
+      <I18nProvider locale="sl">
+        <CoatColorCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={(value) =>
+            setSelected((current) =>
+              current.includes(value)
+                ? current.filter((entry) => entry !== value)
+                : [...current, value],
+            )
+          }
+          onToggleMany={vi.fn()}
+          layout="sidebar"
+          species={species}
+          longCoat={false}
+        />
+      </I18nProvider>
+    );
+  }
+
+  // The dog's ears came up from -80 degrees, overshot 21 degrees outward and
+  // grew past 1.18 of their size on the way, and in the palette they arrived
+  // as wings 64px across, reaching 7px past the swatch's cell.
+  it("brings the dog's ears up through a short swing that does not grow past size", async () => {
+    render(<StatefulColours species="dog" />);
+    const turns: number[] = [];
+    const sizes: number[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const { target } of records) {
+        const pose = (target as Element).closest("[data-ears] g[transform] > g");
+        if (pose !== target) continue;
+        const { transform } = (target as SVGElement).style;
+        turns.push(Number(/rotate\((-?[\d.]+)deg\)/.exec(transform)?.[1] ?? 0));
+        sizes.push(Number(/scale\(([\d.]+)\)/.exec(transform)?.[1] ?? 1));
+      }
+    });
+    observer.observe(swatchOf("Črna"), {
+      attributes: true,
+      attributeFilter: ["style"],
+      subtree: true,
+    });
+
+    fireEvent.click(button("Črna"));
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    observer.disconnect();
+
+    expect(turns.length).toBeGreaterThan(5);
+    expect(Math.min(...turns)).toBeGreaterThan(-50);
+    expect(Math.max(...turns)).toBeLessThan(15);
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(1.005);
+  });
+
+  // Three thin tufts per cheek, drawn behind the head, read as whiskers. The
+  // ruff is the head's own outline now, so it is drawn over the hairline that
+  // closes the disc and only its outer edge is inked.
+  it("draws a long-haired cat's ruff over the edge of its head", () => {
+    renderColours({ layout: "sidebar", species: "cat", selected: ["black"], longCoat: true });
+
+    const swatch = swatchOf("Črna");
+    const ruff = swatch.querySelector("[data-ruff]") as SVGGElement;
+    const hairline = [...swatch.querySelectorAll("circle")].find(
+      (circle) => circle.getAttribute("fill") === "none" && !circle.closest("[data-ruff]"),
+    ) as SVGCircleElement;
+    expect(ruff).not.toBeNull();
+    expect(hairline.compareDocumentPosition(ruff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const [fill, edge] = [...ruff.querySelectorAll("path")];
+    expect(fill.getAttribute("stroke")).toBeNull();
+    expect(edge.getAttribute("fill")).toBe("none");
+  });
+
+  it("feathers a long-haired dog's ears below their ends", () => {
+    renderColours({ layout: "sidebar", species: "dog", selected: ["black"], longCoat: true });
+
+    // The fringe hangs in the ear's own group, under the ear it grows from.
+    const [fringe, ear] = [
+      ...swatchOf("Črna").querySelectorAll("[data-ears] g[transform] > g > g path"),
+    ];
+    const lowest = (path: Element) =>
+      Math.max(
+        ...(path.getAttribute("d") ?? "")
+          .match(/-?[\d.]+/g)!
+          .map(Number)
+          .filter((_, index) => index % 2 === 1),
+      );
+    expect(lowest(fringe)).toBeGreaterThan(lowest(ear) + 2);
+  });
+
+  // The nose sits on the split, and on Črno-bela its dark half vanished into
+  // the black half of the face.
+  it("gives a dog's nose a light edge on a two-toned coat only", () => {
+    renderColours({ layout: "sidebar", species: "dog", selected: ["black", "black-white"] });
+
+    const nose = (label: string) => swatchOf(label).querySelector("[data-nose]") as SVGPathElement;
+    expect(nose("Črno-bela").getAttribute("stroke")).not.toBeNull();
+    expect(nose("Črno-bela").getAttribute("paint-order")).toBe("stroke");
+    expect(nose("Črna").getAttribute("stroke")).toBeNull();
   });
 });
 

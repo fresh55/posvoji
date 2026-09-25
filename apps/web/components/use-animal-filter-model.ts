@@ -27,6 +27,7 @@ import {
   valueChipLabel,
   visibleToggles,
   type FilterFacet,
+  type Filters,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -48,6 +49,15 @@ type FilterActions = Pick<
   | "toggleCare"
   | "toggleManyCare"
 >;
+
+/** Every value the filters hold in a card group, as "group:value", so one
+ *  list can say which option of which section was picked. */
+function pickedOnPanel(filters: Filters): string[] {
+  return GROUPS.flatMap((group) => {
+    const values: readonly string[] = filters[group];
+    return values.map((value) => `${group}:${value}`);
+  });
+}
 
 /** Facet options, counts and recovery chips all describe the same result set. */
 export function useAnimalFilterModel({
@@ -140,21 +150,34 @@ export function useAnimalFilterModel({
   // from under the press, and keyboard focus with it. Set while rendering,
   // React's own shape for state that follows a value (use-filter-sections.ts
   // has the same).
+  //
+  // The same goes for an option inside one. liveInPool below leaves out an
+  // option the pool never answers unless it is picked, so Miren carried to
+  // Mačke stood only for its pick, and pressing it off took the row away from
+  // under the press. An option picked on this tab stays for as long as the
+  // tab does, like its section.
+  const picked = pickedOnPanel(filters);
   const [drawn, setDrawn] = useState(() => ({
     tab: filters.species,
     groups: GROUPS.filter((group) => shown[group]),
+    picked,
   }));
   const sameTab = drawn.tab === filters.species;
   const gained = GROUPS.filter(
     (group) => shown[group] && !(sameTab && drawn.groups.includes(group)),
   );
-  if (!sameTab || gained.length > 0) {
+  const gainedPicks = picked.filter(
+    (key) => !(sameTab && drawn.picked.includes(key)),
+  );
+  if (!sameTab || gained.length > 0 || gainedPicks.length > 0) {
     setDrawn({
       tab: filters.species,
       groups: sameTab ? [...drawn.groups, ...gained] : gained,
+      picked: sameTab ? [...drawn.picked, ...gainedPicks] : gainedPicks,
     });
   }
   const keptOnTab = drawn.groups;
+  const pickedOnTab = drawn.picked;
   // What each option could ever answer for this species tab, with every other
   // filter set aside (poolCounts in lib/filters/engine.ts, over `pool` alone).
   // liveInPool uses it below to drop an option no animal in the pool ever
@@ -182,13 +205,21 @@ export function useAnimalFilterModel({
         // filters[group] is a union of arrays indexed by a union of groups;
         // only this declared type lets .includes read past that to a plain
         // string (cardGroup in filter-groups.tsx needs the same widening).
+        // What was picked here earlier on this tab counts as picked.
         const selected: string[] = filters[group];
+        const prefix = `${group}:`;
+        const kept = pickedOnTab
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => key.slice(prefix.length));
         return {
           group,
-          options: liveInPool(options, livePoolCounts[group], selected),
+          options: liveInPool(options, livePoolCounts[group], [
+            ...selected,
+            ...kept,
+          ]),
         };
       }),
-    [filters, keptOnTab, livePoolCounts, locale, pool, shown],
+    [filters, keptOnTab, livePoolCounts, locale, pickedOnTab, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which

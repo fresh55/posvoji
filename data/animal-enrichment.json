@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-24T19:25:38.512Z",
+  "reviewedAt": "2026-09-25T10:19:36.513Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -2722,19 +2722,19 @@
       "animalId": "ljubljana:08b4bedb-37d1-405c-91f1-cf4db203b880",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bela-23010345",
-      "descriptionSha256": "beb9de382b6565f104da197d95e889c350d856dec5913450e0d8b8e8825dc160",
+      "descriptionSha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b",
       "claims": [
         {
           "field": "energy",
-          "value": "calm",
+          "value": "balanced",
           "evidence": {
-            "start": 139,
-            "end": 150,
-            "sha256": "32aaa793c2ff0f180b894a7f6d268d4c76bfca31acf68f37764f9dacb231925d"
+            "start": 142,
+            "end": 206,
+            "sha256": "018193ae4b9a3df75c1e5bf0e90f4b24c9279660673bbc0b00b4207bcd542bcd"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -2756,6 +2756,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 148,
+            "end": 165,
+            "sha256": "2f2ec518856174943b892267e9c8cc495c4fb81095161ca60dee100702957199"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -2905,7 +2918,7 @@
       "animalId": "ljubljana:314c4b1a-df22-4c9e-a34d-b97850284eea",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/saj-22010350",
-      "descriptionSha256": "e1e9686170f0ad6325e99989ffd589ed6b6e261912c74a5a80b2203be4906030",
+      "descriptionSha256": "952ebdb728cd0b976878fb716d8b28dc6427720f62be2ec843a0430b978b4c72",
       "claims": [
         {
           "field": "energy",
@@ -3148,7 +3161,7 @@
       "animalId": "ljubljana:9008675e-833b-49ad-a7b5-d94b0170e191",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ruben-23010027",
-      "descriptionSha256": "89ab4f1e2b7752f095b9cf0e9f9754505ff2a2cb23a6131b96f4eeaf546f5cc3",
+      "descriptionSha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901",
       "claims": [
         {
           "field": "energy",
@@ -3169,7 +3182,7 @@
       "animalId": "ljubljana:92dd9e05-45cf-440f-8ffd-56d745d0b41f",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cezar-25010006",
-      "descriptionSha256": "fe0be6d5942765f1a172e918fab3d2e8cbad46e51905e2ce0611cca440c8e0bb",
+      "descriptionSha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653",
       "claims": [
         {
           "field": "specialNeeds",
@@ -3388,7 +3401,7 @@
       "animalId": "ljubljana:e6091f88-96dc-4d3e-837d-fb0fd0b8c7d6",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lulu-23010009",
-      "descriptionSha256": "5e321d4bc7283c3c5adc91e32f3b0e1a52cadde6eb1fcf0cd3b8af7f67b6d810",
+      "descriptionSha256": "089d0025f7e66fac063757548d21d04b2594b4b9f160a98186eebeac260684fb",
       "claims": [
         {
           "field": "goodWith.dogs",
@@ -3913,6 +3926,19 @@
             "/root/review_b",
             "/root/review_c"
           ]
+        },
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 321,
+            "end": 339,
+            "sha256": "fc40984e983f662bb96975e6a5087a10986ff0ed5526093afe5e6dd1e768667d"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
         }
       ]
     },
@@ -4189,6 +4215,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 120,
+            "end": 145,
+            "sha256": "46ecbefaaa5f41751fab2b5e4ef12d48e3dac00d7497ca461def61be00190d9b"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -4618,6 +4657,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "balanced",
+          "evidence": {
+            "start": 271,
+            "end": 411,
+            "sha256": "3c2e90a7284a570b18a6ad5199056be81774cbdcc0e64027a6188645260fea0a"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -12544,15 +12596,15 @@
       "claims": [
         {
           "field": "energy",
-          "value": "lively",
+          "value": "balanced",
           "evidence": {
-            "start": 77,
-            "end": 90,
-            "sha256": "04a30ec606f344458dda8a36cc8a61cfe900e222e6d215cfafe9fbe3fd431c08"
+            "start": 209,
+            "end": 270,
+            "sha256": "300cd6890f710919ef862837695da5759f986c426b42f1fc4de559bc0a41e674"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -12797,6 +12849,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 183,
+            "end": 203,
+            "sha256": "7125cc1a8fe9abcdd19879e727e08367df284a2e38984859b7141fd4a5d0124e"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -14054,6 +14119,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 549,
+            "end": 571,
+            "sha256": "ef4bad5bedcaac2d6c639fb041f29a89366a210e4a67ce97ecba5d8aa749bc2a"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -16338,6 +16416,48 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:6f45c5a3-9cb6-4718-b5fe-0ff184506641",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lex-24010170",
+      "descriptionSha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 112,
+            "end": 134,
+            "sha256": "192f3e3df6e103ef03f48b3e7fc97454548ed30be7c524e0fcaab9ac3235072d"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:15a044ff-1262-4693-96dc-aaa3619c1055",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/frodo-24010072",
+      "descriptionSha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 6,
+            "end": 27,
+            "sha256": "04f1ca705895e8f94d31459f46f645e513926f8cda4763923f703fd9340fd065"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]

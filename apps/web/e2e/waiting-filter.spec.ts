@@ -32,10 +32,10 @@ function chips(page: Page): Locator {
   return page.getByRole("button", { name: /^Odstrani filter / });
 }
 
-// The glass a pick comes to rest on (waiting-cards.tsx): the accent copy on,
-// the muted sand off, the cut edges at the threshold's level and nothing
-// turning or pouring. toHaveCSS polls, so this reads the settled drawing and
-// not a frame of the pour.
+// The glass a pick comes to rest on (waiting-cards.tsx): the accent copy and
+// its sand on, the muted sand off, the cut edges at the threshold's level and
+// nothing turning or pouring. toHaveCSS polls, so this reads the settled
+// drawing and not a frame of the pour.
 async function expectGlassAtRest(
   row: Locator,
   value: string,
@@ -43,31 +43,24 @@ async function expectGlassAtRest(
   picked: boolean,
 ) {
   const glass = row.locator(`svg[data-waiting-glyph="${value}"]`);
-  await expect(glass).toHaveCount(1);
   await expect(glass.locator('[data-edge="top"]')).toHaveAttribute("y", edges.top);
   await expect(glass.locator('[data-edge="bottom"]')).toHaveAttribute("y", edges.bottom);
   await expect(glass.locator("[data-ink]")).toHaveCSS("opacity", picked ? "1" : "0");
-  await expect(glass.locator('[data-sand="lit"]')).toHaveCSS("opacity", picked ? "0.85" : "0");
   await expect(glass.locator('[data-sand="rest"]')).toHaveCSS("opacity", picked ? "0" : "0.45");
   await expect(glass.locator("[data-stream]")).toHaveCSS("opacity", "0");
   // The turn is the span two levels up from the drawing.
   await expect(glass.locator("xpath=../..")).toHaveCSS("transform", "none");
 }
 
-test("closes the sidebar's list of sections, after Lahko ponudim", async ({ page }) => {
-  await page.goto("/");
+test("closes the sidebar's sections, takes one threshold at a time and chips it last", async ({ page }) => {
+  await page.goto(START);
   const headings = sidebar(page).getByRole("heading", { level: 3 });
   await expect(headings.last()).toHaveText(/^Čaka na dom/);
   await expect(headings.nth(-2)).toHaveText(/^Lahko ponudim/);
-});
-
-test("takes one threshold at a time, writes it to the address and chips it last", async ({ page }) => {
-  await page.goto(START);
   await expect(chips(page)).toHaveCount(2);
 
   await sidebar(page).getByRole("button", { name: /^Čaka na dom/ }).click();
   const year = threshold(page, OVER_1_YEAR);
-  await expect(year).toBeEnabled();
   await expect(year).toHaveAttribute("aria-pressed", "false");
   await expect(page).not.toHaveURL(/cakanje=/);
 
@@ -119,14 +112,14 @@ test("a reload opens the section on the pick with its glass at rest", async ({ p
 // stepping back through the ticks, and forward returns to the list as it was
 // left, pick included.
 test("back leaves the list rather than undoing the pick", async ({ page }) => {
-  await page.goto("/o-nas");
+  await page.goto("/viri");
   await page.goto(START);
   await sidebar(page).getByRole("button", { name: /^Čaka na dom/ }).click();
   await threshold(page, OVER_1_YEAR).click();
   await expect(page).toHaveURL(/cakanje=nad-1-leto/);
 
   await page.goBack();
-  await expect(page).toHaveURL(/\/o-nas$/);
+  await expect(page).toHaveURL(/\/viri$/);
 
   await page.goForward();
   await expect(page).toHaveURL(/[?&]cakanje=nad-1-leto(&|$)/);

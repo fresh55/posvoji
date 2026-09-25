@@ -102,24 +102,28 @@ export const EMPTY_FILTERS: Filters = {
 // would only sit there doing nothing. These groups take one answer at a time.
 export const SINGLE_CHOICE_GROUPS: readonly MultiGroup[] = ["waiting"];
 
-// Waiting last, as the panel draws it (filter-groups.tsx): it is a fact about
-// the animal's stay and not about the animal, and beside Starost its months
-// and years read as an age.
 export const GROUPS: MultiGroup[] = [
-  "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
-  "waiting",
+  "sex", "age", "size", "energy", "waiting", "coatColor", "coatLength",
+  "shelter",
 ];
 
 /** All filter categories, used to group and label active chips. */
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
-/** In the order the panel asks its questions. The chips row in
- *  use-animal-filter-model.ts spells the same order out by hand, and
- *  waiting-cards.test.tsx holds the two together. */
-export const FILTER_FACETS: FilterFacet[] = [
+/** The order the panel asks its questions in, and the order of the active
+ *  filters row. */
+export const FILTER_FACETS = [
   "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
   "toggles", "goodWith", "care", "waiting",
-];
+] as const satisfies readonly FilterFacet[];
+
+// A facet missing from FILTER_FACETS fails to compile here.
+const everyFacetListed: [
+  Exclude<FilterFacet, (typeof FILTER_FACETS)[number]>,
+] extends [never]
+  ? true
+  : never = true;
+void everyFacetListed;
 
 // city is the shelter's town, kept as its own field rather than a generic
 // sublabel because the map places a marker from it.

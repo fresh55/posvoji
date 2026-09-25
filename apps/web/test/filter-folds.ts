@@ -60,7 +60,7 @@ export function installFilterFoldSeams(): ReturnType<typeof vi.fn> {
  */
 export function openFilterSection(label: string): HTMLButtonElement {
   const trigger = sectionTriggers().find(
-    (button) => button.firstElementChild?.textContent?.trim() === label,
+    (button) => labelOf(button) === label,
   );
   if (!trigger) throw new Error(`No filter section headed "${label}"`);
   if (trigger.getAttribute("aria-expanded") !== "true") {
@@ -79,6 +79,15 @@ export function openAllFilterSections(): void {
       fireEvent.click(trigger);
     }
   }
+}
+
+/** The heading of every section on screen, in the order they are drawn. */
+export function sectionLabels(): (string | undefined)[] {
+  return sectionTriggers().map(labelOf);
+}
+
+function labelOf(trigger: HTMLButtonElement): string | undefined {
+  return trigger.firstElementChild?.textContent?.trim();
 }
 
 function sectionTriggers(): HTMLButtonElement[] {

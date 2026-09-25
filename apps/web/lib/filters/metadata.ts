@@ -40,12 +40,8 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energija",
     coatColor: "Barva",
     coatLength: "Dolžina dlake",
-    // "Čaka na dom: nad 1 leto", a sentence the way the two household
-    // sections read. The heading names the wait, because the rows are
-    // durations and under "V zavetišču" they read as the animal's age.
-    // "Čas v zavetišču" with its info mark and the answered mark ran 9.6px
-    // into the Ponastavi beside it in the 224px sidebar; this one clears it
-    // by 7px.
+    // Names the wait and fits beside Ponastavi in the 224px sidebar, where
+    // "Čas v zavetišču" did not.
     waiting: "Čaka na dom",
     shelter: "Zavetišče",
   },
@@ -56,9 +52,8 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energy",
     coatColor: "Colour",
     coatLength: "Coat length",
-    // "Waiting for a home" is the Slovenian heading word for word, and with
-    // the info mark and the answered mark it ran 17px under the Reset beside
-    // it in the 224px sidebar. "Waiting: over 1 year" says the same.
+    // Not "Waiting for a home", which does not fit beside Reset in the 224px
+    // sidebar.
     waiting: "Waiting",
     shelter: "Shelter",
   },
@@ -248,11 +243,9 @@ export const FILTER_METADATA = {
   // has no section heading to lean on, so it says what the card's badge says
   // ("Čaka 4 leta").
   //
-  // A no-break space ties each number to its unit, so a label that has to
-  // wrap breaks as "Nad / 6 mesecev" and never as "Nad 6 / mesecev". "Nad 6
-  // mesecev" wraps in the phone sheet's three tiles at 320px and 360px; "6
-  // mesecev" is 62px and a tile's label box at 320px is 75px, so the pair
-  // always fits. The slugs keep their hyphens.
+  // A no-break space ties each number to its unit, so a label that wraps in
+  // the phone sheet breaks as "Nad / 6 mesecev" and never inside the
+  // duration. The slugs keep their hyphens.
   waiting: [
     { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6\u00a0mesecev", en: "Over 6\u00a0months" }, chip: { sl: "Čaka nad 6\u00a0mesecev", en: "Waiting over 6\u00a0months" } },
     { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1\u00a0leto", en: "Over 1\u00a0year" }, chip: { sl: "Čaka nad 1\u00a0leto", en: "Waiting over 1\u00a0year" } },

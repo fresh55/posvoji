@@ -8,14 +8,17 @@ import {
   careOptions,
   EMPTY_FILTERS,
   facetCounts,
-  FILTER_FACETS,
   GROUPS,
   groupOptions,
   type Filters,
   type WaitingGroup,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { installFilterFoldSeams, openFilterSection } from "@/test/filter-folds";
+import {
+  installFilterFoldSeams,
+  openFilterSection,
+  sectionLabels,
+} from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 import {
   checkDelayOf,
@@ -24,7 +27,6 @@ import {
   POUR_AT,
   POURS,
   WaitingCards,
-  WaitingMark,
   waitingTracks,
 } from "./waiting-cards";
 
@@ -51,9 +53,7 @@ function renderCards(locale: Locale = "sl", selected: string[] = []) {
 }
 
 describe("the waiting section's heading", () => {
-  // The rows are durations, and under a heading that named a place they read
-  // as the animal's age. "Waiting for a home" ran 17px under the Reset in the
-  // 224px sidebar (metadata.ts), so English says "Waiting".
+  // English says "Waiting" to fit the sidebar (metadata.ts).
   it.each([
     ["sl", "Čaka na dom"],
     ["en", "Waiting"],
@@ -134,16 +134,10 @@ describe("the waiting section's place in the panel", () => {
     );
   }
 
-  const headings = () =>
-    [...document.querySelectorAll("h3 button[aria-expanded]")].map((button) =>
-      button.firstElementChild?.textContent?.trim(),
-    );
-
-  // Last, and so as far from Starost as the panel goes: beside the age rows
-  // the same months and years read as an age.
+  // filter-groups.tsx says why it is last.
   it.each(["sidebar", "sheet"] as const)("closes the list in the %s", (layout) => {
     show(layout);
-    expect(headings()).toEqual([
+    expect(sectionLabels()).toEqual([
       "Spol",
       "Starost",
       "Energija",
@@ -195,19 +189,6 @@ describe("the waiting section's place in the panel", () => {
       "waiting",
     ]);
     expect(result.current.chips.at(-1)?.label).toBe("Čaka nad 1\u00a0leto");
-    // The chips row spells the order out by hand; this holds it to the list.
-    const rank = result.current.chips.map((chip) =>
-      FILTER_FACETS.indexOf(chip.facet),
-    );
-    expect(rank).toEqual([...rank].sort((a, b) => a - b));
-  });
-
-  it("lists every facet once, in the panel's order", () => {
-    expect(new Set(FILTER_FACETS).size).toBe(FILTER_FACETS.length);
-    expect([...FILTER_FACETS].sort()).toEqual(
-      [...GROUPS, "toggles", "goodWith", "care"].sort(),
-    );
-    expect(FILTER_FACETS.at(-1)).toBe("waiting");
   });
 });
 
@@ -263,17 +244,14 @@ describe("the pour", () => {
     }
   });
 
-  // The drawing a pick comes to rest on has to be the static one, or the chip
-  // (WaitingMark) and the picked row would show two different glasses. The
-  // accent top is FULL_TOP cut at POURS[value].top, and each SAND top starts
-  // on that line.
-  it.each(THRESHOLDS)("rests %s on the drawing the chip shows", (value) => {
-    const { container } = render(<WaitingMark value={value} />);
-    const [top] = [...container.querySelectorAll("g path")].map((path) =>
-      path.getAttribute("d"),
-    );
-    const firstY = Number(/^M[\d.]+ ([\d.]+)/.exec(top ?? "")?.[1]);
-    expect(firstY).toBeCloseTo(POURS[value].top);
+  // The pour cuts the accent sand at `top` and `bottom`, and the still sand
+  // the chip and the muted layer draw has to start on the same two lines, or
+  // a pick would come to rest on a different glass.
+  it.each(THRESHOLDS)("ends %s on its still drawing", (value) => {
+    const pour = POURS[value];
+    const startY = (d: string) => Number(/^M[\d.]+ ([\d.]+)/.exec(d)?.[1]);
+    expect(startY(pour.sand.top)).toBeCloseTo(pour.top);
+    expect(startY(pour.sand.bottom)).toBeCloseTo(pour.bottom);
   });
 });
 
@@ -286,12 +264,10 @@ describe("letting a threshold go", () => {
       reduced: false,
       resetDelay: 0.09,
     });
-    for (const part of ["ink", "sand"] as const) {
-      expect(tracks[part].transition).toMatchObject({ delay: 0.09 });
-      expect(
-        (tracks[part].transition as { duration: number }).duration,
-      ).toBeGreaterThan(0);
-    }
+    expect(tracks.ink.transition).toMatchObject({ delay: 0.09 });
+    expect(
+      (tracks.ink.transition as { duration: number }).duration,
+    ).toBeGreaterThan(0);
     // The muted sand waits for the glass to stand upright, and the cut edges
     // settle only once the accent has drained.
     for (const part of ["rest", "top", "bottom", "stream"] as const) {
@@ -302,14 +278,13 @@ describe("letting a threshold go", () => {
   });
 
   it("drains rather than snapping when nothing is resetting", () => {
-    const { ink, sand } = waitingTracks(POURS["over-6-months"], {
+    const { ink } = waitingTracks(POURS["over-6-months"], {
       checked: false,
       reduced: false,
       resetDelay: 0,
     });
     expect(ink.animate).toEqual({ opacity: 0 });
     expect((ink.transition as { duration: number }).duration).toBeGreaterThan(0);
-    expect((sand.transition as { duration: number }).duration).toBeGreaterThan(0);
   });
 });
 

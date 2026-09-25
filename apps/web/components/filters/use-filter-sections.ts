@@ -11,10 +11,10 @@ export type FilterSectionKey =
   | "size"
   | "energy"
   | "appearance"
+  | "waiting"
   | "health"
   | "goodWith"
-  | "care"
-  | "waiting";
+  | "care";
 
 const STORAGE_KEY = "posvoji:filter-sections";
 
@@ -29,10 +29,10 @@ const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
   size: false,
   energy: false,
   appearance: false,
+  waiting: false,
   health: false,
   goodWith: false,
   care: false,
-  waiting: false,
 };
 
 const SECTION_KEYS = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
@@ -55,10 +55,10 @@ const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
   energy: "energy",
   coatColor: "appearance",
   coatLength: "appearance",
+  waiting: "waiting",
   toggles: "health",
   goodWith: "goodWith",
   care: "care",
-  waiting: "waiting",
   shelter: null,
 };
 

@@ -83,6 +83,14 @@ export function waitThen(
       };
     }
   }
+  // No wait, no hold: a second keyframe at time 0 would be a segment of no
+  // length.
+  if (wait === 0) {
+    return {
+      keyframes: [...keyframes],
+      transition: { duration: total, times: played, ease: trackEase },
+    };
+  }
   return {
     keyframes: [first, ...keyframes],
     transition: {

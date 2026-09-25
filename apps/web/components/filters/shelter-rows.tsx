@@ -641,15 +641,16 @@ export function ShelterRows({
               onOpenChange={() => onToggleExpanded(value)}
               // The Collapsible is the grid cell now, holding the row and the
               // panel beneath it, so the span belongs here rather than on the
-              // content. Between sm and lg the list is two columns, and a panel
+              // content. From sm the stacked list is two columns, and a panel
               // squeezed into half of one would set the species chips and the
               // thumbnails wrapping under a row that does not wrap. Spanning both
               // columns costs a reflow of the cells after this one for as long as
               // the panel is open, which is the cheaper of the two: the shelter
               // being read stays where it was and grows, and only the list under
-              // it moves. lg:col-span-1 is the reset; the single-column grid
-              // there would otherwise still be carrying sm:col-span-2.
-              className={cn(isExpanded && "sm:col-span-2 lg:col-span-1")}
+              // it moves. picker-split:col-span-1 is the reset for the list
+              // beside the map (globals.css), whose single-column grid would
+              // otherwise still be carrying sm:col-span-2.
+              className={cn(isExpanded && "sm:col-span-2 picker-split:col-span-1")}
             >
               {row}
               <CollapsibleContent>

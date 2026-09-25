@@ -11,10 +11,11 @@ export function PickerDock({ controller }: { controller: LocationPickerControlle
             data-picker-sheet={sheetOpen ? "open" : "collapsed"}
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) z-20 flex flex-col overflow-hidden bg-background",
-              !sheetOpen && "max-lg:hidden",
-              // --picker-list-w: see view.tsx, where the stage beside it
-              // reads the same value.
-              "lg:inset-x-auto lg:right-0 lg:w-(--picker-list-w) lg:border-l",
+              !sheetOpen && "picker-stacked:hidden",
+              // Beside the map on a desktop and on a phone held sideways
+              // (picker-split in globals.css). --picker-list-w: see view.tsx,
+              // where the stage beside it reads the same value.
+              "picker-split:inset-x-auto picker-split:right-0 picker-split:w-(--picker-list-w) picker-split:border-l",
             )}
           >
               <div

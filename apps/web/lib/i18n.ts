@@ -333,10 +333,6 @@ const sl = {
   knownTopicCats: "Odnos do mačk",
   knownTopicFiv: "Izvid FIV",
   knownTopicFelv: "Izvid FeLV",
-  // The picker's offer once a place is set. "Živali" and not bare "po
-  // bližini": the list under it is shelters, already nearest first, and the
-  // press orders the grid behind the dialog, not the list in it.
-  sortByDistance: "Razvrsti živali po bližini",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
@@ -428,9 +424,13 @@ const sl = {
   whereSearching: "Kje iščeš?",
   // The chip over the map says the one thing the map alone has to say, and
   // stops. Naming the list as a third way in was a third line of copy about
-  // something already on screen: the panel is docked beside the map at lg and
-  // open as a sheet below it.
-  mapInstructionsDesktop: "Klikni regijo ali zavetišče",
+  // something already on screen: the panel stands beside the map where there
+  // is width for both, and is the other view of the switch where there is not.
+  //
+  // "Izberi" in both and never "Klikni". Which of the two is shown follows
+  // whether the plate draws its coins, not what is pressing it, and a tablet
+  // draws the coins under a finger.
+  mapInstructionsDesktop: "Izberi regijo ali zavetišče",
   mapInstructionsMobile: "Izberi regijo na zemljevidu",
   locating: "Iščem lokacijo…",
   nearestFirst: "Najbližje prvo",
@@ -855,7 +855,6 @@ const en: Messages = {
   knownTopicCats: "how they are with cats",
   knownTopicFiv: "the FIV result",
   knownTopicFelv: "the FeLV result",
-  sortByDistance: "Sort animals by distance",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",
@@ -898,7 +897,7 @@ const en: Messages = {
   clearField: "Clear input",
   shelterPickerLabel: "Shelter: {label}. Pick shelters.",
   whereSearching: "Where are you looking?",
-  mapInstructionsDesktop: "Click a region or a shelter",
+  mapInstructionsDesktop: "Pick a region or a shelter",
   mapInstructionsMobile: "Pick a region on the map",
   locating: "Finding your location…",
   nearestFirst: "Nearest first",

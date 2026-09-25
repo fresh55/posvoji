@@ -46,6 +46,7 @@ import {
   MapCallout,
   DistanceRing,
   Origin,
+  ORIGIN_REACH,
   OriginName,
   originNameAt,
 } from "./map-callout";
@@ -69,7 +70,11 @@ import {
   type NamePlacement,
 } from "./map-names";
 import { mapAvailabilityText, regionAvailability, shelterAvailability } from "./map-availability";
-import { MapRegionNames, NAMES_MIN_PLATE_WIDTH } from "./map-region-names";
+import {
+  MapRegionNames,
+  NAMES_MIN_PLATE_WIDTH,
+  type PlateDot,
+} from "./map-region-names";
 
 export type { ShelterPin } from "@/lib/map-layout";
 export type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
@@ -170,6 +175,7 @@ export function ShelterMap({
   originRadiusKm,
   summaries,
   regionShelterNames,
+  unlistedRegionIds,
   describedElsewhere,
   onMarkersVisible,
   originLabel,
@@ -247,6 +253,16 @@ export function ShelterMap({
    *  them instead of ending at "none here". Regions the table says nothing
    *  about are simply absent from the map, and say nothing extra. */
   regionShelterNames?: Map<number, string[]>;
+  /** Regions where a registry shelter with nothing listed stands, by region
+   *  id. The picker pins only shelters that list animals, so such a region
+   *  arrives here with no towns, and it said it had no shelters straight
+   *  above the coverage note naming the shelters that stand in it. A region
+   *  in this set with no towns of its own says nothing is listed instead
+   *  (emptyRegionMessage). A map that pins those shelters itself, the
+   *  found-animal atlas with `selectable: false`, needs none of this: their
+   *  towns answer the same question. Undefined leaves every empty region
+   *  saying what it said before. */
+  unlistedRegionIds?: ReadonlySet<number>;
   /** A shelter something off the map already describes in full, if there is
    *  one. Its hover annotation drops to the bare name: whatever is carrying
    *  the count and the species breakdown elsewhere would otherwise have those
@@ -632,6 +648,21 @@ export function ShelterMap({
     () => groupTownsByRegion(towns),
     [towns],
   );
+
+  /** What an empty region says where a live one gives its counts. One
+   *  function for the two places that say it, the region's own label and the
+   *  annotation over it, so a screen reader and a hover cannot be told two
+   *  different things about the same ground. A region with no town where an
+   *  unlisted shelter stands (unlistedRegionIds) has shelters, only nothing
+   *  listed in them, and says that instead of having none. */
+  const emptyRegionMessage = (regionId: number) =>
+    regionAvailability(
+      byRegion.get(regionId) ?? [],
+      locale,
+      unlistedRegionIds?.has(regionId)
+        ? mapAvailabilityText[locale].noListings
+        : messages.noSheltersInRegion,
+    );
 
   const highlightedTown = highlightedValue
     ? towns.find((town) =>
@@ -1031,9 +1062,19 @@ export function ShelterMap({
   const armedValues = armedRegion?.stats.values ?? (armedShelter
     ? [armedShelter.value]
     : armedTown ? townSelectableValues(armedTown, selected) : []);
+  const armedVerb = armedValues.every((value) => selected.includes(value))
+    ? mapAvailabilityText[locale].remove
+    : mapAvailabilityText[locale].select;
   const armedAction = armedValues.length > 0 ? {
-    label: `${armedValues.every((value) => selected.includes(value))
-      ? mapAvailabilityText[locale].remove : mapAvailabilityText[locale].select} · ${shelterCount(armedValues.length, locale)}`,
+    // The verb alone when the press takes one shelter: an armed mark, or a
+    // coin or region holding only one. The card above already names what is
+    // under the finger, and "Izberi · 1 zavetišče" counted out a one nobody
+    // needed told. A group keeps its count: a press that takes several
+    // shelters at once is the press worth warning about, and the button is
+    // where the warning is.
+    label: armedValues.length === 1
+      ? armedVerb
+      : `${armedVerb} · ${shelterCount(armedValues.length, locale)}`,
     onFocusChange: setArmedActionFocused,
     onClick: () => {
       const from: MapPick = armedRegion
@@ -1111,6 +1152,51 @@ export function ShelterMap({
     const rects = Object.values(calloutRects);
     return originName ? [...rects, originName.box] : rects;
   }, [calloutRects, originName]);
+  /** The towns a pick has landed in: where the dots go on a plate too small
+   *  for coins. */
+  const pickedTowns = useMemo(
+    () =>
+      towns.filter((town) =>
+        town.shelters.some((shelter) => selected.includes(shelter.value)),
+      ),
+    [selected, towns],
+  );
+  /** The origin's own mark, out to the edge of its dashed ring, when there is
+   *  an origin on the plate: a name run through the ring reads no better than
+   *  one run through the dot. */
+  const originMark = useMemo(
+    (): PlateDot | undefined =>
+      origin && originOnMap ? { ...project(origin), r: ORIGIN_REACH } : undefined,
+    [origin, originOnMap],
+  );
+  /** The round marks on a plate too small for coins, at the size each is
+   *  drawn: every picked dot with its ring, and the origin's mark. The region
+   *  names are set on the same plate and keep off all of them; see
+   *  placeRegionNames. */
+  const plateDots = useMemo((): PlateDot[] => {
+    const reach = (PICKED_DOT_PX + PICKED_DOT_RING_PX / 2) / plateScale;
+    const dots = pickedTowns.map((town) => ({ x: town.x, y: town.y, r: reach }));
+    return originMark ? [...dots, originMark] : dots;
+  }, [originMark, pickedTowns, plateScale]);
+  /** What the town anchors give way to: the plate's type, and the square
+   *  round the origin's mark. A typed place is usually a town, and when it is
+   *  an anchor's town the origin stands on that anchor: Kranj chosen read
+   *  "Kranj" twice, once in grey under the ring and once in full beside it. */
+  const anchorAvoid = useMemo(
+    () =>
+      originMark
+        ? [
+            ...plateTypeAvoid,
+            {
+              x: originMark.x - originMark.r,
+              y: originMark.y - originMark.r,
+              width: originMark.r * 2,
+              height: originMark.r * 2,
+            },
+          ]
+        : plateTypeAvoid,
+    [originMark, plateTypeAvoid],
+  );
 
   return (
     <svg
@@ -1222,20 +1308,28 @@ export function ShelterMap({
           armedNote={
             armedRegion?.region.id === region.id ? armedNote : undefined
           }
-          emptyMessage={regionAvailability(byRegion.get(region.id) ?? [], locale, messages.noSheltersInRegion)}
+          emptyMessage={emptyRegionMessage(region.id)}
         />
       ))}
       {interactive &&
         !markersVisible &&
         plateScale * MAP_WIDTH >= NAMES_MIN_PLATE_WIDTH && (
-          <MapRegionNames scale={plateScale} calloutRects={plateTypeAvoid} />
+          <MapRegionNames
+            scale={plateScale}
+            calloutRects={plateTypeAvoid}
+            dots={plateDots}
+          />
         )}
 
       {/* Over the choropleth, so a town name is never read through a region
-          fill, and under everything a click or a hover produces. */}
+          fill, and under everything a click or a hover produces. The picked
+          names go separately from plateTypeAvoid: an anchor has to know which
+          town each one belongs to, and the region names, which also read
+          plateTypeAvoid, are only drawn where the picked names are not. */}
       <PlateFurniture
         towns={towns}
-        calloutRects={plateTypeAvoid}
+        calloutRects={anchorAvoid}
+        names={namePlacements}
         wide={markersVisible}
       />
 
@@ -1250,21 +1344,17 @@ export function ShelterMap({
           green the site spends on "picked" and nowhere else. */}
       {!markersVisible && (
         <g aria-hidden data-map-picked-dots className="pointer-events-none">
-          {towns
-            .filter((town) =>
-              town.shelters.some((shelter) => selected.includes(shelter.value)),
-            )
-            .map((town) => (
-              <circle
-                key={town.key}
-                data-map-picked-dot={town.key}
-                cx={town.x}
-                cy={town.y}
-                r={PICKED_DOT_PX / plateScale}
-                strokeWidth={PICKED_DOT_RING_PX / plateScale}
-                className="fill-brand-strong stroke-background"
-              />
-            ))}
+          {pickedTowns.map((town) => (
+            <circle
+              key={town.key}
+              data-map-picked-dot={town.key}
+              cx={town.x}
+              cy={town.y}
+              r={PICKED_DOT_PX / plateScale}
+              strokeWidth={PICKED_DOT_RING_PX / plateScale}
+              className="fill-brand-strong stroke-background"
+            />
+          ))}
         </g>
       )}
       {originName && <OriginName spot={originName} scale={plateScale} />}
@@ -1394,7 +1484,7 @@ export function ShelterMap({
           metadata={
             hoveredRegion.stats.live
               ? `${shelterCount(hoveredRegion.stats.values.length, locale)} · ${filteredAnimalCount(hoveredRegion.stats.animals, locale)}`
-              : regionAvailability(byRegion.get(hoveredRegion.region.id) ?? [], locale, messages.noSheltersInRegion)
+              : emptyRegionMessage(hoveredRegion.region.id)
           }
           // A second line only on an empty region, which names who answers
           // for the municipalities inside it: the only thing left to say about

@@ -473,6 +473,67 @@ describe("MapCallout species line", () => {
   });
 });
 
+// The button a touch arming grows on the card. It stood between the count and
+// the species line once, which split one shelter's facts in two around a
+// control. The facts are what the press is decided on, so they come first.
+describe("MapCallout action", () => {
+  function armed() {
+    return render(
+      <svg>
+        <MapCallout
+          x={50}
+          y={100}
+          reach={5}
+          title="Zavetišče Ljubljana"
+          metadata="63 živali"
+          species={[{ species: "dog", count: 41 }]}
+          logo={{
+            url: "/media/shelter-logos/ljubljana.webp",
+            chipOnLight: false,
+            chipOnDark: true,
+            opaque: false,
+            width: 300,
+            height: 100,
+          }}
+          action={{ label: "Izberi", onClick: () => undefined }}
+        />
+      </svg>,
+    ).container;
+  }
+
+  it("comes after every fact on the card, the species line included", () => {
+    const container = armed();
+    const parts = [
+      ...container.querySelector("[data-callout-title]")!.parentElement!
+        .children,
+    ].map((part) =>
+      [
+        "data-callout-logo",
+        "data-callout-title",
+        "data-callout-metadata",
+        "data-callout-note",
+        "data-callout-species",
+        "data-map-action",
+      ].find((name) => part.hasAttribute(name)),
+    );
+
+    expect(parts).toEqual([
+      "data-callout-logo",
+      "data-callout-title",
+      "data-callout-metadata",
+      "data-callout-species",
+      "data-map-action",
+    ]);
+  });
+
+  it("names the card it stands on, for a label that is only a verb", () => {
+    const button = armed().querySelector("[data-map-action]")!;
+
+    expect(button.textContent).toBe("Izberi");
+    expect(button.getAttribute("aria-label")).toBe("Izberi: Zavetišče Ljubljana");
+  });
+});
+
 // The chip is opaque, so anything of the plate's own type underneath it is
 // simply gone rather than interleaved with. The map settles that by taking the
 // covered name off the plate, and this is the half of it the annotation owes:

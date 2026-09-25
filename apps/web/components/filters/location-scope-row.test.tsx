@@ -174,8 +174,13 @@ describe("Kje scope row in the sidebar", () => {
     const trigger = renderSidebar({ selected: ["jug"] });
     fireEvent.click(trigger);
     const dialog = await screen.findByRole("dialog");
-    expect(dialog.querySelector("[data-picker-footer]")?.textContent).toContain("Zavetišče Jug");
-    expect(within(dialog).getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" })).toBeTruthy();
+    // The chip inside the dialog prints the short name its rows print, and
+    // names the shelter in full, the way the sidebar does, to a screen reader
+    // and in its title.
+    const chip = within(dialog).getByRole("button", { name: "Odstrani zavetišče: Zavetišče Jug" });
+    expect(chip.closest("[data-picker-footer]")).toBeTruthy();
+    expect(chip.textContent).toBe("Jug");
+    expect(chip.getAttribute("title")).toBe("Zavetišče Jug");
   });
 
   it("opens the picker on press", async () => {

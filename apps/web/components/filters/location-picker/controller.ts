@@ -30,7 +30,7 @@ import type { ShelterPin } from "@/lib/map-layout";
 import { resolveOrigin } from "@/lib/resolved-origin";
 import { useTypedLocation } from "@/hooks/use-typed-location";
 import { looksLikePostcode } from "@/lib/postcode-input";
-import { DEFAULT_ANIMAL_SORT, type AnimalSort } from "@/lib/sort";
+import { DEFAULT_ANIMAL_SORT } from "@/lib/sort";
 import {
   SHELTER_SPOTLIGHT_EVENT,
   type ShelterSpotlightDetail,
@@ -38,6 +38,7 @@ import {
 import type { LocationPickerProps } from "./contracts";
 import {
   bringIntoList,
+  bringIntoListOnceOpen,
   fold,
   locateAndSort,
   matchesFirst,
@@ -47,7 +48,19 @@ import {
   toPins,
   type LocatedRow,
 } from "./model";
-import { hasHeightToSpare, useLocationPickerMotion } from "./motion";
+import { listLeads, useLocationPickerMotion } from "./motion";
+
+/** Focus to the row a map pick left it waiting for (pendingMapFocus below),
+ *  now that the row is on screen to take it. */
+function takeMapFocus(
+  pending: { current: string | null },
+  value: string,
+  row: HTMLElement | undefined,
+) {
+  if (pending.current !== value) return;
+  row?.focus({ preventScroll: true });
+  pending.current = null;
+}
 
 export function useLocationPickerController({
   options,
@@ -105,26 +118,41 @@ export function useLocationPickerController({
   // and that rule lives here because this is the only thing that sees the
   // whole list: opening a second shelter closes the first.
   //
-  // Row disclosure inspects a shelter without changing the selection. A new
-  // map pick also opens its details so the selected marker has a visible
-  // answer in the list; removing a selection leaves those details alone.
+  // Row disclosure inspects a shelter without changing the selection. A map
+  // pick of one shelter also opens its details so the selected marker has a
+  // visible answer in the list (a pick of several opens none; see
+  // handlePick); removing a selection leaves those details alone.
   const [expandedShelter, setExpandedShelter] = useState<string | null>(null);
-  // The order the grid was in before "Razvrsti živali po bližini" took it
-  // over, so a second press gives that back rather than the default: a
-  // visitor who had put the list in name order and tried the distance once
-  // should not lose their own choice for it. Held here and not in the dialog, which
-  // unmounts between the two presses.
-  const sortBeforeNearest = useRef<AnimalSort | null>(null);
-  const toggleNearestSort = useCallback(() => {
-    if (!onSortChange) return;
-    if (sort === "nearest") {
-      onSortChange(sortBeforeNearest.current ?? DEFAULT_ANIMAL_SORT);
-      sortBeforeNearest.current = null;
-    } else {
-      sortBeforeNearest.current = sort ?? null;
-      onSortChange("nearest");
-    }
-  }, [onSortChange, sort]);
+  // The first row of a map pick that took several shelters at once, to be
+  // brought into view closed (handlePick). A fresh object per pick, so the same
+  // region picked a second time is brought back a second time. Retired by the
+  // next disclosure, which is the newer answer: the effect that brings this row
+  // in runs again on every switch back to the list, and would otherwise carry
+  // the list away from the details opened since.
+  const [revealedRow, setRevealedRow] = useState<{ value: string } | null>(null);
+  // The grid follows a place the visitor gives the picker. "V bližini Kranj"
+  // used to re-sort only the shelter list in here, so the press that says
+  // "near Kranj" came back to the same animals in the same order behind the
+  // dialog, the first of them 90 km away; the answer reached the grid only
+  // through a second toggle under the chip, which most visitors never
+  // pressed. Now the place carries it: a grid in its default order takes
+  // Najbližje, and taking the place away gives the default back.
+  //
+  // Only from the default. An order the visitor picked (Najmlajši, by name) is
+  // theirs, and the grid's own sort control offers Najbližje as soon as there
+  // is an origin to measure from. The default is the order nobody chose, which
+  // is why lib/sort.ts never writes it to the URL, and so the one order a
+  // place may replace unasked.
+  //
+  // Whether this picker made the switch, so that removing the place undoes
+  // only its own work. Held here and not in the dialog, which unmounts between
+  // the press that set the place and the one that takes it away.
+  const sortedForOrigin = useRef(false);
+  // Whether the next origin comes from a press in this picker: a place chosen
+  // or taken away, or the locate button. The origin is shared by every mounted
+  // picker, and only the one that was pressed writes the order. The press
+  // only notes it; the effect after the origin is published writes it.
+  const originPressed = useRef(false);
   // Whether the registry shelters with nothing listed are unfolded. Shut to
   // start with: none of them can be picked, so every row of that group is
   // scroll the picker charges before reaching anything pickable, and the group
@@ -178,12 +206,7 @@ export function useLocationPickerController({
   // the expanded shelter above it, and gone when the dialog closes: it answers
   // "where is this one", not "which ones did I choose".
   const [spotlitShelterId, setSpotlitShelterId] = useState<string | null>(null);
-  const {
-    sheetOpen,
-    setSheetOpen,
-    landSpotlight,
-    revealSelection,
-  } = useLocationPickerMotion(open);
+  const { sheetOpen, setSheetOpen, landSpotlight } = useLocationPickerMotion(open);
   // Read here rather than beside the origin it feeds, because the close
   // cleanup below dismisses its error and a dependency cannot be named before
   // it exists.
@@ -212,9 +235,13 @@ export function useLocationPickerController({
   useEffect(() => {
     closeCleanup.current = () => {
       // Every dismissal, including Back and a breakpoint change, ends the
-      // same visit. Keep only the explicitly confirmed place between visits.
-      setQuery(chosenPlace?.query ?? "");
+      // same visit. Only the confirmed place outlives it, and it lives in its
+      // chip: the field used to be refilled with the town as well, so every
+      // later visit opened with "Kranj" typed in the search box over a chip
+      // reading "Kranj", two X's apart, one clearing text and one the place.
+      setQuery("");
       setExpandedShelter(null);
+      setRevealedRow(null);
       setSpotlitShelterId(null);
       setOffGroupOpen(false);
       setDropNote(null);
@@ -231,7 +258,7 @@ export function useLocationPickerController({
       dismissError();
       setSheetOpen(true);
     };
-  }, [chosenPlace, dismissError, setQuery, setSheetOpen]);
+  }, [dismissError, setQuery, setSheetOpen]);
 
 
   // An animal card asking for its shelter on the map. Guarded by breakpoint
@@ -256,8 +283,8 @@ export function useLocationPickerController({
       setQuery("");
       setOpen(true);
       // The sheet, because the row below has to have somewhere to be brought
-      // into view; from lg the list always stands beside the map and this is a
-      // no-op there. Landed here for the same reason the found-animal entry
+      // into view; where the list stands beside the map (picker-split) this is
+      // a no-op. Landed here for the same reason the found-animal entry
       // lands itself: this open arrives with a row to show, and a short screen
       // folding the list away would fold the answer away with it.
       landSpotlight();
@@ -288,9 +315,14 @@ export function useLocationPickerController({
   );
   const origin = resolved.at;
   // Recognizing a place offers a result; choosing that result changes the
-  // origin. Until then, even an exact town name filters the shelter list.
-  // Editing the query after choosing a place starts a new shelter search
-  // while retaining the confirmed origin in its separate, removable chip.
+  // origin, moves the place into its chip and empties the field. Until then,
+  // even an exact town name filters the shelter list. Typing after choosing
+  // starts a new shelter search while the confirmed origin keeps its chip.
+  //
+  // So the field holds the chosen place's name again only when the visitor
+  // types it again, and that is all this is now: a name the chip already
+  // answers, which neither narrows the list nor offers the place a second
+  // time.
   const placeMode = chosenPlace !== null && chosenPlace.query === query;
   // A place the postal table knows, offered as the row above the list and not
   // yet chosen. The field takes a place or a shelter's name, so this is the
@@ -300,14 +332,23 @@ export function useLocationPickerController({
     if (typed.status !== "matched") return;
     turnOffNearby();
     setChosenPlace({ location: typed, query });
+    setQuery("");
+    originPressed.current = true;
     searchRef.current?.focus({ preventScroll: true });
-  }, [query, setChosenPlace, turnOffNearby, typed]);
+  }, [query, setChosenPlace, setQuery, turnOffNearby, typed]);
   const clearOrigin = useCallback(() => {
     turnOffNearby();
     setChosenPlace(null);
     if (placeMode) setQuery("");
+    originPressed.current = true;
     searchRef.current?.focus({ preventScroll: true });
   }, [placeMode, setChosenPlace, setQuery, turnOffNearby]);
+  // The locate button's press, around the store's own toggle: a fix is a
+  // place like a typed one, and the grid follows it the same way.
+  const toggleLocate = useCallback(() => {
+    originPressed.current = true;
+    toggleNearby();
+  }, [toggleNearby]);
   const placeSuggestionRef = useRef<HTMLButtonElement>(null);
   // Unconfirmed text narrows the list. Emptying the field clears that search
   // without discarding the separately confirmed starting point.
@@ -321,6 +362,27 @@ export function useLocationPickerController({
   // anywhere near any of them in the tree; see hooks/use-nearby-origin.ts for
   // how the instances that were never touched are kept from clearing it.
   usePublishNearbyOrigin(resolved);
+  // The grid's order, written after the publish above and in the same flush,
+  // so the grid is handed the order and the point it is measured from
+  // together and sorts once. Written in the press itself, the order went a
+  // render ahead of the point: the grid sorted Najbližje from no origin, which
+  // is the default order again, and sorted a second time when the point
+  // arrived. A fix lands later than the press that asked for it, so the note
+  // waits out "locating"; a refusal or a timeout leaves the grid where it was.
+  useEffect(() => {
+    if (!originPressed.current || state.status === "locating") return;
+    originPressed.current = false;
+    if (resolved.at) {
+      if (!onSortChange || sort !== DEFAULT_ANIMAL_SORT) return;
+      sortedForOrigin.current = true;
+      onSortChange("nearest");
+    } else if (sortedForOrigin.current) {
+      sortedForOrigin.current = false;
+      // Only while the grid still stands in the order this put it in. A sort
+      // the visitor picked since is theirs, and it stays when the place goes.
+      if (sort === "nearest") onSortChange?.(DEFAULT_ANIMAL_SORT);
+    }
+  }, [onSortChange, resolved, sort, state.status]);
   const rowRefs = useRef(new Map<string, HTMLButtonElement | HTMLAnchorElement>());
 
   const rows: LocatedRow[] = useMemo(
@@ -460,9 +522,10 @@ export function useLocationPickerController({
   // it, on that same click. Click, tap, Enter and Space all land here, and a
   // list row does the same through the parent's own onToggle.
   //
-  // aria-pressed always agrees with the filter change. Adding a target also
-  // opens the first matching shelter's details; a row's disclosure control
-  // still offers inspection without selection.
+  // aria-pressed always agrees with the filter change. Adding a target that
+  // holds one shelter also opens that shelter's details, and one that holds
+  // several brings the first of them into view closed; a row's disclosure
+  // control still offers inspection without selection.
   const handlePick = useCallback(
     (values: string[]) => {
       // The same predicate toggleValues branches on, read before it runs so
@@ -480,26 +543,38 @@ export function useLocationPickerController({
       setDropNote(null);
       onToggleMany(values);
       // What was picked is read off the list, as the rows' own accent, so a
-      // click on a phone's map view has to bring the list's sheet back. From
-      // lg the list is always beside the map and this is a no-op.
+      // click on a phone's map view has to bring the list's sheet back.
       //
-      // Except on a screen with no height to spare, where the sheet is the
-      // map. There the strip the sheet folds to already carries the whole of
-      // this news, the running "2 od 17 zavetišč" and the count badge beside
-      // it (see the peek bar), so raising the sheet would cover the country
-      // the visitor is still picking from in order to repeat a sentence they
-      // can already read. Every tap after the first would have cost a fold.
-      revealSelection();
+      // Only where the list leads (listLeads in motion.ts). A desktop and a
+      // phone held sideways already have the list beside the map, and a
+      // tablet's map names every coin it picks, so raising the list there
+      // would cover the country the visitor is still picking from to repeat
+      // what the map already says. Every tap after the first would have cost
+      // a switch back.
+      const leads = listLeads();
+      if (leads) setSheetOpen(true);
       // Keep the newest map choice and its detail card together. A previous
       // name query must not hide the row that was just chosen on the map.
       if (searching) setQuery("");
-      const firstMatch = values.find((value) => options.some((row) => row.value === value));
-      if (firstMatch) {
-        setExpandedShelter(firstMatch);
-        // Mobile selection opens List view and hides the activating map target.
-        if (!window.matchMedia(DESKTOP_QUERY).matches && hasHeightToSpare()) {
-          pendingMapFocus.current = firstMatch;
+      // The rows the pick lands on, in the order the list draws them. One is
+      // an answer to open: its details confirm the pick, the same panel the
+      // row's own chevron opens. Several are a region or a town, and opening
+      // the first of them opened whichever one sorted first and pushed the
+      // rest of the same pick below the list's edge: Savinjska opened Mačja
+      // hiša and hid Zavod Muri and Zonzani. Those stay closed, and the first
+      // of them is brought into view as a checked row.
+      const landed = rows.filter((row) => values.includes(row.value));
+      const first = landed[0]?.value;
+      if (first) {
+        if (landed.length === 1) {
+          setExpandedShelter(first);
+          setRevealedRow(null);
+        } else {
+          setRevealedRow({ value: first });
         }
+        // The map target that took the press goes out of sight where the list
+        // replaces the map, so focus follows to the row that answers it.
+        if (leads) pendingMapFocus.current = first;
       }
       // A click on the country is a newer question than the one an animal
       // card arrived with, and two rings at once would be two answers.
@@ -509,7 +584,7 @@ export function useLocationPickerController({
     // whether it drops before the toggle runs, and what the selection it
     // leaves behind looks like. Both are facts about the selection at click
     // time, which the functional setter form cannot carry.
-    [dropPicked, onToggleMany, options, revealSelection, searching, selected, setQuery],
+    [dropPicked, onToggleMany, rows, searching, selected, setQuery, setSheetOpen],
   );
 
   // Opening one shelter closes whichever was open, and pressing the control of
@@ -528,17 +603,13 @@ export function useLocationPickerController({
   // not the fix.
   const toggleExpandedShelter = useCallback((value: string) => {
     setExpandedShelter((current) => (current === value ? null : value));
+    setRevealedRow(null);
   }, []);
 
   // Reveal the row and details after a disclosure or map pick. The list can
   // be short and a map pick can name an offscreen row, so measure the whole
-  // cell and adjust only the list's scroll position.
-  //
-  // Twice, and both are needed. The first call is the one that runs where
-  // there is no animation to wait for; the second waits for the open animation
-  // to finish, because before it does the panel's height is still ramping up
-  // from zero and "nearest" would measure a strip that is not there yet.
-  // Both are "nearest", so the one that has nothing to do does nothing.
+  // cell and adjust only the list's scroll position, and again once the panel
+  // has opened to its height (bringIntoListOnceOpen).
   //
   // Reached through the row's ref and the cell it sits in rather than through
   // a ref of its own: the panel is built in shelter-rows.tsx and this file has
@@ -551,17 +622,33 @@ export function useLocationPickerController({
   useEffect(() => {
     if (!expandedShelter) return;
     const row = rowRefs.current.get(expandedShelter);
-    if (sheetOpen && pendingMapFocus.current === expandedShelter) {
-      row?.focus({ preventScroll: true });
-      pendingMapFocus.current = null;
-    }
+    if (sheetOpen) takeMapFocus(pendingMapFocus, expandedShelter, row);
     const cell = row?.closest('[data-slot="collapsible"]') ?? row;
     if (!cell) return;
-    const bring = () => bringIntoList(listNode.current, cell);
-    bring();
-    cell.addEventListener("animationend", bring, { once: true });
-    return () => cell.removeEventListener("animationend", bring);
+    return bringIntoListOnceOpen(listNode, cell);
   }, [expandedShelter, sheetOpen, query, selected]);
+
+  // The same for the first row of a pick that took several shelters, which
+  // opens nothing and so has no animation to wait out. sheetOpen for the same
+  // reason as above: on a phone the pick raises the list in the same press,
+  // and until it is up there is no row on screen to focus or to measure.
+  useEffect(() => {
+    if (!revealedRow) return;
+    const row = rowRefs.current.get(revealedRow.value);
+    if (!row) return;
+    if (sheetOpen) takeMapFocus(pendingMapFocus, revealedRow.value, row);
+    bringIntoList(listNode.current, row);
+  }, [revealedRow, sheetOpen]);
+
+  // The group of shelters with nothing listed sits at the foot of the list,
+  // and it opened below the list's edge: the chevron turned and the rows it
+  // had just revealed stood under the fade, so the press looked like it had
+  // done nothing. Brought into view the way a row's details are.
+  const offGroupRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!offGroupOpen || !offGroupRef.current) return;
+    return bringIntoListOnceOpen(listNode, offGroupRef.current);
+  }, [offGroupOpen]);
 
   // The spotlit shelter's own row, brought into view once there is a row. It
   // cannot be done where the event is heard: the list is mounted by the dialog
@@ -696,8 +783,8 @@ export function useLocationPickerController({
   // the locate button in the field above reports aria-pressed and fills
   // its mark while it is on, every row in the list carries its own
   // "· 23 km", and a typed place is named by the origin chip directly above
-  // this line, with the note about straight-line distance under it. What is
-  // left is only news: locationOutsideMap, the origin landing off the map.
+  // this line. What is left is only news: locationOutsideMap, the origin
+  // landing off the map.
   // i18n's sortedByDistance is kept, since locationOutsideMap composes its
   // second sentence. sortedByDistanceFrom went with this branch; the
   // sidebar's own chip says it with originFrom.
@@ -811,9 +898,6 @@ export function useLocationPickerController({
     summaries,
     deepLink,
     dress,
-    sort,
-    onSortChange,
-    toggleNearestSort,
     locale,
     messages,
     t,
@@ -829,6 +913,7 @@ export function useLocationPickerController({
     setExpandedShelter,
     offGroupOpen,
     setOffGroupOpen,
+    offGroupRef,
     listRef,
     dropNote,
     spotlitShelterId,
@@ -843,7 +928,7 @@ export function useLocationPickerController({
     offGroupId,
     shelterGroupId,
     state,
-    toggleNearby,
+    toggleLocate,
     dismissError,
     turnOffNearby,
     resolved,

@@ -82,8 +82,8 @@ export function FilterSidebar({
    *  its own; the strip in the toolbar across the gutter is it. */
   onSpeciesChange?: (species: SpeciesFilter) => void;
   unanswered?: UnansweredTally;
-  /** For the Kje dialog, which offers to order the grid by distance once a
-   *  place is set there. */
+  /** For the Kje dialog, which orders the grid by distance once a place is
+   *  set there, unless the visitor has chosen an order of their own. */
   sort?: AnimalSort;
   onSortChange?: (sort: AnimalSort) => void;
   className?: string;

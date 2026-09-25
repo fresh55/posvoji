@@ -5,8 +5,14 @@ import { filteredAnimalCount } from "@/lib/labels";
 import { ChevronRight } from "lucide-react";
 import type { LocationPickerController } from "./controller";
 
+// Both lists of rows: two columns from sm, where the stacked list has the
+// width for them, and one where the list stands beside the map (picker-split
+// in globals.css). shelter-rows.tsx spans open details across the pair.
+const ROW_GRID =
+  "sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 picker-split:grid-cols-1 picker-split:gap-x-0";
+
 export function PickerShelterList({ controller }: { controller: LocationPickerController }) {
-  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, searching, placeOnly } = controller;
+  const { visibleOffRows, detailBase, hoveredMarkerValues, hoverScrollTo, setHoveredRowValue, messages, offGroupId, shelterGroupId, listRef, visibleRows, query, setQuery, searchRef, counts, selected, onToggle, summaries, expandedShelter, toggleExpandedShelter, t, rowRefs, locale, offGroupHeading, offGroupOpen, setOffGroupOpen, offGroupRef, searching, placeOnly } = controller;
   // The heading answers a name being typed, which is what `searching` is: a
   // query in the field that is not a confirmed place (controller.ts). A place
   // query that matched no name is answered by the row above the list instead.
@@ -30,7 +36,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
       labelledBy={offGroupId}
       refs={rowRefs}
       shortenNames
-      className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
+      className={ROW_GRID}
     />
   );
   return (
@@ -112,7 +118,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                         shortenNames
                         detailsHref={(value) => `${detailBase}/${value}`}
                         detailsLinkText={messages.aboutShelter}
-                        className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
+                        className={ROW_GRID}
                       />
                       {visibleOffRows.length > 0 &&
                         (visibleRows.length === 0 ? (
@@ -127,6 +133,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
                           </div>
                         ) : (
                           <Collapsible
+                            ref={offGroupRef}
                             open={offGroupOpen}
                             onOpenChange={setOffGroupOpen}
                             className="mt-3"

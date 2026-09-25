@@ -134,10 +134,12 @@ describe("responsive picker session", () => {
     expect(screen.getByTestId("origin").textContent).toBe("typed");
     fireEvent.click(screen.getByRole("button", { name: /Zavetišče:/ }));
     await screen.findByRole("dialog", {}, { timeout: 5000 });
+    // The place comes back as its chip, and only there: the field opens empty
+    // rather than holding the postcode that found it.
     expect(
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
         .value,
-    ).toBe("1000");
+    ).toBe("");
     expect(
       screen.getByRole("button", { name: /^Odstrani izhodišče/ }).textContent,
     ).toContain("Ljubljana");
@@ -165,7 +167,7 @@ describe("responsive picker session", () => {
     expect(
       (screen.getByLabelText("Kraj, pošta ali zavetišče") as HTMLInputElement)
         .value,
-    ).toBe("1000");
+    ).toBe("");
     fireEvent.click(
       screen.getByRole("button", { name: /^Odstrani izhodišče/ }),
     );

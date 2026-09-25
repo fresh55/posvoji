@@ -1,6 +1,5 @@
 "use client";
 
-import { m, useReducedMotion } from "motion/react";
 import { useId, type ReactElement } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { CareCards } from "@/components/filters/care-cards";
@@ -11,17 +10,7 @@ import {
 import { EnergyCards } from "@/components/filters/energy-cards";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import {
-  CountRoll,
-  FilterCardHoverLift,
-  FilterCardIconWell,
-  FilterCardMark,
-  FilterCardRipple,
-  FilterCardSection,
-  FilterCardTail,
-  filterCardLayoutClass,
-  filterCardVariants,
   isDeadOption,
-  sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
@@ -34,19 +23,12 @@ import {
   GoodWithCards,
   type GoodWithOption,
 } from "@/components/filters/good-with-cards";
+import { HealthToggleCards } from "@/components/filters/health-cards";
 import { SexCards } from "@/components/filters/sex-cards";
 import { SizePawCards } from "@/components/filters/size-paw-cards";
-import {
-  UnansweredNote,
-  useRowNotes,
-} from "@/components/filters/unanswered-note";
+import { UnansweredNote } from "@/components/filters/unanswered-note";
 import { WaitingCards } from "@/components/filters/waiting-cards";
-import {
-  resetDelayStyle,
-  useFilterCardHover,
-  useOneShotCelebration,
-  useResetStagger,
-} from "@/components/filters/use-filter-motion";
+import { useResetStagger } from "@/components/filters/use-filter-motion";
 import {
   answeredSections,
   useFilterSections,
@@ -63,42 +45,10 @@ import {
   type GoodWithKey,
   type MultiGroup,
   type ToggleDef,
-  type ToggleKey,
   type Unanswered,
   type UnansweredTally,
 } from "@/lib/filters";
 import { useI18n } from "@/components/i18n-context";
-import { HEALTH_ICONS } from "@/lib/animal-icons";
-import { animalCount } from "@/lib/labels";
-import { cn } from "@/lib/utils";
-
-type IconGesture = {
-  rotate: number | number[];
-  scale: number | number[];
-  x: number | number[];
-  y: number | number[];
-};
-
-const GESTURE_REST: IconGesture = { rotate: 0, scale: 1, x: 0, y: 0 };
-
-// Each icon acts out the thing it stands for, once, as it is switched on.
-const HEALTH_GESTURES: Record<ToggleKey, IconGesture> = {
-  sterilizacija: { rotate: [0, -8, 5, 0], scale: 1, x: 0, y: 0 },
-  // The lucide syringe carries its needle at the bottom left and its plunger at
-  // the top right, so the press runs down that diagonal.
-  cepljenje: { rotate: 0, scale: 1, x: [0, -1.2, 0], y: [0, 1.2, 0] },
-  cip: { rotate: 0, scale: [1, 1.12, 1], x: 0, y: 0 },
-  "brez-fiv": { rotate: 0, scale: [1, 1.1, 1], x: 0, y: 0 },
-  "brez-felv": { rotate: [0, -6, 4, 0], scale: 1, x: 0, y: 0 },
-};
-
-const GESTURE_DURATION = 0.35;
-const GESTURE_MS = 500;
-// The check confirms as the icon gesture lands, not before it starts.
-const GESTURE_CHECK_DELAY = 0.2;
-const RIPPLE_OPACITY = 0.5;
-const RIPPLE_SCALE = 1.35;
-const RIPPLE_DURATION = 0.35;
 
 type GroupProps = {
   // Barva is drawn by the Videz block itself, which also hands it the species
@@ -147,177 +97,6 @@ export type CareSection = {
   onToggle: (key: CareKey) => void;
   onToggleMany: (values: CareKey[]) => void;
 };
-
-function HealthToggleCards({
-  toggles,
-  counts,
-  selected,
-  onToggle,
-  onToggleMany,
-  layout = "sidebar",
-  collapse,
-  unanswered,
-  sectionKeys,
-}: {
-  toggles: ToggleDef[];
-  /** Every test the section has, drawn or not (useRowNotes). */
-  sectionKeys?: readonly ToggleKey[];
-  counts: Map<string, number>;
-  selected: ToggleKey[];
-  onToggle: (key: ToggleKey) => void;
-  onToggleMany: (values: ToggleKey[]) => void;
-  layout?: FilterCardLayout;
-  collapse?: SectionCollapse;
-  /** Per test: a cat can carry an FeLV result and no FIV one. */
-  unanswered?: Readonly<Record<ToggleKey, Unanswered>>;
-}) {
-  const { locale, messages } = useI18n();
-  const shouldReduceMotion = useReducedMotion();
-  const rowNotes = useRowNotes(
-    toggles.map(({ key }) => key),
-    unanswered,
-    "unansweredRow",
-    sectionKeys,
-  );
-  const {
-    celebration,
-    celebrate,
-    clear: clearCelebration,
-  } = useOneShotCelebration<ToggleKey>(GESTURE_MS);
-  const { beginReset, resetDelay } = useResetStagger(
-    selected.length,
-    toggles.length,
-  );
-  const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
-    useFilterCardHover<ToggleKey>();
-
-  return (
-    <FilterCardSection
-      label={messages.health}
-      hint={messages.healthFilterHint}
-      active={selected.length > 0}
-      onReset={() => {
-        clearCelebration();
-        beginReset();
-        onToggleMany(selected);
-      }}
-      resetAriaLabel={messages.resetHealthFilters}
-      layout={layout}
-      collapse={collapse}
-      // Two columns at most, for the line a tile carries under its label
-      // saying how many cats have no result.
-      sheetColumns={sheetColumnsFor(toggles.length, 2)}
-      footer={
-        rowNotes.section === undefined ? undefined : (
-          <SectionNote>
-            {rowNotes.section === "none"
-              ? messages.unansweredNone
-              : messages.unansweredHides}
-          </SectionNote>
-        )
-      }
-    >
-      {toggles.map(({ key, label }, index) => {
-        const count = counts.get(key) ?? 0;
-        const checked = selected.includes(key);
-        const Icon = HEALTH_ICONS[key];
-        const hovered = hoveredKey === key;
-        const celebrating = celebration?.value === key && checked;
-        const exitDelay = resetDelay(index);
-        const note = rowNotes.at(index);
-
-        return (
-          <button
-            key={key}
-            type="button"
-            onClick={() => {
-              if (checked) {
-                clearCelebration();
-              } else {
-                celebrate(key);
-              }
-              onToggle(key);
-            }}
-            disabled={isDeadOption(count, checked)}
-            {...hoverHandlers(key)}
-            aria-pressed={checked}
-            aria-label={`${label}, ${animalCount(count, locale)}`}
-            aria-describedby={note.description ? note.descriptionId : undefined}
-            className={filterCardVariants({
-              layout,
-              selected: checked,
-              className: cn("flex", filterCardLayoutClass(layout)),
-            })}
-          >
-            <FilterCardMark
-              layout={layout}
-              checked={checked}
-              appearDelay={GESTURE_CHECK_DELAY}
-            />
-
-            <FilterCardIconWell
-              layout={layout}
-              checked={checked}
-              exitDelay={exitDelay}
-            >
-              {celebrating && !shouldReduceMotion ? (
-                <FilterCardRipple
-                  key={celebration?.id}
-                  layout={layout}
-                  opacity={RIPPLE_OPACITY}
-                  scale={RIPPLE_SCALE}
-                  duration={RIPPLE_DURATION}
-                />
-              ) : null}
-              <FilterCardHoverLift hovered={hovered}>
-                <m.span
-                  className="flex items-center justify-center"
-                  initial={false}
-                  animate={
-                    celebrating && !shouldReduceMotion
-                      ? HEALTH_GESTURES[key]
-                      : GESTURE_REST
-                  }
-                  transition={
-                    celebrating && !shouldReduceMotion
-                      ? { duration: GESTURE_DURATION, ease: "easeOut" }
-                      : { duration: 0.16 }
-                  }
-                >
-                  <Icon
-                    // A lucide icon coloured by a class, so the reset's turn
-                    // reaches it as a transition-delay rather than as part of
-                    // a motion transition. Without it the halo staggered out
-                    // over icons that had all gone grey at once.
-                    style={resetDelayStyle(checked, exitDelay)}
-                    className={cn(
-                      "size-5 transition-colors duration-150",
-                      checked
-                        ? "text-brand-strong"
-                        : "text-muted-foreground",
-                    )}
-                    strokeWidth={1.65}
-                  />
-                </m.span>
-              </FilterCardHoverLift>
-            </FilterCardIconWell>
-
-            <FilterCardTail
-              layout={layout}
-              label={label}
-              checked={checked}
-              {...note}
-              descriptionAfterCount
-              renderCount={(className) => (
-                <CountRoll value={count} className={className} />
-              )}
-            />
-          </button>
-        );
-      })}
-    </FilterCardSection>
-  );
-}
 
 function SizeGroup({
   options,

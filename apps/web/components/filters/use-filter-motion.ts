@@ -190,7 +190,7 @@ export function useResetStagger(
  * The same turn-taking, for a glyph whose accent is a class rather than a
  * motion target.
  *
- * Družba, Zdravje and Velikost colour their icons with Tailwind and let a CSS
+ * Družba, Starost and Velikost colour their icons with Tailwind and let a CSS
  * transition carry it, so there is no transition object to put the delay in,
  * and the icon went grey while its own halo was still lit.
  *

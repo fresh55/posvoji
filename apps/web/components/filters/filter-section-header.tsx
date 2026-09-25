@@ -72,10 +72,9 @@ function sectionLabelClass(tone: SectionTone = "section"): string {
 }
 
 const BODY_EASE = [0.16, 1, 0.3, 1] as const;
-/** The fold runs 0.3s; the section is measured once it has settled. Shared
- *  with the list above, which waits the same beat before putting a section an
- *  arriving address opened where it can be seen (filter-groups.tsx). */
-export const FOLD_SETTLE_MS = 350;
+/** The fold runs 0.3s; a section opened by its heading is measured once it
+ *  has settled (revealOnOpen below). */
+const FOLD_SETTLE_MS = 350;
 
 // The clip exists for the fold alone. A settled body lets focus rings and
 // tooltips spill past its box again, so overflow is hidden while the body
@@ -233,11 +232,12 @@ function moveSectionFocus(event: KeyboardEvent<HTMLButtonElement>) {
           : triggers[triggers.length - 1];
   event.preventDefault();
   if (!target) return;
-  // The panel moves and the page does not. A plain focus() scrolls every box
-  // it must to show a heading, the window included: measured at 1440x900 from
-  // the top of the page, the second press down from Spol threw the window
-  // 480px and the site's title and the top of the grid went with it.
-  // scrollChildIntoViewY says why the panel is scrolled by hand.
+  // The panel moves first, and the page only by what the panel cannot do. A
+  // plain focus() scrolls every box it must to show a heading, the window
+  // included, and it centres: measured at 1440x900 from the top of the page,
+  // the second press down from Spol threw the window 480px and the site's
+  // title and the top of the grid went with it. scrollChildIntoViewY says why
+  // the panel is scrolled by hand.
   //
   // The section where it fits, then the heading itself. The heading's box
   // stands past its section's by the -my-1 that centres it on the row, so
@@ -246,6 +246,34 @@ function moveSectionFocus(event: KeyboardEvent<HTMLButtonElement>) {
   target.focus({ preventScroll: true });
   scrollChildIntoViewY(target.closest("section") ?? target);
   scrollChildIntoViewY(target);
+  revealInWindow(target);
+}
+
+// The room kept between a heading brought into the window and its edge.
+const WINDOW_MARGIN = 8;
+
+/**
+ * The window's share of bringing a focused heading into view: the least
+ * scroll that shows it, and nothing when it already shows.
+ *
+ * At the top of the page the sticky panel hangs below the window with only a
+ * few dozen pixels of scroll of its own (62 at 1440x900, 27 at 1280x720), so
+ * the panel alone left every heading from Energija down (from Videz at
+ * 1280x720) focused under the window's bottom edge, where a keyboard visitor
+ * could not see it. The nearest block, not the centre focus() would take, so
+ * the page moves by the height of a heading rather than by half a screen.
+ *
+ * jsdom answers 0 for the window's height; there is nothing to measure there.
+ */
+function revealInWindow(element: HTMLElement) {
+  const height = document.documentElement.clientHeight;
+  if (height === 0) return;
+  const { top, bottom } = element.getBoundingClientRect();
+  if (bottom > height - WINDOW_MARGIN) {
+    window.scrollBy({ top: bottom - height + WINDOW_MARGIN });
+  } else if (top < WINDOW_MARGIN) {
+    window.scrollBy({ top: top - WINDOW_MARGIN });
+  }
 }
 
 const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]";

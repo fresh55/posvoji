@@ -227,15 +227,14 @@ const HALF_STROKE = 0.85;
 const PLANT_PADDING_PX = 4;
 const GROUND_PX = 1;
 
-// The section body folds inside an `AnimatePresence initial={false}`, which
-// tells Motion the fold is already present on first paint. Motion applies that
-// to everything under the fold rather than to the fold alone, and it keeps
-// applying it: whatever mounts in there later counts as already present, so
-// its mount animation is skipped and it is written straight to the pose it
-// should have ended on. The sway and the ground line are unharmed because they
-// animate on update. The two below exist only to be mounted and watched, so
-// each needs a presence boundary of its own, carrying the default `initial`,
-// or it never plays.
+// The two one-shots below exist only to be mounted and watched, so each sits
+// in a presence boundary of its own, carrying the default `initial`. The fold
+// used to need it: its body sat in an `AnimatePresence initial={false}`, which
+// Motion handed to everything under the fold and kept handing, so whatever
+// mounted there later was written straight to the pose it should have ended
+// on. The fold now says initial={false} on its first body alone
+// (CollapsibleBody in filter-section-header.tsx), and the boundary stays so a
+// one-shot here never depends on how a parent says "already present".
 //
 // Named for what it does to its child rather than for the shape of the
 // animation: "one shot" is already taken in this codebase by

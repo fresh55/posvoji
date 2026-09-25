@@ -328,4 +328,50 @@ describe("the arrow-key walk", () => {
     // And the heading's own box last, which stands past its section's.
     expect(broughtIntoView).toHaveBeenLastCalledWith(age);
   });
+
+  // At the top of the page the panel hangs below the window and can scroll
+  // only a few dozen pixels, so a heading it cannot lift far enough is
+  // brought in by the window, by the least that shows it.
+  it("moves the window by the least that shows a heading the panel could not", () => {
+    render(<Panel />);
+    const sex = screen.getByRole("button", { name: /^Spol/ });
+    const age = screen.getByRole("button", { name: /^Starost/ });
+    const scrollBy = vi.fn();
+    vi.stubGlobal("scrollBy", scrollBy);
+    const height = vi
+      .spyOn(document.documentElement, "clientHeight", "get")
+      .mockReturnValue(900);
+    vi.spyOn(age, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 950, width: 224, height: 24 }),
+    );
+    sex.focus();
+
+    fireEvent.keyDown(sex, { key: "ArrowDown" });
+
+    // 974 - 900, and the 8px of room the ring keeps from the edge.
+    expect(scrollBy).toHaveBeenCalledWith({ top: 82 });
+    height.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
+  it("leaves the window alone when the heading already shows", () => {
+    render(<Panel />);
+    const sex = screen.getByRole("button", { name: /^Spol/ });
+    const age = screen.getByRole("button", { name: /^Starost/ });
+    const scrollBy = vi.fn();
+    vi.stubGlobal("scrollBy", scrollBy);
+    const height = vi
+      .spyOn(document.documentElement, "clientHeight", "get")
+      .mockReturnValue(900);
+    vi.spyOn(age, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 400, width: 224, height: 24 }),
+    );
+    sex.focus();
+
+    fireEvent.keyDown(sex, { key: "ArrowDown" });
+
+    expect(scrollBy).not.toHaveBeenCalled();
+    height.mockRestore();
+    vi.unstubAllGlobals();
+  });
 });

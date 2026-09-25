@@ -72,6 +72,17 @@ describe("EnergyCards", () => {
     ).toBeTruthy();
   });
 
+  // Every animal in the narrowing lacks the answer, so every level reads 0
+  // and a pick has nothing to show: the line says that and nothing about a pick.
+  it("says so plainly when no animal has an energy on record", () => {
+    renderCards({
+      counts: new Map(options.map(({ value }) => [value, 0])),
+      unanswered: { asked: 23, unanswered: 23 },
+    });
+    expect(screen.getByText("Za nobeno od teh živali ni podatka.")).toBeTruthy();
+    expect(screen.queryByText(/Izbira pokaže/)).toBeNull();
+  });
+
   it("stays quiet about a gap too small to matter", () => {
     renderCards({ unanswered: { asked: 491, unanswered: 8 } });
     expect(screen.queryByText(/^Brez podatka/)).toBeNull();
@@ -244,7 +255,14 @@ describe("TEMPOS", () => {
 });
 
 describe("FilterGroupList energy group", () => {
-  function renderList(selected: EnergyLevel[]) {
+  const none: Unanswered = { asked: 0, unanswered: 0 };
+  function renderList(
+    selected: EnergyLevel[],
+    {
+      energyCounts = counts,
+      unanswered,
+    }: { energyCounts?: Map<string, number>; unanswered?: Unanswered } = {},
+  ) {
     const onToggleMany = vi.fn();
     const group: CardGroup = "energy";
 
@@ -270,7 +288,7 @@ describe("FilterGroupList energy group", () => {
             sex: new Map(),
             age: new Map(),
             size: new Map(),
-            energy: counts,
+            energy: energyCounts,
             coatColor: new Map(),
             coatLength: new Map(),
             waiting: new Map(),
@@ -282,6 +300,28 @@ describe("FilterGroupList energy group", () => {
           onToggleMany={(_group, values) => onToggleMany(values)}
           onToggleProperty={() => undefined}
           onToggleManyProperties={() => undefined}
+          unanswered={
+            unanswered && {
+              groups: {
+                sex: none,
+                age: none,
+                size: none,
+                energy: unanswered,
+                coatColor: none,
+                coatLength: none,
+                waiting: none,
+                shelter: none,
+              },
+              goodWith: { kids: none, dogs: none, cats: none },
+              toggles: {
+                sterilizacija: none,
+                cepljenje: none,
+                cip: none,
+                "brez-fiv": none,
+                "brez-felv": none,
+              },
+            }
+          }
         />
       </I18nProvider>,
     );
@@ -303,6 +343,41 @@ describe("FilterGroupList energy group", () => {
     expect(
       document.querySelector("[data-energy-glyph='lively']"),
     ).not.toBeNull();
+  });
+
+  // /?zavetisce=zonzani: none of its 23 animals has an energy on record. The
+  // sidebar keeps its one row reading 0, and the line under it says why
+  // rather than telling the visitor to pick it.
+  it("says no animal has an answer under the one row the sidebar keeps", () => {
+    const zero = new Map(options.map(({ value }) => [value, 0]));
+    renderList([], {
+      energyCounts: zero,
+      unanswered: { asked: 23, unanswered: 23 },
+    });
+
+    openFilterSection("Energija");
+    const rows = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("aria-pressed") !== null);
+    expect(rows).toHaveLength(1);
+    expect((rows[0] as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Za nobeno od teh živali ni podatka.")).toBeTruthy();
+    expect(screen.queryByText(/Izbira pokaže/)).toBeNull();
+  });
+
+  it("keeps a picked level's row and the same line", () => {
+    const zero = new Map(options.map(({ value }) => [value, 0]));
+    renderList(["calm"], {
+      energyCounts: zero,
+      unanswered: { asked: 23, unanswered: 23 },
+    });
+
+    openFilterSection("Energija");
+    const rows = screen
+      .getAllByRole("button")
+      .filter((button) => button.getAttribute("aria-pressed") !== null);
+    expect(rows.map((row) => row.getAttribute("aria-pressed"))).toEqual(["true"]);
+    expect(screen.getByText("Za nobeno od teh živali ni podatka.")).toBeTruthy();
   });
 
   it("clears the section from the reset the list wired up", () => {

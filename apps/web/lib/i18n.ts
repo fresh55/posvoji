@@ -307,6 +307,9 @@ const sl = {
   // then says once under all of them.
   unansweredRow: "Brez podatka:\u00a0{count}",
   unansweredHides: "Izbira pokaže le živali s podatkom.",
+  // In place of either when not one of the animals has an answer: there is
+  // nothing left to pick, so a sentence about what a pick does is untrue.
+  unansweredNone: "Za nobeno od teh živali ni podatka.",
   // The empty state's reason, when the thinnest question answered is thin
   // enough to be it. The verb is ours, so it agrees with nothing in the
   // count, and {species} is the genitive plural speciesAbsence* already has.
@@ -651,6 +654,8 @@ const sl = {
   goodWithUnansweredRow: "Brez odgovora:\u00a0{count}",
   goodWithUnansweredLine:
     "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
+  goodWithUnansweredNone:
+    "Za nobeno od teh živali zavetišče ni odgovorilo.",
   // The section reads as one sentence, so the phrases are whole and translated,
   // never assembled from parts in the component.
   goodWithOutcome:
@@ -834,6 +839,7 @@ const en: Messages = {
   unansweredLine: "No data:\u00a0{count}. Picking one shows only animals with data.",
   unansweredRow: "No data:\u00a0{count}",
   unansweredHides: "Picking one shows only animals with data.",
+  unansweredNone: "None of these animals has this information.",
   knownFor: "We know {topic} for {answered} of {asked} {species}.",
   sizeAskedOf: "dogs and other animals",
   sizeLeavesOutCats: "Cats are not sorted by size, so a pick leaves them out.",
@@ -993,6 +999,8 @@ const en: Messages = {
   goodWithUnansweredRow: "No answer:\u00a0{count}",
   goodWithUnansweredLine:
     "Picking one shows only animals the shelter answered for.",
+  goodWithUnansweredNone:
+    "The shelter has not answered this for any of these animals.",
   goodWithOutcome:
     "Showing animals that get on with {list}. {count} of {total}. Animals the shelter has not answered for stay hidden.",
   goodWithLeadKids: "kids",

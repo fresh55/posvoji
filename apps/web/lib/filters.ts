@@ -47,6 +47,7 @@ export {
   ageGroup,
   ageInMonths,
   ageStage,
+  answeredByNone,
   applyFilters,
   bySpecies,
   careCounts,

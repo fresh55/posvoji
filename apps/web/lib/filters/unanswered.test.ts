@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Animal, Species } from "@posvoji/schema";
 import {
+  answeredByNone,
   applyFilters,
   careOptions,
   EMPTY_FILTERS,
@@ -126,6 +127,25 @@ describe("namesUnanswered", () => {
     expect(namesUnanswered({ asked: 100, unanswered: 10 })).toBe(true);
     expect(namesUnanswered({ asked: 124, unanswered: 121 })).toBe(true);
     expect(namesUnanswered({ asked: 0, unanswered: 0 })).toBe(false);
+  });
+});
+
+describe("answeredByNone", () => {
+  it("holds only when every animal asked has no answer", () => {
+    expect(answeredByNone({ asked: 15, unanswered: 15 })).toBe(true);
+    expect(answeredByNone({ asked: 15, unanswered: 14 })).toBe(false);
+    expect(answeredByNone({ asked: 0, unanswered: 0 })).toBe(false);
+    expect(answeredByNone(undefined)).toBe(false);
+  });
+
+  // The rows then have nothing to offer: the counts are taken over the same
+  // animals the tally is, so each of them is 0.
+  it("leaves every option of the question at 0", () => {
+    const animals = [animal("dog"), animal("dog", { energy: undefined })];
+    const tally = unansweredCounts(animals, EMPTY_FILTERS, now);
+    expect(answeredByNone(tally.groups.energy)).toBe(true);
+    const counts = facetCounts(animals, EMPTY_FILTERS, now).energy;
+    expect([...counts.values()].every((count) => count === 0)).toBe(true);
   });
 });
 

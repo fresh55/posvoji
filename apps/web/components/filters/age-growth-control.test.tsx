@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
+import { pointer, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   AgeGrowthControl,
   groundSink,
   isAgeStageActive,
   plantMotion,
+  rowPlantPose,
   type PlantCue,
 } from "./age-growth-control";
 import { agePathTransition } from "./age-stage-icon";
@@ -615,6 +623,171 @@ describe("AgeGrowthControl row plants", () => {
     expect(rowPlant(container, "senior").getAttribute("class")).toContain(
       "size-6",
     );
+  });
+});
+
+describe("AgeGrowthControl row gestures", () => {
+  const row = (name: string) =>
+    screen.getByRole("button", { name: new RegExp(`^${name}, `) });
+  const leaning = (name: string) =>
+    row(name).querySelector("[data-leaning]") !== null;
+  const tucked = (name: string) =>
+    row(name).querySelector("[data-tucked]") !== null;
+  const hold = (
+    element: Element,
+    type: "pointerdown" | "pointerup",
+    pointerType = "mouse",
+  ) => pointer(element, type, { x: 0, y: 0, pointerType });
+
+  it("leans a row's plant toward a mouse and not toward a finger", () => {
+    render(ageControl());
+
+    pointerOnto(row("Odrasel"), "touch");
+    expect(leaning("Odrasel")).toBe(false);
+
+    pointerOnto(row("Odrasel"), "mouse");
+    expect(leaning("Odrasel")).toBe(true);
+  });
+
+  // The press is the one gesture a phone gets before the pick.
+  it("tucks the plant while its row is held, on a phone too", () => {
+    render(ageControl());
+
+    hold(row("Senior"), "pointerdown", "touch");
+    expect(tucked("Senior")).toBe(true);
+
+    hold(row("Senior"), "pointerup", "touch");
+    expect(tucked("Senior")).toBe(false);
+  });
+
+  it("stands the plant upright from a pick until the pointer leaves", () => {
+    // Only the timers: the growth ends on one.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      render(<StatefulAgeControl />);
+
+      pointerOnto(row("Mladiček"), "mouse");
+      expect(leaning("Mladiček")).toBe(true);
+
+      hold(row("Mladiček"), "pointerdown");
+      expect(leaning("Mladiček")).toBe(false);
+      expect(tucked("Mladiček")).toBe(true);
+
+      hold(row("Mladiček"), "pointerup");
+      fireEvent.click(row("Mladiček"));
+      expect(row("Mladiček").getAttribute("aria-pressed")).toBe("true");
+      expect(leaning("Mladiček")).toBe(false);
+      expect(tucked("Mladiček")).toBe(false);
+
+      // Grown, and still upright while the pointer rests on it.
+      act(() => vi.advanceTimersByTime(2000));
+      expect(leaning("Mladiček")).toBe(false);
+
+      pointerOff(row("Mladiček"));
+      pointerOnto(row("Mladiček"), "mouse");
+      expect(leaning("Mladiček")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // A pick that scrolls the page back to the results moves the sidebar
+  // under a resting pointer, which leaves the row and comes back.
+  it("keeps a growing plant upright when the pointer leaves and comes back", () => {
+    render(<StatefulAgeControl />);
+
+    pointerOnto(row("Mladiček"), "mouse");
+    fireEvent.click(row("Mladiček"));
+    pointerOff(row("Mladiček"));
+    pointerOnto(row("Mladiček"), "mouse");
+
+    expect(row("Mladiček").getAttribute("aria-pressed")).toBe("true");
+    expect(leaning("Mladiček")).toBe(false);
+  });
+
+  // The grove keeps the motion it has; a press there tucks nothing.
+  it("leaves the grove's plants to the grove when one is pressed", () => {
+    const { container } = render(ageControl());
+    const column = grove(container).querySelector('[data-age-stage="odrasel"]');
+
+    pointer(column!, "pointerdown", { x: 0, y: 0, pointerType: "touch" });
+
+    expect(container.querySelector("[data-tucked]")).toBeNull();
+  });
+});
+
+describe("rowPlantPose", () => {
+  const cue = (
+    overrides: Partial<Parameters<typeof rowPlantPose>[0]>,
+  ): Parameters<typeof rowPlantPose>[0] => ({
+    stage: "odrasel",
+    leaning: false,
+    tucked: false,
+    reduceMotion: false,
+    ...overrides,
+  });
+
+  it("tucks a held plant toward its base and gives the height back in width", () => {
+    for (const stage of STAGES) {
+      const { animate } = rowPlantPose(cue({ stage, tucked: true })).tuck;
+      expect(animate.scaleY).toBeGreaterThanOrEqual(0.88);
+      expect(animate.scaleY).toBeLessThanOrEqual(0.95);
+      expect(animate.scaleX).toBeGreaterThan(1);
+    }
+  });
+
+  // A shear about the foot, so the sprout's soil stays level while the plant
+  // above it bends; a negative skew carries the top toward the label.
+  it("leans from the base on a spring, the sprout furthest and the tree least", () => {
+    const leans = STAGES.map(
+      (stage) => rowPlantPose(cue({ stage, leaning: true })).lean,
+    );
+    const degrees = leans.map(({ animate }) => -(animate.skewX as number));
+
+    expect(leans.every(({ animate }) => animate.rotate === undefined)).toBe(
+      true,
+    );
+    expect(degrees.every((angle) => angle > 0 && angle <= 8)).toBe(true);
+    expect(degrees).toEqual([...degrees].sort((a, b) => b - a));
+    for (const { transition } of leans) {
+      expect(transition).toMatchObject({ type: "spring" });
+    }
+  });
+
+  // A pick, a release or a leave can cut either gesture short. A keyframe
+  // list would restart from its first frame; a single target carries on
+  // from wherever the plant is.
+  it("moves only ever towards a single target, so an interrupted gesture carries on", () => {
+    for (const stage of STAGES) {
+      for (const leaning of [false, true]) {
+        for (const tucked of [false, true]) {
+          const { lean, tuck } = rowPlantPose(cue({ stage, leaning, tucked }));
+          for (const value of [
+            ...Object.values(lean.animate),
+            ...Object.values(tuck.animate),
+          ]) {
+            expect(Array.isArray(value)).toBe(false);
+          }
+        }
+      }
+    }
+    // Let go, the plant springs back up.
+    expect(rowPlantPose(cue({})).tuck).toMatchObject({
+      animate: { scaleX: 1, scaleY: 1 },
+      transition: { type: "spring" },
+    });
+  });
+
+  it("holds the plant still under reduced motion", () => {
+    const { lean, tuck } = rowPlantPose(
+      cue({ leaning: true, tucked: true, reduceMotion: true }),
+    );
+
+    expect(lean).toEqual({ animate: { skewX: 0 }, transition: { duration: 0 } });
+    expect(tuck).toEqual({
+      animate: { scaleX: 1, scaleY: 1 },
+      transition: { duration: 0 },
+    });
   });
 });
 

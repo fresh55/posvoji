@@ -35,9 +35,10 @@ import {
 import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
   resetDelayStyle,
-  useFilterCardHover,
+  useFilterCardGestures,
   useOneShotCelebration,
   waitThen,
+  type FilterCardGestureHandlers,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -83,6 +84,14 @@ type Growth = {
   farewell: Gesture;
   /** Degrees a reset's gust bends it: the sprout furthest, the tree least. */
   gust: number;
+  /** Degrees the row's plant leans from its base toward a mouse or keyboard
+   *  focus, on the spring it comes back on: the sprout bends furthest and
+   *  wobbles, the tree gives a little and settles slowly. */
+  lean: number;
+  spring: { stiffness: number; damping: number; mass: number };
+  /** The row's plant's height while it is held down, tucked toward its base.
+   *  A tree gives the least. */
+  tuck: number;
 };
 
 type Stage = {
@@ -126,6 +135,9 @@ const STAGES: Record<AgeStage, Stage> = {
         ...AGE_WILT,
       },
       gust: 10,
+      lean: 7,
+      spring: { stiffness: 420, damping: 11, mass: 0.4 },
+      tuck: 0.9,
     },
   },
   odrasel: {
@@ -156,6 +168,9 @@ const STAGES: Record<AgeStage, Stage> = {
         duration: 0.5,
       },
       gust: 6,
+      lean: 5,
+      spring: { stiffness: 340, damping: 14, mass: 0.6 },
+      tuck: 0.92,
     },
   },
   senior: {
@@ -186,6 +201,9 @@ const STAGES: Record<AgeStage, Stage> = {
         duration: 1,
       },
       gust: 4,
+      lean: 3.5,
+      spring: { stiffness: 260, damping: 17, mass: 0.9 },
+      tuck: 0.94,
     },
   },
 };
@@ -473,6 +491,60 @@ export function plantMotion(cue: PlantCue): {
   return { animate: REST, transition: SETTLE };
 }
 
+type Pose = { animate: TargetAndTransition; transition: Transition };
+
+// How fast a held plant tucks down. The way back up is the stage's spring.
+const TUCK_DURATION = 0.1;
+
+export type RowPlantCue = {
+  stage: AgeStage;
+  /** A mouse is over the row, or keyboard focus is on it. */
+  leaning: boolean;
+  /** A pointer is held down on the row. */
+  tucked: boolean;
+  reduceMotion: boolean;
+};
+
+/**
+ * What the row's plant does under the pointer, on two elements of its own,
+ * so the two never write one property and the pick's rise runs inside both.
+ *
+ * The lean is the grove's own gesture brought down to the row: the plant bends
+ * from its base toward the label as a mouse or the keyboard reaches it, where
+ * every other row lifts its icon. A shear about the foot rather than a turn,
+ * so the sprout's strip of soil stays level and only the plant above it bends;
+ * turned, the whole drawing tipped over like a picture knocked askew. The tuck
+ * is what a press gets, and the one gesture a phone gets before the pick: the
+ * plant draws down toward its base, giving back in width what it loses in
+ * height. A pick wipes the plant and grows it again from the ground while the
+ * tuck springs back up under it, so the rise grows out of the tuck rather than
+ * out of a plant snapped upright first.
+ *
+ * Both are two-value targets from wherever the plant is, on springs or a
+ * short tween, so a pick, a leave or a release that cuts one short carries it
+ * on from where it was.
+ */
+export function rowPlantPose(cue: RowPlantCue): { lean: Pose; tuck: Pose } {
+  if (cue.reduceMotion) {
+    return {
+      lean: { animate: { skewX: 0 }, transition: { duration: 0 } },
+      tuck: { animate: { scaleX: 1, scaleY: 1 }, transition: { duration: 0 } },
+    };
+  }
+  const { lean, spring, tuck } = STAGES[cue.stage].growth;
+  const settle: Transition = { type: "spring", ...spring };
+  return {
+    // A negative skew carries the top to the right, toward the label.
+    lean: { animate: { skewX: cue.leaning ? -lean : 0 }, transition: settle },
+    tuck: cue.tucked
+      ? {
+          animate: { scaleY: tuck, scaleX: 1 + (1 - tuck) / 2 },
+          transition: { duration: TUCK_DURATION, ease: "easeOut" },
+        }
+      : { animate: { scaleX: 1, scaleY: 1 }, transition: settle },
+  };
+}
+
 function leafKeyframes(scale: number, side: number) {
   const startY = LEAF_SHOULDER.y * scale;
   return {
@@ -505,6 +577,17 @@ function changedValue(selected: string[], nextSelected: string[]) {
   );
 }
 
+// The grove answers a pointer with its hover and nothing else. A press tucks
+// the row's plant, and the grove keeps the motion it has always had.
+function hoverOnly({
+  onPointerEnter,
+  onPointerLeave,
+  onFocus,
+  onBlur,
+}: FilterCardGestureHandlers) {
+  return { onPointerEnter, onPointerLeave, onFocus, onBlur };
+}
+
 // The colour a row's plant changes with. Not while it regrows: a pick wipes
 // the plant and draws it again, and the strokes come back in the grove's
 // colours from their first pixel rather than washing from grey to green as
@@ -527,6 +610,8 @@ function RowPlant({
   stage,
   checked,
   celebrating,
+  leaning,
+  tucked,
   reduceMotion,
   resetDelay,
 }: {
@@ -534,50 +619,73 @@ function RowPlant({
   checked: boolean;
   /** Just picked: the plant is wiped and grown again. */
   celebrating: boolean;
+  leaning: boolean;
+  tucked: boolean;
   reduceMotion: boolean;
   /** The row's turn in a reset, which the colour waits for as it leaves. */
   resetDelay: number;
 }) {
   const { rowClassName, growth } = STAGES[stage];
   const { rise } = growth;
+  const pose = rowPlantPose({ stage, leaning, tucked, reduceMotion });
   const tone = celebrating ? undefined : TONE_TRANSITION;
 
   return (
     <m.span
       className="flex origin-bottom items-end justify-center"
+      data-leaning={leaning && !reduceMotion ? "" : undefined}
       initial={false}
-      animate={
-        celebrating && !reduceMotion
-          ? { scaleY: rise.values, scaleX: rise.widths }
-          : { scaleY: 1, scaleX: 1 }
-      }
-      transition={
-        reduceMotion
-          ? { duration: 0 }
-          : celebrating
-            ? {
-                duration: rise.duration,
-                times: rise.times,
-                ease: "easeOut",
-              }
-            : { duration: 0.16 }
-      }
+      animate={pose.lean.animate}
+      transition={pose.lean.transition}
     >
-      <AgeStageIcon
-        stage={stage}
-        draw={celebrating}
-        reduceMotion={reduceMotion}
-        className={cn(checked ? LEAF_CLASS : MUTED_CLASS, tone, rowClassName)}
-        // The trunk takes its colour from a class of its own, so it needs
-        // the transition too, and it reads the svg's delay rather than a
-        // second copy of the row's turn.
-        woodClassName={cn(
-          checked ? WOOD_CLASS : MUTED_CLASS,
-          tone,
-          "delay-[inherit]",
-        )}
-        style={resetDelayStyle(checked, resetDelay)}
-      />
+      <m.span
+        className="flex origin-bottom items-end justify-center"
+        data-tucked={tucked && !reduceMotion ? "" : undefined}
+        initial={false}
+        animate={pose.tuck.animate}
+        transition={pose.tuck.transition}
+      >
+        <m.span
+          className="flex origin-bottom items-end justify-center"
+          initial={false}
+          animate={
+            celebrating && !reduceMotion
+              ? { scaleY: rise.values, scaleX: rise.widths }
+              : { scaleY: 1, scaleX: 1 }
+          }
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : celebrating
+                ? {
+                    duration: rise.duration,
+                    times: rise.times,
+                    ease: "easeOut",
+                  }
+                : { duration: 0.16 }
+          }
+        >
+          <AgeStageIcon
+            stage={stage}
+            draw={celebrating}
+            reduceMotion={reduceMotion}
+            className={cn(
+              checked ? LEAF_CLASS : MUTED_CLASS,
+              tone,
+              rowClassName,
+            )}
+            // The trunk takes its colour from a class of its own, so it
+            // needs the transition too, and it reads the svg's delay rather
+            // than a second copy of the row's turn.
+            woodClassName={cn(
+              checked ? WOOD_CLASS : MUTED_CLASS,
+              tone,
+              "delay-[inherit]",
+            )}
+            style={resetDelayStyle(checked, resetDelay)}
+          />
+        </m.span>
+      </m.span>
     </m.span>
   );
 }
@@ -609,8 +717,14 @@ export function AgeGrowthControl({
     id: number;
   } | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  const { hoveredValue: hoveredAge, handlers: hoverHandlers } =
-    useFilterCardHover();
+  const {
+    hoveredValue: hoveredAge,
+    settledValue: settledAge,
+    settle,
+    pressedValue: pressedAge,
+    release: releasePress,
+    handlers: gestureHandlers,
+  } = useFilterCardGestures();
   const [fallingLeaf, setFallingLeaf] = useState<FallingLeaf | null>(null);
   const farewell = useOneShotCelebration<Farewell>(FAREWELL_HOLD_MS);
   const gust = useOneShotCelebration<"reset">(GUST_HOLD_MS);
@@ -656,6 +770,12 @@ export function AgeGrowthControl({
   function applySelection(nextSelected: string[]) {
     const changed = changedValue(selected, nextSelected);
     if (!changed) return;
+
+    // Touch browsers can skip pointerleave when the finger slides off, so the
+    // pick clears the press too. The plant stands up straight from the pick
+    // until the pointer or focus leaves: it grows upright rather than leaning.
+    releasePress(changed);
+    settle(changed);
 
     if (
       nextSelected.length === options.length ||
@@ -791,7 +911,7 @@ export function AgeGrowthControl({
                     pressable && "cursor-pointer",
                   )}
                   onClick={pressable ? () => toggleFromGrove(value) : undefined}
-                  {...(pressable ? hoverHandlers(value) : {})}
+                  {...(pressable ? hoverOnly(gestureHandlers(value)) : {})}
                 >
                   <span
                     className={cn(
@@ -962,11 +1082,26 @@ export function AgeGrowthControl({
               // A reset takes the rows' colour and halos back in turn, the
               // way the grove's gust crosses the plants.
               const resetDelay = isResetting ? index * RESET_STAGGER : 0;
+              // Upright from the press, and from the pick until the pointer
+              // or focus has left, so the plant grows straight. Upright for
+              // the whole growth as well: a pick made with the page scrolled
+              // past the results scrolls it back to them (scrollToResults),
+              // which moves the sidebar under a resting pointer. The pointer
+              // leaves the row and comes back, the leave ends the settle, and
+              // the plant took up its lean again mid-growth.
               const plant = (
                 <RowPlant
                   stage={value}
                   checked={checked}
                   celebrating={celebrating}
+                  leaning={
+                    hoveredAge === value &&
+                    pressedAge !== value &&
+                    settledAge !== value &&
+                    !celebrating
+                  }
+                  // The tuck yields the moment the growth takes over.
+                  tucked={pressedAge === value && !celebrating}
                   reduceMotion={shouldReduceMotion}
                   resetDelay={resetDelay}
                 />
@@ -977,7 +1112,7 @@ export function AgeGrowthControl({
                   key={value}
                   value={value}
                   disabled={count === 0 && !checked}
-                  {...hoverHandlers(value)}
+                  {...gestureHandlers(value)}
                   aria-label={`${label}, ${messages[stage.rangeKey]}, ${animalCount(count, locale)}`}
                   className={filterCardVariants({
                     layout,

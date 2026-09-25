@@ -54,6 +54,7 @@ import {
 } from "@/components/filters/use-filter-sections";
 import {
   groupLabel,
+  namesUnanswered,
   picksEverySex,
   type CareKey,
   type CareOption,
@@ -329,11 +330,25 @@ function SizeGroup({
   unanswered,
   leavesOutCats,
 }: Omit<GroupProps, "group">) {
-  const { locale, messages } = useI18n();
+  const { locale, messages, t } = useI18n();
   const { isResetting, beginReset } = useResetStagger(
     selected.length,
     options.length,
   );
+  // On Vse this section can have two things to say about a pick: cats are
+  // never asked at all (leavesOutCats), and some of the dogs and others who
+  // are asked have no answer (unanswered). Said separately that was two
+  // sentences each, four 11px lines stacked under the rows; folded into one
+  // when both apply, it is two lines. The count stays the plain "some have no
+  // answer" share (namesUnanswered already gates on that below the tenth
+  // worth mentioning), so the sentence never claims a pick will show
+  // something, only what it leaves out, and stays true whichever share it is.
+  const unansweredApplies = unanswered !== undefined && namesUnanswered(unanswered);
+  const sizeNote = !leavesOutCats
+    ? null
+    : unansweredApplies
+      ? t("sizeLeavesOutCatsAndUnanswered", { count: unanswered.unanswered })
+      : messages.sizeLeavesOutCats;
 
   return (
     <section>
@@ -356,10 +371,14 @@ function SizeGroup({
           isResetting={isResetting}
           layout={layout}
         />
-        {/* The cats first: the larger of the two left out, and the count
-            under it is of the animals asked, which cats are not. */}
-        {leavesOutCats && <SectionNote>{messages.sizeLeavesOutCats}</SectionNote>}
-        <UnansweredNote tally={unanswered} />
+        {/* Cats first, folded into sizeNote with the plain unanswered count
+            when both apply; UnansweredNote alone on a tab where cats do
+            answer (sizeNote is then unused, leavesOutCats is false there). */}
+        {leavesOutCats ? (
+          <SectionNote>{sizeNote}</SectionNote>
+        ) : (
+          <UnansweredNote tally={unanswered} />
+        )}
       </CollapsibleBody>
     </section>
   );

@@ -123,7 +123,7 @@ describe("Čaka na dom takes one threshold at a time", () => {
     const row = screen.getByRole("button", { name: /^Nad 1\sleto,/ });
     const description = document.getElementById(row.getAttribute("aria-describedby")!);
     expect(description?.textContent).toBe(
-      "Šteto od dneva, ko je žival prišla v zavetišče. Izbereš lahko eno mejo.",
+      "Šteto od dneva, ko je žival prišla v\u00a0zavetišče. Izbereš lahko eno mejo.",
     );
   });
 });
@@ -145,6 +145,46 @@ describe("Velikost on Vse", () => {
     });
     openFilterSection("Velikost");
     expect(screen.queryByText(/Mačk po velikosti/)).toBeNull();
+  });
+
+  // The two notes used to stack, four 11px lines under the rows. Folded into
+  // one sentence when both apply.
+  it("says both in one sentence when a pick also leaves some dogs unanswered", () => {
+    const none = unansweredCounts([], EMPTY_FILTERS, now);
+    const unanswered: UnansweredTally = {
+      ...none,
+      groups: { ...none.groups, size: { asked: 100, unanswered: 40 } },
+    };
+    show({ groups: ["size"], counts: { size: [["small", 12]] }, unanswered });
+    openFilterSection("Velikost");
+    expect(
+      screen.getByText(
+        "Izbira ne pokaže mačk, ki jih po velikosti ne ločimo, in 40 živali brez podatka.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("Mačk po velikosti ne ločimo, zato jih izbira ne pokaže."),
+    ).toBeNull();
+  });
+
+  // Cats do answer on Psi, so leavesOutCats does not apply there: the plain
+  // unanswered line carries the count on its own, same as every other section.
+  it("keeps the plain unanswered line on Psi, where leaving cats out does not apply", () => {
+    const none = unansweredCounts([], EMPTY_FILTERS, now);
+    const unanswered: UnansweredTally = {
+      ...none,
+      groups: { ...none.groups, size: { asked: 100, unanswered: 40 } },
+    };
+    show({
+      groups: ["size"],
+      filters: { ...EMPTY_FILTERS, species: "dog" },
+      counts: { size: [["small", 12]] },
+      unanswered,
+    });
+    openFilterSection("Velikost");
+    expect(
+      screen.getByText("Brez podatka: 40. Izbira pokaže le živali s podatkom."),
+    ).toBeTruthy();
   });
 });
 
@@ -174,10 +214,10 @@ describe("the health rows", () => {
     openFilterSection("Zdravje");
     expect(
       screen.getByRole("button", { name: /^Brez FIV,/ }).textContent,
-    ).toContain("Brez podatka:\u00a0134");
+    ).toContain("Brez\u00a0podatka: 134");
     expect(
       screen.getByRole("button", { name: /^Brez FeLV,/ }).textContent,
-    ).toContain("Brez podatka:\u00a0121");
+    ).toContain("Brez\u00a0podatka: 121");
     expect(screen.getByText("Izbira pokaže le živali s podatkom.")).toBeTruthy();
   });
 

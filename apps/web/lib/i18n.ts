@@ -295,18 +295,18 @@ const sl = {
   // replaces the first. Each row reads the whole hint out as its description
   // (waiting-cards.tsx), since a screen reader hears nothing of the marks.
   waitingFilterHint:
-    "Šteto od dneva, ko je žival prišla v zavetišče. Izbereš lahko eno mejo.",
+    "Šteto od dneva, ko je žival prišla v\u00a0zavetišče. Izbereš lahko eno mejo.",
   resetWaitingFilters: "Ponastavi čas čakanja",
   // Under a section whose question a tenth or more of the list has no answer
   // to. The count takes a colon so it needs no agreement with the noun, and
   // the second sentence says what a pick does with them, which is what a
   // count alone left the visitor to guess.
-  unansweredLine: "Brez podatka:\u00a0{count}. Izbira pokaže le živali s podatkom.",
+  unansweredLine: "Brez podatka:\u00a0{count}. Izbira pokaže le živali s\u00a0podatkom.",
   // The same count under one option, where a section asks several questions
   // and each has its own answers (FIV and FeLV), and the sentence the section
   // then says once under all of them.
-  unansweredRow: "Brez podatka:\u00a0{count}",
-  unansweredHides: "Izbira pokaže le živali s podatkom.",
+  unansweredRow: "Brez\u00a0podatka: {count}",
+  unansweredHides: "Izbira pokaže le živali s\u00a0podatkom.",
   // In place of either when not one of the animals has an answer: there is
   // nothing left to pick, so a sentence about what a pick does is untrue.
   unansweredNone: "Za nobeno od teh živali ni podatka.",
@@ -321,6 +321,14 @@ const sl = {
   // lib/filters/engine.ts), so a pick leaves every one of them out, and
   // nothing else on the panel said so.
   sizeLeavesOutCats: "Mačk po velikosti ne ločimo, zato jih izbira ne pokaže.",
+  // Velikost on Vse used to stack this note over UnansweredNote's own line,
+  // four 11px lines where both applied. Said as one sentence when they do;
+  // sizeLeavesOutCats alone still carries the case where only cats are
+  // left out. The count is always the plain "some have no answer" number
+  // (namesUnanswered), never the all-have-no-answer wording: this sentence
+  // never promises a pick will show anything, so it stays true either way.
+  sizeLeavesOutCatsAndUnanswered:
+    "Izbira ne pokaže mačk, ki jih po velikosti ne ločimo, in {count} živali brez podatka.",
   knownTopicSex: "Spol",
   knownTopicAge: "Starost",
   knownTopicSize: "Velikost",
@@ -651,7 +659,7 @@ const sl = {
   // (goodWithUnansweredLine), where a mouse reads it too; this hint is a
   // tooltip there.
   goodWithFilterHint: "Označi, kdo že živi pri tebi.",
-  goodWithUnansweredRow: "Brez odgovora:\u00a0{count}",
+  goodWithUnansweredRow: "Brez\u00a0podatka: {count}",
   goodWithUnansweredLine:
     "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
   goodWithUnansweredNone:
@@ -659,12 +667,12 @@ const sl = {
   // The section reads as one sentence, so the phrases are whole and translated,
   // never assembled from parts in the component.
   goodWithOutcome:
-    "Prikazane so živali, ki se razumejo {list}. {count} od {total}. Živali brez odgovora zavetišča so skrite.",
+    "Prikazane so živali, ki se razumejo {list}: {count} od {total}. Živali brez podatka so skrite.",
   // Lead carries the preposition, which in Slovenian depends on the word that
   // follows it. Tail is the same noun without it, for the rest of the list.
-  goodWithLeadKids: "z otroki",
-  goodWithLeadDogs: "s psi",
-  goodWithLeadCats: "z mačkami",
+  goodWithLeadKids: "z\u00a0otroki",
+  goodWithLeadDogs: "s\u00a0psi",
+  goodWithLeadCats: "z\u00a0mačkami",
   goodWithTailKids: "otroki",
   goodWithTailDogs: "psi",
   goodWithTailCats: "mačkami",
@@ -837,12 +845,14 @@ const en: Messages = {
     "Counted from the day the animal came to the shelter. Pick one threshold.",
   resetWaitingFilters: "Reset the waiting time",
   unansweredLine: "No data:\u00a0{count}. Picking one shows only animals with data.",
-  unansweredRow: "No data:\u00a0{count}",
+  unansweredRow: "No\u00a0data: {count}",
   unansweredHides: "Picking one shows only animals with data.",
   unansweredNone: "None of these animals has this information.",
   knownFor: "We know {topic} for {answered} of {asked} {species}.",
   sizeAskedOf: "dogs and other animals",
   sizeLeavesOutCats: "Cats are not sorted by size, so a pick leaves them out.",
+  sizeLeavesOutCatsAndUnanswered:
+    "A pick leaves out cats, which are not sorted by size, and {count} animals with no data.",
   knownTopicSex: "the sex",
   knownTopicAge: "the age",
   knownTopicSize: "the size",
@@ -996,13 +1006,13 @@ const en: Messages = {
   goodWithFacts: "Good with",
   resetGoodWithFilters: "Reset who lives with you",
   goodWithFilterHint: "Tell us who already lives with you.",
-  goodWithUnansweredRow: "No answer:\u00a0{count}",
+  goodWithUnansweredRow: "No\u00a0answer: {count}",
   goodWithUnansweredLine:
     "Picking one shows only animals the shelter answered for.",
   goodWithUnansweredNone:
     "The shelter has not answered this for any of these animals.",
   goodWithOutcome:
-    "Showing animals that get on with {list}. {count} of {total}. Animals the shelter has not answered for stay hidden.",
+    "Showing animals that get on with {list}: {count} of {total}. Animals with no answer stay hidden.",
   goodWithLeadKids: "kids",
   goodWithLeadDogs: "dogs",
   goodWithLeadCats: "cats",

@@ -330,7 +330,7 @@ export const FILTER_METADATA = {
       slug: "posvojitev-v-paru",
       labels: { sl: "Dom za dva", en: "A home for two" },
       chip: { sl: "Dom za dve živali", en: "A home for two animals" },
-      description: { sl: "Gredo samo v paru", en: "Adopted only as a pair" },
+      description: { sl: "Gredo samo v\u00a0paru", en: "Adopted only as a pair" },
     },
     {
       value: "ongoing-care",

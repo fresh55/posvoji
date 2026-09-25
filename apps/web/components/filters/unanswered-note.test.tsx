@@ -21,7 +21,7 @@ function renderNote(tally: Unanswered | undefined, locale: Locale = "sl") {
 describe("UnansweredNote", () => {
   it("says how many a pick leaves out and what a pick does", () => {
     expect(renderNote({ asked: 491, unanswered: 380 })).toBe(
-      "Brez podatka: 380. Izbira pokaže le živali s podatkom.",
+      "Brez podatka: 380. Izbira pokaže le živali s podatkom.",
     );
   });
 
@@ -91,7 +91,7 @@ describe("useRowNotes", () => {
       b: { asked: 24, unanswered: 1 },
     });
     expect(view.section).toBe("hides");
-    expect(view.row("a")).toBe("Brez podatka: 12");
+    expect(view.row("a")).toBe("Brez podatka: 12");
     expect(view.row("b")).toBe("-");
   });
 
@@ -104,7 +104,7 @@ describe("useRowNotes", () => {
       b: { asked: 24, unanswered: 0 },
     });
     expect(view.section).toBe("-");
-    expect(view.row("a")).toBe("Brez podatka: 24");
+    expect(view.row("a")).toBe("Brez podatka: 24");
   });
 
   it("says none when no row has a single answer", () => {

@@ -20,6 +20,7 @@ import {
 import {
   CountRoll,
   DEAD_OPTION_CLASS,
+  FilterCardIconWell,
   FilterCardMark,
   FilterCardTail,
   SIDEBAR_LABEL_CLASS,
@@ -33,6 +34,7 @@ import {
 } from "@/components/filters/filter-section-header";
 import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
+  resetDelayStyle,
   useFilterCardHover,
   useOneShotCelebration,
   waitThen,
@@ -191,9 +193,11 @@ const STAGES: Record<AgeStage, Stage> = {
 // The grove's colours come from --grove-* in globals.css, which is where the
 // dark values and the contrast measurements live. Every canopy is leaf and
 // every trunk is wood: drawn in wood alone, the shrub and the tree were two
-// brown clouds, which reads as autumn rather than as an older animal.
+// brown clouds, which reads as autumn rather than as an older animal. The rows
+// wear them only while chosen, and the resting ink otherwise (RowPlant).
 const LEAF_CLASS = "text-grove-leaf";
 const WOOD_CLASS = "text-grove-wood";
+const MUTED_CLASS = "text-muted-foreground";
 
 const STANDARD_EASE = [0.16, 1, 0.3, 1] as const;
 const CELEBRATION_GUARD_MS = 80;
@@ -498,6 +502,83 @@ function changedValue(selected: string[], nextSelected: string[]) {
   return (
     nextSelected.find((value) => !selected.includes(value)) ??
     selected.find((value) => !nextSelected.includes(value))
+  );
+}
+
+// The colour a row's plant changes with. Not while it regrows: a pick wipes
+// the plant and draws it again, and the strokes come back in the grove's
+// colours from their first pixel rather than washing from grey to green as
+// they grow. motion-reduce, because the reduced pick lands at once.
+const TONE_TRANSITION =
+  "transition-colors duration-200 motion-reduce:transition-none";
+
+/**
+ * A row's plant: the same drawing as the grove's, in the muted ink every
+ * other row's icon rests in, and in the grove's colours only while the row
+ * is chosen. The grove above says how old each stage is whether or not it is
+ * picked; the row says what is picked, and green means chosen across the
+ * panel. A dead stage is never chosen, so it stays grey too.
+ *
+ * It grows with the grove's plant, so the growth starts under the finger that
+ * asked for it and not only a hand's width above. It rises and draws; the
+ * sway stays in the grove, where there is room for it.
+ */
+function RowPlant({
+  stage,
+  checked,
+  celebrating,
+  reduceMotion,
+  resetDelay,
+}: {
+  stage: AgeStage;
+  checked: boolean;
+  /** Just picked: the plant is wiped and grown again. */
+  celebrating: boolean;
+  reduceMotion: boolean;
+  /** The row's turn in a reset, which the colour waits for as it leaves. */
+  resetDelay: number;
+}) {
+  const { rowClassName, growth } = STAGES[stage];
+  const { rise } = growth;
+  const tone = celebrating ? undefined : TONE_TRANSITION;
+
+  return (
+    <m.span
+      className="flex origin-bottom items-end justify-center"
+      initial={false}
+      animate={
+        celebrating && !reduceMotion
+          ? { scaleY: rise.values, scaleX: rise.widths }
+          : { scaleY: 1, scaleX: 1 }
+      }
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : celebrating
+            ? {
+                duration: rise.duration,
+                times: rise.times,
+                ease: "easeOut",
+              }
+            : { duration: 0.16 }
+      }
+    >
+      <AgeStageIcon
+        stage={stage}
+        draw={celebrating}
+        reduceMotion={reduceMotion}
+        className={cn(checked ? LEAF_CLASS : MUTED_CLASS, tone, rowClassName)}
+        // The trunk takes its colour from a class of its own, so it needs
+        // the transition too, and it reads the svg's delay rather than a
+        // second copy of the row's turn.
+        woodClassName={cn(
+          checked ? WOOD_CLASS : MUTED_CLASS,
+          tone,
+          "delay-[inherit]",
+        )}
+        style={resetDelayStyle(checked, resetDelay)}
+      />
+    </m.span>
   );
 }
 
@@ -839,13 +920,16 @@ export function AgeGrowthControl({
                   </span>
                   {/* What each plant stands for, printed where the choice is
                       made. The ranges used to be a hover tooltip on the rows,
-                      which a phone never shows. */}
-                  <span
-                    className={cn(
-                      "mt-1 text-2xs leading-none whitespace-nowrap text-muted-foreground tabular-nums transition-opacity duration-200 motion-reduce:transition-none",
-                      !active && "opacity-50",
-                    )}
-                  >
+                      which a phone never shows.
+
+                      Full muted ink whether or not the stage is picked. The
+                      captions of the stages left out used to drop to half
+                      opacity, which measured 2.08:1 light and 2.68:1 dark at
+                      11px: words nobody could read, saying what the faded,
+                      shrunken plant above them already says. Below lg, in the
+                      phone's sheet, they are a step up, at the 12px its tiles
+                      print their labels and counts in. */}
+                  <span className="mt-1 text-xs leading-none whitespace-nowrap text-muted-foreground tabular-nums lg:text-2xs">
                     {messages[stage.captionKey]}
                   </span>
                 </span>
@@ -868,14 +952,25 @@ export function AgeGrowthControl({
             spacing={layout === "sheet" ? 1.5 : 1}
             className="w-full items-stretch"
           >
-            {options.map(({ value, label }) => {
+            {options.map(({ value, label }, index) => {
               if (!isAgeStage(value)) return null;
 
               const stage = STAGES[value];
-              const { rise } = stage.growth;
               const count = counts.get(value) ?? 0;
               const checked = selected.includes(value);
               const celebrating = celebratingAge === value && checked;
+              // A reset takes the rows' colour and halos back in turn, the
+              // way the grove's gust crosses the plants.
+              const resetDelay = isResetting ? index * RESET_STAGGER : 0;
+              const plant = (
+                <RowPlant
+                  stage={value}
+                  checked={checked}
+                  celebrating={celebrating}
+                  reduceMotion={shouldReduceMotion}
+                  resetDelay={resetDelay}
+                />
+              );
 
               return (
                 <ToggleGroupItem
@@ -912,7 +1007,14 @@ export function AgeGrowthControl({
                           // The count's column is auto, so its width is the
                           // count's own (countClass): the same minimum and the
                           // same growth as the count in every other row.
-                          "grid h-10 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2.5 pr-9 text-left",
+                          //
+                          // The icon's column is the icon well's size-7.5 and
+                          // the gap is the flex rows' gap-2.5, so the plant
+                          // stands in the well every other row's icon stands
+                          // in and the label starts where theirs do. A 1.5rem
+                          // column with gap-2 put Starost's labels 8px left of
+                          // Spol's and Velikost's, and had no room for a halo.
+                          "grid h-10 w-full shrink grid-cols-[1.875rem_minmax(0,1fr)_auto] items-center gap-2.5 px-2.5 pr-9 text-left",
                     ),
                   })}
                 >
@@ -927,38 +1029,30 @@ export function AgeGrowthControl({
                     checked={checked}
                     appearDelay={stage.growth.checkDelay}
                   />
-                  {/* The row's own plant grows with the grove's, so the
-                      growth starts under the finger that asked for it and
-                      not only a hand's width above. It rises and draws; the
-                      sway stays in the grove, where there is room for it. */}
-                  <m.span
-                    className="origin-bottom"
-                    initial={false}
-                    animate={
-                      celebrating && !shouldReduceMotion
-                        ? { scaleY: rise.values, scaleX: rise.widths }
-                        : { scaleY: 1, scaleX: 1 }
-                    }
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : celebrating
-                          ? {
-                              duration: rise.duration,
-                              times: rise.times,
-                              ease: "easeOut",
-                            }
-                          : { duration: 0.16 }
-                    }
-                  >
-                    <AgeStageIcon
-                      stage={value}
-                      draw={celebrating}
-                      reduceMotion={shouldReduceMotion}
-                      className={cn(LEAF_CLASS, stage.rowClassName)}
-                      woodClassName={WOOD_CLASS}
-                    />
-                  </m.span>
+                  {/* A row stands its plant in the icon well, whose halo
+                      lights when the row is chosen, the way every other row
+                      in the column lights. A tile has no well, as Spol's and
+                      Velikost's have none: its plant stands alone in the
+                      middle of the card. It stands in a slot as tall as the
+                      tallest plant, on the slot's floor, so the three
+                      plants' heights no longer push their labels and counts
+                      to three different lines (34, 35 and 36px down). */}
+                  {layout === "sheet" ? (
+                    <span
+                      aria-hidden
+                      className="flex h-6 items-end justify-center"
+                    >
+                      {plant}
+                    </span>
+                  ) : (
+                    <FilterCardIconWell
+                      layout={layout}
+                      checked={checked}
+                      exitDelay={resetDelay}
+                    >
+                      {plant}
+                    </FilterCardIconWell>
+                  )}
                   {/* The tile is the shared tail, so Starost cannot drift
                       from the drawer around it again: it printed its label at
                       11px over a 10px count while every other tile printed 12

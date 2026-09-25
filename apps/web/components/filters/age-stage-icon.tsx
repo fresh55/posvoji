@@ -1,7 +1,7 @@
 "use client";
 
 import { m, type Transition } from "motion/react";
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 import {
   AGE_STAGE_PATHS as PATHS,
   type AgeStage,
@@ -105,10 +105,13 @@ export function ageDrawSeconds(stage: AgeStage, reduceMotion: boolean): number {
 // the grove above it is redrawn on every filter press for the counts beside
 // it. Each icon is up to four motion paths, and they were most of the motion
 // work a press spent in the age section while no stage had changed at all.
+// A caller that passes a style passes it only while it matters, so the memo
+// still holds at rest.
 export const AgeStageIcon = memo(function AgeStageIcon({
   stage,
   className,
   woodClassName,
+  style,
   draw = false,
   wilt = false,
   wiltDelay = 0,
@@ -120,6 +123,9 @@ export const AgeStageIcon = memo(function AgeStageIcon({
   /** Colours the trunk and branches apart from the canopy. Left out, the mark
    *  is one colour, which is what the dialog's grey fact row wants. */
   woodClassName?: string;
+  /** On the svg. The age rows put their reset turn here, as the delay of the
+   *  colour they give back. */
+  style?: CSSProperties;
   draw?: boolean;
   /** Folds the leaves that carry fold data down and back up once. */
   wilt?: boolean;
@@ -135,6 +141,7 @@ export const AgeStageIcon = memo(function AgeStageIcon({
       aria-hidden="true"
       data-age-icon={stage}
       className={cn("shrink-0", className)}
+      style={style}
       xmlns="http://www.w3.org/2000/svg"
       width="24"
       height="24"

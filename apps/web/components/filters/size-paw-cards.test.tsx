@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { PawPrint } from "lucide-react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, facetCounts, groupOptions } from "@/lib/filters";
@@ -20,6 +20,19 @@ import {
 } from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 import { SizePawCards } from "./size-paw-cards";
+
+// Motion asks matchMedia for "(prefers-reduced-motion)", not the ": reduce"
+// form, and only once per file, keeping the answer. A stub installed by one
+// test never reaches it, so the hook is the seam.
+const motion = vi.hoisted(() => ({ reduced: false }));
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => motion.reduced,
+}));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 installFilterFoldSeams();
 
@@ -348,34 +361,60 @@ describe("SizePawCards press-crouch", () => {
 });
 
 describe("SizePawCards under reduced motion", () => {
-  it("renders and toggles without errors when the user prefers reduced motion", () => {
-    const originalMatchMedia = window.matchMedia;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockImplementation((media: string) => ({
-        matches: media === "(prefers-reduced-motion: reduce)",
-        media,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
+  function Harness() {
+    const [selected, setSelected] = useState<string[]>([]);
+    return (
+      <I18nProvider locale="sl">
+        <SizePawCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={(value) =>
+            setSelected((current) =>
+              current.includes(value)
+                ? current.filter((item) => item !== value)
+                : [...current, value],
+            )
+          }
+        />
+      </I18nProvider>
+    );
+  }
+
+  // Picks the large paw, the one that kicks up dust, and takes it off again,
+  // and says which marks each step left around it: the shadow and the dust of
+  // the landing, the print of the take-off.
+  function landAndLift() {
+    render(<Harness />);
+    const button = screen.getByRole("button", {
+      name: new RegExp(`^${options[2].label}, `),
     });
 
-    try {
-      const onToggle = renderCards();
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-pressed")).toBe("true");
+    const shadow =
+      button.querySelector("span.rounded-full.bg-muted-foreground") !== null;
+    const dust =
+      button.querySelector("span.rounded-full.bg-brand-strong") !== null;
 
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: new RegExp(`^${options[0].label}, `),
-        }),
-      );
+    fireEvent.click(button);
+    expect(button.getAttribute("aria-pressed")).toBe("false");
+    const print =
+      button.querySelector('svg.lucide-paw-print[fill="currentColor"]') !==
+      null;
 
-      expect(onToggle).toHaveBeenCalledWith(options[0].value);
-    } finally {
-      Object.defineProperty(window, "matchMedia", {
-        configurable: true,
-        value: originalMatchMedia,
-      });
-    }
+    return { shadow, dust, print };
+  }
+
+  it("lands and lifts a paw without its shadow, dust or print", () => {
+    const moving = landAndLift();
+    cleanup();
+    motion.reduced = true;
+    const still = landAndLift();
+
+    // Each mark is really drawn with motion on, or its absence proves nothing.
+    expect(moving).toEqual({ shadow: true, dust: true, print: true });
+    expect(still).toEqual({ shadow: false, dust: false, print: false });
   });
 });
 

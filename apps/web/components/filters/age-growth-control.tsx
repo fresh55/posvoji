@@ -35,6 +35,7 @@ import { UnansweredNote } from "@/components/filters/unanswered-note";
 import {
   useFilterCardHover,
   useOneShotCelebration,
+  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -274,6 +275,7 @@ const SHED_AT =
 const WILTED_SCALE = 0.84;
 
 type FallingLeaf = { id: number; delay: number; scale: number; side: number };
+type Farewell = { stage: AgeStage; wait: number };
 
 // A reset is a gust through the grove from the left: each plant bends with it
 // in turn and springs back, the way Velikost's reset walks its paws off.
@@ -285,14 +287,20 @@ const GUST = {
   // crossing the row rather than three plants moving together.
   stagger: 0.09,
 };
+// How long a plant still moving from a pick (its own growth, or its lean away
+// from another's) takes to come upright before its farewell (waitThen's
+// settle). The tree's lean is the slowest gesture an unpick can cut short,
+// and at 0.24s the plant comes back no faster than it.
+const FAREWELL_SETTLE = 0.24;
 const STAGE_COUNT = Object.keys(STAGES).length;
 const GUST_HOLD_MS =
   ((STAGE_COUNT - 1) * GUST.stagger + GUST.duration) * 1000 +
   CELEBRATION_GUARD_MS;
 const FAREWELL_HOLD_MS =
-  Math.max(
-    ...Object.values(STAGES).map(({ growth }) => growth.farewell.duration),
-  ) *
+  (FAREWELL_SETTLE +
+    Math.max(
+      ...Object.values(STAGES).map(({ growth }) => growth.farewell.duration),
+    )) *
     1000 +
   CELEBRATION_GUARD_MS;
 
@@ -318,6 +326,14 @@ export function leanOf(index: number, lastIndex: number): 1 | -1 {
 const REST = { rotate: 0, x: 0, scaleX: 1, scaleY: 1 };
 const SETTLE: Transition = { duration: 0.16 };
 
+// A pose that only turns the plant, with the rest of its body at rest.
+function turning({ keyframes, transition }: ReturnType<typeof waitThen>) {
+  return {
+    animate: { ...REST, rotate: keyframes },
+    transition: { default: SETTLE, rotate: transition },
+  };
+}
+
 export type PlantCue = {
   stage: AgeStage;
   index: number;
@@ -327,6 +343,10 @@ export type PlantCue = {
   growing: boolean;
   /** This plant was just unpicked. */
   leaving: boolean;
+  /** How long its farewell waits for it to come upright first. The caller
+   *  knows whether a pick was still moving it when the unpick came; this
+   *  function sees only the pose it is in now. */
+  farewellWait: number;
   /** A reset is blowing through the grove. */
   gusting: boolean;
   /** Another plant was just picked, and where it stands. */
@@ -341,6 +361,10 @@ export type PlantCue = {
  * Keyframed values get a transition of their own and everything else settles
  * on SETTLE: a flat transition carrying `times` would be applied to values
  * that have only a start and an end.
+ *
+ * Every gesture starts from wherever the plant is, because any of them can
+ * cut another short, and a first keyframe written out, or held through a
+ * delay, would draw a plant caught mid-swing straight in one frame.
  */
 export function plantMotion(cue: PlantCue): {
   animate: TargetAndTransition;
@@ -357,78 +381,89 @@ export function plantMotion(cue: PlantCue): {
       times: growth.rise.times,
       ease: "easeOut" as const,
     };
+    // The sway's first keyframe pair holds still until the plant is grown
+    // enough to be pushed. With no wait of its own, that hold is where a
+    // moving plant comes upright.
+    const sway = waitThen(
+      0,
+      growth.sway.values.map((degrees) => lean * degrees),
+      {
+        duration: growth.sway.duration,
+        times: growth.sway.times,
+        ease: "easeInOut",
+        settle: 0,
+      },
+    );
     return {
       animate: {
         ...REST,
         scaleY: growth.rise.values,
         scaleX: growth.rise.widths,
-        rotate: growth.sway.values.map((degrees) => lean * degrees),
+        rotate: sway.keyframes,
       },
       transition: {
         default: SETTLE,
         scaleY: rise,
         scaleX: rise,
-        rotate: {
-          duration: growth.sway.duration,
-          times: growth.sway.times,
-          ease: "easeInOut",
-        },
+        rotate: sway.transition,
       },
     };
   }
 
   if (cue.gusting) {
-    return {
-      animate: {
-        ...REST,
-        rotate: GUST.shape.map((share) => share * growth.gust),
-      },
-      transition: {
-        default: SETTLE,
-        rotate: {
-          duration: GUST.duration,
-          times: GUST.times,
-          delay: cue.index * GUST.stagger,
-          ease: "easeInOut",
-        },
-      },
-    };
+    // A plant still swaying comes upright over its turn's wait, on a linear
+    // settle, which is the slowest pace a turn this short allows. One
+    // stagger is too short even for that while the reset redraws the list
+    // under it, so that plant holds where it is and the gust takes it from
+    // there.
+    const wait = cue.index * GUST.stagger;
+    return turning(
+      waitThen(wait, GUST.shape.map((share) => share * growth.gust), {
+        duration: GUST.duration,
+        times: GUST.times,
+        ease: "easeInOut",
+        settle: wait > GUST.stagger ? wait : 0,
+        settleEase: "linear",
+      }),
+    );
   }
 
   if (cue.leaving) {
     const { farewell } = growth;
-    const clock = {
-      duration: farewell.duration,
-      times: farewell.times,
-      ease: "easeInOut" as const,
-    };
+    const track = (keyframes: number[]) =>
+      waitThen(cue.farewellWait, keyframes, {
+        duration: farewell.duration,
+        times: farewell.times,
+        ease: "easeInOut",
+        settle: cue.farewellWait,
+      });
+    const rotate = track(farewell.rotate.map((degrees) => lean * degrees));
+    const clock = rotate.transition;
     return {
       animate: {
         ...REST,
-        rotate: farewell.rotate.map((degrees) => lean * degrees),
-        x: farewell.x.map((px) => lean * px),
-        scaleY: farewell.scaleY,
+        rotate: rotate.keyframes,
+        x: track(farewell.x.map((px) => lean * px)).keyframes,
+        scaleY: track(farewell.scaleY).keyframes,
       },
       transition: { default: SETTLE, rotate: clock, x: clock, scaleY: clock },
     };
   }
 
   if (cue.grown) {
-    // Neighbours lean away from the plant that just grew.
+    // Neighbours lean away from the plant that just grew, and one still
+    // moving comes upright over the wait first.
     const away = Math.sign(cue.index - cue.grown.index) || 1;
-    return {
-      animate: { ...REST, rotate: [0, away * 2.2, 0] },
-      transition: {
-        default: SETTLE,
-        rotate: {
-          duration: 0.42,
-          delay:
-            swayStart(cue.grown.stage) +
-            Math.abs(cue.index - cue.grown.index) * 0.06,
-          ease: "easeInOut",
-        },
-      },
-    };
+    const wait =
+      swayStart(cue.grown.stage) +
+      Math.abs(cue.index - cue.grown.index) * 0.06;
+    return turning(
+      waitThen(wait, [0, away * 2.2, 0], {
+        duration: 0.42,
+        ease: "easeInOut",
+        settle: wait,
+      }),
+    );
   }
 
   return { animate: REST, transition: SETTLE };
@@ -496,7 +531,7 @@ export function AgeGrowthControl({
   const { hoveredValue: hoveredAge, handlers: hoverHandlers } =
     useFilterCardHover();
   const [fallingLeaf, setFallingLeaf] = useState<FallingLeaf | null>(null);
-  const farewell = useOneShotCelebration<AgeStage>(FAREWELL_HOLD_MS);
+  const farewell = useOneShotCelebration<Farewell>(FAREWELL_HOLD_MS);
   const gust = useOneShotCelebration<"reset">(GUST_HOLD_MS);
   const celebratingAge = celebration?.value ?? null;
 
@@ -523,6 +558,7 @@ export function AgeGrowthControl({
   );
   const lastIndex = options.length - 1;
   const seniorIndex = options.findIndex(({ value }) => value === "senior");
+  const parting = farewell.celebration?.value;
 
   function dropLeaf(delay: number, scale: number, side: number) {
     if (shouldReduceMotion) return;
@@ -546,14 +582,18 @@ export function AgeGrowthControl({
       !isAgeStage(changed)
     ) {
       setCelebration(null);
+      // While a pick's celebration runs, its sway and its neighbours' lean
+      // are still moving the plants, so the farewell waits for this one to
+      // come upright. The leaf waits with it.
+      const farewellWait = celebration ? FAREWELL_SETTLE : 0;
       if (isAgeStage(changed) && !nextSelected.includes(changed)) {
-        farewell.celebrate(changed);
+        farewell.celebrate({ stage: changed, wait: farewellWait });
       }
       if (changed === "senior" && !nextSelected.includes(changed)) {
         // An empty selection is every stage again, so the tree keeps its
         // size and only a narrower one shrinks away under the leaf.
         dropLeaf(
-          0,
+          farewellWait,
           nextSelected.length === 0 ? 1 : WILTED_SCALE,
           leanOf(seniorIndex, lastIndex),
         );
@@ -637,7 +677,8 @@ export function AgeGrowthControl({
               const checked = selected.includes(value);
               const pressable = checked || (counts.get(value) ?? 0) > 0;
               const celebrating = celebratingAge === value && active;
-              const leaving = farewell.celebration?.value === value;
+              const leaving = parting?.stage === value;
+              const farewellWait = leaving ? parting.wait : 0;
               const body = plantMotion({
                 stage: value,
                 index,
@@ -645,6 +686,7 @@ export function AgeGrowthControl({
                 reduceMotion: shouldReduceMotion,
                 growing: celebrating,
                 leaving,
+                farewellWait,
                 gusting: gust.celebration !== null,
                 grown:
                   celebratingAge && !celebrating && celebrationIndex >= 0
@@ -786,6 +828,7 @@ export function AgeGrowthControl({
                           stage={value}
                           draw={celebrating}
                           wilt={leaving}
+                          wiltDelay={farewellWait}
                           soil={false}
                           reduceMotion={shouldReduceMotion}
                           className={cn(LEAF_CLASS, stage.groveClassName)}

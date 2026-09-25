@@ -214,13 +214,25 @@ describe("plantMotion", () => {
     reduceMotion: false,
     growing: false,
     leaving: false,
+    farewellWait: 0,
     gusting: false,
     grown: null,
     ...overrides,
   });
-  const peak = (values: unknown) => Math.max(...(values as number[]));
-  const rotateDelay = (transition: unknown) =>
-    (transition as { rotate: { delay?: number } }).rotate.delay ?? 0;
+  type Track = { duration: number; times: number[]; ease: string[] };
+  // The keyframes a pose writes, the first of which may be null: wherever the
+  // plant is when the pose begins.
+  const keyframes = (values: unknown) => values as (number | null)[];
+  const numbers = (values: unknown) =>
+    keyframes(values).filter((value): value is number => value !== null);
+  const peak = (values: unknown) => Math.max(...numbers(values));
+  const rotateTrack = (transition: unknown) =>
+    (transition as { rotate: Track }).rotate;
+  // Seconds from the pose's start to the keyframe at `index` of its rotation.
+  const rotateAt = (transition: unknown, index: number) => {
+    const { times, duration } = rotateTrack(transition);
+    return times[index] * duration;
+  };
 
   // Each stage says goodbye in its own register rather than all fading alike.
   it("wilts an unpicked sprout and shivers an unpicked shrub", () => {
@@ -229,9 +241,9 @@ describe("plantMotion", () => {
       cue({ stage: "odrasel", index: 1, leaving: true }),
     ).animate;
 
-    expect(Math.min(...(sprout.scaleY as number[]))).toBeLessThan(0.95);
+    expect(Math.min(...numbers(sprout.scaleY))).toBeLessThan(0.95);
     // A shiver goes both ways, several times, and never far.
-    const turns = shrub.rotate as number[];
+    const turns = numbers(shrub.rotate);
     expect(turns.filter((degrees) => degrees < 0).length).toBeGreaterThan(1);
     expect(turns.filter((degrees) => degrees > 0).length).toBeGreaterThan(1);
     expect(peak(turns.map(Math.abs))).toBeLessThan(2);
@@ -241,15 +253,101 @@ describe("plantMotion", () => {
     const moves = (["mladicek", "odrasel", "senior"] as const).map(
       (stage, index) => plantMotion(cue({ stage, index, gusting: true })),
     );
-    const delays = moves.map(({ transition }) => rotateDelay(transition));
     const bends = moves.map(({ animate }) => peak(animate.rotate));
+    const bentAt = moves.map(({ animate, transition }) => {
+      const rotate = keyframes(animate.rotate);
+      return rotateAt(transition, rotate.indexOf(peak(rotate)));
+    });
 
     // Every plant bends the same way, downwind, one after another.
-    expect(delays).toEqual([...delays].sort((a, b) => a - b));
-    expect(new Set(delays).size).toBe(3);
+    expect(bentAt).toEqual([...bentAt].sort((a, b) => a - b));
+    expect(new Set(bentAt).size).toBe(3);
     expect(bends.every((degrees) => degrees > 0)).toBe(true);
     // The sprout bends furthest and the tree least.
     expect(bends).toEqual([...bends].sort((a, b) => b - a));
+    // From wherever each plant is: any gesture can cut another short.
+    for (const { animate } of moves) {
+      expect(keyframes(animate.rotate)[0]).toBeNull();
+    }
+  });
+
+  // The sway's first pair of keyframes holds still until the plant has grown
+  // enough to be pushed, and that hold is where a moving plant comes upright.
+  it("comes upright over the sway's own hold when it is picked", () => {
+    for (const [index, stage] of STAGES.entries()) {
+      const { animate, transition } = plantMotion(
+        cue({ stage, index, growing: true }),
+      );
+      const [from, held] = keyframes(animate.rotate);
+      expect(from).toBeNull();
+      expect(held).toBeCloseTo(0);
+      expect(rotateAt(transition, 1)).toBeGreaterThan(0.2);
+    }
+
+    const { animate, transition } = plantMotion(cue({ growing: true }));
+    const { duration, times } = rotateTrack(transition);
+    expect(animate.rotate).toEqual([null, 0, 9, -6, 3, 0]);
+    expect(duration).toBeCloseTo(0.66);
+    [0, 0.34, 0.52, 0.7, 0.86, 1].forEach((time, index) =>
+      expect(times[index]).toBeCloseTo(time),
+    );
+  });
+
+  it("lets a neighbour come upright over the whole wait before it leans", () => {
+    const { animate, transition } = plantMotion(
+      cue({
+        stage: "odrasel",
+        index: 1,
+        grown: { stage: "mladicek", index: 0 },
+      }),
+    );
+    // The sprout's first push, one column over.
+    const wait = 0.34 * 0.66 + 0.06;
+
+    expect(animate.rotate).toEqual([null, 0, 0, 2.2, 0]);
+    expect(rotateAt(transition, 1)).toBeCloseTo(wait);
+    expect(rotateAt(transition, 2)).toBeCloseTo(wait);
+    expect(rotateTrack(transition).duration).toBeCloseTo(wait + 0.42);
+    expect(rotateTrack(transition).ease[0]).toBe("easeIn");
+  });
+
+  // Why: the gust branch of plantMotion.
+  it("carries each plant into the gust from where it is, or upright first when its turn allows", () => {
+    const [first, second, third] = STAGES.map((stage, index) =>
+      plantMotion(cue({ stage, index, gusting: true })),
+    );
+
+    // No turn to wait for: the gust's first push takes it from where it is.
+    expect(first.animate.rotate).toHaveLength(5);
+    expect(rotateAt(first.transition, 1)).toBeCloseTo(0.3 * 0.7);
+    // One stagger: it holds where it is, then the gust takes it.
+    expect(keyframes(second.animate.rotate).slice(0, 3)).toEqual([
+      null, null, 6,
+    ]);
+    expect(rotateAt(second.transition, 1)).toBeCloseTo(0.09);
+    // Two: upright over the whole turn, on a linear settle.
+    expect(keyframes(third.animate.rotate).slice(0, 3)).toEqual([
+      null, 0, 0,
+    ]);
+    expect(rotateAt(third.transition, 1)).toBeCloseTo(0.18);
+    expect(rotateAt(third.transition, 2)).toBeCloseTo(0.18);
+    expect(rotateTrack(third.transition).ease[0]).toBe("linear");
+  });
+
+  it("says goodbye on the click, or once a plant still moving is upright", () => {
+    const still = plantMotion(cue({ leaving: true }));
+    const moving = plantMotion(cue({ leaving: true, farewellWait: 0.24 }));
+
+    // Same clock as the leaves' fold (AGE_WILT).
+    expect(still.animate.rotate).toEqual([null, 7, 5, 0]);
+    expect(rotateTrack(still.transition)).toMatchObject({
+      duration: 0.8,
+      times: [0, 0.3, 0.55, 1],
+    });
+    expect(moving.animate.rotate).toEqual([null, 0, 0, 7, 5, 0]);
+    expect(moving.animate.scaleY).toEqual([null, 1, 1, 0.88, 0.91, 1]);
+    expect(rotateAt(moving.transition, 2)).toBeCloseTo(0.24);
+    expect(rotateTrack(moving.transition).duration).toBeCloseTo(1.04);
   });
 
   it("lets a pick outrank a gust and a gust outrank a farewell", () => {

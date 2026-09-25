@@ -1,12 +1,13 @@
 "use client";
 
-import { m } from "motion/react";
+import { m, type Transition } from "motion/react";
 import { memo } from "react";
 import {
   AGE_STAGE_PATHS as PATHS,
   type AgeStage,
   type AgeStagePath,
 } from "@/components/filters/age-stage-paths";
+import { waitThen } from "@/components/filters/use-filter-motion";
 import { cn } from "@/lib/utils";
 
 // Re-exported so the callers that have always read the stage union from the
@@ -54,10 +55,40 @@ export const AGE_WILT = {
   times: [0, 0.3, 0.55, 1],
 };
 
-function foldTransition(wilt: boolean, reduceMotion: boolean) {
-  if (reduceMotion) return { duration: 0 };
-  if (!wilt) return { duration: UNDRAW_SECONDS, ease: "easeOut" as const };
-  return { ...AGE_WILT, ease: "easeInOut" as const };
+type FoldPose = {
+  animate: { rotate?: number | (number | null)[] };
+  transition: { rotate?: Transition };
+};
+
+// Paths without fold data never turn.
+const NO_FOLD: FoldPose = { animate: {}, transition: {} };
+
+// A leaf folds from wherever it is, after the same wait as the plant's own
+// farewell (waitThen), so the two stay on one clock.
+function foldPose(
+  degrees: number,
+  wilt: boolean,
+  wiltDelay: number,
+  reduceMotion: boolean,
+): FoldPose {
+  if (reduceMotion) {
+    return { animate: { rotate: 0 }, transition: { rotate: { duration: 0 } } };
+  }
+  if (!wilt) {
+    return {
+      animate: { rotate: 0 },
+      transition: { rotate: { duration: UNDRAW_SECONDS, ease: "easeOut" } },
+    };
+  }
+  const fold = waitThen(wiltDelay, [0, degrees, degrees * 0.8, 0], {
+    ...AGE_WILT,
+    ease: "easeInOut",
+    settle: wiltDelay,
+  });
+  return {
+    animate: { rotate: fold.keyframes },
+    transition: { rotate: fold.transition },
+  };
 }
 
 // The stage with the latest path finishes last, so a caller that has to
@@ -70,7 +101,7 @@ export function ageDrawSeconds(stage: AgeStage, reduceMotion: boolean): number {
   );
 }
 
-// Memoised because its props are a stage, a colour class and three flags, and
+// Memoised because its props are a stage, colour classes, flags and a delay, and
 // the grove above it is redrawn on every filter press for the counts beside
 // it. Each icon is up to four motion paths, and they were most of the motion
 // work a press spent in the age section while no stage had changed at all.
@@ -80,6 +111,7 @@ export const AgeStageIcon = memo(function AgeStageIcon({
   woodClassName,
   draw = false,
   wilt = false,
+  wiltDelay = 0,
   reduceMotion = false,
   soil = true,
 }: {
@@ -91,6 +123,8 @@ export const AgeStageIcon = memo(function AgeStageIcon({
   draw?: boolean;
   /** Folds the leaves that carry fold data down and back up once. */
   wilt?: boolean;
+  /** Seconds the fold waits, for a plant that comes upright first. */
+  wiltDelay?: number;
   reduceMotion?: boolean;
   /** The sprout's strip of soil. The grove turns it off and stands the plant
    *  on its own ground line. */
@@ -116,7 +150,9 @@ export const AgeStageIcon = memo(function AgeStageIcon({
         .map((path) => {
           const drawing = draw && !reduceMotion;
           const { fold } = path;
-          const folding = Boolean(fold) && wilt && !reduceMotion;
+          const turn = fold
+            ? foldPose(fold.rotate, wilt, wiltDelay, reduceMotion)
+            : NO_FOLD;
           return (
             <m.path
               key={path.d}
@@ -138,17 +174,11 @@ export const AgeStageIcon = memo(function AgeStageIcon({
               animate={{
                 opacity: drawing ? [0, 1] : 1,
                 pathLength: drawing ? [0, 1] : 1,
-                ...(fold
-                  ? {
-                      rotate: folding
-                        ? [0, fold.rotate, fold.rotate * 0.8, 0]
-                        : 0,
-                    }
-                  : {}),
+                ...turn.animate,
               }}
               transition={{
                 ...agePathTransition({ draw, reduceMotion, path }),
-                rotate: foldTransition(wilt, reduceMotion),
+                ...turn.transition,
               }}
             />
           );

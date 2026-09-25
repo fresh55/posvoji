@@ -23,6 +23,7 @@ import {
   useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
+  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import type { CareKey, CareOption } from "@/lib/filters";
@@ -77,16 +78,16 @@ const DRAW_DURATION = 0.5;
 const DRAW_STAGGER = 0.16;
 const TEMPO: DrawTempo = { draw: DRAW_DURATION, stagger: DRAW_STAGGER, fade: 0.14 };
 
+type Pose = { animate: TargetAndTransition; transition: Transition };
+
 // One deep lub-dub. Two beats, the second the fuller of the pair, then still.
 // Six keyframes, so it can only run as a tween carrying its own times.
 const BEAT_DURATION = 1.15;
 const BEAT_TIMES = [0, 0.13, 0.3, 0.46, 0.66, 1];
 const BEAT_SCALE = [1, 1.11, 1.02, 1.18, 1, 1];
-const BEAT: TargetAndTransition = { scale: BEAT_SCALE };
-const BEAT_TRANSITION: Transition = {
-  duration: BEAT_DURATION,
-  times: BEAT_TIMES,
-  ease: "easeInOut",
+const BEAT: Pose = {
+  animate: { scale: BEAT_SCALE },
+  transition: { duration: BEAT_DURATION, times: BEAT_TIMES, ease: "easeInOut" },
 };
 
 // One warm ring leaving the heart, wider and slower than the household ripple.
@@ -105,16 +106,29 @@ const PRESS_REST: TargetAndTransition = { scale: 1 };
 const PRESS_TRANSITION: Transition = { duration: 0.3, ease: "easeOut" };
 
 // Letting go is an exhale, quick and small, and never a snap.
-const EXHALE: TargetAndTransition = { scale: [1, 0.97, 1] };
-const EXHALE_TRANSITION: Transition = {
-  duration: 0.3,
-  times: [0, 0.4, 1],
-  ease: "easeInOut",
-};
-const EXHALE_MS = 320;
+const EXHALE_SCALE = [1, 0.97, 1];
+const EXHALE_DURATION = 0.3;
+// How long a heart let go mid-beat takes to come back to its size before it
+// exhales (waitThen's settle). At 0.24s it comes down from the fuller beat no
+// faster than the beat itself moves.
+const EXHALE_SETTLE = 0.24;
+const EXHALE_MS = Math.ceil((EXHALE_SETTLE + EXHALE_DURATION) * 1000) + 20;
 
-const BEAT_REST: TargetAndTransition = { scale: 1 };
+type Exhale = { key: CareKey; wait: number };
+
+export function exhalePose(wait: number): Pose {
+  const scale = waitThen(wait, EXHALE_SCALE, {
+    duration: EXHALE_DURATION,
+    times: [0, 0.4, 1],
+    ease: "easeInOut",
+    settle: wait,
+  });
+  return { animate: { scale: scale.keyframes }, transition: scale.transition };
+}
+
 const REST_TRANSITION: Transition = { duration: 0.16 };
+const BEAT_REST: Pose = { animate: { scale: 1 }, transition: REST_TRANSITION };
+const HEART_STILL: Pose = { animate: { scale: 1 }, transition: { duration: 0 } };
 
 // The mark the chosen heart leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
@@ -170,7 +184,7 @@ export function CareCards({
     celebration: exhale,
     celebrate: exhaleNow,
     clear: clearExhale,
-  } = useOneShotCelebration<CareKey>(EXHALE_MS);
+  } = useOneShotCelebration<Exhale>(EXHALE_MS);
   const { beginReset, resetDelay } = useResetStagger(
     selected.length,
     options.length,
@@ -230,7 +244,13 @@ export function CareCards({
             const dead = isDeadOption(count, checked);
             const hovered = hoveredKey === key;
             const celebrating = celebration?.value === key && checked;
-            const exhaling = exhale?.value === key && !checked;
+            const heart = shouldReduceMotion
+              ? HEART_STILL
+              : celebrating
+                ? BEAT
+                : exhale?.value.key === key && !checked
+                  ? exhalePose(exhale.value.wait)
+                  : BEAT_REST;
             // The hold is press feedback, so it runs on touch too, and it
             // yields the moment the beat takes over.
             const pressing =
@@ -248,7 +268,11 @@ export function CareCards({
                 onClick={() => {
                   if (checked) {
                     clearCelebration();
-                    exhaleNow(key);
+                    exhaleNow({
+                      key,
+                      // A heart still beating settles before it exhales.
+                      wait: celebrating ? EXHALE_SETTLE : 0,
+                    });
                   } else {
                     clearExhale();
                     celebrate(key);
@@ -351,24 +375,8 @@ export function CareCards({
                     <m.span
                       className="flex items-center justify-center"
                       initial={false}
-                      animate={
-                        shouldReduceMotion
-                          ? BEAT_REST
-                          : celebrating
-                            ? BEAT
-                            : exhaling
-                              ? EXHALE
-                              : BEAT_REST
-                      }
-                      transition={
-                        shouldReduceMotion
-                          ? { duration: 0 }
-                          : celebrating
-                            ? BEAT_TRANSITION
-                            : exhaling
-                              ? EXHALE_TRANSITION
-                              : REST_TRANSITION
-                      }
+                      animate={heart.animate}
+                      transition={heart.transition}
                     >
                       <m.span
                         className="flex items-center justify-center"

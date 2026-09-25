@@ -27,6 +27,7 @@ import {
   useFilterCardHover,
   useOneShotCelebration,
   useResetStagger,
+  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -492,10 +493,14 @@ const SWATCH_STILL: Pose = {
 // neighbours lean away; these listen. A dog's floppy ear turns less.
 const NOTICE_DELAY = 0.2;
 const NOTICE_STEP = 0.06;
-const EAR_NOTICE: TargetAndTransition = { rotate: [0, -16, 0] };
-const DOG_EAR_NOTICE: TargetAndTransition = { rotate: [0, -9, 0] };
+const EAR_NOTICE = [0, -16, 0];
+const DOG_EAR_NOTICE = [0, -9, 0];
+// How long an ear still turning from its own beat takes to come straight
+// before it notices (waitThen's settle). At 0.12s it comes back no faster than
+// the flick or the rabbit's trail it cuts short.
+const NOTICE_SETTLE = 0.12;
 
-function earBeat(
+export function earBeat(
   kind: EarKind,
   side: EarSide,
   beat: EarBeat,
@@ -506,15 +511,13 @@ function earBeat(
     if (kind === "other") return RABBIT_EARS_TRAIL;
   }
   if (beat === side) {
-    return {
-      animate: kind === "dog" ? DOG_EAR_NOTICE : EAR_NOTICE,
-      transition: {
-        duration: 0.26,
-        delay: noticeDelay,
-        times: [0, 0.35, 1],
-        ease: "easeInOut",
-      },
-    };
+    const notice = waitThen(noticeDelay, kind === "dog" ? DOG_EAR_NOTICE : EAR_NOTICE, {
+      duration: 0.26,
+      times: [0, 0.35, 1],
+      ease: "easeInOut",
+      settle: NOTICE_SETTLE,
+    });
+    return { animate: { rotate: notice.keyframes }, transition: notice.transition };
   }
   return EAR_STILL;
 }

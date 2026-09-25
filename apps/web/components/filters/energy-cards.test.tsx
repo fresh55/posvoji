@@ -7,7 +7,7 @@ import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions, type Unanswered } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { EnergyCards } from "./energy-cards";
+import { EnergyCards, iconPose, TEMPOS } from "./energy-cards";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -229,6 +229,28 @@ describe("EnergyCards", () => {
       });
     }
   });
+});
+
+describe("iconPose", () => {
+  // Why: the reacting case of iconPose in energy-cards.tsx.
+  it.each([-1, 1])(
+    "leans a neighbour from wherever its icon is, the wait inside the track (direction %i)",
+    (direction) => {
+      const { animate } = iconPose(
+        "reacting",
+        TEMPOS.calm,
+        TEMPOS.balanced,
+        direction,
+      );
+
+      // Null starts it where the icon is; the settle and the wait hold it
+      // level; then the same lean as before.
+      expect(animate).toEqual({
+        rotate: [null, 0, 0, direction * TEMPOS.balanced.neighborTilt, 0],
+        y: [null, 0, 0, TEMPOS.balanced.neighborLift, 0],
+      });
+    },
+  );
 });
 
 describe("FilterGroupList energy group", () => {

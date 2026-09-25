@@ -22,6 +22,7 @@ import {
   useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
+  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -117,7 +118,7 @@ type Tempo = {
 // Tempo is the identity of this section: each level moves at the speed it
 // names, and shows what it is made of. Keyed by the schema enum, so a new
 // level fails to compile.
-const TEMPOS: Record<EnergyLevel, Tempo> = {
+export const TEMPOS: Record<EnergyLevel, Tempo> = {
   calm: {
     glyph: ["M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"],
     drawDuration: 0.6,
@@ -305,7 +306,7 @@ const REST_TRANSITION: Transition = { duration: 0.16 };
 // down the section.
 type IconPose = "celebrating" | "reacting" | "rest";
 
-function iconPose(
+export function iconPose(
   pose: IconPose,
   tempo: Tempo,
   celebrationTempo: Tempo | undefined,
@@ -322,19 +323,25 @@ function iconPose(
           ease: tempo.ease,
         },
       };
-    case "reacting":
+    case "reacting": {
       if (!celebrationTempo) break;
-      return {
-        animate: {
-          rotate: [0, direction * celebrationTempo.neighborTilt, 0],
-          y: [0, celebrationTempo.neighborLift, 0],
-        },
-        transition: {
+      // An icon still rocking from its own pick comes level before it leans
+      // (waitThen's settle). The wait is shorter than calm's own pace, so the
+      // settle takes all of it.
+      const { neighborDelay, neighborTilt, neighborLift } = celebrationTempo;
+      const track = (keyframes: number[]) =>
+        waitThen(neighborDelay, keyframes, {
           duration: NEIGHBOR_DURATION,
-          delay: celebrationTempo.neighborDelay,
           ease: "easeOut",
-        },
+          settle: neighborDelay,
+        });
+      const rotate = track([0, direction * neighborTilt, 0]);
+      const y = track([0, neighborLift, 0]);
+      return {
+        animate: { rotate: rotate.keyframes, y: y.keyframes },
+        transition: { rotate: rotate.transition, y: y.transition },
       };
+    }
     case "rest":
       break;
   }

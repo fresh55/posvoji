@@ -20,7 +20,7 @@ import {
   openFilterSection,
 } from "@/test/filter-folds";
 import { pointerOff, pointerOnto } from "@/test/pointer";
-import { CoatColorCards } from "./coat-cards";
+import { CoatColorCards, earBeat } from "./coat-cards";
 import type { FilterCardLayout } from "./filter-card";
 import { FilterGroupList } from "./filter-groups";
 
@@ -141,6 +141,24 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
   });
+});
+
+describe("earBeat", () => {
+  // Why: NOTICE_SETTLE in coat-cards.tsx.
+  it.each([
+    ["cat", -16],
+    ["dog", -9],
+    ["other", -16],
+  ] as const)(
+    "turns a %s's ear from wherever it is, the wait inside the track",
+    (kind, turn) => {
+      for (const side of ["left", "right"] as const) {
+        expect(earBeat(kind, side, side, 0.26).animate).toEqual({
+          rotate: [null, 0, 0, turn, 0],
+        });
+      }
+    },
+  );
 });
 
 describe("the colour filter in the list", () => {

@@ -93,6 +93,20 @@ Object.defineProperty(window, "scrollTo", {
   value: () => {},
 });
 
+// A click focuses the button it lands on, and a pill with a gain opens its
+// Radix tooltip on focus as well as on hover, mid-exit or not: removing the
+// filter that was costing the most, in the widening tests below, is exactly
+// such a click. The tooltip's content then measures its own arrow with
+// ResizeObserver, which jsdom does not ship. Same stand-in sort-picker.test.tsx
+// and filter-sections.test.tsx put up for the same reason.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  NoopResizeObserver as unknown as typeof ResizeObserver;
+
 function animal(id: string, species: Species, shelterId: string): Animal {
   return {
     id,
@@ -559,6 +573,64 @@ describe("animal grid empty state", () => {
     expect(
       screen.getByRole("button", { name: "Show from all shelters" }),
     ).toBeTruthy();
+  });
+});
+
+describe("the widening arrival", () => {
+  it("keeps the ordinary staggered fade on the first paint a filtered link arrives with", () => {
+    // The widening treatment must not swallow the arrival it was carved out
+    // of: the very first paint of a page that already carries a filter still
+    // comes alive with the ordinary fade and stagger (filter-motion-system).
+    window.history.replaceState(null, "", "/?zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    const first = screen.getByRole("article", { name: "dog-muri" });
+    expect(first.className).toContain("fade-in");
+    expect(first.style.animationDelay).toBe("0ms");
+  });
+
+  it("gives a widening's returning cards no invisible wait, only a small settle", () => {
+    // Before this, a card coming back on a widening got the ordinary
+    // treatment above: opacity 0 for its stagger delay plus its own 300ms
+    // fade, up to about 530ms in the audit's worst case, next to survivors
+    // the removal never touched (D9). No card may sit invisible after a
+    // widening, so the three cards this unpick brings back settle in at once
+    // instead of fading in one after another.
+    window.history.replaceState(null, "", "/?zavetisce=muri");
+    renderGrid(ANIMALS);
+    expect(screen.getByRole("article", { name: "dog-muri" })).toBeTruthy();
+
+    fireEvent.click(
+      within(stickyRow()).getByRole("button", { name: /^Odstrani filter/ }),
+    );
+
+    // The survivor is still there, and every card the widening brought back
+    // is opaque with nothing written to delay it.
+    expect(screen.getByRole("article", { name: "dog-muri" })).toBeTruthy();
+    for (const name of ["dog-tretje", "cat-druga", "rabbit-druga"]) {
+      const card = screen.getByRole("article", { name });
+      expect(card.className).not.toContain("fade-in");
+      expect(card.className).toContain("slide-in-from-bottom-1");
+      expect(card.className).toContain("duration-150");
+      expect(card.style.animationDelay).toBe("");
+    }
+  });
+
+  it("keeps the ordinary treatment for a filter that only narrows", () => {
+    // Narrowing removes cards, it never brings one back, so it is never the
+    // widening this settle exists for: two shelters down to one is still a
+    // subset of what was already on screen.
+    window.history.replaceState(null, "", "/?zavetisce=muri,druga");
+    renderGrid(ANIMALS);
+    expect(screen.getByRole("article", { name: "dog-muri" })).toBeTruthy();
+
+    fireEvent.click(
+      within(stickyRow()).getByRole("button", { name: "Odstrani filter Shelter druga" }),
+    );
+
+    expect(screen.queryByRole("article", { name: "cat-druga" })).toBeNull();
+    const muri = screen.getByRole("article", { name: "dog-muri" });
+    expect(muri.className).toContain("fade-in");
   });
 });
 

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -14,6 +15,7 @@ import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
+import { pointerOff, pointerOnto } from "@/test/pointer";
 import { FilterGroupList } from "./filter-groups";
 import { GoodWithCards } from "./good-with-cards";
 
@@ -55,6 +57,35 @@ function renderCards(
     </I18nProvider>,
   );
   return { onToggle, onToggleMany, container: view.container };
+}
+
+// A render that actually toggles, for the tests below that click a card and
+// then look at what a later render did to it: renderCards's default vi.fn()
+// never feeds a pick back in as a prop, so `selected` would never change.
+function renderStateful() {
+  function StatefulCards() {
+    const [selected, setSelected] = useState<GoodWithKey[]>([]);
+    return (
+      <I18nProvider locale="sl">
+        <GoodWithCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          resultCount={70}
+          total={489}
+          onToggle={(key) =>
+            setSelected((current) =>
+              current.includes(key)
+                ? current.filter((entry) => entry !== key)
+                : [...current, key],
+            )
+          }
+          onToggleMany={() => undefined}
+        />
+      </I18nProvider>
+    );
+  }
+  render(<StatefulCards />);
 }
 
 // The three columns are for the three facets the section can hold. A dataset
@@ -359,6 +390,108 @@ describe("the outcome sentence", () => {
     expect(sentence()).toBe(
       "Showing animals that get on with kids, dogs and cats. 12 of 489. Animals the shelter has not answered for stay hidden.",
     );
+  });
+});
+
+describe("interrupted gestures", () => {
+  // The glyph used to remount on the key that switched it between "celebrate"
+  // and "rest", which threw away the live value Motion was mid-animation on
+  // and painted the rest pose in one frame instead of easing to it. Kept
+  // mounted, the same svg element carries the gesture through the interrupt.
+  it("keeps the same glyph element when another facet's pick interrupts its gesture", () => {
+    renderStateful();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    const before = document.querySelector('svg[data-good-with-glyph="kids"]');
+    expect(before).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    const after = document.querySelector('svg[data-good-with-glyph="kids"]');
+    expect(after).toBe(before);
+  });
+});
+
+describe("hover preview", () => {
+  it("previews the gesture for a real mouse and not for a touch", () => {
+    renderCards();
+    const dogs = screen.getByRole("button", { name: /^Psa, / });
+
+    pointerOnto(dogs, "touch");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
+  });
+
+  it("does not preview a card that is already picked", () => {
+    renderCards({ selected: ["dogs"] });
+    const dogs = screen.getByRole("button", { name: /^Psa, / });
+
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+  });
+
+  // settledValue is the guard: without it, unticking a card the mouse never
+  // left showed the hover preview on top of the leave, the same bug found on
+  // Energija.
+  it("settles after a click so an untick under the pointer does not replay it", () => {
+    renderStateful();
+    const dogs = screen.getByRole("button", { name: /^Psa, / });
+
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
+
+    fireEvent.click(dogs);
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+
+    fireEvent.click(dogs);
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+
+    pointerOff(dogs);
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
+  });
+});
+
+describe("the dead posture", () => {
+  it("closes a dead option's eyes and dims it, rather than leaving it upright", () => {
+    renderCards({ counts: new Map([["kids", 0], ["dogs", 2], ["cats", 2]]) });
+
+    const dead = screen.getByRole("button", { name: /^Otroke, / });
+    const svg = dead.querySelector("svg[data-good-with-glyph]");
+    expect(svg?.getAttribute("class")).toContain("opacity-60");
+    const eyes = [...(svg?.querySelectorAll("path") ?? [])];
+    expect(eyes.some((eye) => eye.getAttribute("class")?.includes("scale-y-[0.08]"))).toBe(true);
+  });
+
+  it("leaves a live option's face alone", () => {
+    renderCards({ counts: new Map([["kids", 0], ["dogs", 2], ["cats", 2]]) });
+
+    const live = screen.getByRole("button", { name: /^Psa, / });
+    const svg = live.querySelector("svg[data-good-with-glyph]");
+    expect(svg?.getAttribute("class")).not.toContain("opacity-60");
+    const eyes = [...(svg?.querySelectorAll("path") ?? [])];
+    expect(eyes.some((eye) => eye.getAttribute("class")?.includes("scale-y-[0.08]"))).toBe(false);
+  });
+});
+
+describe("the unanswered line after a pick", () => {
+  // The line said what a pick would hide, so once a row is picked it has
+  // nothing left to warn about. Left on, it kept recomputing against the
+  // narrower result and changed a number the visitor never touched.
+  it("keeps the line on unpicked rows only", () => {
+    renderCards({
+      selected: ["kids"],
+      unanswered: {
+        kids: { asked: 491, unanswered: 479 },
+        dogs: { asked: 491, unanswered: 15 },
+        cats: { asked: 491, unanswered: 15 },
+      },
+    });
+
+    const kids = screen.getByRole("button", { name: /^Otroke, / });
+    expect(kids.textContent).not.toContain("Brez odgovora");
+    expect(kids.getAttribute("aria-describedby")).toBeNull();
   });
 });
 

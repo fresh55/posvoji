@@ -40,10 +40,13 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energija",
     coatColor: "Barva",
     coatLength: "Dolžina dlake",
-    // "V zavetišču: nad 1 leto", the way the two household sections read as
-    // sentences. "Čas v zavetišču" with its info mark and the answered mark
-    // ran 9.6px into the Ponastavi beside it in the 224px sidebar.
-    waiting: "V zavetišču",
+    // "Čaka na dom: nad 1 leto", a sentence the way the two household
+    // sections read. The heading names the wait, because the rows are
+    // durations and under "V zavetišču" they read as the animal's age.
+    // "Čas v zavetišču" with its info mark and the answered mark ran 9.6px
+    // into the Ponastavi beside it in the 224px sidebar; this one clears it
+    // by 7px.
+    waiting: "Čaka na dom",
     shelter: "Zavetišče",
   },
   en: {
@@ -53,7 +56,10 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energy",
     coatColor: "Colour",
     coatLength: "Coat length",
-    waiting: "In the shelter",
+    // "Waiting for a home" is the Slovenian heading word for word, and with
+    // the info mark and the answered mark it ran 17px under the Reset beside
+    // it in the 224px sidebar. "Waiting: over 1 year" says the same.
+    waiting: "Waiting",
     shelter: "Shelter",
   },
 };

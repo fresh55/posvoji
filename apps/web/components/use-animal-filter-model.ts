@@ -23,6 +23,7 @@ import {
   visibleGroups,
   valueChipLabel,
   visibleToggles,
+  type MultiGroup,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -282,20 +283,24 @@ export function useAnimalFilterModel({
   // Each chip carries the facet that set it, because the row groups by facet
   // and draws one icon per facet: flat, they were nine questions' answers
   // wearing the same pill.
+  //
+  // In FILTER_FACETS order, the order the panel asks in: Čaka na dom is the
+  // panel's last section, so its chip comes after Lahko ponudim's even though
+  // it is one of the GROUPS.
+  const groupChips = (group: MultiGroup): Chip[] =>
+    filters[group].map((value) => ({
+      key: chipKey(group, value),
+      facet: group,
+      value,
+      label:
+        group === "shelter"
+          ? shelterChipLabel(shelterLabels.get(value) ?? value)
+          : valueChipLabel(group, value, locale),
+      gain: chipGain.get(chipKey(group, value)),
+      onRemove: () => toggle(group, value),
+    }));
   const chips: Chip[] = [
-    ...GROUPS.flatMap((group) =>
-      filters[group].map((value) => ({
-        key: chipKey(group, value),
-        facet: group,
-        value,
-        label:
-          group === "shelter"
-            ? shelterChipLabel(shelterLabels.get(value) ?? value)
-            : valueChipLabel(group, value, locale),
-        gain: chipGain.get(chipKey(group, value)),
-        onRemove: () => toggle(group, value),
-      })),
-    ),
+    ...GROUPS.filter((group) => group !== "waiting").flatMap(groupChips),
     ...filters.toggles.map((key) => ({
       key: chipKey("toggles", key),
       facet: "toggles" as const,
@@ -324,6 +329,7 @@ export function useAnimalFilterModel({
       gain: chipGain.get(chipKey("care", key)),
       onRemove: () => toggleCare(key),
     })),
+    ...groupChips("waiting"),
   ];
 
   const hasSidebar =

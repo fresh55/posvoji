@@ -290,11 +290,12 @@ const sl = {
   // answer is said under the rows, where a mouse can read it too.
   energyFilterHint: "Po presoji zavetišča.",
   healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
-  // The second sentence says what the round marks show: a second pick
+  // The first sentence says the rows are a wait and not an age, and where it
+  // is counted from. The second says what the round marks show: a second pick
   // replaces the first. Each row reads the whole hint out as its description
   // (waiting-cards.tsx), since a screen reader hears nothing of the marks.
   waitingFilterHint:
-    "Po znanem datumu sprejema v zavetišče. Izbereš lahko eno mejo.",
+    "Šteto od dneva, ko je žival prišla v zavetišče. Izbereš lahko eno mejo.",
   resetWaitingFilters: "Ponastavi čas v zavetišču",
   // Under a section whose question a tenth or more of the list has no answer
   // to. The count takes a colon so it needs no agreement with the noun, and
@@ -828,7 +829,7 @@ const en: Messages = {
   energyFilterHint: "As judged by the shelter.",
   healthFilterHint: "An animal has to have every trait you pick.",
   waitingFilterHint:
-    "Based on the recorded shelter intake date. Pick one threshold.",
+    "Counted from the day the animal came to the shelter. Pick one threshold.",
   resetWaitingFilters: "Reset time in the shelter",
   unansweredLine: "No data:\u00a0{count}. Picking one shows only animals with data.",
   unansweredRow: "No data:\u00a0{count}",

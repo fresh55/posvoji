@@ -622,52 +622,60 @@ export function FilterGroupList({
     ),
   );
 
+  const cardGroup = (
+    group: Exclude<CardGroup, "coatColor" | "coatLength">,
+    options: FilterOption[],
+  ) => {
+    // Read once and widened to string[]: indexed by a union of groups,
+    // filters[group] is a union of arrays, and .includes on one of those
+    // takes the intersection of their element types, which is never.
+    const selected: string[] = filters[group];
+    const groupCounts = counts[group];
+
+    return (
+      <FilterGroup
+        key={group}
+        group={group}
+        layout={layout}
+        // Age keeps every stage in both layouts: drawnOptions says why.
+        options={
+          group === "age"
+            ? options
+            : drawn(options, ({ value }) =>
+                isDeadOption(
+                  groupCounts.get(value) ?? 0,
+                  selected.includes(value),
+                ),
+              )
+        }
+        counts={groupCounts}
+        selected={selected}
+        onToggle={(value) => onToggle(group, value)}
+        onToggleMany={(values) => onToggleMany(group, values)}
+        collapse={collapseFor(
+          group,
+          selectionSummary(
+            selected,
+            (value) => options.find((option) => option.value === value)?.label,
+          ),
+        )}
+        unanswered={unanswered?.groups[group]}
+        leavesOutCats={group === "size" && filters.species === "all"}
+      />
+    );
+  };
+  const waiting = groups.find(({ group }) => group === "waiting");
+
   return (
     <>
-      {groups.map(({ group, options }) => {
-        // Videz draws these two itself, below. Skipped here rather than
-        // filtered out of the list first, because only control flow narrows
-        // `group` for the indexed reads underneath.
-        if (isAppearance(group)) return null;
-        // Read once and widened to string[]: indexed by a union of groups,
-        // filters[group] is a union of arrays, and .includes on one of those
-        // takes the intersection of their element types, which is never.
-        const selected: string[] = filters[group];
-        const groupCounts = counts[group];
-
-        return (
-          <FilterGroup
-            key={group}
-            group={group}
-            layout={layout}
-            // Age keeps every stage in both layouts: drawnOptions says why.
-            options={
-              group === "age"
-                ? options
-                : drawn(options, ({ value }) =>
-                    isDeadOption(
-                      groupCounts.get(value) ?? 0,
-                      selected.includes(value),
-                    ),
-                  )
-            }
-            counts={groupCounts}
-            selected={selected}
-            onToggle={(value) => onToggle(group, value)}
-            onToggleMany={(values) => onToggleMany(group, values)}
-            collapse={collapseFor(
-              group,
-              selectionSummary(
-                selected,
-                (value) =>
-                  options.find((option) => option.value === value)?.label,
-              ),
-            )}
-            unanswered={unanswered?.groups[group]}
-            leavesOutCats={group === "size" && filters.species === "all"}
-          />
-        );
-      })}
+      {groups.map(({ group, options }) =>
+        // Videz draws these two itself, below, and Čaka na dom closes the
+        // list. Skipped here rather than filtered out of the list first,
+        // because only control flow narrows `group` for the call.
+        isAppearance(group) || group === "waiting"
+          ? null
+          : cardGroup(group, options),
+      )}
 
       {appearanceGroups.length > 0 && (
         <section>
@@ -761,8 +769,9 @@ export function FilterGroupList({
         />
       )}
 
-      {/* Lahko ponudim closes the list: it is the one section that asks what
-          the visitor can give rather than what they are looking for. */}
+      {/* Lahko ponudim comes after the animal's own traits: it is the one
+          section that asks what the visitor can give rather than what they
+          are looking for. */}
       {care && care.options.length > 0 && (
         <CareCards
           options={drawnByKey(care.options, care.counts, filters.care)}
@@ -783,6 +792,12 @@ export function FilterGroupList({
           )}
         />
       )}
+
+      {/* Čaka na dom closes the list. How long an animal has waited is a
+          fact about its stay and not one of its traits, so it stands apart
+          from them, and above all away from Starost: the same months and
+          years beside the age rows read as an age. */}
+      {waiting && cardGroup("waiting", waiting.options)}
     </>
   );
 }

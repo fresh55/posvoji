@@ -97,24 +97,27 @@ export const EMPTY_FILTERS: Filters = {
   care: [],
 };
 
-// V zavetišču answers with thresholds, each inside the one before it, so
+// Čaka na dom answers with thresholds, each inside the one before it, so
 // two picks ask exactly what the wider one asks alone and the narrower tick
 // would only sit there doing nothing. These groups take one answer at a time.
 export const SINGLE_CHOICE_GROUPS: readonly MultiGroup[] = ["waiting"];
 
+// Waiting last, as the panel draws it (filter-groups.tsx): it is a fact about
+// the animal's stay and not about the animal, and beside Starost its months
+// and years read as an age.
 export const GROUPS: MultiGroup[] = [
-  "sex", "age", "size", "energy", "waiting", "coatColor", "coatLength",
-  "shelter",
+  "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
+  "waiting",
 ];
 
 /** All filter categories, used to group and label active chips. */
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
+/** In the order the panel asks its questions, which is the order the active
+ *  chips follow (the chips row in use-animal-filter-model.ts). */
 export const FILTER_FACETS: FilterFacet[] = [
-  ...GROUPS,
-  "toggles",
-  "goodWith",
-  "care",
+  "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
+  "toggles", "goodWith", "care", "waiting",
 ];
 
 // city is the shelter's town, kept as its own field rather than a generic

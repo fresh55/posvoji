@@ -265,7 +265,7 @@ export function CountRoll({
 
 /**
  * "box" is a tick box, for a section whose answers add up. "dot" is the round
- * mark a single-choice section wears (SINGLE_CHOICE_GROUPS): V zavetišču takes
+ * mark a single-choice section wears (SINGLE_CHOICE_GROUPS): Čaka na dom takes
  * one threshold at a time, and in tick boxes the second press quietly unticked
  * the first, which a box never does anywhere else in the panel.
  */

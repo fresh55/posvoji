@@ -8,11 +8,13 @@
 <h1 align="center">Posvoji.si</h1>
 
 <p align="center">
-  Odprt in brezplačen seznam živali iz slovenskih zavetišč, ki iščejo dom.
+  Odprt in brezplačen seznam živali iz slovenskih zavetišč, ki iščejo dom.<br>
+  <a href="https://posvoji.si"><b>posvoji.si</b></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/fresh55/posvoji/actions/workflows/ci.yml"><img src="https://github.com/fresh55/posvoji/actions/workflows/ci.yml/badge.svg" alt="Stanje CI"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/fresh55/posvoji"><img src="https://api.scorecard.dev/projects/github.com/fresh55/posvoji/badge" alt="OpenSSF Scorecard"></a>
 </p>
 
 <p align="center">
@@ -103,3 +105,10 @@ v `packages/*` ter `providers/*` so pod licenco **MIT**.
 
 Fotografije, opisi, logotipi zavetišč in vzorci HTML so gradivo tretjih oseb.
 Odprtokodne licence repozitorija jih ne pokrivajo.
+
+`data/shelters.yaml` temelji na javnem registru zavetišč, ki ga vodi Uprava RS
+za varno hrano, veterinarstvo in varstvo rastlin (UVHVVR), in na poznejših
+preverjanjih spletnih strani zavetišč.
+
+Licence kode ne pokrivajo imena in logotipa Posvoji.si. Odcepljeni projekt
+(fork) lahko kodo uporabi, ne sme pa se predstavljati kot Posvoji.si.

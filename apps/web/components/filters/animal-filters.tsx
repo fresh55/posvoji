@@ -7,7 +7,7 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { BackToTop } from "@/components/back-to-top";
 import {
   FilterChips,
@@ -120,6 +120,48 @@ export const TOOLBAR_BAND = "bleed border-b py-rail-pad lg:mx-0 lg:px-0";
  *  drifted from is a visible jump at the moment the real row arrives. */
 export const TOOLBAR_ROW_HEIGHT = "h-7 md:h-11 lg:h-toolbar-row";
 
+/**
+ * A chips row that grows in and collapses out over 0.2s rather than moving
+ * the grid by its whole height in one frame.
+ *
+ * Instant under reduced motion, by hand: height is not a transform, so the
+ * global MotionConfig reducedMotion="user" does not switch it off the way it
+ * does the pills' own motion, and a box growing under the toolbar is exactly
+ * the movement that setting asks for less of.
+ */
+function ChipsRowPresence({
+  show,
+  slot,
+  className,
+  children,
+}: {
+  show: boolean;
+  slot?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <LazyMotion features={domAnimation}>
+      <AnimatePresence initial={false}>
+        {show && (
+          <m.div
+            key="row"
+            data-slot={slot}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
+            className={cn("overflow-hidden", className)}
+          >
+            {children}
+          </m.div>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
+  );
+}
+
 // Desktop has enough room for one toolbar. Below lg the species tabs hold the
 // sticky rail on their own, joined from md by the same sort control, while the
 // two primary discovery actions share a bottom dock that spans the viewport.
@@ -196,7 +238,6 @@ export function AnimalFilters({
   unanswered?: UnansweredTally;
 } & FilterActionContract) {
   const { locale } = useI18n();
-  const reduceMotion = useReducedMotion();
   // Values, not sections. The chips row counts the same things and sits on the
   // same screen; a badge reading 1 over a row of two pills was two answers to
   // one question.
@@ -254,7 +295,7 @@ export function AnimalFilters({
   // The two mounts of the chips row ask the same question of the same state,
   // so they ask it once here. Only where they are drawn differs, and that is
   // the placement each passes (filter-chips.tsx).
-  const showChips = !isEmpty && (chips.length > 0 || undo);
+  const showChips = !isEmpty && (chips.length > 0 || undo !== undefined);
   const chipProps = {
     chips,
     onClearAll,
@@ -449,26 +490,9 @@ export function AnimalFilters({
             The grow-in stays: this header is sticky at lg too, and an arrival
             that shifts the grid by its full height in one frame reads as the
             page jumping. */}
-        <LazyMotion features={domAnimation}>
-          <AnimatePresence initial={false}>
-            {showChips && (
-              <m.div
-                key="filter-chips"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                // Height is not a transform, so the global MotionConfig
-                // reducedMotion="user" does not switch it off the way it does
-                // the pills' own motion. A box growing under the toolbar is
-                // exactly the movement that setting is asking for less of.
-                transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
-                className="min-w-0 overflow-hidden max-lg:hidden"
-              >
-                <FilterChips {...chipProps} className="mt-2" />
-              </m.div>
-            )}
-          </AnimatePresence>
-        </LazyMotion>
+        <ChipsRowPresence show={showChips} className="min-w-0 max-lg:hidden">
+          <FilterChips {...chipProps} className="mt-2" />
+        </ChipsRowPresence>
       </div>
 
       {/* The result count, heard and never seen on a phone. Its number moved
@@ -524,31 +548,19 @@ export function AnimalFilters({
           display:none, and it has to stay zero-rect-safe (focusAfterRow in
           filter-chips.tsx).
 
-          The band's own AnimatePresence and 0.2s height collapse, for the
-          same reason it wears them there: without this, taking off the last
-          pill (or the undo offer expiring with nothing left to show) dropped
-          this row in the same frame the grid closed the 60px gap behind it,
-          so the pill's own exit inside FilterChips never got to play and the
-          page jumped instead of settling (D6). Instant under reduced motion
-          the same way the band's is: height is not a transform, so
-          MotionConfig's reducedMotion="user" leaves it alone on its own. */}
-      <LazyMotion features={domAnimation}>
-        <AnimatePresence initial={false}>
-          {showChips && (
-            <m.div
-              key="mobile-filter-row"
-              data-slot="mobile-filter-row"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
-              className="overflow-hidden lg:hidden"
-            >
-              <FilterChips {...chipProps} placement="flow" />
-            </m.div>
-          )}
-        </AnimatePresence>
-      </LazyMotion>
+          The band's own collapse, for the same reason it wears it there:
+          without it, taking off the last pill (or the undo offer expiring
+          with nothing left to show) dropped this row in the same frame the
+          grid closed the 60px gap behind it, so the pill's own exit inside
+          FilterChips never got to play and the page jumped instead of
+          settling. */}
+      <ChipsRowPresence
+        show={showChips}
+        slot="mobile-filter-row"
+        className="lg:hidden"
+      >
+        <FilterChips {...chipProps} placement="flow" />
+      </ChipsRowPresence>
 
       {/* The dock is present at any result count, including one. It used to
           vanish there, because both of its children were gated on a facet

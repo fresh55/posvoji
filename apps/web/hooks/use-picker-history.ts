@@ -12,7 +12,14 @@ import { commitLocation, subscribeToLocation } from "@/lib/location-search";
  *  press undoing the species and a second closing the sheet
  *  (use-animal-filters.ts). */
 export function standsOnLayerEntry(): boolean {
-  return typeof window.history.state?.locationPicker === "string";
+  return layerEntryKey() !== undefined;
+}
+
+/** Which layer pushed the entry the visitor is standing on, if one did. For
+ *  a caller that has to wait for that entry's own pop to land. */
+export function layerEntryKey(): string | undefined {
+  const key: unknown = window.history.state?.locationPicker;
+  return typeof key === "string" ? key : undefined;
 }
 
 /**

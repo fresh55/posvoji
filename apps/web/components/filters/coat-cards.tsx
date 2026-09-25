@@ -30,6 +30,7 @@ import {
   useOneShotCelebration,
   useResetStagger,
   waitThen,
+  type Pose,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -675,8 +676,8 @@ const NOSE_ORIGIN = { transformBox: "fill-box", originX: 0.5, originY: 0.5 } as 
 type FurState = "flat" | "fluffed";
 
 // Always drawn with the ears and only fluffed out on a pick, rather than
-// mounted when Dolga is pressed: under the section's presence a node mounted
-// later plays its entrance already finished.
+// mounted when Dolga is pressed: under the swatch's own presence, which is
+// initial={false}, a node mounted later plays its entrance already finished.
 const furStateOf = (longCoat: boolean, state: EarState): FurState =>
   longCoat && state === "up" ? "fluffed" : "flat";
 
@@ -1414,17 +1415,14 @@ const SWAY_ORIGIN = {
  */
 export type CoatIconMotion = {
   hovered: boolean;
-  /** A click has just landed on this card and the pointer has not left. */
-  settled: boolean;
+  /** Hovered or focused, and no click has landed on it since. */
+  previewing: boolean;
   pressed: boolean;
   /** This card has just been picked and its gesture is still playing. */
   celebrating: boolean;
   /** Holds this card's icon back so a reset empties the section in order. */
   resetDelay: number;
 };
-
-/** The shape size-paw-cards and energy-cards give their own pose helpers. */
-type Pose = { animate: TargetAndTransition; transition: Transition };
 
 /**
  * What the coat is doing, as one of three answers the pointer can ask for.
@@ -1511,8 +1509,11 @@ function lengthOf(value: string): CoatLength {
  * off a ground line are. Hanging them instead is what makes them hair, and
  * the lean is what keeps them from printing as the rake the first attempt at
  * this glyph found: strands dropped straight down from the arc read as a comb.
+ *
+ * Memoised: every prop is a primitive, and the section renders again for each
+ * hover and press on any row.
  */
-function CoatLengthGlyph({
+const CoatLengthGlyph = memo(function CoatLengthGlyph({
   length,
   checked,
   className,
@@ -1595,7 +1596,7 @@ function CoatLengthGlyph({
       )}
     </svg>
   );
-}
+});
 
 type CoatCardsProps = {
   options: FilterOption[];
@@ -1645,11 +1646,16 @@ function CoatCards({
   unanswered,
   tracksPress = false,
   compactTiles = false,
+  // Two across for Barva, where each solid colour stands beside its
+  // two-toned twin.
+  sheetColumns = "grid-cols-2",
   holdMs,
   checkDelay,
 }: CoatCardsProps & {
   group: "coatColor" | "coatLength";
   hint?: string;
+  /** The sheet's columns (FilterCardSection). */
+  sheetColumns?: string;
   /** How long a pick holds its gesture open; its tail snaps to rest after. */
   holdMs: number;
   /** When the tick lands, which is once the icon's gesture has. */
@@ -1691,7 +1697,7 @@ function CoatCards({
   );
   const {
     hoveredValue,
-    settledValue,
+    previewing,
     settle,
     pressedValue,
     release: releasePress,
@@ -1713,18 +1719,7 @@ function CoatCards({
       resetAriaLabel={(locale === "sl" ? "Ponastavi: " : "Reset: ") + label}
       layout={layout}
       collapse={collapse}
-      // Two across for Barva, where each solid colour stands beside its
-      // two-toned twin, and for Dolžina dlake while it draws Brez dlake:
-      // three across at 320px would break "Večbarvna" and "Brez dlake" over
-      // two lines apiece. Without Brez dlake, which the sheet leaves out
-      // while no animal in the pool is hairless (liveInPool), the lengths are
-      // three short words and take one row instead of two.
-      sheetColumns={
-        group === "coatLength" &&
-        !options.some(({ value }) => value === "hairless")
-          ? sheetColumnsFor(options.length)
-          : "grid-cols-2"
-      }
+      sheetColumns={sheetColumns}
       tone="part"
       footer={<UnansweredNote tally={unanswered} />}
     >
@@ -1737,7 +1732,7 @@ function CoatCards({
         const gestures = gestureHandlers(value);
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
-          settled: settledValue === value,
+          previewing: previewing(value),
           pressed: pressedValue === value,
           celebrating,
           resetDelay,
@@ -1990,12 +1985,9 @@ function CoatColorPalette({
   // gated on :focus-visible. A second piece of focus state here overrode that
   // gate, because a later onFocus prop wins over the one the hook spreads in,
   // and a swatch stayed lifted and named after a mouse click.
-  //
-  // settledValue is the swatch a click last landed on: its ear tips stay down
-  // until the pointer or focus leaves (useFilterCardHover says why).
   const {
     hoveredValue,
-    settledValue,
+    previewing,
     settle,
     handlers: hoverHandlers,
   } = useFilterCardHover();
@@ -2127,7 +2119,7 @@ function CoatColorPalette({
                   kind={kind}
                   checked={checked}
                   dead={dead}
-                  peeking={hovered && settledValue !== value}
+                  peeking={previewing(value) && !dead}
                   beat={beat}
                   noticeDelay={noticeDelay}
                   resetDelay={resetDelayOf(index)}
@@ -2188,7 +2180,7 @@ export function CoatColorCards({
           // count says 0 and its tick box is not drawn, and the swatch draws
           // small in its own colour, as it does in the palette.
           dead={dead}
-          peeking={motion.hovered && !motion.settled}
+          peeking={motion.previewing}
           beat={motion.celebrating ? "picked" : null}
           resetDelay={motion.resetDelay}
           outlined={false}
@@ -2210,6 +2202,15 @@ export function CoatLengthCards(props: CoatCardsProps) {
       group="coatLength"
       holdMs={CELEBRATION_MS}
       checkDelay={CHECK_DELAY}
+      // Two across while the sheet draws Brez dlake: three across at 320px
+      // would break it over two lines. Without it, which the sheet leaves out
+      // while no animal in the pool is hairless (liveInPool), the lengths are
+      // three short words and take one row instead of two.
+      sheetColumns={
+        props.options.some(({ value }) => value === "hairless")
+          ? "grid-cols-2"
+          : sheetColumnsFor(props.options.length)
+      }
       // Length needs no explanation beyond its labels.
       // The coat is the one icon here that answers a held pointer.
       tracksPress

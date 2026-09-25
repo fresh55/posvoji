@@ -65,16 +65,15 @@ describe("the filter card's two surfaces", () => {
     expect(chosen).toContain("data-[state=on]:shadow-none");
   });
 
-  // A plain-button tile carries aria-pressed and nothing else, and the tile's
-  // active:bg-muted/40 is a pseudo-class that outranks a bare bg-brand for as
-  // long as Chrome holds :active after a tap: Velikost's green started 260ms
-  // after the tap where Spol's, spelled against the attribute, started at
-  // 110ms. The fill has to be spelled in a selector that weighs as much.
-  it("fills a pressed tile by its own attribute in the sheet", () => {
+  // The tile's active:bg-muted/40 is a pseudo-class that outranks a bare
+  // bg-brand for as long as Chrome holds :active after a tap: Velikost's green
+  // started 260ms after the tap where Spol's started at 110ms. A chosen tile
+  // answers :active itself, so the grey is gone from its class list.
+  it("keeps a pressed tile green under the finger in the sheet", () => {
     const chosen = filterCardVariants({ layout: "sheet", selected: true });
 
-    expect(chosen).toContain("aria-pressed:bg-brand");
-    expect(chosen).toContain("aria-pressed:border-brand-border");
+    expect(chosen).toContain("active:bg-brand");
+    expect(chosen).not.toContain("active:bg-muted/40");
   });
 
   it("keeps the tile a tile", () => {

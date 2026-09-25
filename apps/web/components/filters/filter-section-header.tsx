@@ -112,20 +112,15 @@ export function CollapsibleBody({
   // does not fold itself open on first paint, not while the sidebar hydrates
   // and not while the sheet slides up. Every body after it unfolds, including
   // this section's own once it has been folded. Adjusted during render rather
-  // than in an effect, the way CountRoll keeps its epoch.
+  // than in an effect, the way CountRoll keeps its turn.
   //
-  // Said on the body, and not as the presence's initial={false} where it used
-  // to be. Motion hands that to every motion element under the fold rather
-  // than to the fold alone, and PresenceChild memoises it for as long as the
-  // body stays, so whatever mounted in the section later counted as present
-  // at first paint too and was written straight to the end of its mount
-  // animation. That was every one-shot built as a mount, the pick ripple,
-  // Doma imam's faces and the count roll: dead in Spol and Starost on the
-  // desktop, in every section the phone sheet mounted open (those two, and
-  // any the visitor had opened before, since the sheet mounts afresh on each
-  // open), and always in Barva and Dolžina dlake, whose bodies fold nothing
-  // and so were only ever first bodies. initial={false} on the body reaches
-  // the body and nothing under it.
+  // Said on the body, and not as the presence's initial={false}. Motion hands
+  // that to every motion element under the fold, and PresenceChild memoises it
+  // for as long as the body stays, so anything mounted in the section later
+  // (the pick ripple, Doma imam's faces, the count roll) counted as present at
+  // first paint too and was written straight to the end of its mount
+  // animation. initial={false} on the body reaches the body and nothing under
+  // it.
   const [openedAtMount, setOpenedAtMount] = useState(open);
   if (openedAtMount && !open) setOpenedAtMount(false);
 

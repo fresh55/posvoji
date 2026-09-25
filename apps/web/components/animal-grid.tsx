@@ -98,17 +98,17 @@ const STAGGER_STYLE = Array.from({ length: STAGGERED_CARDS }, (_, ordinal) => ({
 // The ordinary arrival: a fade from nothing, risen from below and staggered by
 // STAGGER_STYLE, so a filter narrowing to a smaller list reads as the grid
 // answering one card after another. Also what plays on the very first paint
-// of a page that already carries a filter, the "comes alive on load" case
-// filter-motion-system.md records as a feature and not a bug.
+// of a page that already carries a filter: the grid coming alive on load is
+// meant.
 const CARD_ENTRANCE =
   "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none";
 
 // The widening arrival: unpick, clear or "Pokaži vse vrste" all put a card
 // back that was on screen a moment ago and got filtered out, not a card
 // arriving for the first time. CARD_ENTRANCE held such a card at opacity 0
-// for its stagger delay plus its own fade, up to about 530ms in the audit's
-// worst case, next to the survivors it never touched, and a phone read that
-// patchwork as an almost blank grid at 82ms (D9). No card may sit invisible
+// for its stagger delay plus its own fade, up to about 530ms at worst, next
+// to the survivors it never touched, and a phone read that patchwork as an
+// almost blank grid at 82ms. No card may sit invisible
 // after a widening, so this drops the fade and the per-card wait entirely:
 // every card lands at once, opaque throughout, and only a small rise says the
 // grid just settled rather than stood still.
@@ -386,17 +386,22 @@ export function AnimalGrid({
   // Whether this render is answering a widening: unpick, clear and "Pokaži
   // vse vrste" all raise this count, and that is the direction CARD_SETTLE
   // exists for. Adjusted during render and not from an effect, on the same
-  // reasoning as useFilterSections' own arrival flag (a re-render an effect
+  // reasoning as useFilterSections' own arrival flag: a re-render an effect
   // triggers would draw the old, invisible-card arrangement first and correct
-  // it a frame later, which is the bug). Seeded from the first render's own
-  // count so the page's very first paint -- the one arrival CARD_ENTRANCE is
-  // for -- is never mistaken for a widening.
-  const [seenResultCount, setSeenResultCount] = useState(() => visible.length);
-  const [widening, setWidening] = useState(false);
-  if (visible.length !== seenResultCount) {
-    setWidening(visible.length > seenResultCount);
-    setSeenResultCount(visible.length);
+  // it a frame later, which is the bug. Seeded from the first render's own
+  // count, so the page's very first paint, the one arrival CARD_ENTRANCE is
+  // for, is never mistaken for a widening.
+  const [arrival, setArrival] = useState(() => ({
+    count: visible.length,
+    widening: false,
+  }));
+  if (visible.length !== arrival.count) {
+    setArrival({
+      count: visible.length,
+      widening: visible.length > arrival.count,
+    });
   }
+  const { widening } = arrival;
   // Where Najbližje measures from, granted by the location picker's nearby
   // control and by nothing else. Null on the server and on the first client
   // render, which is what makes the option's absence in the sort picker and the
@@ -766,7 +771,7 @@ export function AnimalGrid({
                   // holds a delayed card invisible until its turn -- except on
                   // a widening, where that card is not arriving but coming
                   // back, and CARD_SETTLE takes over so it is never the one
-                  // sitting invisible next to the survivors (D9).
+                  // sitting invisible next to the survivors.
                   //
                   // The first dozen and no further. Vse used to render all 503
                   // matches at once, so animating every one of them started 503

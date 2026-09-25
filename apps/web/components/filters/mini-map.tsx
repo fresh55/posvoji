@@ -2,8 +2,9 @@
 
 import { domAnimation, m, useReducedMotion } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { memo, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import type { Celebration } from "@/components/filters/use-filter-motion";
+import { useAfterFirstFrame } from "@/hooks/use-after-first-frame";
 import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";
 import {
   DENSITY_STEPS,
@@ -60,20 +61,11 @@ function MiniMapImpl({
   className?: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  // Flips once, a frame after mount, well behind the hydration correction
-  // useAnimalFilters can still owe this plate's `selected` prop (the static
-  // export's own server snapshot is empty, so a shared filtered link gains
-  // its real selection a beat after the first paint -- see
-  // active-filters-do-not-reorder.md). The region transition below must not
-  // exist yet on the render that first shows this plate's real state, only
-  // on whatever a visitor picks afterwards, and a plain mount effect cannot
-  // tell those two renders apart. Same rAF-deferred gate ResultCount uses for
-  // the same reason (result-count.tsx).
-  const [transitionReady, setTransitionReady] = useState(false);
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setTransitionReady(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
+  // The region transition below must not be there for the render that
+  // restores a shared link's selection, only for a visitor's picks after it.
+  // The plate is the only instance that draws the transition, so the others
+  // skip the frame.
+  const transitionReady = useAfterFirstFrame(detail === "plate");
   const towns = useMemo(() => layoutTowns(pins), [pins]);
   const { byRegion, regionIdByTownKey } = useMemo(
     () => groupTownsByRegion(towns, (at) => CITY_REGIONS[`${at.lat},${at.lon}`]),
@@ -159,10 +151,10 @@ function MiniMapImpl({
                 // fill-opacity get a 200ms transition there and nowhere else,
                 // so a pick that changes several regions' density at once
                 // (Psi moved six of twelve) reads as a wash settling rather
-                // than a repaint in one frame (D16). transitionReady keeps it
-                // off for the render that first shows the plate's real state
-                // and for the hydration correction right behind it; only a
-                // pick after that may animate.
+                // than a repaint in one frame. transitionReady keeps it off
+                // for the render that first shows the plate's real state and
+                // for the hydration correction right behind it; only a pick
+                // after that may animate.
                 plate &&
                   transitionReady &&
                   "transition-[fill,fill-opacity] duration-200 motion-reduce:transition-none",

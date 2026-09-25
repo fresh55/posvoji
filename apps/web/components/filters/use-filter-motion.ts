@@ -1,10 +1,13 @@
 "use client";
 
-import type { Easing, Transition } from "motion/react";
+import type { Easing, TargetAndTransition, Transition } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, PointerEvent } from "react";
 
 export type Celebration<T> = { value: T; id: number };
+
+/** One element's target and the transition it takes there. */
+export type Pose = { animate: TargetAndTransition; transition: Transition };
 
 /**
  * A keyframe track that waits before it plays, with the wait written into the
@@ -231,15 +234,18 @@ export const SETTLE_GRACE_MS = 80;
 //
 // settle(value) marks the card a press just landed on, until the pointer or
 // focus leaves it. A lift after a click is ordinary hover feedback, but every
-// section whose hover previews its own pick reads it, so that a card unticked
-// under the mouse does not play that preview the moment its pick comes off:
-// Barva's ear tips, Velikost's paw tipped onto its heel (a landing has to take
-// the weight flat), Energija's nod, swell and twitch, Starost's lean, Doma
-// imam's ears and smile, Zdravje's tube and Čaka na dom's glass.
+// section whose hover previews its own pick asks previewing() rather than
+// hoveredValue, so that a card unticked under the mouse does not play that
+// preview the moment its pick comes off: Barva's ear tips, Velikost's paw
+// tipped onto its heel (a landing has to take the weight flat), Energija's
+// nod, swell and twitch, Starost's lean, Doma imam's ears and smile,
+// Zdravje's tube and Čaka na dom's glass.
 export function useFilterCardHover<T extends string = string>(): {
   hoveredValue: T | null;
   settledValue: T | null;
   settle: (value: T) => void;
+  /** Hovered or focused, and no click has landed on it since. */
+  previewing: (value: T) => boolean;
   handlers: (value: T) => HoverHandlers;
 } {
   const [hoveredValue, setHoveredValue] = useState<T | null>(null);
@@ -267,6 +273,11 @@ export function useFilterCardHover<T extends string = string>(): {
       setSettledValue(value);
     },
     [keepSettled],
+  );
+
+  const previewing = useCallback(
+    (value: T) => hoveredValue === value && settledValue !== value,
+    [hoveredValue, settledValue],
   );
 
   const handlers = useCallback(
@@ -302,7 +313,7 @@ export function useFilterCardHover<T extends string = string>(): {
     [keepSettled],
   );
 
-  return { hoveredValue, settledValue, settle, handlers };
+  return { hoveredValue, settledValue, settle, previewing, handlers };
 }
 
 type PressHandlers = {
@@ -382,6 +393,8 @@ export function useFilterCardGestures<T extends string = string>({
   /** The card a click last landed on, until the pointer leaves it. */
   settledValue: T | null;
   settle: (value: T) => void;
+  /** Hovered or focused, and no click has landed on it since. */
+  previewing: (value: T) => boolean;
   pressedValue: T | null;
   /** Clears the press if this value still owns it. Safe to call from onClick. */
   release: (value: T) => void;
@@ -391,6 +404,7 @@ export function useFilterCardGestures<T extends string = string>({
     hoveredValue,
     settledValue,
     settle,
+    previewing,
     handlers: hoverHandlers,
   } = useFilterCardHover<T>();
   const {
@@ -416,5 +430,13 @@ export function useFilterCardGestures<T extends string = string>({
     [hoverHandlers, pressHandlers, press],
   );
 
-  return { hoveredValue, settledValue, settle, pressedValue, release, handlers };
+  return {
+    hoveredValue,
+    settledValue,
+    settle,
+    previewing,
+    pressedValue,
+    release,
+    handlers,
+  };
 }

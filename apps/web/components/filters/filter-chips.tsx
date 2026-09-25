@@ -646,7 +646,7 @@ export function FilterChips({
               One m.span and not two bare children, and layout with no
               initial/animate/exit of its own: this pair never mounts or
               unmounts, it only has to keep up with the pills sliding past it,
-              which is what layout alone measures and glides (D3). The pills'
+              which is what layout alone measures and glides. The pills'
               own transition and not a copy of it, so the two halves of one
               removal cannot drift apart again. */}
           {clear && (

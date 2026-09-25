@@ -12,6 +12,9 @@ import {
   FilterCardMark,
   FilterCardSection,
   FilterCardTail,
+  FilterCardWatermark,
+  MARK_APPEAR_DURATION,
+  WATERMARK_APPEAR_DURATION,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -24,6 +27,7 @@ import {
   useOneShotCelebration,
   useResetStagger,
   waitThen,
+  type Pose,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import type { CareKey, CareOption } from "@/lib/filters";
@@ -78,8 +82,6 @@ const DRAW_DURATION = 0.5;
 const DRAW_STAGGER = 0.16;
 const TEMPO: DrawTempo = { draw: DRAW_DURATION, stagger: DRAW_STAGGER, fade: 0.14 };
 
-type Pose = { animate: TargetAndTransition; transition: Transition };
-
 // One deep lub-dub. Two beats, the second the fuller of the pair, then still.
 // Six keyframes, so it can only run as a tween carrying its own times.
 const BEAT_DURATION = 1.15;
@@ -102,8 +104,6 @@ const RIPPLE_SCALE = 2.1;
 // (energy-cards.test.tsx). The draw, the second beat and the watermark below
 // are untouched: only the tick moved earlier.
 export const CHECK_DELAY = 0.3;
-// Matches FilterSelectionMark's own appear duration.
-const CHECK_DURATION = 0.14;
 // The watermark keeps the old timing the tick gave up: it is a background
 // flourish rather than a control's own state, so it can afford to wait for
 // the fuller second beat.
@@ -145,11 +145,6 @@ const BEAT_SETTLE_TRANSITION: Transition = { duration: EXHALE_SETTLE, ease: "eas
 export const BEAT_REST: Pose = { animate: { scale: 1 }, transition: BEAT_SETTLE_TRANSITION };
 const HEART_STILL: Pose = { animate: { scale: 1 }, transition: { duration: 0 } };
 
-// The mark the chosen heart leaves behind on a selected card.
-const WATERMARK_OPACITY = 0.08;
-const WATERMARK_IN_DURATION = 0.3;
-const WATERMARK_OUT_DURATION = 0.12;
-
 // Every phase measured from the moment the card is switched on. The hold has
 // to outlast the slowest of them, because clearing the celebration snaps
 // whatever is still running back to rest.
@@ -159,8 +154,8 @@ const HEARTBEAT_MS = Math.ceil(
       BEAT_DURATION,
       RIPPLE_DURATION,
       (MOST_STROKES - 1) * DRAW_STAGGER + DRAW_DURATION,
-      CHECK_DELAY + CHECK_DURATION,
-      WATERMARK_DELAY + WATERMARK_IN_DURATION,
+      CHECK_DELAY + MARK_APPEAR_DURATION,
+      WATERMARK_DELAY + WATERMARK_APPEAR_DURATION,
     ),
 );
 
@@ -309,61 +304,33 @@ export function CareCards({
                   className: cn(
                     // isolate keeps the watermark's negative z-index above the
                     // card's own background instead of behind it.
-                    "isolate flex",
+                    layout === "sheet" && "isolate",
+                    "flex",
                     filterCardLayoutClass(layout),
                   ),
                 })}
               >
-                {/* The mark the chosen drawing leaves on the card, clipped by
-                    the card's own overflow. Sheet tiles only: a sidebar row
-                    is 40px tall with the tick's own 36px reserved at the
-                    right (pr-9), and this mark's box was landing a quarter
-                    under that tick, the same measurement Energija's own copy
-                    of this pattern failed. A tile has the room a row does
-                    not. */}
-                {layout === "sheet" && (
-                  <m.span
-                    aria-hidden
-                    className="pointer-events-none absolute -z-10 -bottom-2 -right-1.5"
-                    // A real initial, so a card checked from the URL stamps
-                    // its mark on load instead of having it already there.
-                    initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
-                    animate={{
-                      opacity: checked ? WATERMARK_OPACITY : 0,
-                      scale: shouldReduceMotion || checked ? 1 : 1.06,
-                    }}
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : checked
-                          ? {
-                              duration: WATERMARK_IN_DURATION,
-                              delay: WATERMARK_DELAY,
-                              ease: "easeOut",
-                            }
-                          : {
-                              duration: WATERMARK_OUT_DURATION,
-                              delay: exitDelay,
-                              ease: "easeOut",
-                            }
-                    }
+                {/* The mark the chosen drawing leaves on its tile. */}
+                <FilterCardWatermark
+                  layout={layout}
+                  checked={checked}
+                  appearDelay={WATERMARK_DELAY}
+                  exitDelay={exitDelay}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-12 rotate-[-12deg]"
+                    fill="none"
+                    stroke="var(--brand-strong)"
+                    strokeWidth={1.75}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    {/* The rotation stays on the svg; the span owns transform. */}
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="size-12 rotate-[-12deg]"
-                      fill="none"
-                      stroke="var(--brand-strong)"
-                      strokeWidth={1.75}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      {strokes.map((d) => (
-                        <path key={d} d={d} />
-                      ))}
-                    </svg>
-                  </m.span>
-                )}
+                    {strokes.map((d) => (
+                      <path key={d} d={d} />
+                    ))}
+                  </svg>
+                </FilterCardWatermark>
 
                 <FilterCardMark
                   layout={layout}

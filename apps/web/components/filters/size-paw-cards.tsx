@@ -1,7 +1,7 @@
 "use client";
 
 import { PawPrint } from "lucide-react";
-import type { TargetAndTransition, Transition } from "motion/react";
+import type { Transition } from "motion/react";
 import { domAnimation, m, useReducedMotion } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
 import type { CSSProperties, ReactNode } from "react";
@@ -11,6 +11,7 @@ import {
   FilterCardIconWell,
   FilterCardMark,
   FilterCardTail,
+  FilterCardWatermark,
   countClass,
   filterCardLayoutClass,
   filterCardVariants,
@@ -23,6 +24,7 @@ import {
   useFilterCardGestures,
   useOneShotCelebration,
   waitThen,
+  type Pose,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import type { FilterOption } from "@/lib/filters";
@@ -362,10 +364,6 @@ function hopHeight(landing: Landing, layout: FilterCardLayout): number {
     Math.min(landing.drop, room - stretch - HOP_CLEARANCE),
   );
 }
-// The mark the paw leaves behind on a selected card.
-const WATERMARK_OPACITY = 0.08;
-const WATERMARK_IN_DURATION = 0.3;
-const WATERMARK_OUT_DURATION = 0.12;
 
 // Places the impact keyframe of a tween at impactDelay, with an anticipation
 // keyframe before it.
@@ -408,8 +406,6 @@ function dustPose(landing: Landing): Pose {
     transition: opacity.transition,
   };
 }
-
-type Pose = { animate: TargetAndTransition; transition: Transition };
 
 const REST_TRANSITION: Transition = { duration: 0.16 };
 
@@ -570,8 +566,7 @@ export function SizePawCards({
   const { celebration: departure, celebrate: depart } =
     useOneShotCelebration<string>(FOOTPRINT_MS);
   const {
-    hoveredValue,
-    settledValue,
+    previewing,
     settle,
     pressedValue,
     release: releasePress,
@@ -603,10 +598,7 @@ export function SizePawCards({
           // takes the weight on the toes, and a click made with the mouse
           // resting on the card landed the paw 8 degrees back on its heel and
           // left it there.
-          const tipped =
-            hoveredValue === value &&
-            pressedValue !== value &&
-            settledValue !== value;
+          const tipped = previewing(value) && pressedValue !== value;
           const dead = isDeadOption(count, checked);
           const celebrating = celebration?.value === value && checked;
           const departing = departure?.value === value && !checked;
@@ -728,47 +720,20 @@ export function SizePawCards({
                   : cn("flex", filterCardLayoutClass(layout)),
               })}
             >
-              {/* The mark the landed paw leaves on the card, clipped by the
-                  card's own overflow. The tile only: it is a stamp on a card
-                  ground, and a row has no ground to stamp. A 48px paw behind
-                  a 44px line would be a smudge under the count rather than a
-                  mark left in a corner, and the row says "chosen" the way
-                  every other row in the column does. */}
-              {sheet && (
-                <m.span
-                  aria-hidden
-                  className="pointer-events-none absolute -bottom-2 -right-1.5 -z-10 text-brand-strong"
-                  // A real initial, so a card checked from the URL stamps its
-                  // mark on load instead of having it already there.
-                  initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
-                  animate={{
-                    opacity: checked ? WATERMARK_OPACITY : 0,
-                    scale: shouldReduceMotion || checked ? 1 : 1.06,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : checked
-                        ? {
-                            duration: WATERMARK_IN_DURATION,
-                            delay: landing.checkDelay,
-                            ease: "easeOut",
-                          }
-                        : {
-                            duration: WATERMARK_OUT_DURATION,
-                            delay: resetDelay,
-                            ease: "easeOut",
-                          }
-                  }
-                >
-                  {/* The rotation stays on the icon; the span owns transform. */}
-                  <PawPrint
-                    className="size-12 rotate-[-15deg]"
-                    strokeWidth={1.75}
-                    fill="none"
-                  />
-                </m.span>
-              )}
+              {/* The mark the landed paw leaves on its tile. */}
+              <FilterCardWatermark
+                layout={layout}
+                checked={checked}
+                appearDelay={landing.checkDelay}
+                exitDelay={resetDelay}
+                className="text-brand-strong"
+              >
+                <PawPrint
+                  className="size-12 rotate-[-15deg]"
+                  strokeWidth={1.75}
+                  fill="none"
+                />
+              </FilterCardWatermark>
               {/* One call for both surfaces. The sheet arm used to spell
                   FilterSelectionMark with "absolute right-1.5 top-1.5", which
                   is markClass("sheet") character for character, so the two

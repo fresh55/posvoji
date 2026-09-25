@@ -580,7 +580,7 @@ describe("the widening arrival", () => {
   it("keeps the ordinary staggered fade on the first paint a filtered link arrives with", () => {
     // The widening treatment must not swallow the arrival it was carved out
     // of: the very first paint of a page that already carries a filter still
-    // comes alive with the ordinary fade and stagger (filter-motion-system).
+    // comes alive with the ordinary fade and stagger.
     window.history.replaceState(null, "", "/?zavetisce=muri");
     renderGrid(ANIMALS);
 
@@ -592,8 +592,8 @@ describe("the widening arrival", () => {
   it("gives a widening's returning cards no invisible wait, only a small settle", () => {
     // Before this, a card coming back on a widening got the ordinary
     // treatment above: opacity 0 for its stagger delay plus its own 300ms
-    // fade, up to about 530ms in the audit's worst case, next to survivors
-    // the removal never touched (D9). No card may sit invisible after a
+    // fade, up to about 530ms at worst, next to survivors the removal never
+    // touched. No card may sit invisible after a
     // widening, so the three cards this unpick brings back settle in at once
     // instead of fading in one after another.
     window.history.replaceState(null, "", "/?zavetisce=muri");
@@ -1266,8 +1266,8 @@ describe("the chips row inside the grid", () => {
   it("keeps the phone row mounted through its own exit instead of dropping it with the last pill", async () => {
     // Before this, taking off the last pill in flow unmounted the row in the
     // same frame the grid closed the 60px gap it left behind, so the pill's
-    // own exit inside FilterChips never got to play (D6). The row now shares
-    // the band's own AnimatePresence, so its DOM node survives the press.
+    // own exit inside FilterChips never got to play. The row now collapses
+    // the way the band's does, so its DOM node survives the press.
     window.history.replaceState(null, "", "/?zavetisce=muri");
     renderGrid(ANIMALS);
 

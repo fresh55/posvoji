@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/drawer";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { SpeciesGlyphIcon } from "@/components/filters/species-glyph";
+import { layerEntryKey } from "@/hooks/use-picker-history";
 import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
 
 import { speciesScopeLabel } from "@/lib/labels";
@@ -126,13 +127,13 @@ export function FilterSheetContent({
   const openScope = () => {
     handingOff.current = true;
     // The sheet's own entry, the one whose pop the map has to wait out.
-    const entry: unknown = window.history.state?.locationPicker;
+    const entry = layerEntryKey();
     close();
     const asked = performance.now();
     const handOff = () => {
       if (
         entry !== undefined &&
-        window.history.state?.locationPicker === entry &&
+        layerEntryKey() === entry &&
         performance.now() - asked < PICKER_HANDOFF_LIMIT_MS
       ) {
         window.setTimeout(handOff, 20);

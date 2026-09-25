@@ -113,12 +113,9 @@ export function GoodWithCards({
     selected.length,
     options.length,
   );
-  // settledValue is the card a click last landed on, held until the pointer
-  // or focus leaves it: without it, unticking a facet under the mouse showed
-  // the preview it was just about to celebrate, on top of the leave.
   const {
     hoveredValue: hoveredKey,
-    settledValue,
+    previewing: previewingKey,
     settle,
     handlers: hoverHandlers,
   } = useFilterCardHover<GoodWithKey>();
@@ -185,10 +182,9 @@ export function GoodWithCards({
         const dead = isDeadOption(count, checked);
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
-        // A taste of the pick gesture for a card nobody has chosen yet.
-        // settledValue keeps a card a click just landed on from replaying it
-        // the moment the click itself clears the hover state's own flicker.
-        const previewing = hovered && !checked && settledValue !== key;
+        // A taste of the pick gesture for a card nobody has chosen yet and
+        // that has something to pick.
+        const previewing = previewingKey(key) && !checked && !dead;
         const exitDelay = resetDelay(index);
         // The "brez odgovora" line is a warning about what a pick would hide,
         // so it belongs on rows nobody has pressed yet. Left on after a pick,
@@ -243,11 +239,8 @@ export function GoodWithCards({
               ) : null}
               <FilterCardHoverLift hovered={hovered}>
                 {/* The gesture, the preview and the dead posture all live
-                    inside the glyph now, one part at a time. There is no
-                    neighbour reaction here: a 2.5 degree lean measured under
-                    a pixel at the glyph's edge, which is PR #329's own
-                    finding about Energija repeating itself, so this wrapper
-                    only ever carries colour and needs no motion of its own. */}
+                    inside the glyph, one part at a time, so this wrapper
+                    carries only colour. */}
                 <span
                   // The colour rides the wrapper rather than the glyph. It is
                   // a class here and not a motion target, so the only place to

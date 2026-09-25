@@ -253,9 +253,8 @@ describe("MiniMap plate region transition", () => {
   it("carries no transition on the render that first shows the plate", () => {
     // renderToStaticMarkup never runs an effect, so this is the render every
     // real page also paints first: the one a shared filtered link's own
-    // hydration correction to `selected` still has to land on top of
-    // (active-filters-do-not-reorder.md). Region reshading must not animate
-    // through either (D16).
+    // hydration correction to `selected` still has to land on top of.
+    // Region reshading must not animate through either.
     const region = renderPlate(roster).match(
       /<path[^>]*data-minimap-region-state="[^"]*"[^>]*>/,
     )?.[0];

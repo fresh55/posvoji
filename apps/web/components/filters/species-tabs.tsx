@@ -15,8 +15,8 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
 import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
@@ -149,12 +149,6 @@ function restPose(
   }
   return pose;
 }
-
-// Nothing to subscribe to: the answer changes exactly once, when React swaps
-// the server snapshot for the client one at the end of hydration.
-const subscribeToHydration = () => () => {};
-const hydratedOnClient = () => true;
-const hydratedOnServer = () => false;
 
 type Box = { left: number; top: number; width: number; height: number };
 
@@ -437,11 +431,7 @@ export function SpeciesTabs({
   // link either mounts the fill under the restored tab or slides it there in
   // the first frames. Either is the row coming alive on load. A frame with a
   // pressed tab and nothing under it is not.
-  const hydrated = useSyncExternalStore(
-    subscribeToHydration,
-    hydratedOnClient,
-    hydratedOnServer,
-  );
+  const hydrated = useHydrated();
 
   const { celebration, celebrate } = useOneShotCelebration<SpeciesTab>(BEAT_MS);
 

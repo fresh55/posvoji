@@ -600,7 +600,7 @@ describe("the active filters row", () => {
     // Before this the seam and the clear were bare children of the same flex
     // row as the pills, so removing a pill jumped them straight to the row's
     // new width in the frame the removal landed while the remaining pills
-    // took 170ms of layout animation to close the same gap (D3, at lg). One
+    // took 170ms of layout animation to close the same gap (at lg). One
     // element wearing the pills' own layout animation is what keeps the two
     // halves of a removal moving together.
     renderChips([chip({ key: "a", label: "Dogs" })]);

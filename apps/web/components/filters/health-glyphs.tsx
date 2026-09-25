@@ -8,7 +8,10 @@ import type {
 } from "motion/react";
 import { m } from "motion/react";
 import { DRAW_IN } from "@/components/filters/drawn-glyph";
-import { waitThen } from "@/components/filters/use-filter-motion";
+import {
+  waitThen,
+  type Pose as Track,
+} from "@/components/filters/use-filter-motion";
 import { cn } from "@/lib/utils";
 
 /**
@@ -118,8 +121,6 @@ const INK_ON: Transition = { duration: 0.08, ease: "easeOut" };
  */
 export const RIM: MotionStyle = { originX: 19 / 24, originY: 5 / 24 };
 const RIM_IN_VIEW_BOX: MotionStyle = { transformBox: "view-box", ...RIM };
-
-type Track = { animate: TargetAndTransition; transition: Transition };
 
 export type TubeTracks = {
   /** The hover's tip, on the outer span. */

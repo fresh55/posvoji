@@ -114,20 +114,6 @@ function SizeGroup({
     selected.length,
     options.length,
   );
-  // On Vse this section can have two things to say about a pick: cats are
-  // never asked at all (leavesOutCats), and some of the dogs and others who
-  // are asked have no answer (unanswered). Said separately that was two
-  // sentences each, four 11px lines stacked under the rows; folded into one
-  // when both apply, it is two lines. The count stays the plain "some have no
-  // answer" share (namesUnanswered already gates on that below the tenth
-  // worth mentioning), so the sentence never claims a pick will show
-  // something, only what it leaves out, and stays true whichever share it is.
-  const unansweredApplies = unanswered !== undefined && namesUnanswered(unanswered);
-  const sizeNote = !leavesOutCats
-    ? null
-    : unansweredApplies
-      ? t("sizeLeavesOutCatsAndUnanswered", { count: unanswered.unanswered })
-      : messages.sizeLeavesOutCats;
 
   return (
     <section>
@@ -150,11 +136,20 @@ function SizeGroup({
           isResetting={isResetting}
           layout={layout}
         />
-        {/* Cats first, folded into sizeNote with the plain unanswered count
-            when both apply; UnansweredNote alone on a tab where cats do
-            answer (sizeNote is then unused, leavesOutCats is false there). */}
+        {/* On Vse a pick leaves out two kinds of animal: cats, which are
+            never asked (leavesOutCats), and the others with no answer. Said
+            separately that was four 11px lines under the rows; one sentence
+            is two. The count is the plain unanswered share (namesUnanswered
+            gates it below the tenth worth mentioning), so the sentence only
+            ever says what a pick leaves out. */}
         {leavesOutCats ? (
-          <SectionNote>{sizeNote}</SectionNote>
+          <SectionNote>
+            {unanswered && namesUnanswered(unanswered)
+              ? t("sizeLeavesOutCatsAndUnanswered", {
+                  count: unanswered.unanswered,
+                })
+              : messages.sizeLeavesOutCats}
+          </SectionNote>
         ) : (
           <UnansweredNote tally={unanswered} />
         )}
@@ -298,10 +293,6 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
  * is the first, which is the section's own leading answer and the same row
  * each time, rather than whichever happens to sit last.
  *
- * Age is not filtered. Its three stages are one drawing: the grove above the
- * rows is a three-column grid whose plants stand over the rows they belong to,
- * so an age stage is not a row that can be taken out on its own.
- *
  * Here and not in filter-card.tsx, which is the surface primitive the portal
  * shares: which options a list puts on screen is this list's rule, and
  * FilterGroupList below is its only caller.
@@ -392,10 +383,9 @@ export function FilterGroupList({
   // dead test out again to say so.
   //
   // Two shapes and not one, because the options have two shapes. The card
-  // groups below key on `value` (FilterOption, which is what lib/filters
-  // builds a group from) and these three key on `key`, so a single helper would
-  // have to take a reader function per call and would be the thing it
-  // replaced. The groups.map case keeps its own call.
+  // groups key on `value` (FilterOption, which is what lib/filters builds a
+  // group from) and these three key on `key`, so a single helper would have to
+  // take a reader function per call and would be the thing it replaced.
   const drawnByKey = <T extends { key: string }>(
     options: T[],
     counts: Map<string, number>,
@@ -404,6 +394,25 @@ export function FilterGroupList({
     drawn(options, ({ key }) =>
       isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
     );
+
+  // The card groups' own, keyed on `value`. Two keep every option in both
+  // layouts. Starost's three stages are one drawing: the grove above the rows
+  // is a three-column grid whose plants stand over the rows they belong to.
+  // Barva draws as a palette, and a dropped swatch reflowed the rest, each
+  // solid colour splitting from its two-toned twin; a dead swatch is drawn
+  // disabled in its own cell instead. An option the species pool never
+  // answers at all is a different question, answered where the options are
+  // built (liveInPool in use-animal-filter-model.ts).
+  const drawnByValue = (
+    group: CardGroup,
+    options: FilterOption[],
+  ): FilterOption[] => {
+    if (group === "age" || group === "coatColor") return options;
+    const selected: readonly string[] = filters[group];
+    return drawn(options, ({ value }) =>
+      isDeadOption(counts[group].get(value) ?? 0, selected.includes(value)),
+    );
+  };
 
   // Every section folds, on both surfaces. This was a prop for the pass in
   // which only the sidebar folded; the phone sheet joined it on 2026-09-17
@@ -443,17 +452,7 @@ export function FilterGroupList({
         key={group}
         group={group}
         layout={layout}
-        // Age keeps every stage in both layouts: drawnOptions says why.
-        options={
-          group === "age"
-            ? options
-            : drawn(options, ({ value }) =>
-                isDeadOption(
-                  groupCounts.get(value) ?? 0,
-                  selected.includes(value),
-                ),
-              )
-        }
+        options={drawnByValue(group, options)}
         counts={groupCounts}
         selected={selected}
         onToggle={(value) => onToggle(group, value)}
@@ -497,27 +496,7 @@ export function FilterGroupList({
                 const groupCounts = counts[group];
                 const props = {
                   layout,
-                  // Barva draws as a palette (CoatColorPalette in
-                  // coat-cards.tsx), a grid of swatches rather than a column
-                  // of rows, and drawnOptions dropping a dead one reflowed the
-                  // rest: each solid colour split from its two-toned twin.
-                  // The palette keeps every option and draws a dead swatch
-                  // disabled in its own cell instead, the way the sheet's
-                  // tiles already do for every section; only a row list keeps
-                  // the sidebar's usual rule of leaving a dead row out, so
-                  // Dolžina dlake here still gets it. A permanently dead
-                  // option, one the species pool never answers at all, is a
-                  // different question answered further up, in the options
-                  // the pool builds this list from (use-animal-filter-model.ts).
-                  options:
-                    group === "coatColor"
-                      ? options
-                      : drawn(options, ({ value }) =>
-                          isDeadOption(
-                            groupCounts.get(value) ?? 0,
-                            selected.includes(value),
-                          ),
-                        ),
+                  options: drawnByValue(group, options),
                   counts: groupCounts,
                   selected,
                   onToggle: (value: string) => onToggle(group, value),

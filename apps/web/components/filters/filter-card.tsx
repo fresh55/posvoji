@@ -25,6 +25,7 @@ import {
   type SectionCollapse,
   type SectionTone,
 } from "@/components/filters/filter-section-header";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils";
 
 /** A card is a row in the sidebar's one column, a tile in the sheet's three. */
@@ -112,23 +113,20 @@ const cardVariants = cva(
     // needs no compound of its own: nothing upstream is spelled against
     // data-[state=off], so the layout's own ground stands unopposed.
     //
-    // The tile answers aria-pressed by name as well, for the finger's sake.
-    // active:bg-muted/40 in the sheet layout is a pseudo-class, which outranks
-    // a bare bg-brand, and Chrome holds :active on a tapped tile until well
-    // after the tap has landed. So a plain-button tile (Velikost, Energija,
-    // Doma imam, Zdravje, Lahko ponudim, Dolžina) stayed grey under the
-    // finger: measured on a 390px phone, its green started 258-276ms after
-    // the tap and was full at about 340ms, where Spol and Starost, whose
-    // toggleVariants spell their fill against aria-pressed and data-state,
-    // started at 107-119ms. The attribute selector weighs what :active
-    // weighs and Tailwind emits it later, so the fill wins as soon as the
-    // press is recorded.
+    // The tile answers :active by name as well, for the finger's sake. The
+    // sheet layout's active:bg-muted/40 is a pseudo-class, which outranks a
+    // bare bg-brand, and Chrome holds :active on a tapped tile until well
+    // after the tap has landed: a plain-button tile's green started 258-276ms
+    // after the tap on a 390px phone, where the toggle items' started at
+    // 107-119ms. active:bg-brand here drops the grey from the class list by
+    // position (cn), so the fill lands with the press whatever order the
+    // stylesheet emits the two in.
     compoundVariants: [
       {
         layout: "sheet",
         selected: true,
         class:
-          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand aria-pressed:border-brand-border aria-pressed:bg-brand data-[state=on]:bg-brand",
+          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand active:bg-brand data-[state=on]:bg-brand",
       },
       {
         layout: "sidebar",
@@ -290,13 +288,6 @@ const countRollVariants = {
   }),
 };
 
-// Nothing to subscribe to. The answer is false while the server's markup is
-// being hydrated and true from the render after, and a count that mounts
-// later reads true at once.
-const subscribeToNothing = () => () => {};
-const liveOnClient = () => true;
-const liveOnServer = () => false;
-
 /** Whether the counts inside are drawn, and so worth rolling. */
 const CountsDrawn = createContext(true);
 
@@ -329,26 +320,14 @@ export function CountsRollWhile({
     },
     [query],
   );
-  const drawn = useSyncExternalStore(
-    subscribe,
+  // Stable, so React asks it once per render and not again after commit.
+  const matches = useCallback(
     () => window.matchMedia?.(query)?.matches ?? true,
-    () => true,
+    [query],
   );
+  const drawn = useSyncExternalStore(subscribe, matches, () => true);
   return <CountsDrawn.Provider value={drawn}>{children}</CountsDrawn.Provider>;
 }
-
-/**
- * How a count badge comes and goes, beside "Filtri" in the sidebar's heading
- * and on the phone's dock: a fade with the 95% scale the badge used to enter
- * on (tw-animate's zoom-in-95 over 200ms), in both directions, so it leaves
- * on its last number instead of vanishing in one frame. One constant for the
- * two badges, so they cannot drift apart.
- */
-export const COUNT_BADGE_MOTION = {
-  shown: { opacity: 1, scale: 1 },
-  hidden: { opacity: 0, scale: 0.95 },
-  fade: { duration: 0.2, ease: "easeOut" },
-} as const;
 
 /**
  * A changed number rolls rather than swapping in place, so the narrowing is
@@ -357,13 +336,9 @@ export const COUNT_BADGE_MOTION = {
  * way, 6px each over 0.24s, and the two cross so that one of them is always
  * drawn.
  *
- * It keeps its own AnimatePresence. The sections fold inside one whose
- * initial={false} (CollapsibleBody) Motion hands down as "already present"
- * to every element below it, and remembers, so a number that mounted to roll
- * in a section open at first render was written straight to its resting
- * place: Spol and Starost on the desktop never rolled, and neither did most
- * of the sheet after it had been opened once. The number's presence is
- * decided here instead, and the fold has no say in it.
+ * It keeps its own AnimatePresence, so the leaving number has a presence to
+ * exit in and no parent's initial={false} decides whether the arriving one
+ * rolls in.
  *
  * Both numbers share one grid cell while the old one leaves, rather than the
  * old one being popped out of the flow. The count then keeps the wider of
@@ -396,11 +371,7 @@ export const CountRoll = memo(function CountRoll({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const drawn = useContext(CountsDrawn);
-  const live = useSyncExternalStore(
-    subscribeToNothing,
-    liveOnClient,
-    liveOnServer,
-  );
+  const live = useHydrated();
   // Each roll is a new turn, and the turn is the number's key, so the one
   // leaving and the one arriving are two elements. A change that does not
   // roll keeps the turn and rewrites the number where it stands.
@@ -462,6 +433,10 @@ type SelectionShape = "box" | "dot";
  * tick leaves on it so that the two leave together.
  */
 const MARK_LEAVE = { duration: 0.15, ease: [0.4, 0, 0.2, 1] } as const;
+
+/** How long the tick takes to appear once its delay is up. Exported for the
+ *  sections whose celebration hold has to outlast it. */
+export const MARK_APPEAR_DURATION = 0.14;
 
 export function FilterSelectionMark({
   checked,
@@ -555,7 +530,11 @@ export function FilterSelectionMark({
             shouldReduceMotion
               ? { duration: 0 }
               : checked
-                ? { duration: 0.14, delay: appearDelay, ease: "easeOut" }
+                ? {
+                    duration: MARK_APPEAR_DURATION,
+                    delay: appearDelay,
+                    ease: "easeOut",
+                  }
                 : MARK_LEAVE
           }
         >
@@ -753,6 +732,77 @@ export function FilterCardRipple({
       animate={{ opacity: 0, scale }}
       transition={{ duration, ease: "easeOut" }}
     />
+  );
+}
+
+const WATERMARK_OPACITY = 0.08;
+const WATERMARK_SCALE = 1.06;
+/** How long a watermark takes to come in, unless its section says. Exported
+ *  for the sections whose celebration hold has to outlast it. */
+export const WATERMARK_APPEAR_DURATION = 0.3;
+const WATERMARK_LEAVE_DURATION = 0.12;
+
+/**
+ * The mark a chosen tile keeps in its corner: the section's own drawing,
+ * large and faint, clipped by the tile's overflow. The tile needs `isolate`,
+ * so the mark's negative z-index stays above the tile's own background.
+ *
+ * Tiles only. A sidebar row is 40px tall with the tick in the room at its
+ * right, and the mark sat a quarter under the tick, so the one control on the
+ * row stood on a smudge; the row says "chosen" the way every other row does.
+ *
+ * A real initial, so a tile checked from the URL stamps its mark on load
+ * instead of having it already there. The drawing keeps its own rotation;
+ * this span owns the transform.
+ */
+export function FilterCardWatermark({
+  layout,
+  checked,
+  appearDelay,
+  appearDuration = WATERMARK_APPEAR_DURATION,
+  exitDelay,
+  className,
+  children,
+}: {
+  layout: FilterCardLayout;
+  checked: boolean;
+  appearDelay: number;
+  appearDuration?: number;
+  /** The tile's turn in a reset. */
+  exitDelay: number;
+  className?: string;
+  children: ReactNode;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  if (layout !== "sheet") return null;
+  const away = shouldReduceMotion ? 1 : WATERMARK_SCALE;
+
+  return (
+    <m.span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute -bottom-2 -right-1.5 -z-10",
+        className,
+      )}
+      initial={{ opacity: 0, scale: away }}
+      animate={{
+        opacity: checked ? WATERMARK_OPACITY : 0,
+        scale: checked ? 1 : away,
+      }}
+      transition={
+        shouldReduceMotion
+          ? { duration: 0 }
+          : checked
+            ? { duration: appearDuration, delay: appearDelay, ease: "easeOut" }
+            : {
+                duration: WATERMARK_LEAVE_DURATION,
+                delay: exitDelay,
+                ease: "easeOut",
+              }
+      }
+    >
+      {children}
+    </m.span>
   );
 }
 

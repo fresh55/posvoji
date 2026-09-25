@@ -8,7 +8,7 @@ import {
   type TargetAndTransition,
   type Transition,
 } from "motion/react";
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 import { LazyMotion } from "@/components/motion-scope";
 import { DRAW_IN } from "@/components/filters/drawn-glyph";
 import {
@@ -256,7 +256,10 @@ function changedValue(selected: string[], nextSelected: string[]) {
   );
 }
 
-function SexGlyph({
+// Memoised: every prop is a primitive, and the section renders again for each
+// hover and press on either card, where this sign is over a dozen motion
+// elements.
+const SexGlyph = memo(function SexGlyph({
   kind,
   checked,
   finishing,
@@ -420,7 +423,7 @@ function SexGlyph({
       {part("whole", layers)}
     </svg>
   );
-}
+});
 
 /**
  * The glint across the mirror's glass and the spark on its rim, hidden at

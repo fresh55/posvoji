@@ -2,6 +2,7 @@
 
 import { m } from "motion/react";
 import type { TargetAndTransition, Transition } from "motion/react";
+import { memo } from "react";
 import {
   CAT_EYES,
   CAT_HEAD,
@@ -10,6 +11,7 @@ import {
   DOG_EYES,
   DOG_NOSE,
 } from "@/components/filters/animal-glyph-paths";
+import type { Pose } from "@/components/filters/use-filter-motion";
 import type { GoodWithKey } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 
@@ -70,34 +72,22 @@ function partStyle(transformOrigin: string) {
   return { transformBox: "fill-box", transformOrigin } as const;
 }
 
-// Every animated part answers the same question: act, sit at rest, or answer
-// a hover with a taste of the act. The keyframes carry their own starting
-// frame, so nothing here sets `initial`.
+// Every animated part answers the same question: act, or sit at rest. The one
+// part per facet that has something to preview can also answer a hover with a
+// taste of the act. A pick and a preview never overlap (celebrating only ever
+// happens on a checked card, previewing only on one that is not), so there is
+// no ordering to argue about between them. The keyframes carry their own
+// starting frame, so nothing here sets `initial`.
 function acts(
   celebrating: boolean,
   keyframes: TargetAndTransition,
   transition: Transition,
-) {
-  return {
-    animate: celebrating ? keyframes : REST,
-    transition: celebrating ? transition : RETURN_TRANSITION,
-  };
-}
-
-// The same question for the one part per facet that has something to preview.
-// A pick and a preview never overlap (celebrating only ever happens on a
-// checked card, previewing only on one that is not), so there is no ordering
-// to argue about between them, just three answers in place of acts' two.
-function actsWithPreview(
-  celebrating: boolean,
-  previewing: boolean,
-  keyframes: TargetAndTransition,
-  transition: Transition,
-  preview: TargetAndTransition,
-  previewTransition: Transition,
-) {
+  preview?: Pose & { when: boolean },
+): Pose {
   if (celebrating) return { animate: keyframes, transition };
-  if (previewing) return { animate: preview, transition: previewTransition };
+  if (preview?.when) {
+    return { animate: preview.animate, transition: preview.transition };
+  }
   return { animate: REST, transition: RETURN_TRANSITION };
 }
 
@@ -146,14 +136,16 @@ function GlyphRoot({
 // three different eye shapes all read as one thing (asleep). Plain CSS, not
 // a motion target: a dead option never celebrates, so there is nothing here
 // for a transition to interrupt.
-const DEAD_EYE_STYLE = { transformBox: "fill-box", transformOrigin: "50% 50%" } as const;
+const DEAD_EYE_STYLE = partStyle("50% 50%");
 const DEAD_EYE_CLASS = "scale-y-[0.08]";
 
 // A third of the mouth's own overshoot (0.35/0.25 at the laugh's peak),
 // held rather than played through and back: a smile offered before the
 // question is answered, not the laugh itself.
-const MOUTH_PREVIEW = { scaleX: 1.12, scaleY: 1.08 };
-const MOUTH_PREVIEW_TRANSITION: Transition = { duration: 0.22, ease: "easeOut" };
+const MOUTH_PREVIEW: Pose = {
+  animate: { scaleX: 1.12, scaleY: 1.08 },
+  transition: { duration: 0.22, ease: "easeOut" },
+};
 
 // The child hears the answer and laughs: the head tips over, the eyes squeeze
 // shut through the middle of it and the mouth pulls wide. The mouth is the part
@@ -205,13 +197,11 @@ function KidsGlyph({
         <m.path
           d={BABY_MOUTH}
           style={partStyle("50% 50%")}
-          {...actsWithPreview(
+          {...acts(
             celebrating,
-            previewing,
             { scaleX: [1, 1.35, 1], scaleY: [1, 1.25, 1] },
             { duration: KIDS, ease: "easeOut" },
-            MOUTH_PREVIEW,
-            MOUTH_PREVIEW_TRANSITION,
+            { ...MOUTH_PREVIEW, when: previewing },
           )}
         />
       </m.g>
@@ -222,9 +212,15 @@ function KidsGlyph({
 // A third of the ears' own -34/+34 swing (the first and biggest move of the
 // pick), held up rather than played through the bounce: a dog that has
 // noticed, not one that has heard its name yet.
-const EAR_PREVIEW_LEFT = { rotate: -11 };
-const EAR_PREVIEW_RIGHT = { rotate: 11 };
 const EAR_PREVIEW_TRANSITION: Transition = { duration: 0.2, ease: "easeOut" };
+const EAR_PREVIEW_LEFT: Pose = {
+  animate: { rotate: -11 },
+  transition: EAR_PREVIEW_TRANSITION,
+};
+const EAR_PREVIEW_RIGHT: Pose = {
+  animate: { rotate: 11 },
+  transition: EAR_PREVIEW_TRANSITION,
+};
 
 // The dog hears its own name: both ears fly up and drop back with a damped
 // bounce, and the head lifts a little under them.
@@ -255,25 +251,21 @@ function DogsGlyph({
           d={DOG_EAR_LEFT}
           // The base of the ear, where it meets the crown, is the hinge.
           style={partStyle("90% 90%")}
-          {...actsWithPreview(
+          {...acts(
             celebrating,
-            previewing,
             { rotate: [0, -34, 12, -8, 3, 0] },
             { duration: DOGS, ease: "easeOut" },
-            EAR_PREVIEW_LEFT,
-            EAR_PREVIEW_TRANSITION,
+            { ...EAR_PREVIEW_LEFT, when: previewing },
           )}
         />
         <m.path
           d={DOG_EAR_RIGHT}
           style={partStyle("10% 90%")}
-          {...actsWithPreview(
+          {...acts(
             celebrating,
-            previewing,
             { rotate: [0, 34, -12, 8, -3, 0] },
             { duration: DOGS, ease: "easeOut" },
-            EAR_PREVIEW_RIGHT,
-            EAR_PREVIEW_TRANSITION,
+            { ...EAR_PREVIEW_RIGHT, when: previewing },
           )}
         />
         {/* A dead option closes these; otherwise they never move on their
@@ -296,8 +288,10 @@ function DogsGlyph({
 // rather than played through: ears up, watching, before the slow blink
 // answers. Slower to arrive than the dog's or the child's preview, because
 // unhurried is this animal's whole character.
-const HEAD_PREVIEW = { rotate: 1.2 };
-const HEAD_PREVIEW_TRANSITION: Transition = { duration: 0.4, ease: "easeOut" };
+const HEAD_PREVIEW: Pose = {
+  animate: { rotate: 1.2 },
+  transition: { duration: 0.4, ease: "easeOut" },
+};
 
 // The slow blink is how a cat says yes, so it is deliberately unhurried: the
 // head tips, the eyes close near the middle and stay closed for a beat.
@@ -316,13 +310,11 @@ function CatsGlyph({
     <GlyphRoot facet="cats" dead={dead} previewing={previewing} className={className}>
       <m.g
         style={partStyle("50% 90%")}
-        {...actsWithPreview(
+        {...acts(
           celebrating,
-          previewing,
           { rotate: [0, 3.5, 3.5, 0] },
           { duration: CATS, times: [0, 0.25, 0.7, 1], ease: "easeInOut" },
-          HEAD_PREVIEW,
-          HEAD_PREVIEW_TRANSITION,
+          { ...HEAD_PREVIEW, when: previewing },
         )}
       >
         <path d={CAT_HEAD} />
@@ -366,7 +358,9 @@ const GLYPHS: Record<
   cats: CatsGlyph,
 };
 
-export function GoodWithGlyph({
+// Memoised: every prop is a primitive, and the section renders again for each
+// hover and press on any of its rows.
+export const GoodWithGlyph = memo(function GoodWithGlyph({
   facet,
   gesture,
   previewing = false,
@@ -395,4 +389,4 @@ export function GoodWithGlyph({
       className={className}
     />
   );
-}
+});

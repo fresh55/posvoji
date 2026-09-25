@@ -6,11 +6,10 @@ import {
   domAnimation,
   m,
   useReducedMotion,
-  type TargetAndTransition,
   type Transition,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { memo, useEffect, useId, useState, type ReactNode } from "react";
 import {
   AGE_WILT,
   AgeStageIcon,
@@ -37,8 +36,10 @@ import {
   resetDelayStyle,
   useFilterCardGestures,
   useOneShotCelebration,
+  useResetStagger,
   waitThen,
   type FilterCardGestureHandlers,
+  type Pose,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -219,8 +220,6 @@ const MUTED_CLASS = "text-muted-foreground";
 
 const STANDARD_EASE = [0.16, 1, 0.3, 1] as const;
 const CELEBRATION_GUARD_MS = 80;
-const RESET_STAGGER = 0.045;
-const RESET_CLEAR_MS = 280;
 // Half the icon's 1.7 stroke, in the same 24-unit box as STAGES[].base.
 const HALF_STROKE = 0.85;
 // The plant box's bottom padding, and the ground line's 1px inside it.
@@ -228,13 +227,10 @@ const PLANT_PADDING_PX = 4;
 const GROUND_PX = 1;
 
 // The two one-shots below exist only to be mounted and watched, so each sits
-// in a presence boundary of its own, carrying the default `initial`. The fold
-// used to need it: its body sat in an `AnimatePresence initial={false}`, which
-// Motion handed to everything under the fold and kept handing, so whatever
-// mounted there later was written straight to the pose it should have ended
-// on. The fold now says initial={false} on its first body alone
-// (CollapsibleBody in filter-section-header.tsx), and the boundary stays so a
-// one-shot here never depends on how a parent says "already present".
+// in a presence boundary of its own, carrying the default `initial`: a parent
+// presence saying initial={false} would hand them "already present" and write
+// them straight to the pose they should end on (CollapsibleBody in
+// filter-section-header.tsx says how the fold avoids that for itself).
 //
 // Named for what it does to its child rather than for the shape of the
 // animation: "one shot" is already taken in this codebase by
@@ -387,10 +383,7 @@ export type PlantCue = {
  * cut another short, and a first keyframe written out, or held through a
  * delay, would draw a plant caught mid-swing straight in one frame.
  */
-export function plantMotion(cue: PlantCue): {
-  animate: TargetAndTransition;
-  transition: Transition;
-} {
+export function plantMotion(cue: PlantCue): Pose {
   if (cue.reduceMotion) return { animate: REST, transition: { duration: 0 } };
 
   const { growth } = STAGES[cue.stage];
@@ -489,8 +482,6 @@ export function plantMotion(cue: PlantCue): {
 
   return { animate: REST, transition: SETTLE };
 }
-
-type Pose = { animate: TargetAndTransition; transition: Transition };
 
 // How fast a held plant tucks down. The way back up is the stage's spring.
 const TUCK_DURATION = 0.1;
@@ -604,8 +595,11 @@ const TONE_TRANSITION =
  * It grows with the grove's plant, so the growth starts under the finger that
  * asked for it and not only a hand's width above. It rises and draws; the
  * sway stays in the grove, where there is room for it.
+ *
+ * Memoised: every prop is a primitive, and the section renders again for
+ * each hover and press on any row.
  */
-function RowPlant({
+const RowPlant = memo(function RowPlant({
   stage,
   checked,
   celebrating,
@@ -687,7 +681,7 @@ function RowPlant({
       </m.span>
     </m.span>
   );
-}
+});
 
 export function AgeGrowthControl({
   options,
@@ -715,10 +709,13 @@ export function AgeGrowthControl({
     value: AgeStage;
     id: number;
   } | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
+  const { beginReset, resetDelay: resetDelayOf } = useResetStagger(
+    selected.length,
+    options.length,
+  );
   const {
     hoveredValue: hoveredAge,
-    settledValue: settledAge,
+    previewing: previewingAge,
     settle,
     pressedValue: pressedAge,
     release: releasePress,
@@ -737,15 +734,6 @@ export function AgeGrowthControl({
     const timer = window.setTimeout(() => setCelebration(null), ms);
     return () => window.clearTimeout(timer);
   }, [celebration, shouldReduceMotion]);
-
-  useEffect(() => {
-    if (!isResetting || selected.length > 0) return;
-    const timer = window.setTimeout(
-      () => setIsResetting(false),
-      RESET_CLEAR_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [isResetting, selected.length]);
 
   const celebrationIndex = options.findIndex(
     ({ value }) => value === celebratingAge,
@@ -828,7 +816,7 @@ export function AgeGrowthControl({
           onReset={() => {
             setCelebration(null);
             farewell.clear();
-            setIsResetting(true);
+            beginReset();
             if (!shouldReduceMotion) gust.celebrate("reset");
             // The gust takes a leaf with it when the tree was among the
             // picks, the way unpicking the tree by hand drops one, and blows
@@ -895,7 +883,7 @@ export function AgeGrowthControl({
               });
               const hovered = hoveredAge === value;
               // A reset wakes the columns in order rather than all at once.
-              const settleDelay = isResetting ? index * RESET_STAGGER : 0;
+              const settleDelay = resetDelayOf(index);
               const leafFall = fallingLeaf
                 ? leafKeyframes(fallingLeaf.scale, fallingLeaf.side)
                 : null;
@@ -1080,7 +1068,7 @@ export function AgeGrowthControl({
               const celebrating = celebratingAge === value && checked;
               // A reset takes the rows' colour and halos back in turn, the
               // way the grove's gust crosses the plants.
-              const resetDelay = isResetting ? index * RESET_STAGGER : 0;
+              const resetDelay = resetDelayOf(index);
               // Upright from the press, and from the pick until the pointer
               // or focus has left, so the plant grows straight. Upright for
               // the whole growth as well: a pick made with the page scrolled
@@ -1094,10 +1082,7 @@ export function AgeGrowthControl({
                   checked={checked}
                   celebrating={celebrating}
                   leaning={
-                    hoveredAge === value &&
-                    pressedAge !== value &&
-                    settledAge !== value &&
-                    !celebrating
+                    previewingAge(value) && pressedAge !== value && !celebrating
                   }
                   // The tuck yields the moment the growth takes over.
                   tucked={pressedAge === value && !celebrating}

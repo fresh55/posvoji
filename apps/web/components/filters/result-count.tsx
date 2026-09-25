@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, domAnimation, m } from "motion/react";
 import { countDirection } from "@/components/filters/filter-card";
 import { LazyMotion } from "@/components/motion-scope";
+import { useAfterFirstFrame } from "@/hooks/use-after-first-frame";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
@@ -96,7 +97,7 @@ export function ResultCount({
     getReducedMotionPreference,
     getServerReducedMotionPreference,
   );
-  const [motionReady, setMotionReady] = useState(false);
+  const motionReady = useAfterFirstFrame();
   const [change, setChange] = useState({ count, direction: 0 });
   const shouldAnimate = motionReady && !shouldReduceMotion;
   const direction =
@@ -104,11 +105,6 @@ export function ResultCount({
       ? change.direction
       : countDirection(change.count, count);
   const settledCount = useSettledCount(count);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setMotionReady(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, []);
 
   useEffect(() => {
     if (change.count === count) return;

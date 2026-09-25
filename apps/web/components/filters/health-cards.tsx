@@ -1,6 +1,7 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
+import { memo } from "react";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -9,6 +10,7 @@ import {
   FilterCardRipple,
   FilterCardSection,
   FilterCardTail,
+  MARK_APPEAR_DURATION,
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
@@ -42,16 +44,70 @@ import { cn } from "@/lib/utils";
 const RIPPLE_OPACITY = 0.5;
 const RIPPLE_SCALE = 1.35;
 const RIPPLE_DURATION = 0.35;
-// Matches FilterSelectionMark's own appear duration.
-const CHECK_DURATION = 0.14;
 
 // Every phase of a pick, measured from the press. The hold has to outlast the
 // slowest of them, with a few frames to spare, because clearing the one-shot
 // settles whatever is still moving back to rest.
 const HOLD_MS =
   Math.ceil(
-    1000 * Math.max(READ_END, RIPPLE_DURATION, CHECK_DELAY + CHECK_DURATION),
+    1000 *
+      Math.max(READ_END, RIPPLE_DURATION, CHECK_DELAY + MARK_APPEAR_DURATION),
   ) + 50;
+
+/**
+ * The row's tube: the hover's tip and the pick's read on spans of their own,
+ * both about the rim, so a pick under the pointer eases out of the tip while
+ * the read lifts. Memoised, because the section renders again for every
+ * hover and press on any of its rows, and this takes only primitives.
+ */
+const HealthTube = memo(function HealthTube({
+  checked,
+  reading,
+  previewing,
+  reduced,
+  resetDelay,
+  dead,
+}: {
+  checked: boolean;
+  reading: boolean;
+  previewing: boolean;
+  reduced: boolean;
+  resetDelay: number;
+  dead: boolean;
+}) {
+  const tracks = tubeTracks({ checked, reading, previewing, reduced, resetDelay });
+  return (
+    <m.span
+      className="flex items-center justify-center"
+      style={RIM}
+      data-tipped={previewing ? "" : undefined}
+      initial={false}
+      animate={tracks.preview.animate}
+      transition={tracks.preview.transition}
+    >
+      <m.span
+        className="flex items-center justify-center"
+        style={RIM}
+        initial={false}
+        animate={tracks.tilt.animate}
+        transition={tracks.tilt.transition}
+      >
+        <TestTubeGlyph
+          tracks={tracks}
+          className={cn(
+            // rotate and not transform: that is the property Tailwind's
+            // rotate-* sets, so a row the narrowing empties tips over rather
+            // than jumping.
+            "size-5 transition-[opacity,rotate] duration-200 motion-reduce:transition-none",
+            // A row with no animal left to show: the tube lies tipped over,
+            // emptied.
+            dead && "rotate-[25deg] opacity-60",
+          )}
+        />
+      </m.span>
+    </m.span>
+  );
+});
 
 /**
  * Zdravje: the two cat tests, FIV and FeLV, the only health questions the
@@ -99,13 +155,9 @@ export function HealthToggleCards({
     selected.length,
     toggles.length,
   );
-  // settle: a click marks the row until the pointer leaves it, and the hover's
-  // tip waits for the pointer to come back. Unticked under the mouse, a tube
-  // that tipped straight back towards the read would look like a pick that
-  // had not come off.
   const {
     hoveredValue: hoveredKey,
-    settledValue: settledKey,
+    previewing: previewingKey,
     settle,
     handlers: hoverHandlers,
   } = useFilterCardHover<ToggleKey>();
@@ -150,15 +202,7 @@ export function HealthToggleCards({
         const note = rowNotes.at(index);
         // The hover shows the read a pick would play, so a test already
         // picked, or one with nothing to pick, has nothing to preview.
-        const previewing =
-          hovered && settledKey !== key && !checked && !dead && !reduced;
-        const tracks = tubeTracks({
-          checked,
-          reading,
-          previewing,
-          reduced,
-          resetDelay: exitDelay,
-        });
+        const previewing = previewingKey(key) && !checked && !dead && !reduced;
 
         return (
           <button
@@ -205,38 +249,14 @@ export function HealthToggleCards({
                 />
               ) : null}
               <FilterCardHoverLift hovered={hovered}>
-                {/* The hover's tip and the pick's read on spans of their own,
-                    both about the rim, so a pick under the pointer eases out
-                    of the tip while the read lifts. */}
-                <m.span
-                  className="flex items-center justify-center"
-                  style={RIM}
-                  data-tipped={previewing ? "" : undefined}
-                  initial={false}
-                  animate={tracks.preview.animate}
-                  transition={tracks.preview.transition}
-                >
-                  <m.span
-                    className="flex items-center justify-center"
-                    style={RIM}
-                    initial={false}
-                    animate={tracks.tilt.animate}
-                    transition={tracks.tilt.transition}
-                  >
-                    <TestTubeGlyph
-                      tracks={tracks}
-                      className={cn(
-                        // rotate and not transform: that is the property
-                        // Tailwind's rotate-* sets, so a row the narrowing
-                        // empties tips over rather than jumping.
-                        "size-5 transition-[opacity,rotate] duration-200 motion-reduce:transition-none",
-                        // A row with no animal left to show: the tube lies
-                        // tipped over, emptied.
-                        dead && "rotate-[25deg] opacity-60",
-                      )}
-                    />
-                  </m.span>
-                </m.span>
+                <HealthTube
+                  checked={checked}
+                  reading={reading}
+                  previewing={previewing}
+                  reduced={reduced}
+                  resetDelay={exitDelay}
+                  dead={dead}
+                />
               </FilterCardHoverLift>
             </FilterCardIconWell>
 

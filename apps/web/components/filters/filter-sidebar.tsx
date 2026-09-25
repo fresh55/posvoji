@@ -1,17 +1,7 @@
 "use client";
 
-import {
-  AnimatePresence,
-  domAnimation,
-  m,
-  useReducedMotion,
-} from "motion/react";
-import { LazyMotion } from "@/components/motion-scope";
-import {
-  COUNT_BADGE_MOTION,
-  CountRoll,
-  CountsRollWhile,
-} from "@/components/filters/filter-card";
+import { CountBadge } from "@/components/filters/count-badge";
+import { CountsRollWhile } from "@/components/filters/filter-card";
 import {
   FilterGroupList,
   type CardGroup,
@@ -24,7 +14,6 @@ import {
   pickerFilterSummary,
   pickerRecoveryActions,
 } from "@/components/filters/location-picker/model";
-import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/i18n-context";
 import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
@@ -99,7 +88,6 @@ export function FilterSidebar({
   className?: string;
 } & FilterActionContract) {
   const { messages, locale } = useI18n();
-  const shouldReduceMotion = useReducedMotion();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
   const pressedRowAnchor = usePressedRowAnchor();
   // The chips row scrolls away with the page while the sidebar stays, so this
@@ -169,42 +157,8 @@ export function FilterSidebar({
             keeps its Ponastavi for the one facet it holds. */}
         <h2 className="flex h-toolbar-row items-center gap-2 text-sm font-medium">
           {messages.filters}
-          {/* Same badge the mobile sheet already shows next to "Filtri". Its
-              own LazyMotion: unlike the sections below, nothing here already
-              opens one for CountRoll to read domAnimation from.
-
-              It leaves the way it arrives. It came in on a CSS enter and went
-              out in one frame when the last filter came off, which was the
-              only count on the panel that did not move when it changed. The
-              leaving badge keeps the number it had, so it fades out on its
-              last value rather than on a 0. transition-none because the
-              badge's own transition list eases opacity and transform, and a
-              CSS transition under a Motion one lags every frame behind it. */}
-          <LazyMotion features={domAnimation}>
-            <AnimatePresence initial={false}>
-              {activeValues > 0 && (
-                <Badge
-                  key="count"
-                  asChild
-                  variant="secondary"
-                  className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums transition-none"
-                >
-                  <m.span
-                    initial={COUNT_BADGE_MOTION.hidden}
-                    animate={COUNT_BADGE_MOTION.shown}
-                    exit={COUNT_BADGE_MOTION.hidden}
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : COUNT_BADGE_MOTION.fade
-                    }
-                  >
-                    <CountRoll value={activeValues} />
-                  </m.span>
-                </Badge>
-              )}
-            </AnimatePresence>
-          </LazyMotion>
+          {/* The same badge the phone's dock shows next to "Filtri". */}
+          <CountBadge count={activeValues} />
         </h2>
 
         {/* Kje first, above every folding section. It is the question a visitor

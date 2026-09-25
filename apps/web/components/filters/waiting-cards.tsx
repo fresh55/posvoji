@@ -662,10 +662,15 @@ export function WaitingCards({
                   // "Nad 6 mesecev" stays on one line. With the sidebar's own
                   // scrollbar the row is 214px, and the label needed 88.5px of
                   // the 86 that w-8 leaves it. Three digits at text-2xs are
-                  // 20px, and the count is right-aligned, so its right edge
-                  // still lines up with every other section's.
+                  // 21.4px. A minimum and not a width, because the first
+                  // threshold holds most of the list: at 1000 the digits are
+                  // 28.5px and a fixed w-6 pushed them 4.5px into the round
+                  // mark. The line is justify-between, so the count's right
+                  // edge still lines up with every other section's.
                   className={
-                    layout === "sidebar" ? cn(className, "w-6") : className
+                    layout === "sidebar"
+                      ? cn(className, "w-auto min-w-6")
+                      : className
                   }
                 />
               )}

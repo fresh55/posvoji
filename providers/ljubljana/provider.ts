@@ -123,8 +123,13 @@ export function parseCmsDate(value: string): string | undefined {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
   if (!match) return undefined;
   const [, year, month, day, hour, minute, second] = match;
-  const instant = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`);
-  if (Number.isNaN(instant.getTime())) return undefined;
+  const stamp = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+  const instant = new Date(`${stamp}Z`);
+  // V8 rolls impossible fields over ("02-30" becomes 2 March), so a stamp
+  // that does not survive the round trip is not a real time.
+  if (Number.isNaN(instant.getTime()) || instant.toISOString().slice(0, 19) !== stamp) {
+    return undefined;
+  }
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Ljubljana",
     year: "numeric",

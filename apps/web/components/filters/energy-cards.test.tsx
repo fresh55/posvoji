@@ -1,11 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  createEvent,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
@@ -18,6 +13,7 @@ import {
   openFilterSection,
 } from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
+import { pointerOnto } from "@/test/pointer";
 
 installFilterFoldSeams();
 
@@ -184,11 +180,7 @@ describe("EnergyCards", () => {
 
     for (const { label } of options) {
       const button = card(label);
-      // React derives onPointerEnter from pointerover, and fireEvent's swap
-      // loses the pointerType the hover checks, so the event is built here.
-      const over = createEvent.pointerOver(button);
-      Object.defineProperty(over, "pointerType", { value: "mouse" });
-      fireEvent(button, over);
+      pointerOnto(button, "mouse");
       // The press pose is its own spring/tween path, so it gets driven too.
       fireEvent.pointerDown(button);
       fireEvent.pointerUp(button);
@@ -240,9 +232,9 @@ describe("EnergyCards", () => {
 });
 
 describe("TEMPOS", () => {
-  // A tapped card fills at once and its box waits for checkDelay. Past the
-  // large paw's 0.42s, the longest wait elsewhere in the panel, a filled card
-  // around an empty box reads as a control stuck mid-state.
+  // A tapped card fills at once and its box waits for checkDelay. Velikost's
+  // large paw holds it 0.42s; longer than that, a filled card around an empty
+  // box reads as a control stuck mid-state.
   it.each(Object.entries(TEMPOS))(
     "ticks the %s box within 0.42s",
     (_level, tempo) => {

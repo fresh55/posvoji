@@ -1287,8 +1287,8 @@ function coatPose(pose: CoatPose, motion: CoatMotion): Pose {
  * elements.
  *
  * `distance` and not a delay: the shared card loop knows where a row sits and
- * this file knows how long a coat takes to stir, which is the split energy
- * and size already use.
+ * this file knows how long a coat takes to stir, which is the split size
+ * already uses.
  */
 function rufflePose(motion: CoatMotion, distance: number): Pose {
   return {
@@ -1559,7 +1559,7 @@ function CoatCards({
         const gestures = gestureHandlers(value);
         // The cards that did not change feel the draught. How far away they
         // are is this loop's business; how long that takes belongs to the
-        // glyph, which is the split energy and size already use.
+        // glyph, which is the split size already uses.
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
           settled: settledValue === value,

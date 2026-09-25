@@ -3,8 +3,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { m } from "motion/react";
 import { describe, expect, it } from "vitest";
+import { I18nProvider } from "@/components/i18n-provider";
 import { installFilterFoldSeams } from "@/test/filter-folds";
-import { CollapsibleBody, type SectionCollapse } from "./filter-section-header";
+import {
+  CollapsibleBody,
+  FilterSectionHeader,
+  type SectionCollapse,
+} from "./filter-section-header";
 
 // The fold measures its own height, and Motion restores the scroll position
 // around the measurement; the shared helper stubs what jsdom lacks for both.
@@ -95,5 +100,41 @@ describe("the clip", () => {
     await waitFor(() => expect(body().style.overflow).toBe("visible"), {
       timeout: 2000,
     });
+  });
+});
+
+function Heading({ open, summary }: { open: boolean; summary: string | null }) {
+  return (
+    <I18nProvider locale="sl">
+      <FilterSectionHeader
+        label="Energija"
+        active
+        onReset={() => undefined}
+        resetAriaLabel="Ponastavi filter energije"
+        collapse={collapse(open, summary, "energy")}
+      />
+    </I18nProvider>
+  );
+}
+
+describe("the reset link in a folding heading", () => {
+  // While pressed, the shared Button nudges its translate by a pixel, and a
+  // link centred by a translate lost the centring with it and dropped half its
+  // height out from under the pointer. The browser measurement is in
+  // e2e/filter-section-header.spec.ts; this pins what holds it.
+  it("centres itself without a transform the press would replace", () => {
+    render(<Heading open summary={null} />);
+    const classes = [
+      ...screen.getByRole("button", { name: "Ponastavi filter energije" })
+        .classList,
+    ];
+
+    expect(classes).toEqual(
+      expect.arrayContaining(["absolute", "inset-y-0", "my-auto", "h-fit"]),
+    );
+    expect(classes).not.toContain("top-1/2");
+    expect(classes.filter((name) => name.includes("translate"))).toEqual([
+      "active:not-aria-[haspopup]:translate-y-px",
+    ]);
   });
 });

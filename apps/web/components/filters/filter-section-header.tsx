@@ -315,13 +315,24 @@ export function FilterSectionHeader({
         // than in the shared string above, so p-0 is not left in the class
         // list for the stylesheet's emit order to settle against px-1.
         //
-        // No -my-1 with it. The row places this button at top-1/2 and pulls it
-        // back by half its own height, so a taller box re-centres itself and
+        // No -my-1 with it. The box is centred on the row by its own auto
+        // margins between inset-y-0, so a taller box re-centres itself and
         // the ink does not move; a negative block margin would shift the ink
         // up by 4px. -mx-1 is needed, because right-6 pins the right margin
         // edge and without it the words would move 4px left.
+        //
+        // And no transform. This was centred with top-1/2 and
+        // -translate-y-1/2, which is the one thing a Button here cannot wear:
+        // ui/button.tsx presses with active:translate-y-px, and the two write
+        // the same translate, so while it was held the pull-back was gone and
+        // the link dropped by half its height and a pixel, 13px under a mouse
+        // and 23px under a finger's 44px box. A press at or above its middle
+        // was let go over the fold trigger it had dropped away from: under a
+        // mouse nothing happened at all, under a finger the section folded
+        // with its filter still on. With the margins doing the centring, the
+        // press is left its own 1px.
         collapse
-          ? "absolute right-6 top-1/2 -mx-1 -translate-y-1/2 px-1 py-1 pointer-coarse:min-h-11"
+          ? "absolute inset-y-0 right-6 -mx-1 my-auto h-fit px-1 py-1 pointer-coarse:min-h-11"
           : // 39.5px on a coarse pointer, not the 44 the utility's name
             // suggests: the overlay reaches 44px in both axes from the
             // control's centre, and this control sits in a flex row whose

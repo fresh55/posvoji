@@ -10,7 +10,7 @@ import {
   type CareKey,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { CareCards, exhalePose } from "./care-cards";
+import { BEAT_REST, CareCards, CHECK_DELAY, exhalePose } from "./care-cards";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -29,6 +29,7 @@ function renderCards(
     resultCount?: number;
     total?: number;
     locale?: Locale;
+    layout?: "sidebar" | "sheet";
     onToggle?: (key: CareKey) => void;
     onToggleMany?: (keys: CareKey[]) => void;
   } = {},
@@ -44,6 +45,7 @@ function renderCards(
         selected={overrides.selected ?? []}
         resultCount={overrides.resultCount ?? 70}
         total={overrides.total ?? 489}
+        layout={overrides.layout}
         onToggle={onToggle}
         onToggleMany={onToggleMany}
       />
@@ -212,6 +214,41 @@ describe("exhalePose", () => {
     // The exhale itself starts where the settle ends.
     expect(times[2] * duration).toBeCloseTo(0.24);
     expect(duration).toBeCloseTo(0.54);
+  });
+});
+
+describe("CHECK_DELAY", () => {
+  // The panel's cards all confirm within 0.42s of a pick
+  // (energy-cards.test.tsx holds every energy level to the same ceiling).
+  // Care's tick used to wait for the heart's fuller second beat at 0.72s,
+  // twice that, with a filled row sitting around an empty box in between.
+  it("ticks the box within 0.42s of a pick", () => {
+    expect(CHECK_DELAY).toBeLessThanOrEqual(0.42);
+  });
+});
+
+describe("BEAT_REST", () => {
+  // Why: EXHALE_SETTLE in care-cards.tsx. A heart another row's pick takes
+  // the celebration from mid-beat used to snap to rest over a flat 0.16s,
+  // however far into the fuller beat (1.18) it was caught. It now settles
+  // over the same 0.24s the unpick path already waits before its exhale.
+  it("settles rather than snaps when a celebration is taken over", () => {
+    expect(BEAT_REST.animate).toEqual({ scale: 1 });
+    expect(BEAT_REST.transition).toMatchObject({ duration: 0.24 });
+  });
+});
+
+describe("the watermark", () => {
+  // Energija's own copy of this pattern stamped its mark a quarter under the
+  // sidebar row's tick box (a 40px row, pr-9 reserving 36px for the tick). A
+  // sheet tile has the room a row does not.
+  it("draws on a sheet tile but not a sidebar row", () => {
+    renderCards({ selected: ["patient"], layout: "sidebar" });
+    expect(document.querySelector("svg.size-12")).toBeNull();
+    cleanup();
+
+    renderCards({ selected: ["patient"], layout: "sheet" });
+    expect(document.querySelector("svg.size-12")).not.toBeNull();
   });
 });
 

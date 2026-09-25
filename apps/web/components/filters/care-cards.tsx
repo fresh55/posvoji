@@ -95,10 +95,19 @@ const RIPPLE_DURATION = 1.05;
 const RIPPLE_OPACITY = 0.26;
 const RIPPLE_SCALE = 2.1;
 
-// The check confirms after the second beat, not between the two.
-const CHECK_DELAY = 0.72;
+// The check confirms as the first beat lands. It used to wait for the fuller
+// second beat (0.72s), which put a filled row around an empty tick box for
+// 0.80-0.865s once the draw and FilterSelectionMark's own appear were added,
+// twice the panel's 0.42s ceiling every other section is held to
+// (energy-cards.test.tsx). The draw, the second beat and the watermark below
+// are untouched: only the tick moved earlier.
+export const CHECK_DELAY = 0.3;
 // Matches FilterSelectionMark's own appear duration.
 const CHECK_DURATION = 0.14;
+// The watermark keeps the old timing the tick gave up: it is a background
+// flourish rather than a control's own state, so it can afford to wait for
+// the fuller second beat.
+const WATERMARK_DELAY = 0.72;
 
 // The press is a hold rather than a tap: it eases in and nothing springs back.
 const PRESS_HOLD: TargetAndTransition = { scale: 0.965 };
@@ -127,7 +136,13 @@ export function exhalePose(wait: number): Pose {
 }
 
 const REST_TRANSITION: Transition = { duration: 0.16 };
-const BEAT_REST: Pose = { animate: { scale: 1 }, transition: REST_TRANSITION };
+// A heart another row's pick cuts off mid-beat settles like the unpick's own
+// exhale rather than snapping: caught at the fuller beat (1.18) and dropped
+// over REST_TRANSITION's 0.16s, it closed that gap 2.3x faster than the beat
+// itself ever moves. EXHALE_SETTLE is the same 0.24s the unpick path already
+// waits before its own exhale plays.
+const BEAT_SETTLE_TRANSITION: Transition = { duration: EXHALE_SETTLE, ease: "easeIn" };
+export const BEAT_REST: Pose = { animate: { scale: 1 }, transition: BEAT_SETTLE_TRANSITION };
 const HEART_STILL: Pose = { animate: { scale: 1 }, transition: { duration: 0 } };
 
 // The mark the chosen heart leaves behind on a selected card.
@@ -145,7 +160,7 @@ const HEARTBEAT_MS = Math.ceil(
       RIPPLE_DURATION,
       (MOST_STROKES - 1) * DRAW_STAGGER + DRAW_DURATION,
       CHECK_DELAY + CHECK_DURATION,
-      CHECK_DELAY + WATERMARK_IN_DURATION,
+      WATERMARK_DELAY + WATERMARK_IN_DURATION,
     ),
 );
 
@@ -300,56 +315,55 @@ export function CareCards({
                 })}
               >
                 {/* The mark the chosen drawing leaves on the card, clipped by
-                    the card's own overflow. */}
-                <m.span
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute -z-10",
-                    layout === "sheet"
-                      ? "-bottom-2 -right-1.5"
-                      : "-bottom-1 -right-1",
-                  )}
-                  // A real initial, so a card checked from the URL stamps its
-                  // mark on load instead of having it already there.
-                  initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
-                  animate={{
-                    opacity: checked ? WATERMARK_OPACITY : 0,
-                    scale: shouldReduceMotion || checked ? 1 : 1.06,
-                  }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : checked
-                        ? {
-                            duration: WATERMARK_IN_DURATION,
-                            delay: CHECK_DELAY,
-                            ease: "easeOut",
-                          }
-                        : {
-                            duration: WATERMARK_OUT_DURATION,
-                            delay: exitDelay,
-                            ease: "easeOut",
-                          }
-                  }
-                >
-                  {/* The rotation stays on the svg; the span owns transform. */}
-                  <svg
-                    viewBox="0 0 24 24"
-                    className={cn(
-                      "rotate-[-12deg]",
-                      layout === "sheet" ? "size-12" : "size-9",
-                    )}
-                    fill="none"
-                    stroke="var(--brand-strong)"
-                    strokeWidth={1.75}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    the card's own overflow. Sheet tiles only: a sidebar row
+                    is 40px tall with the tick's own 36px reserved at the
+                    right (pr-9), and this mark's box was landing a quarter
+                    under that tick, the same measurement Energija's own copy
+                    of this pattern failed. A tile has the room a row does
+                    not. */}
+                {layout === "sheet" && (
+                  <m.span
+                    aria-hidden
+                    className="pointer-events-none absolute -z-10 -bottom-2 -right-1.5"
+                    // A real initial, so a card checked from the URL stamps
+                    // its mark on load instead of having it already there.
+                    initial={{ opacity: 0, scale: shouldReduceMotion ? 1 : 1.06 }}
+                    animate={{
+                      opacity: checked ? WATERMARK_OPACITY : 0,
+                      scale: shouldReduceMotion || checked ? 1 : 1.06,
+                    }}
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : checked
+                          ? {
+                              duration: WATERMARK_IN_DURATION,
+                              delay: WATERMARK_DELAY,
+                              ease: "easeOut",
+                            }
+                          : {
+                              duration: WATERMARK_OUT_DURATION,
+                              delay: exitDelay,
+                              ease: "easeOut",
+                            }
+                    }
                   >
-                    {strokes.map((d) => (
-                      <path key={d} d={d} />
-                    ))}
-                  </svg>
-                </m.span>
+                    {/* The rotation stays on the svg; the span owns transform. */}
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-12 rotate-[-12deg]"
+                      fill="none"
+                      stroke="var(--brand-strong)"
+                      strokeWidth={1.75}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      {strokes.map((d) => (
+                        <path key={d} d={d} />
+                      ))}
+                    </svg>
+                  </m.span>
+                )}
 
                 <FilterCardMark
                   layout={layout}

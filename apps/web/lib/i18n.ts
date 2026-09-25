@@ -296,7 +296,7 @@ const sl = {
   // (waiting-cards.tsx), since a screen reader hears nothing of the marks.
   waitingFilterHint:
     "Šteto od dneva, ko je žival prišla v zavetišče. Izbereš lahko eno mejo.",
-  resetWaitingFilters: "Ponastavi čas v zavetišču",
+  resetWaitingFilters: "Ponastavi čas čakanja",
   // Under a section whose question a tenth or more of the list has no answer
   // to. The count takes a colon so it needs no agreement with the noun, and
   // the second sentence says what a pick does with them, which is what a
@@ -830,7 +830,7 @@ const en: Messages = {
   healthFilterHint: "An animal has to have every trait you pick.",
   waitingFilterHint:
     "Counted from the day the animal came to the shelter. Pick one threshold.",
-  resetWaitingFilters: "Reset time in the shelter",
+  resetWaitingFilters: "Reset the waiting time",
   unansweredLine: "No data:\u00a0{count}. Picking one shows only animals with data.",
   unansweredRow: "No data:\u00a0{count}",
   unansweredHides: "Picking one shows only animals with data.",

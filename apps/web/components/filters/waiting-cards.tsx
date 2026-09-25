@@ -110,7 +110,8 @@ const STREAM_TAIL = 0.06;
 const INK_IN = 0.1;
 /** How long the accent takes to drain out when the threshold is let go. */
 const LEAVE = 0.2;
-const REST_TURN: Transition = { duration: 0.16, ease: "easeOut" };
+const REST_TURN_DURATION = 0.16;
+const REST_TURN: Transition = { duration: REST_TURN_DURATION, ease: "easeOut" };
 
 // The surface of a full top bulb, and a level under the floor of the bottom
 // one where none of the heap is drawn yet.
@@ -148,8 +149,10 @@ const STILL: Transition = { duration: 0 };
  *
  * Letting go, a second pick replacing this one included, drains the accent out
  * over the muted drawing rather than snapping it off, and a reset holds that
- * back by the row's turn in the stagger. The cut edges move back only once the
- * accent is gone, so letting go never runs the pour backwards.
+ * back by the row's turn in the stagger. The muted sand waits for the glass
+ * to stand upright, since a pick let go mid-turn would show it tilted. The cut
+ * edges settle only once the accent is gone, so letting go never runs the
+ * pour backwards.
  *
  * Under reduced motion nothing turns or pours: every part lands where it
  * rests at once.
@@ -197,7 +200,11 @@ export function waitingTracks(
       stream: { animate: hiddenStream, transition: afterDrain },
       rest: {
         animate: { opacity: SAND_REST_OPACITY },
-        transition: { ...drain, ease: "easeOut" },
+        transition: {
+          ...drain,
+          delay: resetDelay + REST_TURN_DURATION,
+          ease: "easeOut",
+        },
       },
     };
   }
@@ -631,6 +638,7 @@ export function WaitingCards({
                         hoveredValue === value &&
                         settledValue !== value &&
                         !checked &&
+                        !dead &&
                         !reduced
                       }
                       className={cn(

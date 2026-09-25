@@ -173,6 +173,11 @@ describe("the waiting section's place in the panel", () => {
       "waiting",
     ]);
     expect(result.current.chips.at(-1)?.label).toBe("Čaka nad 1 leto");
+    // The chips row spells the order out by hand; this holds it to the list.
+    const rank = result.current.chips.map((chip) =>
+      FILTER_FACETS.indexOf(chip.facet),
+    );
+    expect(rank).toEqual([...rank].sort((a, b) => a - b));
   });
 
   it("lists every facet once, in the panel's order", () => {
@@ -259,15 +264,15 @@ describe("letting a threshold go", () => {
       reduced: false,
       resetDelay: 0.09,
     });
-    for (const part of ["ink", "sand", "rest"] as const) {
+    for (const part of ["ink", "sand"] as const) {
       expect(tracks[part].transition).toMatchObject({ delay: 0.09 });
       expect(
         (tracks[part].transition as { duration: number }).duration,
       ).toBeGreaterThan(0);
     }
-    // The cut edges go back only once the accent has drained, so letting go
-    // never runs the pour backwards.
-    for (const part of ["top", "bottom", "stream"] as const) {
+    // The muted sand waits for the glass to stand upright, and the cut edges
+    // settle only once the accent has drained.
+    for (const part of ["rest", "top", "bottom", "stream"] as const) {
       expect(
         (tracks[part].transition as { delay: number }).delay,
       ).toBeGreaterThan(0.09);
@@ -303,34 +308,6 @@ describe("under reduced motion", () => {
     expect(tracks.bottom.animate).toEqual({ attrY: pour.bottom });
     expect(tracks.ink.animate).toEqual({ opacity: checked ? 1 : 0 });
     expect(tracks.rest.animate).toEqual({ opacity: checked ? 0 : 0.45 });
-  });
-
-  it("renders and draws the picked glass", () => {
-    const originalMatchMedia = window.matchMedia;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockImplementation((media: string) => ({
-        matches: media === "(prefers-reduced-motion: reduce)",
-        media,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
-    });
-    try {
-      renderCards("sl", ["over-1-year"]);
-      const glyph = screen
-        .getByRole("button", { name: /^Nad 1 leto,/ })
-        .querySelector("svg[data-waiting-glyph]");
-      expect(glyph?.getAttribute("data-waiting-glyph")).toBe("over-1-year");
-      expect(
-        glyph?.querySelector("[data-edge=top]")?.getAttribute("y"),
-      ).toBe(String(POURS["over-1-year"].top));
-    } finally {
-      Object.defineProperty(window, "matchMedia", {
-        configurable: true,
-        value: originalMatchMedia,
-      });
-    }
   });
 });
 

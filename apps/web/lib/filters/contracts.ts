@@ -113,8 +113,9 @@ export const GROUPS: MultiGroup[] = [
 /** All filter categories, used to group and label active chips. */
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
-/** In the order the panel asks its questions, which is the order the active
- *  chips follow (the chips row in use-animal-filter-model.ts). */
+/** In the order the panel asks its questions. The chips row in
+ *  use-animal-filter-model.ts spells the same order out by hand, and
+ *  waiting-cards.test.tsx holds the two together. */
 export const FILTER_FACETS: FilterFacet[] = [
   "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
   "toggles", "goodWith", "care", "waiting",

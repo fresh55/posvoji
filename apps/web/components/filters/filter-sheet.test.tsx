@@ -245,11 +245,13 @@ describe("FilterSheet trigger badge", () => {
     const badge = document.querySelector('[data-slot="badge"]');
     expect(badge?.textContent).toBe("2");
     expect(badge?.className).not.toContain("min-[360px]");
-    // And the dot it stood in for is gone with it.
+    // And the dot it stood in for is gone with it. The trigger's own spans,
+    // since the badge holds the rolling number's.
     expect(document.querySelectorAll('[data-slot="badge"]').length).toBe(1);
     expect(
-      screen.getByRole("button", { name: /^Filtri/ }).querySelectorAll("span")
-        .length,
+      screen
+        .getByRole("button", { name: /^Filtri/ })
+        .querySelectorAll(":scope > span").length,
     ).toBe(1);
   });
 });

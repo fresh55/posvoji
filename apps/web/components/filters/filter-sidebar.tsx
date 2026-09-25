@@ -1,8 +1,13 @@
 "use client";
 
-import { domAnimation } from "motion/react";
+import {
+  AnimatePresence,
+  domAnimation,
+  m,
+  useReducedMotion,
+} from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { CountRoll } from "@/components/filters/filter-card";
+import { CountRoll, CountsRollWhile } from "@/components/filters/filter-card";
 import {
   FilterGroupList,
   type CardGroup,
@@ -17,6 +22,7 @@ import {
 } from "@/components/filters/location-picker/model";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/components/i18n-context";
+import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
@@ -33,6 +39,13 @@ import type { LookupEntry } from "@/lib/municipality-coverage";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
+
+/** How the heading's count badge comes and goes: the fade and the 95% scale
+ *  the badge used to enter on (tw-animate's zoom-in-95 over 200ms), now in
+ *  both directions. */
+const BADGE_SHOWN = { opacity: 1, scale: 1 };
+const BADGE_HIDDEN = { opacity: 0, scale: 0.95 };
+const BADGE_FADE = { duration: 0.2, ease: "easeOut" } as const;
 
 /** Everything the panel's Kje row needs, absent when the dataset has no
  *  shelters to choose between. The dialog behind the row is the picker's own,
@@ -89,6 +102,7 @@ export function FilterSidebar({
   className?: string;
 } & FilterActionContract) {
   const { messages, locale } = useI18n();
+  const shouldReduceMotion = useReducedMotion();
   const scrollRef = useScrollEdgeFades<HTMLElement>();
   const pressedRowAnchor = usePressedRowAnchor();
   // The chips row scrolls away with the page while the sidebar stays, so this
@@ -134,87 +148,111 @@ export function FilterSidebar({
         className,
       )}
     >
-      {/* --toolbar-row to match the results row across the gutter, which is
-          built to the same token (globals.css, the sort trigger's own height). The toolbar that
-          carries it pins at top-0 and pads itself with --rail-pad, and the
-          aside answers with lg:top-0 and the same padding (animal-grid.tsx),
-          so the two columns start their content on one line both at rest and
-          stuck, and the hairline over the first section below lands on the
-          toolbar's border-b rather than 16px above it.
+      {/* The panel is drawn from lg only (animal-grid.tsx hides it below,
+          where the sheet takes over) and mounted at every width, so its
+          counts roll only where it is drawn: see CountsRollWhile. It renders
+          no element, so the sections are still this box's own children. */}
+      <CountsRollWhile query={DESKTOP_QUERY}>
+        {/* --toolbar-row to match the results row across the gutter, which is
+            built to the same token (globals.css, the sort trigger's own height). The toolbar that
+            carries it pins at top-0 and pads itself with --rail-pad, and the
+            aside answers with lg:top-0 and the same padding (animal-grid.tsx),
+            so the two columns start their content on one line both at rest and
+            stuck, and the hairline over the first section below lands on the
+            toolbar's border-b rather than 16px above it.
 
-          The height is on the heading and not on a box around it. There were
-          two children here until the clear went, and one child that is itself
-          a flex row does not need a flex row around it.
+            The height is on the heading and not on a box around it. There were
+            two children here until the clear went, and one child that is itself
+            a flex row does not need a flex row around it.
 
-          No clear in here. At lg the chips row beside the toolbar owns
-          clearing, next to the pills it clears, and it is on screen whenever
-          this head is: every active value draws a pill there except the
-          species tab, which undoes itself in a press of its own. Each section
-          keeps its Ponastavi for the one facet it holds. */}
-      <h2 className="flex h-toolbar-row items-center gap-2 text-sm font-medium">
-        {messages.filters}
-        {activeValues > 0 && (
-          // Same badge the mobile sheet already shows next to "Filtri". Its
-          // own LazyMotion: unlike the sections below, nothing here already
-          // opens one for CountRoll to read domAnimation from.
+            No clear in here. At lg the chips row beside the toolbar owns
+            clearing, next to the pills it clears, and it is on screen whenever
+            this head is: every active value draws a pill there except the
+            species tab, which undoes itself in a press of its own. Each section
+            keeps its Ponastavi for the one facet it holds. */}
+        <h2 className="flex h-toolbar-row items-center gap-2 text-sm font-medium">
+          {messages.filters}
+          {/* Same badge the mobile sheet already shows next to "Filtri". Its
+              own LazyMotion: unlike the sections below, nothing here already
+              opens one for CountRoll to read domAnimation from.
+
+              It leaves the way it arrives. It came in on a CSS enter and went
+              out in one frame when the last filter came off, which was the
+              only count on the panel that did not move when it changed. The
+              leaving badge keeps the number it had, so it fades out on its
+              last value rather than on a 0. transition-none because the
+              badge's own transition list eases opacity and transform, and a
+              CSS transition under a Motion one lags every frame behind it. */}
           <LazyMotion features={domAnimation}>
-            <Badge
-              variant="secondary"
-              // motion-reduce:duration-0, not motion-reduce:animate-none:
-              // see the comment on DialogOverlay in ui/dialog.tsx for why
-              // the animate-none guard does not actually take effect here.
-              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
-            >
-              <CountRoll value={activeValues} />
-            </Badge>
+            <AnimatePresence initial={false}>
+              {activeValues > 0 && (
+                <Badge
+                  key="count"
+                  asChild
+                  variant="secondary"
+                  className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums transition-none"
+                >
+                  <m.span
+                    initial={BADGE_HIDDEN}
+                    animate={BADGE_SHOWN}
+                    exit={BADGE_HIDDEN}
+                    transition={
+                      shouldReduceMotion ? { duration: 0 } : BADGE_FADE
+                    }
+                  >
+                    <CountRoll value={activeValues} />
+                  </m.span>
+                </Badge>
+              )}
+            </AnimatePresence>
           </LazyMotion>
+        </h2>
+
+        {/* Kje first, above every folding section. It is the question a visitor
+            answers before any of the others -- how far they are willing to go --
+            and at lg it is the only place shelter is asked at all now: the
+            toolbar's own picker trigger stands down wherever this panel is
+            drawn (animal-filters.tsx).
+
+            No chips under it. The sticky chips row above the grid already draws
+            a removable pill per picked shelter at this width, and a second copy
+            eighteen pixels to the left would be the same removal twice. */}
+        {scope && (
+          <LocationPicker
+            dress="sidebar"
+            options={scope.options}
+            counts={scope.counts}
+            selected={filters.shelter}
+            onToggle={(value) => onToggle("shelter", value)}
+            onToggleMany={(values) => onToggleMany("shelter", values)}
+            resultCount={scope.resultCount}
+            filterSummary={pickerFilterSummary(filters, locale)}
+            {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
+            municipalities={scope.municipalities}
+            municipalitiesUrl={scope.municipalitiesUrl}
+            offSite={scope.offSite}
+            summaries={scope.summaries}
+            sort={sort}
+            onSortChange={onSortChange}
+            deepLink="desktop"
+          />
         )}
-      </h2>
 
-      {/* Kje first, above every folding section. It is the question a visitor
-          answers before any of the others -- how far they are willing to go --
-          and at lg it is the only place shelter is asked at all now: the
-          toolbar's own picker trigger stands down wherever this panel is
-          drawn (animal-filters.tsx).
-
-          No chips under it. The sticky chips row above the grid already draws
-          a removable pill per picked shelter at this width, and a second copy
-          eighteen pixels to the left would be the same removal twice. */}
-      {scope && (
-        <LocationPicker
-          dress="sidebar"
-          options={scope.options}
-          counts={scope.counts}
-          selected={filters.shelter}
-          onToggle={(value) => onToggle("shelter", value)}
-          onToggleMany={(values) => onToggleMany("shelter", values)}
-          resultCount={scope.resultCount}
-          filterSummary={pickerFilterSummary(filters, locale)}
-          {...pickerRecoveryActions(filters, onClearAll, onSpeciesChange)}
-          municipalities={scope.municipalities}
-          municipalitiesUrl={scope.municipalitiesUrl}
-          offSite={scope.offSite}
-          summaries={scope.summaries}
-          sort={sort}
-          onSortChange={onSortChange}
-          deepLink="desktop"
+        <FilterGroupList
+          filters={filters}
+          groups={groups}
+          counts={counts}
+          toggles={toggles}
+          toggleTally={toggleTally}
+          goodWith={goodWith}
+          care={care}
+          unanswered={unanswered}
+          onToggle={onToggle}
+          onToggleMany={onToggleMany}
+          onToggleProperty={onToggleProperty}
+          onToggleManyProperties={onToggleManyProperties}
         />
-      )}
-
-      <FilterGroupList
-        filters={filters}
-        groups={groups}
-        counts={counts}
-        toggles={toggles}
-        toggleTally={toggleTally}
-        goodWith={goodWith}
-        care={care}
-        unanswered={unanswered}
-        onToggle={onToggle}
-        onToggleMany={onToggleMany}
-        onToggleProperty={onToggleProperty}
-        onToggleManyProperties={onToggleManyProperties}
-      />
+      </CountsRollWhile>
     </aside>
   );
 }

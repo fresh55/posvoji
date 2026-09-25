@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, domAnimation, m } from "motion/react";
+import { countDirection } from "@/components/filters/filter-card";
 import { LazyMotion } from "@/components/motion-scope";
 import type { Locale } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
@@ -23,6 +24,8 @@ const COUNT_SCALE_TRANSITION = {
   mass: 0.5,
 } as const;
 
+// The grid's total rolls by the rule every filter count rolls by
+// (countDirection, beside CountRoll), a step larger because it is set larger.
 const countVariants = {
   enter: (direction: number) => ({
     opacity: 0,
@@ -40,10 +43,6 @@ const countVariants = {
     y: direction * -9,
   }),
 };
-
-export function countDirection(previous: number, next: number): -1 | 0 | 1 {
-  return Math.sign(next - previous) as -1 | 0 | 1;
-}
 
 function subscribeToReducedMotion(onChange: () => void): () => void {
   if (typeof window.matchMedia !== "function") return () => undefined;

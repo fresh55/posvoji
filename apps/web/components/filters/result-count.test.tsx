@@ -1,19 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { countDirection, ResultCount } from "./result-count";
+import { ResultCount } from "./result-count";
 
+// The direction rule the roll reads is CountRoll's now, shared by both, and
+// is tested beside it in filter-card.test.tsx.
 describe("ResultCount", () => {
-  it.each([
-    [0, 1, 1],
-    [1, 0, -1],
-    [9, 10, 1],
-    [99, 100, 1],
-    [100, 99, -1],
-    [12, 12, 0],
-  ] as const)("detects the direction from %i to %i", (previous, next, direction) => {
-    expect(countDirection(previous, next)).toBe(direction);
-  });
-
   it("renders the standalone variant as plain text, with no icon or chrome", () => {
     const markup = renderToStaticMarkup(
       <ResultCount count={12} locale="en" />,

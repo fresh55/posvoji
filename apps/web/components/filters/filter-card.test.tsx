@@ -1,16 +1,26 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
+import { domAnimation } from "motion/react";
+import { useSyncExternalStore } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
+import { LazyMotion } from "@/components/motion-scope";
 import { groupOptions } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 import {
+  CountRoll,
+  CountsRollWhile,
+  FilterCardTail,
   FilterSelectionMark,
   countClass,
+  countDirection,
   filterCardLayoutClass,
   filterCardVariants,
 } from "./filter-card";
+import { CollapsibleBody } from "./filter-section-header";
 import { SexCards } from "./sex-cards";
 
 afterEach(() => cleanup());
@@ -259,5 +269,195 @@ describe("the selection mark's fill", () => {
     expect(box(container)?.className).toContain(
       "motion-reduce:transition-none",
     );
+  });
+});
+
+/** A count as a caller draws one: inside a LazyMotion it does not open. */
+function Count({ value }: { value: number }) {
+  return (
+    <LazyMotion features={domAnimation}>
+      <CountRoll value={value} />
+    </LazyMotion>
+  );
+}
+
+/** The numbers a count is drawing, in document order. */
+function drawn(root: Element): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>("span")].filter(
+    (span) => span.children.length === 0 && /^\d+$/.test(span.textContent),
+  );
+}
+
+/** How far a number stands from its line, from the style Motion writes. */
+function offset(number: HTMLElement): number {
+  const match = /translateY\((-?[\d.]+)px\)/.exec(number.style.transform);
+  return match ? Number(match[1]) : 0;
+}
+
+const subscribeToNothing = () => () => {};
+
+describe("the count roll", () => {
+  it.each([
+    [0, 1, 1],
+    [1, 0, -1],
+    [9, 10, 1],
+    [99, 100, 1],
+    [100, 99, -1],
+    [12, 12, 0],
+  ] as const)("reads the direction from %i to %i", (previous, next, direction) => {
+    expect(countDirection(previous, next)).toBe(direction);
+  });
+
+  it("draws the first number still", () => {
+    const { container } = render(<Count value={12} />);
+
+    const [number] = drawn(container);
+    expect(drawn(container)).toHaveLength(1);
+    expect(number.textContent).toBe("12");
+    expect(offset(number)).toBe(0);
+    expect(number.style.opacity).toBe("1");
+  });
+
+  it("brings a growing number in from below and a shrinking one from above", () => {
+    const { container, rerender } = render(<Count value={12} />);
+
+    rerender(<Count value={15} />);
+    const grown = drawn(container).find((n) => n.textContent === "15");
+    expect(offset(grown!)).toBe(6);
+    expect(grown!.style.opacity).toBe("0");
+
+    rerender(<Count value={9} />);
+    const shrunk = drawn(container).find((n) => n.textContent === "9");
+    expect(offset(shrunk!)).toBe(-6);
+  });
+
+  // The rows used to drop the new number in with nothing leaving, so for a
+  // frame or two the count was blank.
+  it("keeps the old number drawn while the new one arrives, then lets it go", async () => {
+    const { container, rerender } = render(<Count value={12} />);
+
+    rerender(<Count value={15} />);
+    const [leaving, arriving] = drawn(container);
+    expect(leaving.textContent).toBe("12");
+    expect(leaving.style.opacity).toBe("1");
+    expect(arriving.textContent).toBe("15");
+
+    // It leaves upward, the way the new one is travelling, and is gone once
+    // it has.
+    await waitFor(() => expect(offset(leaving)).toBeLessThan(-1));
+    await waitFor(() =>
+      expect(drawn(container).map((n) => n.textContent)).toEqual(["15"]),
+    );
+  });
+
+  // CollapsibleBody's AnimatePresence initial={false} is remembered by
+  // everything below it, so a number that mounted to roll inside a section
+  // open at the fold's first render was written straight to its resting
+  // place and never moved.
+  it("rolls inside a section that was open at the fold's first render", () => {
+    const section = (value: number) => (
+      <CollapsibleBody>
+        <Count value={value} />
+      </CollapsibleBody>
+    );
+    const { container, rerender } = render(section(12));
+
+    rerender(section(15));
+
+    const arriving = drawn(container).find((n) => n.textContent === "15");
+    expect(offset(arriving!)).toBe(6);
+    expect(arriving!.style.opacity).toBe("0");
+  });
+
+  // The sidebar is mounted at every width and drawn from lg only. Below it
+  // its counts changed for nobody, and every change started a roll anyway.
+  it("changes a count in place where its panel is not drawn", () => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }),
+    });
+    try {
+      const panel = (value: number) => (
+        <CountsRollWhile query="(min-width: 64rem)">
+          <Count value={value} />
+        </CountsRollWhile>
+      );
+      const { container, rerender } = render(panel(12));
+      const [number] = drawn(container);
+
+      rerender(panel(15));
+
+      expect(drawn(container)).toEqual([number]);
+      expect(number.textContent).toBe("15");
+      expect(offset(number)).toBe(0);
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
+
+  // A shared link restores its filters in the render that ends hydration, so
+  // every count changes there. Those are where the page starts, not
+  // narrowings anyone made.
+  it("lands a count restored during hydration without rolling it", async () => {
+    function Restored() {
+      const value = useSyncExternalStore(
+        subscribeToNothing,
+        () => 15,
+        () => 12,
+      );
+      return <Count value={value} />;
+    }
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(<Restored />);
+    const recovered: unknown[] = [];
+
+    const root = hydrateRoot(container, <Restored />, {
+      onRecoverableError: (error) => recovered.push(error),
+    });
+    await act(async () => undefined);
+
+    expect(recovered).toEqual([]);
+    const numbers = drawn(container);
+    expect(numbers.map((n) => n.textContent)).toEqual(["15"]);
+    expect(offset(numbers[0])).toBe(0);
+    await act(async () => root.unmount());
+  });
+});
+
+describe("the card's tail", () => {
+  // Zdravje and Doma imam describe a row only while enough of its animals
+  // have no answer, so the other filters make the line come and go. The count
+  // was put in a new parent each time, which remounted it without a roll.
+  it("keeps the count's element when a row's description comes and goes", () => {
+    const tail = (description?: string) => (
+      <FilterCardTail
+        layout="sidebar"
+        label="Otroke"
+        checked={false}
+        description={description}
+        renderCount={(className) => (
+          <span data-count className={className}>
+            3
+          </span>
+        )}
+      />
+    );
+    const { container, rerender } = render(tail());
+    const count = container.querySelector("[data-count]");
+
+    rerender(tail("Brez podatka: 12"));
+    expect(container.querySelector("[data-count]")).toBe(count);
+
+    rerender(tail());
+    expect(container.querySelector("[data-count]")).toBe(count);
   });
 });

@@ -2,9 +2,22 @@
 
 import { Check } from "lucide-react";
 import { cva } from "class-variance-authority";
-import { domAnimation, m, useReducedMotion } from "motion/react";
+import {
+  AnimatePresence,
+  domAnimation,
+  m,
+  useReducedMotion,
+} from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { useState, type ReactNode } from "react";
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   CollapsibleBody,
   FilterSectionHeader,
@@ -242,13 +255,126 @@ export const FILTER_HOVER_SPRING = {
   mass: 0.5,
 } as const;
 
-const COUNT_ROLL_DURATION = 0.28;
+/**
+ * Which way a count moved. A number that grows comes in from below and one
+ * that shrinks comes in from above, so every count on the page, the row
+ * counts here and the grid's total in ResultCount, moves one way for one
+ * reason.
+ */
+export function countDirection(previous: number, next: number): -1 | 0 | 1 {
+  return Math.sign(next - previous) as -1 | 0 | 1;
+}
 
-// A changed number slides in rather than swapping in place, so the narrowing
-// is something you watch happen. Never on first paint: nothing narrowed
-// there. Every caller already sits inside its own LazyMotion, so this reads
-// domAnimation from that context instead of opening a second one.
-export function CountRoll({
+const COUNT_ROLL_DISTANCE = 6;
+const COUNT_ROLL = { duration: 0.24, ease: "easeOut" } as const;
+
+/** Where a number stands, as the transform string itself. */
+function rollOffset(px: number): string {
+  return px === 0 ? "none" : `translateY(${px}px)`;
+}
+
+// transform and not y. Motion runs y on the main thread, writing every
+// rolling number on every frame, where a transform string and opacity are
+// handed to the browser's own animations. A pick changes most of the counts
+// on the page at once, over thirty in the phone sheet with every section
+// open, so that is work worth keeping off the main thread.
+const countRollVariants = {
+  enter: (direction: number) => ({
+    transform: rollOffset(direction * COUNT_ROLL_DISTANCE),
+    opacity: 0,
+  }),
+  center: { transform: rollOffset(0), opacity: 1 },
+  exit: (direction: number) => ({
+    transform: rollOffset(-direction * COUNT_ROLL_DISTANCE),
+    opacity: 0,
+  }),
+};
+
+// Nothing to subscribe to. The answer is false while the server's markup is
+// being hydrated and true from the render after, and a count that mounts
+// later reads true at once.
+const subscribeToNothing = () => () => {};
+const liveOnClient = () => true;
+const liveOnServer = () => false;
+
+/** Whether the counts inside are drawn, and so worth rolling. */
+const CountsDrawn = createContext(true);
+
+/**
+ * Lets the counts inside roll only while `query` matches, for a panel that
+ * is mounted at every width and drawn at some. The sidebar is display:none
+ * below lg, where the phone sheet stands in for it, and its counts rolled
+ * there all the same: every pick on a phone started their animations and
+ * swapped their numbers for nobody, which with every section open was close
+ * to half the rolls a pick set off. Where the query does not match, a number
+ * changes in place, as it does under reduced motion.
+ *
+ * A media query and not a measurement, because a roll is decided in the
+ * render a pick makes and nothing may be read off the page there. A
+ * component of its own, so the answer that arrives after hydration renders
+ * the counts again and not the panel around them.
+ */
+export function CountsRollWhile({
+  query,
+  children,
+}: {
+  query: string;
+  children: ReactNode;
+}) {
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      const list = window.matchMedia?.(query);
+      list?.addEventListener("change", notify);
+      return () => list?.removeEventListener("change", notify);
+    },
+    [query],
+  );
+  const drawn = useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia?.(query)?.matches ?? true,
+    () => true,
+  );
+  return <CountsDrawn.Provider value={drawn}>{children}</CountsDrawn.Provider>;
+}
+
+/**
+ * A changed number rolls rather than swapping in place, so the narrowing is
+ * something you watch happen: the new one comes in from below when the
+ * count grows and from above when it shrinks, the old one leaves the other
+ * way, 6px each over 0.24s, and the two cross so that one of them is always
+ * drawn.
+ *
+ * It keeps its own AnimatePresence. The sections fold inside one whose
+ * initial={false} (CollapsibleBody) Motion hands down as "already present"
+ * to every element below it, and remembers, so a number that mounted to roll
+ * in a section open at first render was written straight to its resting
+ * place: Spol and Starost on the desktop never rolled, and neither did most
+ * of the sheet after it had been opened once. The number's presence is
+ * decided here instead, and the fold has no say in it.
+ *
+ * Both numbers share one grid cell while the old one leaves, rather than the
+ * old one being popped out of the flow. The count then keeps the wider of
+ * its two widths until the roll is over, so a number centred in a tile does
+ * not jump sideways when a digit goes, and nothing is measured or restyled
+ * in the commit a pick is waiting on. The cell clips, so the roll reads as a
+ * number passing through its own line rather than across the label above.
+ *
+ * Still on first paint, where nothing narrowed, and still through
+ * hydration: a link that restores its filters from the query changes every
+ * count in the render that ends hydration, and those land where they belong
+ * without a roll, as the grid's own count does (ResultCount). Under reduced
+ * motion the number changes in place. The markup is the same in every case,
+ * so what the server wrote is what the client hydrates.
+ *
+ * Memoised, because a section renders again for every press, hover and
+ * celebration timer on any of its rows, and none of those change a number:
+ * with a presence boundary of its own a count is no longer the cheapest thing
+ * in the row to render, so it sits those renders out.
+ *
+ * Every caller already sits inside its own LazyMotion, so this reads
+ * domAnimation from that context instead of opening a second one.
+ */
+export const CountRoll = memo(function CountRoll({
   value,
   className,
 }: {
@@ -256,31 +382,58 @@ export function CountRoll({
   className?: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  // Each change bumps the epoch, which remounts the number so the slide runs
-  // again. Epoch zero is the first paint and renders still.
-  const [displayed, setDisplayed] = useState({ value, epoch: 0 });
-  if (displayed.value !== value) {
-    setDisplayed({ value, epoch: displayed.epoch + 1 });
-  }
-
-  if (shouldReduceMotion) {
-    return <span className={className}>{value}</span>;
+  const drawn = useContext(CountsDrawn);
+  const live = useSyncExternalStore(
+    subscribeToNothing,
+    liveOnClient,
+    liveOnServer,
+  );
+  // Each roll is a new turn, and the turn is the number's key, so the one
+  // leaving and the one arriving are two elements. A change that does not
+  // roll keeps the turn and rewrites the number where it stands.
+  const [roll, setRoll] = useState({
+    value,
+    turn: 0,
+    direction: 0 as -1 | 0 | 1,
+    live,
+  });
+  if (roll.value !== value || roll.live !== live) {
+    const rolls =
+      roll.value !== value && roll.live && drawn && !shouldReduceMotion;
+    setRoll({
+      value,
+      live,
+      turn: rolls ? roll.turn + 1 : roll.turn,
+      direction: rolls ? countDirection(roll.value, value) : roll.direction,
+    });
   }
 
   return (
-    <span className={cn("relative inline-block", className)}>
-      <m.span
-        key={displayed.epoch}
-        className="block"
-        initial={displayed.epoch > 0 ? { y: -6, opacity: 0 } : false}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
+    <span className={cn("inline-grid overflow-clip", className)}>
+      {/* presenceAffectsLayout off for CollapsibleBody's reason: nothing here
+          animates layout, and left on it hands the number a new presence
+          context on every render. */}
+      <AnimatePresence
+        initial={false}
+        custom={roll.direction}
+        presenceAffectsLayout={false}
       >
-        {value}
-      </m.span>
+        <m.span
+          key={roll.turn}
+          className="col-start-1 row-start-1"
+          custom={roll.direction}
+          variants={countRollVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={COUNT_ROLL}
+        >
+          {value}
+        </m.span>
+      </AnimatePresence>
     </span>
   );
-}
+});
 
 /**
  * "box" is a tick box, for a section whose answers add up. "dot" is the round
@@ -772,26 +925,30 @@ export function FilterCardTail({
     );
   }
 
-  const line = (
-    <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-      <span
-        className={cn(
-          SIDEBAR_LABEL_TYPE,
-          "min-w-0 whitespace-normal leading-tight",
-          checked && "font-medium",
-        )}
-      >
-        {label}
-      </span>
-      {/* Only a flex item can be squeezed by a long label, so shrink-0 rides
-          with this line rather than with the voice the age grid shares. */}
-      {renderCount(cn(countClass(layout, checked), "shrink-0"))}
-    </span>
-  );
-  if (said === null) return line;
+  // One shape whether a description is drawn or not. The line used to come
+  // back bare without one and wrapped with one, and a row's description
+  // comes and goes with the other filters (Zdravje and Doma imam name their
+  // unanswered animals only while there are enough of them), so each change
+  // put the count in a new parent and remounted it: the number swapped in one
+  // frame instead of rolling. The column holding a lone line lays out as the
+  // line did.
   return (
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-      {line}
+      <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+        <span
+          className={cn(
+            SIDEBAR_LABEL_TYPE,
+            "min-w-0 whitespace-normal leading-tight",
+            checked && "font-medium",
+          )}
+        >
+          {label}
+        </span>
+        {/* Only a flex item can be squeezed by a long label, so shrink-0
+            rides with this line rather than with the voice the age grid
+            shares. */}
+        {renderCount(cn(countClass(layout, checked), "shrink-0"))}
+      </span>
       {said}
     </span>
   );

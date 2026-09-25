@@ -282,6 +282,40 @@ describe("SpeciesTabs", () => {
     expect(pathData(tab("Dogs"))).toEqual(pathData(beating as Element));
   });
 
+  it("holds each count's box to its roster number, which a narrowed count never outgrows", () => {
+    // The box is the roster's number drawn invisibly beside the count, so a
+    // tab keeps one width whatever the filters do to its count; without it
+    // every digit a count lost moved every tab after it.
+    const roster = { all: 240, dog: 120, cat: 100, other: 20 };
+    const { rerender } = renderTabs({
+      counts: { all: 9, dog: 3, cat: 4, other: 2 },
+      roster,
+    });
+    const box = () => tab("Dogs").lastElementChild as HTMLElement;
+
+    expect(box().getAttribute("data-reserve")).toBe("120");
+    expect(box().textContent).toBe("3");
+
+    rerender(tree({ counts: { all: 60, dog: 45, cat: 13, other: 2 }, roster }));
+    expect(box().getAttribute("data-reserve")).toBe("120");
+  });
+
+  it("rolls a count the filters change, the way every count on the page does", () => {
+    const { rerender } = renderTabs();
+
+    rerender(tree({ counts: { ...TALLY, dog: 0 } }));
+
+    // The old number leaving and the new one arriving from above, since the
+    // count went down.
+    const numbers = [...tab("Dogs").querySelectorAll<HTMLElement>("span")]
+      .filter((span) => span.children.length === 0 && /^\d+$/.test(span.textContent))
+      .map((span) => [span.textContent, span.style.transform]);
+    expect(numbers).toEqual([
+      ["1", "none"],
+      ["0", "translateY(-6px)"],
+    ]);
+  });
+
   it("never hands a tab to scrollIntoView, on mount or on a later selection", () => {
     // The row used to come into view through scrollIntoView, and Chrome moves
     // its sequential focus navigation starting point to whatever element is

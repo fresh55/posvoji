@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 
-// The picker's offer to order the grid by distance from the place it was just
-// given. The stubs, the roster and the door are the picker's shared harness
-// (test/location-picker.tsx), which holds the grid's order the way the page
-// does.
+// The grid's order following the place the picker is given. The stubs, the
+// roster and the door are the picker's shared harness (test/location-picker.tsx),
+// which holds the grid's order the way the page does.
 
 import { fireEvent, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   choosePlace,
+  mockGeolocation,
   openPicker,
   resetPickerSession,
   stubMatchMedia,
@@ -26,53 +26,84 @@ stubScrollIntoView();
 
 afterEach(resetPickerSession);
 
-const offer = () =>
-  screen.queryByRole("button", { name: "Razvrsti živali po bližini" });
-
 async function setPlace(props: Partial<ComponentProps<typeof LocationPicker>>) {
   const input = await openPicker(props);
   await type(input, "1000");
   choosePlace();
 }
 
-describe("ordering the grid by distance from the picker", () => {
-  it("offers it once a place is set, and only then", async () => {
+const removePlace = () =>
+  fireEvent.click(screen.getByRole("button", { name: /^Odstrani izhodišče/ }));
+
+describe("the grid following the picker's place", () => {
+  it("orders a grid in its default order by distance once a place is chosen", async () => {
     const onSortChange = vi.fn();
     const input = await openPicker({ sort: "longest-in-shelter", onSortChange });
-    expect(offer()).toBeNull();
 
+    // Recognising a place is not choosing it.
     await type(input, "1000");
-    choosePlace();
-    // Offered and not done: an order the visitor chose stays theirs.
-    expect(offer()?.getAttribute("aria-pressed")).toBe("false");
     expect(onSortChange).not.toHaveBeenCalled();
 
-    fireEvent.click(offer()!);
-    expect(onSortChange).toHaveBeenLastCalledWith("nearest");
+    choosePlace();
+    expect(onSortChange.mock.calls).toEqual([["nearest"]]);
+    // The toggle that used to carry this out to the grid is gone.
+    expect(
+      screen.queryByRole("button", { name: "Razvrsti živali po bližini" }),
+    ).toBeNull();
   });
 
-  it("gives back the order the grid had before the first press", async () => {
+  it("gives the default back when the place goes", async () => {
+    const onSortChange = vi.fn();
+    await setPlace({ sort: "longest-in-shelter", onSortChange });
+
+    removePlace();
+    expect(onSortChange.mock.calls).toEqual([
+      ["nearest"],
+      ["longest-in-shelter"],
+    ]);
+  });
+
+  it("leaves an order the visitor chose, with the place and without it", async () => {
     const onSortChange = vi.fn();
     await setPlace({ sort: "name", onSortChange });
+    removePlace();
 
-    fireEvent.click(offer()!);
-    expect(offer()?.getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(offer()!);
-    expect(onSortChange.mock.calls).toEqual([["nearest"], ["name"]]);
-    expect(offer()?.getAttribute("aria-pressed")).toBe("false");
+    expect(onSortChange).not.toHaveBeenCalled();
   });
 
-  it("gives the default order back when the grid came in by distance", async () => {
+  it("leaves a grid that came in by distance where it was when the place goes", async () => {
+    // Nearest from a shared link: the picker did not put it there, so taking
+    // the place away is not the picker's order to undo.
     const onSortChange = vi.fn();
     await setPlace({ sort: "nearest", onSortChange });
-    expect(offer()?.getAttribute("aria-pressed")).toBe("true");
+    removePlace();
 
-    fireEvent.click(offer()!);
-    expect(onSortChange).toHaveBeenLastCalledWith("longest-in-shelter");
+    expect(onSortChange).not.toHaveBeenCalled();
   });
 
-  it("offers nothing where the picker has no grid order to change", async () => {
+  it("follows a geolocation fix once it lands, and not the press", async () => {
+    const geolocation = mockGeolocation();
+    const onSortChange = vi.fn();
+    await openPicker({ sort: "longest-in-shelter", onSortChange });
+
+    fireEvent.click(screen.getByRole("button", { name: "Najbližje prvo" }));
+    expect(onSortChange).not.toHaveBeenCalled();
+
+    geolocation.succeed();
+    expect(onSortChange.mock.calls).toEqual([["nearest"]]);
+
+    // Turning it off again gives the order back, the same as the chip.
+    fireEvent.click(screen.getByRole("button", { name: "Najbližje prvo" }));
+    expect(onSortChange.mock.calls).toEqual([
+      ["nearest"],
+      ["longest-in-shelter"],
+    ]);
+  });
+
+  it("does nothing where the picker has no grid order to change", async () => {
     await setPlace({});
-    expect(offer()).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /^Odstrani izhodišče/ }),
+    ).toBeTruthy();
   });
 });

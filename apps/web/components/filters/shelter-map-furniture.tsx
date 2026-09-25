@@ -2,7 +2,8 @@ import { cityAt, project } from "@/lib/geo";
 import type { Town } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
 import { intersectionArea, type CalloutRect } from "./map-callout-layout";
-import { PLATE_TOO_SMALL } from "./map-marker";
+import { PLATE_TOO_SMALL, WHILE_COUNTS_DRAWN_HIDDEN } from "./map-marker";
+import { namePlacementBox, type NamePlacement } from "./map-names";
 
 // The plate's own type, the part a printed atlas carries and a chart does not:
 // the neighbours named, the water named, and three anchor towns so the outline
@@ -142,25 +143,42 @@ const CITY_ANCHORS: {
 export function PlateFurniture({
   towns,
   calloutRects,
+  names,
   wide,
 }: {
   towns: Town[];
-  /** Every annotation standing on the plate right now. A town anchor drawn
-   *  across one of them comes off for as long as it is up; see the anchor
-   *  branch below. */
+  /** Every annotation standing on the plate right now, and the origin's name
+   *  and mark. A town anchor drawn across one of them comes off for as long
+   *  as it is up; see the anchor branch below. */
   calloutRects: CalloutRect[];
-  /** Whether the plate has measured itself wide enough to draw the anchors at
-   *  all. The class below still hides them; this is what stops the layout work
-   *  behind them. See markersVisible in ShelterMap. */
+  /** The picked towns' names, keyed by town, where placePickedNames set them.
+   *  The anchors give way to these as they do to an annotation; see the
+   *  anchor branch below. */
+  names: ReadonlyMap<string, NamePlacement>;
+  /** Whether the plate has measured itself large enough to carry this layer
+   *  at all: markersVisible in ShelterMap. See the gate below. */
   wide: boolean;
 }) {
+  // Two answers to one question, each for the moment the other cannot give.
+  // Before anything is measured `wide` is true, which keeps the server's
+  // markup and the first paint identical, and the container query on the
+  // layer is what hides it on a narrow stage in that paint. Once the plate
+  // has measured itself, the scale decides. The query asks how wide the stage
+  // is, and a stage can be far wider than the plate it letterboxes: a phone
+  // held sideways gives the dialog a stage about 790px wide around a plate
+  // held to about 300 by the height, so the query let the layer through, the
+  // coins had already gone by the scale, and the neighbours and the sea were
+  // set at about four pixels.
+  if (!wide) return null;
+  // Every picked name as a box, once per render rather than once per anchor.
+  const nameBoxes = [...names.values()].map(namePlacementBox);
   return (
     // Every name on this layer is set in the map's own units, so a plate drawn
     // a third the size sets them a third the size with it: on a phone the
     // country names and the water came out four or five pixels, which is not
-    // quiet type, it is dirt on the paper. They leave at the same width the
-    // paws and the markers leave at, which is the width below which nothing
-    // this small can be read.
+    // quiet type, it is dirt on the paper. They leave where the paws and the
+    // markers leave, which is the size below which nothing this small can be
+    // read.
     <g
       aria-hidden
       data-map-furniture
@@ -205,69 +223,72 @@ export function PlateFurniture({
         ))}
       </text>
 
-      {/* With the markers these are placed around, and by the same measured
-          answer: `wide` is markersVisible in ShelterMap. On a plate too small
-          for coins the whole map is about a third the size, where 3.8-unit
-          type renders under five pixels, and unreadable type is not quiet, it
-          is dirt. The md class that used to say this is gone from both, for
-          the reason markersVisible gives. */}
-      {wide && (
-        <g>
-          {CITY_ANCHORS.map((anchor) => {
-            // The town's laid-out disc when the city has one, so the name stays
-            // welded to the mark it captions however far collision layout nudged
-            // it; the raw projection when it does not.
-            const town = towns.find(
-              (candidate) => candidate.city === anchor.city,
-            );
-            const at =
-              town ??
-              (() => {
-                const raw = cityAt(anchor.city);
-                return raw ? { ...project(raw), r: 0 } : null;
-              })();
-            if (!at) return null;
-            const dx =
-              anchor.anchor === "start"
-                ? at.r + CITY_ANCHOR_GAP
-                : -(at.r + CITY_ANCHOR_GAP + 0.7);
-            const textX = at.x + dx;
-            const textY = at.y + (town ? 1.4 : -3.5);
-            // The cartographic convention, and the whole reason the annotations
-            // report where they landed. An annotation carries no card, so a name
-            // drawn under one interleaves with it letter for letter: the halo
-            // keeps the annotation readable and does nothing at all for the
-            // anchor. The anchor is the one that gives way, because it answers
-            // no question. It is simply not on the plate while the annotation
-            // is, with no transition of its own: this is not a state the name is
-            // in, it is a name that is not being drawn.
-            //
-            // Anchor text only. The coins never move for an annotation, being
-            // the subject it is about, and the neighbour and sea names are set
-            // out over ground that draws no markers and raises no annotations.
-            const covered = calloutRects.some((rect) =>
-              boxesOverlap(
-                anchorBox(anchor.city, textX, textY, anchor.anchor),
-                rect,
-              ),
-            );
-            if (covered) return null;
-            return (
-              <text
-                key={anchor.city}
-                data-map-city={anchor.city}
-                x={textX}
-                y={textY}
-                textAnchor={anchor.anchor}
-                fontSize={CITY_ANCHOR_TYPE}
-                className={cn("tracking-[0.04em]", FURNITURE_INK)}
-              >
-                {anchor.city}
-              </text>
-            );
-          })}
-        </g>
-      )}
+      {CITY_ANCHORS.map((anchor) => {
+        // The town's laid-out disc when the city has one, so the name stays
+        // welded to the mark it captions however far collision layout nudged
+        // it; the raw projection when it does not.
+        const town = towns.find(
+          (candidate) => candidate.city === anchor.city,
+        );
+        const at =
+          town ??
+          (() => {
+            const raw = cityAt(anchor.city);
+            return raw ? { ...project(raw), r: 0 } : null;
+          })();
+        if (!at) return null;
+        const dx =
+          anchor.anchor === "start"
+            ? at.r + CITY_ANCHOR_GAP
+            : -(at.r + CITY_ANCHOR_GAP + 0.7);
+        const textX = at.x + dx;
+        const textY = at.y + (town ? 1.4 : -3.5);
+        const box = anchorBox(anchor.city, textX, textY, anchor.anchor);
+        // The cartographic convention, and the whole reason the annotations
+        // report where they landed. An annotation carries no card, so a name
+        // drawn under one interleaves with it letter for letter: the halo
+        // keeps the annotation readable and does nothing at all for the
+        // anchor. The anchor is the one that gives way, because it answers
+        // no question. It is simply not on the plate while the annotation
+        // is, with no transition of its own: this is not a state the name is
+        // in, it is a name that is not being drawn.
+        //
+        // Anchor text only. The coins never move for an annotation, being
+        // the subject it is about, and the neighbour and sea names are set
+        // out over ground that draws no markers and raises no annotations.
+        if (calloutRects.some((rect) => boxesOverlap(box, rect))) return null;
+        // The picked names outrank an anchor the same way. A picked town
+        // carries its name under its coin, in full ink and a heavier weight,
+        // and the anchor beside it was the same word a second time a few
+        // units away: Maribor picked read "Maribor" twice. Another town's
+        // picked name set across an anchor interleaves with it as an
+        // annotation would: one picked in Radovljica runs across Kranj's.
+        //
+        // Hidden rather than left out, and only where the picked names are
+        // drawn. They go with the counts (COUNT_TOO_SMALL in map-marker.tsx),
+        // and between that width and the one the coins leave at the anchor
+        // is still the town's only name on the plate.
+        const underName =
+          (town !== undefined && names.has(town.key)) ||
+          nameBoxes.some((rect) => boxesOverlap(box, rect));
+        return (
+          <text
+            key={anchor.city}
+            data-map-city={anchor.city}
+            x={textX}
+            y={textY}
+            textAnchor={anchor.anchor}
+            fontSize={CITY_ANCHOR_TYPE}
+            className={cn(
+              "tracking-[0.04em]",
+              FURNITURE_INK,
+              underName && WHILE_COUNTS_DRAWN_HIDDEN,
+            )}
+          >
+            {anchor.city}
+          </text>
+        );
+      })}
     </g>
   );
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { donePill, openPicker } from "./picker";
+import { donePill, openPicker, region, ROW } from "./picker";
 import { isReachable } from "./reach";
 
 // The results footer must remain immediately reachable on short screens,
@@ -27,43 +27,68 @@ async function assertReachableAndClickable(
 test.describe("short landscape (844x390)", () => {
   test.use({ viewport: { width: 844, height: 390 } });
 
-  test("lands folded, on a map that is a map", async ({ page }) => {
+  test("stands the list beside a map that is a map", async ({ page }) => {
     const dialog = await openPicker(page);
 
-    // A short landscape viewport starts on the full map. The header
-    // segments provide an explicit route to the list.
-    await expect(dialog.locator("[data-picker-sheet]")).toHaveAttribute(
-      "data-picker-sheet",
-      "collapsed",
-    );
+    // Sideways the width is there for both, so both are on screen at once and
+    // nothing takes turns: no Seznam / Zemljevid switch. It used to draw a
+    // 300px country alone in an 800px dialog, with the list a tab away.
+    await expect(dialog.locator("[data-map-stage]")).toBeVisible();
+    await expect(dialog.locator("[data-picker-sheet]")).toBeVisible();
+    await expect(dialog.locator("[data-picker-view-switch]")).toBeHidden();
+    const plate = (await dialog.locator('svg[role="group"]').boundingBox())!;
+    const list = (await dialog.locator("[data-picker-sheet]").boundingBox())!;
+    expect(plate.x + plate.width).toBeLessThanOrEqual(list.x + 1);
 
     // And the plate has a usable height rather than a nominal one. Measured
     // against what the map is for: a 320:210 country at 100px of height is
     // 152px of country, which a finger can aim at; at 21 it is not a map.
-    const plate = dialog.locator('svg[role="group"]');
-    const box = (await plate.boundingBox())!;
-    expect(box.height).toBeGreaterThan(100);
+    // Wide enough for the region names, which a nameless country lacked.
+    expect(plate.height).toBeGreaterThan(100);
+    await expect(dialog.locator("[data-map-region-label]").first()).toBeVisible();
+    // Nor does the plate print type too small to read: the neighbour names
+    // go with the coins on a plate this size.
+    await expect(dialog.locator("[data-map-neighbor]").first()).toBeHidden();
   });
 
   test("the confirm button is reachable and clickable", async ({ page }) => {
     const dialog = await openPicker(page);
-
-    await expect(dialog.locator("[data-picker-sheet]")).toHaveAttribute(
-      "data-picker-sheet", "collapsed",
-    );
     await assertReachableAndClickable(page, dialog);
   });
 
-  test("keeps the confirm button reachable after opening the short landscape list", async ({ page }) => {
+  test("reads a pick on the map off the list beside it", async ({ page }) => {
     const dialog = await openPicker(page);
 
-    await dialog.locator("[data-picker-show-list]").click();
-    await expect(dialog.locator("[data-picker-sheet]")).toHaveAttribute(
-      "data-picker-sheet",
-      "open",
-    );
+    // A finger's map: the first tap names the region, and the button it
+    // raises takes the pick (shelter-picker-touch.spec.ts pins the pair).
+    await region(dialog, "Osrednjeslovenska").tap();
+    await dialog.locator("[data-map-action]").first().tap();
 
+    // Answered in the list standing beside the map, with no switch pressed.
+    const picked = dialog
+      .locator("[data-picker-sheet]")
+      .locator(`${ROW}[aria-pressed="true"]`);
+    await expect(picked.first()).toBeVisible();
+    await expect(dialog.locator("[data-map-stage]")).toBeVisible();
     await assertReachableAndClickable(page, dialog);
+  });
+});
+
+test.describe("tablet held upright (768x1024)", () => {
+  test.use({ viewport: { width: 768, height: 1024 } });
+
+  test("opens on the map, which writes its counts", async ({ page }) => {
+    const dialog = await openPicker(page);
+
+    // The map is the way in wherever it can count every shelter. It opened on
+    // its list here, eleven rows in two columns over 250px of empty dialog.
+    await expect(dialog.locator("[data-map-stage]")).toBeVisible();
+    await expect(dialog.locator("[data-picker-sheet]")).toBeHidden();
+    await expect(dialog.locator("[data-marker-count]").first()).toBeVisible();
+    await expect(dialog.locator("[data-picker-show-map]")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 });
 

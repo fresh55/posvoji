@@ -24,7 +24,7 @@ import type { LocationPickerController } from "./controller";
 // something is.
 //
 // It needs a height of its own. flex-1 is `flex: 1 1 0%`, which is 0 in a
-// column sized by its content, and below lg with the list put away the stage
+// column sized by its content, and stacked with the list put away the stage
 // is exactly that: the dialog painted as a header, a strip of padding and a
 // footer, then jumped to full height when the chunk landed. min-h-52 is 208px,
 // within two of the plate's own 210-unit viewBox at 1:1, and shrink lets it go
@@ -41,7 +41,7 @@ const PickerMapPlate = dynamic(
 export function PickerMapStage({ controller, hug = false }: {
   controller: LocationPickerController;
   /** Whether this stage is what the dialog takes its height from, which it
-   *  is below lg with the list put away (view.tsx). In flow it is as tall as
+   *  is stacked with the list put away (view.tsx). In flow it is as tall as
    *  the map and the credit under it; pinned to the box's edges it was as
    *  tall as the dialog, with the map floating in the middle of it. */
   hug?: boolean;
@@ -70,11 +70,12 @@ export function PickerMapStage({ controller, hug = false }: {
               // what lets it shrink instead: the map inside is already
               // flex-1 over a shrink-0 credit, so the map gives up the
               // pixels and everything under it stays on screen.
-              hug && "max-lg:static max-lg:min-h-0",
-              sheetOpen && "max-lg:hidden",
-              // Everything the list does not take: --picker-list-w, in
+              hug && "picker-stacked:static picker-stacked:min-h-0",
+              sheetOpen && "picker-stacked:hidden",
+              // Everything the list does not take, wherever the list stands
+              // beside it (picker-split in globals.css): --picker-list-w, in
               // view.tsx.
-              "lg:right-(--picker-list-w)",
+              "picker-split:right-(--picker-list-w)",
             )}
           >
             <PickerMapPlate controller={controller} />

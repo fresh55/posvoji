@@ -4,8 +4,8 @@ import { coveredArea, type CalloutRect } from "./map-callout-layout";
 
 /** The size a picked town's name is set at, in user units. */
 export const PICKED_NAME_SIZE = 3.9;
-// A line of type, as a share of its size.
-const LEADING = 1.2;
+/** A line of plate type, as a share of its size. */
+export const LEADING = 1.2;
 // Clear space between a marker's reach and its name.
 const NAME_GAP = 0.8;
 // An estimate of a semibold glyph's advance as a share of the size. Only used

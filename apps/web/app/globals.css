@@ -49,6 +49,33 @@
 }
 @custom-variant desktop-box (@media (min-width: 640px) and (not (max-height: 32rem)));
 
+/* Whether the location picker stands its list beside its map or stacks the
+   two behind a Seznam / Zemljevid switch. Beside, on a desktop and on a phone
+   held sideways. The second is why this is a pair of its own and not lg:
+   sideways, the stacked picker drew a 300px country in the middle of an 800px
+   dialog, with no names and no coins, and the list a tab away. The width was
+   there for both; only the height is short.
+
+   Two rules each and no comma condition, for the reason phone-shell gives,
+   and exact complements of each other: the same widths as lg and sm, and the
+   same height as short. */
+@custom-variant picker-split {
+  @media (width >= 64rem) {
+    @slot;
+  }
+  @media (width >= 40rem) and (max-height: 32rem) {
+    @slot;
+  }
+}
+@custom-variant picker-stacked {
+  @media (width < 40rem) {
+    @slot;
+  }
+  @media (width < 64rem) and (not (max-height: 32rem)) {
+    @slot;
+  }
+}
+
 /* A device whose pointer can hover, which is the question Tailwind's own
    hover variant asks before it applies anything. Needed on its own wherever
    something is hidden at rest and a hover brings it back: the hide has to be

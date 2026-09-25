@@ -5,7 +5,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 // These four are not conveniences. Each one encodes a fact about the markup in
 // location-picker.tsx and shelter-rows.tsx: that the trigger's role is a plain
 // button, that a row is the thing with aria-pressed and a span inside it while
-// the sort toggle above the list is not, and that an open picker is a dialog
+// the distance chips above the list are not, and that an open picker is a dialog
 // with the map's own group inside it. Copied into each spec, they went out of
 // step the first time one of those facts moved — the trigger's role changed
 // with an aria-haspopup and the whole suite went red for a reason that read
@@ -14,8 +14,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 // Not a .spec.ts, so Playwright's default testMatch leaves it alone.
 //
 // Only the shared ones live here. Each spec keeps the helpers it is the sole
-// caller of: the map's markers, regions and callouts, the panel's list, its
-// off-roster rows and its footer.
+// caller of: the map's markers and callouts, the panel's list, its off-roster
+// rows and its footer.
 
 // Both the desktop bar and the mobile dock render a picker trigger, and one of
 // the two is display:none at any given width.
@@ -37,6 +37,22 @@ export const ROW = "[data-shelter-row] button[aria-pressed]";
 
 export function rows(dialog: Locator): Locator {
   return dialog.locator(ROW);
+}
+
+/** A live region on the plate, by name. The ones that carry a click to commit
+ *  are the ones with a commit key, which is the same attribute the arming
+ *  reads, and the label is what a screen reader is told they are.
+ *
+ *  Named rather than taken by index, because index order is the order
+ *  lib/region-shapes.ts lists them in and that puts Pomurska first, in the
+ *  top-right corner of the plate under the dialog's own close button.
+ *  Osrednjeslovenska and Savinjska sit in the middle of the country, clear of
+ *  the title chip on one corner and the close on the other, and both hold
+ *  shelters in every dataset the suites run against: Ljubljana and Celje. */
+export function region(dialog: Locator, name: string): Locator {
+  return dialog.locator(
+    `[data-map-commit^="region:"][aria-label^="${name}"]`,
+  );
 }
 
 export async function openPicker(page: Page): Promise<Locator> {

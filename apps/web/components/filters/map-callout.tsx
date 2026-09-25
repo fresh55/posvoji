@@ -333,20 +333,6 @@ export function MapCallout({
                   {note}
                 </span>
               )}
-              {action && (
-                <button
-                  type="button"
-                  data-map-action
-                  aria-label={`${action.label}: ${title}`}
-                  onClick={action.onClick}
-                  onFocus={() => action.onFocusChange?.(true)}
-                  onBlur={() => action.onFocusChange?.(false)}
-                  className="pointer-events-auto mt-2 block w-full rounded-ui bg-primary px-2 text-center font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
-                  style={{ minHeight: 44 / scale, fontSize: type.metadata, lineHeight: type.leading }}
-                >
-                  {action.label}
-                </button>
-              )}
               {species && species.length > 0 && (
                 <span
                   data-callout-species
@@ -377,6 +363,25 @@ export function MapCallout({
                     );
                   })}
                 </span>
+              )}
+              {/* Last, under every fact the card carries. It stood between the
+                  count and the species line once, which split one shelter's
+                  facts in two around a control. The facts are what the press
+                  is decided on, so they are read first and the press comes
+                  after them. */}
+              {action && (
+                <button
+                  type="button"
+                  data-map-action
+                  aria-label={`${action.label}: ${title}`}
+                  onClick={action.onClick}
+                  onFocus={() => action.onFocusChange?.(true)}
+                  onBlur={() => action.onFocusChange?.(false)}
+                  className="pointer-events-auto mt-2 block w-full rounded-ui bg-primary px-2 text-center font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
+                  style={{ minHeight: 44 / scale, fontSize: type.metadata, lineHeight: type.leading }}
+                >
+                  {action.label}
+                </button>
               )}
             </div>
           </div>

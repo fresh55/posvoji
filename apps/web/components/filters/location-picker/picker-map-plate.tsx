@@ -1,5 +1,7 @@
 import { MapAttribution } from "@/components/filters/map-attribution";
 import { ShelterMap } from "@/components/filters/shelter-map";
+import { cityAt } from "@/lib/geo";
+import { regionIdAt } from "@/lib/map-layout";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import type { LocationPickerController } from "./controller";
@@ -39,7 +41,27 @@ export function PickerMapPlate({
     messages,
     resolved,
     setMarkersVisible,
+    offSite,
   } = controller;
+
+  // The regions a registry shelter with nothing listed stands in. Those
+  // shelters are no pins (there is nothing in them to pick), so without this
+  // the map could not tell such a region from one with no shelter at all, and
+  // Goriška said "Ni zavetišč v tej regiji" over a line naming the two
+  // shelters in it. Worked out here, in the plate's own chunk, because the
+  // region shapes it needs are what that chunk keeps off the home page, and
+  // by the lookup the map groups its own towns by.
+  const unlistedRegionIds = useMemo(
+    () =>
+      new Set(
+        (offSite ?? []).flatMap((option) => {
+          const at = option.city ? cityAt(option.city) : undefined;
+          const id = at ? regionIdAt(at) : undefined;
+          return id === undefined ? [] : [id];
+        }),
+      ),
+    [offSite],
+  );
 
   // Which shelters answer for the municipalities inside each region, by region
   // id. An empty region on this map is not an empty part of the country:
@@ -67,10 +89,11 @@ export function PickerMapPlate({
           ate the coast and the south, with no way to scroll to them.
           overflow-hidden stays as the backstop it always was. */}
       <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden">
-        {/* The country's own box. Where the height is what binds (from lg,
-            and on a landscape phone) it takes the plate's 32:21 from the
-            height and the map fills it exactly; where the width binds it is
-            the column, and the plate letterboxes inside it.
+        {/* The country's own box. Where the height is what binds, which is
+            wherever the list stands beside the map (picker-split in
+            globals.css), it takes the plate's 32:21 from the height and the
+            map fills it exactly; where the width binds it is the column, and
+            the plate letterboxes inside it.
 
             Nothing under the map changes with what is picked. A legend grew a
             row there on the first pick of a shelter, and from lg the map is
@@ -82,8 +105,7 @@ export function PickerMapPlate({
         <div
           className={cn(
             "relative flex min-h-0 w-full shrink flex-col justify-center",
-            "sm:short:h-full sm:short:w-auto sm:short:max-w-full sm:short:aspect-[32/21]",
-            "lg:h-full lg:w-auto lg:max-w-full lg:aspect-[32/21]",
+            "picker-split:h-full picker-split:w-auto picker-split:max-w-full picker-split:aspect-[32/21]",
           )}
         >
           <ShelterMap
@@ -108,6 +130,7 @@ export function PickerMapPlate({
             originRadiusKm={controller.ringKm}
             summaries={summaries}
             regionShelterNames={regionShelterNames}
+            unlistedRegionIds={unlistedRegionIds}
             // shrink, against the map's own shrink-0: this is the one caller
             // that hands it a box whose height can run out (a landscape phone,
             // or a portrait one with the keyboard up). Holding its
@@ -115,9 +138,9 @@ export function PickerMapPlate({
             // under it. Allowed to shrink along the column above, the viewBox
             // letterboxes inside whatever height is left. max-h-full does not
             // do this on its own: the dialog is h-auto under a max-height
-            // below lg, so the percentage has no definite height to resolve
-            // against and drops out.
-            className="min-h-0 shrink max-h-full sm:short:h-full lg:h-full"
+            // when stacked, so the percentage has no definite height to
+            // resolve against and drops out.
+            className="min-h-0 shrink max-h-full picker-split:h-full"
           />
           {/* From lg the credit stands in the plate's own corner rather than
               under it, where it cost the country its height: the box is the
@@ -140,10 +163,10 @@ export function PickerMapPlate({
           className="absolute right-0 bottom-0 hidden max-lg:sm:short:block"
         />
       </div>
-      {/* Below lg, held upright, the credit keeps its line under the map. The
-          map is sized by the width there, so the line costs it nothing, and a
-          phone's plate is too small a corner to hold it. */}
-      <div className="z-10 w-full shrink-0 sm:short:hidden lg:hidden">
+      {/* Stacked, the credit keeps its line under the map. The map is sized
+          by the width there, so the line costs it nothing, and a phone's
+          plate is too small a corner to hold it. */}
+      <div className="z-10 w-full shrink-0 picker-split:hidden">
         <MapAttribution messages={messages} />
       </div>
     </>

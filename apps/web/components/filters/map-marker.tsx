@@ -158,6 +158,12 @@ const GLYPH_TOO_SMALL = PLATE_TOO_SMALL;
 const COUNT_TOO_SMALL = "@max-[608px]/map-stage:hidden";
 const PAW_WHILE_COUNT_TOO_SMALL = "@min-[608px]/map-stage:hidden";
 
+/** Hidden exactly where the counts, and the picked names that go with them,
+ *  are drawn: COUNT_TOO_SMALL's complement. For plate type that a picked name
+ *  replaces, which has to stay on a plate too small for that name
+ *  (shelter-map-furniture.tsx). */
+export const WHILE_COUNTS_DRAWN_HIDDEN = PAW_WHILE_COUNT_TOO_SMALL;
+
 // Under this radius a mark has no room for digits at any plate size. Every
 // coin clears it (a count map's coins draw at 5.75 once markerGeometry takes
 // half the stroke off); most satellites do not, and they stay plain discs

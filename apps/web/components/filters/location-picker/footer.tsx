@@ -30,6 +30,10 @@ export function PickerFooter({ controller, hug = false }: {
   // another was the half of this the sort had not reached.
   const summaryRows = selectedRows;
   const firstSelected = summaryRows[0];
+  // The list is only there from two selections (see its trigger below). Shut
+  // with it when a selection goes some other way, so the next second pick
+  // does not bring it back open.
+  if (summaryOpen && summaryRows.length < 2) setSummaryOpen(false);
   const summaryLabel = locale === "sl"
     ? `Pokaži izbrana zavetišča (${selectedRows.length})`
     : `Show selected shelters (${selectedRows.length})`;
@@ -99,7 +103,7 @@ export function PickerFooter({ controller, hug = false }: {
         // shrink-0 with it: in flow on a short screen the stage above yields
         // its height to a scroller, and this row must not be the thing that
         // gives way instead, because the primary action stands in it.
-        hug && "max-lg:static max-lg:shrink-0",
+        hug && "picker-stacked:static picker-stacked:shrink-0",
       )}
     >
       {(selectedRows.length > 0 || resultCount === 0) && (
@@ -118,13 +122,22 @@ export function PickerFooter({ controller, hug = false }: {
                 title={firstSelected.label}
                 className="h-11 min-w-0 shrink gap-2 border-brand-border bg-brand px-3 text-brand-foreground shadow-none hover:bg-brand hover:text-brand-foreground"
               >
-                <span className="max-w-64 truncate">{firstSelected.label}</span>
+                {/* The short name the rows, the map and the zero line under it
+                    already print (shelterChipLabel). "Zavetišče Maribor
+                    (Snaga)" beside a list reading "Maribor" was the one place
+                    the dialog named a shelter differently, and on a phone it
+                    took most of the row. The full name stays in the label and
+                    the title. */}
+                <span className="max-w-64 truncate">{shelterChipLabel(firstSelected.label)}</span>
                 <X className="size-3.5 shrink-0" aria-hidden />
               </Button>
-              {/* Offered from one selection, not two: at 320 a long name
-                  truncates in the chip, and title is nothing a finger can
-                  read. */}
-              <Popover
+              {/* From two selections, where there is somebody the chip does
+                  not name. With one, the button beside the chip read "1" and
+                  opened a list of that same one shelter. It used to be offered
+                  there too because the long name truncated at 320px and a
+                  title is nothing a finger can read; the short name fits. */}
+              {summaryRows.length > 1 && (
+                <Popover
                   open={summaryOpen}
                   onOpenChange={(nextOpen) => {
                     if (nextOpen) summaryInteractedOutsideRef.current = false;
@@ -139,7 +152,7 @@ export function PickerFooter({ controller, hug = false }: {
                       aria-label={summaryLabel}
                       className="h-11 gap-1.5 px-3 shadow-none"
                     >
-                      <span className="tabular-nums">{selectedRows.length > 1 ? `+ ${selectedRows.length - 1}` : "1"}</span>
+                      <span className="tabular-nums">+ {selectedRows.length - 1}</span>
                       <ChevronUp className="size-3.5" aria-hidden />
                     </Button>
                   </PopoverTrigger>
@@ -174,13 +187,18 @@ export function PickerFooter({ controller, hug = false }: {
                           type="button"
                           variant="ghost"
                           onClick={() => {
-                            const next = summaryRows[index + 1] ?? summaryRows[index - 1];
-                            if (!next) {
+                            // Down to one, the list goes with its trigger (the
+                            // chip is the whole selection then), and the close
+                            // hands focus to that chip (onCloseAutoFocus
+                            // above), the trigger it would return to being gone.
+                            if (summaryRows.length === 2) {
                               setSummaryOpen(false);
-                              resultRef.current?.focus();
+                              onToggle(row.value);
+                              return;
                             }
+                            const next = summaryRows[index + 1] ?? summaryRows[index - 1];
                             onToggle(row.value);
-                            if (next) requestAnimationFrame(() => summaryRowsRef.current.get(next.value)?.focus());
+                            requestAnimationFrame(() => summaryRowsRef.current.get(next.value)?.focus());
                           }}
                           aria-label={`${copy.removeSelection}: ${row.label}`}
                           className="h-auto min-h-11 w-full justify-between gap-3 px-2 py-2 text-left whitespace-normal"
@@ -219,6 +237,7 @@ export function PickerFooter({ controller, hug = false }: {
                     </div>
                   </PopoverContent>
                 </Popover>
+              )}
             </div>
           )}
           {resultCount === 0 && (
@@ -236,13 +255,13 @@ export function PickerFooter({ controller, hug = false }: {
           at the chip row's own height, so the pick swaps one for the other and
           the footer, measured above, keeps its height. It used to stand under the map, where from lg it was
           a line of the map's own height. Only while the map is on screen:
-          below lg the list view has no map to instruct about. */}
+          stacked, the list view has no map to instruct about. */}
       {selectedRows.length === 0 && resultCount > 0 && (
         <p
           data-picker-instruction
           className={cn(
             "flex min-h-11 min-w-0 items-center text-xs leading-snug text-muted-foreground sm:flex-1",
-            sheetOpen && "max-lg:hidden",
+            sheetOpen && "picker-stacked:hidden",
           )}
         >
           {markersVisible

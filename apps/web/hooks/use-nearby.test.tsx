@@ -121,13 +121,16 @@ describe("the chosen place across visits", () => {
     expect(localStorage.getItem(CHOSEN_PLACE_KEY)).toBeNull();
   });
 
-  it("reads it back on the next visit, with the field holding its name", () => {
+  it("reads it back on the next visit, and leaves the field empty", () => {
     localStorage.setItem(CHOSEN_PLACE_KEY, JSON.stringify(kranj));
     const place = renderHook(useNearbyChosenPlace);
     const query = renderHook(useNearbyQuery);
 
     expect(place.result.current[0]).toEqual(kranj);
-    expect(query.result.current[0]).toBe("Kranj");
+    // The place is its chip's alone. Written back into the field as well, it
+    // opened every later visit with the town typed in the search box over
+    // the chip that already named it.
+    expect(query.result.current[0]).toBe("");
   });
 
   it("ignores a stored value that is not a chosen place", () => {

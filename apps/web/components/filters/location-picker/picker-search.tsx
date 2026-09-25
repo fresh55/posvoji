@@ -1,6 +1,4 @@
 import {
-  ArrowDownNarrowWide,
-  Check,
   LoaderCircle,
   MapPin,
   Navigation,
@@ -19,10 +17,8 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
     query, setQuery, typed, placeMode, choosePlace, clearOrigin,
     placeSuggestionRef, searchRef, rowRefs, visibleRows, visibleOffRows, counts, selected,
     dismissError, statusId, status, resolved, locale, messages,
-    toggleNearby, nearbyOn, state, radiusPicks, pickWithin, setAskedRadius,
-    sort, onSortChange, toggleNearestSort,
+    toggleLocate, nearbyOn, state, radiusPicks, pickWithin, setAskedRadius,
   } = controller;
-  const byDistance = sort === "nearest";
   const copy = pickerText[locale];
   const canLocate = resolved.source !== "typed";
   // Spelled out rather than taken from the controller's placeOffered, which is
@@ -117,16 +113,17 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
         )}
         {/* The other way to say where: the visitor's own position. Inside the
             field that takes a place, so both answers to "where" sit in one
-            control, and the list re-sorts by distance under it either way. It
-            used to be a row of its own under the field. Not offered while a
-            typed place is the origin: that place's chip below is the origin
-            then, and removing it is how to go back. */}
+            control, and the list re-sorts by distance under it either way, as
+            does a grid nobody has put in an order of their own (originPressed
+            in controller.ts). It used to be a row of its own under the field.
+            Not offered while a typed place is the origin: that place's chip
+            below is the origin then, and removing it is how to go back. */}
         {canLocate && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            onClick={toggleNearby}
+            onClick={toggleLocate}
             aria-pressed={nearbyOn}
             aria-label={state.status === "locating" ? messages.locating : messages.nearestFirst}
             title={messages.nearestFirst}
@@ -160,12 +157,16 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
         </div>
       )}
       {resolved.at && (
-        <div className="space-y-1">
-          {/* The origin, the distances from it and the grid's order by it, on
-              one line where they fit: stacked, they were four rows above the
-              first shelter, and a phone held sideways was left one row of
-              list. The distances wrap to the next line together, never one
-              chip at a time. */}
+          // The origin and the distances from it, on one line where they fit:
+          // stacked, they were four rows above the first shelter, and a phone
+          // held sideways was left one row of list. The distances wrap to the
+          // next line together, never one chip at a time.
+          //
+          // Two more rows stood here once. A toggle ordered the grid by
+          // distance, which the place now does by itself (originPressed in
+          // controller.ts), and a line said the distances are straight lines
+          // between towns, which every row's kilometres and the ring on the
+          // map already carry. On a phone the pair cost four rows of list.
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -200,52 +201,27 @@ export function PickerSearch({ controller }: { controller: LocationPickerControl
                     onPointerLeave={() => setAskedRadius(null)}
                     onFocus={() => setAskedRadius(km)}
                     onBlur={() => setAskedRadius(null)}
-                    className="text-xs pointer-coarse:h-11"
+                    // The origin chip's height, type and 3:1 border, on every
+                    // pointer. They were 36px and 12px beside it with a mouse,
+                    // the one row of short controls in the dialog. The border
+                    // gives way to the pressed accent, which outranks it on
+                    // [aria-pressed].
+                    className="h-11 border-control-border px-3 shadow-none"
                   >
                     {copy.upTo} {km} km
                   </Toggle>
                 ))}
               </div>
             )}
-            {/* The list below is already nearest first; the grid behind the
-                dialog is not, until asked. Offered here, where the place was
-                just set, and never done unasked: an order the visitor chose
-                themselves is theirs to change. A toggle, so pressing it again
-                gives the grid back the order it had (toggleNearestSort).
-
-                The sort control's own mark and not the crosshair: the locate
-                button in the field above wears that, and two pressed controls in
-                one mark read as one control drawn twice. This one orders the
-                grid, so it carries what the grid's order carries. */}
-            {onSortChange && (
-              <Toggle
-                variant="outline"
-                pressed={byDistance}
-                onPressedChange={toggleNearestSort}
-                // The ground and the 3:1 border of the origin's outline Button,
-                // which the Toggle outline draws lighter; the two share a row
-                // where it fits and read as a pair.
-                className="h-11 max-w-full justify-start gap-2 border-control-border bg-background px-3 text-left shadow-none dark:bg-input/30"
-              >
-                <ArrowDownNarrowWide className="size-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{messages.sortByDistance}</span>
-                {byDistance && <Check className="size-3.5 shrink-0" aria-hidden />}
-              </Toggle>
-            )}
           </div>
-          {/* Dropped where there is no height to spare: the kilometres on
-              every row still say how far, and this only says how it is
-              measured. */}
-          <p className="text-xs leading-snug text-muted-foreground short:hidden">{copy.distance}</p>
-        </div>
       )}
       <p id={statusId} aria-live="polite" className={cn("text-xs leading-snug text-muted-foreground", !status && "hidden")}>
         {status}
       </p>
       {/* The "Zavetišča" heading used to close this block, where it labelled
           whatever came next rather than the list it names: the confirmed
-          origin button, its distance note and the live status line all sit
-          between here and the first shelter row, so on a query that had
+          origin button and the live status line sit between here and the
+          first shelter row, so on a query that had
           resolved to a place the heading stood over "Najbližje prvo". It is
           drawn in picker-shelter-list.tsx now, directly above the first row
           and tied to the rows it heads. */}

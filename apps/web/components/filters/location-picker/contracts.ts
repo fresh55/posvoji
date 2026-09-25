@@ -34,9 +34,10 @@ export type LocationPickerProps = {
   deepLink?: "desktop" | "mobile";
   /** The toolbar button or the filter sidebar's scope row. */
   dress?: "toolbar" | "sidebar";
-  /** The grid's order, for the offer the dialog makes once a place is
-   *  set: the shelter list sorts itself by distance, and until this the
-   *  grid behind the dialog quietly did not. Without it there is no offer. */
+  /** The grid's order, which a place given to the dialog moves to Najbližje
+   *  while it is still the default, and gives back when the place goes: the
+   *  shelter list sorts itself by distance, and until this the grid behind
+   *  the dialog quietly did not. Without it the grid's order is left alone. */
   sort?: AnimalSort;
   onSortChange?: (sort: AnimalSort) => void;
   /** Optional controlled dialog state. */

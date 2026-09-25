@@ -108,6 +108,21 @@ export function bringIntoList(
   scroller.scrollTop += above < 0 || box.height > view.height ? above : below;
 }
 
+/** bringIntoList now and again once `cell` has finished the animation that
+ *  opens it: until then its height is still ramping up from nothing, and
+ *  "nearest" would measure a strip that is not there yet. Where there is no
+ *  animation to wait for, the first call is the one that does it, and the
+ *  other has nothing left to do. Returns the effect's cleanup. */
+export function bringIntoListOnceOpen(
+  scroller: { readonly current: HTMLElement | null },
+  cell: Element,
+): () => void {
+  const bring = () => bringIntoList(scroller.current, cell);
+  bring();
+  cell.addEventListener("animationend", bring, { once: true });
+  return () => cell.removeEventListener("animationend", bring);
+}
+
 /** The distances the picker offers to pick by once it knows where the visitor
  *  is, in kilometres: a short drive, an afternoon, the far side of the
  *  country from the middle of it. */
@@ -124,7 +139,6 @@ export const pickerText = {
     places: "Kraji",
     near: "V bližini",
     removeOrigin: "Odstrani izhodišče",
-    distance: "Približna zračna razdalja med kraji.",
     countsMatch: "Število živali upošteva filtre",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
     // An empty result with animals in shelters nobody picked (footer.tsx).
@@ -150,7 +164,6 @@ export const pickerText = {
     places: "Places",
     near: "Near",
     removeOrigin: "Remove starting point",
-    distance: "Approximate straight-line distance between towns.",
     countsMatch: "Counts follow your filters",
     zeroMatches: "No published animals match your selection.",
     matchesElsewhere: "Matches elsewhere",

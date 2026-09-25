@@ -49,17 +49,12 @@ function setQuery(next: string) {
   query = next;
   emit();
 }
+// The field's text only. A remembered place used to be written back into it
+// on the first read, so a returning visitor found their town typed in the
+// search box over the chip that already named it; the place is the chip's
+// alone now, and the field starts empty on every page.
 export function useNearbyQuery() {
-  const value = useSyncExternalStore(
-    subscribe,
-    // Either read may be the page's first, and the restore sets both values,
-    // so both ask for it before answering.
-    () => {
-      restoreChosenPlace();
-      return query;
-    },
-    () => "",
-  );
+  const value = useSyncExternalStore(subscribe, () => query, () => "");
   return [value, setQuery] as const;
 }
 // The town or postcode a visitor chose, kept in their own browser so the next
@@ -88,10 +83,7 @@ function restoreChosenPlace() {
   restored = true;
   try {
     const stored: unknown = JSON.parse(window.localStorage.getItem(CHOSEN_PLACE_KEY) ?? "null");
-    if (isChosenPlace(stored)) {
-      chosenPlace = stored;
-      query = stored.query;
-    }
+    if (isChosenPlace(stored)) chosenPlace = stored;
   } catch {
     // Unreadable or refused: start without a place, as before.
   }

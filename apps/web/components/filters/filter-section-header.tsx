@@ -8,7 +8,12 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import {
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -71,6 +76,27 @@ const BODY_EASE = [0.16, 1, 0.3, 1] as const;
  *  arriving address opened where it can be seen (filter-groups.tsx). */
 export const FOLD_SETTLE_MS = 350;
 
+// The clip exists for the fold alone. A settled body lets focus rings and
+// tooltips spill past its box again, so overflow is hidden while the body
+// grows or shrinks and visible once it has finished opening.
+//
+// "hidden" is in the open target too, where it looks as if it said nothing:
+// the body starts clipped and stays clipped while it grows. It makes the
+// value a motion value as the open starts. transitionEnd writes through
+// Motion's setTarget, and for a key that is not a motion value yet that
+// records the value and schedules no render (VisualElement.addValue, Motion
+// 13.2). So a section opened in the sidebar and then left alone kept
+// overflow: hidden on the page, and its rows lost the focus ring down both
+// sides, until an unrelated render wrote the value out; a pick anywhere in
+// the panel did, which is why the clip came and went.
+const FOLDED = { height: 0, opacity: 0, overflow: "hidden" } as const;
+const OPENED = {
+  height: "auto",
+  opacity: 1,
+  overflow: "hidden",
+  transitionEnd: { overflow: "visible" },
+} as const;
+
 /** The folding half shared by sidebar and sheet. Without a collapse contract
     the body stays open with no disclosure id, as plain lists require. */
 export function CollapsibleBody({
@@ -82,6 +108,26 @@ export function CollapsibleBody({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const open = collapse?.open ?? true;
+  // The body drawn in the fold's first render is already there: a section
+  // does not fold itself open on first paint, not while the sidebar hydrates
+  // and not while the sheet slides up. Every body after it unfolds, including
+  // this section's own once it has been folded. Adjusted during render rather
+  // than in an effect, the way CountRoll keeps its epoch.
+  //
+  // Said on the body, and not as the presence's initial={false} where it used
+  // to be. Motion hands that to every motion element under the fold rather
+  // than to the fold alone, and PresenceChild memoises it for as long as the
+  // body stays, so whatever mounted in the section later counted as present
+  // at first paint too and was written straight to the end of its mount
+  // animation. That was every one-shot built as a mount, the pick ripple,
+  // Doma imam's faces and the count roll: dead in Spol and Starost on the
+  // desktop, in every section the phone sheet mounted open (those two, and
+  // any the visitor had opened before, since the sheet mounts afresh on each
+  // open), and always in Barva and Dolžina dlake, whose bodies fold nothing
+  // and so were only ever first bodies. initial={false} on the body reaches
+  // the body and nothing under it.
+  const [openedAtMount, setOpenedAtMount] = useState(open);
+  if (openedAtMount && !open) setOpenedAtMount(false);
 
   return (
     <LazyMotion features={domAnimation}>
@@ -91,20 +137,14 @@ export function CollapsibleBody({
           and every motion component in the section renders again with it, a
           memoised one included. That was the whole panel's icons redrawn on
           each filter press, in the render the press's first frame waits for. */}
-      <AnimatePresence initial={false} presenceAffectsLayout={false}>
+      <AnimatePresence presenceAffectsLayout={false}>
         {open ? (
           <m.div
             key="body"
             id={collapse?.contentId}
-            // The clip exists for the fold alone. A settled body lets focus
-            // rings and tooltips spill past its box again.
-            initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-            animate={{
-              height: "auto",
-              opacity: 1,
-              transitionEnd: { overflow: "visible" },
-            }}
-            exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+            initial={openedAtMount ? false : FOLDED}
+            animate={OPENED}
+            exit={FOLDED}
             transition={
               shouldReduceMotion
                 ? { duration: 0 }

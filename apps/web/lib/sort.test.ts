@@ -58,6 +58,21 @@ describe("sortAnimals", () => {
     ).toEqual(["new", "old", "unknown"]);
   });
 
+  it("orders the wait by the found date or intakeBy where there is no intake date", () => {
+    const withFallbacks = [
+      ...animals,
+      { ...animal("found"), foundDate: "2022-06-17" },
+      { ...animal("by"), intakeBy: "2019-12-31" },
+    ];
+    expect(sortAnimals(withFallbacks).map(({ id }) => id)).toEqual([
+      "by",
+      "old",
+      "found",
+      "new",
+      "unknown",
+    ]);
+  });
+
   it("sorts known names using the selected locale and keeps unnamed animals last", () => {
     expect(sortAnimals(animals, "name", "sl").map(({ id }) => id)).toEqual([
       "new",

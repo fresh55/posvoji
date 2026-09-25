@@ -1,4 +1,4 @@
-import type { AnimalFields } from "@/lib/animal";
+import { stayStart, type AnimalFields } from "@/lib/animal";
 import { ageInMonths } from "./filters";
 import { cityAt, distanceKm, type LatLon } from "./geo";
 import type { Locale } from "./i18n";
@@ -80,9 +80,10 @@ export function effectiveSort(
   return sort;
 }
 
-// Unknown values always follow known ones. In particular, firstSeenAt is not a
-// substitute for intakeDate: it says when Posvoji.si found the listing, not
-// when the animal entered the shelter.
+// Unknown values always follow known ones. The wait is ordered by stayStart,
+// the date the V zavetišču filter reads. firstSeenAt is not a substitute: it
+// says when Posvoji.si found the listing, not when the animal entered the
+// shelter.
 function compareOptional(
   left: string | undefined,
   right: string | undefined,
@@ -170,10 +171,10 @@ export function sortAnimals<T extends AnimalFields>(
     switch (order) {
       case "longest-in-shelter":
         // ISO dates sort chronologically as strings; oldest means longest.
-        compared = compareOptional(left.intakeDate, right.intakeDate, 1);
+        compared = compareOptional(stayStart(left)?.date, stayStart(right)?.date, 1);
         break;
       case "newest-arrivals":
-        compared = compareOptional(left.intakeDate, right.intakeDate, -1);
+        compared = compareOptional(stayStart(left)?.date, stayStart(right)?.date, -1);
         break;
       case "youngest":
         compared = compareOptionalNumber(

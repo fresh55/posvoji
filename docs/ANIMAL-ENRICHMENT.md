@@ -94,6 +94,25 @@ months after the earlier of the intake and finding dates, and at once when
 the animal has neither, because a listing keeps calling an animal a kitten
 long after it has grown.
 
+## Time in the shelter
+
+V zavetišču reads the intake date. Where a listing has none, it reads the
+found date, since a found animal is brought in that day: Zonzani numbers dogs
+and cats in one register, and its dogs' found dates fall between its cats'
+intake dates in that order. Where there is neither, it reads `intakeBy`.
+
+`intakeBy` is the last day of the month, season or year the shelter names for
+the arrival ("od maja 2025" is 2025-05-31, "pozimi 2022" is 2023-02-28, "v
+letu 2019" is 2019-12-31), and never later than the day the page was read. A
+wait read from it is a floor, so the dialog and the card say "vsaj", and a
+threshold is passed only once the latest possible arrival has passed it. The
+Mačji dol parser sets it; it is not a claim field.
+
+Not used: a post's publish date, because sites reuse old posts for new animals
+(Mačji dol's Vinko and Oniks share one), a date from a text about a returned
+animal, which belongs to the earlier stay, and `firstSeenAt`, which is when
+this site found the listing.
+
 ## Verification and release
 
 Run `pnpm check` before release. Enrichment tests cover stale evidence, permission,

@@ -23,6 +23,7 @@ export interface DetailFacts {
   status?: AdoptionStatus;
   sex?: Sex;
   intakeDate?: string;
+  intakeBy?: string;
   description?: string;
   goodWith?: AnimalGoodWith;
   energy?: EnergyLevel;
@@ -188,7 +189,8 @@ function isValidIsoDate(iso: string): boolean {
 
 // Mačji dol usually states intake only approximately in prose (for example
 // "od maja 2025" or "pozimi 2022"). Animal.intakeDate is an exact ISO date,
-// so those forms must remain unset. Only a complete nearby date is accepted.
+// so those forms go to intakeBy instead (parseIntakeBy below). Only a
+// complete nearby date is accepted here.
 export function parseIntakeDate(text: string): string | undefined {
   const normalized = text.normalize("NFC").replace(/\s+/g, " ");
   const patterns = [
@@ -203,6 +205,94 @@ export function parseIntakeDate(text: string): string | undefined {
     if (isValidIsoDate(iso)) return iso;
   }
   return undefined;
+}
+
+// The words that tie a period to the arrival. "Najden" counts: a cat found on
+// the street is brought in the same day or close to it.
+const ARRIVAL =
+  /(?<!\p{L})(?:prišel|prišl\p{L}*|sprejet\p{L}*|sprejel\p{L}*|najden\p{L}*|pri nas od|v zavetišču od|v mačjem dolu od)(?!\p{L})/giu;
+// A text about a cat that came back names the first stay's date, which says
+// nothing about the current one ("v maju 2014 ... zopet pri nas").
+const RETURN = /(?<!\p{L})(?:zopet|ponovno|vrnil\p{L}*|vrnjen\p{L}*)(?!\p{L})/iu;
+
+const MONTHS: Record<string, number> = {};
+[
+  ["januar", "januarja", "januarju"],
+  ["februar", "februarja", "februarju"],
+  ["marec", "marca", "marcu"],
+  ["april", "aprila", "aprilu"],
+  ["maj", "maja", "maju"],
+  ["junij", "junija", "juniju"],
+  ["julij", "julija", "juliju"],
+  ["avgust", "avgusta", "avgustu"],
+  ["september", "septembra", "septembru"],
+  ["oktober", "oktobra", "oktobru"],
+  ["november", "novembra", "novembru"],
+  ["december", "decembra", "decembru"],
+].forEach((forms, index) => {
+  for (const form of forms) MONTHS[form] = index + 1;
+});
+
+// The last month each season can mean. Winter is the one that crosses a year:
+// "pozimi 2022" may be January 2022 or the winter that ends in February 2023,
+// and only the later reading is a safe floor.
+const SEASON_END: Record<string, { month: number; nextYear: boolean }> = {
+  spomladi: { month: 5, nextYear: false },
+  pomladi: { month: 5, nextYear: false },
+  poleti: { month: 8, nextYear: false },
+  jeseni: { month: 11, nextYear: false },
+  pozimi: { month: 2, nextYear: true },
+};
+
+const PERIOD = new RegExp(
+  `(?<!\\p{L})(?:(?<month>${Object.keys(MONTHS).join("|")})|(?<season>${Object.keys(SEASON_END).join("|")})|(?<year>v letu|leta))\\s+(?<value>\\d{4})(?!\\d)`,
+  "giu",
+);
+
+function lastDayOf(year: number, month: number): string {
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+}
+
+// Mačji dol names the arrival as a month, a season or a year ("od maja
+// 2025", "pozimi 2022", "V letu 2019 ... sprejet"). This is the last day that
+// period allows, so a wait read from it is never longer than the real one.
+// The period taken is the one nearest to an arrival word in the same
+// sentence; a sentence with no such word says when something else happened.
+export function parseIntakeBy(text: string): string | undefined {
+  const normalized = text.normalize("NFC").replace(/\s+/g, " ");
+  if (RETURN.test(normalized)) return undefined;
+  // A full stop ends a sentence after a word or a year, never after the day
+  // of a date ("za 1. maj 2023").
+  for (const sentence of normalized.split(/(?<=(?:\p{L}|\d{4})[.!?])\s+/u)) {
+    const arrivals = [...sentence.matchAll(ARRIVAL)].map((match) => match.index);
+    if (arrivals.length === 0) continue;
+    let nearest: { distance: number; iso: string } | undefined;
+    for (const match of sentence.matchAll(PERIOD)) {
+      const { month, season, value } = match.groups!;
+      const year = Number(value);
+      let iso: string;
+      if (month) iso = lastDayOf(year, MONTHS[month.toLowerCase()]!);
+      else if (season) {
+        const end = SEASON_END[season.toLowerCase()]!;
+        iso = lastDayOf(end.nextYear ? year + 1 : year, end.month);
+      } else iso = `${year}-12-31`;
+      const distance = Math.min(
+        ...arrivals.map((arrival) => Math.abs(arrival - match.index)),
+      );
+      if (!nearest || distance < nearest.distance) nearest = { distance, iso };
+    }
+    if (nearest) return nearest.iso;
+  }
+  return undefined;
+}
+
+// A period that has not ended yet ("jeseni 2026" read in September) ends
+// past the day the page was read, and the listing already shows the cat in
+// the shelter on that day, so the read is the tighter bound.
+function intakeByAt(intakeBy: string | undefined, fetchedAt: string): string | undefined {
+  if (!intakeBy) return undefined;
+  const readOn = fetchedAt.slice(0, 10);
+  return intakeBy > readOn ? readOn : intakeBy;
 }
 
 /**
@@ -262,6 +352,7 @@ export function parseDetail(html: string): DetailFacts {
     status,
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
     intakeDate: description ? parseIntakeDate(description) : undefined,
+    intakeBy: description ? parseIntakeBy(description) : undefined,
     description,
     goodWith: parseGoodWith($),
     energy: energyRaw ? parseEnergy(energyRaw) : undefined,
@@ -330,6 +421,7 @@ const provider: AdoptionProvider = {
       species: "cat",
       sex: facts.sex,
       intakeDate: facts.intakeDate,
+      intakeBy: facts.intakeDate ? undefined : intakeByAt(facts.intakeBy, raw.fetchedAt),
       goodWith: facts.goodWith,
       energy: facts.energy,
       adoptionRequirements: facts.adoptionRequirements,

@@ -1,6 +1,6 @@
 import type { LabelKey } from "@/lib/label-messages";
 import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
-import { adoptableNow, type AnimalFields } from "@/lib/animal";
+import { adoptableNow, stayStart, type AnimalFields } from "@/lib/animal";
 import { namesSeveralAnimals } from "@/lib/animal-name";
 import type { Locale } from "@/lib/i18n";
 import { translateLabel as translate } from "@/lib/label-messages";
@@ -455,14 +455,50 @@ export function monthsInShelter(
 // so they cannot disagree about who counts as waiting long.
 export const LONG_STAY_MONTHS = 36;
 
-// The wait in months of an animal that has waited long and is actually up
-// for adoption, or undefined.
-export function longStayMonths(animal: AnimalFields, now: Date): number | undefined {
+/** The wait in whole months, and whether it is a floor: read from intakeBy,
+ *  the latest day the shelter's words allow, so the real wait may be longer. */
+export type Stay = { months: number; floor: boolean };
+
+/** This animal's wait from stayStart's date, or undefined where there is none
+ *  to read. */
+export function stayOf(animal: AnimalFields, now: Date): Stay | undefined {
+  const start = stayStart(animal);
+  if (!start) return undefined;
+  const months = monthsInShelter(start.date, now);
+  if (months === undefined) return undefined;
+  if (!start.floor) return { months, floor: false };
+  // monthsInShelter counts calendar months and ignores the day, which a
+  // floor cannot afford: from 2023-09-30 it says 36 on 2026-09-25, and "vsaj
+  // 3 leta" would be five days early. Whole months only, as the filter reads.
+  const whole = now.getUTCDate() < Number(start.date.slice(8, 10)) ? months - 1 : months;
+  // "At least less than a month" says nothing.
+  return whole > 0 ? { months: whole, floor: true } : undefined;
+}
+
+// A floor, said the way each language says it: Slovenian in a word, English
+// on the number. "Waiting at least 4 years" also overran the card's mark in a
+// 320px column, where "Waiting 4+ years" fits.
+const FLOOR_DURATION: Record<Locale, (months: number) => string> = {
+  sl: (months) => `vsaj ${ageLabel(months, "sl")}`,
+  en: (months) => ageLabel(months, "en", "+ "),
+};
+
+/** "3 leta", or "vsaj 3 leta" where the wait is a floor. Every sentence the
+ *  duration goes into reads either way. */
+export function stayDuration(stay: Stay, locale: Locale): string {
+  return stay.floor
+    ? FLOOR_DURATION[locale](stay.months)
+    : ageLabel(stay.months, locale);
+}
+
+// The wait of an animal that has waited long and is actually up for
+// adoption, or undefined.
+export function longStay(animal: AnimalFields, now: Date): Stay | undefined {
   // Reserved and held animals are not waiting for this visitor's decision.
-  if (!animal.intakeDate || !adoptableNow(animal.status)) return undefined;
-  const months = monthsInShelter(animal.intakeDate, now);
-  if (months === undefined || months < LONG_STAY_MONTHS) return undefined;
-  return months;
+  if (!adoptableNow(animal.status)) return undefined;
+  const stay = stayOf(animal, now);
+  if (!stay || stay.months < LONG_STAY_MONTHS) return undefined;
+  return stay;
 }
 
 /** How loudly a surface states the wait: a plain fact, or the plea. */
@@ -477,7 +513,7 @@ export type StayTone = "quiet" | "plea";
  * falls and which of the four plea sentences to use. They had already drifted
  * apart once, so the rule lives here and a surface only dresses the answer.
  *
- * The date is parsed once, which is why this does not call longStayMonths.
+ * The date is parsed once, which is why this does not call longStay.
  */
 export function stayStatement(
   animal: AnimalFields,
@@ -485,10 +521,11 @@ export function stayStatement(
   now: Date,
 ): { tone: StayTone; text: string } | undefined {
   // An adopted animal has left, so its stay is history and says nothing.
-  if (!animal.intakeDate || animal.status === "adopted") return undefined;
-  const months = monthsInShelter(animal.intakeDate, now);
-  if (months === undefined) return undefined;
-  const duration = ageLabel(months, locale);
+  if (animal.status === "adopted") return undefined;
+  const stay = stayOf(animal, now);
+  if (!stay) return undefined;
+  const { months } = stay;
+  const duration = stayDuration(stay, locale);
 
   if (months < LONG_STAY_MONTHS || !adoptableNow(animal.status)) {
     return { tone: "quiet", text: translate(locale, "factStayValue", { duration }) };

@@ -1,5 +1,5 @@
 import type { LifeStage, Species } from "@posvoji/schema";
-import type { AnimalFields } from "@/lib/animal";
+import { stayStart, type AnimalFields } from "@/lib/animal";
 import {
   TAB_OF_SPECIES,
 } from "@/lib/species";
@@ -331,7 +331,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     energy.push(animal.energy);
     coatColor.push(filterColour(animal.coatColor));
     coatLength.push(animal.coatLength);
-    intakeStart.push(intakeStartOf(animal.intakeDate));
+    intakeStart.push(intakeStartOf(stayStart(animal)?.date));
     shelter.push(animal.shelter.id);
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
@@ -408,7 +408,9 @@ function ageColumn(index: FilterIndex, nowMonths: number): Column<AgeGroup> {
 
 /** The Čaka na dom thresholds each animal has passed by this day. undefined
  *  where there is no date to read, which is the question's one missing
- *  answer: an empty list is a known date under six months. */
+ *  answer: an empty list is a known date under six months. The date is
+ *  stayStart's, so a floor (intakeBy) passes a threshold only once its latest
+ *  possible arrival has: it can read "not yet" a few weeks late, never "more". */
 function waitingColumn(
   index: FilterIndex,
   today: number | undefined,

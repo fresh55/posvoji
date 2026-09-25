@@ -6,11 +6,13 @@ import {
   byShelterName,
   LONG_STAY_MONTHS,
   META_SEPARATOR,
-  longStayMonths,
+  longStay,
   registerDateLabel,
   shelterChipLabel,
   shelterListLabel,
   shelterSelectionLabel,
+  stayDuration,
+  stayOf,
 } from "./labels";
 
 const NOW = new Date("2026-08-15T00:00:00Z");
@@ -179,7 +181,7 @@ describe("the card's meta line on the species tabs", () => {
   });
 });
 
-describe("longStayMonths", () => {
+describe("longStay", () => {
   // Months, as an intake date this many whole months before NOW.
   function intake(months: number): string {
     const date = new Date(NOW);
@@ -189,23 +191,59 @@ describe("longStayMonths", () => {
 
   it("starts at the long-stay threshold and keeps counting past it", () => {
     expect(
-      longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS - 1) }), NOW),
+      longStay(animal({ intakeDate: intake(LONG_STAY_MONTHS - 1) }), NOW),
     ).toBeUndefined();
     expect(
-      longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS) }), NOW),
-    ).toBe(LONG_STAY_MONTHS);
+      longStay(animal({ intakeDate: intake(LONG_STAY_MONTHS) }), NOW),
+    ).toEqual({ months: LONG_STAY_MONTHS, floor: false });
     expect(
-      longStayMonths(animal({ intakeDate: intake(LONG_STAY_MONTHS * 2) }), NOW),
-    ).toBe(LONG_STAY_MONTHS * 2);
+      longStay(animal({ intakeDate: intake(LONG_STAY_MONTHS * 2) }), NOW),
+    ).toEqual({ months: LONG_STAY_MONTHS * 2, floor: false });
   });
 
   it("says nothing about an animal the visitor cannot act on", () => {
     expect(
-      longStayMonths(
+      longStay(
         animal({ intakeDate: intake(72), status: "adopted" }),
         NOW,
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("stayOf", () => {
+  it("reads the intake date, then the found date, then intakeBy as a floor", () => {
+    expect(
+      stayOf(animal({ intakeDate: "2024-08-01", foundDate: "2022-08-01", intakeBy: "2020-12-31" }), NOW),
+    ).toEqual({ months: 24, floor: false });
+    expect(
+      stayOf(animal({ foundDate: "2022-08-01", intakeBy: "2020-12-31" }), NOW),
+    ).toEqual({ months: 48, floor: false });
+    // 2020-12-31 to 2026-08-15 is 67 whole months and 15 days.
+    expect(stayOf(animal({ intakeBy: "2020-12-31" }), NOW)).toEqual({
+      months: 67,
+      floor: true,
+    });
+    expect(stayOf(animal({}), NOW)).toBeUndefined();
+  });
+
+  it("counts a floor in whole months, so vsaj is never early", () => {
+    const day = new Date("2026-09-25T12:00:00Z");
+    expect(stayOf(animal({ intakeBy: "2023-09-30" }), day)?.months).toBe(35);
+    expect(stayOf(animal({ intakeBy: "2023-09-25" }), day)?.months).toBe(36);
+    // An exact date keeps the calendar count the rest of the site uses.
+    expect(stayOf(animal({ intakeDate: "2023-09-30" }), day)?.months).toBe(36);
+  });
+
+  it("says a floor is one", () => {
+    expect(stayDuration({ months: 40, floor: true }, "sl")).toBe("vsaj 3 leta");
+    expect(stayDuration({ months: 40, floor: true }, "en")).toBe("3+ years");
+    expect(stayDuration({ months: 40, floor: false }, "sl")).toBe("3 leta");
+  });
+
+  it("says nothing for a floor under a month", () => {
+    expect(stayOf(animal({ intakeBy: "2026-07-31" }), NOW)).toBeUndefined();
+    expect(stayOf(animal({ intakeBy: "2026-07-15" }), NOW)).toEqual({ months: 1, floor: true });
   });
 });
 

@@ -30,12 +30,12 @@ import {
 } from "@/lib/card-grid";
 import type { SpeciesFilter } from "@/lib/filters";
 import {
-  ageLabel,
   animalMetaParts,
-  longStayMonths,
+  longStay,
   META_DOT_CLASS,
   META_SEPARATOR,
   shelterChipLabel,
+  stayDuration,
 } from "@/lib/labels";
 import { shelterPath } from "@/lib/shelter-path";
 import type { AnimalSort } from "@/lib/sort";
@@ -231,7 +231,7 @@ export const AnimalCard = memo(function AnimalCard({
       // the retry.
       .catch(() => {});
   }
-  const waitMonths = longStayMonths(animal, reference);
+  const wait = longStay(animal, reference);
   // The animal's own page, which is also what the dialog writes to the
   // address bar when this card is clicked. Filters are deliberately left out:
   // the href is written at build time, where the visitor's filters do not
@@ -680,7 +680,7 @@ export const AnimalCard = memo(function AnimalCard({
         overlay
         className="absolute left-2 top-2 max-[359px]:px-1.5"
       />
-      {showWaitMark && waitMonths !== undefined && (
+      {showWaitMark && wait !== undefined && (
         // On the photo, opposite the counter, for the same reason the
         // status is: it is a flag about the animal's situation, not one of
         // the animal's own facts. Off the text block it stops competing
@@ -716,7 +716,7 @@ export const AnimalCard = memo(function AnimalCard({
         // Top right, opposite the status. The bottom edge belongs to the
         // gallery dots now, and on a phone card the two met in the middle.
         <Badge variant="overlay-quiet" className="absolute right-2 top-2">
-          {t("longStayMark", { duration: ageLabel(waitMonths, locale) })}
+          {t("longStayMark", { duration: stayDuration(wait, locale) })}
         </Badge>
       )}
     </article>

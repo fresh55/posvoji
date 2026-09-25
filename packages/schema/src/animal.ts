@@ -197,6 +197,11 @@ export const Animal = z.strictObject({
   status: AdoptionStatus,
 
   intakeDate: z.iso.date().optional(),
+  // The latest day the shelter's own words allow for the arrival, where they
+  // name only a month, a season or a year ("od maja 2025" is 2025-05-31). A
+  // wait read from it is a floor. intakeDate wins, and a provider sets this
+  // only where there is no exact date to set.
+  intakeBy: z.iso.date().optional(),
   foundDate: z.iso.date().optional(),
   originMunicipality: z.string().optional(),
 

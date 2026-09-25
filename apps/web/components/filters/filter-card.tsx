@@ -98,12 +98,24 @@ const cardVariants = cva(
     // paint differently and the only thing selection decides. A resting card
     // needs no compound of its own: nothing upstream is spelled against
     // data-[state=off], so the layout's own ground stands unopposed.
+    //
+    // The tile answers aria-pressed by name as well, for the finger's sake.
+    // active:bg-muted/40 in the sheet layout is a pseudo-class, which outranks
+    // a bare bg-brand, and Chrome holds :active on a tapped tile until well
+    // after the tap has landed. So a plain-button tile (Velikost, Energija,
+    // Doma imam, Zdravje, Lahko ponudim, Dolžina) stayed grey under the
+    // finger: measured on a 390px phone, its green started 258-276ms after
+    // the tap and was full at about 340ms, where Spol and Starost, whose
+    // toggleVariants spell their fill against aria-pressed and data-state,
+    // started at 107-119ms. The attribute selector weighs what :active
+    // weighs and Tailwind emits it later, so the fill wins as soon as the
+    // press is recorded.
     compoundVariants: [
       {
         layout: "sheet",
         selected: true,
         class:
-          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
+          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand aria-pressed:border-brand-border aria-pressed:bg-brand data-[state=on]:bg-brand",
       },
       {
         layout: "sidebar",

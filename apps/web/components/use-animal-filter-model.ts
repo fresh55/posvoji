@@ -9,6 +9,7 @@ import {
   chipGains,
   chipKey,
   facetCounts,
+  FILTER_FACETS,
   goodWithCounts,
   goodWithOptions,
   groupOptions,
@@ -23,6 +24,7 @@ import {
   visibleGroups,
   valueChipLabel,
   visibleToggles,
+  type FilterFacet,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -282,49 +284,56 @@ export function useAnimalFilterModel({
   // Each chip carries the facet that set it, because the row groups by facet
   // and draws one icon per facet: flat, they were nine questions' answers
   // wearing the same pill.
-  const chips: Chip[] = [
-    ...GROUPS.flatMap((group) =>
-      filters[group].map((value) => ({
-        key: chipKey(group, value),
-        facet: group,
-        value,
-        label:
-          group === "shelter"
-            ? shelterChipLabel(shelterLabels.get(value) ?? value)
-            : valueChipLabel(group, value, locale),
-        gain: chipGain.get(chipKey(group, value)),
-        onRemove: () => toggle(group, value),
-      })),
-    ),
-    ...filters.toggles.map((key) => ({
-      key: chipKey("toggles", key),
-      facet: "toggles" as const,
-      value: key,
-      label: toggleLabel(key, locale),
-      gain: chipGain.get(chipKey("toggles", key)),
-      onRemove: () => toggleProperty(key),
-    })),
-    // Not the card label: on a row of chips "Psi" would read as the species
-    // tab, so these name the household instead.
-    ...filters.goodWith.map((key) => ({
-      key: chipKey("goodWith", key),
-      facet: "goodWith" as const,
-      value: key,
-      label: goodWithChipLabel(key, locale),
-      gain: chipGain.get(chipKey("goodWith", key)),
-      onRemove: () => toggleGoodWith(key),
-    })),
-    // The row's words, in the nominative where the row's own only reads
-    // after the section heading.
-    ...filters.care.map((key) => ({
-      key: chipKey("care", key),
-      facet: "care" as const,
-      value: key,
-      label: valueChipLabel("care", key, locale),
-      gain: chipGain.get(chipKey("care", key)),
-      onRemove: () => toggleCare(key),
-    })),
-  ];
+  //
+  // In FILTER_FACETS order, the order the panel asks in.
+  const chipsOf = (facet: FilterFacet): Chip[] => {
+    switch (facet) {
+      case "toggles":
+        return filters.toggles.map((key) => ({
+          key: chipKey("toggles", key),
+          facet,
+          value: key,
+          label: toggleLabel(key, locale),
+          gain: chipGain.get(chipKey("toggles", key)),
+          onRemove: () => toggleProperty(key),
+        }));
+      // Not the card label: on a row of chips "Psi" would read as the species
+      // tab, so these name the household instead.
+      case "goodWith":
+        return filters.goodWith.map((key) => ({
+          key: chipKey("goodWith", key),
+          facet,
+          value: key,
+          label: goodWithChipLabel(key, locale),
+          gain: chipGain.get(chipKey("goodWith", key)),
+          onRemove: () => toggleGoodWith(key),
+        }));
+      // The row's words, in the nominative where the row's own only reads
+      // after the section heading.
+      case "care":
+        return filters.care.map((key) => ({
+          key: chipKey("care", key),
+          facet,
+          value: key,
+          label: valueChipLabel("care", key, locale),
+          gain: chipGain.get(chipKey("care", key)),
+          onRemove: () => toggleCare(key),
+        }));
+      default:
+        return filters[facet].map((value) => ({
+          key: chipKey(facet, value),
+          facet,
+          value,
+          label:
+            facet === "shelter"
+              ? shelterChipLabel(shelterLabels.get(value) ?? value)
+              : valueChipLabel(facet, value, locale),
+          gain: chipGain.get(chipKey(facet, value)),
+          onRemove: () => toggle(facet, value),
+        }));
+    }
+  };
+  const chips = FILTER_FACETS.flatMap(chipsOf);
 
   const hasSidebar =
     groups.length > 0 ||

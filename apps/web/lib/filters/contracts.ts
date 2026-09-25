@@ -97,7 +97,7 @@ export const EMPTY_FILTERS: Filters = {
   care: [],
 };
 
-// V zavetišču answers with thresholds, each inside the one before it, so
+// Čaka na dom answers with thresholds, each inside the one before it, so
 // two picks ask exactly what the wider one asks alone and the narrower tick
 // would only sit there doing nothing. These groups take one answer at a time.
 export const SINGLE_CHOICE_GROUPS: readonly MultiGroup[] = ["waiting"];
@@ -110,12 +110,20 @@ export const GROUPS: MultiGroup[] = [
 /** All filter categories, used to group and label active chips. */
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
-export const FILTER_FACETS: FilterFacet[] = [
-  ...GROUPS,
-  "toggles",
-  "goodWith",
-  "care",
-];
+/** The order the panel asks its questions in, and the order of the active
+ *  filters row. */
+export const FILTER_FACETS = [
+  "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
+  "toggles", "goodWith", "care", "waiting",
+] as const satisfies readonly FilterFacet[];
+
+// A facet missing from FILTER_FACETS fails to compile here.
+const everyFacetListed: [
+  Exclude<FilterFacet, (typeof FILTER_FACETS)[number]>,
+] extends [never]
+  ? true
+  : never = true;
+void everyFacetListed;
 
 // city is the shelter's town, kept as its own field rather than a generic
 // sublabel because the map places a marker from it.

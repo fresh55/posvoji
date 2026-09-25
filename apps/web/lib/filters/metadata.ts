@@ -40,10 +40,9 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energija",
     coatColor: "Barva",
     coatLength: "Dolžina dlake",
-    // "V zavetišču: nad 1 leto", the way the two household sections read as
-    // sentences. "Čas v zavetišču" with its info mark and the answered mark
-    // ran 9.6px into the Ponastavi beside it in the 224px sidebar.
-    waiting: "V zavetišču",
+    // Names the wait and fits beside Ponastavi in the 224px sidebar, where
+    // "Čas v zavetišču" did not.
+    waiting: "Čaka na dom",
     shelter: "Zavetišče",
   },
   en: {
@@ -53,7 +52,9 @@ const GROUP_LABELS: Record<Locale, Record<MultiGroup, string>> = {
     energy: "Energy",
     coatColor: "Colour",
     coatLength: "Coat length",
-    waiting: "In the shelter",
+    // Not "Waiting for a home", which does not fit beside Reset in the 224px
+    // sidebar.
+    waiting: "Waiting",
     shelter: "Shelter",
   },
 };
@@ -241,10 +242,14 @@ export const FILTER_METADATA = {
   // no longer fit the sidebar's label slot and broke over two lines. The chip
   // has no section heading to lean on, so it says what the card's badge says
   // ("Čaka 4 leta").
+  //
+  // A no-break space ties each number to its unit, so a label that wraps in
+  // the phone sheet breaks as "Nad / 6 mesecev" and never inside the
+  // duration. The slugs keep their hyphens.
   waiting: [
-    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6 mesecev", en: "Over 6 months" }, chip: { sl: "Čaka nad 6 mesecev", en: "Waiting over 6 months" } },
-    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1 leto", en: "Over 1 year" }, chip: { sl: "Čaka nad 1 leto", en: "Waiting over 1 year" } },
-    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Nad 3 leta", en: "Over 3 years" }, chip: { sl: "Čaka nad 3 leta", en: "Waiting over 3 years" } },
+    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6\u00a0mesecev", en: "Over 6\u00a0months" }, chip: { sl: "Čaka nad 6\u00a0mesecev", en: "Waiting over 6\u00a0months" } },
+    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1\u00a0leto", en: "Over 1\u00a0year" }, chip: { sl: "Čaka nad 1\u00a0leto", en: "Waiting over 1\u00a0year" } },
+    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Nad 3\u00a0leta", en: "Over 3\u00a0years" }, chip: { sl: "Čaka nad 3\u00a0leta", en: "Waiting over 3\u00a0years" } },
   ],
   sex: [
     { value: "male", slug: "samec", labels: { sl: "Samec", en: "Male" } },

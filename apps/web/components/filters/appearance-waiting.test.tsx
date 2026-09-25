@@ -53,8 +53,8 @@ describe.each(["sidebar", "sheet"] as const)("appearance and waiting in %s", lay
     expect(onToggle).toHaveBeenLastCalledWith("coatColor", "orange-white");
     fireEvent.click(screen.getByRole("button", { name: /^Dolga,/ }));
     expect(onToggle).toHaveBeenLastCalledWith("coatLength", "long");
-    openFilterSection("V zavetišču");
-    fireEvent.click(screen.getByRole("button", { name: /^Nad 1 leto,/ }));
+    openFilterSection("Čaka na dom");
+    fireEvent.click(screen.getByRole("button", { name: /^Nad 1\sleto,/ }));
     expect(onToggle).toHaveBeenLastCalledWith("waiting", "over-1-year");
     openFilterSection("Lahko ponudim");
     fireEvent.click(screen.getByRole("button", { name: /^Potrpežljivost,/ }));

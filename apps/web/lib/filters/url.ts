@@ -201,7 +201,7 @@ export function parseFilters(search: string): Filters {
   // No second dedupe below: paramValues has already made the slugs unique, and
   // every slug-to-value lookup here is one-to-one.
   // A single-choice group keeps the first of its answers in the order the
-  // metadata lists them. For V zavetišču that is the widest threshold, which
+  // metadata lists them. For Čaka na dom that is the widest threshold, which
   // is all an address from before carrying two ever returned.
   const values = (group: MultiGroup): string[] => {
     const picked = paramValues(params, PARAM_NAMES[group])

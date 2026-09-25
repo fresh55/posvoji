@@ -547,7 +547,7 @@ describe("the active filters row", () => {
           label: `${facet}${n}`,
           // The very last pill is the one worth dropping, and it sits well
           // past the eighth.
-          gain: facet === "care" && n === 1 ? 9 : 0,
+          gain: facet === "waiting" && n === 1 ? 9 : 0,
         }),
       ),
     );
@@ -555,9 +555,9 @@ describe("the active filters row", () => {
 
     expect(screen.queryByRole("button", { name: /Show \d+ more/ })).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Remove filter care1: +9 animals" }),
+      screen.getByRole("button", { name: "Remove filter waiting1: +9 animals" }),
     ).toBeTruthy();
-    expect(pillOf("care1").textContent).toContain("+9");
+    expect(pillOf("waiting1").textContent).toContain("+9");
   });
 
   it("hands focus onward when the key that removes takes the row with it", () => {

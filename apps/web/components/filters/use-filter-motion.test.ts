@@ -384,9 +384,14 @@ describe("waitThen", () => {
 
   // The toes and the dust mount with the gesture, so they have nowhere else
   // to start from.
-  it("holds the first keyframe without a settle, even with no wait", () => {
-    const { keyframes } = waitThen(0, [0, 0.4, 0], { duration: 0.2 });
+  it("starts on the first keyframe without a settle, even with no wait", () => {
+    const { keyframes, transition } = waitThen(0, [0, 0.4, 0], { duration: 0.2 });
 
-    expect(keyframes).toEqual([0, 0, 0.4, 0]);
+    expect(keyframes).toEqual([0, 0.4, 0]);
+    expect(transition).toEqual({
+      duration: 0.2,
+      times: [0, 0.5, 1],
+      ease: ["easeOut", "easeOut"],
+    });
   });
 });

@@ -1316,20 +1316,23 @@ describe("the long-stay mark in the grid", () => {
     ...entry,
     intakeDate: "2018-01-01",
   }));
+  // The mark reads "Čaka 8 let". The filter heading beside the grid is
+  // "Čaka na dom", so the match is the mark's own shape.
+  const MARK = /^Čaka [0-9]/;
 
   it("leaves the mark off under the order that already tells the wait", () => {
     // The default sort is longest in shelter, so the mark would be on every
     // card in the list, saying what the order has already said.
     renderGrid(WAITING);
 
-    expect(screen.queryByText(/Čaka/)).toBeNull();
+    expect(screen.queryByText(MARK)).toBeNull();
   });
 
   it("draws it again under any other order", () => {
     window.history.replaceState(null, "", "/?razvrsti=novi");
     renderGrid(WAITING);
 
-    expect(screen.getAllByText(/Čaka/)).toHaveLength(WAITING.length);
+    expect(screen.getAllByText(MARK)).toHaveLength(WAITING.length);
   });
 });
 

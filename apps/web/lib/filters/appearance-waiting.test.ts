@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, valueChipLabel,
+  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, groupOptions, valueChipLabel,
   parseFilters, serializeFilters, toggleGroupValue, visibleGroups, waitingGroups,
-  type Filters,
+  type Filters, type WaitingGroup,
 } from "../filters";
 
 const now = new Date("2026-09-21T12:00:00Z");
@@ -162,8 +162,33 @@ describe("coat length chips", () => {
   });
 
   it("say what a threshold is a wait of, the way the card's badge does", () => {
-    expect(valueChipLabel("waiting", "over-1-year", "sl")).toBe("Čaka nad 1 leto");
-    expect(valueChipLabel("waiting", "over-6-months", "en")).toBe("Waiting over 6 months");
+    expect(valueChipLabel("waiting", "over-1-year", "sl")).toBe("Čaka nad 1\u00a0leto");
+    expect(valueChipLabel("waiting", "over-6-months", "en")).toBe("Waiting over 6\u00a0months");
+  });
+});
+
+// The phone sheet's tiles wrap "Nad 6 mesecev" at 320px and 360px, and the
+// break belongs between "Nad" and the duration, never inside it.
+describe("waiting labels", () => {
+  const values: WaitingGroup[] = ["over-6-months", "over-1-year", "over-3-years"];
+
+  it.each(["sl", "en"] as const)("tie each number to its unit in %s", (locale) => {
+    const labels = [
+      ...groupOptions("waiting", [], locale).map(({ label }) => label),
+      ...values.map((value) => valueChipLabel("waiting", value, locale)),
+    ];
+    expect(labels).toHaveLength(6);
+    for (const label of labels) {
+      expect(label).toMatch(/ \d\u00a0\p{L}+$/u);
+    }
+  });
+
+  it("leave the slugs as they were", () => {
+    expect(
+      values.map((value) =>
+        new URLSearchParams(serializeFilters({ ...EMPTY_FILTERS, waiting: [value] })).get("cakanje"),
+      ),
+    ).toEqual(["nad-6-mesecev", "nad-1-leto", "nad-3-leta"]);
   });
 });
 

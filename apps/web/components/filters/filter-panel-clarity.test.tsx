@@ -84,17 +84,17 @@ function show({
   return { onToggle, onToggleManyProperties };
 }
 
-describe("V zavetišču takes one threshold at a time", () => {
+describe("Čaka na dom takes one threshold at a time", () => {
   it.each(["sidebar", "sheet"] as const)("and says so with a round mark in the %s", (layout) => {
     show({
       layout,
       groups: ["waiting", "coatLength"],
       counts: { waiting: [["over-1-year", 4]], coatLength: [["long", 2]] },
     });
-    openFilterSection("V zavetišču");
+    openFilterSection("Čaka na dom");
     const mark = (name: RegExp) =>
       screen.getByRole("button", { name }).querySelector("span[aria-hidden].border");
-    expect(mark(/^Nad 1 leto,/)?.classList.contains("rounded-full")).toBe(true);
+    expect(mark(/^Nad 1\sleto,/)?.classList.contains("rounded-full")).toBe(true);
     // A section whose answers add up keeps the tick box.
     openFilterSection("Videz");
     expect(mark(/^Dolga,/)?.classList.contains("rounded-sm")).toBe(true);
@@ -102,11 +102,11 @@ describe("V zavetišču takes one threshold at a time", () => {
 
   it("says so to a screen reader on every row, which hears nothing of the mark", () => {
     show({ groups: ["waiting"], counts: { waiting: [["over-1-year", 4]] } });
-    openFilterSection("V zavetišču");
-    const row = screen.getByRole("button", { name: /^Nad 1 leto,/ });
+    openFilterSection("Čaka na dom");
+    const row = screen.getByRole("button", { name: /^Nad 1\sleto,/ });
     const description = document.getElementById(row.getAttribute("aria-describedby")!);
     expect(description?.textContent).toBe(
-      "Po znanem datumu sprejema v zavetišče. Izbereš lahko eno mejo.",
+      "Šteto od dneva, ko je žival prišla v zavetišče. Izbereš lahko eno mejo.",
     );
   });
 });

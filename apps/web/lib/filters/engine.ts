@@ -406,7 +406,7 @@ function ageColumn(index: FilterIndex, nowMonths: number): Column<AgeGroup> {
   return values;
 }
 
-/** The V zavetišču thresholds each animal has passed by this day. undefined
+/** The Čaka na dom thresholds each animal has passed by this day. undefined
  *  where there is no date to read, which is the question's one missing
  *  answer: an empty list is a known date under six months. */
 function waitingColumn(
@@ -723,7 +723,7 @@ export function careCounts(
 }
 
 /** Whether this animal answers a group's question at all: undefined is no
- *  answer in every column, V zavetišču's included (waitingColumn). */
+ *  answer in every column, Čaka na dom's included (waitingColumn). */
 function answeredAt(pass: Pass, slot: number, group: MultiGroup): boolean {
   return valueAt(pass, slot, group) !== undefined;
 }

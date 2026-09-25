@@ -35,6 +35,34 @@ test("opening the Filtri drawer moves focus inside its content", async ({
   expect(inside).toBe(true);
 });
 
+// The sidebar's half, with reload and history, is waiting-filter.spec.ts.
+test("closes the sheet's sections with Čaka na dom and takes a threshold there", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await filtriTrigger(page).click();
+  const content = drawerContent(page);
+  await expect(content).toBeVisible();
+
+  const headings = content.getByRole("heading", { level: 3 });
+  await expect(headings.last()).toHaveText(/^Čaka na dom/);
+  await expect(headings.nth(-2)).toHaveText(/^Lahko ponudim/);
+
+  const section = content.getByRole("button", { name: /^Čaka na dom/ });
+  await expect(section).toHaveAttribute("aria-expanded", "false");
+  await section.click();
+  await expect(section).toHaveAttribute("aria-expanded", "true");
+
+  // \s: the label ties the number to its unit with a no-break space.
+  const year = content.getByRole("button", { name: /^Nad 1\sleto,/ });
+  await expect(year).toHaveAttribute("aria-pressed", "false");
+  await expect(page).not.toHaveURL(/cakanje=/);
+  await year.click();
+  await expect(page).toHaveURL(/[?&]cakanje=nad-1-leto(&|$)/);
+  await expect(year).toHaveAttribute("aria-pressed", "true");
+  await expect(content).toBeVisible();
+});
+
 test.describe("breakpoint survival", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

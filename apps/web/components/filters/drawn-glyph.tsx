@@ -1,7 +1,6 @@
 "use client";
 
 import { m, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
 
 /**
  * Drawing one stroke in: the length is the gesture, the opacity only takes the
@@ -27,11 +26,7 @@ export type DrawTempo = { draw: number; stagger: number; fade: number };
 /**
  * Two layers of one line drawing: a muted outline that is always there, and
  * an accent copy that draws itself on stroke by stroke when the card is
- * chosen. Lahko ponudim and V zavetišču both draw this way at their own tempo.
- *
- * `rest` and `lit` carry what is not a stroke, drawn under the muted outline
- * and inside the accent layer; V zavetišču's sand is both. `lit` is handed the
- * delay a reset holds the layer back by, so what it animates leaves in turn.
+ * chosen. Lahko ponudim draws this way.
  */
 export function DrawnGlyph({
   strokes,
@@ -39,8 +34,6 @@ export function DrawnGlyph({
   resetDelay,
   tempo,
   className,
-  rest,
-  lit,
 }: {
   strokes: readonly string[];
   checked: boolean;
@@ -48,8 +41,6 @@ export function DrawnGlyph({
   resetDelay: number;
   tempo: DrawTempo;
   className: string;
-  rest?: ReactNode;
-  lit?: (wait: number) => ReactNode;
 }) {
   const shouldReduceMotion = useReducedMotion();
   // The whole retract waits its turn, fade and drawn length together, so the
@@ -68,13 +59,10 @@ export function DrawnGlyph({
       strokeLinejoin="round"
       aria-hidden
     >
-      <g className="text-muted-foreground">
-        <g stroke="currentColor">
-          {strokes.map((d) => (
-            <path key={d} d={d} />
-          ))}
-        </g>
-        {rest}
+      <g className="text-muted-foreground" stroke="currentColor">
+        {strokes.map((d) => (
+          <path key={d} d={d} />
+        ))}
       </g>
       <m.g
         initial={false}
@@ -105,7 +93,6 @@ export function DrawnGlyph({
             />
           ))}
         </g>
-        {lit?.(wait)}
       </m.g>
     </svg>
   );

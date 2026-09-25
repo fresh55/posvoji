@@ -181,6 +181,15 @@ const PLACEMENT: Record<
 /** What every pill row wears at both placements. */
 const PILL_ROW = "flex items-center gap-1.5 pointer-coarse:gap-2";
 
+/** How a pill glides into the gap a removed neighbour left, and what the seam
+ *  and the clear share so they glide with it rather than snapping to the
+ *  row's new width in the frame the removal lands. Before they shared this,
+ *  taking off a pill at lg jumped the seam and "Počisti filtre" 108 to 111px
+ *  left in one frame while the remaining pills took 170ms of layout
+ *  animation to close the same gap, so the last pill visibly slid across the
+ *  clear button's own words on its way there. */
+const CHIP_MOVE = { duration: 0.18, ease: "easeOut" } as const;
+
 type Run = { facet: FilterFacet; chips: Chip[] };
 
 type Item =
@@ -531,7 +540,7 @@ export function FilterChips({
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+                transition={CHIP_MOVE}
                 className="inline-flex"
               >
                 {item.kind === "chip" ? (
@@ -632,9 +641,16 @@ export function FilterChips({
               two stray parentheses side by side.
 
               Both go together: the seam only means anything in front of the
-              button it guards. */}
+              button it guards.
+
+              One m.span and not two bare children, and layout with no
+              initial/animate/exit of its own: this pair never mounts or
+              unmounts, it only has to keep up with the pills sliding past it,
+              which is what layout alone measures and glides (D3). The pills'
+              own transition and not a copy of it, so the two halves of one
+              removal cannot drift apart again. */}
           {clear && (
-            <>
+            <m.span layout transition={CHIP_MOVE} className="inline-flex items-center gap-1.5">
               <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
 
               {/* "Filtre" names what this takes off, which is every pill it
@@ -651,7 +667,7 @@ export function FilterChips({
               >
                 {messages.clearFilters}
               </button>
-            </>
+            </m.span>
           )}
         </div>
       </div>

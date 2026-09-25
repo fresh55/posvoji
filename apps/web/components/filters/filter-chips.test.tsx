@@ -596,6 +596,28 @@ describe("the active filters row", () => {
     expect(stops[stops.length - 1]).toBe("clear");
   });
 
+  it("wraps the seam and the clear together so they glide with the pills", () => {
+    // Before this the seam and the clear were bare children of the same flex
+    // row as the pills, so removing a pill jumped them straight to the row's
+    // new width in the frame the removal landed while the remaining pills
+    // took 170ms of layout animation to close the same gap (D3, at lg). One
+    // element wearing the pills' own layout animation is what keeps the two
+    // halves of a removal moving together.
+    renderChips([chip({ key: "a", label: "Dogs" })]);
+
+    const clear = screen.getByRole("button", { name: "Clear filters" });
+    const wrapper = clear.parentElement!;
+    expect(wrapper.querySelector("span[aria-hidden]")).not.toBeNull();
+
+    // A sibling of the pill inside the row, not the row itself: the row has
+    // exactly the pill's own span and this wrapper as its two children, so a
+    // pill's removal reflows this wrapper the same way it reflows any other
+    // pill rather than leaving it pinned to the row's edge.
+    const row = wrapper.parentElement!;
+    expect(row.children).toHaveLength(2);
+    expect(row.children[1]).toBe(wrapper);
+  });
+
   it("draws no clear in flow while something matches, stops and seam with it", () => {
     // In flow the sheet's footer holds a clear one tap away the whole time,
     // so the row spends a line on one only where clearing is the point of the

@@ -489,8 +489,8 @@ const SWATCH_STILL: Pose = {
 
 // The neighbours' answer, in place of the shove the old pick sent through the
 // grid: every colour already picked turns the ear nearer the new one towards
-// it, a beat after it lands, the far ones a little later. Energija's
-// neighbours lean away; these listen. A dog's floppy ear turns less.
+// it, a beat after it lands, the far ones a little later. A dog's floppy ear
+// turns less.
 const NOTICE_DELAY = 0.2;
 const NOTICE_STEP = 0.06;
 const EAR_NOTICE = [0, -16, 0];

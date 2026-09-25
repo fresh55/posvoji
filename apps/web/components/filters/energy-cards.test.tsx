@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions, type Unanswered } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { EnergyCards, iconPose, TEMPOS } from "./energy-cards";
+import { EnergyCards, TEMPOS } from "./energy-cards";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -147,8 +152,8 @@ describe("EnergyCards", () => {
     expect(onToggleMany).toHaveBeenCalledWith(["calm", "lively"]);
   });
 
-  // The one place the celebration, the press anticipation and the neighbour
-  // reaction actually run: a keyframe array reaching a spring would throw here
+  // The one place the celebration, the press anticipation and the hover
+  // preview actually run: a keyframe array reaching a spring would throw here
   // rather than in review.
   it("plays every level's gesture without a motion error", () => {
     function StatefulCards() {
@@ -179,6 +184,11 @@ describe("EnergyCards", () => {
 
     for (const { label } of options) {
       const button = card(label);
+      // React derives onPointerEnter from pointerover, and fireEvent's swap
+      // loses the pointerType the hover checks, so the event is built here.
+      const over = createEvent.pointerOver(button);
+      Object.defineProperty(over, "pointerType", { value: "mouse" });
+      fireEvent(button, over);
       // The press pose is its own spring/tween path, so it gets driven too.
       fireEvent.pointerDown(button);
       fireEvent.pointerUp(button);
@@ -186,9 +196,7 @@ describe("EnergyCards", () => {
       expect(button.getAttribute("aria-pressed")).toBe("true");
     }
 
-    // The neighbour shock is staggered by distance and signed by direction, so
-    // it is fired from both ends and from the middle: a card two steps out runs
-    // a different delay and amplitude than one step out.
+    // Unchecking puts a hovered card back into its preview.
     for (const { label } of [...options].reverse()) {
       fireEvent.click(card(label));
       expect(card(label).getAttribute("aria-pressed")).toBe("false");
@@ -231,24 +239,14 @@ describe("EnergyCards", () => {
   });
 });
 
-describe("iconPose", () => {
-  // Why: the reacting case of iconPose in energy-cards.tsx.
-  it.each([-1, 1])(
-    "leans a neighbour from wherever its icon is, the wait inside the track (direction %i)",
-    (direction) => {
-      const { animate } = iconPose(
-        "reacting",
-        TEMPOS.calm,
-        TEMPOS.balanced,
-        direction,
-      );
-
-      // Null starts it where the icon is; the settle and the wait hold it
-      // level; then the same lean as before.
-      expect(animate).toEqual({
-        rotate: [null, 0, 0, direction * TEMPOS.balanced.neighborTilt, 0],
-        y: [null, 0, 0, TEMPOS.balanced.neighborLift, 0],
-      });
+describe("TEMPOS", () => {
+  // A tapped card fills at once and its box waits for checkDelay. Past the
+  // large paw's 0.42s, the longest wait elsewhere in the panel, a filled card
+  // around an empty box reads as a control stuck mid-state.
+  it.each(Object.entries(TEMPOS))(
+    "ticks the %s box within 0.42s",
+    (_level, tempo) => {
+      expect(tempo.checkDelay).toBeLessThanOrEqual(0.42);
     },
   );
 });

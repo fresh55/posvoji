@@ -228,4 +228,36 @@ describe("the selection mark's fill", () => {
 
     expect(box(container)?.style.transitionDelay).toBe("");
   });
+
+  // The tick used to go transparent with the box as well as fading on its
+  // own, so it was gone while the box still had most of its fill. With one
+  // ink in both states, the tick's own fade is the only thing taking it out,
+  // and that runs on the box's clock.
+  it("keeps the mark's ink when it is unticked", () => {
+    for (const shape of ["box", "dot"] as const) {
+      const ink = (checked: boolean) => {
+        const { container, unmount } = render(
+          <FilterSelectionMark checked={checked} shape={shape} />,
+        );
+        const classes = (box(container)?.className ?? "")
+          .split(" ")
+          .filter((name) => name.startsWith("text-"));
+        unmount();
+        return classes;
+      };
+
+      expect(ink(false), shape).toEqual(ink(true));
+      expect(ink(false), shape).not.toContain("text-transparent");
+    }
+  });
+
+  // Under reduced motion the tick lands at once, and a box easing its colour
+  // around it was ten frames of a solid box with nothing in it.
+  it("drops the box's colour transition under reduced motion", () => {
+    const { container } = render(<FilterSelectionMark checked />);
+
+    expect(box(container)?.className).toContain(
+      "motion-reduce:transition-none",
+    );
+  });
 });

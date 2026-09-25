@@ -290,6 +290,13 @@ export function CountRoll({
  */
 type SelectionShape = "box" | "dot";
 
+/**
+ * The box's colour change, in Motion's terms: duration-150 and Tailwind's
+ * default curve, which is what the box's own transition class runs on. The
+ * tick leaves on it so that the two leave together.
+ */
+const MARK_LEAVE = { duration: 0.15, ease: [0.4, 0, 0.2, 1] } as const;
+
 export function FilterSelectionMark({
   checked,
   className,
@@ -324,19 +331,33 @@ export function FilterSelectionMark({
           // The card is the group, and a disabled card in the filters is one
           // the current narrowing has no animals for; see DEAD_OPTION_CLASS
           // for why the rest of that dress is not in the cva.
-          "relative grid size-4.5 shrink-0 place-items-center border transition-[border-color,background-color,color] duration-150 group-disabled:hidden",
-          dot ? "rounded-full" : "rounded-sm",
+          //
+          // motion-reduce:transition-none, because under reduced motion the
+          // tick lands at once, and a box still easing its colour for 150ms
+          // around no tick was ten frames of a solid box with nothing in it.
+          "relative grid size-4.5 shrink-0 place-items-center border transition-[border-color,background-color] duration-150 group-disabled:hidden motion-reduce:transition-none",
+          // The ink belongs to the shape and not to the state. It used to go
+          // transparent with the box as well, so a leaving tick faded twice,
+          // once by its own opacity and once by its colour, and was gone
+          // while the box still had most of its fill: an unpick showed a
+          // coloured box with nothing in it for three or four frames, and a
+          // reset showed solid boxes without their ticks. The span inside
+          // now does all the fading, on the box's own clock (MARK_LEAVE).
+          //
+          // The dot is the same ink as the filled box's ground, so the two
+          // marks carry one accent. The tick is a token and not text-white,
+          // because this is the one place the strong accent is a ground and
+          // that ground is light in dark mode: a white tick on it measured
+          // 2.39:1. See --brand-strong-foreground in globals.css.
+          dot
+            ? "rounded-full text-brand-strong"
+            : "rounded-sm text-brand-strong-foreground",
           checked && dot
             ? // A ring and its dot rather than a filled disc, the shape a
-              // single choice is read as. The dot is the same ink as the
-              // filled box's ground, so the two marks carry one accent.
-              "border-brand-strong bg-background text-brand-strong"
+              // single choice is read as.
+              "border-brand-strong bg-background"
             : checked
-            ? // The ink is a token and not text-white, because this is the one
-              // place the strong accent is a ground and that ground is light in
-              // dark mode: a white tick on it measured 2.39:1. See
-              // --brand-strong-foreground in globals.css.
-              "border-brand-strong bg-brand-strong text-brand-strong-foreground"
+            ? "border-brand-strong bg-brand-strong"
             : // The control tier, by name. This is the boundary of a control,
               // which is what --control-border is for, and it was spelled as
               // muted-foreground/80 ten lines from a token that says the same
@@ -351,10 +372,13 @@ export function FilterSelectionMark({
               // this span spells no dark border of its own, so the token's own
               // dark value stands.
               // The checked box is not affected; its tick is 7.37:1.
-              "border-control-border bg-background text-transparent",
+              "border-control-border bg-background",
           className,
         )}
       >
+        {/* The way out runs on the box's clock, so at every frame the tick
+            is as far gone as the fill around it and neither is left drawn
+            without the other. It was 0.1s against the box's 0.15s. */}
         <m.span
           initial={false}
           animate={{
@@ -366,7 +390,7 @@ export function FilterSelectionMark({
               ? { duration: 0 }
               : checked
                 ? { duration: 0.14, delay: appearDelay, ease: "easeOut" }
-                : { duration: 0.1, ease: "easeOut" }
+                : MARK_LEAVE
           }
         >
           {dot ? (

@@ -16,6 +16,12 @@ import { FilterGroupList, type CardGroup } from "./filter-groups";
 import { pointerOnto } from "@/test/pointer";
 
 installFilterFoldSeams();
+// fireEvent's click carries detail 0, which is a keyboard's, so a reset
+// pressed here hands focus to its section's heading, and a heading with a hint
+// opens its tooltip on focus. Radix positions it with an observer jsdom does
+// not ship.
+class NoopResizeObserver { observe() {} unobserve() {} disconnect() {} }
+globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObserver;
 
 const options = groupOptions("energy", [], "sl");
 const counts = new Map(options.map(({ value }) => [value, 3]));

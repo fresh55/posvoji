@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { m } from "motion/react";
-import { describe, expect, it } from "vitest";
+import { useState } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
+import { SCROLL_BOX_MARK, scrollChildIntoViewY } from "@/lib/scroll-strip";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import {
   CollapsibleBody,
@@ -13,7 +15,28 @@ import {
 
 // The fold measures its own height, and Motion restores the scroll position
 // around the measurement; the shared helper stubs what jsdom lacks for both.
+// A heading with a hint opens its tooltip on focus, and Radix positions it
+// with an observer jsdom does not ship either.
 installFilterFoldSeams();
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  NoopResizeObserver as unknown as typeof ResizeObserver;
+
+// Whether the walk reaches for the panel is asked here; what the panel then
+// does is scroll-strip.test.ts's business, and jsdom lays out nothing for it.
+vi.mock("@/lib/scroll-strip", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/scroll-strip")>()),
+  scrollChildIntoViewY: vi.fn(),
+}));
+const broughtIntoView = vi.mocked(scrollChildIntoViewY);
+
+beforeEach(() => {
+  broughtIntoView.mockClear();
+});
 
 function collapse(
   open: boolean,
@@ -136,5 +159,106 @@ describe("the reset link in a folding heading", () => {
     expect(classes.filter((name) => name.includes("translate"))).toEqual([
       "active:not-aria-[haspopup]:translate-y-px",
     ]);
+  });
+});
+
+/** A section whose reset empties it, with a row after its header. */
+function Resettable({ folds }: { folds: boolean }) {
+  const [active, setActive] = useState(true);
+  return (
+    <I18nProvider locale="sl">
+      <section>
+        <FilterSectionHeader
+          label="Energija"
+          active={active}
+          onReset={() => setActive(false)}
+          resetAriaLabel="Ponastavi filter energije"
+          collapse={folds ? collapse(true, null, "energy") : undefined}
+        />
+        <button type="button">Miren</button>
+      </section>
+    </I18nProvider>
+  );
+}
+
+describe("focus after a reset", () => {
+  // A click the keyboard made carries detail 0. The reset goes inert in the
+  // render that press causes and cannot keep focus.
+  it("hands a keyboard reset's focus to the section's heading", () => {
+    render(<Resettable folds />);
+    const reset = screen.getByRole("button", { name: "Ponastavi filter energije" });
+    reset.focus();
+
+    fireEvent.click(reset, { detail: 0 });
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: /^Energija/ }),
+    );
+    expect(reset.hasAttribute("inert")).toBe(true);
+  });
+
+  it("hands it to the first control where the heading does not fold", () => {
+    render(<Resettable folds={false} />);
+    const reset = screen.getByRole("button", { name: "Ponastavi filter energije" });
+    reset.focus();
+
+    fireEvent.click(reset, { detail: 0 });
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Miren" }),
+    );
+  });
+
+  it("leaves focus where a pointer press found it", () => {
+    render(<Resettable folds />);
+    const reset = screen.getByRole("button", { name: "Ponastavi filter energije" });
+    reset.focus();
+
+    fireEvent.click(reset, { detail: 1 });
+
+    expect(document.activeElement).toBe(reset);
+  });
+});
+
+function Panel() {
+  return (
+    <I18nProvider locale="sl">
+      <aside {...{ [SCROLL_BOX_MARK]: "" }}>
+        <section>
+          <FilterSectionHeader
+            label="Spol"
+            active={false}
+            collapse={collapse(true, null, "sex")}
+          />
+        </section>
+        <section>
+          <FilterSectionHeader
+            label="Starost"
+            active={false}
+            collapse={collapse(false, null, "age")}
+          />
+        </section>
+      </aside>
+    </I18nProvider>
+  );
+}
+
+describe("the arrow-key walk", () => {
+  // A plain focus() scrolls every box it must, the window included: from the
+  // top of the page at 1440x900 the walk threw the window 480px.
+  it("moves focus without scrolling and brings the section into the panel", () => {
+    render(<Panel />);
+    const sex = screen.getByRole("button", { name: /^Spol/ });
+    const age = screen.getByRole("button", { name: /^Starost/ });
+    const focus = vi.spyOn(age, "focus");
+    sex.focus();
+
+    fireEvent.keyDown(sex, { key: "ArrowDown" });
+
+    expect(document.activeElement).toBe(age);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(broughtIntoView).toHaveBeenCalledWith(age.closest("section"));
+    // And the heading's own box last, which stands past its section's.
+    expect(broughtIntoView).toHaveBeenLastCalledWith(age);
   });
 });

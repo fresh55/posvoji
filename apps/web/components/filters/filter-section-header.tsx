@@ -9,6 +9,7 @@ import {
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
 import {
+  useRef,
   useState,
   type KeyboardEvent,
   type MouseEvent,
@@ -231,7 +232,40 @@ function moveSectionFocus(event: KeyboardEvent<HTMLButtonElement>) {
           ? triggers[0]
           : triggers[triggers.length - 1];
   event.preventDefault();
-  target?.focus();
+  if (!target) return;
+  // The panel moves and the page does not. A plain focus() scrolls every box
+  // it must to show a heading, the window included: measured at 1440x900 from
+  // the top of the page, the second press down from Spol threw the window
+  // 480px and the site's title and the top of the grid went with it.
+  // scrollChildIntoViewY says why the panel is scrolled by hand.
+  //
+  // The section where it fits, then the heading itself. The heading's box
+  // stands past its section's by the -my-1 that centres it on the row, so
+  // brought in by its section alone the focused heading lost the edge of its
+  // ring along the panel's edge.
+  target.focus({ preventScroll: true });
+  scrollChildIntoViewY(target.closest("section") ?? target);
+  scrollChildIntoViewY(target);
+}
+
+const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]";
+
+/** The first control of the section a reset belongs to, other than the reset
+    itself: where a header that does not fold hands focus after a keyboard
+    reset. A disabled row, an inert or hidden subtree and a stop taken out of
+    the tab order are passed over, since focus could not stay on any of them. */
+function firstControlOfSection(reset: HTMLElement): HTMLElement | null {
+  const section = reset.closest("section");
+  if (!section) return null;
+  return (
+    [...section.querySelectorAll<HTMLElement>(FOCUSABLE)].find(
+      (element) =>
+        element !== reset &&
+        element.tabIndex >= 0 &&
+        !element.matches(":disabled") &&
+        !element.closest('[inert], [aria-hidden="true"]'),
+    ) ?? null
+  );
 }
 
 /** Shared section heading and reset affordance for every filter group. With a
@@ -274,6 +308,27 @@ export function FilterSectionHeader({
     }, FOLD_SETTLE_MS);
   };
 
+  // The disclosure trigger, where a reset pressed from the keyboard leaves
+  // focus. Null in a header that does not fold.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // The reset goes inert in the render its own press causes, and an inert
+  // element cannot hold focus: a reset pressed with Enter or Space dropped
+  // focus to the page's body (in the sheet, to the drawer), and a screen
+  // reader lost its place with it. A click the keyboard made, which is what
+  // detail 0 means, hands focus to the section's own heading instead: it
+  // names the section just emptied and sits one Tab above its rows. A header
+  // that does not fold has no heading to press, so the first control in its
+  // section takes it (the Kje picker, a part's first option). A pointer press
+  // moves nothing; the pointer is where the visitor already is.
+  const reset = (event: MouseEvent<HTMLButtonElement>) => {
+    onReset?.();
+    if (event.detail !== 0) return;
+    const target =
+      triggerRef.current ?? firstControlOfSection(event.currentTarget);
+    target?.focus({ preventScroll: true });
+  };
+
   // Kept mounted while hidden so a reset that comes and goes fades rather than
   // shifting the row. A section with no reset at all has nothing to fade, and
   // an inert copy of the word would be one more node for nothing.
@@ -282,7 +337,7 @@ export function FilterSectionHeader({
       type="button"
       variant="link"
       size="xs"
-      onClick={onReset}
+      onClick={reset}
       // One expression for both halves of being unreachable; see
       // back-to-top.tsx for why this is not aria-hidden beside its own
       // tabIndex={-1}. The pointer is already gone below when !showReset, so
@@ -365,6 +420,7 @@ export function FilterSectionHeader({
 
   const trigger = (
     <button
+      ref={triggerRef}
       type="button"
       onClick={(event) => {
         revealOnOpen(event);

@@ -127,11 +127,11 @@ export const pickerText = {
     distance: "Približna zračna razdalja med kraji.",
     countsMatch: "Število živali upošteva filtre",
     zeroMatches: "Nobena objavljena žival ne ustreza tvoji izbiri.",
-    // The footer's way out of an empty result, beside "Počisti filtre" and
-    // "Pokaži vse živali". Named for the press and not for the state, the same
-    // as those two, so it cannot be read as lib/labels.ts allShelters, which
-    // is what the trigger calls having nothing picked.
-    showAllShelters: "Pokaži vsa zavetišča",
+    // An empty result with animals in shelters nobody picked (footer.tsx).
+    // "Dodaj" and not "Dodaj zavetišče", because the shelter's name follows.
+    matchesElsewhere: "Zadetki drugje",
+    andMore: "in še {n}",
+    add: "Dodaj",
     backToResults: "Nazaj k rezultatom",
     showList: "Pokaži seznam",
     chooseShelters: "Izberi zavetišča",
@@ -153,7 +153,9 @@ export const pickerText = {
     distance: "Approximate straight-line distance between towns.",
     countsMatch: "Counts follow your filters",
     zeroMatches: "No published animals match your selection.",
-    showAllShelters: "Show all shelters",
+    matchesElsewhere: "Matches elsewhere",
+    andMore: "and {n} more",
+    add: "Add",
     backToResults: "Back to results",
     showList: "Show list",
     chooseShelters: "Choose shelters",
@@ -180,6 +182,20 @@ export function locateAndSort(
   });
   if (!origin) return located;
   return located.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+}
+
+/** The rows the filters leave something in, ahead of the ones they empty,
+ *  each group in the order it already had. With no filter narrowing the counts
+ *  every live shelter has animals and this changes nothing; with one, the
+ *  answer stops being scattered down an alphabetical list between muted rows.
+ *  Counts follow the other filters and not the shelter pick, so nothing moves
+ *  while the dialog is open: picking or dropping a row never re-sorts it. */
+export function matchesFirst<Row extends { value: string }>(
+  rows: Row[],
+  counts: Map<string, number>,
+): Row[] {
+  const has = (row: Row) => (counts.get(row.value) ?? 0) > 0;
+  return [...rows.filter(has), ...rows.filter((row) => !has(row))];
 }
 
 export function toPins(

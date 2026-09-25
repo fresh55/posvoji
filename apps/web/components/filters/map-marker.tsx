@@ -22,7 +22,6 @@ import {
   dominantShelterIndex,
   mapStateName,
   markerGeometry,
-  markerRadius,
   MARKER_STROKE_WIDTH,
   MAX_CLUSTER_DISCS,
   satelliteDiscs,
@@ -44,10 +43,8 @@ import { PICKED_NAME_SIZE, type NamePlacement } from "./map-names";
 import { mapAvailabilityText, shelterAvailability } from "./map-availability";
 
 // The hollow disc a shelter with nothing listed draws: just over half the
-// radius the coin would have taken, no fill, foreground at 45%. The map legend
-// repeats this mark at legend size, and what it repeats is EmptyMarkerGlyph
-// below rather than these three numbers, so a lookalike painted from other
-// classes can never drift from the real one.
+// radius the coin would have taken, no fill, foreground at 45%. What it means
+// is said by the annotation a hover or a tap raises on it, not by a key.
 //
 // 0.54 rather than the 0.5 it was, so the mark keeps the absolute size it had
 // before the smallest radius step dropped from 5 to 4.7: at 0.5 it would have
@@ -59,32 +56,6 @@ const EMPTY_MARKER_RADIUS_SCALE = 0.54;
 const EMPTY_MARKER_STROKE_WIDTH = 0.7;
 const FILTERED_MARKER_DASH = "1.6 1.2";
 const EMPTY_MARKER_CLASS = "fill-none stroke-foreground/45";
-
-// The dashed mark of a shelter the filters leave empty, at legend size: the
-// one hollow mark the picker's legend explains. The viewBox runs in the map's
-// own user units,
-// so the radius and the stroke keep the proportion they have on the country:
-// markerRadius(0) is the radius a shelter with no animals is sized at, less
-// half the coin stroke, times the scale the hollow disc takes. The box adds a
-// stroke's width of air on each side so the circle is not clipped by it.
-export function EmptyMarkerGlyph({ className }: { className?: string }) {
-  const r =
-    (markerRadius(0) - MARKER_STROKE_WIDTH / 2) * EMPTY_MARKER_RADIUS_SCALE;
-  const box = (r + EMPTY_MARKER_STROKE_WIDTH) * 2;
-  return (
-    <svg aria-hidden viewBox={`0 0 ${box} ${box}`} className={className}>
-      <circle
-        data-legend-empty=""
-        strokeDasharray={FILTERED_MARKER_DASH}
-        cx={box / 2}
-        cy={box / 2}
-        r={r}
-        strokeWidth={EMPTY_MARKER_STROKE_WIDTH}
-        className={EMPTY_MARKER_CLASS}
-      />
-    </svg>
-  );
-}
 
 // Lifts the coin off the country behind it. The values are in SVG units, which
 // the 320-wide viewBox renders about three times larger, so under a pixel here
@@ -174,14 +145,18 @@ export const PLATE_MIN_SCALE = 1.5;
 const GLYPH_TOO_SMALL = PLATE_TOO_SMALL;
 
 // A count in place of the paw is a number someone has to read, so it asks more
-// of the plate than a glyph does. 640px of stage is (640 - 32) / 320 = 1.9px to
-// the user unit, which sets a COUNT_MARKER_RADIUS coin's two digits at about
-// 10px and its three at about 8px. Between PLATE_TOO_SMALL and this the
+// of the plate than a glyph does: 1.9px to the user unit, which sets a
+// COUNT_MARKER_RADIUS coin's two digits at about 10px and its three at about
+// 8px. A plate bound by the width fills its container's content box, and the
+// content box is what a container query measures, so the line is 1.9 x 320 =
+// 608px whatever padding the caller sets the map in. It was written as 640,
+// the picker's padding counted in a second time, which asked for 2.0px and
+// took every count off a 1024px laptop. Between PLATE_TOO_SMALL and this the
 // coin wears the paw instead, which asks less of the eye: a coin with nothing
 // in it read as the hollow "nothing listed" mark. The same container query as
 // PLATE_TOO_SMALL, one step further out, and its exact complement for the paw.
-const COUNT_TOO_SMALL = "@max-[640px]/map-stage:hidden";
-const PAW_WHILE_COUNT_TOO_SMALL = "@min-[640px]/map-stage:hidden";
+const COUNT_TOO_SMALL = "@max-[608px]/map-stage:hidden";
+const PAW_WHILE_COUNT_TOO_SMALL = "@min-[608px]/map-stage:hidden";
 
 // Under this radius a mark has no room for digits at any plate size. Every
 // coin clears it (a count map's coins draw at 5.75 once markerGeometry takes
@@ -596,9 +571,12 @@ export const Marker = memo(function Marker({
       onPointerEnter={
         interactive && !wedged ? () => onPointerEnter(town) : undefined
       }
-      onPointerLeave={
-        interactive && !wedged ? () => onPointerLeave(town) : undefined
-      }
+      // Leave on a wedged coin too, where enter is left to the wedges: a
+      // wedge's own leave is also the keyboard's way back out of the coin, so
+      // it cannot be what takes the card a click left behind down with it.
+      // pointerleave fires once, for leaving the whole coin, never for moving
+      // from one wedge to the next.
+      onPointerLeave={interactive ? () => onPointerLeave(town) : undefined}
       onFocus={interactive ? () => onFocus(town) : undefined}
       onBlur={
         interactive
@@ -931,8 +909,8 @@ function MarkerDisc({
    *  of them. */
   hoverScope?: "group" | "self";
   /** What share of r the hollow "nothing listed" mark draws at. A coin is much
-   *  larger than that mark should ever be, so it shrinks by the scale the
-   *  legend teaches. A satellite is already sized as a small companion, so it
+   *  larger than that mark should ever be, so it shrinks by
+   *  EMPTY_MARKER_RADIUS_SCALE. A satellite is already sized as a small companion, so it
    *  passes 1 and draws the hollow mark at its own radius, which lands it
    *  within a rounding error of the size a lone empty marker draws. */
   emptyScale?: number;
@@ -943,8 +921,11 @@ function MarkerDisc({
   count?: number;
 }) {
   const glyph = r * glyphScale;
-  // Digits in place of the paw, where there is room for them.
-  const showsCount = count !== undefined && count > 0 && r >= MIN_COUNT_RADIUS;
+  // Digits in place of the paw, where there is room for them. A picked coin
+  // the filters have emptied writes its 0: it is still a coin, and a paw on
+  // the one coin among numbers read as a different kind of mark.
+  const showsCount =
+    count !== undefined && (count > 0 || selected) && r >= MIN_COUNT_RADIUS;
   const groupHover = hoverScope === "group";
   // A shelter with nothing to pick is a place, not a control. A paw disc a
   // shade fainter still read as a control, so it draws as a different shape
@@ -964,9 +945,7 @@ function MarkerDisc({
         )}
       >
         {/* Hollow, not filled: a speck read as dirt on the map. The radius,
-            the stroke and the classes come from the constants above, which the
-            legend's EmptyMarkerGlyph draws from as well, so the mark and the
-            row explaining it cannot drift. */}
+            the stroke and the classes come from the constants above. */}
         <circle
           data-marker-empty=""
           strokeDasharray={filtered ? FILTERED_MARKER_DASH : undefined}

@@ -8,14 +8,22 @@ import {
 } from "react";
 import type { Species } from "@posvoji/schema";
 
+import { logoChipClassName, markBox } from "@/components/shelter-avatar";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { KM_PER_MAP_UNIT, MAP_HEIGHT, MAP_WIDTH, project, type LatLon } from "@/lib/geo";
+import type { ShelterLogo } from "@/lib/shelter-logos";
 import { cn } from "@/lib/utils";
 import {
   avoidCalloutOverlap,
   coveredArea,
   type CalloutRect,
 } from "./map-callout-layout";
+import {
+  labelBox,
+  outsideFrame,
+  placeOriginName,
+  type NamePlacement,
+} from "./map-names";
 
 // Screen-pixel sizes, converted to SVG units by calloutType.
 const TITLE_PX = 12;
@@ -39,6 +47,9 @@ const SHADOW_BLUR_PX = 2;
 const SHADOW_ALPHA = 0.18;
 const LABEL_GAP_PX = 12;
 const LEADER_GAP_PX = 3;
+// Air round a logo that needs a chip to sit on, and the gap under it.
+const LOGO_CHIP_PX = 4;
+const LOGO_GAP_PX = 6;
 // Reserve space around the foreignObject so it does not clip the shadow.
 const BLEED_PX = SHADOW_Y_PX + SHADOW_BLUR_PX;
 const BLOCK_PX = 238;
@@ -88,6 +99,8 @@ export function calloutType(scale: number) {
     bleed: BLEED_PX * unit,
     labelGap: LABEL_GAP_PX * unit,
     leaderGap: LEADER_GAP_PX * unit,
+    logoChip: LOGO_CHIP_PX * unit,
+    logoGap: LOGO_GAP_PX * unit,
   };
 }
 
@@ -105,6 +118,7 @@ export function MapCallout({
   metadata,
   note,
   species,
+  logo,
   action,
   scale = DEFAULT_PLATE_SCALE,
   avoid,
@@ -122,6 +136,9 @@ export function MapCallout({
   note?: string;
   /** Species counts for an individual shelter. */
   species?: { species: Species; count: number }[];
+  /** The shelter's own mark, over the title, when the card is about one
+   *  shelter. Recognising a mark is quicker than reading a name. */
+  logo?: ShelterLogo;
   /** An explicit touch choice; passive hover annotations omit it. */
   action?: {
     label: string;
@@ -155,9 +172,9 @@ export function MapCallout({
     if (!node) return;
     const needed = Math.max(node.scrollHeight, type.floor);
     if (needed !== height) setHeight(needed);
-  }, [title, metadata, note, speciesKey, action?.label, type.floor, height]);
+  }, [title, metadata, note, speciesKey, logo?.url, action?.label, type.floor, height]);
 
-  const dense = !metadata && !note && !species?.length && !action;
+  const dense = !metadata && !note && !species?.length && !logo && !action;
   const padY = dense ? type.padYTight : type.padY;
 
   // Use the same padded box for placement, leader endpoints and overlap reports.
@@ -276,6 +293,13 @@ export function MapCallout({
             }
           >
             <div ref={contentRef} className="w-full">
+              {logo && (
+                // The same chip rule the shelter cards follow: a mark whose
+                // ink fails on this surface gets a plate of the other tone,
+                // and the negative margin keeps the mark itself flush with the
+                // title whether a chip is drawn or not.
+                <CalloutLogo logo={logo} type={type} alignEnd={!onRight} />
+              )}
               <span
                 data-callout-title
                 className="block w-full break-words font-semibold"
@@ -362,13 +386,10 @@ export function MapCallout({
   );
 }
 
-// Shared geometry keeps the map origin and its legend symbol consistent.
 const ORIGIN_RING_RADIUS = 5;
 const ORIGIN_RING_STROKE = 1;
 const ORIGIN_RING_DASH = 2;
 const ORIGIN_DOT_RADIUS = 1.75;
-const ORIGIN_RING_CLASS = "fill-none stroke-foreground opacity-70";
-const ORIGIN_DOT_CLASS = "fill-foreground";
 
 /** Outer edge of the origin ring, where the distance line starts. */
 export const ORIGIN_REACH = ORIGIN_RING_RADIUS + ORIGIN_RING_STROKE / 2;
@@ -387,61 +408,216 @@ export function Origin({ at }: { at: LatLon }) {
         r={ORIGIN_RING_RADIUS}
         strokeWidth={ORIGIN_RING_STROKE}
         strokeDasharray={ORIGIN_DASH}
-        className={ORIGIN_RING_CLASS}
+        className="fill-none stroke-foreground opacity-70"
       />
-      <circle cx={x} cy={y} r={ORIGIN_DOT_RADIUS} className={ORIGIN_DOT_CLASS} />
+      <circle cx={x} cy={y} r={ORIGIN_DOT_RADIUS} className="fill-foreground" />
     </g>
   );
 }
+
+
+/** A shelter's mark over a card's title, sized in the units the card is set
+ *  in so it is the same size on screen at every plate width, as the type is.
+ *  markBox is the pixel box the shelter cards draw the mark in. */
+function CalloutLogo({
+  logo,
+  type,
+  alignEnd,
+}: {
+  logo: ShelterLogo;
+  type: ReturnType<typeof calloutType>;
+  alignEnd: boolean;
+}) {
+  const box = markBox(logo, "sm");
+  const radius = type.radius * 0.6;
+  return (
+    <span
+      data-callout-logo
+      className={cn("flex w-fit", alignEnd && "ml-auto", logoChipClassName(logo))}
+      style={{
+        padding: type.logoChip,
+        marginTop: -type.logoChip,
+        marginInline: -type.logoChip,
+        marginBottom: type.logoGap - type.logoChip,
+        borderRadius: radius,
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={logo.url}
+        srcSet={logo.srcSet}
+        sizes={logo.srcSet ? `${box.width}px` : undefined}
+        alt=""
+        decoding="async"
+        width={logo.width}
+        height={logo.height}
+        style={{
+          width: box.width * type.unit,
+          height: box.height * type.unit,
+          borderRadius: logo.opaque ? radius : undefined,
+        }}
+      />
+    </span>
+  );
+}
+
+// Clear space between the origin ring and its name, in screen pixels.
+const ORIGIN_NAME_GAP_PX = 3;
+
+/** Text set straight on the plate with the page drawn under the letters, so
+ *  it reads over a region fill, a border or the relief alike: the origin's
+ *  name, the ring's distance and the distance on the dashed line to a town
+ *  (shelter-map-links.tsx). A stroke under the fill, not the blurred halo the
+ *  annotation carries: a line runs straight through the last of those, and a
+ *  stroke knocks the dashes out from behind the letterforms where a shadow
+ *  would only veil them. */
+export function PlateLabel({
+  x,
+  y,
+  anchor,
+  size,
+  halo,
+  className,
+  children,
+  ...data
+}: {
+  x: number;
+  y: number;
+  anchor: NamePlacement["anchor"];
+  size: number;
+  halo: number;
+  className?: string;
+  children: string;
+} & { [key: `data-${string}`]: string | number }) {
+  return (
+    <text
+      {...data}
+      aria-hidden
+      x={x}
+      y={y}
+      textAnchor={anchor}
+      dominantBaseline="central"
+      fontSize={size}
+      stroke="var(--background)"
+      strokeWidth={halo * 2}
+      strokeLinejoin="round"
+      className={cn("pointer-events-none [paint-order:stroke]", className)}
+    >
+      {children}
+    </text>
+  );
+}
+
+/** Where the origin's name stands on a plate drawn at `scale`, and the box it
+ *  takes (placeOriginName in map-names.ts). A pure answer, so the map can
+ *  memoize it and hand the box to the plate's own type without a render to
+ *  report it in. */
+export function originNameAt(
+  at: LatLon,
+  text: string,
+  scale: number,
+  avoid: readonly CalloutRect[],
+) {
+  const { x, y } = project(at);
+  const type = calloutType(scale);
+  return placeOriginName(
+    text,
+    x,
+    y,
+    ORIGIN_REACH + ORIGIN_NAME_GAP_PX * type.unit,
+    type.metadata,
+    avoid,
+    FRAME_MARGIN,
+  );
+}
+
+/** The origin's name beside its ring: the town the visitor typed, or their
+ *  own location. The plate carries no key, so the mark says what it is where
+ *  it stands. */
+export function OriginName({
+  spot: { text, x, y, anchor },
+  scale,
+}: {
+  spot: NamePlacement;
+  scale: number;
+}) {
+  const type = calloutType(scale);
+  return (
+    <PlateLabel
+      data-map-origin-name=""
+      x={x}
+      y={y}
+      anchor={anchor}
+      size={type.metadata}
+      halo={type.halo}
+      className="fill-foreground font-semibold"
+    >
+      {text}
+    </PlateLabel>
+  );
+}
+
+// Where on the ring its distance is written: the top of the circle if that is
+// on the plate, else the first of the other compass points that is.
+const RING_LABEL_ANGLES = [-90, 90, 0, 180, -45, -135, 45, 135];
 
 /** How far "do N km" reaches from the origin, drawn under the markers while a
  *  distance pick is asked about or standing. The same straight-line distance
  *  the list sorts by, so a shelter inside the ring is one the pick takes. The
  *  plate's x axis is squeezed to match its y (lib/geo.ts), so a distance is a
- *  circle on it. */
-export function DistanceRing({ at, km }: { at: LatLon; km: number }) {
+ *  circle on it.
+ *
+ *  The ring writes its own distance on its line, in its own green, so a
+ *  dashed circle on the map says what it is without a key under the plate.
+ *  A ring wider than the whole plate has no point on the plate to write it
+ *  on, and then the pressed chip beside the search field is what says it. */
+export function DistanceRing({
+  at,
+  km,
+  scale,
+}: {
+  at: LatLon;
+  km: number;
+  scale: number;
+}) {
   const { x, y } = project(at);
+  const r = km / KM_PER_MAP_UNIT;
+  const type = calloutType(scale);
+  const text = `${km} km`;
+  const spot = RING_LABEL_ANGLES.map((degrees): NamePlacement => {
+    const radians = (degrees * Math.PI) / 180;
+    return {
+      text,
+      x: x + r * Math.cos(radians),
+      y: y + r * Math.sin(radians),
+      anchor: "middle",
+    };
+  }).find((candidate) => outsideFrame(labelBox(candidate, type.metadata), FRAME_MARGIN) === 0);
   return (
-    <circle
-      data-distance-ring={km}
-      aria-hidden
-      cx={x}
-      cy={y}
-      r={km / KM_PER_MAP_UNIT}
-      strokeWidth={0.9}
-      strokeDasharray={ORIGIN_DASH}
-      className="pointer-events-none fill-brand-strong/6 stroke-brand-strong"
-    />
-  );
-}
-
-// Scale the origin uniformly to fit the legend box, including its stroke.
-const ORIGIN_GLYPH_BOX = 16;
-const ORIGIN_GLYPH_SCALE = 1.2;
-
-export function OriginGlyph({ className }: { className?: string }) {
-  const centre = ORIGIN_GLYPH_BOX / 2;
-  const dash = ORIGIN_RING_DASH * ORIGIN_GLYPH_SCALE;
-  return (
-    <svg
-      aria-hidden
-      viewBox={`0 0 ${ORIGIN_GLYPH_BOX} ${ORIGIN_GLYPH_BOX}`}
-      className={className}
-    >
+    <>
       <circle
-        cx={centre}
-        cy={centre}
-        r={ORIGIN_RING_RADIUS * ORIGIN_GLYPH_SCALE}
-        strokeWidth={ORIGIN_RING_STROKE * ORIGIN_GLYPH_SCALE}
-        strokeDasharray={`${dash} ${dash}`}
-        className={ORIGIN_RING_CLASS}
+        data-distance-ring={km}
+        aria-hidden
+        cx={x}
+        cy={y}
+        r={r}
+        strokeWidth={0.9}
+        strokeDasharray={ORIGIN_DASH}
+        className="pointer-events-none fill-brand-strong/6 stroke-brand-strong"
       />
-      <circle
-        cx={centre}
-        cy={centre}
-        r={ORIGIN_DOT_RADIUS * ORIGIN_GLYPH_SCALE}
-        className={ORIGIN_DOT_CLASS}
-      />
-    </svg>
+      {spot && (
+        <PlateLabel
+          data-distance-ring-label={km}
+          x={spot.x}
+          y={spot.y}
+          anchor="middle"
+          size={type.metadata}
+          halo={type.halo}
+          className="fill-brand-strong font-semibold"
+        >
+          {text}
+        </PlateLabel>
+      )}
+    </>
   );
 }

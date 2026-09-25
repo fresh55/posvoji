@@ -4,6 +4,7 @@ import {
   calloutType,
   ORIGIN_DASH,
   ORIGIN_REACH,
+  PlateLabel,
 } from "./map-callout";
 
 // How far outside a marker the spotlight ring sits, in user units. Shared with
@@ -67,25 +68,17 @@ export function OriginDistance({
         className="stroke-foreground opacity-55"
       />
       {length - ORIGIN_REACH - end >= DISTANCE_LABEL_MIN && (
-        <text
-          data-map-distance-label
+        <PlateLabel
+          data-map-distance-label=""
           x={(x1 + x2) / 2}
           y={(y1 + y2) / 2}
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize={type.metadata}
-          // A stroke under the fill, not the blurred halo the annotation
-          // carries. The line runs straight through this label, and a stroke
-          // knocks the dashes out from behind the letterforms where a shadow
-          // would only veil them. text-shadow is the tool for HTML in a
-          // foreignObject; paint-order is the tool for SVG text.
-          stroke="var(--background)"
-          strokeWidth={type.halo * 2}
-          strokeLinejoin="round"
-          className="fill-foreground/70 [paint-order:stroke]"
+          anchor="middle"
+          size={type.metadata}
+          halo={type.halo}
+          className="fill-foreground/70"
         >
           {label}
-        </text>
+        </PlateLabel>
       )}
     </g>
   );

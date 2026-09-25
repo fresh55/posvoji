@@ -1028,6 +1028,48 @@ it("keeps the longest wait off the row", () => {
 // The picker shortens a row's name and hands the full one, and the way to the
 // shelter's page, to the details under it.
 describe("ShelterRows short names", () => {
+  it("drops the word every shelter's name shares, full in the title", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={[{ value: "macja-hisa", label: "Zavetišče Mačja hiša", city: "Celje" }]}
+        counts={new Map([["macja-hisa", 178]])}
+        shortenNames
+      />,
+    );
+    expect(html).toContain(">Mačja hiša</span>");
+    expect(html).toContain('title="Zavetišče Mačja hiša"');
+    expect(html).toContain("Celje");
+  });
+
+  it("leaves the town off a row whose name already is the town", () => {
+    const rows = [{ value: "ljubljana", label: "Zavetišče Ljubljana", city: "Ljubljana" }];
+    const html = renderToStaticMarkup(
+      <ShelterRows rows={rows} counts={new Map([["ljubljana", 49]])} shortenNames />,
+    );
+    expect(html).not.toContain("data-row-place");
+
+    // The distance still stands on the line, alone.
+    const located = renderToStaticMarkup(
+      <ShelterRows
+        rows={[{ ...rows[0], km: 3 }]}
+        counts={new Map([["ljubljana", 49]])}
+        shortenNames
+      />,
+    );
+    expect(located).toMatch(/data-row-place[^>]*><span data-row-km[^>]*>3 km<\/span>/);
+  });
+
+  it("names every row in full where the caller asks for no shortening", () => {
+    const html = renderToStaticMarkup(
+      <ShelterRows
+        rows={[{ value: "ljubljana", label: "Zavetišče Ljubljana", city: "Ljubljana" }]}
+        counts={new Map([["ljubljana", 49]])}
+      />,
+    );
+    expect(html).toContain(">Zavetišče Ljubljana</span>");
+    expect(html).toContain("data-row-place");
+  });
+
   const koper = [{ value: "obalno", label: "Obalno zavetišče (Marjetica Koper)", city: "Koper" }];
   const summary = new Map([["obalno", { species: [{ species: "cat" as const, count: 3 }] }]]);
 
@@ -1060,5 +1102,68 @@ describe("ShelterRows short names", () => {
     expect(
       screen.getByRole("link", { name: "O zavetišču" }).getAttribute("href"),
     ).toBe("/zavetisca/obalno");
+  });
+});
+
+// The details under a row open on the shelter's own mark, the thing a visitor
+// knows it by from its site and its posters.
+describe("ShelterRows details logo", () => {
+  // A name the row prints whole, so the details carry no full-name line and
+  // the mark, when there is one, is the first thing in them.
+  const rows = [{ value: "ljubljana", label: "Mačji dol", city: "Škofja Loka" }];
+  const logo = {
+    url: "/media/shelter-logos/ljubljana.webp",
+    chipOnLight: false,
+    chipOnDark: false,
+    opaque: false,
+    width: 240,
+    height: 80,
+  };
+
+  function renderExpanded(withLogo: boolean) {
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <ShelterRows
+          rows={rows}
+          counts={new Map([["ljubljana", 3]])}
+          summaries={
+            new Map([
+              [
+                "ljubljana",
+                {
+                  species: [{ species: "dog" as const, count: 3 }],
+                  ...(withLogo ? { logo } : {}),
+                },
+              ],
+            ])
+          }
+          expanded="ljubljana"
+          onToggle={() => undefined}
+          onToggleExpanded={() => undefined}
+          shortenNames
+        />
+      </I18nProvider>,
+    );
+    return container.querySelector("[data-shelter-details-panel]")!;
+  }
+
+  it("heads the details with the shelter's mark", () => {
+    const panel = renderExpanded(true);
+    const mark = panel.querySelector("img")!;
+
+    expect(mark.getAttribute("src")).toBe(logo.url);
+    expect(mark.getAttribute("alt")).toBe("");
+    // Ahead of the species line, not after it.
+    expect(
+      mark.compareDocumentPosition(panel.querySelector("[data-pick-species]")!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("draws no stand-in for a shelter with no mark, the row being its name", () => {
+    const panel = renderExpanded(false);
+
+    expect(panel.querySelector("img")).toBeNull();
+    expect(panel.firstElementChild?.hasAttribute("data-shelter-details")).toBe(true);
   });
 });

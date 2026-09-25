@@ -115,11 +115,17 @@ test.describe("desktop", () => {
     // The card names the town for a cluster and the shelter for a single
     // marker. Either name is text the tinted row carries too, so the two can be
     // checked against each other without hardcoding a shelter.
+    // The title element and not the first span: a card about one shelter
+    // opens with the shelter's logo.
     const title = (
-      await callout(dialog).locator("span").first().textContent()
+      await callout(dialog).locator("[data-callout-title]").textContent()
     )?.trim();
     expect(title).toBeTruthy();
-    expect(await tinted.first().textContent()).toContain(title);
+    // The row prints the name without "Zavetišče" and keeps the whole of it in
+    // its title, so the card's full name is read off both.
+    const row = tinted.first();
+    const rowNames = `${await row.textContent()} ${await row.locator("span[title]").first().getAttribute("title")}`;
+    expect(rowNames).toContain(title);
 
     await movePointerAway(page);
     await expect(tinted).toHaveCount(0);

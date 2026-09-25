@@ -9,22 +9,21 @@ import {
   cityAt,
   distanceKm,
   formatKm,
+  KM_PER_MAP_UNIT,
+  MAP_HEIGHT,
+  MAP_WIDTH,
   project,
   type LatLon,
 } from "@/lib/geo";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
   DENSITY_STEPS,
-  groupTownsByRegion,
   layoutTowns,
-  regionStatsByRegion,
   type ShelterPin,
 } from "@/lib/map-layout";
-import { getMessages } from "@/lib/i18n";
 import { REGION_SHAPES } from "@/lib/map-regions";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { pointer } from "@/test/pointer";
-import { MapLegend } from "./map-legend";
 import { Marker } from "./map-marker";
 import {
   ARMED_TTL_MS,
@@ -32,7 +31,6 @@ import {
   Region,
   REGION_DWELL_MS,
   ShelterMap,
-  mapFacts,
 } from "./shelter-map";
 
 function pin(
@@ -110,12 +108,6 @@ function renderMap(
       />
     </I18nProvider>,
   );
-}
-
-function factsFor(pins: ShelterPin[], selected: string[]) {
-  const towns = layoutTowns(pins);
-  const { byRegion } = groupTownsByRegion(towns);
-  return mapFacts(towns, regionStatsByRegion(byRegion, selected), selected);
 }
 
 describe("map availability language", () => {
@@ -260,7 +252,7 @@ describe("ShelterMap marker states", () => {
     expect(html).toContain("@max-[512px]/map-stage:hidden");
   });
 
-  it("draws that dot hollow, in the alpha the legend swatch copies", () => {
+  it("draws that dot hollow, in the foreground's 45% alpha", () => {
     const html = renderMap([
       { ...pin("empty", "Zavetišče brez živali", "Ljubljana", 0), selectable: false },
     ]);
@@ -636,7 +628,7 @@ describe("ShelterMap regions", () => {
     expect(html).toContain("stroke-brand-strong");
   });
 
-  it("marks partial selection with a dashed boundary without covering the region in stripes", () => {
+  it("says a partial selection in its state, with no boundary or stripes to decode", () => {
     const html = renderMap(
       [
         pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
@@ -648,7 +640,7 @@ describe("ShelterMap regions", () => {
     const region = regionTag(html, "Savinjska");
     expect(region).toContain('data-region-state="mixed"');
     expect(region).toContain('aria-pressed="mixed"');
-    expect(region).toContain("stroke-dasharray:3_2");
+    expect(region).not.toContain("stroke-dasharray");
     expect(region).not.toContain('fill="url(');
   });
 
@@ -1513,20 +1505,23 @@ describe("ShelterMap mixed region fill", () => {
     pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
     pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
   ];
+  const classOf = (tag: string) => tag.match(/class="([^"]*)"/)?.[1];
 
-  it("keeps the density ramp under a partly picked region", () => {
-    const region = regionTag(renderMap(celje, ["macja-hisa"]), "Savinjska");
+  it("draws a partly picked region exactly as it draws an untouched one", () => {
+    const mixed = regionTag(renderMap(celje, ["macja-hisa"]), "Savinjska");
+    const idle = regionTag(renderMap(celje, []), "Savinjska");
 
-    expect(region).toContain('data-region-state="mixed"');
-    // The rank is still a fact about this region: there is something left in
-    // it to pick. The flat selection tint this replaces threw the rank away,
-    // and drew the busiest region in the country as one of the emptiest.
-    expect(region).toContain("fill-[var(--map-density-fill)]");
-    expect(region).toContain("--map-density:");
-    expect(region).not.toContain("fill-[var(--map-selected-fill)]");
-    // The dashed brand boundary is what says "partly", and it is untouched.
-    expect(region).toContain("[stroke-dasharray:3_2]");
-    expect(region).toContain("stroke-brand-strong");
+    expect(mixed).toContain('data-region-state="mixed"');
+    expect(classOf(mixed)).toBe(classOf(idle));
+    // No dashed brand boundary: it needed a legend to be read at all.
+    expect(mixed).not.toContain("stroke-dasharray");
+    expect(mixed).not.toContain("stroke-brand-strong");
+  });
+
+  it("still says the partial choice to a screen reader", () => {
+    const mixed = regionTag(renderMap(celje, ["macja-hisa"]), "Savinjska");
+
+    expect(mixed).toContain('aria-pressed="mixed"');
   });
 
   it("still drops the ramp for a region picked whole", () => {
@@ -1541,40 +1536,8 @@ describe("ShelterMap mixed region fill", () => {
   });
 });
 
-describe("MapLegend rows", () => {
-  const messages = getMessages("sl");
-
-  function renderLegend(props: Record<string, boolean> = {}) {
-    const { container } = render(
-      <I18nProvider locale="sl">
-        <MapLegend
-          hasSelectedRegion={false}
-          hasMixedRegion={false}
-          origin={undefined}
-          messages={messages}
-          {...props}
-        />
-      </I18nProvider>,
-    );
-    return container.querySelector("[data-map-legend]")!;
-  }
-
-  it("draws nothing at rest, with no scale left to explain", () => {
-    expect(renderLegend().textContent).toBe("");
-  });
-
-  it("explains the dashed circle while a filtered-out shelter is on the map", () => {
-    expect(renderLegend({ hasFilteredMarker: true }).textContent).toContain(
-      "Brez zadetkov s temi filtri",
-    );
-  });
-
-  it("draws the legend's dashed circle the way the map draws a filtered-out shelter", () => {
-    const legend = renderLegend({ hasFilteredMarker: true });
-
-    expect(legend.querySelectorAll("svg").length).toBe(1);
-    const dash = legend.querySelector("circle")!.getAttribute("stroke-dasharray");
-    expect(dash).toBeTruthy();
+describe("ShelterMap hollow marks", () => {
+  it("dashes a shelter the filters emptied and not one that lists nothing", () => {
     for (const sharedTown of [false, true]) {
       const html = renderMap([
         { ...pin("unlisted", "Unlisted", "Ljubljana", 0), selectable: false },
@@ -1582,94 +1545,207 @@ describe("MapLegend rows", () => {
       ]);
       const marks = [...html.matchAll(/<circle[^>]*data-marker-empty[^>]*>/g)];
       expect(marks).toHaveLength(2);
-      expect(marks.filter(([mark]) => mark.includes(`stroke-dasharray="${dash}"`))).toHaveLength(1);
+      expect(marks.filter(([mark]) => mark.includes("stroke-dasharray"))).toHaveLength(1);
     }
   });
 });
 
-describe("mapFacts: hasMixed", () => {
-  const celje = [
-    pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
-    pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+describe("ShelterMap annotation over a picked coin", () => {
+  const pins = [
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 49),
+    pin("maribor", "Zavetišče Maribor", "Maribor", 20),
   ];
 
-  it("is false with nothing picked and false with a region picked whole", () => {
-    expect(factsFor(celje, []).hasMixed).toBe(false);
-    expect(factsFor(celje, ["macja-hisa", "sia-in-lu"]).hasMixed).toBe(
-      false,
-    );
+  function renderCounted(selected: string[]) {
+    return render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={selected} onPick={() => undefined} countOnMarkers />
+      </I18nProvider>,
+    ).container;
+  }
+
+  it("raises the card over a coin that is not picked", () => {
+    const container = renderCounted([]);
+
+    fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
+
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
   });
 
-  it("is true once one shelter of a region is picked and another is not", () => {
-    expect(factsFor(celje, ["macja-hisa"]).hasMixed).toBe(true);
+  it("raises nothing over a picked coin, whose name is already under it", () => {
+    const container = renderCounted(["ljubljana"]);
+
+    fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
+
+    expect(container.querySelector("[data-marker-name]")?.textContent).toBe("Ljubljana");
+    expect(container.querySelector("[data-map-callout]")).toBeNull();
   });
 
-  it("says the region is picked whole only when it is", () => {
-    expect(factsFor(celje, ["macja-hisa"]).hasSelected).toBe(false);
-    expect(factsFor(celje, ["macja-hisa", "sia-in-lu"]).hasSelected).toBe(
-      true,
-    );
+  it("still raises the card over the unpicked coin beside a picked one", () => {
+    const container = renderCounted(["ljubljana"]);
+
+    fireEvent.pointerEnter(container.querySelector('[data-marker-key="maribor"]')!);
+
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
   });
 
-  it("agrees with the state the map draws", () => {
-    expect(renderMap(celje, ["macja-hisa"])).toContain(
-      'data-region-state="mixed"',
-    );
-    expect(renderMap(celje, ["macja-hisa", "sia-in-lu"])).not.toContain(
-      'data-region-state="mixed"',
-    );
-  });
+  it("takes a card focus raised down with the pointer that leaves the coin", () => {
+    const container = renderCounted([]);
+    const coin = container.querySelector<SVGGElement>('[data-marker-key="ljubljana"]')!;
 
-  it("ignores an off-site shelter, which a region pick never selects", () => {
-    const pins = [
-      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
-      { ...pin("horjul", "Zavetišče Horjul", "Horjul", 0), selectable: false },
-    ];
+    fireEvent.pointerEnter(coin);
+    act(() => coin.focus());
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
 
-    expect(factsFor(pins, ["ljubljana"]).hasMixed).toBe(false);
+    fireEvent.pointerLeave(coin);
+
+    expect(container.querySelector("[data-map-callout]")).toBeNull();
   });
 });
 
-describe("mapFacts: hasFilteredEmpty", () => {
-  it("is false while every shelter on the map lists animals", () => {
-    expect(
-      factsFor(
-        [
-          pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
-          pin("maribor", "Zavetišče Maribor", "Maribor", 40),
-        ],
-        [],
-      ).hasFilteredEmpty,
-    ).toBe(false);
+describe("ShelterMap logo in the annotation", () => {
+  const logo = {
+    url: "/media/shelter-logos/ljubljana.webp",
+    chipOnLight: false,
+    chipOnDark: true,
+    opaque: false,
+    width: 300,
+    height: 100,
+  };
+
+  function renderWithLogo(describedElsewhere?: string) {
+    return render(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50)]}
+          selected={[]}
+          onPick={() => undefined}
+          summaries={new Map([["ljubljana", { species: [], logo }]])}
+          describedElsewhere={describedElsewhere}
+        />
+      </I18nProvider>,
+    ).container;
+  }
+
+  it("draws the shelter's mark over the card's title", () => {
+    const container = renderWithLogo();
+
+    fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
+
+    const mark = container.querySelector("[data-callout-logo] img");
+    expect(mark?.getAttribute("src")).toBe(logo.url);
+    expect(mark?.getAttribute("alt")).toBe("");
+    // A light chip in dark mode only, as the shelter cards draw this mark.
+    expect(container.querySelector("[data-callout-logo]")?.className).toContain("dark:bg-stone-100");
   });
 
-  it("is true for a shelter the filters leave empty, which draws hollow", () => {
-    const pins = [
-      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
-      pin("horjul", "Zavetišče Horjul", "Horjul", 0),
-    ];
+  it("leaves it out while the list's details are describing that shelter", () => {
+    const container = renderWithLogo("ljubljana");
 
-    expect(factsFor(pins, []).hasFilteredEmpty).toBe(true);
-    expect(renderMap(pins, [])).toContain("data-marker-empty");
+    fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
+
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
+    expect(container.querySelector("[data-callout-logo]")).toBeNull();
+  });
+});
+
+describe("ShelterMap origin and ring labels", () => {
+  const ljubljana = cityAt("Ljubljana")!;
+
+  function renderOrigin(props: { originRadiusKm?: number; originLabel?: string }) {
+    return renderToStaticMarkup(
+      <I18nProvider locale="sl">
+        <ShelterMap
+          pins={[pin("maribor", "Zavetišče Maribor", "Maribor", 20)]}
+          selected={[]}
+          onPick={() => undefined}
+          origin={ljubljana}
+          {...props}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it("names the origin beside its dot", () => {
+    const html = renderOrigin({ originLabel: "Ljubljana" });
+
+    expect(html).toMatch(/<text[^>]*data-map-origin-name[^>]*>Ljubljana<\/text>/);
   });
 
-  it("is false once that shelter is picked, which draws it as a coin", () => {
-    const pins = [
-      pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 50),
-      pin("horjul", "Zavetišče Horjul", "Horjul", 0),
-    ];
-
-    expect(factsFor(pins, ["horjul"]).hasFilteredEmpty).toBe(false);
-    expect(renderMap(pins, ["horjul"])).not.toContain("data-marker-empty");
+  it("draws the origin unnamed when it has no name", () => {
+    expect(renderOrigin({})).not.toContain("data-map-origin-name");
   });
 
-  it("leaves an off-site shelter out, which no filter emptied", () => {
-    const pins = [
-      pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
-      { ...pin("vzhod", "Zavetišče Vzhod", "Celje", 0), selectable: false },
-    ];
+  it("writes the ring's distance on the ring, on the plate", () => {
+    const html = renderOrigin({ originRadiusKm: 20 });
+    const label = html.match(/<text[^>]*data-distance-ring-label="20"[^>]*>([^<]*)<\/text>/);
 
-    expect(factsFor(pins, []).hasFilteredEmpty).toBe(false);
+    expect(label?.[1]).toBe("20 km");
+    const x = Number(label?.[0].match(/ x="([^"]+)"/)?.[1]);
+    const y = Number(label?.[0].match(/ y="([^"]+)"/)?.[1]);
+    const at = project(ljubljana);
+    // On the line of the circle, not beside it.
+    expect(Math.hypot(x - at.x, y - at.y)).toBeCloseTo(20 / KM_PER_MAP_UNIT, 5);
+  });
+
+  it("writes nothing for a ring with no point on the plate", () => {
+    const html = renderOrigin({ originRadiusKm: 1000 });
+
+    expect(html).toContain('data-distance-ring="1000"');
+    expect(html).not.toContain("data-distance-ring-label");
+  });
+});
+
+describe("ShelterMap picks on a plate too small for coins", () => {
+  const pins = [
+    pin("macja-hisa", "Zavetišče Mačja hiša", "Celje", 185),
+    pin("sia-in-lu", "Zavetišče Sia in Lu", "Celje", 11),
+    pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+  ];
+
+  function renderAtScale(scale: number, selected: string[]) {
+    vi.stubGlobal("ResizeObserver", class {
+      observe() {}
+      disconnect() {}
+    });
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0,
+      width: MAP_WIDTH * scale, height: MAP_HEIGHT * scale,
+      bottom: MAP_HEIGHT * scale, right: MAP_WIDTH * scale,
+      toJSON() {},
+    });
+    return render(
+      <I18nProvider locale="sl">
+        <ShelterMap pins={pins} selected={selected} onPick={() => undefined} countOnMarkers />
+      </I18nProvider>,
+    ).container;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("drops a dot on the town of each pick", () => {
+    const container = renderAtScale(1.05, ["macja-hisa"]);
+
+    const dots = container.querySelectorAll("[data-map-picked-dot]");
+    expect(dots).toHaveLength(1);
+    expect(dots[0].getAttribute("data-map-picked-dot")).toBe("celje");
+    expect(container.querySelector("[data-marker-key]")).toBeNull();
+  });
+
+  it("draws no dot with nothing picked", () => {
+    const container = renderAtScale(1.05, []);
+
+    expect(container.querySelectorAll("[data-map-picked-dot]")).toHaveLength(0);
+  });
+
+  it("draws none where the coins carry the pick themselves", () => {
+    const container = renderAtScale(2.4, ["macja-hisa"]);
+
+    expect(container.querySelector("[data-marker-key]")).not.toBeNull();
+    expect(container.querySelector("[data-map-picked-dots]")).toBeNull();
   });
 });
 
@@ -1711,6 +1787,19 @@ describe("ShelterMap counts on markers", () => {
     );
     expect(html).not.toContain("data-marker-count");
     expect(html).toContain("data-marker-empty");
+  });
+
+  it("writes the 0 on a picked coin the filters have emptied", () => {
+    // Still a coin, so it says its number like the rest: a paw on the one
+    // coin among numbers read as a different kind of mark.
+    const html = renderMap(
+      [pin("horjul", "Zavetišče Horjul", "Horjul", 0)],
+      ["horjul"],
+      undefined,
+      { countOnMarkers: true },
+    );
+    expect(html).toContain('data-marker-count="0"');
+    expect(html).not.toContain("data-marker-empty");
   });
 
   it("says animals, not shelters, on a town too full for a disc each", () => {
@@ -3120,10 +3209,15 @@ describe("ShelterMap without hover", () => {
       return { container, region };
     }
 
-    /** The callout's second metadata line, which is where the consequence is
-     *  drawn. */
+    /** The callout's second metadata line. A live region draws none: what
+     *  the next tap does is on the arming's own button. */
     const note = (container: HTMLElement) =>
       container.querySelector("[data-callout-note]")?.textContent;
+
+    /** The consequence as the region's label says it, the label's last
+     *  sentence, which is where a screen reader gets it. */
+    const said = ({ region }: { region: SVGPathElement }) =>
+      region.getAttribute("aria-label")?.split(". ").pop()?.replace(/\.$/, "");
 
     it("says what the second tap will select, in the right form for the count", () => {
       onATouchscreen();
@@ -3132,15 +3226,15 @@ describe("ShelterMap without hover", () => {
       // each take their own noun. The verb is the same in all four: the
       // accusative "izbere" puts its object in matches the nominative
       // shelterCount returns for this neuter noun.
-      expect(note(armLjubljana(1).container)).toBe("Še enkrat tapni: Izbere 1 zavetišče");
+      expect(said(armLjubljana(1))).toBe("Še enkrat tapni: Izbere 1 zavetišče");
       cleanup();
-      expect(note(armLjubljana(2).container)).toBe("Še enkrat tapni: Izbere 2 zavetišči");
+      expect(said(armLjubljana(2))).toBe("Še enkrat tapni: Izbere 2 zavetišči");
       cleanup();
-      expect(note(armLjubljana(3).container)).toBe("Še enkrat tapni: Izbere 3 zavetišča");
+      expect(said(armLjubljana(3))).toBe("Še enkrat tapni: Izbere 3 zavetišča");
       cleanup();
-      expect(note(armLjubljana(4).container)).toBe("Še enkrat tapni: Izbere 4 zavetišča");
+      expect(said(armLjubljana(4))).toBe("Še enkrat tapni: Izbere 4 zavetišča");
       cleanup();
-      expect(note(armLjubljana(5).container)).toBe("Še enkrat tapni: Izbere 5 zavetišč");
+      expect(said(armLjubljana(5))).toBe("Še enkrat tapni: Izbere 5 zavetišč");
     });
 
     it("says the drop instead, when the region is already wholly picked", () => {
@@ -3149,18 +3243,16 @@ describe("ShelterMap without hover", () => {
       // The commit is a toggle and stays one. A callout promising to select
       // four shelters that are all selected already would be describing the
       // opposite of what the press does.
-      const { container } = armLjubljana(2, ["lj0", "lj1"]);
-
-      expect(note(container)).toBe("Še enkrat tapni: Odstrani 2 zavetišči");
+      expect(said(armLjubljana(2, ["lj0", "lj1"]))).toBe(
+        "Še enkrat tapni: Odstrani 2 zavetišči",
+      );
     });
 
     it("still promises the pick while only some of the region is picked", () => {
       onATouchscreen();
 
       // A partly picked region is not a drop: toggleValues adds the rest.
-      const { container } = armLjubljana(3, ["lj0"]);
-
-      expect(note(container)).toBe("Še enkrat tapni: Izbere 3 zavetišča");
+      expect(said(armLjubljana(3, ["lj0"]))).toBe("Še enkrat tapni: Izbere 3 zavetišča");
     });
 
     it("announces a single-shelter region too", () => {
@@ -3169,7 +3261,20 @@ describe("ShelterMap without hover", () => {
       // Every armed region, not only the ones holding a crowd. One shelter is
       // still a consequence, and a rule with a threshold in it would leave the
       // visitor guessing which taps were the explained kind.
-      expect(note(armLjubljana(1).container)).toBe("Še enkrat tapni: Izbere 1 zavetišče");
+      expect(said(armLjubljana(1))).toBe("Še enkrat tapni: Izbere 1 zavetišče");
+    });
+
+    it("draws the consequence on its button alone, with no line repeating it", () => {
+      onATouchscreen();
+
+      // "Še enkrat tapni: Izbere 3 zavetišča" over a button reading "Izberi ·
+      // 3 zavetišča" was one sentence twice in one card.
+      const { container } = armLjubljana(3);
+
+      expect(note(container)).toBeUndefined();
+      expect(container.querySelector("[data-map-action]")?.textContent).toBe(
+        "Izberi · 3 zavetišča",
+      );
     });
 
     it("puts the same sentence in the region's own label", () => {

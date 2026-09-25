@@ -600,11 +600,11 @@ const SHELTER_NOUN = /^[Zz]avetišče\s+(?=\p{Lu})|\s*[—–-]\s*[Zz]avetišče
 // learn the difference.
 const SHELTER_TRAILING_PAREN = /\s*\([^()]*\)\s*$/u;
 
-/** A shelter's name without its trailing operator parenthetical, for a list
- *  row that has the width for the rest: "Obalno zavetišče (Marjetica Koper)"
- *  wrapped to two lines in the picker, and the bracket names the company
- *  behind the shelter rather than the shelter. Left alone when stripping would
- *  leave a fragment. */
+/** A shelter's name without its trailing operator parenthetical: "Obalno
+ *  zavetišče (Marjetica Koper)" wrapped to two lines in the picker, and the
+ *  bracket names the company behind the shelter rather than the shelter. Left
+ *  alone when stripping would leave a fragment. The first half of
+ *  shelterChipLabel, which is what the picker rows print. */
 export function shelterListLabel(name: string): string {
   const stripped = name.replace(SHELTER_TRAILING_PAREN, "").trim();
   return stripped.length >= 3 ? stripped : name;
@@ -631,6 +631,13 @@ export function shelterChipLabel(name: string): string {
     candidate.trim().length >= 3 ? candidate.trim() : fallback;
   const withoutOperator = shelterListLabel(name);
   return keep(withoutOperator.replace(SHELTER_NOUN, ""), withoutOperator);
+}
+
+/** Orders shelters by the name a picker row prints (shelterChipLabel), so
+ *  every list of them in the picker reads in one order: by the full name,
+ *  seven of eleven stood under Z, sorted by a word the row no longer shows. */
+export function byShelterName(a: { label: string }, b: { label: string }): number {
+  return shelterChipLabel(a.label).localeCompare(shelterChipLabel(b.label), "sl");
 }
 
 export function sizeLabel(size: AnimalSize, locale: Locale): string {

@@ -26,6 +26,7 @@ import {
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
+  byShelterName,
   goodWithChipLabel,
   shelterChipLabel,
 } from "@/lib/labels";
@@ -161,8 +162,9 @@ export function useAnimalFilterModel({
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which
   // shelters are available to choose.
+  // In the order a picker row reads (byShelterName).
   const shelters = useMemo(() => {
-    const options = groupOptions("shelter", animals, locale);
+    const options = groupOptions("shelter", animals, locale).sort(byShelterName);
     return options.length > 0 ? options : undefined;
   }, [animals, locale]);
   // Their names, by id. The chips row used to ask optionLabel for each one,

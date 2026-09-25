@@ -5,14 +5,12 @@ export const mapAvailabilityText = {
   sl: {
     noMatches: "Ni živali, ki ustrezajo filtrom",
     noListings: "Trenutno brez objavljenih živali",
-    noMatchesLegend: "Brez zadetkov s temi filtri",
     select: "Izberi",
     remove: "Odstrani iz izbora",
   },
   en: {
     noMatches: "No animals match your filters",
     noListings: "No animals currently listed",
-    noMatchesLegend: "No matches with these filters",
     select: "Select",
     remove: "Remove from selection",
   },

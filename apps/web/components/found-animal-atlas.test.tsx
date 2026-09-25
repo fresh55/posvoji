@@ -124,9 +124,8 @@ describe("the found-animal atlas", () => {
     expect(screen.getByRole("combobox")).toBeTruthy();
     // Explain why the graphic's markers do not behave like filter controls.
     expect(screen.getByText(/Zemljevid prikazuje zavetišča/)).toBeTruthy();
-    // The regions are flat, so there is no density legend to interpret.
+    // The regions are flat, one step for every live region.
     expect(document.querySelector('[data-slot="map-attribution"]')).toBeTruthy();
-    expect(document.querySelector("[data-map-legend]")).toBeNull();
     const densities = [...map.querySelectorAll("[data-region-density]")].map(
       (region) => region.getAttribute("data-region-density"),
     );
@@ -201,8 +200,6 @@ describe("the found-animal atlas", () => {
     expect(
       container.querySelector("[data-callout-metadata]")?.textContent,
     ).toBe("pristojno zavetišče · starejši vir");
-    // No second treatment for it: no badge, no ramp, no legend to read.
-    expect(container.querySelector("[data-map-legend]")).toBeNull();
   });
 
   it("rings the nearest shelter with a number where none is on record", () => {

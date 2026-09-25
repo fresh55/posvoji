@@ -1,6 +1,6 @@
 "use client";
 
-import type { TargetAndTransition, Transition } from "motion/react";
+import type { Easing, TargetAndTransition, Transition } from "motion/react";
 import { m, useReducedMotion } from "motion/react";
 import type { EnergyLevel } from "@posvoji/schema";
 import {
@@ -22,7 +22,6 @@ import {
   useFilterCardGestures,
   useOneShotCelebration,
   useResetStagger,
-  waitThen,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -34,41 +33,44 @@ import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 // The particles a level throws off. Positions are the end of the flight, in
-// px from the icon centre; delay is measured from the level's particleDelay.
+// px from the icon centre; delay is measured from the level's particleDelay;
+// size is the particle's box in px.
 type Particle = {
   x: number;
   y: number;
   delay: number;
-  className: string;
-  glyph?: string;
+  size: number;
 };
 
 type ParticleKind = "zzz" | "spark";
 
-const PARTICLES: Record<ParticleKind, Particle[]> = {
+// Each kind is one stroke in a 6-unit box rather than text or a dot: a 7px
+// letter blurred at 1x, and a round dot read as dust rather than static.
+// `turn` points the stroke along its own flight.
+type ParticleSet = { path: string; turn: boolean; items: Particle[] };
+
+const PARTICLE_STROKE = 1.3;
+
+const PARTICLES: Record<ParticleKind, ParticleSet> = {
   // Sleep leaves the moon slowly and upward.
-  zzz: [
-    {
-      x: 7,
-      y: -13,
-      delay: 0,
-      className: "text-[9px] font-semibold leading-none",
-      glyph: "z",
-    },
-    {
-      x: 12,
-      y: -19,
-      delay: 0.26,
-      className: "text-[7px] font-semibold leading-none",
-      glyph: "z",
-    },
-  ],
-  // A discharge throws sparks off on diagonals, three ways at once.
-  spark: [
-    { x: 11, y: -9, delay: 0, className: "size-1 rounded-full" },
-    { x: -10, y: -6, delay: 0.03, className: "size-0.5 rounded-full" },
-    { x: 8, y: 9, delay: 0.06, className: "size-0.5 rounded-full" },
-  ],
+  zzz: {
+    path: "M1.4 1.4h3.2L1.4 4.6h3.2",
+    turn: false,
+    items: [
+      { x: 7, y: -13, delay: 0, size: 8 },
+      { x: 12, y: -19, delay: 0.26, size: 6 },
+    ],
+  },
+  // A discharge throws dashes off on diagonals, three ways at once.
+  spark: {
+    path: "M1 3h4",
+    turn: true,
+    items: [
+      { x: 11, y: -9, delay: 0, size: 6 },
+      { x: -10, y: -6, delay: 0.03, size: 4.5 },
+      { x: 8, y: 9, delay: 0.06, size: 4.5 },
+    ],
+  },
 };
 
 type Tempo = {
@@ -87,7 +89,8 @@ type Tempo = {
   // Held back when the gesture is the tail of the draw rather than its
   // accompaniment.
   gestureDelay: number;
-  // The check confirms as the gesture lands, not while it is still running.
+  // The check confirms as the gesture lands, or sooner when the gesture runs
+  // longer than a box should sit empty.
   checkDelay: number;
   // The ring leaving the icon, paced by the same temperament as the gesture.
   rippleOpacity: number;
@@ -99,17 +102,26 @@ type Tempo = {
   particle: ParticleKind | null;
   particleDelay: number;
   particleDuration: number;
-  // What the cards that did not change pick up from this one. A calm choice
-  // leaves the rest of the section still, a balanced one leans it, a lively
-  // one shocks it sideways.
-  neighborTilt: number;
-  neighborLift: number;
-  neighborJitter: number;
-  neighborDelay: number;
   // The pose the icon takes while the pointer is held down, in the level's own
   // temperament. Cleared the moment the press ends or the gesture takes over.
   press: TargetAndTransition;
   pressTransition: Transition;
+  // What the icon does under a mouse or keyboard focus, on top of the shared
+  // lift. A phone never sees it, so nothing here may carry meaning.
+  hover: TargetAndTransition;
+  hoverTransition: Transition;
+  // How the accent copy leaves when the level is switched off: the pose it
+  // drains into and the opacity keyframes it drains by. The muted outline
+  // underneath stays put.
+  leave: {
+    pose?: TargetAndTransition;
+    opacity: number | (number | null)[];
+    times?: number[];
+    duration: number;
+    ease: Easing;
+  };
+  // How long the mark the level leaves on a selected card takes to appear.
+  watermarkDuration: number;
   // The posture of a dead option. CSS only, no animation.
   deadClassName: string;
   countJolt: boolean;
@@ -133,7 +145,10 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     times: [0, 0.24, 0.52, 0.78, 1],
     ease: "easeInOut",
     gestureDelay: 0,
-    checkDelay: 0.62,
+    // The rock runs a whole second, and waiting for it left a phone's tapped
+    // card green around an empty box for 0.6s. The tick lands after the first
+    // swing and the rock carries on around it.
+    checkDelay: 0.3,
     rippleOpacity: 0.22,
     rippleScale: 1.9,
     rippleDuration: 0.9,
@@ -141,13 +156,20 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     particle: "zzz",
     particleDelay: 0.15,
     particleDuration: 0.8,
-    neighborTilt: 0,
-    neighborLift: 0,
-    neighborJitter: 0,
-    neighborDelay: 0,
     // Drowsy: the press sinks slowly rather than answering.
     press: { y: 2, scale: 0.96 },
     pressTransition: { duration: 0.35, ease: "easeOut" },
+    // A slow nod that stays down while the pointer does.
+    hover: { rotate: -12, y: 0.5 },
+    hoverTransition: { duration: 0.5, ease: "easeInOut" },
+    // Drifts off: the colour sinks and fades slowly.
+    leave: {
+      pose: { y: 1.5 },
+      opacity: 0,
+      duration: 0.4,
+      ease: "easeIn",
+    },
+    watermarkDuration: 0.6,
     deadClassName: "translate-y-0.5 opacity-75",
     countJolt: false,
   },
@@ -175,12 +197,20 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     particle: null,
     particleDelay: 0,
     particleDuration: 0,
-    neighborTilt: 2.5,
-    neighborLift: 0,
-    neighborJitter: 0,
-    neighborDelay: 0.1,
     press: { rotate: 3 },
     pressTransition: { duration: 0.1, ease: "easeOut" },
+    // One swell passes through, left to right, and the lines come back level.
+    hover: { x: [null, 2, 0] },
+    hoverTransition: { duration: 0.5, times: [0, 0.45, 1], ease: "easeInOut" },
+    // The water goes flat as the colour leaves it.
+    leave: {
+      pose: { scaleY: 0.5 },
+      opacity: [null, 0.8, 0],
+      times: [0, 0.5, 1],
+      duration: 0.26,
+      ease: "easeIn",
+    },
+    watermarkDuration: 0.3,
     deadClassName: "scale-y-75 opacity-75",
     countJolt: false,
   },
@@ -206,10 +236,6 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     particle: "spark",
     particleDelay: 0.04,
     particleDuration: 0.28,
-    neighborTilt: 0,
-    neighborLift: 0,
-    neighborJitter: 1.6,
-    neighborDelay: 0.14,
     // A wind-up quiver, running only while the finger is down.
     press: { x: [0, -1, 1, 0] },
     pressTransition: {
@@ -218,40 +244,43 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
       ease: "linear",
       repeat: Number.POSITIVE_INFINITY,
     },
+    // One twitch as the pointer arrives, then still.
+    hover: { rotate: [null, -9, 7, -3, 0] },
+    hoverTransition: {
+      duration: 0.24,
+      times: [0, 0.25, 0.55, 0.8, 1],
+      ease: "easeOut",
+    },
+    // Fizzles: two failing flickers, then out.
+    leave: {
+      opacity: [null, 0.2, 0.8, 0.1, 0],
+      times: [0, 0.2, 0.45, 0.7, 1],
+      duration: 0.22,
+      ease: "linear",
+    },
+    // Stamped, not faded.
+    watermarkDuration: 0.1,
     deadClassName: "rotate-[20deg] opacity-75",
     countJolt: true,
   },
 };
 
-const NEIGHBOR_DURATION = 0.3;
-const JITTER_DURATION = 0.34;
-const JITTER_TIMES = [0, 0.34, 0.62, 1];
-// The shock radiates outward: each step further from the card that fired
-// arrives this much later and carries this much of the previous step's
-// amplitude. A card next to the source is one step out, the far card two.
-const JITTER_STEP_DELAY = 0.05;
-const JITTER_STEP_DAMPING = 0.62;
-// How much of the push comes back the other way before the card settles.
-const JITTER_RECOIL = 0.45;
 const CARD_HOP_DURATION = 0.32;
 const CARD_HOP_TIMES = [0, 0.28, 0.6, 1];
 // The hop drops back past the line before resting, so it reads as a snap
 // rather than a lift.
 const CARD_HOP_RECOIL = 0.25;
-// The ends of the section are this many steps apart: one card per level.
-const MAX_NEIGHBOR_DISTANCE = Object.keys(TEMPOS).length - 1;
 const COUNT_JOLT_DURATION = 0.18;
 // Matches FilterSelectionMark's own appear duration.
 const CHECK_DURATION = 0.14;
 // The mark the level leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
-const WATERMARK_IN_DURATION = 0.3;
 const WATERMARK_OUT_DURATION = 0.12;
 
 function lastParticleEnd(tempo: Tempo): number {
   if (!tempo.particle) return 0;
   const latest = Math.max(
-    ...PARTICLES[tempo.particle].map((particle) => particle.delay),
+    ...PARTICLES[tempo.particle].items.map((particle) => particle.delay),
   );
   return tempo.particleDelay + latest + tempo.particleDuration;
 }
@@ -267,16 +296,6 @@ function tempoEnd(tempo: Tempo): number {
     tempo.checkDelay + CHECK_DURATION,
     lastParticleEnd(tempo),
     tempo.cardHop > 0 ? CARD_HOP_DURATION : 0,
-    tempo.neighborTilt > 0 || tempo.neighborLift > 0
-      ? tempo.neighborDelay + NEIGHBOR_DURATION
-      : 0,
-    // The furthest card is the last to be reached, so the hold has to cover
-    // the whole staggered run, not just the first step.
-    tempo.neighborJitter > 0
-      ? tempo.neighborDelay +
-        (MAX_NEIGHBOR_DISTANCE - 1) * JITTER_STEP_DELAY +
-        JITTER_DURATION
-      : 0,
   );
 }
 
@@ -292,120 +311,49 @@ function levelOf(value: string): EnergyLevel {
 
 type Pose = { animate: TargetAndTransition; transition: Transition };
 
-const GESTURE_REST: TargetAndTransition = {
+// Where each of the icon's layers (hover, gesture, press) comes back to.
+const ICON_REST: TargetAndTransition = {
+  x: 0,
+  y: 0,
   rotate: 0,
   scale: 1,
-  y: 0,
   opacity: 1,
 };
-const PRESS_REST: TargetAndTransition = { x: 0, y: 0, rotate: 0, scale: 1 };
-const CARD_REST: TargetAndTransition = { x: 0, y: 0 };
+const CARD_REST: TargetAndTransition = { y: 0 };
+const LEAVE_REST: TargetAndTransition = { y: 0, scaleY: 1 };
 const REST_TRANSITION: Transition = { duration: 0.16 };
 
-// The icon acts out its own tempo, or picks up what the card that fired sent
-// down the section.
-type IconPose = "celebrating" | "reacting" | "rest";
-
-export function iconPose(
-  pose: IconPose,
-  tempo: Tempo,
-  celebrationTempo: Tempo | undefined,
-  direction: number,
-): Pose {
-  switch (pose) {
-    case "celebrating":
-      return {
-        animate: tempo.gesture,
-        transition: {
-          duration: tempo.duration,
-          times: tempo.times,
-          delay: tempo.gestureDelay,
-          ease: tempo.ease,
-        },
-      };
-    case "reacting": {
-      if (!celebrationTempo) break;
-      // An icon still rocking from its own pick comes level before it leans
-      // (waitThen's settle). The wait is shorter than calm's own pace, so the
-      // settle takes all of it.
-      const { neighborDelay, neighborTilt, neighborLift } = celebrationTempo;
-      const track = (keyframes: number[]) =>
-        waitThen(neighborDelay, keyframes, {
-          duration: NEIGHBOR_DURATION,
-          ease: "easeOut",
-          settle: neighborDelay,
-        });
-      const rotate = track([0, direction * neighborTilt, 0]);
-      const y = track([0, neighborLift, 0]);
-      return {
-        animate: { rotate: rotate.keyframes, y: y.keyframes },
-        transition: { rotate: rotate.transition, y: y.transition },
-      };
-    }
-    case "rest":
-      break;
+// Only the card that changed moves; the others stay still.
+function iconPose(celebrating: boolean, tempo: Tempo): Pose {
+  if (!celebrating) {
+    return { animate: ICON_REST, transition: REST_TRANSITION };
   }
-  return { animate: GESTURE_REST, transition: REST_TRANSITION };
+  return {
+    animate: tempo.gesture,
+    transition: {
+      duration: tempo.duration,
+      times: tempo.times,
+      delay: tempo.gestureDelay,
+      ease: tempo.ease,
+    },
+  };
 }
 
-// The card itself moves only for a level loud enough to move it: the lively
-// hop, and the shock its neighbours take a beat later. The hop is vertical and
-// the shock horizontal, so the card that fired stays the one being read.
-type CardPose = "celebrating" | "reacting" | "rest";
-
-function cardPose(
-  pose: CardPose,
-  tempo: Tempo,
-  celebrationTempo: Tempo | undefined,
-  direction: number,
-  distance: number,
-): Pose {
-  switch (pose) {
-    case "celebrating":
-      if (tempo.cardHop <= 0) break;
-      return {
-        animate: {
-          y: [0, -tempo.cardHop, tempo.cardHop * CARD_HOP_RECOIL, 0],
-        },
-        transition: {
-          duration: CARD_HOP_DURATION,
-          times: CARD_HOP_TIMES,
-          ease: "easeOut",
-        },
-      };
-    case "reacting": {
-      const jitter = celebrationTempo?.neighborJitter ?? 0;
-      if (jitter <= 0) break;
-      // Steps out from the card that fired. The clamp keeps the run inside the
-      // window tempoEnd holds open.
-      const steps = Math.max(
-        0,
-        Math.min(distance, MAX_NEIGHBOR_DISTANCE) - 1,
-      );
-      const amplitude = jitter * JITTER_STEP_DAMPING ** steps;
-      return {
-        // Pushed away from the source, then a smaller answer back.
-        animate: {
-          x: [
-            0,
-            direction * amplitude,
-            -direction * amplitude * JITTER_RECOIL,
-            0,
-          ],
-        },
-        transition: {
-          duration: JITTER_DURATION,
-          delay:
-            (celebrationTempo?.neighborDelay ?? 0) + steps * JITTER_STEP_DELAY,
-          times: JITTER_TIMES,
-          ease: "easeInOut",
-        },
-      };
-    }
-    case "rest":
-      break;
+// The card itself moves only for a level loud enough to move it: lively hops.
+function cardPose(celebrating: boolean, tempo: Tempo): Pose {
+  if (!celebrating || tempo.cardHop <= 0) {
+    return { animate: CARD_REST, transition: REST_TRANSITION };
   }
-  return { animate: CARD_REST, transition: REST_TRANSITION };
+  return {
+    animate: {
+      y: [0, -tempo.cardHop, tempo.cardHop * CARD_HOP_RECOIL, 0],
+    },
+    transition: {
+      duration: CARD_HOP_DURATION,
+      times: CARD_HOP_TIMES,
+      ease: "easeOut",
+    },
+  };
 }
 
 // Two layers: a muted outline that is always there, and an accent copy that
@@ -425,6 +373,45 @@ function EnergyGlyph({
   className: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  const { leave } = tempo;
+
+  const accent = tempo.glyph.map((d, index) => (
+    <m.path
+      key={d}
+      d={d}
+      initial={false}
+      animate={{
+        pathLength: checked ? 1 : 0,
+        opacity: checked ? 1 : leave.opacity,
+      }}
+      transition={
+        shouldReduceMotion
+          ? { duration: 0 }
+          : checked
+            ? {
+                duration: tempo.drawDuration,
+                delay: index * tempo.drawStagger,
+                ease: "easeOut",
+              }
+            : // The drawn length drops only once the stroke is gone, so
+              // unchecking never runs the draw backwards. On a reset it
+              // waits its turn with the halo around it, which was
+              // staggering out over a glyph that had already gone grey.
+              {
+                opacity: {
+                  duration: leave.duration,
+                  times: leave.times,
+                  ease: leave.ease,
+                  delay: resetDelay,
+                },
+                pathLength: {
+                  duration: 0,
+                  delay: resetDelay + leave.duration,
+                },
+              }
+      }
+    />
+  ));
 
   return (
     <svg
@@ -441,31 +428,23 @@ function EnergyGlyph({
           <path key={d} d={d} />
         ))}
       </g>
-      <g stroke="var(--brand-strong)">
-        {tempo.glyph.map((d, index) => (
-          <m.path
-            key={d}
-            d={d}
-            initial={false}
-            animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
-            transition={
-              shouldReduceMotion
-                ? { duration: 0 }
-                : checked
-                  ? {
-                      duration: tempo.drawDuration,
-                      delay: index * tempo.drawStagger,
-                      ease: "easeOut",
-                    }
-                  : // The drawn length drops only once the stroke is gone, so
-                    // unchecking never runs the draw backwards. On a reset it
-                    // waits its turn with the halo around it, which was
-                    // staggering out over a glyph that had already gone grey.
-                    { duration: 0.12, delay: resetDelay, ease: "easeOut" }
-            }
-          />
-        ))}
-      </g>
+      {/* Only a level whose colour leaves in a pose needs a moving group. */}
+      {leave.pose ? (
+        <m.g
+          stroke="var(--brand-strong)"
+          initial={false}
+          animate={checked ? LEAVE_REST : leave.pose}
+          transition={
+            shouldReduceMotion || checked
+              ? { duration: 0 }
+              : { duration: leave.duration, delay: resetDelay, ease: leave.ease }
+          }
+        >
+          {accent}
+        </m.g>
+      ) : (
+        <g stroke="var(--brand-strong)">{accent}</g>
+      )}
     </svg>
   );
 }
@@ -509,14 +488,6 @@ export function EnergyCards({
     handlers: gestureHandlers,
   } = useFilterCardGestures();
 
-  const celebrationIndex = options.findIndex(
-    ({ value }) => value === celebration?.value,
-  );
-  const celebrationTempo =
-    celebrationIndex >= 0
-      ? TEMPOS[levelOf(options[celebrationIndex].value)]
-      : undefined;
-
   return (
     <FilterCardSection
       label={groupLabel("energy", locale)}
@@ -544,29 +515,13 @@ export function EnergyCards({
             // it yields the moment the gesture takes over.
             const pressing =
               pressedValue === value && !celebrating && !shouldReduceMotion;
-            const reacting = celebrationIndex >= 0 && !celebrating;
-            const tilting =
-              reacting &&
-              ((celebrationTempo?.neighborTilt ?? 0) > 0 ||
-                (celebrationTempo?.neighborLift ?? 0) > 0);
-            // The cards that did not change lean away from the one that did,
-            // and how far they sit from it sets when and how hard.
-            const direction = Math.sign(index - celebrationIndex) || 1;
-            const distance = Math.abs(index - celebrationIndex);
+            // The hover shows the tempo a pick would play, so a chosen level
+            // has nothing left to preview. Its own span keeps it off the
+            // gesture's and the press's transforms.
+            const previewing = hovered && !checked && !shouldReduceMotion;
             const resetDelay = resetDelayOf(index);
-            const icon = iconPose(
-              celebrating ? "celebrating" : tilting ? "reacting" : "rest",
-              tempo,
-              celebrationTempo,
-              direction,
-            );
-            const card = cardPose(
-              celebrating ? "celebrating" : reacting ? "reacting" : "rest",
-              tempo,
-              celebrationTempo,
-              direction,
-              distance,
-            );
+            const icon = iconPose(celebrating, tempo);
+            const card = cardPose(celebrating, tempo);
             const gestures = gestureHandlers(value);
             const particles = tempo.particle
               ? PARTICLES[tempo.particle]
@@ -630,7 +585,7 @@ export function EnergyCards({
                       ? { duration: 0 }
                       : checked
                         ? {
-                            duration: WATERMARK_IN_DURATION,
+                            duration: tempo.watermarkDuration,
                             delay: tempo.checkDelay,
                             ease: "easeOut",
                           }
@@ -681,18 +636,12 @@ export function EnergyCards({
                     />
                   ) : null}
                   {celebrating && particles && !shouldReduceMotion
-                    ? particles.map((particle) => (
+                    ? particles.items.map((particle) => (
                         <m.span
                           key={`particle-${celebration?.id}-${particle.x}-${particle.y}`}
-                          className={cn(
-                            // Absolute, so nothing here can move the label or
-                            // the count.
-                            "pointer-events-none absolute text-brand-strong",
-                            particle.glyph
-                              ? undefined
-                              : "bg-brand-strong",
-                            particle.className,
-                          )}
+                          // Absolute, so nothing here can move the label or the
+                          // count.
+                          className="pointer-events-none absolute text-brand-strong"
                           initial={false}
                           animate={{
                             opacity: [0, 0.8, 0],
@@ -707,7 +656,27 @@ export function EnergyCards({
                             ease: "easeOut",
                           }}
                         >
-                          {particle.glyph}
+                          {/* The turn stays on the svg; the span owns
+                              transform. */}
+                          <svg
+                            viewBox="0 0 6 6"
+                            width={particle.size}
+                            height={particle.size}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={PARTICLE_STROKE}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={
+                              particles.turn
+                                ? {
+                                    rotate: `${Math.atan2(particle.y, particle.x)}rad`,
+                                  }
+                                : undefined
+                            }
+                          >
+                            <path d={particles.path} />
+                          </svg>
                         </m.span>
                       ))
                     : null}
@@ -715,36 +684,49 @@ export function EnergyCards({
                     <m.span
                       className="flex items-center justify-center"
                       initial={false}
-                      animate={
-                        shouldReduceMotion ? GESTURE_REST : icon.animate
-                      }
+                      animate={previewing ? tempo.hover : ICON_REST}
                       transition={
-                        shouldReduceMotion ? { duration: 0 } : icon.transition
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : previewing
+                            ? tempo.hoverTransition
+                            : REST_TRANSITION
                       }
                     >
                       <m.span
                         className="flex items-center justify-center"
                         initial={false}
-                        animate={pressing ? tempo.press : PRESS_REST}
+                        animate={
+                          shouldReduceMotion ? ICON_REST : icon.animate
+                        }
                         transition={
-                          shouldReduceMotion
-                            ? { duration: 0 }
-                            : pressing
-                              ? tempo.pressTransition
-                              : REST_TRANSITION
+                          shouldReduceMotion ? { duration: 0 } : icon.transition
                         }
                       >
-                        <EnergyGlyph
-                          level={level}
-                          tempo={tempo}
-                          checked={checked}
-                          resetDelay={resetDelay}
-                          className={cn(
-                            "size-5 transition-transform duration-200",
-                            // A dead option has no charge left to show.
-                            dead && tempo.deadClassName,
-                          )}
-                        />
+                        <m.span
+                          className="flex items-center justify-center"
+                          initial={false}
+                          animate={pressing ? tempo.press : ICON_REST}
+                          transition={
+                            shouldReduceMotion
+                              ? { duration: 0 }
+                              : pressing
+                                ? tempo.pressTransition
+                                : REST_TRANSITION
+                          }
+                        >
+                          <EnergyGlyph
+                            level={level}
+                            tempo={tempo}
+                            checked={checked}
+                            resetDelay={resetDelay}
+                            className={cn(
+                              "size-5 transition-transform duration-200",
+                              // A dead option has no charge left to show.
+                              dead && tempo.deadClassName,
+                            )}
+                          />
+                        </m.span>
                       </m.span>
                     </m.span>
                   </FilterCardHoverLift>

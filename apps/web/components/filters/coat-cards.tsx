@@ -489,8 +489,8 @@ const SWATCH_STILL: Pose = {
 
 // The neighbours' answer, in place of the shove the old pick sent through the
 // grid: every colour already picked turns the ear nearer the new one towards
-// it, a beat after it lands, the far ones a little later. Energija's
-// neighbours lean away; these listen. A dog's floppy ear turns less.
+// it, a beat after it lands, the far ones a little later. A dog's floppy ear
+// turns less.
 const NOTICE_DELAY = 0.2;
 const NOTICE_STEP = 0.06;
 const EAR_NOTICE = [0, -16, 0];
@@ -1287,8 +1287,8 @@ function coatPose(pose: CoatPose, motion: CoatMotion): Pose {
  * elements.
  *
  * `distance` and not a delay: the shared card loop knows where a row sits and
- * this file knows how long a coat takes to stir, which is the split energy
- * and size already use.
+ * this file knows how long a coat takes to stir, which is the split size
+ * already uses.
  */
 function rufflePose(motion: CoatMotion, distance: number): Pose {
   return {
@@ -1559,7 +1559,7 @@ function CoatCards({
         const gestures = gestureHandlers(value);
         // The cards that did not change feel the draught. How far away they
         // are is this loop's business; how long that takes belongs to the
-        // glyph, which is the split energy and size already use.
+        // glyph, which is the split size already uses.
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
           settled: settledValue === value,

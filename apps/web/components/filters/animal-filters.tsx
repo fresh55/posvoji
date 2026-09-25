@@ -512,12 +512,33 @@ export function AnimalFilters({
           static prerender. The chunk was already on this route for the lg
           row, so the cost is a second layout tree, one of which is always
           display:none, and it has to stay zero-rect-safe (focusAfterRow in
-          filter-chips.tsx). */}
-      {showChips && (
-        <div data-slot="mobile-filter-row" className="lg:hidden">
-          <FilterChips {...chipProps} placement="flow" />
-        </div>
-      )}
+          filter-chips.tsx).
+
+          The band's own AnimatePresence and 0.2s height collapse, for the
+          same reason it wears them there: without this, taking off the last
+          pill (or the undo offer expiring with nothing left to show) dropped
+          this row in the same frame the grid closed the 60px gap behind it,
+          so the pill's own exit inside FilterChips never got to play and the
+          page jumped instead of settling (D6). Instant under reduced motion
+          the same way the band's is: height is not a transform, so
+          MotionConfig's reducedMotion="user" leaves it alone on its own. */}
+      <LazyMotion features={domAnimation}>
+        <AnimatePresence initial={false}>
+          {showChips && (
+            <m.div
+              key="mobile-filter-row"
+              data-slot="mobile-filter-row"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.2, ease: "easeOut" }}
+              className="overflow-hidden lg:hidden"
+            >
+              <FilterChips {...chipProps} placement="flow" />
+            </m.div>
+          )}
+        </AnimatePresence>
+      </LazyMotion>
 
       {/* The dock is present at any result count, including one. It used to
           vanish there, because both of its children were gated on a facet

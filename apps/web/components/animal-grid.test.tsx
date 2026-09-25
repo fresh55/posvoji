@@ -1191,6 +1191,30 @@ describe("the chips row inside the grid", () => {
     );
   });
 
+  it("keeps the phone row mounted through its own exit instead of dropping it with the last pill", async () => {
+    // Before this, taking off the last pill in flow unmounted the row in the
+    // same frame the grid closed the 60px gap it left behind, so the pill's
+    // own exit inside FilterChips never got to play (D6). The row now shares
+    // the band's own AnimatePresence, so its DOM node survives the press.
+    window.history.replaceState(null, "", "/?zavetisce=muri");
+    renderGrid(ANIMALS);
+
+    const phone = phoneRow();
+    fireEvent.click(
+      within(phone).getByRole("button", { name: /^Odstrani filter/ }),
+    );
+
+    // Still in the document right after the press: an instant unmount would
+    // have taken it out inside this same synchronous click.
+    expect(document.body.contains(phone)).toBe(true);
+
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-slot="mobile-filter-row"]'),
+      ).toBeNull(),
+    );
+  });
+
   it("offers no cost for a value whose removal would narrow rather than widen", () => {
     // Values inside one facet are OR-ed, so dropping one of two shelters
     // leaves a stricter filter. A row that showed "+N" there would be

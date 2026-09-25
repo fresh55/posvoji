@@ -247,10 +247,16 @@ export const FILTER_METADATA = {
   // no longer fit the sidebar's label slot and broke over two lines. The chip
   // has no section heading to lean on, so it says what the card's badge says
   // ("Čaka 4 leta").
+  //
+  // A no-break space ties each number to its unit, so a label that has to
+  // wrap breaks as "Nad / 6 mesecev" and never as "Nad 6 / mesecev". "Nad 6
+  // mesecev" wraps in the phone sheet's three tiles at 320px and 360px; "6
+  // mesecev" is 62px and a tile's label box at 320px is 75px, so the pair
+  // always fits. The slugs keep their hyphens.
   waiting: [
-    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6 mesecev", en: "Over 6 months" }, chip: { sl: "Čaka nad 6 mesecev", en: "Waiting over 6 months" } },
-    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1 leto", en: "Over 1 year" }, chip: { sl: "Čaka nad 1 leto", en: "Waiting over 1 year" } },
-    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Nad 3 leta", en: "Over 3 years" }, chip: { sl: "Čaka nad 3 leta", en: "Waiting over 3 years" } },
+    { value: "over-6-months", slug: "nad-6-mesecev", labels: { sl: "Nad 6\u00a0mesecev", en: "Over 6\u00a0months" }, chip: { sl: "Čaka nad 6\u00a0mesecev", en: "Waiting over 6\u00a0months" } },
+    { value: "over-1-year", slug: "nad-1-leto", labels: { sl: "Nad 1\u00a0leto", en: "Over 1\u00a0year" }, chip: { sl: "Čaka nad 1\u00a0leto", en: "Waiting over 1\u00a0year" } },
+    { value: "over-3-years", slug: "nad-3-leta", labels: { sl: "Nad 3\u00a0leta", en: "Over 3\u00a0years" }, chip: { sl: "Čaka nad 3\u00a0leta", en: "Waiting over 3\u00a0years" } },
   ],
   sex: [
     { value: "male", slug: "samec", labels: { sl: "Samec", en: "Male" } },

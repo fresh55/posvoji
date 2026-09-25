@@ -152,7 +152,7 @@ describe("the waiting section's place in the panel", () => {
       "Čaka na dom",
     ]);
     openFilterSection("Čaka na dom");
-    expect(screen.getByRole("button", { name: /^Nad 1 leto,/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Nad 1\sleto,/ })).toBeTruthy();
   });
 
   it("summarises a closed section as it reads open", () => {
@@ -161,7 +161,7 @@ describe("the waiting section's place in the panel", () => {
     const trigger = openFilterSection("Čaka na dom");
     fireEvent.click(trigger);
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
-    expect(trigger.textContent).toContain("Nad 1 leto");
+    expect(trigger.textContent).toContain("Nad 1\u00a0leto");
   });
 
   it("puts its chip last in the active filters row, as the panel does", () => {
@@ -194,7 +194,7 @@ describe("the waiting section's place in the panel", () => {
       "care",
       "waiting",
     ]);
-    expect(result.current.chips.at(-1)?.label).toBe("Čaka nad 1 leto");
+    expect(result.current.chips.at(-1)?.label).toBe("Čaka nad 1\u00a0leto");
     // The chips row spells the order out by hand; this holds it to the list.
     const rank = result.current.chips.map((chip) =>
       FILTER_FACETS.indexOf(chip.facet),

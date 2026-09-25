@@ -94,7 +94,7 @@ describe("Čaka na dom takes one threshold at a time", () => {
     openFilterSection("Čaka na dom");
     const mark = (name: RegExp) =>
       screen.getByRole("button", { name }).querySelector("span[aria-hidden].border");
-    expect(mark(/^Nad 1 leto,/)?.classList.contains("rounded-full")).toBe(true);
+    expect(mark(/^Nad 1\sleto,/)?.classList.contains("rounded-full")).toBe(true);
     // A section whose answers add up keeps the tick box.
     openFilterSection("Videz");
     expect(mark(/^Dolga,/)?.classList.contains("rounded-sm")).toBe(true);
@@ -103,7 +103,7 @@ describe("Čaka na dom takes one threshold at a time", () => {
   it("says so to a screen reader on every row, which hears nothing of the mark", () => {
     show({ groups: ["waiting"], counts: { waiting: [["over-1-year", 4]] } });
     openFilterSection("Čaka na dom");
-    const row = screen.getByRole("button", { name: /^Nad 1 leto,/ });
+    const row = screen.getByRole("button", { name: /^Nad 1\sleto,/ });
     const description = document.getElementById(row.getAttribute("aria-describedby")!);
     expect(description?.textContent).toBe(
       "Šteto od dneva, ko je žival prišla v zavetišče. Izbereš lahko eno mejo.",

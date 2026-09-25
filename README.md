@@ -8,11 +8,13 @@
 <h1 align="center">Posvoji.si</h1>
 
 <p align="center">
-  An open index of animals waiting for a home in Slovenian shelters.
+  An open index of animals waiting for a home in Slovenian shelters.<br>
+  <a href="https://posvoji.si/en"><b>posvoji.si</b></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/fresh55/posvoji/actions/workflows/ci.yml"><img src="https://github.com/fresh55/posvoji/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/fresh55/posvoji"><img src="https://api.scorecard.dev/projects/github.com/fresh55/posvoji/badge" alt="OpenSSF Scorecard"></a>
 </p>
 
 <p align="center">
@@ -151,3 +153,14 @@ MIT tree carries its own `LICENSE` file.
 Shelter photos, descriptions, logos and fixture HTML remain third-party
 material. They are not covered by the repository's open-source licenses, and
 shelters may change or withdraw permission at any time.
+
+The animal data shown on posvoji.si is not offered under an open license
+either. Shelters grant permission for this index only, so any other reuse needs
+the shelter's own permission.
+
+`data/shelters.yaml` is based on the public register of animal shelters kept by
+the Administration for Food Safety, Veterinary Sector and Plant Protection
+(UVHVVR), with later checks against the shelters' own websites.
+
+The code licenses do not cover the Posvoji.si name or logo. A fork may reuse the
+code, but it must not present itself as Posvoji.si.

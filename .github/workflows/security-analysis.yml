@@ -38,13 +38,17 @@ jobs:
           category: "/language:${{ matrix.language }}"
 
   scorecard:
-    # Assess the default branch, with results kept in GitHub code scanning.
+    # Assess the default branch. Results go to GitHub code scanning and to the
+    # public Scorecard API. Publishing accepts only allowlisted actions and no
+    # workflow-level env or write permissions.
     if: toJSON(github.event.repository.private) == 'false' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
+      # Lets scorecard-action publish results for the README badge.
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -53,7 +57,7 @@ jobs:
         with:
           results_file: scorecard.sarif
           results_format: sarif
-          publish_results: false
+          publish_results: true
       - uses: github/codeql-action/upload-sarif@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
         with:
           sarif_file: scorecard.sarif

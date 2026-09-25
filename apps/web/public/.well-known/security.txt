@@ -2,3 +2,4 @@ Contact: mailto:info@posvoji.si
 Expires: 2027-09-01T00:00:00Z
 Preferred-Languages: sl, en
 Canonical: https://posvoji.si/.well-known/security.txt
+Policy: https://github.com/fresh55/posvoji/blob/main/SECURITY.md

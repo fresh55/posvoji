@@ -8,7 +8,7 @@
 <h1 align="center">Posvoji.si</h1>
 
 <p align="center">
-  Odprt in brezplačen seznam živali iz slovenskih zavetišč, ki iščejo dom.<br>
+  Živali iz slovenskih zavetišč, ki iščejo dom, na enem mestu.<br>
   <a href="https://posvoji.si"><b>posvoji.si</b></a>
 </p>
 
@@ -25,37 +25,33 @@
   <a href="SECURITY.md">Varnost</a>
 </p>
 
-> [!NOTE]
-> Posvoji.si ni zavetišče in ne vodi posvojitev. Vsaka žival je povezana z
-> izvirno objavo zavetišča, kjer tudi poteka posvojitev.
+Slovenska zavetišča objavljajo svoje živali vsako na svoji spletni strani in
+vsako po svoje. Kdor išče psa, mačko ali zajca, mora vedeti, katera zavetišča
+sploh obstajajo, in jih pregledati enega za drugim. Posvoji.si zbere te objave
+na enem mestu, z enakimi osnovnimi podatki za vsako žival: ime, vrsta, spol,
+približna starost, status in zavetišče.
 
-## Kaj projekt dela
+Posvoji.si ne vodi posvojitev. Žival, ki jo najdemo na spletni strani
+zavetišča, je povezana na tisto objavo. Zavetišče brez lastne spletne strani
+lahko živali objavi neposredno pri nas, in takrat je izvirna objava ta na
+Posvoji.si. Posvojitev v obeh primerih poteka pri zavetišču.
 
-Posvoji.si na enem mestu zbere osnovna dejstva o živalih iz sodelujočih
-zavetišč: ime, vrsto, spol, približno starost in status. Pri vsakem zapisu sta
-vidna vir in čas zadnje osvežitve.
+> [!IMPORTANT]
+> Niso vključena vsa slovenska zavetišča, objava pa lahko zaostaja za stranjo
+> zavetišča. Pri zavetišču vedno preverite, ali je žival še na voljo.
 
-- **Najprej dovoljenje.** Vir ostane izklopljen, dokler zavetišče ne izda
-  pisnega in datiranega dovoljenja.
-- **Vir, ne kopija.** Obiskovalca usmerimo na stran zavetišča; te strani ne
-  nadomeščamo.
-- **Brez osebnih podatkov.** Zasebni oglasi, kontakti posameznikov in številke
-  mikročipov ne sodijo v indeks.
-- **Brez družbenih omrežij.** Beremo samo dovoljene spletne strani zavetišč.
-- **Portal za zavetišča.** Osebje zavetišča se prijavi in popravi podatke.
-  Zavetišče brez lastnega seznama lahko živali objavi neposredno.
-
-```text
-spletna stran zavetišča ──▶ vljuden zajem ──▶ podatki ──▶ statična spletna stran
-                                  ▲
-osebje zavetišča ──▶ zasebni portal ──▶ popravki in neposredne objave
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/preview-sl-dark.png">
+  <img src="docs/assets/preview-sl.png" alt="Vrh domače strani posvoji.si: naslov, število zavetišč, zavihki po vrstah s števili in Srečko, maček projekta">
+</picture>
 
 ## Za zavetišča
 
-**Vaše vsebine ostanejo vaše.** Fotografije, avtorski opisi in vaš logotip se
-prikažejo samo z vašim izrecnim dovoljenjem. Obseg dovoljenja je zapisan v
-repozitoriju, sistem pa nedovoljenega vira ne more vklopiti.
+Vaše vsebine ostanejo vaše. Živali zavetišča se prikažejo šele, ko zavetišče
+izda pisno in datirano dovoljenje. Obseg dovoljenja je zapisan v
+`providers/<zavetišče>/policy.yaml`, kjer ga preverja CI, sistem pa vira brez
+dovoljenja ne more vklopiti. Fotografije, avtorski opisi in logotip zavetišča
+se prikažejo samo, če jih dovoljenje zajema.
 
 Zavetišče lahko kadarkoli zahteva:
 
@@ -65,12 +61,76 @@ Zavetišče lahko kadarkoli zahteva:
 - popoln izklop vira.
 
 Zahteve za umik imajo prednost. Pišite na
-[info@posvoji.si](mailto:info@posvoji.si). Podrobnosti so v
-[podatkovni politiki](docs/DATA-POLICY.md).
+[info@posvoji.si](mailto:info@posvoji.si).
 
 Pri samodejnem zajemu se `PosvojiBot` predstavi s kontaktom, spoštuje
 `robots.txt`, pošilja največ eno zahtevo naenkrat na strežnik, med zahtevami
-čaka in ob omejitvah odneha.
+čaka in ob omejitvah odneha. Projekt nikoli ne zbira zasebnih oglasov, osebnih
+podatkov lastnikov, posvojiteljev ali prosilcev, številk mikročipov in ničesar
+s Facebooka ali drugih omrežij. Zavezujoča pravila so v
+[podatkovni politiki](docs/DATA-POLICY.md).
+
+## Zagon na svojem računalniku
+
+Potrebujete **Node.js 24** (glej `.node-version`) in **pnpm 10**. Druge
+podprte različice Node so navedene v `package.json`.
+
+```bash
+git clone https://github.com/fresh55/posvoji.git
+cd posvoji
+pnpm install --frozen-lockfile
+pnpm --filter web dev
+```
+
+Stran se odpre na <http://localhost:3000>. Sveža kopija nima podatkov o
+živalih, ker nastanejo z zajemom spletnih strani zavetišč in niso v
+repozitoriju. Mreža živali je zato prazna, seznam zavetišč pa se prikaže.
+Testi nikoli ne zajemajo strani; uporabljajo majhne lokalne vzorce.
+
+Pred odprtjem zahteve za združitev (pull request) zaženite preverjanja, ki jih
+izvaja CI. `pnpm test` zajema tudi portal za zavetišča, zato potrebuje
+**Python 3.12+** in **uv**; nastavitev portala je v
+[`apps/portal/README.md`](apps/portal/README.md).
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm validate:policies
+```
+
+Ob spremembah v `apps/web` zaženite še `pnpm --filter web build`.
+
+## Prispevanje
+
+Koristni prispevki so na primer:
+
+- popravek razčlenjevalnika, ko zavetišče spremeni spletno stran;
+- nov adapter za zavetišče, ki ga še ni;
+- boljše slovensko ali angleško besedilo na strani;
+- prijava napačne ali zastarele objave.
+
+Adapter lahko napišete in združite, preden zavetišče izda dovoljenje, a do
+takrat ostane izklopljen. Začnite s `providers/_template` in sledite navodilom
+[Adding a provider](docs/ADDING-A-PROVIDER.md).
+
+Projekt vzdržuje [@fresh55](https://github.com/fresh55), ki pregleduje in
+združuje zahteve. Najprej preberite [CONTRIBUTING.md](CONTRIBUTING.md).
+Naslovi zahtev sledijo [Conventional Commits](docs/COMMIT-CONVENTION.md), ker
+se zahteve združujejo s squash.
+
+## Kako deluje
+
+```text
+spletna stran zavetišča ──▶ vljuden zajem ──▶ podatki ──▶ statična spletna stran
+                                  ▲
+osebje zavetišča ──▶ zasebni portal ──▶ popravki in neposredne objave
+```
+
+Zajem prebere vsako vklopljeno zavetišče, rezultat preveri po shemi in zapiše
+JSON. Spletna aplikacija iz njega zgradi statično stran, ki nikoli ne sprašuje
+baze. Osebje zavetišča se prijavi v ločen portal z lastnim API in bazo, kjer
+popravi podatke ali živali objavi neposredno.
 
 ## Ste našli napako?
 
@@ -82,33 +142,17 @@ Varnostne ranljivosti in vse, kar bi lahko razkrilo osebne podatke, prijavite
 zasebno po navodilih v [SECURITY.md](SECURITY.md). Vprašanja o posvojitvi
 naslovite na zavetišče, ki žival oskrbuje.
 
-## Za razvijalce
-
-Potrebujete **Node.js 24** (glej `.node-version`) in **pnpm 10**. Za celoten
-nabor testov potrebujete še **Python 3.12+** in **uv** za portal zavetišč.
-Ključev API ali zunanjih storitev ne potrebujete; testi uporabljajo majhne
-lokalne vzorce, portal pa lokalno bazo SQLite.
-
-```bash
-pnpm install --frozen-lockfile
-pnpm test
-pnpm --filter web dev
-```
-
-Navodila za prispevanje so v [CONTRIBUTING.md](CONTRIBUTING.md), postopek za
-nov vir pa v [Adding a provider](docs/ADDING-A-PROVIDER.md).
-
 ## Licence
 
-Aplikacije v `apps/*` so pod licenco **AGPL-3.0-only**; sheme, SDK in adapterji
-v `packages/*` ter `providers/*` so pod licenco **MIT**.
+Koda je odprtokodna. Aplikacije v `apps/*` so pod licenco **AGPL-3.0-only**;
+sheme, SDK in adapterji v `packages/*` ter `providers/*` so pod licenco
+**MIT**.
 
-Fotografije, opisi, logotipi zavetišč in vzorci HTML so gradivo tretjih oseb.
-Odprtokodne licence repozitorija jih ne pokrivajo.
-
-Tudi podatki o živalih na posvoji.si niso na voljo pod odprto licenco.
-Zavetišča dovolijo uporabo samo za ta indeks, zato vsaka druga uporaba
-potrebuje dovoljenje zavetišča.
+Vsebine zavetišč niso. Fotografije, opisi, logotipi in vzorci HTML ostanejo
+gradivo zavetišč, tudi podatki o živalih na posvoji.si pa niso na voljo pod
+odprto licenco. Zavetišča dovolijo uporabo samo za ta indeks, zato vsaka druga
+uporaba potrebuje dovoljenje zavetišča, ki ga lahko kadarkoli spremeni ali
+umakne.
 
 `data/shelters.yaml` temelji na javnem registru zavetišč, ki ga vodi Uprava RS
 za varno hrano, veterinarstvo in varstvo rastlin (UVHVVR), in na poznejših

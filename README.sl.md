@@ -106,6 +106,10 @@ v `packages/*` ter `providers/*` so pod licenco **MIT**.
 Fotografije, opisi, logotipi zavetišč in vzorci HTML so gradivo tretjih oseb.
 Odprtokodne licence repozitorija jih ne pokrivajo.
 
+Tudi podatki o živalih na posvoji.si niso na voljo pod odprto licenco.
+Zavetišča dovolijo uporabo samo za ta indeks, zato vsaka druga uporaba
+potrebuje dovoljenje zavetišča.
+
 `data/shelters.yaml` temelji na javnem registru zavetišč, ki ga vodi Uprava RS
 za varno hrano, veterinarstvo in varstvo rastlin (UVHVVR), in na poznejših
 preverjanjih spletnih strani zavetišč.

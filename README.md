@@ -154,6 +154,10 @@ Shelter photos, descriptions, logos and fixture HTML remain third-party
 material. They are not covered by the repository's open-source licenses, and
 shelters may change or withdraw permission at any time.
 
+The animal data shown on posvoji.si is not offered under an open license
+either. Shelters grant permission for this index only, so any other reuse needs
+the shelter's own permission.
+
 `data/shelters.yaml` is based on the public register of animal shelters kept by
 the Administration for Food Safety, Veterinary Sector and Plant Protection
 (UVHVVR), with later checks against the shelters' own websites.

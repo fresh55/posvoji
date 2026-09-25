@@ -8,6 +8,7 @@ import type {
   AdoptionStatus,
   AnimalMedical,
   AnimalSize,
+  EnergyLevel,
   ImagePolicy,
   ImageRights,
   Sex,
@@ -29,6 +30,7 @@ export interface DetailFacts {
   intakeDate?: string;
   originMunicipality?: string;
   medical?: AnimalMedical;
+  energy?: EnergyLevel;
   description?: string;
   imageUrls: string[];
 }
@@ -234,6 +236,51 @@ function parseMedical(facts: Map<string, string>): AnimalMedical | undefined {
   return Object.keys(medical).length > 0 ? medical : undefined;
 }
 
+// "Temperament" is a free-text adjective list, not a scale: "plašna" (timid)
+// and "družabna" (sociable) say nothing about tempo. Only words that state
+// the tempo outright map, and only when the value states one tempo:
+// "umirjen, plašen" stays calm (plašen is not a tempo word), but "živahen,
+// umirjen" stays unmapped. Declension drops the "e" in some masculine forms
+// ("miren" vs "mirna"), so the stems below list the masculine form whole
+// alongside the shared feminine/neuter prefix. No explicit middle term
+// ("srednje živahen", "zmerno aktiven", "uravnotežen") has been seen on this
+// shelter's pages, but is mapped in case one appears.
+const CALM_STEMS = ["umirjen", "miren", "mirn"];
+const LIVELY_STEMS = ["živahen", "živahn", "energičn", "aktiven", "aktivn"];
+const BALANCED_STEM = "uravnotežen";
+const BALANCED_MODIFIERS = new Set(["srednje", "zmerno"]);
+
+export function parseEnergy(value: string): EnergyLevel | undefined {
+  const words = value
+    .normalize("NFC")
+    .toLowerCase()
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean);
+
+  // "ni umirjen", "ne živahen": a negated value says what the animal is not,
+  // which is not a level.
+  if (words.some((word) => word === "ni" || word === "ne")) return undefined;
+
+  const found = new Set<EnergyLevel>();
+  words.forEach((word, index) => {
+    if (word.startsWith(BALANCED_STEM)) {
+      found.add("balanced");
+      return;
+    }
+    if (LIVELY_STEMS.some((stem) => word.startsWith(stem))) {
+      found.add(
+        BALANCED_MODIFIERS.has(words[index - 1] ?? "") ? "balanced" : "lively",
+      );
+      return;
+    }
+    if (CALM_STEMS.some((stem) => word.startsWith(stem))) found.add("calm");
+  });
+
+  // A value naming two different levels settles nothing, so it stays unset
+  // rather than taking either one.
+  return found.size === 1 ? [...found][0] : undefined;
+}
+
 function addImageUrl(urls: string[], value: string | undefined): void {
   const url = value ? sameSiteUrl(value) : undefined;
   if (!url || !url.pathname.startsWith("/wp-content/uploads/")) return;
@@ -292,6 +339,7 @@ export function parseDetail(html: string): DetailFacts {
       : undefined,
     originMunicipality: municipality || undefined,
     medical: parseMedical(facts),
+    energy: parseEnergy(facts.get("temperament") ?? ""),
     description: parseDescription($),
     imageUrls,
   };
@@ -322,10 +370,14 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
   const newest = $(".e-n-tabs-content [role='tabpanel']").first();
   if (newest.length === 0) return undefined;
   const paragraphs: string[] = [];
-  newest.find(".elementor-widget-text-editor p").each((_, element) => {
-    const paragraph = stripQuestionnaire(
-      $(element).text().replace(/\s+/g, " ").trim(),
-    );
+  newest.find("p, div[dir='auto']").each((_, element) => {
+    const node = $(element);
+    // Some journal entries are pasted in from Facebook, which wraps every
+    // paragraph in its own plain <div> (no dir attribute) around the real
+    // "dir=auto" text div; without this guard the outer wrapper's flattened
+    // text would repeat every inner paragraph it contains.
+    if (node.find("p, div[dir='auto']").length > 0) return;
+    const paragraph = stripQuestionnaire(node.text().replace(/\s+/g, " ").trim());
     if (paragraph) paragraphs.push(paragraph);
   });
   return paragraphs.length > 0 ? paragraphs.join("\n\n") : undefined;
@@ -410,6 +462,7 @@ const provider: AdoptionProvider = {
       intakeDate: facts.intakeDate,
       originMunicipality: facts.originMunicipality,
       medical: facts.medical,
+      energy: facts.energy,
       images:
         rights === null
           ? []

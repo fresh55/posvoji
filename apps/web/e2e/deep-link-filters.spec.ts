@@ -5,15 +5,12 @@ import { cards } from "./grid";
 // always opens onto the prerendered, unfiltered HTML first: the layout's
 // inline script marks <html data-filtering> before anything paints, and
 // app/globals.css hides the results block while that mark is on. AnimalGrid
-// clears the mark in an effect after its first client render, the one that
-// finally answers the address the link was actually opened at
+// clears the mark in an effect once the cards it draws are the filtered ones
 // (prehydration-script.ts, animal-grid.tsx).
 //
-// Catching the pre-hydration flash itself is not practical from here -- it
-// is gone within a frame or two of a real browser painting. What this pins
-// is the settled state on the other side of it: the mark is gone, and the
-// grid on screen is the filtered one, not the unfiltered one the prerendered
-// HTML shipped with.
+// The first test pins the settled state: the mark is gone, and the grid on
+// screen is the filtered one, not the unfiltered one the prerendered HTML
+// shipped with. The second pins the moment the mark comes off.
 //
 // velikost=majhna ("small", lib/filters.ts's FILTER_METADATA.size), not
 // spol=samec: the dataset carries only a handful of small animals against
@@ -45,6 +42,49 @@ test("a filtered deep link settles on the filtered grid with the pre-hydration m
     document.documentElement.hasAttribute("data-filtering"),
   );
   expect(stillFiltering).toBe(false);
+});
+
+// On Psi a card's fact line leaves the species out, because the tab has said
+// it, and on Vse it opens with it (animalMetaParts in lib/labels.ts), so the
+// lines say which list the cards are.
+const SPECIES_FIRST = /^(Pes|Mačka|Zajček|Druga žival)\b/;
+
+// Hydration draws from the server's empty query, the address is read in the
+// render after it, and the cards follow a render behind that (animal-grid.tsx).
+// A mark taken off at the first client render let the unfiltered cards paint
+// under a pressed Psi tab, for about half a second in WebKit. The observer below is registered before
+// any of the page's scripts and reads the cards in the task that took the mark
+// off, which is before the browser paints again.
+test("takes the mark off only once the cards are the filtered ones", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const observer = new MutationObserver(() => {
+      if (document.documentElement.hasAttribute("data-filtering")) return;
+      observer.disconnect();
+      (window as unknown as { atRelease: string[] }).atRelease = Array.from(
+        document.querySelectorAll(
+          '[data-slot="results"] article [data-slot="card-link"] p',
+        ),
+        (line) => line.textContent?.trim() ?? "",
+      );
+    });
+    // The document and not <html>, which does not exist yet when this runs.
+    observer.observe(document, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["data-filtering"],
+    });
+  });
+
+  await page.goto("/?vrsta=pes");
+  await page.waitForFunction(() => "atRelease" in window);
+  const lines = await page.evaluate(
+    () => (window as unknown as { atRelease: string[] }).atRelease,
+  );
+
+  expect(lines.length).toBeGreaterThan(0);
+  expect(lines.filter((line) => SPECIES_FIRST.test(line))).toEqual([]);
 });
 
 // /?najdena used to open the homepage map dialog on its found-animal tab.

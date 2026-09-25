@@ -33,10 +33,6 @@ function edgeNav(page: Page, label: string) {
   );
 }
 
-// The word a card's fact line opens with on the Vse tab, one per species
-// (SPECIES in lib/labels.ts).
-const SPECIES_FIRST = /^(Pes|Mačka|Zajček|Druga žival)\b/;
-
 // The dialog opened from a card rather than from ?zival=: what it steps through
 // is the list on screen, and a tap on a card is how a phone gets there.
 //
@@ -44,37 +40,30 @@ const SPECIES_FIRST = /^(Pes|Mačka|Zajček|Druga žival)\b/;
 // href on every card and the dialog belongs to hydration, so a tap that lands
 // before React has attached follows the link to the animal's own page instead
 // of opening anything. The pre-hydration mark on <html> is the one signal that
-// the grid has had its first client render: the blocking script sets it for an
-// address carrying a filter param and AnimalGrid clears it in an effect
+// the grid has hydrated and drawn the dogs the address asks for: the blocking
+// script sets it for an address carrying a filter param and AnimalGrid clears
+// it in an effect once the cards are the filtered ones
 // (lib/prehydration-script.ts, animal-grid.tsx), which is the same settled
-// state deep-link-filters.spec.ts waits for.
+// state deep-link-filters.spec.ts waits for. That spec also pins the order:
+// the mark used to come off a render before the cards were filtered, and the
+// names read here were then the unfiltered page's.
 //
-// That first client render is not yet the dog list. The grid reads the filters
-// through useDeferredValue (animal-grid.tsx), so when the mark comes off the
-// cards can still be the unfiltered ones the export prerendered, with the dogs
-// a render behind. The dialog steps through the dogs, so names read on the mark
-// alone had the test expecting the unfiltered page's second animal while the
-// step landed on the second dog. The cards say which list they are. On Vse a
-// card's fact line opens with its species, on Psi it leaves the species out
-// because the tab has said it (animalMetaParts in lib/labels.ts), and the grid
-// hands the cards their tab in the same render that filters them. So the names
-// are read once no fact line opens with a species.
+// Polled every 50ms rather than on the default back-off, which can have
+// reached a second by the time the mark comes off. A tap that late can land
+// after the dialog has mounted on its idle timer (animal-grid.tsx; WebKit has
+// no requestIdleCallback), and the card then opens it through a view
+// transition, which crashes Playwright's WebKit on Windows.
 async function openFirstCard(page: Page) {
   await page.goto("/?vrsta=pes");
   await expect
-    .poll(() =>
-      page.evaluate(() =>
-        document.documentElement.hasAttribute("data-filtering"),
-      ),
+    .poll(
+      () =>
+        page.evaluate(() =>
+          document.documentElement.hasAttribute("data-filtering"),
+        ),
+      { intervals: [50] },
     )
     .toBe(false);
-  await expect
-    .poll(async () =>
-      (
-        await cards(page).locator('[data-slot="card-link"] p').allTextContents()
-      ).filter((line) => SPECIES_FIRST.test(line.trim())),
-    )
-    .toEqual([]);
 
   const names = (await cards(page).locator("h3").allTextContents()).map((name) =>
     name.trim(),

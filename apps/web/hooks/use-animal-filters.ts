@@ -370,6 +370,10 @@ export function useAnimalFilters() {
   }, []);
 
   return {
+    // The query the filters and the sort were read from. On the hydrating
+    // render that is the server's empty one whatever the address says, which
+    // is how AnimalGrid tells that render from the ones after it.
+    search,
     filters,
     sort,
     setSpecies,

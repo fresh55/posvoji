@@ -959,7 +959,7 @@
    prerendered HTML is the unfiltered grid, standing there until hydration
    answers the address. The inline script in the layout marks such a link on
    <html> before any of the page paints, and AnimalGrid takes the mark off in an
-   effect after its first client render.
+   effect once the cards it draws are the filtered ones.
 
    Hidden rather than dimmed. Dimmed is still five hundred animals nobody asked
    for, and it invites a press on a card that is about to be replaced. An

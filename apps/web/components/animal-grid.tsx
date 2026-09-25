@@ -37,6 +37,7 @@ import {
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
+import { getSearchSnapshot } from "@/lib/location-search";
 import type { LookupEntry } from "@/lib/municipality-coverage";
 import {
   PREHYDRATION_DATASET_KEY,
@@ -344,6 +345,7 @@ export function AnimalGrid({
   const [cleared, setCleared] = useState<Filters | null>(null);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const {
+    search,
     filters,
     sort,
     setSpecies,
@@ -462,12 +464,21 @@ export function AnimalGrid({
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
   // there until hydration replaces it. The layout's inline script marks such a
-  // link on <html> before any of it paints; this is the other half, and it runs
-  // after the first client render, which is the first one that answers the
-  // address it was opened at.
+  // link on <html> before any of it paints; this is the other half, and it
+  // takes the mark off once the cards are the ones the address asks for.
+  //
+  // That is not the first client render. Hydration draws from the server's
+  // empty query, the address is read in a render of its own straight after,
+  // and the cards follow that render a render behind (shownFilters above).
+  // Taken off after hydration, the mark let the unfiltered cards paint under
+  // the already pressed species tab: on the built site for 250-390ms at 4x
+  // CPU in Chromium and 490-600ms in WebKit. So two things have to hold. The
+  // query this render read is the one in the address bar, which hydration's
+  // is not, and the cards have caught up with the filters read from it.
   useEffect(() => {
+    if (search !== getSearchSnapshot() || shownFilters !== filters) return;
     delete document.documentElement.dataset[PREHYDRATION_DATASET_KEY];
-  }, []);
+  }, [search, filters, shownFilters]);
 
   // Mount the empty dialog on idle to avoid a Suspense delay on first open.
   // Descriptions stay deferred until grid interaction.

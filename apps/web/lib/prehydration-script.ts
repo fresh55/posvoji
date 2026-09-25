@@ -11,9 +11,10 @@ import { SORT_PARAM } from "@/lib/sort";
 // blocking script at the top of the body, which sets a mark on <html> when the
 // address carries a param the results block answers to. The rule in
 // app/globals.css hides that block while the mark is there and shows the
-// stand-in beside it, and AnimalGrid takes the mark off in an effect after its
-// first client render. An address with none of these params is never marked and
-// never touched.
+// stand-in beside it, and AnimalGrid takes the mark off in an effect once the
+// cards it draws are the ones the address asks for, two renders after
+// hydration. An address with none of these params is never marked and never
+// touched.
 //
 // Sort is on the list beside the filters. A wrongly ordered grid is the same
 // defect as a wrongly filtered one: the cards on the first screen are not the
@@ -45,7 +46,8 @@ export const RESULTS_PENDING_SLOT = "results-pending";
  *  plausible: past that a readable wrong page beats an empty right one, and the
  *  visitor can narrow it by hand. Mobile measurements put hydration near
  *  5.2 seconds on slow 4G, so allow ten seconds before the failure fallback.
- *  Successful hydration still clears the mark immediately. */
+ *  A page that hydrates still clears the mark as soon as its filtered cards
+ *  are drawn. */
 export const PREHYDRATION_CLEAR_MS = 10_000;
 
 // The timer is the only thing that answers the client render that never comes:

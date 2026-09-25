@@ -112,9 +112,11 @@ function readAgeMonths(
   if (AGE_RANGE.test(value)) return undefined;
 
   // "1,5 letna" is one and a half years. The lookbehind keeps a bare \b from
-  // matching the "5" after the comma and reading it as five.
+  // matching the "5" after the comma and reading it as five. A literal space
+  // between two \s* runs backtracks quadratically, so the separator is either
+  // a dash with optional blanks or a single blank run.
   const yearAdjective = value.match(
-    /(?<![\d,.])(\d+(?:[.,]\d+)?)\s*[- ]\s*letn(?:i|a|o)\b/iu,
+    /(?<![\d,.])(\d+(?:[.,]\d+)?)(?:\s*-\s*|\s+)letn(?:i|a|o)\b/iu,
   );
   if (yearAdjective) return Math.round(ageCount(yearAdjective[1]) * 12);
 

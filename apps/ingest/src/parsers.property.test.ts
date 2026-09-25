@@ -183,9 +183,22 @@ describe("age parsers return whole, non-negative months or nothing", () => {
     zonzani: zonzani.parseAgeMonths,
   };
 
+  // A crawled page is untrusted, so a long blank run must not make a regex
+  // backtrack quadratically. 100 000 blanks took seconds before the fix.
+  const blanks = " ".repeat(100_000);
+  const blankRuns = [`1${blanks}x`, `1-2${blanks}x`, `1${blanks}-x`];
+
   for (const [name, parse] of Object.entries(parsers)) {
     it(name, () => {
       acceptsAnyText(parse, ageMonths);
+    });
+
+    it(`${name} stays fast on long blank runs`, () => {
+      for (const input of blankRuns) {
+        const start = performance.now();
+        parse(input);
+        expect(performance.now() - start).toBeLessThan(500);
+      }
     });
   }
 });

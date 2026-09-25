@@ -6,6 +6,7 @@ import { memo, type ReactNode } from "react";
 import type { CoatColorCategory, CoatLength } from "@posvoji/schema";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FILTER_CONTROL_CLASS,
   FILTER_HOVER_SPRING,
   FilterCardHoverLift,
@@ -216,6 +217,17 @@ const DISC_RADIUS = 9.5;
  * and before outline, so the chosen colours are simply the large ones.
  */
 const PICKED_SCALE = 1.07;
+
+/**
+ * A colour the current narrowing has no animal of stays in its own cell, in
+ * its own colour, at a little over half its size.
+ *
+ * Faded instead, as the sheet's tile used to draw it, Črna went grey beside
+ * Siva and Oranžna went peach, and the palette has no label under a swatch to
+ * say which colour it was. Size is already this control's grammar: a picked
+ * colour is the large one, so one nobody can pick is the small one.
+ */
+const DEAD_SCALE = 0.6;
 // A shade more than FilterCardHoverLift's 1.05 and -1, because this mark is
 // the 36px swatch rather than a 20px glyph in a 30px well. The speed is the
 // panel's, shared as FILTER_HOVER_SPRING.
@@ -917,6 +929,7 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
   colour,
   kind,
   checked,
+  dead = false,
   peeking,
   beat,
   noticeDelay = 0,
@@ -928,6 +941,11 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
   colour: CoatColorFacet;
   kind: EarKind;
   checked: boolean;
+  /**
+   * No animal in the current narrowing has this colour: drawn small, and it
+   * grows no ears under a pointer. See DEAD_SCALE.
+   */
+  dead?: boolean;
   /** Dolga dlaka is picked, so this colour's animal grows a long coat. */
   longCoat: boolean;
   /** A pointer or keyboard focus is on it: the tips of the ears show. */
@@ -947,13 +965,16 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
 }) {
   const shouldReduceMotion = useReducedMotion() ?? false;
   const ear = EARS[kind];
-  const state: EarState = checked ? "up" : peeking ? "peeking" : "stowed";
+  // A dead colour is never checked, and a pointer left on it when it died
+  // does not bring its ears out either.
+  const state: EarState = checked ? "up" : peeking && !dead ? "peeking" : "stowed";
   const shown = state !== "stowed";
   const exit: EarExit = { delay: resetDelay, instant: shouldReduceMotion };
   const moving = shouldReduceMotion ? null : beat;
   const pair: EarPairProps = { kind, state, beat: moving, noticeDelay, exit, longCoat };
   const whole = swatchBeat(kind, moving);
-  const body = bodyPose(moving, checked && outlined ? PICKED_SCALE : 1, exit);
+  const rest = checked && outlined ? PICKED_SCALE : dead ? DEAD_SCALE : 1;
+  const body = bodyPose(moving, rest, exit);
   const faces = FACES[colour];
 
   return (
@@ -1442,6 +1463,24 @@ type CoatCardsProps = {
 };
 
 /**
+ * Barva's tile on the phone: the swatch on a line of its own, the label and
+ * its count on one line under it.
+ *
+ * In the standard tile, label over count, ten colours stood 83px tall and
+ * took 492px of a sheet that shows 388 at 390x844 and 189 at 320x568, so a
+ * fifth of the sheet's scroll went to one part of one section. One line for
+ * the label and the count brings the tile to about 60px, and the two columns
+ * keep their order, so each solid colour still stands beside its two-toned
+ * twin.
+ *
+ * content-start for the reason the standard tile is justify-start: a row
+ * stretches to its tallest tile, and a stack centred in it would move each
+ * tile's swatch by half of whatever it lacked. items-baseline keeps the count
+ * on the label's baseline, though the label carries a margin of its own.
+ */
+const COMPACT_TILE_CLASS = `${DEAD_OPTION_CLASS} min-h-[3.75rem] flex-row flex-wrap content-start items-baseline justify-center gap-x-1.5 gap-y-0.5 px-1.5 py-1.5 text-center`;
+
+/**
  * One list for both halves of Videz. They differ in what goes in the icon
  * well, what the hint says and how long the icon's gesture runs, and writing
  * them twice is how the two sub-sections drifted apart in the first place.
@@ -1459,6 +1498,7 @@ function CoatCards({
   collapse,
   unanswered,
   tracksPress = false,
+  compactTiles = false,
   holdMs,
   checkDelay,
 }: CoatCardsProps & {
@@ -1474,6 +1514,12 @@ function CoatCards({
    * put two renders of a ten-tile grid behind every tap on it.
    */
   tracksPress?: boolean;
+  /**
+   * The sheet's tile with its label and count on one line under the icon,
+   * for a section with too many answers for the standard tile. See
+   * COMPACT_TILE_CLASS.
+   */
+  compactTiles?: boolean;
   renderIcon: (card: {
     value: string;
     checked: boolean;
@@ -1506,6 +1552,7 @@ function CoatCards({
     handlers: gestureHandlers,
   } = useFilterCardGestures({ press: tracksPress });
   const label = groupLabel(group, locale);
+  const compact = compactTiles && layout === "sheet";
 
   return (
     <FilterCardSection
@@ -1540,6 +1587,26 @@ function CoatCards({
           celebrating,
           resetDelay,
         };
+        const well = (
+          <FilterCardIconWell
+            layout={layout}
+            checked={checked}
+            exitDelay={resetDelay}
+          >
+            {celebrating && !shouldReduceMotion ? (
+              <FilterCardRipple
+                key={`ring-${celebration?.id}`}
+                layout={layout}
+                opacity={RIPPLE_OPACITY}
+                scale={RIPPLE_SCALE}
+                duration={RIPPLE_DURATION}
+              />
+            ) : null}
+            <FilterCardHoverLift hovered={motion.hovered}>
+              {renderIcon({ value, checked, dead, motion })}
+            </FilterCardHoverLift>
+          </FilterCardIconWell>
+        );
 
         return (
           <button
@@ -1559,7 +1626,10 @@ function CoatCards({
             className={filterCardVariants({
               layout,
               selected: checked,
-              className: cn("flex", filterCardLayoutClass(layout)),
+              className: cn(
+                "flex",
+                compact ? COMPACT_TILE_CLASS : filterCardLayoutClass(layout),
+              ),
             })}
           >
             <FilterCardMark
@@ -1567,24 +1637,13 @@ function CoatCards({
               checked={checked}
               appearDelay={checkDelay}
             />
-            <FilterCardIconWell
-              layout={layout}
-              checked={checked}
-              exitDelay={resetDelay}
-            >
-              {celebrating && !shouldReduceMotion ? (
-                <FilterCardRipple
-                  key={`ring-${celebration?.id}`}
-                  layout={layout}
-                  opacity={RIPPLE_OPACITY}
-                  scale={RIPPLE_SCALE}
-                  duration={RIPPLE_DURATION}
-                />
-              ) : null}
-              <FilterCardHoverLift hovered={motion.hovered}>
-                {renderIcon({ value, checked, dead, motion })}
-              </FilterCardHoverLift>
-            </FilterCardIconWell>
+            {/* The well takes a line of its own, so the label and the count
+                share the next one. */}
+            {compact ? (
+              <span className="flex basis-full justify-center">{well}</span>
+            ) : (
+              well
+            )}
             <FilterCardTail
               layout={layout}
               label={option}
@@ -1840,9 +1899,13 @@ function CoatColorPalette({
         {options.map(({ value, label: option }, index) => {
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
+          // A dead colour keeps its cell rather than dropping out: the rest
+          // closing up behind it split the solid and two-toned pairs across
+          // rows. It is disabled, so no pointer or focus reaches it; the
+          // guard is for a pointer that was already on it when it died.
           const dead = isDeadOption(count, checked);
           const celebrating = celebration?.value === value && checked;
-          const hovered = hoveredValue === value;
+          const hovered = hoveredValue === value && !dead;
           // A colour picked earlier hears the new one land and turns the ear
           // on its side, later the further away it is.
           const beat: EarBeat = celebrating
@@ -1908,6 +1971,7 @@ function CoatColorPalette({
                   colour={colourOf(value)}
                   kind={kind}
                   checked={checked}
+                  dead={dead}
                   peeking={hovered && settledValue !== value}
                   beat={beat}
                   noticeDelay={noticeDelay}
@@ -1958,27 +2022,26 @@ export function CoatColorCards({
       hint={COLOUR_HINT[locale]}
       holdMs={EAR_BEAT_MS}
       checkDelay={EAR_CHECK_DELAY}
+      compactTiles
       renderIcon={({ value, checked, dead, motion }) => (
         <CoatColorSwatch
           colour={colourOf(value)}
           kind={kind}
           checked={checked}
+          // A dead option keeps its full ink everywhere else in the filters,
+          // and a swatch is the one icon where that reads as available. Its
+          // count says 0 and its tick box is not drawn, and the swatch draws
+          // small in its own colour, as it does in the palette.
+          dead={dead}
           peeking={motion.hovered && !motion.settled}
           beat={motion.celebrating ? "picked" : null}
           resetDelay={motion.resetDelay}
           outlined={false}
           longCoat={longCoat}
-          className={cn(
-            // Bigger than the 20px glyph the other sections put in this well.
-            // A swatch is the answer itself rather than a picture of it, and
-            // the sheet is the only layout that still draws one in a tile.
-            "size-6.5 overflow-visible transition-opacity duration-200",
-            // A dead option keeps its full ink everywhere else in the filters,
-            // and a swatch is the one icon where that reads as available. Its
-            // count says 0 and its tick box is not drawn; the colour steps
-            // back without going grey.
-            dead && "opacity-60",
-          )}
+          // Bigger than the 20px glyph the other sections put in this well.
+          // A swatch is the answer itself rather than a picture of it, and
+          // the sheet is the only layout that still draws one in a tile.
+          className="size-6.5 overflow-visible"
         />
       )}
     />

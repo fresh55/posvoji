@@ -148,6 +148,62 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
   });
 });
 
+describe("a colour no animal has", () => {
+  // The body the swatch is drawn on, which carries its resting size.
+  const bodyScale = (label: string) => {
+    const body = swatchOf(label).querySelector("g > g") as SVGGElement;
+    return Number(/scale\(([\d.]+)\)/.exec(body.style.transform)?.[1] ?? 1);
+  };
+
+  function renderWithDead(layout: FilterCardLayout, dead: readonly string[]) {
+    render(
+      <I18nProvider locale="sl">
+        <CoatColorCards
+          options={options}
+          counts={new Map(options.map(({ value }) => [value, dead.includes(value) ? 0 : 2]))}
+          selected={[]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          layout={layout}
+          species="all"
+          longCoat={false}
+        />
+      </I18nProvider>,
+    );
+  }
+
+  // The palette used to be handed only the live colours, and the rest closed
+  // up behind a dead one, splitting the solid and two-toned pairs across
+  // rows. It now keeps every colour in its cell.
+  it("keeps its cell in the palette, in order", () => {
+    renderWithDead("sidebar", ["brown", "orange"]);
+
+    const cells = screen
+      .getAllByRole("button")
+      .filter((cell) => cell.hasAttribute("aria-pressed"))
+      .map((cell) => cell.getAttribute("aria-label")?.split(",")[0]);
+    expect(cells).toEqual(options.map(({ label }) => label));
+  });
+
+  it.each(["sidebar", "sheet"] as const)(
+    "is disabled, reads 0 and draws small without ears in the %s",
+    (layout) => {
+      renderWithDead(layout, ["brown"]);
+
+      const dead = button("Rjava") as HTMLButtonElement;
+      expect(dead.disabled).toBe(true);
+      expect(dead.textContent).toContain("0");
+      expect(bodyScale("Rjava")).toBeLessThan(0.7);
+      expect(bodyScale("Črna")).toBe(1);
+
+      // Disabled, so neither the keyboard nor a click reaches it; a pointer
+      // already resting on it when it died must not bring its ears out.
+      pointerOnto(dead, "mouse");
+      expect(earsOf("Rjava")).toBeNull();
+    },
+  );
+});
+
 describe("the coat length glyph", () => {
   const lengths = groupOptions("coatLength", [], "sl");
 

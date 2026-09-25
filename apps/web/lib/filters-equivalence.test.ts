@@ -164,12 +164,14 @@ function slowGroupValue(
       return animal.coatColor === "cream" ? "orange" : animal.coatColor === "cream-white" ? "orange-white" : animal.coatColor;
     case "coatLength":
       return animal.coatLength;
-    case "waiting":
-      return slowStayDate(animal) ? ([
+    case "waiting": {
+      const date = slowStayDate(animal);
+      return date ? ([
         ["over-6-months", "2026-02-15"],
         ["over-1-year", "2025-08-15"],
         ["over-3-years", "2023-08-15"],
-      ]).filter(([, cutoff]) => slowStayDate(animal)! < cutoff).map(([value]) => value) : [];
+      ]).filter(([, cutoff]) => date < cutoff).map(([value]) => value) : [];
+    }
     case "energy":
       return animal.energy;
     case "shelter":

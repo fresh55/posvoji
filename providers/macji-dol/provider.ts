@@ -222,33 +222,33 @@ const RETURN =
 const OTHER_EVENT =
   /(?<!\p{L})(?:rojen\p{L}*|rodil\p{L}*|skotil\p{L}*|kotil\p{L}*|živel\p{L}*|posvoj\p{L}*|nov\p{L}* dom\p{L}*)(?!\p{L})/iu;
 
-const MONTHS: Record<string, number> = {};
-[
-  ["januar", "januarja", "januarju"],
-  ["februar", "februarja", "februarju"],
-  ["marec", "marca", "marcu"],
-  ["april", "aprila", "aprilu"],
-  ["maj", "maja", "maju"],
-  ["junij", "junija", "juniju"],
-  ["julij", "julija", "juliju"],
-  ["avgust", "avgusta", "avgustu"],
-  ["september", "septembra", "septembru"],
-  ["oktober", "oktobra", "oktobru"],
-  ["november", "novembra", "novembru"],
-  ["december", "decembra", "decembru"],
-].forEach((forms, index) => {
-  for (const form of forms) MONTHS[form] = index + 1;
-});
+const MONTHS: Record<string, number> = Object.fromEntries(
+  [
+    ["januar", "januarja", "januarju"],
+    ["februar", "februarja", "februarju"],
+    ["marec", "marca", "marcu"],
+    ["april", "aprila", "aprilu"],
+    ["maj", "maja", "maju"],
+    ["junij", "junija", "juniju"],
+    ["julij", "julija", "juliju"],
+    ["avgust", "avgusta", "avgustu"],
+    ["september", "septembra", "septembru"],
+    ["oktober", "oktobra", "oktobru"],
+    ["november", "novembra", "novembru"],
+    ["december", "decembra", "decembru"],
+  ].flatMap((forms, index) => forms.map((form) => [form, index + 1])),
+);
 
-// The last month each season can mean. Winter is the one that crosses a year:
-// "pozimi 2022" may be January 2022 or the winter that ends in February 2023,
-// and only the later reading is a safe floor.
-const SEASON_END: Record<string, { month: number; nextYear: boolean }> = {
-  spomladi: { month: 5, nextYear: false },
-  pomladi: { month: 5, nextYear: false },
-  poleti: { month: 8, nextYear: false },
-  jeseni: { month: 11, nextYear: false },
-  pozimi: { month: 2, nextYear: true },
+// The last month each season can mean, counted from January of the named
+// year. Winter crosses into the next one: "pozimi 2022" may be January 2022
+// or the winter that ends in February 2023, and only the later reading is a
+// safe floor, so it is month 14.
+const SEASON_END: Record<string, number> = {
+  spomladi: 5,
+  pomladi: 5,
+  poleti: 8,
+  jeseni: 11,
+  pozimi: 14,
 };
 
 const PERIOD = new RegExp(
@@ -256,6 +256,7 @@ const PERIOD = new RegExp(
   "giu",
 );
 
+// Day 0 of the month after, which Date.UTC also carries past December.
 function lastDayOf(year: number, month: number): string {
   return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 }
@@ -280,13 +281,14 @@ export function parseIntakeBy(text: string): string | undefined {
       const periods = [...clause.matchAll(PERIOD)];
       if (periods.length !== 1) continue;
       const { month, season, value } = periods[0]!.groups!;
-      const year = Number(value);
-      if (month) return lastDayOf(year, MONTHS[month.toLowerCase()]!);
-      if (season) {
-        const end = SEASON_END[season.toLowerCase()]!;
-        return lastDayOf(end.nextYear ? year + 1 : year, end.month);
-      }
-      return `${year}-12-31`;
+      return lastDayOf(
+        Number(value),
+        month
+          ? MONTHS[month.toLowerCase()]!
+          : season
+            ? SEASON_END[season.toLowerCase()]!
+            : 12,
+      );
     }
   }
   return undefined;

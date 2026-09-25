@@ -84,11 +84,6 @@ export function effectiveSort(
 // the date the V zavetišču filter reads. firstSeenAt is not a substitute: it
 // says when Posvoji.si found the listing, not when the animal entered the
 // shelter.
-function exactStart(animal: AnimalFields): string | undefined {
-  const start = stayStart(animal);
-  return start && !start.floor ? start.date : undefined;
-}
-
 function compareOptional(
   left: string | undefined,
   right: string | undefined,
@@ -101,6 +96,11 @@ function compareOptional(
     direction *
     (collator ? collator.compare(left, right) : left.localeCompare(right))
   );
+}
+
+function exactStart(animal: AnimalFields): string | undefined {
+  const start = stayStart(animal);
+  return start && !start.floor ? start.date : undefined;
 }
 
 function compareOptionalNumber(

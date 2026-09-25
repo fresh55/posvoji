@@ -54,13 +54,8 @@ export function adoptableNow(status: AdoptionStatus): boolean {
 /** When this animal's wait began, as far as the record can say it, and
  *  whether that is only the latest day the shelter's words allow.
  *
- *  The intake date where the shelter gives one. Otherwise the day it was
- *  found: a found animal is brought in that day, which Zonzani's register
- *  shows, since it numbers dogs and cats in one sequence and its dogs' found
- *  dates fall between its cats' intake dates in that order. Otherwise
- *  intakeBy, the end of the month, season or year the shelter named, so the
- *  wait read from it is a floor and the surfaces that print it say "vsaj".
- *
+ *  The intake date, else the found date, else intakeBy as a floor. Why the
+ *  found date stands in: docs/ANIMAL-ENRICHMENT.md, "Time in the shelter".
  *  The filter, the sort, the stay line, the card's mark and the shelter
  *  summary all read this, so none of them can count a wait another leaves
  *  out. */

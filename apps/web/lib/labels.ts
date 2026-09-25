@@ -469,8 +469,10 @@ export function stayOf(animal: AnimalFields, now: Date): Stay | undefined {
   if (!start.floor) return { months, floor: false };
   // monthsInShelter counts calendar months and ignores the day, which a
   // floor cannot afford: from 2023-09-30 it says 36 on 2026-09-25, and "vsaj
-  // 3 leta" would be five days early. Whole months only, as the filter reads.
-  const whole = now.getUTCDate() < Number(start.date.slice(8, 10)) ? months - 1 : months;
+  // 3 leta" would be five days early. A month counts once the day after its
+  // anniversary has come, as waitingFrom in the filter reads it; a floor is
+  // always a month's last day, so the anniversary day is at most that one.
+  const whole = now.getUTCDate() <= Number(start.date.slice(8, 10)) ? months - 1 : months;
   // "At least less than a month" says nothing.
   return whole > 0 ? { months: whole, floor: true } : undefined;
 }

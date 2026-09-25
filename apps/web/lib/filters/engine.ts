@@ -1374,12 +1374,12 @@ function asValues(value: string | readonly string[] | undefined): readonly strin
   return value === undefined ? [] : typeof value === "string" ? [value] : value;
 }
 
-/** An intake date as the UTC instant of its midnight, or undefined for one
- *  that is not a real calendar date. */
-function intakeStartOf(intakeDate: string | undefined): number | undefined {
-  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return undefined;
-  const start = new Date(intakeDate);
-  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate) return undefined;
+/** A stay's start date as the UTC instant of its midnight, or undefined for
+ *  one that is not a real calendar date. */
+function intakeStartOf(date: string | undefined): number | undefined {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined;
+  const start = new Date(date);
+  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== date) return undefined;
   return start.getTime();
 }
 
@@ -1411,9 +1411,9 @@ function waitingFrom(
   }).map(([value]) => value);
 }
 
-/** Strictly past the calendar anniversary, using only the shelter intake date.
+/** Strictly past the calendar anniversary of the stay's start (stayStart).
  * Clamp month-end anniversaries (August 31 + 6 months is February's last day).
  * UTC date arithmetic makes shared links agree across visitor time zones. */
-export function waitingGroups(intakeDate: string | undefined, now: Date): WaitingGroup[] {
-  return waitingFrom(intakeStartOf(intakeDate), todayOf(now));
+export function waitingGroups(date: string | undefined, now: Date): WaitingGroup[] {
+  return waitingFrom(intakeStartOf(date), todayOf(now));
 }

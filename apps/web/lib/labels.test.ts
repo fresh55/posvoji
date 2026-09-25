@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
+import { waitingGroups } from "./filters";
 import {
   ageLabel,
   animalMetaParts,
@@ -230,9 +231,22 @@ describe("stayOf", () => {
   it("counts a floor in whole months, so vsaj is never early", () => {
     const day = new Date("2026-09-25T12:00:00Z");
     expect(stayOf(animal({ intakeBy: "2023-09-30" }), day)?.months).toBe(35);
-    expect(stayOf(animal({ intakeBy: "2023-09-25" }), day)?.months).toBe(36);
+    // The anniversary itself is not yet past, as the filter reads it.
+    expect(stayOf(animal({ intakeBy: "2023-09-25" }), day)?.months).toBe(35);
+    expect(stayOf(animal({ intakeBy: "2023-09-24" }), day)?.months).toBe(36);
     // An exact date keeps the calendar count the rest of the site uses.
     expect(stayOf(animal({ intakeDate: "2023-09-30" }), day)?.months).toBe(36);
+  });
+
+  it("passes six months on the day the filter does, at a month's end", () => {
+    for (const [now, months, groups] of [
+      ["2026-02-28T12:00:00Z", 5, []],
+      ["2026-03-01T12:00:00Z", 6, ["over-6-months"]],
+    ] as const) {
+      const at = new Date(now);
+      expect(stayOf(animal({ intakeBy: "2025-08-31" }), at)?.months).toBe(months);
+      expect(waitingGroups("2025-08-31", at)).toEqual(groups);
+    }
   });
 
   it("says a floor is one", () => {
@@ -243,7 +257,7 @@ describe("stayOf", () => {
 
   it("says nothing for a floor under a month", () => {
     expect(stayOf(animal({ intakeBy: "2026-07-31" }), NOW)).toBeUndefined();
-    expect(stayOf(animal({ intakeBy: "2026-07-15" }), NOW)).toEqual({ months: 1, floor: true });
+    expect(stayOf(animal({ intakeBy: "2026-07-14" }), NOW)).toEqual({ months: 1, floor: true });
   });
 });
 

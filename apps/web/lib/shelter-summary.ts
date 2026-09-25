@@ -73,8 +73,8 @@ export function summarizeShelters(
   const counts = new Map<string, Map<Species, number>>();
   const longest = new Map<string, { name: string; stay: Stay }>();
   // Every waiting animal with a photo, unsorted until a shelter's summary is
-  // built below. months is undefined for an animal with no usable intake
-  // date, which the sort keeps after the animals it can actually rank.
+  // built below. months is undefined for an animal with no date to read a
+  // wait from, which the sort keeps after the animals it can actually rank.
   const faceCandidates = new Map<
     string,
     { name: string; months: number | undefined; src: string }[]

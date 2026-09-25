@@ -10,7 +10,7 @@ import {
   type CareKey,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
-import { CareCards } from "./care-cards";
+import { CareCards, exhalePose } from "./care-cards";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -190,6 +190,28 @@ describe("the outcome sentence", () => {
     expect(sentence()).toBe(
       "Showing animals that need what you can offer. 70 of 489.",
     );
+  });
+});
+
+describe("exhalePose", () => {
+  // Why: EXHALE_SETTLE in care-cards.tsx.
+  it("exhales from wherever the heart is, on the click or once it has settled", () => {
+    const still = exhalePose(0);
+    const beating = exhalePose(0.24);
+    const { times, duration } = beating.transition as {
+      times: number[];
+      duration: number;
+    };
+
+    expect(still.animate).toEqual({ scale: [null, 0.97, 1] });
+    expect(still.transition).toMatchObject({
+      duration: 0.3,
+      times: [0, 0.4, 1],
+    });
+    expect(beating.animate).toEqual({ scale: [null, 1, 1, 0.97, 1] });
+    // The exhale itself starts where the settle ends.
+    expect(times[2] * duration).toBeCloseTo(0.24);
+    expect(duration).toBeCloseTo(0.54);
   });
 });
 

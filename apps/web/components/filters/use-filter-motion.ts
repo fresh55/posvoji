@@ -18,7 +18,13 @@ export type Celebration<T> = { value: T; id: number };
  * plays the track. Without a settle it holds where it starts, which suits a
  * track mounted with the gesture.
  *
+ * The settle comes out of the wait. With no wait there is nothing to settle
+ * in, so a track told to settle starts from wherever the value is in place of
+ * its first keyframe, which is the same track for a value already there.
+ *
  * `times` and `ease` describe the track alone, as they would with a delay.
+ * `settleEase` is the settle's own; a settle squeezed into a short wait moves
+ * slowest on a linear one.
  */
 export function waitThen(
   wait: number,
@@ -27,12 +33,14 @@ export function waitThen(
     duration,
     times,
     ease = "easeOut",
-    settle = 0,
+    settle,
+    settleEase = "easeIn",
   }: {
     duration: number;
     times?: number[];
     ease?: Easing | Easing[];
     settle?: number;
+    settleEase?: Easing;
   },
 ): { keyframes: (number | null)[]; transition: Transition } {
   const total = wait + duration;
@@ -44,15 +52,23 @@ export function waitThen(
   const played = trackTimes.map((time) => (wait + time * duration) / total);
   const [first] = keyframes;
 
-  if (settle > 0) {
-    return {
-      keyframes: [null, first, ...keyframes],
-      transition: {
-        duration: total,
-        times: [0, Math.min(settle, wait) / total, ...played],
-        ease: ["easeIn", "linear", ...trackEase],
-      },
-    };
+  if (settle !== undefined) {
+    if (wait === 0) {
+      return {
+        keyframes: [null, ...keyframes.slice(1)],
+        transition: { duration: total, times: played, ease: trackEase },
+      };
+    }
+    if (settle > 0) {
+      return {
+        keyframes: [null, first, ...keyframes],
+        transition: {
+          duration: total,
+          times: [0, Math.min(settle, wait) / total, ...played],
+          ease: [settleEase, "linear", ...trackEase],
+        },
+      };
+    }
   }
   return {
     keyframes: [first, ...keyframes],

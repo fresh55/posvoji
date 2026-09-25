@@ -327,4 +327,45 @@ describe("waitThen", () => {
       "easeInOut",
     ]);
   });
+
+  // A value already at the first keyframe plays the same track, so nothing
+  // changes for a gesture that starts from rest.
+  it("starts the track from wherever the value is when there is no wait to settle in", () => {
+    const { keyframes, transition } = waitThen(0, [0, 7, 5, 0], {
+      duration: 0.8,
+      times: [0, 0.3, 0.55, 1],
+      ease: "easeInOut",
+      settle: 0,
+    });
+
+    expect(keyframes).toEqual([null, 7, 5, 0]);
+    expect(transition).toEqual({
+      duration: 0.8,
+      times: [0, 0.3, 0.55, 1],
+      ease: ["easeInOut", "easeInOut", "easeInOut"],
+    });
+  });
+
+  it("settles on the ease it is given", () => {
+    const { transition } = waitThen(0.09, [0, 6, 0], {
+      duration: 0.7,
+      settle: 0.09,
+      settleEase: "linear",
+    });
+
+    expect(transition.ease).toEqual([
+      "linear",
+      "linear",
+      "easeOut",
+      "easeOut",
+    ]);
+  });
+
+  // The toes and the dust mount with the gesture, so they have nowhere else
+  // to start from.
+  it("holds the first keyframe without a settle, even with no wait", () => {
+    const { keyframes } = waitThen(0, [0, 0.4, 0], { duration: 0.2 });
+
+    expect(keyframes).toEqual([0, 0, 0.4, 0]);
+  });
 });

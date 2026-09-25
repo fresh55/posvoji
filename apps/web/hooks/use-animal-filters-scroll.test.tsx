@@ -2,13 +2,20 @@
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { scrollToResults } from "./use-animal-filters";
+import {
+  GRID_SETTLE_MS,
+  RESULTS_ANCHORING_REST_LIMIT_MS,
+  RESULTS_ANCHORING_REST_MS,
+  scrollToResults,
+} from "./use-animal-filters";
 import { usePickerHistory } from "./use-picker-history";
 
 afterEach(() => {
   cleanup();
   document.body.innerHTML = "";
   document.body.removeAttribute("data-scroll-locked");
+  document.documentElement.style.removeProperty("overflow-anchor");
+  vi.useRealTimers();
   vi.restoreAllMocks();
   history.replaceState(null, "", "/");
 });
@@ -114,5 +121,91 @@ describe("the return from inside a layer", () => {
     await frame();
 
     expect(scroll).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the page's scroll anchoring", () => {
+  const root = document.documentElement;
+
+  /** The results with a grid of cards in them, the part that draws a filter
+   *  change a render late. */
+  function withGrid() {
+    const grid = document.createElement("div");
+    grid.setAttribute("data-card-grid", "");
+    grid.append(document.createElement("article"));
+    document.querySelector("section")!.append(grid);
+    return grid;
+  }
+
+  it("is off while the return lands and the chips band settles, then back", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    page({ top: 231, y: 1500 });
+
+    scrollToResults();
+    // Anchoring follows whatever it picked through the chips band and the
+    // deferred grid render, which put a first pick 34px short of the results
+    // and a last unpick 460px into the list.
+    expect(root.style.overflowAnchor).toBe("none");
+
+    vi.advanceTimersByTime(RESULTS_ANCHORING_REST_MS - 1);
+    expect(root.style.overflowAnchor).toBe("none");
+    vi.advanceTimersByTime(1);
+    expect(root.style.overflowAnchor).toBe("");
+  });
+
+  it("stays off until the grid has drawn the change, however late that is", async () => {
+    // At a quarter of the CPU the grid's deferred render landed 300ms to 2.3s
+    // after the press; a rest of a set 400ms let a first pick follow a card
+    // to the top of the page.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    page({ top: 231, y: 1500 });
+    const grid = withGrid();
+
+    scrollToResults();
+    vi.advanceTimersByTime(1500);
+    expect(root.style.overflowAnchor).toBe("none");
+
+    // The deferred render lands.
+    grid.replaceChildren(document.createElement("article"));
+    await Promise.resolve();
+    vi.advanceTimersByTime(GRID_SETTLE_MS - 1);
+    expect(root.style.overflowAnchor).toBe("none");
+    vi.advanceTimersByTime(1);
+    expect(root.style.overflowAnchor).toBe("");
+  });
+
+  it("still waits out the band when the grid lands first", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    page({ top: 231, y: 1500 });
+    const grid = withGrid();
+
+    scrollToResults();
+    grid.replaceChildren(document.createElement("article"));
+    await Promise.resolve();
+    vi.advanceTimersByTime(GRID_SETTLE_MS);
+    expect(root.style.overflowAnchor).toBe("none");
+
+    vi.advanceTimersByTime(RESULTS_ANCHORING_REST_MS - GRID_SETTLE_MS);
+    expect(root.style.overflowAnchor).toBe("");
+  });
+
+  it("gives up waiting for a grid that does not change", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    page({ top: 231, y: 1500 });
+    withGrid();
+
+    scrollToResults();
+    vi.advanceTimersByTime(RESULTS_ANCHORING_REST_LIMIT_MS - 1);
+    expect(root.style.overflowAnchor).toBe("none");
+    vi.advanceTimersByTime(1);
+    expect(root.style.overflowAnchor).toBe("");
+  });
+
+  it("is left alone when there is nothing to return from", () => {
+    page({ top: 231, y: 100 });
+
+    scrollToResults();
+
+    expect(root.style.overflowAnchor).toBe("");
   });
 });

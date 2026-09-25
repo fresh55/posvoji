@@ -119,6 +119,16 @@ describe("parseDescription", () => {
       ),
     ).toBe("Cezar je star pes.\n\nZanj iščemo dom v mirnejšem okolju.");
   });
+
+  it("drops a label it has never seen but keeps bold words inside prose", () => {
+    expect(
+      parseDescription(
+        "<p><strong>Opis</strong>: Rex je prijazen.</p>" +
+          "<p><strong>Čip: 705 123</strong></p>" +
+          "<p><strong>Rex</strong> je zelo navezan na ljudi.</p>",
+      ),
+    ).toBe("Rex je prijazen.\n\nRex je zelo navezan na ljudi.");
+  });
 });
 
 describe("parseDetail", () => {

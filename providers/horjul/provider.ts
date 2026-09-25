@@ -236,19 +236,18 @@ function parseMedical(facts: Map<string, string>): AnimalMedical | undefined {
   return Object.keys(medical).length > 0 ? medical : undefined;
 }
 
-// "Temperament" is a free-text adjective list, not a scale: "plašna" (timid)
-// and "družabna" (sociable) say nothing about tempo. Only words that state
-// the tempo outright map, and only when the value states one tempo:
-// "umirjen, plašen" stays calm (plašen is not a tempo word), but "živahen,
-// umirjen" stays unmapped. Declension drops the "e" in some masculine forms
-// ("miren" vs "mirna"), so the stems below list the masculine form whole
-// alongside the shared feminine/neuter prefix. No explicit middle term
-// ("srednje živahen", "zmerno aktiven", "uravnotežen") has been seen on this
-// shelter's pages, but is mapped in case one appears.
+// "Temperament" is a free-text adjective list. Only tempo words map, and only
+// when the value names one level: "umirjen, plašen" is calm, "živahen,
+// umirjen" and negated values stay unset. Masculine forms drop the "e"
+// ("miren" vs "mirna"), so both stems are listed.
 const CALM_STEMS = ["umirjen", "miren", "mirn"];
 const LIVELY_STEMS = ["živahen", "živahn", "energičn", "aktiven", "aktivn"];
 const BALANCED_STEM = "uravnotežen";
 const BALANCED_MODIFIERS = new Set(["srednje", "zmerno"]);
+
+function startsWithStem(word: string, stems: readonly string[]): boolean {
+  return stems.some((stem) => word.startsWith(stem));
+}
 
 export function parseEnergy(value: string): EnergyLevel | undefined {
   const words = value
@@ -256,28 +255,15 @@ export function parseEnergy(value: string): EnergyLevel | undefined {
     .toLowerCase()
     .split(/[^\p{L}]+/u)
     .filter(Boolean);
-
-  // "ni umirjen", "ne živahen": a negated value says what the animal is not,
-  // which is not a level.
   if (words.some((word) => word === "ni" || word === "ne")) return undefined;
 
   const found = new Set<EnergyLevel>();
   words.forEach((word, index) => {
-    if (word.startsWith(BALANCED_STEM)) {
-      found.add("balanced");
-      return;
-    }
-    if (LIVELY_STEMS.some((stem) => word.startsWith(stem))) {
-      found.add(
-        BALANCED_MODIFIERS.has(words[index - 1] ?? "") ? "balanced" : "lively",
-      );
-      return;
-    }
-    if (CALM_STEMS.some((stem) => word.startsWith(stem))) found.add("calm");
+    if (word.startsWith(BALANCED_STEM)) found.add("balanced");
+    else if (startsWithStem(word, LIVELY_STEMS)) {
+      found.add(BALANCED_MODIFIERS.has(words[index - 1] ?? "") ? "balanced" : "lively");
+    } else if (startsWithStem(word, CALM_STEMS)) found.add("calm");
   });
-
-  // A value naming two different levels settles nothing, so it stays unset
-  // rather than taking either one.
   return found.size === 1 ? [...found][0] : undefined;
 }
 

@@ -224,13 +224,18 @@ function parseMedical(html: string): AnimalMedical | undefined {
 // The CMS description field is a short run of paragraphs, e.g.
 // "<p><strong>Opis</strong>: črn dolgodlak</p><p><strong>Datum rojstva</strong>:
 // 13. 1. 2026</p>". Some listings add free-text paragraphs after "Opis", and
-// some are plain prose with no "Opis" label at all. "Datum rojstva" and "Teža"
-// restate facts, and prose copies go stale when the CMS entry is corrected,
-// so they are skipped. The colon sits inside the <strong> on some listings
-// and outside on others, and the first word of the value can fall inside it
-// too ("Opis: belo tigrasta"). Only the label is dropped.
+// some are plain prose with no "Opis" label at all. Any other leading bold
+// label with a colon ("Datum rojstva", "Teža") restates a fact, and a prose
+// copy goes stale when the CMS entry is corrected, so it is skipped. The
+// colon sits inside the <strong> on some listings and outside on others, and
+// the first word of the value can fall inside it too ("Opis: belo
+// tigrasta"). Only the label is dropped.
 const OPIS_LABEL = /^opis\b\s*:?\s*/i;
-const NON_EDITORIAL_LABELS = [/^datum rojstva\s*:?\s*/i, /^teža\s*:?\s*/i];
+
+function isLabelledFact(paragraphText: string, labelText: string): boolean {
+  if (!labelText || !paragraphText.startsWith(labelText)) return false;
+  return labelText.includes(":") || paragraphText.slice(labelText.length).trimStart().startsWith(":");
+}
 
 export function parseDescription(descriptionHtml: string): string | undefined {
   const $ = cheerio.load(descriptionHtml);
@@ -259,12 +264,8 @@ export function parseDescription(descriptionHtml: string): string | undefined {
       return;
     }
 
-    if (NON_EDITORIAL_LABELS.some((pattern) => pattern.test(labelText))) {
-      return; // a structured fact restated as prose, not editorial text
-    }
-
     const text = paragraph.text().replace(/\s+/g, " ").trim();
-    if (text) paragraphs.push({ opis: false, text });
+    if (text && !isLabelledFact(text, labelText)) paragraphs.push({ opis: false, text });
   });
 
   if (paragraphs.length === 0) return undefined;

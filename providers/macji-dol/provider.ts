@@ -132,14 +132,11 @@ function parseGoodWith($: cheerio.CheerioAPI): AnimalGoodWith | undefined {
   return Object.keys(goodWith).length > 0 ? goodWith : undefined;
 }
 
-// Housing lives in its own "Bivanje" row, not in "Družabnost" (no saved page
-// puts a housing term there any more, so that older reading is dropped
-// rather than kept as dead code). "Bivanje" states the animal's living
-// environment, which is not the same claim as apartmentOk, so it fills only
-// adoptionRequirements.indoorOnly. "V notranjem okolju" counts, also with a
-// leash-only outing ("zunaj le na povodcu"). Any outing to a safe area
-// ("izhodi v varno okolje") or an alternative ("... ali ...") is not an
-// indoor-only requirement.
+// "Bivanje" states the animal's living environment, which is not the same
+// claim as apartmentOk, so it fills only adoptionRequirements.indoorOnly.
+// "V notranjem okolju" counts, also with a leash-only outing ("zunaj le na
+// povodcu"). Any outing to a safe area ("izhodi v varno okolje") or an
+// alternative ("... ali ...") is not an indoor-only requirement.
 const INDOOR_ENVIRONMENT = /\bv notranjem okolju\b/;
 const ALTERNATIVE_MARKER = /\bali\b|\bizhod/;
 
@@ -154,23 +151,12 @@ function parseAdoptionRequirements(
   return INDOOR_ENVIRONMENT.test(normalized) ? { indoorOnly: true } : undefined;
 }
 
-// "Živahnost" (an older layout instead used "Energetičnost") is free prose,
-// not a fixed vocabulary: "zelo energična, strastna lovka" and "umirjen"
-// both appear, and so does the shelter's own explicit middle term ("srednje
-// živahna" / "srednje živahen"). Only words that state the tempo outright
-// map. Words that describe something else entirely (plašen, družaben,
-// prijazen, crkljiv) or only playfulness (igriv alone) do not map, matching
-// the muri pattern: a row naming two different levels, or negated with "ni"
-// or "ne", contradicts itself and stays unmapped rather than guessed.
+// "Živahnost" (older pages: "Energetičnost") is free prose. Only tempo words
+// map, and only when the value names one level; "igriv" alone and negated
+// values stay unset. The shelter's own middle term is "srednje živahna".
 const CALM_STEMS = ["umirjen", "miren", "mirn", "len"];
-const LIVELY_STEMS = [
-  "živahn",
-  "živahen",
-  "energičn",
-  "energičen",
-  "aktivn",
-  "aktiven",
-];
+const LIVELY_STEMS = ["živahen", "živahn", "energičen", "energičn", "aktiven", "aktivn"];
+const BALANCED_MODIFIERS = new Set(["srednje", "zmerno"]);
 
 function startsWithStem(word: string, stems: readonly string[]): boolean {
   return stems.some((stem) => word.startsWith(stem));
@@ -182,23 +168,14 @@ export function parseEnergy(value: string): EnergyLevel | undefined {
     .toLowerCase()
     .split(/[^\p{L}]+/u)
     .filter(Boolean);
-
   if (words.some((word) => word === "ni" || word === "ne")) return undefined;
 
-  // The shelter's only honest word for "balanced": "srednje" paired with a
-  // word that would otherwise read as lively.
-  if (
-    words.includes("srednje") &&
-    words.some((word) => startsWithStem(word, LIVELY_STEMS))
-  ) {
-    return "balanced";
-  }
-
   const found = new Set<EnergyLevel>();
-  for (const word of words) {
-    if (startsWithStem(word, CALM_STEMS)) found.add("calm");
-    else if (startsWithStem(word, LIVELY_STEMS)) found.add("lively");
-  }
+  words.forEach((word, index) => {
+    if (startsWithStem(word, LIVELY_STEMS)) {
+      found.add(BALANCED_MODIFIERS.has(words[index - 1] ?? "") ? "balanced" : "lively");
+    } else if (startsWithStem(word, CALM_STEMS)) found.add("calm");
+  });
   return found.size === 1 ? [...found][0] : undefined;
 }
 

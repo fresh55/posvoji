@@ -196,28 +196,36 @@ describe("SizePawCards watermark", () => {
   it("draws the paw with the shapes lucide's PawPrint is drawn from", () => {
     // The toes are copied out of lucide so they can spread on a landing. A
     // lucide upgrade that redraws the paw has to fail here rather than leave
-    // this section drawing last year's icon.
+    // this section drawing last year's icon. The small paw's toes are dots of
+    // a radius of their own (the next describe), so the radius is compared
+    // for the other two.
     const shapes = (svg: Element | null) =>
       [...(svg?.children ?? [])].map((shape) =>
         [
           shape.tagName,
-          ...["cx", "cy", "r", "d"].map((name) => shape.getAttribute(name)),
+          ...["cx", "cy", "d"].map((name) => shape.getAttribute(name)),
         ].join(" "),
       );
+    const radii = (svg: Element | null) =>
+      [...(svg?.querySelectorAll("circle") ?? [])].map((toe) =>
+        toe.getAttribute("r"),
+      );
     const lucide = render(<PawPrint />);
-    const drawn = shapes(lucide.container.querySelector("svg"));
+    const lucidePaw = lucide.container.querySelector("svg");
+    const drawn = shapes(lucidePaw);
+    const drawnRadii = radii(lucidePaw);
     cleanup();
 
     renderCards();
 
     expect(drawn.length).toBeGreaterThan(0);
-    for (const { label } of options) {
+    for (const { label, value } of options) {
       const button = screen.getByRole("button", {
         name: new RegExp(`^${label}, `),
       });
-      expect(shapes(button.querySelector("svg.lucide-paw-print"))).toEqual(
-        drawn,
-      );
+      const paw = button.querySelector("svg.lucide-paw-print");
+      expect(shapes(paw)).toEqual(drawn);
+      if (value !== "small") expect(radii(paw)).toEqual(drawnRadii);
     }
   });
 
@@ -454,4 +462,131 @@ describe("SizePawCards line weight", () => {
       expect(options).toHaveLength(3);
     },
   );
+});
+
+// The drawn size of a paw, in px, from the size-N class it is drawn at.
+function pawPx(paw: Element | null): number {
+  const size = /(?:^|\s)size-(\d+)(?:\s|$)/.exec(
+    paw?.getAttribute("class") ?? "",
+  );
+  if (!size) throw new Error("no size class on the paw");
+  return Number(size[1]) * 4;
+}
+
+describe("SizePawCards small toes", () => {
+  // Where the pad's outline passes nearest each toe, in the 24-unit box: the
+  // top arc (centre (9, 15), radius 5) under the two upper toes, the right
+  // side (x = 14) beside the lowest. The drift test above holds the pad to
+  // lucide's, so these hold while it passes.
+  const toArc = (x: number, y: number) => Math.hypot(x - 9, y - 15) - 5;
+  const toPad: ((x: number, y: number) => number)[] = [
+    toArc,
+    toArc,
+    (x) => x - 14,
+  ];
+
+  // Why: TOE_DOT_RADIUS in size-paw-cards.tsx. Stroked, the toes stood 0.65 to
+  // 0.85px off the pad and off each other at 12px, and printed as one blob.
+  it.each(["sidebar", "sheet"] as const)(
+    "leaves a pixel of daylight round each of the small paw's toes in the %s",
+    (layout) => {
+      renderCards({ layout });
+      const paw = screen
+        .getByRole("button", { name: /^Majhna, / })
+        .querySelector(
+          'svg.lucide-paw-print:not(.size-12):not([fill="currentColor"])',
+        );
+      const px = pawPx(paw) / 24;
+      const outline = Number(paw?.getAttribute("stroke-width")) / 2;
+      const toes = [...(paw?.querySelectorAll("circle") ?? [])].map((toe) => ({
+        x: Number(toe.getAttribute("cx")),
+        y: Number(toe.getAttribute("cy")),
+        // A dot is its radius wide; a ring reaches half its stroke further.
+        reach:
+          Number(toe.getAttribute("r")) +
+          (toe.getAttribute("stroke") === "none" ? 0 : outline),
+        filled: toe.getAttribute("fill") === "currentColor",
+      }));
+
+      expect(toes).toHaveLength(3);
+      expect(toes.every((toe) => toe.filled)).toBe(true);
+      const gaps = [
+        ...toes.map(
+          (toe, index) => toPad[index](toe.x, toe.y) - outline - toe.reach,
+        ),
+        ...[
+          [0, 1],
+          [1, 2],
+        ].map(
+          ([a, b]) =>
+            Math.hypot(toes[a].x - toes[b].x, toes[a].y - toes[b].y) -
+            toes[a].reach -
+            toes[b].reach,
+        ),
+      ].map((units) => units * px);
+      for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(1);
+    },
+  );
+
+  it("keeps the stroked toes on the paws big enough for them", () => {
+    renderCards();
+
+    for (const label of ["Srednja", "Velika"]) {
+      const toes = screen
+        .getByRole("button", { name: new RegExp(`^${label}, `) })
+        .querySelectorAll("svg.lucide-paw-print circle");
+      for (const toe of toes) expect(toe.getAttribute("fill")).toBeNull();
+    }
+  });
+});
+
+describe("SizePawCards landing shadow", () => {
+  function Harness() {
+    const [selected, setSelected] = useState<string[]>([]);
+    return (
+      <I18nProvider locale="sl">
+        <SizePawCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          onToggle={(value) =>
+            setSelected((current) =>
+              current.includes(value)
+                ? current.filter((item) => item !== value)
+                : [...current, value],
+            )
+          }
+        />
+      </I18nProvider>
+    );
+  }
+
+  // It was 16px under every paw, 21px at the impact under the small one's 12.
+  it("sizes the shadow with the paw that lands on it", () => {
+    render(<Harness />);
+
+    const shadows = options.map(({ label }) => {
+      const button = screen.getByRole("button", {
+        name: new RegExp(`^${label}, `),
+      });
+      fireEvent.click(button);
+      const shadow = button.querySelector<HTMLElement>("[data-landing-shadow]");
+      const px = pawPx(button.querySelector("svg.lucide-paw-print"));
+      return {
+        px,
+        width: parseFloat(shadow?.style.width ?? ""),
+        height: parseFloat(shadow?.style.height ?? ""),
+        bottom: parseFloat(shadow?.style.bottom ?? ""),
+      };
+    });
+
+    for (const { px, width, height, bottom } of shadows) {
+      expect(width / px).toBeCloseTo(0.8);
+      expect(height / px).toBeCloseTo(0.2);
+      // Centred on the paw's foot, the bottom of its box.
+      expect(bottom).toBeCloseTo(-height / 2);
+    }
+    // The large paw keeps the shadow it always had.
+    expect(shadows.at(-1)).toMatchObject({ px: 20, width: 16, height: 4 });
+  });
 });

@@ -185,6 +185,19 @@ type ToeSpread = { id: number; distance: number; impact: number };
 // 1.46 did at 12px.
 const PAW_STROKE_PX = 1.35;
 
+/**
+ * The toes the small paw draws as filled dots, and their radius in the 24-unit
+ * box.
+ *
+ * At 12px a unit is half a pixel, and a stroked toe is a ring 3.35px across
+ * whose hole has closed: the toes stood 0.65 to 0.85px off the pad and off each
+ * other, which antialiases shut at 1x, and the paw printed as one blob. Dots
+ * of 1.3px radius are the same toes, solid, with 1 to 1.5px of daylight
+ * around each (size-paw-cards.test.tsx measures it). The medium and large paws
+ * have 1.3px or more between their rings already and keep lucide's drawing.
+ */
+const TOE_DOT_RADIUS: Partial<Record<PawPx, number>> = { 12: 2.6 };
+
 function PawGlyph({
   px,
   className,
@@ -208,6 +221,11 @@ function PawGlyph({
       times: [0, TOE_SPREAD_OPEN / (TOE_SPREAD_OPEN + TOE_SPREAD_CLOSE), 1],
       ease: ["easeOut", "easeInOut"],
     });
+  // A print is filled already, and keeps lucide's toes.
+  const dot = filled ? undefined : TOE_DOT_RADIUS[px];
+  const toe = dot
+    ? { r: dot, fill: "currentColor", stroke: "none" }
+    : { r: PAW_TOE_RADIUS };
 
   return (
     <svg
@@ -235,7 +253,7 @@ function PawGlyph({
                 key={`${cx}-${cy}`}
                 cx={cx}
                 cy={cy}
-                r={PAW_TOE_RADIUS}
+                {...toe}
                 initial={false}
                 animate={{ x: x.keyframes, y: y.keyframes }}
                 transition={x.transition}
@@ -245,7 +263,7 @@ function PawGlyph({
         </g>
       ) : (
         PAW_TOES.map(({ cx, cy }) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={PAW_TOE_RADIUS} />
+          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} {...toe} />
         ))
       )}
       <path d={PAW_PAD} />
@@ -358,6 +376,19 @@ function impactTimes(impact: number, duration: number): number[] {
 
 function shadowDuration(landing: Landing): number {
   return impactDelay(landing) + SHADOW_SETTLE;
+}
+
+// The shadow's share of the paw it falls under: 16 by 4px under the large
+// paw's 20px, as it always was, and in proportion under the other two. It was
+// 16px under every paw, which spread to 21px at the impact under the small
+// paw's 12, a puddle nearly twice the paw's width.
+const SHADOW_WIDTH = 0.8;
+const SHADOW_HEIGHT = 0.2;
+
+// Centred on the paw's foot, which is the bottom of its box, at any height.
+function shadowBox(landing: Landing): CSSProperties {
+  const height = landing.px * SHADOW_HEIGHT;
+  return { width: landing.px * SHADOW_WIDTH, height, bottom: -height / 2 };
 }
 
 // Nothing until the impact, then a puff that spreads and fades.
@@ -762,7 +793,9 @@ export function SizePawCards({
                   {celebrating && !shouldReduceMotion ? (
                     <m.span
                       key={`shadow-${celebration?.id}`}
-                      className="pointer-events-none absolute -bottom-0.5 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-muted-foreground"
+                      data-landing-shadow=""
+                      className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full bg-muted-foreground"
+                      style={shadowBox(landing)}
                       initial={{ opacity: 0, scaleX: 0.5 }}
                       animate={{
                         opacity: [0, 0.15, 0.25 * landing.shadowWeight, 0],

@@ -341,11 +341,19 @@ function SexGlyph({
 
   // The ink's way out; see EXIT. It snaps back while the ink is hidden, so a
   // card ticked again draws in place.
+  //
+  // The pose does not ask about reduced motion, only the transition does.
+  // The server cannot know the setting, so it renders an unticked sign's
+  // hidden ink in the exit pose, and a client that answered AT_REST here
+  // under reduced motion hydrated a different transform: React's attribute
+  // mismatch, the dev overlay's issue badge over the dock. The ink is at
+  // opacity 0 in that pose, and the transition below is instant under
+  // reduced motion either way.
   const sheathe = (children: ReactNode) => (
     <m.g
       initial={false}
       style={exit.style}
-      animate={checked || shouldReduceMotion ? AT_REST : exit.pose}
+      animate={checked ? AT_REST : exit.pose}
       transition={
         checked || shouldReduceMotion
           ? OFF

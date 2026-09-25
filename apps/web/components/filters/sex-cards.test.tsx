@@ -1,7 +1,25 @@
-import { describe, expect, it } from "vitest";
-import { SEX_DRAW, outlineFade } from "./sex-cards";
+// @vitest-environment jsdom
+
+import { cleanup, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { I18nProvider } from "@/components/i18n-provider";
+import { groupOptions } from "@/lib/filters";
+import { SEX_DRAW, SexCards, outlineFade } from "./sex-cards";
 
 type Timed = { duration: number; delay: number };
+
+// Motion reads the media query once per file and keeps the answer, so the
+// setting is asked through a mock the test can change.
+const motion = vi.hoisted(() => ({ reduced: false }));
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => motion.reduced,
+}));
+
+afterEach(() => {
+  cleanup();
+  motion.reduced = false;
+});
 
 describe("the sign's outline under the ink", () => {
   const steps = Object.entries(SEX_DRAW);
@@ -50,5 +68,42 @@ describe("the sign's outline under the ink", () => {
         ).toEqual({ duration: 0 });
       }
     }
+  });
+});
+
+describe("the hidden ink of an unticked sign", () => {
+  // Every transform written inside the two signs' ink layers.
+  function inkTransforms() {
+    const options = groupOptions("sex", [], "sl");
+    const { container } = render(
+      <I18nProvider locale="sl">
+        <SexCards
+          options={options}
+          counts={new Map(options.map(({ value }) => [value, 3]))}
+          selected={[]}
+          onToggle={vi.fn()}
+          layout="sidebar"
+        />
+      </I18nProvider>,
+    );
+    return [
+      ...container.querySelectorAll<SVGGElement>(
+        'g[stroke="var(--brand-strong)"] g',
+      ),
+    ].map((g) => g.style.transform);
+  }
+
+  // The server cannot know the setting and renders the exit pose; a client
+  // that answered at rest under reduced motion hydrated a different
+  // transform, which React reports as an attribute mismatch.
+  it("rests in the same pose whatever the motion setting", () => {
+    const moving = inkTransforms();
+    cleanup();
+    motion.reduced = true;
+    const still = inkTransforms();
+
+    expect(still).toEqual(moving);
+    // The pose is really there, or the comparison proves nothing.
+    expect(moving.some((transform) => transform.includes("-0.9px"))).toBe(true);
   });
 });

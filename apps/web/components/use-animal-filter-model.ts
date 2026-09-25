@@ -14,6 +14,8 @@ import {
   goodWithOptions,
   groupOptions,
   GROUPS,
+  liveInPool,
+  poolCounts,
   speciesCounts,
   speciesFacetCounts,
   toggleCounts,
@@ -153,13 +155,40 @@ export function useAnimalFilterModel({
     });
   }
   const keptOnTab = drawn.groups;
+  // What each option could ever answer for this species tab, with every other
+  // filter set aside (poolCounts in lib/filters/engine.ts, over `pool` alone).
+  // liveInPool uses it below to drop an option no animal in the pool ever
+  // answers, on both surfaces: unlike a current-narrowing zero, which
+  // drawnOptions in filter-groups.tsx hides from the sidebar's rows alone and
+  // the sheet still offers as a tile a later pick could revive, this kind
+  // cannot come back from any pick. No animal in the catalogue is ever
+  // hairless, so Brez dlake was the option that motivated it, but the rule is
+  // written for whichever option is next.
+  const livePoolCounts = useMemo(
+    () => poolCounts(pool, reference),
+    [pool, reference],
+  );
   const groups = useMemo(
     () =>
       GROUPS.filter(
         (group): group is CardGroup =>
           group !== "shelter" && (shown[group] || keptOnTab.includes(group)),
-      ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
-    [keptOnTab, locale, pool, shown],
+      ).map((group) => {
+        const options = groupOptions(group, pool, locale);
+        // Age keeps every stage regardless (drawnOptions in filter-groups.tsx
+        // carries the same exemption): the grove above the rows is one
+        // drawing of all three stages, not a list an option can drop out of.
+        if (group === "age") return { group, options };
+        // filters[group] is a union of arrays indexed by a union of groups;
+        // only this declared type lets .includes read past that to a plain
+        // string (cardGroup in filter-groups.tsx needs the same widening).
+        const selected: string[] = filters[group];
+        return {
+          group,
+          options: liveInPool(options, livePoolCounts[group], selected),
+        };
+      }),
+    [filters, keptOnTab, livePoolCounts, locale, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which

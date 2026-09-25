@@ -62,6 +62,8 @@ export {
   goodWithCounts,
   goodWithMatches,
   isDrop,
+  liveInPool,
+  poolCounts,
   pruneHiddenFilters,
   speciesCounts,
   speciesFacetCounts,

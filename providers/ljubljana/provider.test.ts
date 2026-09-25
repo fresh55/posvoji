@@ -81,11 +81,53 @@ describe("parseDescription", () => {
     ).toBe("Tigrast");
   });
 
-  it("returns nothing when the field carries no Opis paragraph", () => {
+  it("returns nothing when the field carries no Opis paragraph and no prose", () => {
     expect(
-      parseDescription("<p><strong>Datum rojstva</strong>: 1. 6. 2026</p>"),
+      parseDescription(
+        "<p><strong>Datum rojstva</strong>: 1. 6. 2026</p><p><strong>Teža: </strong>okoli 20 kg</p>",
+      ),
     ).toBeUndefined();
     expect(parseDescription("")).toBeUndefined();
+  });
+
+  it("uses the plain prose paragraphs when there is no Opis label at all", () => {
+    expect(
+      parseDescription(
+        "<p><strong>Lex</strong> je starejši pes, ki je bil predan v zavetišče.</p>" +
+          "<p>Na povodcu je lepo vodljiv in miren.</p>" +
+          "<p><strong>Teža: </strong>okoli 20 kg</p>" +
+          "<p><strong>Datum rojstva</strong>: 28. 2. 2015</p>",
+      ),
+    ).toBe(
+      "Lex je starejši pes, ki je bil predan v zavetišče.\n\nNa povodcu je lepo vodljiv in miren.",
+    );
+  });
+
+  it("keeps the value when the shelter bleeds it into the Opis strong run", () => {
+    expect(
+      parseDescription("<p><strong>Opis: belo </strong>tigrasta</p>"),
+    ).toBe("belo tigrasta");
+  });
+
+  it("keeps prose paragraphs the shelter tacks on after Opis and drops a trailing label", () => {
+    expect(
+      parseDescription(
+        "<p><strong>Datum rojstva</strong>: 19. 3. 2020</p>" +
+          "<p><strong>Opis: </strong>Cezar je star pes.</p>" +
+          "<p>Zanj iščemo dom v mirnejšem okolju.</p>" +
+          "<p><strong>Teža: </strong>okoli 25 kg</p>",
+      ),
+    ).toBe("Cezar je star pes.\n\nZanj iščemo dom v mirnejšem okolju.");
+  });
+
+  it("drops a label it has never seen but keeps bold words inside prose", () => {
+    expect(
+      parseDescription(
+        "<p><strong>Opis</strong>: Rex je prijazen.</p>" +
+          "<p><strong>Čip: 705 123</strong></p>" +
+          "<p><strong>Rex</strong> je zelo navezan na ljudi.</p>",
+      ),
+    ).toBe("Rex je prijazen.\n\nRex je zelo navezan na ljudi.");
   });
 });
 

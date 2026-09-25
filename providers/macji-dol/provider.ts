@@ -5,8 +5,10 @@ import {
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
+  AnimalAdoptionRequirements,
   AnimalGoodWith,
   Compatibility,
+  EnergyLevel,
   ImagePolicy,
   ImageRights,
   Sex,
@@ -23,7 +25,8 @@ export interface DetailFacts {
   intakeDate?: string;
   description?: string;
   goodWith?: AnimalGoodWith;
-  apartmentOk?: Compatibility;
+  energy?: EnergyLevel;
+  adoptionRequirements?: AnimalAdoptionRequirements;
   imageUrls: string[];
 }
 
@@ -129,24 +132,51 @@ function parseGoodWith($: cheerio.CheerioAPI): AnimalGoodWith | undefined {
   return Object.keys(goodWith).length > 0 ? goodWith : undefined;
 }
 
-// The same field also carries the site's housing terms. "Bivanje samo v
-// stanovanju" is a cat the shelter keeps indoors, which is the same claim as
-// apartmentOk "yes". Exact terms only, for the reason given above: a hedged
-// or qualified phrase containing these words is not the same claim. There is
-// no term for the opposite, so a "no" is never inferred from silence.
-const APARTMENT_TERMS: Record<string, Compatibility> = {
-  "bivanje samo v stanovanju": "yes",
-};
+// "Bivanje" states the animal's living environment, which is not the same
+// claim as apartmentOk, so it fills only adoptionRequirements.indoorOnly.
+// "V notranjem okolju" counts, also with a leash-only outing ("zunaj le na
+// povodcu"). Any outing to a safe area ("izhodi v varno okolje") or an
+// alternative ("... ali ...") is not an indoor-only requirement.
+const INDOOR_ENVIRONMENT = /\bv notranjem okolju\b/;
+const ALTERNATIVE_MARKER = /\bali\b|\bizhod/;
 
-function parseApartmentOk($: cheerio.CheerioAPI): Compatibility | undefined {
-  const raw = labelValue($, "Družabnost");
+function parseAdoptionRequirements(
+  $: cheerio.CheerioAPI,
+): AnimalAdoptionRequirements | undefined {
+  const raw = labelValue($, "Bivanje");
   if (!raw) return undefined;
 
-  for (const part of raw.split(",")) {
-    const mapped = APARTMENT_TERMS[normalizeTerm(part)];
-    if (mapped) return mapped;
-  }
-  return undefined;
+  const normalized = raw.normalize("NFC").toLowerCase();
+  if (ALTERNATIVE_MARKER.test(normalized)) return undefined;
+  return INDOOR_ENVIRONMENT.test(normalized) ? { indoorOnly: true } : undefined;
+}
+
+// "Živahnost" (older pages: "Energetičnost") is free prose. Only tempo words
+// map, and only when the value names one level; "igriv" alone and negated
+// values stay unset. The shelter's own middle term is "srednje živahna".
+const CALM_STEMS = ["umirjen", "miren", "mirn", "len"];
+const LIVELY_STEMS = ["živahen", "živahn", "energičen", "energičn", "aktiven", "aktivn"];
+const BALANCED_MODIFIERS = new Set(["srednje", "zmerno"]);
+
+function startsWithStem(word: string, stems: readonly string[]): boolean {
+  return stems.some((stem) => word.startsWith(stem));
+}
+
+export function parseEnergy(value: string): EnergyLevel | undefined {
+  const words = value
+    .normalize("NFC")
+    .toLowerCase()
+    .split(/[^\p{L}]+/u)
+    .filter(Boolean);
+  if (words.some((word) => word === "ni" || word === "ne")) return undefined;
+
+  const found = new Set<EnergyLevel>();
+  words.forEach((word, index) => {
+    if (startsWithStem(word, LIVELY_STEMS)) {
+      found.add(BALANCED_MODIFIERS.has(words[index - 1] ?? "") ? "balanced" : "lively");
+    } else if (startsWithStem(word, CALM_STEMS)) found.add("calm");
+  });
+  return found.size === 1 ? [...found][0] : undefined;
 }
 
 function isValidIsoDate(iso: string): boolean {
@@ -216,6 +246,7 @@ export function parseDetail(html: string): DetailFacts {
   const status = parseStatus($);
   const sexRaw = labelValue($, "Spol")?.toLowerCase();
   const description = parseDescription($);
+  const energyRaw = labelValue($, "Živahnost") ?? labelValue($, "Energetičnost");
 
   const imageUrls: string[] = [];
   $(".woocommerce-product-gallery figure[data-src]").each((_, element) => {
@@ -233,7 +264,8 @@ export function parseDetail(html: string): DetailFacts {
     intakeDate: description ? parseIntakeDate(description) : undefined,
     description,
     goodWith: parseGoodWith($),
-    apartmentOk: parseApartmentOk($),
+    energy: energyRaw ? parseEnergy(energyRaw) : undefined,
+    adoptionRequirements: parseAdoptionRequirements($),
     imageUrls,
   };
 }
@@ -299,7 +331,8 @@ const provider: AdoptionProvider = {
       sex: facts.sex,
       intakeDate: facts.intakeDate,
       goodWith: facts.goodWith,
-      apartmentOk: facts.apartmentOk,
+      energy: facts.energy,
+      adoptionRequirements: facts.adoptionRequirements,
       // Presence on the list is the availability signal here, as it is for
       // every other archive. This is the repo's only WooCommerce source, so
       // it also publishes a stock flag; reading it costs nothing and catches

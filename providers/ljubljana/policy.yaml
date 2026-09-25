@@ -1,8 +1,10 @@
 # The project owner confirmed permission on 2026-08-18 for the shelter
 # catalogue, the shelter-hosted animal photographs and the descriptions. The
-# parser extracts the "Opis" paragraph from the CMS description field and
-# ships it as shortDescription; the other labelled facts beside it (birth
-# date and similar) are not restated as prose.
+# parser extracts the "Opis" paragraph and any prose paragraphs the shelter
+# tacks on after it (or, when there is no "Opis" paragraph, the prose on its
+# own) from the CMS description field and ships it as shortDescription; the
+# other labelled facts beside it (birth date, weight) are not restated as
+# prose.
 providerId: ljubljana
 source: https://www.zavetisce-ljubljana.si/posvoji-zival/v-zavetiscu
 enabled: true

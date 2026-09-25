@@ -221,34 +221,60 @@ function parseMedical(html: string): AnimalMedical | undefined {
     : undefined;
 }
 
-// The CMS description field is a short run of labelled paragraphs, e.g.
+// The CMS description field is a short run of paragraphs, e.g.
 // "<p><strong>Opis</strong>: črn dolgodlak</p><p><strong>Datum rojstva</strong>:
-// 13. 1. 2026</p>". Only the "Opis" paragraph is editorial text; the rest
-// restate facts the schema already carries in their own fields, and a date
-// repeated as prose would go stale the moment the CMS entry is corrected.
-// The colon sits inside the <strong> on some listings and outside on others.
-const OPIS_LABEL = /^\s*opis\s*:?\s*$/i;
+// 13. 1. 2026</p>". Some listings add free-text paragraphs after "Opis", and
+// some are plain prose with no "Opis" label at all. Any other leading bold
+// label with a colon ("Datum rojstva", "Teža") restates a fact, and a prose
+// copy goes stale when the CMS entry is corrected, so it is skipped. The
+// colon sits inside the <strong> on some listings and outside on others, and
+// the first word of the value can fall inside it too ("Opis: belo
+// tigrasta"). Only the label is dropped.
+const OPIS_LABEL = /^opis\b\s*:?\s*/i;
+
+function isLabelledFact(paragraphText: string, labelText: string): boolean {
+  if (!labelText || !paragraphText.startsWith(labelText)) return false;
+  return labelText.includes(":") || paragraphText.slice(labelText.length).trimStart().startsWith(":");
+}
 
 export function parseDescription(descriptionHtml: string): string | undefined {
   const $ = cheerio.load(descriptionHtml);
-  const parts: string[] = [];
+  const paragraphs: { opis: boolean; text: string }[] = [];
+
   $("p").each((_, element) => {
     const paragraph = $(element);
     const label = paragraph.children("strong").first();
-    if (!OPIS_LABEL.test(label.text())) return;
-    // Drop the label itself, keep whatever the shelter wrote after it.
-    const text = paragraph
-      .clone()
-      .children("strong")
-      .remove()
-      .end()
-      .text()
-      .replace(/\s+/g, " ")
-      .replace(/^\s*:\s*/, "")
-      .trim();
-    if (text) parts.push(text);
+    const labelText = label.text().replace(/\s+/g, " ").trim();
+
+    if (OPIS_LABEL.test(labelText)) {
+      // Drop the label itself, keep whatever the shelter wrote after it,
+      // including any value word that bled into the <strong> run.
+      const bledValue = labelText.replace(OPIS_LABEL, "");
+      const rest = paragraph
+        .clone()
+        .children("strong")
+        .remove()
+        .end()
+        .text()
+        .replace(/\s+/g, " ")
+        .replace(/^\s*:\s*/, "")
+        .trim();
+      const text = [bledValue, rest].filter(Boolean).join(" ").trim();
+      if (text) paragraphs.push({ opis: true, text });
+      return;
+    }
+
+    const text = paragraph.text().replace(/\s+/g, " ").trim();
+    if (text && !isLabelledFact(text, labelText)) paragraphs.push({ opis: false, text });
   });
-  return parts.length > 0 ? parts.join("\n\n") : undefined;
+
+  if (paragraphs.length === 0) return undefined;
+  // Keep the "Opis" paragraph and everything the shelter wrote after it. When
+  // there is no "Opis" paragraph at all, the whole thing is plain prose.
+  const opisIndex = paragraphs.findIndex((paragraph) => paragraph.opis);
+  const kept = opisIndex === -1 ? paragraphs : paragraphs.slice(opisIndex);
+  const joined = kept.map((paragraph) => paragraph.text).join("\n\n");
+  return joined || undefined;
 }
 
 export function parseDetail(html: string): DetailFacts {

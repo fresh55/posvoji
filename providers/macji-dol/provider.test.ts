@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { loadFixture, PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ProviderPolicy } from "@posvoji/schema";
-import provider, { parseDetail, parseIntakeDate, parseList } from "./provider";
+import provider, {
+  parseDetail,
+  parseEnergy,
+  parseIntakeDate,
+  parseList,
+} from "./provider";
 
 const policy = ProviderPolicy.parse(
   parse(readFileSync(new URL("./policy.yaml", import.meta.url), "utf8")),
@@ -41,6 +46,34 @@ describe("parseList", () => {
   });
 });
 
+describe("parseEnergy", () => {
+  it.each([
+    // Every distinct "Živahnost" / "Energetičnost" value seen on a saved
+    // detail page, mapped by the rules above.
+    ["Zelo igriva, z vmesnimi dolgimi počitki", undefined],
+    ["Srednje živahna, občasno zelo igriva", "balanced"],
+    ["srednje živahen, občasno igriv", "balanced"],
+    ["Igriv kot mladiček, a rad tudi počiva", undefined],
+    ["Bolj mirna fanta", "calm"],
+    ["Srednje živahna", "balanced"],
+    ["precej igrivi, športni plezalci", undefined],
+    ["Umirjen", "calm"],
+    ["Igriv, rada se stiska v naročje", undefined],
+    ["Mirna, občasno igriva", "calm"],
+    ["Miren poba, rad se stiska v naročje", "calm"],
+    ["Zelo energična, strastna lovka", "lively"],
+    ["bolj mirna gospodična", "calm"],
+    ["bolj mirna gospodična, občasno igriva", "calm"],
+    // Not seen on a saved page, but the rules must still hold: a negated row
+    // says what the animal is not, and a row naming both a calm and a lively
+    // word with no "srednje" marker contradicts itself. Both stay unmapped.
+    ["Ni miren, precej živahen", undefined],
+    ["Miren, a živahen na sprehodu", undefined],
+  ])("%s → %s", (input, expected) => {
+    expect(parseEnergy(input)).toBe(expected);
+  });
+});
+
 describe("parseIntakeDate", () => {
   it.each([
     ["V zavetišče je prišla 7. 5. 2025.", "2025-05-07"],
@@ -64,7 +97,8 @@ describe("parseDetail", () => {
       // cats are still to be had.
       status: "available",
       sex: "female",
-      apartmentOk: undefined,
+      energy: undefined,
+      adoptionRequirements: undefined,
       intakeDate: undefined,
       description:
         "Iris in Melisa sta v zavetišču od maja 2025. Ni nujno, da odideta v skupen dom.",
@@ -110,38 +144,78 @@ describe("parseDetail", () => {
     ).toBeUndefined();
   });
 
-  it("never substring-matches a qualified or housing term", () => {
+  it("never substring-matches a qualified term", () => {
     const html = listing(`
       <div class="summary"><article><div class="entry-content">
-        <p><strong>DRUŽABNOST:</strong> Ljudje, z določenimi mačkami, poznani mačji prijatelji, bivanje samo v stanovanju</p>
+        <p><strong>DRUŽABNOST:</strong> Ljudje, z določenimi mačkami, poznani mačji prijatelji</p>
       </div></article></div>`);
     expect(parseDetail(html).goodWith).toBeUndefined();
-  });
-
-  it("reads the housing term as an apartment cat", () => {
-    const html = listing(`
-      <div class="summary"><article><div class="entry-content">
-        <p><strong>DRUŽABNOST:</strong> Ljudje, bivanje samo v stanovanju</p>
-      </div></article></div>`);
-    expect(parseDetail(html).apartmentOk).toBe("yes");
-  });
-
-  it("leaves apartmentOk unset when the term is qualified or absent", () => {
-    const qualified = listing(`
-      <div class="summary"><article><div class="entry-content">
-        <p><strong>DRUŽABNOST:</strong> Mačke, po možnosti bivanje samo v stanovanju</p>
-      </div></article></div>`);
-    expect(parseDetail(qualified).apartmentOk).toBeUndefined();
-    expect(
-      parseDetail(loadFixture(import.meta.url, "detail-pair-separate.html"))
-        .apartmentOk,
-    ).toBeUndefined();
   });
 
   it("refuses a page that carries no product container", () => {
     expect(() =>
       parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
     ).toThrow("detail page has no product container");
+  });
+
+  it("reads Energetičnost when the page has no Živahnost row", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>ENERGETIČNOST:</strong> srednje živahen, občasno igriv</p>
+      </div></article></div>`);
+    expect(parseDetail(html).energy).toBe("balanced");
+  });
+
+  it("prefers Živahnost when both rows are present", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>ŽIVAHNOST:</strong> Umirjen</p>
+        <p><strong>ENERGETIČNOST:</strong> Zelo energična, strastna lovka</p>
+      </div></article></div>`);
+    expect(parseDetail(html).energy).toBe("calm");
+  });
+});
+
+describe("adoptionRequirements", () => {
+  it("reads a stated indoor environment as an indoor-only requirement", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>BIVANJE:</strong> v notranjem okolju, zunaj le na povodcu</p>
+      </div></article></div>`);
+    expect(parseDetail(html).adoptionRequirements).toEqual({
+      indoorOnly: true,
+    });
+  });
+
+  it("leaves it unset when the row offers an alternative rather than a requirement", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>BIVANJE:</strong> V notranjem okolju ali z izhodi v varno okolje</p>
+      </div></article></div>`);
+    expect(parseDetail(html).adoptionRequirements).toBeUndefined();
+  });
+
+  it("leaves it unset when the indoor environment comes with outings", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>BIVANJE:</strong> v notranjem okolju, izhodi v varno okolje</p>
+      </div></article></div>`);
+    expect(parseDetail(html).adoptionRequirements).toBeUndefined();
+  });
+
+  it("leaves it unset when the row never states an indoor environment", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>BIVANJE:</strong> Z izhodi v varno okolje</p>
+      </div></article></div>`);
+    expect(parseDetail(html).adoptionRequirements).toBeUndefined();
+  });
+
+  it("is absent when the page has no Bivanje row", () => {
+    expect(
+      parseDetail(loadFixture(import.meta.url, "detail-no-terms.html"))
+        .adoptionRequirements,
+    ).toBeUndefined();
   });
 });
 
@@ -178,15 +252,17 @@ describe("normalize", () => {
     expect(animal.goodWith).toEqual({ cats: "yes" });
   });
 
-  it("carries the housing term through to the listing", async () => {
+  it("carries energy and the indoor-only requirement through to the listing", async () => {
     const html = listing(`
       <div class="summary"><article><div class="entry-content">
-        <p><strong>DRUŽABNOST:</strong> Ljudje, bivanje samo v stanovanju</p>
+        <p><strong>ŽIVAHNOST:</strong> Umirjen</p>
+        <p><strong>BIVANJE:</strong> V notranjem okolju</p>
       </div></article></div>`);
     const animal = Animal.parse(
       await provider.normalize(ctx, { ...raw, data: parseDetail(html) }),
     );
-    expect(animal.apartmentOk).toBe("yes");
+    expect(animal.energy).toBe("calm");
+    expect(animal.adoptionRequirements).toEqual({ indoorOnly: true });
   });
 
   it("keeps the shelter block in sync with data/shelters.yaml", async () => {

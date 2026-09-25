@@ -6,6 +6,7 @@ import { Animal, ProviderPolicy } from "@posvoji/schema";
 import provider, {
   parseAgeMonths,
   parseDetail,
+  parseEnergy,
   parseList,
   parseSlovenianDate,
   parseVeterinaryCare,
@@ -18,6 +19,7 @@ const policy = ProviderPolicy.parse(
 const catHtml = loadFixture(import.meta.url, "detail-cat.html");
 const dogHtml = loadFixture(import.meta.url, "detail-dog.html");
 const historyHtml = loadFixture(import.meta.url, "detail-history.html");
+const facebookStoryHtml = loadFixture(import.meta.url, "detail-facebook-story.html");
 
 describe("policy.yaml", () => {
   it("matches the enabled provider and records granted permission", () => {
@@ -141,6 +143,7 @@ describe("parseDetail", () => {
         felv: "negative",
         fiv: "negative",
       },
+      energy: "calm",
       description: undefined,
       imageUrls: [
         "https://www.zavetisce-horjul.net/wp-content/uploads/2026/08/NinaT.jpg",
@@ -157,6 +160,7 @@ describe("parseDetail", () => {
       intakeDate: "2026-04-22",
       originMunicipality: undefined,
       status: "available",
+      energy: "lively",
     });
   });
 
@@ -173,6 +177,42 @@ describe("parseDetail", () => {
         "https://www.zavetisce-horjul.net/wp-content/uploads/2024/08/Klopka13.jpg",
       ],
     });
+  });
+
+  it("leaves energy unset for a timid-only temperament", () => {
+    // "Plašna" (timid) names no tempo at all.
+    expect(parseDetail(historyHtml).energy).toBeUndefined();
+  });
+});
+
+describe("parseEnergy", () => {
+  it.each([
+    ["Umirjena", "calm"],
+    ["Umirjen", "calm"],
+    ["Umirjen, plašen", "calm"],
+    ["Plašen, umirjen", "calm"],
+    ["Živahen", "lively"],
+    ["Živahna, družabna", "lively"],
+    ["energična", "lively"],
+    ["aktiven", "lively"],
+    // An explicit middle term, not seen on this shelter's pages so far but
+    // mapped in case one appears.
+    ["Zmerno aktiven", "balanced"],
+    ["Srednje živahna", "balanced"],
+    ["Uravnotežen", "balanced"],
+    // Words that are not tempo at all.
+    ["Plašna", undefined],
+    ["Družabna", undefined],
+    ["Prijazna, igriva", undefined],
+    // A negated value says what the animal is not.
+    ["ni umirjen", undefined],
+    ["ne živahen", undefined],
+    // Naming both tempos at once is a contradiction, not a level.
+    ["Umirjen, živahen", undefined],
+    ["Živahna, plašna, umirjena", undefined],
+    ["", undefined],
+  ])("%s → %s", (input, expected) => {
+    expect(parseEnergy(input)).toBe(expected);
   });
 });
 
@@ -192,6 +232,17 @@ describe("journal descriptions", () => {
 
   it("has no description when a listing carries no journal", () => {
     expect(parseDetail(dogHtml).description).toBeUndefined();
+  });
+
+  it("reads a Facebook-exported story out of nested dir=auto divs", () => {
+    // Facebook exports wrap each paragraph in its own plain outer <div>
+    // around the real "dir=auto" text div. Without the wrapper-dedup guard,
+    // the outer div's flattened text would repeat the inner paragraph.
+    expect(parseDetail(facebookStoryHtml).description).toBe(
+      "Bondi je tipična lovska psička, energična in priljudna.\n\n" +
+        "Najbolje bo funkcionirala pri izkušenem skrbniku, ki ji bo dal " +
+        "veliko gibanja.\n\nFoto prostovoljec",
+    );
   });
 });
 

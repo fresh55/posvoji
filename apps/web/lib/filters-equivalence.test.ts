@@ -110,7 +110,9 @@ function dataset(count: number): Animal[] {
       coatColors: pick([undefined, ["black"], ["black", "white"], ["orange", "cream"], ["grey", "brown"]]),
       coatColor: pick([undefined, "black", "white", "grey", "brown", "orange", "cream", "black-white", "brown-white", "grey-white", "orange-white", "cream-white", "multicolour"]),
       coatLength: pick([undefined, "short", "medium", "long", "hairless"]),
-      intakeDate: pick([undefined, "2026-08-16", "2026-02-14", "2025-08-15", "2025-08-14", "2023-08-14"]),
+      intakeDate: pick([undefined, undefined, "2026-08-16", "2026-02-14", "2025-08-15", "2025-08-14", "2023-08-14"]),
+      foundDate: pick([undefined, undefined, "2026-02-15", "2023-08-14"]),
+      intakeBy: pick([undefined, "2026-08-31", "2025-08-14", "2023-08-15"]),
       species,
       ...(sex === undefined ? {} : { sex }),
       ...(size === undefined ? {} : { size }),
@@ -162,12 +164,14 @@ function slowGroupValue(
       return animal.coatColor === "cream" ? "orange" : animal.coatColor === "cream-white" ? "orange-white" : animal.coatColor;
     case "coatLength":
       return animal.coatLength;
-    case "waiting":
-      return animal.intakeDate ? ([
+    case "waiting": {
+      const date = slowStayDate(animal);
+      return date ? ([
         ["over-6-months", "2026-02-15"],
         ["over-1-year", "2025-08-15"],
         ["over-3-years", "2023-08-15"],
-      ]).filter(([, cutoff]) => animal.intakeDate! < cutoff).map(([value]) => value) : [];
+      ]).filter(([, cutoff]) => date < cutoff).map(([value]) => value) : [];
+    }
     case "energy":
       return animal.energy;
     case "shelter":
@@ -381,10 +385,17 @@ function slowChipGains(
   return gains;
 }
 
-/** An intake date the thresholds can be read from: one at all, and not after
- *  the day being asked about. Every date in the dataset is a real one. */
+/** The date a wait is read from: the intake date, else the found date, else
+ *  the end of the period the shelter named. */
+function slowStayDate(animal: Animal): string | undefined {
+  return animal.intakeDate ?? animal.foundDate ?? animal.intakeBy;
+}
+
+/** A date the thresholds can be read from: one at all, and not after the day
+ *  being asked about. Every date in the dataset is a real one. */
 function slowIntakeKnown(animal: Animal): boolean {
-  return animal.intakeDate !== undefined && animal.intakeDate <= "2026-08-15";
+  const date = slowStayDate(animal);
+  return date !== undefined && date <= "2026-08-15";
 }
 
 /** Whether the animal answers the question, as opposed to answering it with

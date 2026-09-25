@@ -6,6 +6,7 @@ import { Animal, ProviderPolicy } from "@posvoji/schema";
 import provider, {
   parseDetail,
   parseEnergy,
+  parseIntakeBy,
   parseIntakeDate,
   parseList,
 } from "./provider";
@@ -87,6 +88,47 @@ describe("parseIntakeDate", () => {
   });
 });
 
+describe("parseIntakeBy", () => {
+  it.each([
+    ["Iris in Melisa sta v zavetišču od maja 2025, lahko gresta tudi posamič.", "2025-05-31"],
+    ["Miša je v zavetišče prišla septembra 2022.", "2022-09-30"],
+    ["Turk je bil najden konec septembra 2025 na območju Breznice.", "2025-09-30"],
+    ["Pončo je v Mačjem dolu od jeseni 2024.", "2024-11-30"],
+    ["Poleti 2022 je bila najdena pred pekarno v Železnikih.", "2022-08-31"],
+    ["V letu 2019 je bil z bratom sprejet v zavetišče kot malček.", "2019-12-31"],
+    // Winter may run into the next year, and only its end is a safe floor.
+    ["Igor in Vladimir sta bila sprejeta pozimi 2022 kot skoraj odrasla.", "2023-02-28"],
+    ["Pozimi 2023 je bila sprejeta.", "2024-02-29"],
+    // The clause with the arrival word, not the first period in the sentence.
+    ["Potomka mačke iz Železnikov, sprejeta jeseni 2021, zdaj išče dom.", "2021-11-30"],
+    // A sentence without the space after its full stop is still two.
+    ["Je zelo plaha.Sprejeta je bila poleti 2023.", "2023-08-31"],
+    ["Prišla je maja 2025. Pred tem je bila ponovno cepljena.", "2025-05-31"],
+  ])("%s → %s", (input, expected) => {
+    expect(parseIntakeBy(input)).toBe(expected);
+  });
+
+  it.each([
+    // A date for a birth, with the arrival word in another sentence.
+    "Mama Demetra je za 1. maj 2023 skotila na mrzlem betonu. Malčki so bili komaj živi, ko so bili najdeni.",
+    // A cat that came back: the date belongs to the first stay.
+    "Mira je v zavetišče prišla kot dudarka v maju 2014. Sedaj je zopet pri nas.",
+    "V zavetišče je bil ta plahi fant sprejet z lokacije ob glavni cesti.",
+    "Rodila se je maja 2024 in je zelo igriva.",
+    // Another event in the sentence: a birth, a life elsewhere, an adoption.
+    "Rojena spomladi 2020, sprejeta jeseni 2021.",
+    "Prišla je k nam, rojena maja 2024, v zavetišče pa julija 2024.",
+    "Mama je prišla aprila 2025, mladiči so se rodili junija 2025 v zavetišču.",
+    "Najdena je bila v Kranju, kjer je živela od leta 2015.",
+    "Rojena je bila maja 2015.Prišla je k nam lani.",
+    "Leta 2018 je bila sprejeta v nov dom, letos pa so jo lastniki pripeljali nazaj.",
+    // Two periods in the arrival's clause.
+    "Sprejeta je bila maja 2020 ali pozimi 2021.",
+  ])("%s → undefined", (input) => {
+    expect(parseIntakeBy(input)).toBeUndefined();
+  });
+});
+
 describe("parseDetail", () => {
   it("preserves a multi-cat title without inferring a joint adoption", () => {
     expect(
@@ -100,6 +142,7 @@ describe("parseDetail", () => {
       energy: undefined,
       adoptionRequirements: undefined,
       intakeDate: undefined,
+      intakeBy: "2025-05-31",
       description:
         "Iris in Melisa sta v zavetišču od maja 2025. Ni nujno, da odideta v skupen dom.",
       // "Mačke" maps; the hedged "verjetno tudi psi" does not.
@@ -131,6 +174,7 @@ describe("parseDetail", () => {
       name: "Igor in Vladimir",
       sex: "male",
       intakeDate: undefined,
+      intakeBy: "2023-02-28",
       description: "Sprejeta sta bila pozimi 2022. Oddajamo ju skupaj.",
       // "Brez mačk" and bare "psi" are both exact, unqualified terms.
       goodWith: { cats: "no", dogs: "yes" },
@@ -239,6 +283,7 @@ describe("normalize", () => {
     expect(animal.species).toBe("cat");
     expect(animal.status).toBe("available");
     expect(animal.intakeDate).toBeUndefined();
+    expect(animal.intakeBy).toBe("2025-05-31");
     expect(animal.images).toEqual([
       {
         sourceUrl:
@@ -250,6 +295,24 @@ describe("normalize", () => {
       "Ni nujno, da odideta v skupen dom.",
     );
     expect(animal.goodWith).toEqual({ cats: "yes" });
+  });
+
+  it("keeps intakeBy no later than the day the page was read", async () => {
+    const html = listing(`
+      <div class="summary"><div class="entry-content">
+        <h2>Opis</h2><p>Sprejeta je bila jeseni 2026.</p>
+      </div></div>`);
+    const animal = Animal.parse(
+      await provider.normalize(ctx, { ...raw, data: parseDetail(html) }),
+    );
+    expect(animal.intakeBy).toBe("2026-08-19");
+  });
+
+  it("leaves intakeBy out beside an exact intake date", async () => {
+    const data = { ...raw.data, intakeDate: "2025-05-07" };
+    const animal = Animal.parse(await provider.normalize(ctx, { ...raw, data }));
+    expect(animal.intakeDate).toBe("2025-05-07");
+    expect(animal.intakeBy).toBeUndefined();
   });
 
   it("carries energy and the indoor-only requirement through to the listing", async () => {

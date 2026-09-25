@@ -51,6 +51,25 @@ export function adoptableNow(status: AdoptionStatus): boolean {
   return status === "available" || status === "unknown";
 }
 
+/** When this animal's wait began, as far as the record can say it, and
+ *  whether that is only the latest day the shelter's words allow.
+ *
+ *  The intake date, else the found date, else intakeBy as a floor. Why the
+ *  found date stands in: docs/ANIMAL-ENRICHMENT.md, "Time in the shelter".
+ *  The filter, the sort, the stay line, the card's mark and the shelter
+ *  summary all read this, so none of them can count a wait another leaves
+ *  out. */
+export type StayStart = { date: string; floor: boolean };
+
+export function stayStart(
+  animal: Pick<AnimalFields, "intakeDate" | "foundDate" | "intakeBy">,
+): StayStart | undefined {
+  if (animal.intakeDate) return { date: animal.intakeDate, floor: false };
+  if (animal.foundDate) return { date: animal.foundDate, floor: false };
+  if (animal.intakeBy) return { date: animal.intakeBy, floor: true };
+  return undefined;
+}
+
 /** Whether a test was done: a positive or a negative. Absent and a recorded
  *  "unknown" are both no result. The FIV and FeLV rows count what they leave
  *  out by it (lib/filters/metadata.ts), and the dialog names the same gap. */

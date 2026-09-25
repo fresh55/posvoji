@@ -30,7 +30,8 @@ import { datasetDir } from "./paths";
 // v1 = the parsers as of the run this file was added.
 // v2 = Ljubljana's broad Ostali category no longer implies rabbit.
 // v3 = age ranges stay unknown and Turk's negated neutering stays unset.
-export const CRAWL_GENERATION = 3;
+// v4 = Mačji dol reads intakeBy from the month, season or year it names.
+export const CRAWL_GENERATION = 4;
 
 // Sidecar next to animals.json. Not a schema change, and not something the
 // site reads.

@@ -373,6 +373,11 @@ describe("Animal", () => {
     expect(Animal.parse({ ...validAnimal, lifeStage: "senior" }).lifeStage).toBe("senior");
     expect(Animal.safeParse({ ...validAnimal, lifeStage: "kitten" }).success).toBe(false);
   });
+
+  it("accepts an intake-by date and rejects one that is not a calendar date", () => {
+    expect(Animal.parse({ ...validAnimal, intakeBy: "2025-05-31" }).intakeBy).toBe("2025-05-31");
+    expect(Animal.safeParse({ ...validAnimal, intakeBy: "maj 2025" }).success).toBe(false);
+  });
 });
 
 describe("lifeStageOf", () => {

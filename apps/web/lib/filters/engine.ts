@@ -1,5 +1,5 @@
 import type { LifeStage, Species } from "@posvoji/schema";
-import type { AnimalFields } from "@/lib/animal";
+import { stayStart, type AnimalFields } from "@/lib/animal";
 import {
   TAB_OF_SPECIES,
 } from "@/lib/species";
@@ -331,7 +331,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     energy.push(animal.energy);
     coatColor.push(filterColour(animal.coatColor));
     coatLength.push(animal.coatLength);
-    intakeStart.push(intakeStartOf(animal.intakeDate));
+    intakeStart.push(intakeStartOf(stayStart(animal)?.date));
     shelter.push(animal.shelter.id);
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
@@ -408,7 +408,9 @@ function ageColumn(index: FilterIndex, nowMonths: number): Column<AgeGroup> {
 
 /** The Čaka na dom thresholds each animal has passed by this day. undefined
  *  where there is no date to read, which is the question's one missing
- *  answer: an empty list is a known date under six months. */
+ *  answer: an empty list is a known date under six months. The date is
+ *  stayStart's, so a floor (intakeBy) passes a threshold only once its latest
+ *  possible arrival has: it can read "not yet" a few weeks late, never "more". */
 function waitingColumn(
   index: FilterIndex,
   today: number | undefined,
@@ -750,8 +752,8 @@ export function namesUnanswered({ asked, unanswered }: Unanswered): boolean {
 
 /** Whether not one of the animals asked has an answer. Every option of the
  *  question then counts 0, since the counts are taken over the same animals,
- *  so there is nothing for the visitor to pick. /?zavetisce=macji-dol: none
- *  of its 15 animals has an intake date. */
+ *  so there is nothing for the visitor to pick. /?zavetisce=turk: none of its
+ *  18 animals has a date to read a wait from. */
 export function answeredByNone(tally: Unanswered | undefined): boolean {
   return tally !== undefined && tally.asked > 0 && tally.unanswered === tally.asked;
 }
@@ -1372,12 +1374,12 @@ function asValues(value: string | readonly string[] | undefined): readonly strin
   return value === undefined ? [] : typeof value === "string" ? [value] : value;
 }
 
-/** An intake date as the UTC instant of its midnight, or undefined for one
- *  that is not a real calendar date. */
-function intakeStartOf(intakeDate: string | undefined): number | undefined {
-  if (!intakeDate || !/^\d{4}-\d{2}-\d{2}$/.test(intakeDate)) return undefined;
-  const start = new Date(intakeDate);
-  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== intakeDate) return undefined;
+/** A stay's start date as the UTC instant of its midnight, or undefined for
+ *  one that is not a real calendar date. */
+function intakeStartOf(date: string | undefined): number | undefined {
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined;
+  const start = new Date(date);
+  if (!Number.isFinite(start.getTime()) || start.toISOString().slice(0, 10) !== date) return undefined;
   return start.getTime();
 }
 
@@ -1409,9 +1411,9 @@ function waitingFrom(
   }).map(([value]) => value);
 }
 
-/** Strictly past the calendar anniversary, using only the shelter intake date.
+/** Strictly past the calendar anniversary of the stay's start (stayStart).
  * Clamp month-end anniversaries (August 31 + 6 months is February's last day).
  * UTC date arithmetic makes shared links agree across visitor time zones. */
-export function waitingGroups(intakeDate: string | undefined, now: Date): WaitingGroup[] {
-  return waitingFrom(intakeStartOf(intakeDate), todayOf(now));
+export function waitingGroups(date: string | undefined, now: Date): WaitingGroup[] {
+  return waitingFrom(intakeStartOf(date), todayOf(now));
 }

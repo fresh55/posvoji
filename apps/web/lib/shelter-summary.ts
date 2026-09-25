@@ -2,7 +2,7 @@ import type { Species } from "@posvoji/schema";
 import type { AnimalFields, ClientAnimal } from "@/lib/animal";
 import type { Locale } from "@/lib/i18n";
 import { translateLabel as translate } from "@/lib/label-messages";
-import { ageLabel, monthsInShelter } from "@/lib/labels";
+import { stayDuration, stayOf, type Stay } from "@/lib/labels";
 import type { ShelterLogo } from "@/lib/shelter-logos";
 import { SPECIES_ORDER } from "@/lib/species";
 
@@ -21,7 +21,8 @@ export type ShelterSummary = {
    *  nothing there is left out rather than shown as a zero. */
   species: { species: Species; count: number }[];
   /** The animal that has been in this shelter longest, already worded in the
-   *  reader's language. Absent when no animal there carries an intake date. */
+   *  reader's language. Absent when no animal there has a date to read a
+   *  wait from (stayStart). */
   longestWaiting?: { name: string; duration: string };
   /** Up to three waiting animals with a photo, longest wait first. The first
    *  entry is the same animal longestWaiting names whenever that animal has a
@@ -70,10 +71,10 @@ export function summarizeShelters(
   now: Date,
 ): Map<string, ShelterSummary> {
   const counts = new Map<string, Map<Species, number>>();
-  const longest = new Map<string, { name: string; months: number }>();
+  const longest = new Map<string, { name: string; stay: Stay }>();
   // Every waiting animal with a photo, unsorted until a shelter's summary is
-  // built below. months is undefined for an animal with no usable intake
-  // date, which the sort keeps after the animals it can actually rank.
+  // built below. months is undefined for an animal with no date to read a
+  // wait from, which the sort keeps after the animals it can actually rank.
   const faceCandidates = new Map<
     string,
     { name: string; months: number | undefined; src: string }[]
@@ -87,14 +88,13 @@ export function summarizeShelters(
 
     if (!isWaiting(animal)) continue;
     const name = animal.name ?? translate(locale, "unnamed");
-    const months = animal.intakeDate
-      ? monthsInShelter(animal.intakeDate, now)
-      : undefined;
+    const stay = stayOf(animal, now);
+    const months = stay?.months;
 
-    if (months !== undefined) {
+    if (stay) {
       const current = longest.get(id);
-      if (!current || current.months < months) {
-        longest.set(id, { name, months });
+      if (!current || current.stay.months < stay.months) {
+        longest.set(id, { name, stay });
       }
     }
 
@@ -133,7 +133,7 @@ export function summarizeShelters(
         return count > 0 ? [{ species, count }] : [];
       }),
       longestWaiting: waited
-        ? { name: waited.name, duration: ageLabel(waited.months, locale) }
+        ? { name: waited.name, duration: stayDuration(waited.stay, locale) }
         : undefined,
       faces: faces && faces.length > 0 ? faces : undefined,
     });

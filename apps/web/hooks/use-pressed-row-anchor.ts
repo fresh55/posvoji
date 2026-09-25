@@ -52,6 +52,48 @@ function layoutTop(node: HTMLElement): number {
 }
 
 /**
+ * Whether the box's scroll went down because its range got shorter.
+ *
+ * A pick can take rows out below the one pressed (a section drops the options
+ * nothing answers any more), and with the box scrolled to its end the browser
+ * then pulls scrollTop down to the new end. That is not somebody scrolling,
+ * and ending the hold on it left the row wherever the pull put it.
+ */
+function clampedBelow(box: HTMLElement, expected: number): boolean {
+  const end = box.scrollHeight - box.clientHeight;
+  return box.scrollTop < expected - 1 && box.scrollTop >= end - 1;
+}
+
+/**
+ * Whether the press came from a mouse that is still over the box.
+ *
+ * Room under the rows (see usePressedRowAnchor) is kept only while a pointer
+ * rests on the panel, and a finger does not rest: its pointerleave has come
+ * and gone before the click. A keyboard press has no pointer of its own, so it
+ * asks whether a mouse happens to be over the box. So does a click from a
+ * browser that does not say what pressed it, where a device that can hover is
+ * the best stand-in for a mouse.
+ */
+function pointerRestsOn(box: HTMLElement, event: MouseEvent<HTMLElement>): boolean {
+  const type = (event.nativeEvent as Partial<PointerEvent>).pointerType;
+  if (type) return type === "mouse";
+  const canHover =
+    typeof window.matchMedia !== "function" ||
+    window.matchMedia("(hover: hover)").matches;
+  return canHover && box.matches(":hover");
+}
+
+/** Room the hold has added under the box's content, and how to take it back. */
+type Room = {
+  box: HTMLElement;
+  /** How much is added now, in px. */
+  px: number;
+  /** The box's own bottom padding, which the room goes on top of. */
+  base: number;
+  remove: () => void;
+};
+
+/**
  * Keeps a pressed filter row where the pointer left it.
  *
  * A pick can change what is drawn above the row that took it. Measured on
@@ -68,7 +110,18 @@ function layoutTop(node: HTMLElement): number {
  * Anything else scrolling the box ends the hold at once: a wheel, a finger, a
  * focus move, a section opening itself into view (scrollChildIntoViewY). The
  * box is then where somebody else wanted it, and following the row from there
- * would fight them.
+ * would fight them. The browser pulling the scroll back to a shorter end is
+ * the exception (clampedBelow).
+ *
+ * At the end of the panel a pick can also take away more below the row than
+ * any scroll can make up: measured at 1440x900 with the sidebar scrolled to
+ * its end, Otroke in Doma imam dropped 108px of dead rows from Lahko ponudim
+ * under it and the row went 92px down, leaving the pointer on the VIDEZ
+ * heading. There the box grows room under its content, as much as the row
+ * needs, and gives it back when the pointer leaves the panel, where the shift
+ * lands under nobody, or wheels it, where the visitor is moving the panel
+ * anyway. Only for a mouse: a finger does not stay on the panel to be kept
+ * from.
  *
  * Returns the props the box spreads: its onClickCapture, and a style that
  * turns the browser's anchoring off. A click and not a pointerdown, because a
@@ -81,36 +134,96 @@ export function usePressedRowAnchor(): {
   style: CSSProperties;
 } {
   const frame = useRef(0);
+  const room = useRef<Room | null>(null);
 
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
-
-  const onClickCapture = useCallback((event: MouseEvent<HTMLElement>) => {
-    const box = event.currentTarget;
-    const row = (event.target as Element).closest("button[aria-pressed]");
-    // React hands this box the clicks of anything portalled out of it too,
-    // the Kje dialog's rows among them. A row the box does not contain is not
-    // one its scroll can hold.
-    if (!(row instanceof HTMLElement) || !box.contains(row)) return;
-
-    cancelAnimationFrame(frame.current);
-    const seen = () => layoutTop(row) - layoutTop(box) - box.scrollTop;
-    const held = seen();
-    const start = performance.now();
-    let expected = box.scrollTop;
-
-    const hold = () => {
-      if (!row.isConnected || Math.abs(box.scrollTop - expected) > 1) return;
-      const drift = seen() - held;
-      if (Math.abs(drift) >= 1) {
-        box.scrollTop += drift;
-        expected = box.scrollTop;
-      }
-      if (performance.now() - start < PRESSED_ROW_HOLD_MS) {
-        frame.current = requestAnimationFrame(hold);
-      }
-    };
-    frame.current = requestAnimationFrame(hold);
+  const removeRoom = useCallback(() => {
+    room.current?.remove();
+    room.current = null;
   }, []);
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrame(frame.current);
+      removeRoom();
+    },
+    [removeRoom],
+  );
+
+  /** Sizes the room under `box` so a scroll to `want` fits in its range. */
+  const makeRoom = useCallback(
+    (box: HTMLElement, want: number) => {
+      if (room.current && room.current.box !== box) removeRoom();
+      const added = room.current?.px ?? 0;
+      const px = want - (box.scrollHeight - box.clientHeight - added);
+      if (px < 1) {
+        removeRoom();
+        return;
+      }
+      if (!room.current) {
+        const padding = box.style.paddingBottom;
+        // A shift from here on is the visitor's own doing or out of their
+        // way, and a hold still running would take the pull that follows
+        // for one of its own and put the room straight back.
+        const giveBack = () => {
+          cancelAnimationFrame(frame.current);
+          removeRoom();
+        };
+        box.addEventListener("pointerleave", giveBack);
+        box.addEventListener("wheel", giveBack, { passive: true });
+        room.current = {
+          box,
+          px: 0,
+          base: parseFloat(getComputedStyle(box).paddingBottom) || 0,
+          remove: () => {
+            box.removeEventListener("pointerleave", giveBack);
+            box.removeEventListener("wheel", giveBack);
+            box.style.paddingBottom = padding;
+          },
+        };
+      }
+      if (Math.abs(px - room.current.px) >= 0.5) {
+        room.current.px = px;
+        box.style.paddingBottom = `${room.current.base + px}px`;
+      }
+    },
+    [removeRoom],
+  );
+
+  const onClickCapture = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      const box = event.currentTarget;
+      const row = (event.target as Element).closest("button[aria-pressed]");
+      // React hands this box the clicks of anything portalled out of it too,
+      // the Kje dialog's rows among them. A row the box does not contain is
+      // not one its scroll can hold.
+      if (!(row instanceof HTMLElement) || !box.contains(row)) return;
+
+      cancelAnimationFrame(frame.current);
+      const seen = () => layoutTop(row) - layoutTop(box) - box.scrollTop;
+      const held = seen();
+      const start = performance.now();
+      const mayMakeRoom = pointerRestsOn(box, event);
+      let expected = box.scrollTop;
+
+      const hold = () => {
+        if (!row.isConnected) return;
+        if (
+          Math.abs(box.scrollTop - expected) > 1 &&
+          !clampedBelow(box, expected)
+        )
+          return;
+        const want = Math.max(0, box.scrollTop + seen() - held);
+        if (mayMakeRoom) makeRoom(box, want);
+        if (Math.abs(want - box.scrollTop) >= 1) box.scrollTop = want;
+        expected = box.scrollTop;
+        if (performance.now() - start < PRESSED_ROW_HOLD_MS) {
+          frame.current = requestAnimationFrame(hold);
+        }
+      };
+      frame.current = requestAnimationFrame(hold);
+    },
+    [makeRoom],
+  );
 
   return useMemo(
     () => ({ onClickCapture, style: NO_BROWSER_ANCHORING }),

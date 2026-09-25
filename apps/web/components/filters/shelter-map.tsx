@@ -46,6 +46,8 @@ import {
   MapCallout,
   DistanceRing,
   Origin,
+  OriginName,
+  originNameAt,
 } from "./map-callout";
 import type { CalloutRect } from "./map-callout-layout";
 import {
@@ -61,21 +63,22 @@ import {
 } from "./shelter-map-region";
 import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 import { commitKey, Marker, PLATE_MIN_SCALE } from "./map-marker";
-import { placePickedNames, type NamePlacement } from "./map-names";
-import { mapFacts, type MapFacts } from "./shelter-map-facts";
+import {
+  namePlacementBox,
+  placePickedNames,
+  type NamePlacement,
+} from "./map-names";
 import { mapAvailabilityText, regionAvailability, shelterAvailability } from "./map-availability";
 import { MapRegionNames, NAMES_MIN_PLATE_WIDTH } from "./map-region-names";
 
 export type { ShelterPin } from "@/lib/map-layout";
 export type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
-export { mapFacts };
-export type { MapFacts };
 export { Region };
 
 /** How long a pointer has to rest on a region before the plate names it.
  *
  *  The regions are the whole floor of this map: there is no gap between them,
- *  so every trip to a marker, to the legend or out to the panel grazes two or
+ *  so every trip to a marker, to the credit or out to the panel grazes two or
  *  three on the way. Naming each one it touched turned the plate into a
  *  flicker of labels, and that is the noise the dwell exists to stop. It stops
  *  it by asking one question of the pointer: did you come here, or were you
@@ -84,7 +87,7 @@ export { Region };
  *
  *  Every region answers once that question is settled, live or empty. A live
  *  one was silent for a while, on the grounds that its counts are in the list
- *  and its density is in the legend, and that was wrong for the same reason
+ *  and its density was in a legend, and that was wrong for the same reason
  *  the touch path was: the one fact neither of those carries is which shape
  *  under the cursor is Savinjska. The plate names four countries and a sea and
  *  not one of the twelve things it asks you to choose between, so a mouse user
@@ -136,6 +139,12 @@ export const ARMED_TTL_MS = 6000;
  *  Exported so a test asks the same question the plate asks. */
 export const NO_HOVER = "(hover: none)";
 
+// The dot a picked town wears on a plate too small for coins, in screen
+// pixels: a radius the eye finds on a 340px country, and a ring of the page
+// behind it so it holds on a picked region's own green.
+const PICKED_DOT_PX = 3.5;
+const PICKED_DOT_RING_PX = 1.5;
+
 // A presentation map has no selection by definition. Keep one stable array so
 // its regions and markers do not redraw merely because the parent did.
 const EMPTY_SELECTION: string[] = [];
@@ -163,7 +172,7 @@ export function ShelterMap({
   regionShelterNames,
   describedElsewhere,
   onMarkersVisible,
-  onFacts,
+  originLabel,
 }: (
   | {
       /** The default filter-map contract: regions and markers are controls. */
@@ -246,16 +255,16 @@ export function ShelterMap({
   describedElsewhere?: string | null;
   /** Fired with whether the plate is currently drawing its markers, so
    *  anything outside the map that talks about them can follow the same
-   *  answer. The panel's instruction line and its legend both used to decide
-   *  from a viewport breakpoint while this decided from the measured plate,
-   *  and the two disagreed wherever the stage was not the width its breakpoint
-   *  assumed: a landscape phone was told to click a marker it had none of, and
-   *  a plate squeezed by an open sheet lost its coins while the legend went on
-   *  explaining the hollow one. See markersVisible below for what decides it. */
+   *  answer. The picker's instruction line used to decide from a viewport
+   *  breakpoint while this decided from the measured plate, and the two
+   *  disagreed wherever the stage was not the width its breakpoint assumed: a
+   *  landscape phone was told to click a marker it had none of. See
+   *  markersVisible below for what decides it. */
   onMarkersVisible?: (visible: boolean) => void;
-  /** Reports legend states from the layout and region stats this map already
-   *  computed, so its parent never repeats that work. */
-  onFacts?: (facts: MapFacts) => void;
+  /** What the origin is called, printed beside its dot: the town the visitor
+   *  typed, or their own location. The plate carries no legend, so the mark
+   *  says what it is where it stands. Undefined draws the dot unnamed. */
+  originLabel?: string;
 }) {
   const { locale, messages, t } = useI18n();
   // The dev gallery mounts several maps on one page, and every one of them
@@ -293,6 +302,18 @@ export function ShelterMap({
         height: town.reach * 2,
       })),
     [towns],
+  );
+  /** The coins and the picked towns' names together, which is what the
+   *  annotations keep off when they have a side to choose. The names are in it
+   *  because a card drawn across one cut the name to its last few letters.
+   *  Only the coins carry a key, so a town's card can leave its own coin out
+   *  and still keep off every name. */
+  const plateMarks = useMemo(
+    (): (CalloutRect & { key?: string })[] => [
+      ...markerBoxes,
+      ...[...namePlacements.values()].map(namePlacementBox),
+    ],
+    [markerBoxes, namePlacements],
   );
   const [hoveredTownKey, setHoveredTownKey] = useState<string | null>(null);
   /** The single shelter under the pointer inside a cluster marker. A cluster
@@ -572,6 +593,11 @@ export function ShelterMap({
    *  calloutShelter is the wedge under the pointer. */
   const saidElsewhere =
     Boolean(describedElsewhere) && calloutShelter?.value === describedElsewhere;
+  /** The shelter's own mark over the card's title, when the card is about one
+   *  shelter and nothing else on screen is describing it already. */
+  const calloutLogo = calloutShelter && !saidElsewhere
+    ? summaries?.get(calloutShelter.value)?.logo
+    : undefined;
 
   /** The line under the annotation's title, when the annotation carries one.
    *  A wedge under the pointer answers for its own shelter; a town answers for
@@ -631,14 +657,6 @@ export function ShelterMap({
     () => regionStatsByRegion(byRegion, selected, shading === "density"),
     [byRegion, selected, shading],
   );
-  const facts = useMemo(
-    () => mapFacts(towns, regions, selected),
-    [regions, selected, towns],
-  );
-
-  useEffect(() => {
-    onFacts?.(facts);
-  }, [facts, onFacts]);
 
   // Memoized like `regions` above it: liveRegionIds only has to change when
   // `regions` itself does, so the handlers below that close over it (and are
@@ -745,7 +763,7 @@ export function ShelterMap({
       // The name waits, and every region has one to give. An empty region says
       // who answers for it, which is a fact with nowhere else on the plate to
       // live. A live one says which shape this is, which is the fact the plate
-      // draws no label for and neither the list nor the legend can supply:
+      // draws no label for and the list cannot supply:
       // without it a click here picks a province by shape alone. Both are only
       // owed to a pointer that stopped to ask.
       regionDwellRef.current = setTimeout(() => {
@@ -815,9 +833,15 @@ export function ShelterMap({
     [onHoverShelters],
   );
 
+  // A pointer leaving a coin takes down the card focus raised on it as well,
+  // the same rule a region keeps (see namedRegionId). A click focuses the coin
+  // it lands on, so without this the card a click left behind stood beside a
+  // coin nobody was pointing at any more, for as long as focus stayed there.
+  // The focus ring still says where the keyboard is.
   const handleTownPointerLeave = useCallback(
     (town: Town) => {
       setHoveredTownKey((current) => (current === town.key ? null : current));
+      setCalloutTownKey((current) => (current === town.key ? null : current));
       onHoverShelters?.(null);
     },
     [onHoverShelters],
@@ -991,6 +1015,19 @@ export function ShelterMap({
     : undefined;
   const armedShelter = armedTown?.shelters.find((shelter) =>
     commitKey("shelter", shelter.value) === armed);
+  /** The annotation is about one shelter the visitor has already picked, and
+   *  its name is printed under the coin (placePickedNames). The card would be
+   *  that name a second time, a few units from the first, and on the desktop
+   *  a third, since the list opens the picked shelter's details and the
+   *  footer chip names it too. So a picked coin keeps its label and raises
+   *  nothing, unless a tap has armed it: then the card is carrying the
+   *  button that takes the pick back. */
+  const namedUnderCoin =
+    activeTown !== undefined &&
+    namePlacements.has(activeTown.key) &&
+    calloutShelter !== undefined &&
+    selected.includes(calloutShelter.value) &&
+    armedTown?.key !== activeTown.key;
   const armedValues = armedRegion?.stats.values ?? (armedShelter
     ? [armedShelter.value]
     : armedTown ? townSelectableValues(armedTown, selected) : []);
@@ -1056,6 +1093,24 @@ export function ShelterMap({
     (activeTown
       ? undefined
       : regions.find(({ region }) => region.id === namedRegionId));
+
+  const originOnMap = origin !== undefined && onMap(origin);
+  /** The origin's name and the box it takes, when there is an origin to
+   *  name. Worked out here and not inside the label, so the box can join the
+   *  annotations' below without a render to report it in. */
+  const originName = useMemo(
+    () =>
+      origin && originOnMap && originLabel
+        ? originNameAt(origin, originLabel, plateScale, markersVisible ? plateMarks : [])
+        : undefined,
+    [markersVisible, origin, originLabel, originOnMap, plateMarks, plateScale],
+  );
+  /** Everything the plate's own type gives way to: the annotations standing
+   *  on it, and the origin's name. */
+  const plateTypeAvoid = useMemo(() => {
+    const rects = Object.values(calloutRects);
+    return originName ? [...rects, originName.box] : rects;
+  }, [calloutRects, originName]);
 
   return (
     <svg
@@ -1173,21 +1228,46 @@ export function ShelterMap({
       {interactive &&
         !markersVisible &&
         plateScale * MAP_WIDTH >= NAMES_MIN_PLATE_WIDTH && (
-          <MapRegionNames scale={plateScale} calloutRects={Object.values(calloutRects)} />
+          <MapRegionNames scale={plateScale} calloutRects={plateTypeAvoid} />
         )}
 
       {/* Over the choropleth, so a town name is never read through a region
           fill, and under everything a click or a hover produces. */}
       <PlateFurniture
         towns={towns}
-        calloutRects={Object.values(calloutRects)}
+        calloutRects={plateTypeAvoid}
         wide={markersVisible}
       />
 
-      {origin && onMap(origin) && originRadiusKm ? (
-        <DistanceRing at={origin} km={originRadiusKm} />
+      {originOnMap && originRadiusKm ? (
+        <DistanceRing at={origin} km={originRadiusKm} scale={plateScale} />
       ) : null}
-      {origin && onMap(origin) && <Origin at={origin} />}
+      {originOnMap && <Origin at={origin} />}
+      {/* A pick on a plate too small to draw coins. Without coins there was
+          nothing on the map to say which shelter in a region had been chosen,
+          which is what the dashed boundary of a partly picked region used to
+          stand in for. A dot at the town says it where it happened, in the
+          green the site spends on "picked" and nowhere else. */}
+      {!markersVisible && (
+        <g aria-hidden data-map-picked-dots className="pointer-events-none">
+          {towns
+            .filter((town) =>
+              town.shelters.some((shelter) => selected.includes(shelter.value)),
+            )
+            .map((town) => (
+              <circle
+                key={town.key}
+                data-map-picked-dot={town.key}
+                cx={town.x}
+                cy={town.y}
+                r={PICKED_DOT_PX / plateScale}
+                strokeWidth={PICKED_DOT_RING_PX / plateScale}
+                className="fill-brand-strong stroke-background"
+              />
+            ))}
+        </g>
+      )}
+      {originName && <OriginName spot={originName} scale={plateScale} />}
 
       {/* One gate and no class beside it: the measured plate is what decides
           whether there are markers, here and in everything outside the map
@@ -1241,7 +1321,7 @@ export function ShelterMap({
             A town only. A region hover asks about a dozen shelters spread
             over a province, and a line from one point to a polygon measures
             nothing anybody asked for. */}
-          {origin && onMap(origin) && activeTown && (
+          {originOnMap && activeTown && (
             <OriginDistance
               origin={origin}
               town={activeTown}
@@ -1260,6 +1340,7 @@ export function ShelterMap({
             already wears a persistent card saying the same thing, so hover
             must not stack a second card on top of it. */}
           {activeTown &&
+            !namedUnderCoin &&
             !spotlightTowns.some((t) => t.key === activeTown.key) && (
               <MapCallout
                 x={activeTown.x}
@@ -1274,9 +1355,7 @@ export function ShelterMap({
                 // the side it takes is the side of the plate it deletes, and
                 // frame fit alone had it deleting the largest mark on the map
                 // (hovering Zavod Muri covered the Celje coin whole).
-                avoid={markerBoxes.filter(
-                  (box) => box.key !== activeTown.key,
-                )}
+                avoid={plateMarks.filter((box) => box.key !== activeTown.key)}
                 // A wedge under the pointer names its own shelter. Without that a
                 // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
                 // at, which is the one question the cluster cannot answer.
@@ -1288,6 +1367,7 @@ export function ShelterMap({
                 // MapCallout drawing its dense one-line label.
                 metadata={saidElsewhere ? undefined : townMetadata}
                 species={saidElsewhere ? undefined : calloutSpecies}
+                logo={calloutLogo}
                 action={armedTown?.key === activeTown.key ? armedAction : undefined}
               />
             )}
@@ -1308,7 +1388,7 @@ export function ShelterMap({
           // A region's chip stands at the region's label point, which is
           // routinely inside a cluster of coins, and it owns none of them: the
           // same courtesy as the town chip above, with nothing to leave out.
-          avoid={markersVisible ? markerBoxes : undefined}
+          avoid={markersVisible ? plateMarks : undefined}
           title={hoveredRegion.region.name}
           action={armedRegion?.region.id === hoveredRegion.region.id ? armedAction : undefined}
           metadata={
@@ -1316,25 +1396,22 @@ export function ShelterMap({
               ? `${shelterCount(hoveredRegion.stats.values.length, locale)} · ${filteredAnimalCount(hoveredRegion.stats.animals, locale)}`
               : regionAvailability(byRegion.get(hoveredRegion.region.id) ?? [], locale, messages.noSheltersInRegion)
           }
-          // Two different second lines, and never both, because a region is
-          // either live or it is not.
+          // A second line only on an empty region, which names who answers
+          // for the municipalities inside it: the only thing left to say about
+          // ground with no shelters on it.
           //
-          // An empty one names who answers for the municipalities inside it,
-          // which is the only thing left to say about ground with no shelters
-          // on it.
-          //
-          // A live one says what the next tap will do, but only while it is
-          // armed. A pointer that can hover has not committed to anything by
-          // arriving, so the callout it raises is a description and stays one;
-          // an arming is a press half made, and the half that has not happened
-          // yet is what has to be spelled out. Naming somebody else's coverage
-          // under a live region's own counts would be a second answer to a
-          // question nobody asked here.
+          // A live one carries none. What the next tap on an armed region will
+          // do is spelled out on the button the arming raises ("Izberi · 3
+          // zavetišča"), and a line above it saying "Še enkrat tapni: Izbere 3
+          // zavetišča" was the same sentence twice in one card, which stood
+          // taller over the map for it. The sentence stays in the region's
+          // aria-label (armedNote), the only channel a screen reader has to a
+          // tap it cannot see. Naming somebody else's coverage under a live
+          // region's own counts would be a second answer to a question nobody
+          // asked here.
           note={
             hoveredRegion.stats.live
-              ? hoveredRegion === armedRegion
-                ? armedNote
-                : undefined
+              ? undefined
               : !byRegion.has(hoveredRegion.region.id) ? coveredByLine(
                   regionShelterNames?.get(hoveredRegion.region.id),
                   t,

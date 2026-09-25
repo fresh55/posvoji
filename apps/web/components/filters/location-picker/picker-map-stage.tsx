@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import type { LocationPickerController } from "./controller";
 
 // The country plate and everything printed on it: the regions, the relief, the
-// markers, the callouts, the legend and the municipality centroid table the
+// markers, the callouts, the credit and the municipality centroid table the
 // region names are read off. None of it is on the home page until the picker
 // is opened, and the picker's dialog does not mount this stage until then, so
 // the press that asks for the map is what fetches it. Measured with
@@ -42,7 +42,7 @@ export function PickerMapStage({ controller, hug = false }: {
   controller: LocationPickerController;
   /** Whether this stage is what the dialog takes its height from, which it
    *  is below lg with the list put away (view.tsx). In flow it is as tall as
-   *  the map and the legend under it; pinned to the box's edges it was as
+   *  the map and the credit under it; pinned to the box's edges it was as
    *  tall as the dialog, with the map floating in the middle of it. */
   hug?: boolean;
 }) {
@@ -53,13 +53,13 @@ export function PickerMapStage({ controller, hug = false }: {
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) flex flex-col gap-3 p-3 sm:p-4",
               "@container/map-stage",
-              // A landscape phone: wide, and with no height to spare. The
-              // legend and the line above it are as tall as a fifth of the
-              // stage there and the map is the part that pays for them, so
-              // they go beside it instead and the country gets the whole
-              // column. sm:short: is the repo's pair for that viewport (the
-              // custom variant in globals.css), and the padding tightens with
-              // it for the same reason every other short: rule does.
+              // A landscape phone: wide, and with no height to spare. Nothing
+              // may stand under the map there, since the map is what would pay
+              // for it, so the map column is the whole stage and the credit
+              // sits in its corner (picker-map-plate.tsx). sm:short: is the
+              // repo's pair for that viewport (the custom variant in
+              // globals.css), and the padding tightens with it for the same
+              // reason every other short: rule does.
               "sm:short:flex-row sm:short:items-stretch sm:short:py-2",
               // In flow it is also the part that gives way when the screen is
               // short. The dialog caps at 94dvh, and under about 512px of
@@ -68,11 +68,13 @@ export function PickerMapStage({ controller, hug = false }: {
               // cap, so the overflow fell out of the bottom of the box and
               // took the confirm button in the footer with it. min-h-0 is
               // what lets it shrink instead: the map inside is already
-              // flex-1 over a shrink-0 legend, so the map gives up the
+              // flex-1 over a shrink-0 credit, so the map gives up the
               // pixels and everything under it stays on screen.
               hug && "max-lg:static max-lg:min-h-0",
               sheetOpen && "max-lg:hidden",
-              "lg:right-auto lg:w-[calc(100%-24rem)]",
+              // Everything the list does not take: --picker-list-w, in
+              // view.tsx.
+              "lg:right-(--picker-list-w)",
             )}
           >
             <PickerMapPlate controller={controller} />

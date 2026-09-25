@@ -63,13 +63,13 @@ test("names a region on the first tap and picks it on the second", async ({
   // And what the next tap will cost, in words, before it is spent. Naming the
   // shape was only half of what the two-tap gesture promised: a name and two
   // counts describe a region, they do not say that pressing it again takes
-  // every shelter in it. The count is left to the dataset, the sentence is
-  // not.
-  const consequence = dialog.locator("[data-callout-note]").first();
+  // every shelter in it. The button the arming raises says it, once: a line
+  // above it repeating "Še enkrat tapni: Izbere ..." is gone. The count is
+  // left to the dataset, the sentence is not.
+  const consequence = dialog.locator("[data-map-action]").first();
   await expect(consequence).toBeVisible();
-  await expect(consequence).toHaveText(
-    /^(Še enkrat tapni: Izbere \d+ zavetiš|Tap again: Selects \d+ shelter)/,
-  );
+  await expect(consequence).toHaveText(/^(Izberi · \d+ zavetiš|Select · \d+ shelter)/);
+  await expect(dialog.locator("[data-callout-note]")).toHaveCount(0);
   // The annotation is aria-hidden, like every annotation on this plate, so the
   // region's own label is the only way the same sentence reaches a screen
   // reader. It has to be there too.

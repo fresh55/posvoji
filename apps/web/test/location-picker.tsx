@@ -88,8 +88,8 @@ export const counts = new Map([
   ["jug", 7],
 ]);
 
-// Registry shelters with nothing to filter by. Celje places on the map, so
-// they also become the faint markers the legend explains.
+// Registry shelters with nothing to filter by. They sit in the list's folded
+// group, each a link to its page, and not on the map.
 export const offSite = [
   { value: "vzhod", label: "Zavetišče Vzhod", city: "Celje" },
 ];

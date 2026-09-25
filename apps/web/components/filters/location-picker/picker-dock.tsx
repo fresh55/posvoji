@@ -12,7 +12,9 @@ export function PickerDock({ controller }: { controller: LocationPickerControlle
             className={cn(
               "absolute inset-x-0 top-0 bottom-(--picker-footer-h) z-20 flex flex-col overflow-hidden bg-background",
               !sheetOpen && "max-lg:hidden",
-              "lg:inset-x-auto lg:right-0 lg:w-96 lg:border-l",
+              // --picker-list-w: see view.tsx, where the stage beside it
+              // reads the same value.
+              "lg:inset-x-auto lg:right-0 lg:w-(--picker-list-w) lg:border-l",
             )}
           >
               <div

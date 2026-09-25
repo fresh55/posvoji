@@ -80,6 +80,16 @@ type LiveRegionState = Exclude<MapStateName, "inert">;
 // hover look at rest, rather than fighting a real hover for the same
 // declaration. Keyed by region state so the JSX picks a class string instead
 // of nesting a nine-way ternary.
+const IDLE_LOOK = {
+  rest: cn(
+    "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] [stroke-width:0.6] group-data-[pointer-asked]/plate:hover:[fill-opacity:var(--map-density-hover)] group-data-[pointer-asked]/plate:hover:[stroke-width:1]",
+    REGION_STROKE,
+    "group-data-[pointer-asked]/plate:hover:stroke-foreground/45",
+  ),
+  highlighted:
+    "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density-hover)] [stroke-width:1] stroke-foreground/45",
+};
+
 const REGION_LOOK: Record<
   LiveRegionState,
   { rest: string; highlighted: string }
@@ -103,31 +113,15 @@ const REGION_LOOK: Record<
     highlighted:
       "fill-[var(--map-selected-fill)] stroke-brand-strong [fill-opacity:1] [stroke-width:1.8]",
   },
-  // A partial choice outlines the region without striping every place inside
-  // it. The dashed brand boundary is the whole of the message, and it stays
-  // distinct from the solid one a fully selected region draws.
-  //
-  // The ground under it is the density ramp, unchanged: this is a region that
-  // is still partly on offer, and how much is in it is the fact the ramp
-  // carries. A flat selection tint here threw that rank away the moment one
-  // shelter was picked, and threw it away in the wrong direction — half-picked
-  // Savinjska, the busiest region in the country, composited lighter than the
-  // emptiest live one in light mode and darker than it in dark, landing within
-  // one ramp step of a region with no shelters at all.
-  mixed: {
-    rest: "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] stroke-brand-strong [stroke-width:1.2] [stroke-dasharray:3_2] group-data-[pointer-asked]/plate:hover:[fill-opacity:var(--map-density-hover)] group-data-[pointer-asked]/plate:hover:[stroke-width:1.5]",
-    highlighted:
-      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density-hover)] stroke-brand-strong [stroke-width:1.5] [stroke-dasharray:3_2]",
-  },
-  idle: {
-    rest: cn(
-      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density)] [stroke-width:0.6] group-data-[pointer-asked]/plate:hover:[fill-opacity:var(--map-density-hover)] group-data-[pointer-asked]/plate:hover:[stroke-width:1]",
-      REGION_STROKE,
-      "group-data-[pointer-asked]/plate:hover:stroke-foreground/45",
-    ),
-    highlighted:
-      "fill-[var(--map-density-fill)] [fill-opacity:var(--map-density-hover)] [stroke-width:1] stroke-foreground/45",
-  },
+  // A partly picked region looks like one nobody has touched. What is picked
+  // inside it is already on the plate where it happened: the chosen coin
+  // turns green and writes its name, and on a plate too small for coins the
+  // map drops a green dot on the town instead (data-map-picked-dots in
+  // shelter-map.tsx). A dashed boundary said the same thing a second time in
+  // a code only a legend could explain, and read as a border or a route.
+  // aria-pressed still says "mixed", which is the channel that needs it.
+  mixed: IDLE_LOOK,
+  idle: IDLE_LOOK,
 };
 
 // Empty regions remain visible and answer a hover with their name and "no
@@ -138,8 +132,8 @@ const REGION_LOOK: Record<
 // Memoized: every hover anywhere on the map sets state in ShelterMap, which
 // re-renders its whole tree, and there are up to twelve of these on screen at
 // once. Only the region actually under the pointer (or newly wearing a
-// highlight, or a density-legend match) has anything to redraw; memo is what
-// stops the other eleven from doing the same work for nothing. It only pays
+// highlight) has anything to redraw; memo is what stops the other eleven from
+// doing the same work for nothing. It only pays
 // off because ShelterMap hoists every handler below to one identity shared by
 // every region, instead of building a fresh closure per region on every
 // render — see the handleRegion* callbacks and the comment above them.

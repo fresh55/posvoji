@@ -20,6 +20,7 @@ import { isDrop } from "@/lib/filters";
 import { onMap } from "@/lib/geo";
 import {
   animalCount,
+  byShelterName,
   shelterCount,
   shelterSelectionLabel,
   sheltersDropped,
@@ -39,6 +40,7 @@ import {
   bringIntoList,
   fold,
   locateAndSort,
+  matchesFirst,
   PICK_RADII_KM,
   pickerText,
   sameValues,
@@ -201,6 +203,12 @@ export function useLocationPickerController({
   const [hoveredMarkerValues, setHoveredMarkerValues] = useState<
     string[] | null
   >(null);
+  // Whether the map is drawing its coins right now, as the map answers it from
+  // the plate it measured (see onMarkersVisible in shelter-map.tsx). The
+  // footer's instruction line reads it: "click a region or a shelter" is
+  // wrong on a plate that has no shelters drawn on it. True to start with,
+  // which is what the map starts at, so the two agree from the first render.
+  const [markersVisible, setMarkersVisible] = useState(true);
   useEffect(() => {
     closeCleanup.current = () => {
       // Every dismissal, including Back and a breakpoint change, ends the
@@ -316,8 +324,8 @@ export function useLocationPickerController({
   const rowRefs = useRef(new Map<string, HTMLButtonElement | HTMLAnchorElement>());
 
   const rows: LocatedRow[] = useMemo(
-    () => locateAndSort(options, origin),
-    [options, origin],
+    () => matchesFirst(locateAndSort(options, origin), counts),
+    [counts, options, origin],
   );
 
   // Same locating and sorting as the live rows, in their own list: these are
@@ -753,10 +761,21 @@ export function useLocationPickerController({
     () =>
       selected
         .map((value) => roster.get(value) ?? { value, label: value })
-        .sort((a, b) => a.label.localeCompare(b.label, locale)),
-    [locale, roster, selected],
+        .sort(byShelterName),
+    [roster, selected],
   );
   const label = shelterSelectionLabel(selectedRows, locale);
+
+  // Where the filters do find animals, when the shelters picked have none: the
+  // footer names them and offers the first (footer.tsx). Nearest first once
+  // there is an origin, the way the list reads; otherwise the most matches
+  // first.
+  const zeroSuggestions = useMemo(() => {
+    if (resultCount > 0) return [];
+    const count = (row: LocatedRow) => counts.get(row.value) ?? 0;
+    const open = rows.filter((row) => !selected.includes(row.value) && count(row) > 0);
+    return origin ? open : open.sort((a, b) => count(b) - count(a));
+  }, [counts, origin, resultCount, rows, selected]);
 
   // The way out of the dialog, carrying the number the picking adds up to.
   // Filtering is live, so this is not a promise about what the press will do.
@@ -834,6 +853,8 @@ export function useLocationPickerController({
     setHoveredRowValue,
     hoveredMarkerValues,
     setHoveredMarkerValues,
+    markersVisible,
+    setMarkersVisible,
     radiusPicks,
     pickWithin,
     setAskedRadius,
@@ -852,6 +873,7 @@ export function useLocationPickerController({
     offGroupHeading,
     label,
     selectedRows,
+    zeroSuggestions,
     doneLabel,
   };
 }

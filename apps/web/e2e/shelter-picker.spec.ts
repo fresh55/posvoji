@@ -231,15 +231,10 @@ test.describe("desktop", () => {
     // shelter in the country is called "Zavetišče something", so a single word
     // is as likely to match the live list as the group being aimed at.
     await offGroupTrigger(dialog).click();
-    // The row's own name, past the aria-hidden spacer that stands in for the
-    // check glyph so the two lists share their columns: the label is the first
-    // span that is not that spacer, and the city rides in a sibling under it.
+    // The row's full name, from its title: the row prints it without the
+    // word "zavetišče", and the title keeps the whole of it.
     const offName = (
-      await offRows(dialog)
-        .first()
-        .locator("span:not([aria-hidden]) > span")
-        .first()
-        .textContent()
+      await offRows(dialog).first().locator("span[title]").first().getAttribute("title")
     )?.trim();
     expect(offName).toBeTruthy();
     await page.keyboard.press("Escape");

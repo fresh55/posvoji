@@ -29,6 +29,7 @@ export function PickerShelterList({ controller }: { controller: LocationPickerCo
       lessThanOneKm={messages.lessThanOneKm}
       labelledBy={offGroupId}
       refs={rowRefs}
+      shortenNames
       className="sm:grid sm:grid-cols-2 sm:gap-x-3 sm:space-y-0 lg:grid-cols-1 lg:gap-x-0"
     />
   );

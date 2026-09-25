@@ -3,7 +3,14 @@ import { cityAt } from "@/lib/geo";
 import { shelterChipLabel } from "@/lib/labels";
 import { layoutTowns, type ShelterPin } from "@/lib/map-layout";
 import { intersectionArea } from "./map-callout-layout";
-import { circleHitsBox, namePlacementBox, placePickedNames } from "./map-names";
+import {
+  circleHitsBox,
+  labelBox,
+  namePlacementBox,
+  outsideFrame,
+  placeOriginName,
+  placePickedNames,
+} from "./map-names";
 
 // The eleven shelters listing animals today, under their real names and in
 // their real towns, which is where the crowded middle of the country is.
@@ -56,5 +63,41 @@ describe("placePickedNames", () => {
     const placement = placePickedNames([solo], ["ljubljana"], () => "Ljubljana").get(solo.key)!;
     expect(placement.anchor).toBe("middle");
     expect(placement.y).toBeGreaterThan(solo.y);
+  });
+});
+
+describe("the plate's own labels", () => {
+  it("measures a picked name the way it measures any other label its size", () => {
+    const name = { text: "Turk", x: 100, y: 50, anchor: "middle" as const };
+
+    expect(namePlacementBox(name)).toEqual(labelBox(name, 3.9));
+  });
+
+  it("counts how far a box runs off the plate, inside a margin", () => {
+    expect(outsideFrame({ x: 10, y: 10, width: 20, height: 5 })).toBe(0);
+    expect(outsideFrame({ x: -3, y: 10, width: 20, height: 5 })).toBe(3);
+    expect(outsideFrame({ x: 1, y: 10, width: 20, height: 5 }, 2)).toBe(1);
+  });
+
+  it("names the origin to the right of its ring when that side is clear", () => {
+    const spot = placeOriginName("Celje", 100, 100, 6, 4, [], 2);
+
+    expect(spot.anchor).toBe("start");
+    expect(spot.x).toBe(106);
+    expect(spot.box).toEqual(labelBox(spot, 4));
+  });
+
+  it("moves the origin's name off a mark standing to its right", () => {
+    const mark = { x: 106, y: 96, width: 20, height: 8 };
+    const spot = placeOriginName("Celje", 100, 100, 6, 4, [mark], 2);
+
+    expect(spot.anchor).toBe("end");
+    expect(intersectionArea(spot.box, mark)).toBe(0);
+  });
+
+  it("keeps the origin's name on the plate at its right edge", () => {
+    const spot = placeOriginName("Moravske Toplice", 318, 100, 6, 4, [], 2);
+
+    expect(outsideFrame(spot.box, 2)).toBe(0);
   });
 });

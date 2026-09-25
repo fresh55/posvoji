@@ -3,6 +3,7 @@ import type { Animal } from "@posvoji/schema";
 import {
   ageLabel,
   animalMetaParts,
+  byShelterName,
   LONG_STAY_MONTHS,
   META_SEPARATOR,
   longStayMonths,
@@ -13,6 +14,24 @@ import {
 } from "./labels";
 
 const NOW = new Date("2026-08-15T00:00:00Z");
+
+describe("byShelterName", () => {
+  it("orders by the name a picker row prints, not by the shared noun", () => {
+    const names = [
+      "Zavetišče Turk",
+      "Mačji dol (Žverca)",
+      "Zavetišče Horjul",
+      "Obalno zavetišče (Marjetica Koper)",
+    ].map((label) => ({ label }));
+
+    expect(names.sort(byShelterName).map(({ label }) => label)).toEqual([
+      "Zavetišče Horjul",
+      "Mačji dol (Žverca)",
+      "Obalno zavetišče (Marjetica Koper)",
+      "Zavetišče Turk",
+    ]);
+  });
+});
 
 describe("ageLabel's separator", () => {
   // The card welds the number to its unit because its column is 164px wide on

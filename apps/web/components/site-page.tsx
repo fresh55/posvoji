@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { shelterCount } from "@/lib/labels";
+import { byShelterName, shelterCount } from "@/lib/labels";
 import { verificationDate } from "@/lib/source-freshness";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -29,7 +29,8 @@ export function SitePage({ locale }: { locale: Locale }) {
       label: shelter.name,
       city: shelter.city,
     }))
-    .sort((a, b) => a.label.localeCompare(b.label, "sl"));
+    // The order the picker's own rows read in.
+    .sort(byShelterName);
   const messages = getMessages(locale);
   // Read once: the hero row and the footer both ask it, and they must not
   // drift into two different answers about whether the lookup exists.

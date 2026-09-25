@@ -168,13 +168,20 @@ const CHIP_ON_LIGHT =
 // dark mode, which is the pair tailwind-merge keeps.
 const CHIP_ON_DARK = "dark:border-black/10 dark:bg-stone-100";
 
+/** The chip colours a mark needs on a card-toned surface, in both themes. The
+ *  map's annotation draws its logo in SVG units rather than CSS pixels, so it
+ *  sizes and pads the chip itself and takes only the colours from here. */
+export function logoChipClassName(logo: ShelterLogo) {
+  return cn(logo.chipOnLight && CHIP_ON_LIGHT, logo.chipOnDark && CHIP_ON_DARK);
+}
+
 /** The pixel box a logo is drawn in, from the cached copy's own dimensions.
  *
  *  Height first, from the falloff, then the width that ratio implies; if that
  *  runs past the width cap the width wins and the height is taken back down to
  *  match. Both come out exact, so the mark is never letterboxed inside a box
  *  larger than itself and never squashed to fit one smaller. */
-function markBox(logo: ShelterLogo, size: keyof typeof SIZE) {
+export function markBox(logo: ShelterLogo, size: keyof typeof SIZE) {
   const { height: base, maxHeight, maxWidth } = SIZE[size];
   const ratio = logo.width / logo.height;
 
@@ -256,13 +263,7 @@ export function ShelterAvatar({
   if (logo) {
     const box = markBox(logo, size);
     return inRow(
-      <span
-        className={cn(
-          CHIP_BASE,
-          logo.chipOnLight && CHIP_ON_LIGHT,
-          logo.chipOnDark && CHIP_ON_DARK,
-        )}
-      >
+      <span className={cn(CHIP_BASE, logoChipClassName(logo))}>
         {/* The ingest ladder supplies responsive files. Keep the image as
             the chip's direct flex child so wide wordmarks can shrink. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}

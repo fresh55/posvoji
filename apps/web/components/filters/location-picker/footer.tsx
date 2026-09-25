@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { animalCount } from "@/lib/labels";
+import { interpolate } from "@/lib/i18n-format";
+import { animalCount, shelterChipLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import type { LocationPickerController } from "./controller";
 import { pickerText } from "./model";
@@ -15,7 +16,7 @@ export function PickerFooter({ controller, hug = false }: {
    *  longer fills, it would sit under a band of nothing. */
   hug?: boolean;
 }) {
-  const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, onShowAllSpecies, resultCount, counts, doneLabel, locale, messages } = controller;
+  const { selectedRows, selected, onToggle, onToggleMany, onClearFilters, onShowAllSpecies, resultCount, counts, doneLabel, locale, messages, markersVisible, sheetOpen, zeroSuggestions } = controller;
   const copy = pickerText[locale];
   const [summaryOpen, setSummaryOpen] = useState(false);
   const firstSelectionRef = useRef<HTMLButtonElement>(null);
@@ -23,22 +24,67 @@ export function PickerFooter({ controller, hug = false }: {
   const summaryTriggerRef = useRef<HTMLButtonElement>(null);
   const summaryInteractedOutsideRef = useRef(false);
   const summaryRowsRef = useRef(new Map<string, HTMLButtonElement>());
-  // The panel above reads alphabetically; the selection arrives in URL order.
-  // Sorted once, so the chip, the rows and the index the removal focus walks
-  // are all the same list: the chip naming one shelter while the list a press
-  // away opened on another was the half of this the sort had not reached.
-  const summaryRows = [...selectedRows].sort((a, b) => a.label.localeCompare(b.label, locale));
+  // In the order the panel above reads (byShelterName, in the controller), so
+  // the chip, the rows and the index the removal focus walks are all the same
+  // list: the chip naming one shelter while the list a press away opened on
+  // another was the half of this the sort had not reached.
+  const summaryRows = selectedRows;
   const firstSelected = summaryRows[0];
   const summaryLabel = locale === "sl"
     ? `Pokaži izbrana zavetišča (${selectedRows.length})`
     : `Show selected shelters (${selectedRows.length})`;
-  const canWidenShelters = selected.length > 0 && [...counts.values()].some((count) => count > 0);
-  // One way out of a zero, the nearest first: the shelters where something is,
-  // then the filters, then the species, which no clear touches
+  // One way out of a zero, the nearest first: a shelter the filters do find
+  // animals in, then the filters, then the species, which no clear touches
   // (pickerRecoveryActions). Built once rather than spelled as three ladders,
   // which is what let the label say one thing while the press did another.
-  const recovery = canWidenShelters
-    ? { run: () => onToggleMany(selected), label: copy.showAllShelters }
+  //
+  // The shelter is added beside the pick, not in place of it. The "Pokaži vsa
+  // zavetišča" that stood first here threw the visitor's choice away to find
+  // what one more shelter would have given them, and it has no case left: a
+  // picked shelter with a count would not leave the result at nought, so a
+  // nought with animals anywhere always has a shelter to offer. The others are
+  // named in the sentence beside it and lead the list (matchesFirst in
+  // model.ts). One button and not one per shelter, because from lg a taller
+  // footer is a shorter map.
+  const suggestion = zeroSuggestions[0];
+  // Three by name, with their counts, and how many more after that.
+  const named = zeroSuggestions
+    .slice(0, 3)
+    .map((row) => `${shelterChipLabel(row.label)} (${counts.get(row.value) ?? 0})`)
+    .join(", ");
+  const more = zeroSuggestions.length - 3;
+  const zeroLine = suggestion
+    ? `${copy.matchesElsewhere}: ${named}${more > 0 ? ` ${interpolate(copy.andMore, { n: more })}` : ""}.`
+    : copy.zeroMatches;
+
+  // The footer's height, handed to the stage it is pinned in, which is what
+  // the map and the list stop above (bottom-(--picker-footer-h)). Measured, not
+  // tabled: the rows it holds come and go with the state, and the sentence of
+  // an empty result is as long as the shelters it names, so a height written
+  // in rem for each state was wrong for the long ones and spilled over the
+  // map. A layout effect and then the observer, both before paint, so no frame
+  // is drawn at a stale height. view.tsx carries a stand-in for the first
+  // layout and for a browser with no observer.
+  const footerRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const footer = footerRef.current;
+    const stage = footer?.parentElement;
+    if (!footer || !stage || typeof ResizeObserver === "undefined") return;
+    const report = () =>
+      stage.style.setProperty("--picker-footer-h", `${footer.offsetHeight}px`);
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(footer);
+    return () => {
+      observer.disconnect();
+      stage.style.removeProperty("--picker-footer-h");
+    };
+  }, []);
+  const recovery = suggestion
+    ? {
+        run: () => onToggle(suggestion.value),
+        label: `${copy.add} ${shelterChipLabel(suggestion.label)}`,
+      }
     : onClearFilters
       ? { run: onClearFilters, label: messages.clearFilters }
       : onShowAllSpecies
@@ -46,9 +92,10 @@ export function PickerFooter({ controller, hug = false }: {
         : null;
   return (
     <div
+      ref={footerRef}
       data-picker-footer
       className={cn(
-        "absolute inset-x-0 bottom-0 z-30 flex h-(--picker-footer-h) flex-col justify-center gap-1 border-t bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:items-center sm:justify-between sm:gap-4",
+        "absolute inset-x-0 bottom-0 z-30 flex flex-col gap-1 border-t bg-background px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:flex-row sm:items-center sm:justify-between sm:gap-4",
         // shrink-0 with it: in flow on a short screen the stage above yields
         // its height to a scroller, and this row must not be the thing that
         // gives way instead, because the primary action stands in it.
@@ -178,20 +225,50 @@ export function PickerFooter({ controller, hug = false }: {
             // No role="status" here: the dialog already has one live region
             // (view.tsx) that carries the result count, and two regions
             // announcing the same zero talked over each other.
-            <p className="text-sm leading-snug">
-              <strong>{animalCount(0, locale)}.</strong> {copy.zeroMatches}
+            <p data-picker-zero className="text-sm leading-snug">
+              <strong>{animalCount(0, locale)}.</strong>{" "}
+              {zeroLine}
             </p>
           )}
         </div>
       )}
-      <div className="flex shrink-0 items-center gap-2 sm:ml-auto">
+      {/* How to work the map, in the slot the first pick's chip then takes,
+          at the chip row's own height, so the pick swaps one for the other and
+          the footer, measured above, keeps its height. It used to stand under the map, where from lg it was
+          a line of the map's own height. Only while the map is on screen:
+          below lg the list view has no map to instruct about. */}
+      {selectedRows.length === 0 && resultCount > 0 && (
+        <p
+          data-picker-instruction
+          className={cn(
+            "flex min-h-11 min-w-0 items-center text-xs leading-snug text-muted-foreground sm:flex-1",
+            sheetOpen && "max-lg:hidden",
+          )}
+        >
+          {markersVisible
+            ? messages.mapInstructionsDesktop
+            : messages.mapInstructionsMobile}
+        </p>
+      )}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 sm:ml-auto sm:flex-nowrap">
         {resultCount === 0 && recovery && (
           <Button
             variant="outline"
-            className="min-h-11 flex-1 shadow-none sm:flex-none"
-            onClick={recovery.run}
+            className={cn(
+              "min-h-11 min-w-0 flex-1 shadow-none sm:flex-none",
+              // A row of its own on a phone when it names a shelter: beside
+              // "Nazaj k rezultatom" at 320px it had 112px and cut the name,
+              // the one word the button is there to say.
+              suggestion && "basis-full sm:basis-auto",
+            )}
+            onClick={() => {
+              // The button leaves with the empty result it answers, so focus
+              // goes to the one that stays rather than to the page.
+              resultRef.current?.focus();
+              recovery.run();
+            }}
           >
-            {recovery.label}
+            <span className="truncate">{recovery.label}</span>
           </Button>
         )}
         <DialogClose asChild>

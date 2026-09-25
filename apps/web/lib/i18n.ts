@@ -625,9 +625,6 @@ const sl = {
   regionCoveredBy: "Zanje skrbi {shelters}",
   regionCoveredByTwo: "Zanje skrbita {shelters}",
   regionCoveredByMany: "Zanje skrbijo {shelters}",
-  selectedRegionLegend: "Izbrana regija",
-  mixedRegionLegend: "Delno izbrana regija",
-  originLegend: "Izhodišče",
   regionBoundaries: "Meje statističnih regij in poštni okoliši",
   // The shelter page draws the country's edge and nothing else, so its credit
   // names that and not the regions the other two plates draw.
@@ -980,9 +977,6 @@ const en: Messages = {
   regionCoveredBy: "Covered by {shelters}",
   regionCoveredByTwo: "Covered by {shelters}",
   regionCoveredByMany: "Covered by {shelters}",
-  selectedRegionLegend: "Selected region",
-  mixedRegionLegend: "Partly selected region",
-  originLegend: "Starting point",
   regionBoundaries: "Statistical region boundaries and postal districts",
   countryOutline: "Country outline",
   reliefSource: "Relief shading",

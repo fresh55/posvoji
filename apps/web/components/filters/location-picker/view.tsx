@@ -155,13 +155,20 @@ export function LocationPickerView({
         <div
           data-picker-stage
           className={cn(
-            "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(var(--picker-footer-base)_+_env(safe-area-inset-bottom,0px))]",
+            // --picker-footer-h is the footer's measured height (footer.tsx),
+            // written onto this element; 5rem is the stand-in until it is.
+            // The list's width is here too, for the two children that share
+            // it at lg: the list takes 24rem, or less where that would leave
+            // the map under 41rem. At a 1024px laptop the plate is bound by
+            // the width, and 24rem of list left the stage at 578px, too narrow
+            // for the coins to write their counts (COUNT_TOO_SMALL in
+            // map-marker.tsx): every coin fell back to a paw, with empty bands
+            // above and below the map. 41rem is those 608px of plate, the
+            // stage's padding and 16px to spare.
+            "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(5rem_+_env(safe-area-inset-bottom,0px))] [--picker-list-w:min(24rem,calc(100%_-_41rem))]",
             // A column its two children stand in, rather than a box they are
             // pinned to the edges of. Only where the height comes from them.
             hugMap && "max-lg:flex max-lg:flex-col",
-            resultCount === 0
-              ? selected.length > 0 ? "[--picker-footer-base:10.5rem] sm:[--picker-footer-base:7rem]" : "[--picker-footer-base:8.5rem] sm:[--picker-footer-base:6rem]"
-              : selected.length > 0 ? "[--picker-footer-base:7.25rem] sm:[--picker-footer-base:5rem]" : "[--picker-footer-base:4.75rem] sm:[--picker-footer-base:5rem]",
           )}
         >
           <PickerMapStage controller={controller} hug={hugMap} />

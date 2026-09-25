@@ -8,6 +8,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { ShelterDetails } from "@/components/filters/shelter-details";
+import { ShelterAvatar } from "@/components/shelter-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatKm } from "@/lib/geo";
-import { shelterListLabel } from "@/lib/labels";
+import { shelterChipLabel } from "@/lib/labels";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import { cn } from "@/lib/utils";
 
@@ -239,9 +240,12 @@ export function ShelterRows({
    *  and each is expected to contain its tooltip's string verbatim so the
    *  accessible name still holds the visible label (WCAG 2.5.3). */
   hideInfoText?: string;
-  /** Draw each toggle row's name without its operator parenthetical (see
-   *  shelterListLabel). The full name moves into the row's details, and the
-   *  name's title keeps it for a pointer. */
+  /** Draw each row's name without the word "zavetišče" and its operator
+   *  parenthetical (see shelterChipLabel), and leave the town off a row whose
+   *  name already is the town. The dialog is titled "Izberi zavetišča", so the
+   *  noun said nothing on the seven rows of eleven it opened, and it put the
+   *  word every name shares first. The full name moves into the row's details,
+   *  and the name's title keeps it for a pointer. */
   shortenNames?: boolean;
   /** Where a shelter's own page is, for a link at the foot of its details.
    *  Omitted, the details carry no link. */
@@ -338,8 +342,16 @@ export function ShelterRows({
           pointerInsideRef.current = false;
         }}
       >
-        {rows.map(({ value, label, city, km, href }) => {
+        {rows.map(({ value, label, city: town, km, href }) => {
           const isHighlighted = highlighted?.includes(value) ?? false;
+          const shownLabel = shortenNames ? shelterChipLabel(label) : label;
+          // "Ljubljana" over "Ljubljana" says one thing twice. The distance, if
+          // there is one, still stands on the line.
+          const city =
+            shortenNames &&
+            town?.localeCompare(shownLabel, undefined, { sensitivity: "base" }) === 0
+              ? undefined
+              : town;
           const setRef = (node: ShelterRowElement | null) => {
             if (node) localRefs.current.set(value, node);
             else localRefs.current.delete(value);
@@ -382,7 +394,7 @@ export function ShelterRows({
                     title={label}
                     className="line-clamp-2 text-sm leading-snug font-medium text-foreground"
                   >
-                    {label}
+                    {shownLabel}
                   </span>
                   <RowPlace city={city} km={km} lessThanOneKm={lessThanOneKm} />
                 </span>
@@ -401,7 +413,6 @@ export function ShelterRows({
           const disabled = count === 0 && !checked;
           const summary = summaries.get(value);
           const isExpanded = expanded === value;
-          const shownLabel = shortenNames ? shelterListLabel(label) : label;
           const showDetails = Boolean(onToggleExpanded && hasDetails(summary));
           // Selection puts nothing on the row's surface at all: any shared fill,
           // however faint, makes two adjacent picked rows read as one shape,
@@ -645,11 +656,22 @@ export function ShelterRows({
                 {/* One quiet inset surface groups the overview without adding
                   another card border or shadow to the shelter list. */}
                 <div data-shelter-details-panel className="mb-2 ml-6 mr-2 rounded-ui bg-muted/40 p-3">
-                  {/* The name in full when the row shortened it: the
-                      bracket names the operator, which is worth knowing once
-                      somebody asks about the shelter. */}
-                  {shownLabel !== label && (
-                    <p className="mb-3 text-xs text-muted-foreground">{label}</p>
+                  {/* The shelter's own mark, and the name in full when the
+                      row shortened it: the bracket names the operator, which
+                      is worth knowing once somebody asks about the shelter.
+                      The mark is what a visitor recognises from the
+                      shelter's site and posters, so it heads the card; with
+                      no mark there is no stand-in, since the row above is
+                      already the name. */}
+                  {(summary?.logo || shownLabel !== label) && (
+                    <div className="mb-3 flex min-w-0 items-center gap-3">
+                      {summary?.logo && (
+                        <ShelterAvatar name={label} logo={summary.logo} size="sm" />
+                      )}
+                      {shownLabel !== label && (
+                        <p className="min-w-0 text-xs text-muted-foreground">{label}</p>
+                      )}
+                    </div>
                   )}
                   <ShelterDetails summary={summary} matchingCount={count} />
                   {/* A link, not a second action: the footer's count stays

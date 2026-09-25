@@ -15,7 +15,7 @@ const ORIENTATION_REGIONS = new Set([1, 2, 4, 7, 8, 9, 11, 12]);
  *  and cannot be trusted that far down, and dropping the labels it does catch
  *  would leave two or three names on a map of twelve shapes, which orients
  *  nobody. A plate this small has the callout instead: every region names
- *  itself on a tap, and the line above the legend says so.
+ *  itself on a tap, and the footer's instruction line says so.
  *
  *  In rendered pixels and not in plate scale, because what the names need is
  *  room for the words, and that is the country's drawn width. */

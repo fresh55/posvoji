@@ -77,7 +77,6 @@ const MARKER_COUNT_CUTOFFS = [20, 50] as const;
 export const MARKER_STROKE_WIDTH = 0.9;
 
 // Density steps for the region fills, as alpha on --map-density-fill. The
-// legend swatches read the same array, so the two cannot drift apart, and the
 // hue lives in the token rather than here, so a theme can move the colour
 // without touching the ranking.
 //
@@ -458,10 +457,9 @@ export function mapStateName(
 }
 
 // Whether a town's marker is a control or only a place: a matching shelter can
-// be added, and an existing selection remains removable. Shared
-// by the marker, which draws the hollow "nothing listed" disc off it, and by
-// the legend helper, which decides from the same answer whether that shape is
-// on the map at all.
+// be added, and an existing selection remains removable. The marker draws
+// the hollow "nothing listed" disc off it, and the coins' keyboard roving
+// takes only the towns it calls live.
 export function townIsLive(town: Town, selected: string[] = []): boolean {
   return townSelectableValues(town, selected).length > 0;
 }

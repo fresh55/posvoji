@@ -33,6 +33,10 @@ function edgeNav(page: Page, label: string) {
   );
 }
 
+// The word a card's fact line opens with on the Vse tab, one per species
+// (SPECIES in lib/labels.ts).
+const SPECIES_FIRST = /^(Pes|Mačka|Zajček|Druga žival)\b/;
+
 // The dialog opened from a card rather than from ?zival=: what it steps through
 // is the list on screen, and a tap on a card is how a phone gets there.
 //
@@ -44,6 +48,17 @@ function edgeNav(page: Page, label: string) {
 // address carrying a filter param and AnimalGrid clears it in an effect
 // (lib/prehydration-script.ts, animal-grid.tsx), which is the same settled
 // state deep-link-filters.spec.ts waits for.
+//
+// That first client render is not yet the dog list. The grid reads the filters
+// through useDeferredValue (animal-grid.tsx), so when the mark comes off the
+// cards can still be the unfiltered ones the export prerendered, with the dogs
+// a render behind. The dialog steps through the dogs, so names read on the mark
+// alone had the test expecting the unfiltered page's second animal while the
+// step landed on the second dog. The cards say which list they are. On Vse a
+// card's fact line opens with its species, on Psi it leaves the species out
+// because the tab has said it (animalMetaParts in lib/labels.ts), and the grid
+// hands the cards their tab in the same render that filters them. So the names
+// are read once no fact line opens with a species.
 async function openFirstCard(page: Page) {
   await page.goto("/?vrsta=pes");
   await expect
@@ -53,6 +68,13 @@ async function openFirstCard(page: Page) {
       ),
     )
     .toBe(false);
+  await expect
+    .poll(async () =>
+      (
+        await cards(page).locator('[data-slot="card-link"] p').allTextContents()
+      ).filter((line) => SPECIES_FIRST.test(line.trim())),
+    )
+    .toEqual([]);
 
   const names = (await cards(page).locator("h3").allTextContents()).map((name) =>
     name.trim(),

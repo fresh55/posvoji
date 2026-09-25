@@ -489,9 +489,11 @@ export function AnimalGrid({
   const isEmpty = animals.length === 0;
 
   // Reachable zero state: every other facet is pre-guarded by isDeadOption
-  // disabling, so a filtered-to-zero result in practice means a shelter
-  // selection with none of the active species. Only worth a second full
-  // applyFilters pass (with the shelter group dropped, the same way the rest
+  // disabling, but for a row the sidebar keeps at 0 once its pick comes off
+  // (KeptPicks), which says 0 before it is pressed. So a filtered-to-zero
+  // result in practice means a shelter selection with none of the active
+  // species. Only worth a second full applyFilters pass (with the shelter
+  // group dropped, the same way the rest
   // of the file measures facets) when the list is actually empty and a
   // shelter is actually selected — otherwise this short-circuits and the
   // normal case (a shelter picked, some animals showing) never pays for it.
@@ -558,6 +560,7 @@ export function AnimalGrid({
     shelterSummaries,
     counts,
     groups,
+    keptPicks,
     shelters,
     toggles,
     toggleTally,
@@ -893,6 +896,8 @@ export function AnimalGrid({
             toggleTally={toggleTally}
             goodWith={goodWith}
             care={care}
+            // The sheet is not handed these: it draws every option as a tile.
+            kept={keptPicks}
             scope={
               shelters && {
                 options: shelters,

@@ -1,5 +1,8 @@
 import { type Chip } from "@/components/filters/filter-chips";
-import type { CardGroup } from "@/components/filters/filter-groups";
+import type {
+  CardGroup,
+  KeptPicks,
+} from "@/components/filters/filter-groups";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import type { ClientAnimal } from "@/lib/animal";
 import {
@@ -28,7 +31,6 @@ import {
   visibleToggles,
   type FilterFacet,
   type Filters,
-  type MultiGroup,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -51,21 +53,50 @@ type FilterActions = Pick<
   | "toggleManyCare"
 >;
 
-/** The picks liveInPool would drop once they come off: values the species
- *  pool never answers, as "group:value", so one list can say which option of
- *  which section it was. Every other option stays drawn on its own, and
- *  neither shelter nor age goes through liveInPool. */
-function picksOutsidePool(
+/** The sections an option can drop out of: every one but Kje, which is a
+ *  picker, and Starost, whose three stages are one drawing. */
+const DROPPING_FACETS = [
+  "sex",
+  "size",
+  "energy",
+  "waiting",
+  "coatColor",
+  "coatLength",
+  "toggles",
+  "goodWith",
+  "care",
+] as const satisfies readonly FilterFacet[];
+type DroppingFacet = (typeof DROPPING_FACETS)[number];
+
+/** The picks the panel draws only because they are picked: those reading 0,
+ *  as "facet:value", so one list can say which option of which section it
+ *  was. The sidebar leaves out any other option that reads 0 (drawnOptions in
+ *  filters/filter-groups.tsx), and one the species pool never answers, which
+ *  liveInPool leaves out on both surfaces, reads 0 as well. A pick that reads
+ *  more stays drawn on its own. */
+function picksAtZero(
   filters: Filters,
-  counts: Record<MultiGroup, Map<string, number>>,
+  counts: Record<DroppingFacet, ReadonlyMap<string, number>>,
 ): string[] {
-  return GROUPS.flatMap((group) => {
-    if (group === "shelter" || group === "age") return [];
-    const values: readonly string[] = filters[group];
+  return DROPPING_FACETS.flatMap((facet) => {
+    const values: readonly string[] = filters[facet];
     return values
-      .filter((value) => !counts[group].get(value))
-      .map((value) => `${group}:${value}`);
+      .filter((value) => !counts[facet].get(value))
+      .map((value) => `${facet}:${value}`);
   });
+}
+
+/** The same picks by section, which is how the panel asks for them. */
+function keptByFacet(picked: readonly string[]): KeptPicks {
+  const kept: Partial<Record<DroppingFacet, string[]>> = {};
+  for (const facet of DROPPING_FACETS) {
+    const prefix = `${facet}:`;
+    const values = picked
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => key.slice(prefix.length));
+    if (values.length > 0) kept[facet] = values;
+  }
+  return kept;
 }
 
 /** Facet options, counts and recovery chips all describe the same result set. */
@@ -127,6 +158,22 @@ export function useAnimalFilterModel({
     () => facetCounts(animals, filters, reference),
     [animals, filters, reference],
   );
+  const toggleTally = useMemo(
+    () => toggleCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
+  // The two sections' counts, each a pass over the dataset, kept apart from
+  // the result count they are drawn beside. That count follows the grid a
+  // render behind (animal-grid.tsx), and in one memo with it the passes ran
+  // twice per press: once for the filters and again when the count caught up.
+  const goodWithTally = useMemo(
+    () => goodWithCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
+  const careTally = useMemo(
+    () => careCounts(animals, filters, reference),
+    [animals, filters, reference],
+  );
   // The panel follows the species tab and keeps every applicable group available
   // so a zero-count option is still there to explain its unknown state, which
   // the sheet's tile does; the sidebar leaves it out (drawnOptions in
@@ -160,28 +207,23 @@ export function useAnimalFilterModel({
   // React's own shape for state that follows a value (use-filter-sections.ts
   // has the same).
   //
-  // The same goes for an option inside one. liveInPool below leaves out an
-  // option the pool never answers unless it is picked, so Miren carried to
-  // Mačke stood only for its pick, and pressing it off took the row away from
-  // under the press. An option picked on this tab stays for as long as the
-  // tab does, like its section. Only such picks are kept: remembering every
-  // pick put a second render of the whole page behind each first pick of an
-  // option, for rows that stay drawn anyway.
-  //
-  // What each option could ever answer for this species tab, with every other
-  // filter set aside (poolCounts in lib/filters/engine.ts, over `pool` alone).
-  // liveInPool uses it below to drop an option no animal in the pool ever
-  // answers, on both surfaces: unlike a current-narrowing zero, which
-  // drawnOptions in filter-groups.tsx hides from the sidebar's rows alone and
-  // the sheet still offers as a tile a later pick could revive, this kind
-  // cannot come back from any pick. No animal in the catalogue is ever
-  // hairless, so Brez dlake was the option that motivated it, but the rule is
-  // written for whichever option is next.
-  const livePoolCounts = useMemo(
-    () => poolCounts(pool, reference),
-    [pool, reference],
-  );
-  const picked = picksOutsidePool(filters, livePoolCounts);
+  // The same goes for an option inside one. An option that reads 0 is drawn
+  // only while it is picked: the sidebar leaves out every other such row
+  // (drawnOptions in filters/filter-groups.tsx), and liveInPool below leaves
+  // out one the pool never answers on both surfaces. Miren carried to Mačke
+  // stood only for its pick, and so did Miren beside Živahen once Velikost
+  // narrowed to a size only lively dogs come in; pressing it off took the row
+  // away from under the press. A pick seen at 0 on this tab stays for as long
+  // as the tab does, like its section, and the panel counts it as picked when
+  // it asks whether an option is dead (keptPicks). Only such picks are kept:
+  // remembering every pick put a second render of the whole page behind each
+  // first pick of an option, for rows that stay drawn anyway.
+  const picked = picksAtZero(filters, {
+    ...counts,
+    toggles: toggleTally,
+    goodWith: goodWithTally,
+    care: careTally,
+  });
   const [drawn, setDrawn] = useState(() => ({
     tab: filters.species,
     groups: GROUPS.filter((group) => shown[group]),
@@ -202,7 +244,20 @@ export function useAnimalFilterModel({
     });
   }
   const keptOnTab = drawn.groups;
-  const pickedOnTab = drawn.picked;
+  const keptPicks = useMemo(() => keptByFacet(drawn.picked), [drawn.picked]);
+  // What each option could ever answer for this species tab, with every other
+  // filter set aside (poolCounts in lib/filters/engine.ts, over `pool` alone).
+  // liveInPool uses it below to drop an option no animal in the pool ever
+  // answers, on both surfaces: unlike a current-narrowing zero, which
+  // drawnOptions in filter-groups.tsx hides from the sidebar's rows alone and
+  // the sheet still offers as a tile a later pick could revive, this kind
+  // cannot come back from any pick. No animal in the catalogue is ever
+  // hairless, so Brez dlake was the option that motivated it, but the rule is
+  // written for whichever option is next.
+  const livePoolCounts = useMemo(
+    () => poolCounts(pool, reference),
+    [pool, reference],
+  );
   const groups = useMemo(
     () =>
       GROUPS.filter(
@@ -214,18 +269,18 @@ export function useAnimalFilterModel({
         // carries the same exemption): the grove above the rows is one
         // drawing of all three stages, not a list an option can drop out of.
         if (group === "age") return { group, options };
-        // What was picked here on this tab counts as picked, which covers
-        // every current pick the pool does not answer.
-        const prefix = `${group}:`;
-        const kept = pickedOnTab
-          .filter((key) => key.startsWith(prefix))
-          .map((key) => key.slice(prefix.length));
+        // What was picked here at 0 on this tab counts as picked, which
+        // covers every current pick the pool does not answer.
         return {
           group,
-          options: liveInPool(options, livePoolCounts[group], kept),
+          options: liveInPool(
+            options,
+            livePoolCounts[group],
+            keptPicks[group] ?? [],
+          ),
         };
       }),
-    [keptOnTab, livePoolCounts, locale, pickedOnTab, pool, shown],
+    [keptOnTab, keptPicks, livePoolCounts, locale, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which
@@ -251,26 +306,10 @@ export function useAnimalFilterModel({
       })),
     [locale, pool, filters.species, filters.toggles],
   );
-  const toggleTally = useMemo(
-    () => toggleCounts(animals, filters, reference),
-    [animals, filters, reference],
-  );
   // What each question leaves out for want of an answer, beside the counts
   // above and over the same animals (unansweredCounts in lib/filters).
   const unanswered = useMemo(
     () => unansweredCounts(animals, filters, reference),
-    [animals, filters, reference],
-  );
-  // The two sections' counts, each a pass over the dataset, kept apart from
-  // the result count they are drawn beside. That count follows the grid a
-  // render behind (animal-grid.tsx), and in one memo with it the passes ran
-  // twice per press: once for the filters and again when the count caught up.
-  const goodWithTally = useMemo(
-    () => goodWithCounts(animals, filters, reference),
-    [animals, filters, reference],
-  );
-  const careTally = useMemo(
-    () => careCounts(animals, filters, reference),
     [animals, filters, reference],
   );
 
@@ -414,6 +453,7 @@ export function useAnimalFilterModel({
     counts,
     pool,
     groups,
+    keptPicks,
     shelters,
     toggles,
     toggleTally,

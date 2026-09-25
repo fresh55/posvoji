@@ -449,6 +449,7 @@ export function EnergyCards({
   options,
   counts,
   selected,
+  kept = [],
   onToggle,
   onToggleMany,
   layout = "sidebar",
@@ -458,6 +459,9 @@ export function EnergyCards({
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. */
+  kept?: readonly string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   layout?: FilterCardLayout;
@@ -505,7 +509,7 @@ export function EnergyCards({
             const level = levelOf(value);
             const tempo = TEMPOS[level];
             const hovered = hoveredValue === value;
-            const dead = isDeadOption(count, checked);
+            const dead = isDeadOption(count, checked, kept.includes(value));
             const celebrating = celebration?.value === value && checked;
             // The anticipation is press feedback, so it runs on touch too, and
             // it yields the moment the gesture takes over.

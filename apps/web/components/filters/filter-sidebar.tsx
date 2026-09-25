@@ -7,6 +7,7 @@ import {
   type CardGroup,
   type CareSection,
   type GoodWithSection,
+  type KeptPicks,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
@@ -55,6 +56,7 @@ export function FilterSidebar({
   toggleTally,
   goodWith,
   care,
+  kept,
   scope,
   onToggle,
   onToggleMany,
@@ -74,6 +76,8 @@ export function FilterSidebar({
   toggleTally: Map<string, number>;
   goodWith?: GoodWithSection;
   care?: CareSection;
+  /** The picks this panel keeps drawn once they come off (KeptPicks). */
+  kept?: KeptPicks;
   scope?: SidebarScope;
   onClearAll?: () => void;
   /** For the Kje dialog's zero state, which may need the species' own way
@@ -199,6 +203,7 @@ export function FilterSidebar({
           toggleTally={toggleTally}
           goodWith={goodWith}
           care={care}
+          kept={kept}
           unanswered={unanswered}
           onToggle={onToggle}
           onToggleMany={onToggleMany}

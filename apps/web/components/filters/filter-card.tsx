@@ -153,9 +153,16 @@ export function filterCardVariants(
 }
 
 // A zero-count option is a dead end, but an active selection is never locked
-// out of being unchecked.
-export function isDeadOption(count: number, checked: boolean): boolean {
-  return count === 0 && !checked;
+// out of being unchecked. Nor is a pick the sidebar keeps once it comes off
+// (`kept`, KeptPicks in filter-groups.tsx): a disabled row gives up keyboard
+// focus, so the row the press or the focus was on stays live, to be picked
+// again.
+export function isDeadOption(
+  count: number,
+  checked: boolean,
+  kept = false,
+): boolean {
+  return count === 0 && !checked && !kept;
 }
 
 /**

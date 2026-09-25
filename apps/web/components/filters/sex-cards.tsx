@@ -479,6 +479,7 @@ export function SexCards({
   options,
   counts,
   selected,
+  kept = [],
   onToggle,
   layout = "sidebar",
   resetDelay = NO_RESET_DELAY,
@@ -486,6 +487,9 @@ export function SexCards({
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. */
+  kept?: readonly string[];
   onToggle: (value: string) => void;
   layout?: FilterCardLayout;
   /** The turn each card takes when the section's Ponastavi clears it. */
@@ -585,7 +589,7 @@ export function SexCards({
             <ToggleGroupItem
               key={value}
               value={value}
-              disabled={isDeadOption(count, checked)}
+              disabled={isDeadOption(count, checked, kept.includes(value))}
               {...gestureHandlers(value)}
               aria-label={`${label}, ${animalCount(count, locale)}`}
               className={filterCardVariants({

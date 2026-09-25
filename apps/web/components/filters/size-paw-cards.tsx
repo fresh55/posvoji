@@ -544,6 +544,7 @@ export function SizePawCards({
   options,
   counts,
   selected,
+  kept = [],
   onToggle,
   isResetting = false,
   layout = "sidebar",
@@ -551,6 +552,9 @@ export function SizePawCards({
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. */
+  kept?: readonly string[];
   onToggle: (value: string) => void;
   isResetting?: boolean;
   layout?: FilterCardLayout;
@@ -599,7 +603,7 @@ export function SizePawCards({
           // resting on the card landed the paw 8 degrees back on its heel and
           // left it there.
           const tipped = previewing(value) && pressedValue !== value;
-          const dead = isDeadOption(count, checked);
+          const dead = isDeadOption(count, checked, kept.includes(value));
           const celebrating = celebration?.value === value && checked;
           const departing = departure?.value === value && !checked;
           // The crouch is press feedback, so it runs on touch too, and it

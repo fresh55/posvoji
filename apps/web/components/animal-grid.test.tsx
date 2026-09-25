@@ -683,6 +683,36 @@ describe("a filter with nothing left to narrow", () => {
     expect(row.isConnected).toBe(true);
     expect(document.activeElement).toBe(row);
   });
+
+  it("keeps a row drawn only for its pick once the pick comes off", () => {
+    // Miren and Živahen, then a size only the lively dog comes in: Miren
+    // reads 0 and the sidebar draws it only because it is ticked. Unticking
+    // it took the row out in the same render, from under the pointer and
+    // with keyboard focus on it.
+    window.history.replaceState(null, "", "/?vrsta=pes&energija=miren,zivahen");
+    const { container } = renderGrid([
+      { ...animal("dog-calm", "dog", "muri"), energy: "calm" },
+      { ...animal("dog-lively", "dog", "muri"), energy: "lively", size: "large" },
+    ]);
+    const rail = container.querySelector("aside")!;
+    fireEvent.click(within(rail).getByRole("button", { name: /^Velikost/ }));
+    fireEvent.click(within(rail).getByRole("button", { name: /^Velika,/ }));
+
+    const row = within(rail).getByRole<HTMLButtonElement>("button", {
+      name: /^Miren, 0\s/,
+    });
+    expect(row.getAttribute("aria-pressed")).toBe("true");
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    // Enabled, and so still able to take a press: jsdom leaves focus on a
+    // button that turns disabled, where a browser moves it to the body.
+    expect(row.disabled).toBe(false);
+    expect(document.activeElement).toBe(row);
+  });
 });
 
 describe("a link shared while Samo na voljo was a filter", () => {

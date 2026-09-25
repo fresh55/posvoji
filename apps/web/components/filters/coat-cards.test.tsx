@@ -7,7 +7,6 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { Transition } from "motion/react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -154,13 +153,9 @@ describe("earBeat", () => {
     "turns a %s's ear from wherever it is, the wait inside the track",
     (kind, turn) => {
       for (const side of ["left", "right"] as const) {
-        const { animate, transition } = earBeat(kind, side, side, 0.26);
-        const rotate = animate.rotate as (number | null)[];
-
-        expect(rotate[0]).toBeNull();
-        expect((transition as Transition).delay).toBeUndefined();
-        expect(Math.min(...rotate.map(Number))).toBe(turn);
-        expect(rotate.at(-1)).toBe(0);
+        expect(earBeat(kind, side, side, 0.26).animate).toEqual({
+          rotate: [null, 0, 0, turn, 0],
+        });
       }
     },
   );

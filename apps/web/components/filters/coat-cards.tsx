@@ -496,9 +496,8 @@ const NOTICE_STEP = 0.06;
 const EAR_NOTICE = [0, -16, 0];
 const DOG_EAR_NOTICE = [0, -9, 0];
 // How long an ear still turning from its own beat takes to come straight
-// before it notices. With a delay it was drawn straight at once: a cat's ear
-// at the end of its flick dropped 24 degrees in one frame. At 0.12s the ear
-// comes back no faster than the flick or the rabbit's trail it cuts short.
+// before it notices (waitThen's settle). At 0.12s it comes back no faster than
+// the flick or the rabbit's trail it cuts short.
 const NOTICE_SETTLE = 0.12;
 
 export function earBeat(

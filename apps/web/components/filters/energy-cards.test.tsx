@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { Transition } from "motion/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
@@ -237,22 +236,19 @@ describe("iconPose", () => {
   it.each([-1, 1])(
     "leans a neighbour from wherever its icon is, the wait inside the track (direction %i)",
     (direction) => {
-      const { animate, transition } = iconPose(
+      const { animate } = iconPose(
         "reacting",
         TEMPOS.calm,
         TEMPOS.balanced,
         direction,
       );
-      const timing = transition as Record<"rotate" | "y", Transition>;
-      const rotate = animate.rotate as (number | null)[];
 
-      for (const value of ["rotate", "y"] as const) {
-        expect((animate[value] as (number | null)[])[0]).toBeNull();
-        expect(timing[value].delay).toBeUndefined();
-      }
-      // The same lean as before, ending level.
-      expect(rotate).toContain(direction * TEMPOS.balanced.neighborTilt);
-      expect(rotate.at(-1)).toBe(0);
+      // Null starts it where the icon is; the settle and the wait hold it
+      // level; then the same lean as before.
+      expect(animate).toEqual({
+        rotate: [null, 0, 0, direction * TEMPOS.balanced.neighborTilt, 0],
+        y: [null, 0, 0, TEMPOS.balanced.neighborLift, 0],
+      });
     },
   );
 });

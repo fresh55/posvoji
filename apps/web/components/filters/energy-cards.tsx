@@ -326,21 +326,17 @@ export function iconPose(
     case "reacting": {
       if (!celebrationTempo) break;
       // An icon still rocking from its own pick comes level before it leans
-      // (waitThen's settle). With a delay it was drawn level at once: calm
-      // at the end of its rock dropped 7 degrees in one frame. The wait is
-      // shorter than calm's own pace, so the settle takes all of it.
+      // (waitThen's settle). The wait is shorter than calm's own pace, so the
+      // settle takes all of it.
       const { neighborDelay, neighborTilt, neighborLift } = celebrationTempo;
-      const track = {
-        duration: NEIGHBOR_DURATION,
-        ease: "easeOut",
-        settle: neighborDelay,
-      } as const;
-      const rotate = waitThen(
-        neighborDelay,
-        [0, direction * neighborTilt, 0],
-        track,
-      );
-      const y = waitThen(neighborDelay, [0, neighborLift, 0], track);
+      const track = (keyframes: number[]) =>
+        waitThen(neighborDelay, keyframes, {
+          duration: NEIGHBOR_DURATION,
+          ease: "easeOut",
+          settle: neighborDelay,
+        });
+      const rotate = track([0, direction * neighborTilt, 0]);
+      const y = track([0, neighborLift, 0]);
       return {
         animate: { rotate: rotate.keyframes, y: y.keyframes },
         transition: { rotate: rotate.transition, y: y.transition },

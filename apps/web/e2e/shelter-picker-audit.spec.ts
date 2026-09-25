@@ -2,13 +2,27 @@ import { test, expect } from "@playwright/test";
 import { pickerTrigger, donePill } from "./picker";
 
 test.use({ hasTouch: true });
-for (const width of [375, 640, 800]) {
+// From 43rem the picker opens on its map, which writes its counts there
+// (MAP_LEADS_QUERY in location-picker/motion.ts), and the field is in the list
+// view. 800 is such a width; 375 and 640 open on the list.
+for (const [width, opensOnMap] of [
+  [375, false],
+  [640, false],
+  [800, true],
+] as const) {
   test(`search and the distance line remain readable at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     await pickerTrigger(page).click();
+    const showList = page.locator("[data-picker-show-list]");
+    await expect(showList).toBeVisible();
+    if (opensOnMap) {
+      await expect(showList).toHaveAttribute("aria-checked", "false");
+      await showList.click();
+    }
+    await expect(showList).toHaveAttribute("aria-checked", "true");
     const search = page.getByLabel("Kraj, pošta ali zavetišče");
     await expect(search).toHaveCSS("font-size", "16px");
     await search.fill("1000");

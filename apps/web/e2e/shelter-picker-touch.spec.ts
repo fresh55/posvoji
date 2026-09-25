@@ -1,5 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { openPicker, pickerTrigger } from "./picker";
+import { expect, test, type Page } from "@playwright/test";
+import { openPicker, pickerTrigger, region } from "./picker";
 
 // The map's two-tap contract, on the projects that actually have a finger.
 //
@@ -19,22 +19,7 @@ import { openPicker, pickerTrigger } from "./picker";
 // size a coin is smaller than the finger aiming at it, and the map says so
 // itself now (markersVisible in shelter-map.tsx).
 
-/** A live region on the plate, by name. The ones that carry a click to commit
- *  are the ones with a commit key, which is the same attribute the arming
- *  reads, and the label is what a screen reader is told they are.
- *
- *  Named rather than taken by index, because index order is the order
- *  lib/region-shapes.ts lists them in and that puts Pomurska first, in the
- *  top-right corner of the plate under the dialog's own close button. The two
- *  below sit in the middle of the country, clear of the title chip on one
- *  corner and the close on the other, and both hold shelters in every dataset
- *  this suite runs against: Ljubljana and Celje. */
-function region(dialog: Locator, name: string): Locator {
-  return dialog.locator(
-    `[data-map-commit^="region:"][aria-label^="${name}"]`,
-  );
-}
-
+// The two regions these taps aim at; region() in picker.ts says why these.
 const CENTRE = "Osrednjeslovenska";
 const EAST = "Savinjska";
 
@@ -65,10 +50,13 @@ test("names a region on the first tap and picks it on the second", async ({
   // counts describe a region, they do not say that pressing it again takes
   // every shelter in it. The button the arming raises says it, once: a line
   // above it repeating "Še enkrat tapni: Izbere ..." is gone. The count is
-  // left to the dataset, the sentence is not.
+  // left to the dataset, the sentence is not, and a region holding a single
+  // shelter says the verb alone, since the card above it already counts one.
   const consequence = dialog.locator("[data-map-action]").first();
   await expect(consequence).toBeVisible();
-  await expect(consequence).toHaveText(/^(Izberi · \d+ zavetiš|Select · \d+ shelter)/);
+  await expect(consequence).toHaveText(
+    /^(Izberi( · \d+ zavetiš\S*)?|Select( · \d+ shelters?)?)$/,
+  );
   await expect(dialog.locator("[data-callout-note]")).toHaveCount(0);
   // The annotation is aria-hidden, like every annotation on this plate, so the
   // region's own label is the only way the same sentence reaches a screen

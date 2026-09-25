@@ -119,13 +119,16 @@ test.describe("desktop", () => {
 
     await suggestion.click();
     await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toBeVisible();
-    await expect(search).toHaveValue("Ljubljana");
+    // The place moves into its chip, and the field is a search box again.
+    await expect(search).toHaveValue("");
     expect(await matches.count()).toBeGreaterThan(1);
-    await expect(dialog.getByText("Približna zračna razdalja med kraji.")).toBeVisible();
-    await search.fill("");
-    await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "do 20 km" })).toBeVisible();
+    // And the grid behind the dialog follows the place out of its default
+    // order, which is what "V bližini" promised all along.
+    await expect(page).toHaveURL(/razvrsti=najblizje/);
     await dialog.getByRole("button", { name: /Odstrani izhodišče/ }).click();
     await expect(dialog.getByRole("button", { name: /Odstrani izhodišče/ })).toHaveCount(0);
+    await expect(page).not.toHaveURL(/razvrsti=/);
   });
 
   test("lets shelter content scroll without obscuring its text", async ({ page }) => {

@@ -32,7 +32,8 @@ import "@/test/picker-chunks";
  */
 
 /**
- * The matchMedia jsdom does not ship, answering no to everything.
+ * The matchMedia jsdom does not ship, answering no to everything, or yes to
+ * whatever `answers` names.
  *
  * The picker asks whether it is standing on a desktop to decide which body to
  * mount, and a suite that stubs nothing renders neither. No to everything is
@@ -40,16 +41,46 @@ import "@/test/picker-chunks";
  * has to watch the answer change (the responsive session) brings its own live
  * one instead; this is for the three that only need the question answered.
  */
-export function stubMatchMedia() {
+export function stubMatchMedia(answers: (media: string) => boolean = () => false) {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     value: vi.fn().mockImplementation((media: string) => ({
-      matches: false,
+      matches: answers(media),
       media,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     })),
   });
+}
+
+// Maribor, so a fix from here sorts Sever first and any typed Ljubljana has to
+// visibly take the sort back.
+const MARIBOR = { latitude: 46.5547, longitude: 15.6459 };
+
+type Success = (position: { coords: typeof MARIBOR }) => void;
+
+/**
+ * A geolocation that holds the answer until the test gives it, the way a
+ * browser holds it behind its permission prompt: `succeed` hands Maribor to
+ * the press that asked.
+ */
+export function mockGeolocation(): { succeed: () => void } {
+  let pending: Success | undefined;
+  Object.defineProperty(navigator, "geolocation", {
+    configurable: true,
+    value: {
+      getCurrentPosition: (success: Success) => {
+        pending = success;
+      },
+    },
+  });
+  return {
+    succeed: () => {
+      act(() => {
+        pending?.({ coords: MARIBOR });
+      });
+    },
+  };
 }
 
 /**
@@ -97,9 +128,10 @@ export const offSite = [
 // Stateful because the picker is controlled: the pick card folds once nothing
 // it stands for is selected, so toggles have to land in the next render's
 // `selected` the way animal-grid's real handlers land them. The grid's order
-// is held the same way, since the distance toggle reads the order it replaced
-// from what it is handed next; a suite that passes no onSortChange gets a
-// picker with no order to change, as a page without a grid does.
+// is held the same way, since a place given to the picker moves the order and
+// taking it away reads the order it is handed next (originPressed in
+// controller.ts); a suite that passes no onSortChange gets a picker with no
+// order to change, as a page without a grid does.
 function Harness({
   selected: initialSelected = [],
   sort: initialSort,

@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { DESKTOP_QUERY } from "@/lib/viewport-queries";
 
-/** Same lg cutoff the rest of the filter UI arbitrates on
- *  (location-picker.tsx, animal-filters.tsx): 64rem = 1024px at the default
- *  root size. Exported so the components asking the same question ask it with
- *  the same string rather than writing the breakpoint out again. */
-export const DESKTOP_QUERY = "(min-width: 64rem)";
-
-/** The other side of the same cutoff, for a component drawn only below lg. */
-export const BELOW_DESKTOP_QUERY = "not all and (min-width: 64rem)";
+// Kept here for the callers that already import it with the hook; the string
+// lives in lib/viewport-queries.ts, where the picker's split query is built on
+// it.
+export { DESKTOP_QUERY };
 
 /** Vaul portals a drawer straight to <body>, so a mobile filter drawer stays
  *  open and floating over the page if the viewport crosses into the desktop

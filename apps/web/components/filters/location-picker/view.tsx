@@ -2,9 +2,9 @@ import { List, Map, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DESKTOP_QUERY } from "@/hooks/use-desktop-breakpoint-close";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import { PICKER_SPLIT_QUERY } from "@/lib/viewport-queries";
 import type { LocationPickerController } from "./controller";
 import { PickerFooter } from "./footer";
 import { PickerMapStage } from "./picker-map-stage";
@@ -23,9 +23,11 @@ export function LocationPickerView({
     expandedShelter, setExpandedShelter, dropNote, searchRef, label,
     searchNews, sheetOpen, setSheetOpen,
   } = controller;
-  // Below lg the two views are one at a time, and the map view is the one
-  // whose height its content decides. At lg the panel stands beside the map
-  // and both fill the frame, which is what every lg: class below restores.
+  // Stacked, the two views are one at a time, and the map view is the one
+  // whose height its content decides. Split (a desktop, or a phone held
+  // sideways: picker-split in globals.css) the panel stands beside the map and
+  // both fill the frame, which is what every picker-split: class below
+  // restores.
   const hugMap = !sheetOpen;
   return (
     <Dialog
@@ -41,18 +43,18 @@ export function LocationPickerView({
           // on a desktop or an emulator moves. The footer already does the
           // bottom one.
           "flex w-(--picker-w) flex-col [--picker-w:min(calc(94vw_-_env(safe-area-inset-left,0px)_-_env(safe-area-inset-right,0px)),84rem)] max-w-none gap-0 overflow-hidden p-0 shadow-xl",
-          // Top-aligned below lg, where the height is no longer the same in
-          // both views. Centred, a dialog that shrinks re-centres, and the
+          // Top-aligned when stacked, where the height is no longer the same
+          // in both views. Centred, a dialog that shrinks re-centres, and the
           // view switch the visitor just pressed would slide down the screen
           // under their finger. Pinned, only the bottom edge moves.
-          "max-lg:top-4 max-lg:translate-y-0",
+          "picker-stacked:top-4 picker-stacked:translate-y-0",
           // The map is width-bound: a 320 x 210 plate in a 341px column can
           // only be 224px tall, so reserving the full dialog height for it
           // left 141px of empty above it and 141 below (measured, 390x844).
-          // Below lg the map view is sized by what it draws instead, and only
+          // Stacked, the map view is sized by what it draws instead, and only
           // the list, which is as long as the roster, keeps the full height.
           hugMap
-            ? "h-auto max-h-[94dvh] lg:h-[min(94dvh,52rem)] lg:max-h-none"
+            ? "h-auto max-h-[94dvh] picker-split:h-[min(94dvh,52rem)] picker-split:max-h-none"
             : "h-[min(94dvh,52rem)] max-h-none",
         )}
         showCloseButton={false}
@@ -61,7 +63,7 @@ export function LocationPickerView({
           if (target === searchRef.current && query !== "") {
             setQuery("");
             event.preventDefault();
-          } else if (expandedShelter && (window.matchMedia(DESKTOP_QUERY).matches || sheetOpen)) {
+          } else if (expandedShelter && (window.matchMedia(PICKER_SPLIT_QUERY).matches || sheetOpen)) {
             // Focus on the link inside the panel would go down with it and
             // land on the dialog root; the row it belongs to takes it first.
             if (document.activeElement?.closest("[data-shelter-details-panel]")) {
@@ -134,7 +136,7 @@ export function LocationPickerView({
             // flex-1, which contributes nothing to that measurement, so at 639
             // a 384px switch packs onto the title's row and the title breaks
             // into two lines with the close button between them (measured).
-            className="order-last w-full rounded-ui bg-muted p-1 sm:order-none sm:w-auto lg:hidden"
+            className="order-last w-full rounded-ui bg-muted p-1 sm:order-none sm:w-auto picker-split:hidden"
           >
             <ToggleGroupItem value="list" data-picker-show-list aria-label={pickerText[locale].showList} className="h-11 min-w-0 flex-1 gap-2 text-sm data-[state=on]:border-border data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-xs data-[state=on]:hover:bg-background data-[state=on]:hover:text-foreground sm:min-w-28 sm:flex-none">
               <List className="size-4" aria-hidden />
@@ -158,17 +160,25 @@ export function LocationPickerView({
             // --picker-footer-h is the footer's measured height (footer.tsx),
             // written onto this element; 5rem is the stand-in until it is.
             // The list's width is here too, for the two children that share
-            // it at lg: the list takes 24rem, or less where that would leave
-            // the map under 41rem. At a 1024px laptop the plate is bound by
-            // the width, and 24rem of list left the stage at 578px, too narrow
-            // for the coins to write their counts (COUNT_TOO_SMALL in
+            // it when split: the list takes 24rem, or less where that would
+            // leave the map under 41rem. At a 1024px laptop the plate is bound
+            // by the width, and 24rem of list left the stage at 578px, too
+            // narrow for the coins to write their counts (COUNT_TOO_SMALL in
             // map-marker.tsx): every coin fell back to a paw, with empty bands
             // above and below the map. 41rem is those 608px of plate, the
             // stage's padding and 16px to spare.
-            "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(5rem_+_env(safe-area-inset-bottom,0px))] [--picker-list-w:min(24rem,calc(100%_-_41rem))]",
+            //
+            // On a short screen the plate is bound by the height instead, and
+            // the counts are out of reach at any width (a 390px-tall phone
+            // draws about 220px of country), so the map keeps only what its
+            // height can fill: 22rem is 320px of country and the stage's 32px
+            // of padding, a little over the 300px the region names need to
+            // print (map-region-names.tsx), and the list takes the rest up to
+            // its own 24rem.
+            "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(5rem_+_env(safe-area-inset-bottom,0px))] [--picker-list-w:min(24rem,calc(100%_-_41rem))] short:[--picker-list-w:min(24rem,calc(100%_-_22rem))]",
             // A column its two children stand in, rather than a box they are
             // pinned to the edges of. Only where the height comes from them.
-            hugMap && "max-lg:flex max-lg:flex-col",
+            hugMap && "picker-stacked:flex picker-stacked:flex-col",
           )}
         >
           <PickerMapStage controller={controller} hug={hugMap} />

@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions, type Unanswered } from "@/lib/filters";
@@ -15,6 +15,19 @@ import {
 } from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 import { pointerAway, pointerOnto } from "@/test/pointer";
+
+// Motion asks matchMedia for "(prefers-reduced-motion)", not the ": reduce"
+// form, and only once per file, keeping the answer. A stub installed by one
+// test never reaches it, so the hook is the seam.
+const motion = vi.hoisted(() => ({ reduced: false }));
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => motion.reduced,
+}));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 installFilterFoldSeams();
 // fireEvent's click carries detail 0, which is a keyboard's, so a reset
@@ -308,34 +321,34 @@ describe("EnergyCards", () => {
     for (const value of selected) expect(drawings(value)).toBe(1);
   });
 
-  it("renders and toggles under reduced motion", () => {
-    const originalMatchMedia = window.matchMedia;
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockImplementation((media: string) => ({
-        matches: media === "(prefers-reduced-motion: reduce)",
-        media,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      })),
+  // Picks every level and says what each pick drew around its icon: the ring
+  // that leaves it, and the particles Miren and Živahen throw, each drawn in a
+  // 6-unit box. The tick box is the card's other bordered mark and is square.
+  function pickEveryLevel() {
+    render(<StatefulCards />);
+    return options.map(({ label }) => {
+      const button = card(label);
+      fireEvent.click(button);
+      expect(button.getAttribute("aria-pressed")).toBe("true");
+      return {
+        ring:
+          button.querySelector("span.rounded-full.border-brand-strong") !==
+          null,
+        particles: button.querySelectorAll('svg[viewBox="0 0 6 6"]').length,
+      };
     });
+  }
 
-    try {
-      const { onToggle } = renderCards();
+  it("picks every level under reduced motion without a ring or particles", () => {
+    const moving = pickEveryLevel();
+    cleanup();
+    motion.reduced = true;
+    const still = pickEveryLevel();
 
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: new RegExp(`^${options[0].label}, `),
-        }),
-      );
-
-      expect(onToggle).toHaveBeenCalledWith("calm");
-    } finally {
-      Object.defineProperty(window, "matchMedia", {
-        configurable: true,
-        value: originalMatchMedia,
-      });
-    }
+    // Both are really drawn with motion on, or their absence proves nothing.
+    expect(moving.every(({ ring }) => ring)).toBe(true);
+    expect(moving.some(({ particles }) => particles > 0)).toBe(true);
+    expect(still).toEqual(options.map(() => ({ ring: false, particles: 0 })));
   });
 });
 

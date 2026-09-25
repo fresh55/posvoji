@@ -35,10 +35,7 @@ import {
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
 import { CountsRollWhile } from "@/components/filters/filter-card";
-import {
-  BELOW_DESKTOP_QUERY,
-  DESKTOP_QUERY,
-} from "@/hooks/use-desktop-breakpoint-close";
+import { BELOW_DESKTOP_QUERY, DESKTOP_QUERY } from "@/lib/viewport-queries";
 import { activeFilterCount } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 import type { LookupEntry } from "@/lib/municipality-coverage";

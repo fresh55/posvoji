@@ -127,19 +127,20 @@ describe("GoodWithCards", () => {
       },
     });
     const kids = screen.getByRole("button", { name: /^Otroke, / });
-    // A no-break space after the colon, so the number never wraps away from
-    // the words it counts on a tile a third of a phone wide.
-    expect(kids.textContent).toContain("Brez odgovora:\u00a0121");
+    // A no-break space between the two words and a plain one after the
+    // colon, so a tile a third of a phone wide breaks at the colon and never
+    // leaves "Brez" alone on its line.
+    expect(kids.textContent).toContain("Brez\u00a0podatka: 121");
     expect(
       document.getElementById(kids.getAttribute("aria-describedby") ?? "")
         ?.textContent,
-    ).toBe("Brez odgovora:\u00a0121");
+    ).toBe("Brez\u00a0podatka: 121");
     expect(
       screen.getByRole("button", { name: /^Psa, / }).textContent,
-    ).toContain("Brez odgovora:\u00a0102");
+    ).toContain("Brez\u00a0podatka: 102");
     // Five of 124 is under the tenth the panel bothers saying.
     const cats = screen.getByRole("button", { name: /^Mačko, / });
-    expect(cats.textContent).not.toContain("Brez odgovora");
+    expect(cats.textContent).not.toContain("Brez\u00a0podatka");
     expect(cats.getAttribute("aria-describedby")).toBeNull();
     // What a pick does with them, said once under the rows before any pick.
     expect(
@@ -185,7 +186,7 @@ describe("GoodWithCards", () => {
   });
 
   // On a tile the line went between the label and the count, and at a third
-  // of a phone it wrapped, so a tile read "Otroke, Brez odgovora:, 121, 2":
+  // of a phone it wrapped, so a tile read "Otroke, Brez podatka:, 121, 2":
   // two bare numbers one above the other.
   it("puts the count before the line on a phone tile", () => {
     renderCards({
@@ -199,7 +200,7 @@ describe("GoodWithCards", () => {
     });
     expect(
       screen.getByRole("button", { name: /^Otroke, / }).textContent,
-    ).toBe("Otroke7Brez odgovora:\u00a0121");
+    ).toBe("Otroke7Brez\u00a0podatka: 121");
   });
 
   it("hands that sentence to the outcome once something is picked", () => {
@@ -217,7 +218,7 @@ describe("GoodWithCards", () => {
       ),
     ).toBeNull();
     expect(
-      screen.getByText(/Živali brez odgovora zavetišča so skrite\.$/),
+      screen.getByText(/Živali brez podatka so skrite\.$/),
     ).toBeTruthy();
   });
 
@@ -342,43 +343,43 @@ describe("the outcome sentence", () => {
   it("carries the preposition of whichever facet comes first", () => {
     renderCards({ selected: ["kids"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki. 70 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0otroki: 70 od 489. Živali brez podatka so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["dogs"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo s psi. 70 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo s\u00a0psi: 70 od 489. Živali brez podatka so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["cats"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z mačkami. 70 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0mačkami: 70 od 489. Živali brez podatka so skrite.",
     );
   });
 
   it("joins two and three facets in the fixed card order", () => {
     renderCards({ selected: ["dogs", "kids"], resultCount: 24 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki in psi. 24 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0otroki in psi: 24 od 489. Živali brez podatka so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["cats", "dogs", "kids"], resultCount: 12 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki, psi in mačkami. 12 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0otroki, psi in mačkami: 12 od 489. Živali brez podatka so skrite.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["kids"], resultCount: 70 });
-    expect(sentence()).toBe("Showing animals that get on with kids. 70 of 489. Animals the shelter has not answered for stay hidden.");
+    expect(sentence()).toBe("Showing animals that get on with kids: 70 of 489. Animals with no answer stay hidden.");
     cleanup();
 
     renderCards({ locale: "en", selected: ["kids", "dogs"], resultCount: 24 });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids and dogs. 24 of 489. Animals the shelter has not answered for stay hidden.",
+      "Showing animals that get on with kids and dogs: 24 of 489. Animals with no answer stay hidden.",
     );
     cleanup();
 
@@ -388,7 +389,7 @@ describe("the outcome sentence", () => {
       resultCount: 12,
     });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids, dogs and cats. 12 of 489. Animals the shelter has not answered for stay hidden.",
+      "Showing animals that get on with kids, dogs and cats: 12 of 489. Animals with no answer stay hidden.",
     );
   });
 });
@@ -490,7 +491,7 @@ describe("the unanswered line after a pick", () => {
     });
 
     const kids = screen.getByRole("button", { name: /^Otroke, / });
-    expect(kids.textContent).not.toContain("Brez odgovora");
+    expect(kids.textContent).not.toContain("Brez\u00a0podatka");
     expect(kids.getAttribute("aria-describedby")).toBeNull();
   });
 });

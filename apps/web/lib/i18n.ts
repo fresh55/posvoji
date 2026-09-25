@@ -714,7 +714,7 @@ const sl = {
   care: "Lahko ponudim",
   resetCareFilters: "Ponastavi, kar lahko ponudim",
   careOutcome:
-    "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. {count} od {total}.",
+    "Prikazane so živali, ki potrebujejo, kar lahko ponudiš: {count} od {total}.",
   // Drawn above the rows before anything is picked, so the direction is read
   // before the first press rather than learned from it: every other section
   // narrows to animals that fit the visitor, and this one to the animals that
@@ -1052,7 +1052,7 @@ const en: Messages = {
   care: "I can offer",
   resetCareFilters: "Reset what I can offer",
   careOutcome:
-    "Showing animals that need what you can offer. {count} of {total}.",
+    "Showing animals that need what you can offer: {count} of {total}.",
   careLead: "Show animals that need:",
   specialNeedsLabel: "Needs a lot of patience",
 };

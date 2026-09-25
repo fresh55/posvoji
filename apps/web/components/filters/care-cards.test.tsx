@@ -183,14 +183,14 @@ describe("the outcome sentence", () => {
   it("names both numbers", () => {
     renderCards({ selected: ["patient"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 70 od 489.",
+      "Prikazane so živali, ki potrebujejo, kar lahko ponudiš: 70 od 489.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["patient"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Showing animals that need what you can offer. 70 of 489.",
+      "Showing animals that need what you can offer: 70 of 489.",
     );
   });
 });

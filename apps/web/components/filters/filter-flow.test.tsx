@@ -342,7 +342,7 @@ describe("filter flow interactions", () => {
     expect(matchingIds()).toBe("male-young");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki se razumejo z otroki in psi. 1 od 3. Živali brez odgovora zavetišča so skrite.",
+        "Prikazane so živali, ki se razumejo z otroki in psi: 1 od 3. Živali brez podatka so skrite.",
       ),
     ).toBeTruthy();
   });
@@ -380,7 +380,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?skrb=posvojitev-v-paru");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 2 od 3.",
+        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš: 2 od 3.",
       ),
     ).toBeTruthy();
   });
@@ -404,7 +404,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?skrb=potrpezljiv");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 1 od 3.",
+        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš: 1 od 3.",
       ),
     ).toBeTruthy();
   });

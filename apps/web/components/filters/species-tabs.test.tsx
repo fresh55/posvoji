@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 
 import { type ComponentProps } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Cat, Dog, Rabbit } from "lucide-react";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -255,6 +261,25 @@ describe("SpeciesTabs", () => {
     fireEvent.click(cats);
 
     expect(cats.querySelector("svg")).toBe(before);
+  });
+
+  it("lets a beat another press cuts short come back to rest before the plain icon returns", async () => {
+    // A second species press takes the celebration away mid-beat. The dog
+    // used to hand straight over to its plain icon, head from -14 degrees to
+    // 0 in one frame; its beating glyph stays until it has settled.
+    renderTabs({ value: "all" });
+
+    fireEvent.click(tab("Dogs"));
+    const beating = tab("Dogs").querySelector("svg");
+    fireEvent.click(tab("Cats"));
+
+    expect(tab("Dogs").querySelector("svg")).toBe(beating);
+    await waitFor(() =>
+      expect(tab("Dogs").querySelector("svg")).not.toBe(beating),
+    );
+    // And what it hands over to is the icon at rest, drawing the same dog.
+    expect(tab("Dogs").querySelector("svg")?.getAttribute("style")).toBeNull();
+    expect(pathData(tab("Dogs"))).toEqual(pathData(beating as Element));
   });
 
   it("never hands a tab to scrollIntoView, on mount or on a later selection", () => {

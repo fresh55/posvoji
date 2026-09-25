@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-25T10:19:36.513Z",
+  "reviewedAt": "2026-09-25T10:34:09.815Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -556,19 +556,6 @@
             "start": 226,
             "end": 268,
             "sha256": "62418db3fc83da4ee01f3075b11415e5641c090198a120a77e696fce7276c803"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 75,
-            "end": 89,
-            "sha256": "c4ad0c759ef1736331499e2a4113b4c5abd70a9001f61edd73cd744aef62e10d"
           },
           "reviewedBy": [
             "/root/review_b",
@@ -3497,6 +3484,19 @@
             "/root/review_b",
             "/root/review_c"
           ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 484,
+            "end": 498,
+            "sha256": "447aab3652f8b350c7ea5ffd0a68ca46c81a8f6a2744af78d47aaf9e733290dc"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
         }
       ]
     },
@@ -5208,15 +5208,15 @@
       "claims": [
         {
           "field": "energy",
-          "value": "calm",
+          "value": "balanced",
           "evidence": {
-            "start": 90,
-            "end": 107,
-            "sha256": "2f521fee6ebc9eb8d43b4541fbbd74380583917248f5eacca57b4e2e6f89a1f0"
+            "start": 87,
+            "end": 412,
+            "sha256": "fa44c6403d761887767c38ef305b226113248a189f8a4206c571e5978f8f101b"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -5426,6 +5426,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 23,
+            "sha256": "e29fcc2325712e972c8d8c85998e4b5a971390a7b5d4a1f3c344efc44a70468c"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -6069,6 +6082,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 10,
+            "end": 34,
+            "sha256": "49d66ce83b01ac53e2fb6482a28ed6768d7ef1545eaa192c4b376ab9db850a71"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -6930,6 +6956,19 @@
             "/root/review_c",
             "/root/review_a"
           ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 9,
+            "end": 34,
+            "sha256": "1de81153b548f4db702e5669f5daff135bc618115580c6673c7eb7abf934ea78"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
         }
       ]
     },
@@ -6950,6 +6989,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 7,
+            "end": 29,
+            "sha256": "8ac74395e9995d982c9939a625ea7e6113acbc90c4da7511d3f58a946dd46096"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -7018,6 +7070,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 15,
+            "sha256": "f77d61add5a4e8ddb62dac7843caff9e6197e676674ebe0f41a6a8fa27230f9d"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -7592,6 +7657,19 @@
             "/root/review_c",
             "/root/review_a"
           ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 22,
+            "end": 37,
+            "sha256": "e6aba692092d95278f1666ba7d8aaa2a389bbb8ce2ad6d7e63a339dff633c1a0"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
         }
       ]
     },
@@ -7680,6 +7758,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 51,
+            "end": 69,
+            "sha256": "9d249098fc21cafd487248fca147c20a355b04113862c1569d5f78826c6a1c5f"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -7897,6 +7988,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 8,
+            "end": 31,
+            "sha256": "b328d1f4a0e811f0eb8cf0010a82ee15d778c8908d3cbf4018a9bd95af77baae"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -8154,6 +8258,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 9,
+            "end": 41,
+            "sha256": "ac5d4b6004565738883fa7f17317f3d1282e2dc592934b688dc22ae0c50767cb"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -8678,6 +8795,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 10,
+            "end": 45,
+            "sha256": "342c1c418b492deee4cc5f190f75849eea725971c77cafe91f8dd9b5434174db"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
         }
       ]
     },
@@ -8821,6 +8951,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 8,
+            "end": 28,
+            "sha256": "7308057dfdad425bfd4dbdd0fddf5efc3f608bed25ff901027830ac6dee33e5d"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -9899,6 +10042,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 9,
+            "end": 40,
+            "sha256": "b88d02ff7121fb5832ac86dfaa25a9e02ef6684fd0b078e471b0108b1e53b1b4"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
+          ]
         }
       ]
     },
@@ -10748,6 +10904,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 19,
+            "end": 39,
+            "sha256": "7308057dfdad425bfd4dbdd0fddf5efc3f608bed25ff901027830ac6dee33e5d"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]
@@ -12626,6 +12795,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 309,
+            "end": 341,
+            "sha256": "2096f2c6fc2712ac2e6d1bc621f8109f815b3f11b176e5ddde4438d5a3168337"
+          },
+          "reviewedBy": [
+            "/root/energy_review_a",
+            "/root/energy_review_b"
           ]
         }
       ]

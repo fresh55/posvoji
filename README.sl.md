@@ -1,17 +1,27 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img src="docs/assets/logo.svg" alt="Logotip Posvoji.si" width="120">
+    <img src="docs/assets/logo.svg" alt="Logotip Posvoji.si: pes, mačka in zajec pod isto streho" width="128">
   </picture>
 </p>
 
-# Posvoji.si
+<h1 align="center">Posvoji.si</h1>
 
-Odprt in brezplačen seznam živali iz slovenskih zavetišč, ki iščejo dom.
+<p align="center">
+  Odprt in brezplačen seznam živali iz slovenskih zavetišč, ki iščejo dom.
+</p>
 
-**[English](README.md)** · [Za razvijalce](CONTRIBUTING.md) ·
-[Predlagaj zavetišče](../../issues/new/choose) ·
-[Podatkovna politika](docs/DATA-POLICY.md)
+<p align="center">
+  <a href="https://github.com/fresh55/posvoji/actions/workflows/ci.yml"><img src="https://github.com/fresh55/posvoji/actions/workflows/ci.yml/badge.svg" alt="Stanje CI"></a>
+</p>
+
+<p align="center">
+  <b><a href="README.md">English</a></b> ·
+  <a href="CONTRIBUTING.md">Za razvijalce</a> ·
+  <a href="https://github.com/fresh55/posvoji/issues/new/choose">Predlagaj zavetišče</a> ·
+  <a href="docs/DATA-POLICY.md">Podatkovna politika</a> ·
+  <a href="SECURITY.md">Varnost</a>
+</p>
 
 > [!NOTE]
 > Posvoji.si ni zavetišče in ne vodi posvojitev. Vsaka žival je povezana z
@@ -30,16 +40,20 @@ vidna vir in čas zadnje osvežitve.
 - **Brez osebnih podatkov.** Zasebni oglasi, kontakti posameznikov in številke
   mikročipov ne sodijo v indeks.
 - **Brez družbenih omrežij.** Beremo samo dovoljene spletne strani zavetišč.
+- **Portal za zavetišča.** Osebje zavetišča se prijavi in popravi podatke.
+  Zavetišče brez lastnega seznama lahko živali objavi neposredno.
 
 ```text
 spletna stran zavetišča ──▶ vljuden zajem ──▶ podatki ──▶ statična spletna stran
+                                  ▲
+osebje zavetišča ──▶ zasebni portal ──▶ popravki in neposredne objave
 ```
 
 ## Za zavetišča
 
-**Vaše vsebine ostanejo vaše.** Fotografije in avtorski opisi se prikažejo
-samo z vašim izrecnim dovoljenjem. Obseg dovoljenja je zapisan v repozitoriju,
-sistem pa nedovoljenega vira ne more vklopiti.
+**Vaše vsebine ostanejo vaše.** Fotografije, avtorski opisi in vaš logotip se
+prikažejo samo z vašim izrecnim dovoljenjem. Obseg dovoljenja je zapisan v
+repozitoriju, sistem pa nedovoljenega vira ne more vklopiti.
 
 Zavetišče lahko kadarkoli zahteva:
 
@@ -48,7 +62,8 @@ Zavetišče lahko kadarkoli zahteva:
 - redkejše osveževanje;
 - popoln izklop vira.
 
-Zahteve za umik imajo prednost. Podrobnosti so v
+Zahteve za umik imajo prednost. Pišite na
+[info@posvoji.si](mailto:info@posvoji.si). Podrobnosti so v
 [podatkovni politiki](docs/DATA-POLICY.md).
 
 Pri samodejnem zajemu se `PosvojiBot` predstavi s kontaktom, spoštuje
@@ -58,16 +73,22 @@ Pri samodejnem zajemu se `PosvojiBot` predstavi s kontaktom, spoštuje
 ## Ste našli napako?
 
 Napačen podatek, zastarela objava ali žival, ki je že našla dom?
-[Odprite prijavo](../../issues/new/choose). Ne vpisujte osebnih podatkov drugih
-ljudi.
+[Odprite prijavo](https://github.com/fresh55/posvoji/issues/new/choose).
+Prijave so javne, zato ne vpisujte osebnih podatkov drugih ljudi.
+
+Varnostne ranljivosti in vse, kar bi lahko razkrilo osebne podatke, prijavite
+zasebno po navodilih v [SECURITY.md](SECURITY.md). Vprašanja o posvojitvi
+naslovite na zavetišče, ki žival oskrbuje.
 
 ## Za razvijalce
 
-Potrebujete **Node.js 22+** in **pnpm 10**. Podatkovne zbirke, ključev API ali
-zunanjih storitev ne potrebujete; testi uporabljajo majhne lokalne vzorce.
+Potrebujete **Node.js 24** (glej `.node-version`) in **pnpm 10**. Za celoten
+nabor testov potrebujete še **Python 3.12+** in **uv** za portal zavetišč.
+Ključev API ali zunanjih storitev ne potrebujete; testi uporabljajo majhne
+lokalne vzorce, portal pa lokalno bazo SQLite.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm test
 pnpm --filter web dev
 ```
@@ -77,8 +98,8 @@ nov vir pa v [Adding a provider](docs/ADDING-A-PROVIDER.md).
 
 ## Licence
 
-Aplikaciji v `apps/*` sta pod licenco **AGPL-3.0-only**; sheme, SDK in adapterji
+Aplikacije v `apps/*` so pod licenco **AGPL-3.0-only**; sheme, SDK in adapterji
 v `packages/*` ter `providers/*` so pod licenco **MIT**.
 
-Fotografije, opisi in vzorci HTML so gradivo tretjih oseb. Odprtokodne licence
-repozitorija jih ne pokrivajo.
+Fotografije, opisi, logotipi zavetišč in vzorci HTML so gradivo tretjih oseb.
+Odprtokodne licence repozitorija jih ne pokrivajo.

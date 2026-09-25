@@ -1,19 +1,28 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img src="docs/assets/logo.svg" alt="Posvoji.si logo" width="120">
+    <img src="docs/assets/logo.svg" alt="Posvoji.si logo: a dog, a cat and a rabbit under one roof" width="128">
   </picture>
 </p>
 
-# Posvoji.si
+<h1 align="center">Posvoji.si</h1>
 
-An open index of animals waiting for a home in Slovenian shelters.
+<p align="center">
+  An open index of animals waiting for a home in Slovenian shelters.
+</p>
 
-[![CI](https://github.com/fresh55/posvoji/actions/workflows/ci.yml/badge.svg)](https://github.com/fresh55/posvoji/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/fresh55/posvoji/actions/workflows/ci.yml"><img src="https://github.com/fresh55/posvoji/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+</p>
 
-**[Slovenščina](README.sl.md)** · [Contributing](CONTRIBUTING.md) ·
-[Add a shelter](docs/ADDING-A-PROVIDER.md) · [Data policy](docs/DATA-POLICY.md) ·
-[Report a problem](../../issues/new/choose)
+<p align="center">
+  <b><a href="README.sl.md">Slovenščina</a></b> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="docs/ADDING-A-PROVIDER.md">Add a shelter</a> ·
+  <a href="docs/DATA-POLICY.md">Data policy</a> ·
+  <a href="SECURITY.md">Security</a> ·
+  <a href="https://github.com/fresh55/posvoji/issues/new/choose">Report a problem</a>
+</p>
 
 > [!NOTE]
 > Posvoji.si does not handle adoptions. Every animal links to the shelter's
@@ -30,22 +39,34 @@ source and last-sync time.
 - **Source over copy:** the index points people back to the shelter instead of
   replacing its website.
 - **Static public index:** the ingest pipeline writes JSON and the web app
-  exports static files. The separate shelter portal has a private API and
-  database for authenticated corrections; the public site does not query it.
+  exports static files. The public site never queries a database.
+- **Private shelter portal:** shelter staff sign in to correct fields, and a
+  shelter without a catalogue of its own can list animals directly. The portal
+  has its own API and database behind authentication.
 - **Offline tests:** parsers run against small fixtures. CI never crawls shelter
   websites.
 
 ```text
 shelter website ──▶ polite ingest ──▶ animals.json + changes.json ──▶ static site
                           ▲
-shelter staff ──▶ private portal API ──▶ reviewed field overrides
+shelter staff ──▶ private portal API ──▶ field corrections and direct listings
 ```
+
+## For shelters
+
+Your content stays yours. Photos, written descriptions and your logo appear
+only with your explicit permission, and the scope of that permission is
+recorded in the repository. A source without permission cannot be switched on.
+
+A shelter can at any time ask to change how it is shown or credited, remove
+photos or descriptions, lower the sync frequency, or switch its source off
+entirely. Withdrawal requests take priority. Write to
+[info@posvoji.si](mailto:info@posvoji.si).
 
 ## Data boundaries
 
 Permission is recorded in `providers/<shelter>/policy.yaml` and validated by
-CI. Photos and written descriptions appear only when the shelter explicitly
-allows them.
+CI.
 
 This project never indexes:
 
@@ -54,9 +75,10 @@ This project never indexes:
 - microchip numbers;
 - Facebook or other platforms.
 
-All crawling uses the SDK's `PoliteClient`: it respects `robots.txt`, serializes
-requests per host, waits between requests and backs off on `429` responses.
-There are no shortcuts around it.
+All crawling uses the SDK's `PoliteClient`. It identifies itself as
+`PosvojiBot`, respects `robots.txt`, sends one request at a time to any one
+server, waits between requests and backs off on `429` responses. There are no
+shortcuts around it.
 
 Read the binding rules in the [data policy](docs/DATA-POLICY.md).
 
@@ -67,14 +89,24 @@ Other supported Node releases are listed in `package.json`. Running the complete
 test suite also requires **Python 3.12+** and **uv** for the shelter portal.
 
 ```bash
-pnpm install
-pnpm test
+pnpm install --frozen-lockfile
 pnpm --filter web dev
 ```
 
 No external services, live crawling, or API keys are needed for local
 development. The portal uses a local SQLite database; its setup is documented
 in [`apps/portal/README.md`](apps/portal/README.md).
+
+Before opening a pull request, run the checks CI runs:
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm validate:policies
+```
+
+Add `pnpm --filter web build` when you change `apps/web`.
 
 ## Contributing
 
@@ -87,6 +119,16 @@ A parser may be merged before permission arrives, but it must remain disabled.
 
 PR titles follow [Conventional Commits](docs/COMMIT-CONVENTION.md) because pull
 requests are squash-merged.
+
+## Reporting problems
+
+Wrong data, a stale listing or an animal that has already found a home:
+[open an issue](https://github.com/fresh55/posvoji/issues/new/choose). Issues
+are public, so leave out other people's personal data.
+
+Report vulnerabilities and anything that could expose personal data privately,
+as described in [SECURITY.md](SECURITY.md). Adoption questions go to the
+animal's shelter.
 
 ## Repository map
 
@@ -103,8 +145,9 @@ requests are squash-merged.
 ## License
 
 The split is intentional: `apps/*` is **AGPL-3.0-only**; `packages/*` and
-`providers/*` are **MIT** so schemas and adapters can be reused elsewhere.
+`providers/*` are **MIT** so schemas and adapters can be reused elsewhere. Each
+MIT tree carries its own `LICENSE` file.
 
-Shelter photos, descriptions and fixture HTML remain third-party material.
-They are not covered by the repository's open-source licenses, and shelters
-may change or withdraw permission at any time.
+Shelter photos, descriptions, logos and fixture HTML remain third-party
+material. They are not covered by the repository's open-source licenses, and
+shelters may change or withdraw permission at any time.

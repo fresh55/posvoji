@@ -2,6 +2,7 @@
 // run `node scripts/build-app-icons.mjs` from apps/web.
 // Full animal mark: home-screen icons and Apple icon.
 // Compact roof-and-heart mark: SVG browser icon and multi-size ICO fallback.
+// Full animal mark with a fixed ink: light and dark README logos in docs/assets.
 import sharp from "sharp";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -10,6 +11,14 @@ import { dirname, join, resolve } from "node:path";
 const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const mark = readFileSync(join(webRoot, "public/logo.svg"));
 const compactMark = readFileSync(join(webRoot, "app/icon.svg"));
+
+// GitHub picks the README logo with <picture> and prefers-color-scheme, so each
+// file carries its own ink. The dark ink is GitHub's dark-theme text colour.
+for (const [file, ink] of [["logo.svg", "#313941"], ["logo-dark.svg", "#E6EDF3"]]) {
+  const svg = mark.toString("utf8").replace('color="#313941"', `color="${ink}"`);
+  writeFileSync(join(webRoot, "../../docs/assets", file), svg);
+  console.log(`docs/assets/${file}: ${ink}`);
+}
 
 /** Centre the mark on white so it stays visible on any launcher background. */
 async function icon(source, size, inset) {

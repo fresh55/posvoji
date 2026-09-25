@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   ImagePolicy,
@@ -78,17 +79,23 @@ const AGE_MONTHS_PATTERN = new RegExp(
   `${AGE_COUNT}\\s*(?:mesecev|mesece|meseca|mesec)\\b`, "iu",
 );
 const AGE_YEARS_PATTERN = new RegExp(
-  `${AGE_COUNT}\\s*(?:-|\\s)*(?:letni|letna|leten|letnega|leta|leti|let)\\b`, "iu",
+  `${AGE_COUNT}[\\s-]*(?:letni|letna|leten|letnega|leta|leti|let)\\b`, "iu",
 );
-// A range is not a single age, including decimals and adjective forms.
+// A range is not a single age, including decimals and adjective forms. Two
+// whitespace runs around an optional dash backtrack quadratically on long
+// blank runs, so the second run belongs to the dash.
 const AGE_RANGE =
-  /\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*-?\s*(?:mesec(?:a|e|ev)?|let(?:o|i|a|ni|na|en|nega)?)\b/iu;
+  /\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:-\s*)?(?:mesec(?:a|e|ev)?|let(?:o|i|a|ni|na|en|nega)?)\b/iu;
 
 function ageCount(raw: string | undefined): number {
   return Number((raw ?? "").replace(",", "."));
 }
 
-export function parseApproximateAgeMonths(
+export function parseApproximateAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(
   value: string,
 ): number | undefined {
   if (AGE_RANGE.test(value)) return undefined;

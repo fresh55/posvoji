@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
@@ -121,6 +122,10 @@ function countOf(whole: string, half: string | undefined): number {
 // Only exact numeric ages are mapped. Prose such as "mlada odrasla" and
 // "nekaj ur" stays unknown rather than being turned into a guessed number.
 export function parseAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(value: string): number | undefined {
   const normalized = normalizeText(value).toLowerCase();
   const combined = normalized.match(
     /^(\d+)\s*(?:let|leta|leti|leto)\s+(?:in\s+)?(\d+)\s*(?:mesecev|mesece|meseca|mesec)$/,

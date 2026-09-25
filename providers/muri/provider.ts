@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
@@ -234,6 +235,10 @@ const SEX: Record<string, Sex> = {
 // "manj kot 1 leto" is an upper bound, not an age, and fractional forms
 // ("1,5 leta") stay out via the lookbehind: better no age than a wrong one.
 export function parseAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(value: string): number | undefined {
   if (/manj\s+kot/i.test(value)) return undefined;
   const years = value.match(/(?<![\d,.-])(\d+)\s*let/i);
   const months = value.match(/(?<![\d,.-])(\d+)\s*mesec/i);

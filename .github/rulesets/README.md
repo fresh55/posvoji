@@ -44,8 +44,8 @@ After the owner chooses to make the repository public:
    `pr-title`, owned by GitHub Actions, and that only the owner has admin access.
 4. Run Security analysis on `main` and confirm CodeQL's JavaScript/TypeScript
    and Python analyses and Scorecard upload succeed. These jobs skip private
-   repositories. The Scorecard report stays in GitHub code scanning; it does
-   not publish to the separate Scorecard service.
+   repositories. The Scorecard report goes to GitHub code scanning and is
+   published to the Scorecard API behind the README badge.
 5. Deploy and check `https://posvoji.si/.well-known/security.txt` without a
    login, and renew its expiry before 2027-09-01.
 

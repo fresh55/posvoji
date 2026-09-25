@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   AnimalMedical,
@@ -126,6 +127,10 @@ function parseIdentity($: cheerio.CheerioAPI): {
 // fractional or ranged ages ("1,5 leta", "2-3 leta") out: better no age than a
 // wrong one.
 export function parseAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(value: string): number | undefined {
   const years = value.match(/(?<![\d,.-])(\d+)\s*let/i);
   const months = value.match(/(?<![\d,.-])(\d+)\s*mesec/i);
   if (!years && !months) return undefined;

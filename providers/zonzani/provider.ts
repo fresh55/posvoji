@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
@@ -131,6 +132,10 @@ export function parseSlovenianDate(value: string): string | undefined {
 // unknown: choosing one endpoint would make the cards more precise than the
 // source. Supports the common combined form as well as plain years or months.
 export function parseAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(value: string): number | undefined {
   if (/manj\s+kot|\d\s*[-–]\s*\d/i.test(value)) return undefined;
   const years = value.match(/(?<![\d,.-])(\d+)\s*let/i);
   const months = value.match(/(?<![\d,.-])(\d+)\s*mesec/i);

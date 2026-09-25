@@ -1,3 +1,4 @@
+export * from "./age";
 export * from "./provider";
 export * from "./polite-client";
 export * from "./fixtures";

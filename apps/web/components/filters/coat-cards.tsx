@@ -1050,12 +1050,24 @@ const EAR_COATS = byFacet(earCoats);
 
 // The body the coat sits on. One arc, the same in all four glyphs, so the
 // only thing that differs between them is what hangs off it.
-const EDGE_LEFT = 4.4;
-const EDGE_RIGHT = 19.6;
-const EDGE_ENDS_Y = 10.3;
-const EDGE_TOP_Y = 7.4;
-// The control point is the box centre, which is also what edgeY below assumes.
-const COAT_EDGE = `M${EDGE_LEFT} ${EDGE_ENDS_Y}Q${CENTRE} ${EDGE_TOP_Y} ${EDGE_RIGHT} ${EDGE_ENDS_Y}`;
+//
+// It spans most of the box and sits high in it, and it starts left of
+// centre because the strands lean right, so the longest coat's tips still
+// end inside the box. The glyph used to hang a 15-unit arc low in a 20px
+// box, and the three coats printed 14x4, 14x7 and 16x10px, half the ink of
+// every other icon in the panel; Kratka, the answer for most of the
+// catalogue, read as a strip of lashes.
+const EDGE_LEFT = 2.2;
+const EDGE_RIGHT = 18.2;
+const EDGE_ENDS_Y = 7.6;
+const EDGE_TOP_Y = 4.2;
+// The control point sits midway between the ends, which is what keeps edgeX
+// below a straight line.
+const EDGE_MID = (EDGE_LEFT + EDGE_RIGHT) / 2;
+const COAT_EDGE = `M${EDGE_LEFT} ${EDGE_ENDS_Y}Q${EDGE_MID} ${EDGE_TOP_Y} ${EDGE_RIGHT} ${EDGE_ENDS_Y}`;
+// Drawn at 24px, one unit to the pixel, as Spol's glyphs are, and a shade
+// under Spol's 2 so the four strands keep the daylight between them.
+const COAT_STROKE = 1.8;
 
 // Where each strand leaves the body, along that arc, and how long it runs
 // against the coat's own length. One row per strand rather than two
@@ -1063,9 +1075,9 @@ const COAT_EDGE = `M${EDGE_LEFT} ${EDGE_ENDS_Y}Q${CENTRE} ${EDGE_TOP_Y} ${EDGE_R
 // comment: the middle two run longest, which is what gives the coat a soft
 // crown rather than a hem cut straight across.
 //
-// Four strands, not five. Five across the 16 units the edge spans leaves
-// 1.3px of daylight between neighbours at 20px and the coat prints as a
-// smudge.
+// Four strands, not five. Five across the 16 units the edge spans leave
+// about a pixel of daylight between neighbours at 24px and the coat prints
+// as a smudge.
 const STRANDS: readonly { t: number; crown: number }[] = [
   { t: 0.15, crown: 0.82 },
   { t: 0.38, crown: 1 },
@@ -1082,6 +1094,17 @@ const edgeX = (t: number) => EDGE_LEFT + (EDGE_RIGHT - EDGE_LEFT) * t;
 const edgeY = (t: number) =>
   (1 - t) ** 2 * EDGE_ENDS_Y + 2 * (1 - t) * t * EDGE_TOP_Y + t ** 2 * EDGE_ENDS_Y;
 
+// The arc's highest point, at its middle.
+const EDGE_APEX = (EDGE_ENDS_Y + EDGE_TOP_Y) / 2;
+
+// Where a strand leaves the arc: clear of the arc's own stroke, so it starts
+// in the coat and not inside the line it hangs from.
+const rootY = (t: number) => edgeY(t) + 0.35;
+
+// How much of its fall a strand's tip ends below its root. The rest of the
+// fall goes into the bend.
+const TIP_DROP = 0.94;
+
 /**
  * One strand, falling `fall` from the arc at `t`. It leaves the body upright
  * and bends over as it runs out, which is the shape that reads as hair rather
@@ -1092,90 +1115,98 @@ const edgeY = (t: number) =>
  */
 function strandPath(t: number, fall: number): string {
   const x = edgeX(t);
-  // Clear of the arc's own stroke, so the strand starts in the coat and not
-  // inside the line it hangs from.
-  const y = edgeY(t) + 0.35;
+  const y = rootY(t);
   const drift = fall * LEAN;
-  return `M${p2(x)} ${p2(y)}C${p2(x + drift * 0.04)} ${p2(y + fall * 0.45)} ${p2(x + drift * 0.35)} ${p2(y + fall * 0.8)} ${p2(x + drift)} ${p2(y + fall * 0.94)}`;
+  return `M${p2(x)} ${p2(y)}C${p2(x + drift * 0.04)} ${p2(y + fall * 0.45)} ${p2(x + drift * 0.35)} ${p2(y + fall * 0.8)} ${p2(x + drift)} ${p2(y + fall * TIP_DROP)}`;
 }
 
-const strandsFalling = (fall: number): string[] =>
-  STRANDS.map(({ t, crown }) => strandPath(t, fall * crown));
+/** The strands of a coat that falls `fall`, and where its lowest tip ends. */
+function hangingCoat(fall: number): Pick<Coat, "strands" | "hem"> {
+  return {
+    strands: STRANDS.map(({ t, crown }) => strandPath(t, fall * crown)),
+    hem: Math.max(
+      ...STRANDS.map(({ t, crown }) => rootY(t) + fall * crown * TIP_DROP),
+    ),
+  };
+}
 
 /**
  * How a coat that has strands answers a pointer. Brez dlake has none, so it
- * has no motion of its own and the table below leaves this off rather than
- * carrying four numbers nothing can read.
+ * has no motion of its own and the table below leaves this off.
+ *
+ * Each gesture was measured at the size it is drawn, as the distance a
+ * strand's tip travels, and one that moved the tips less than about a pixel
+ * was taken out rather than kept for the table's symmetry. That took
+ * Kratka's lean, and the draught that used to stir the other rows when one
+ * was picked: at this size it moved their tips 0.15 to 1.1px, and with only
+ * Dolga's reaching a pixel it no longer said anything about the rows as a
+ * family.
  */
 type CoatMotion = {
   /**
-   * How far the coat leans when a pointer reaches for the card, in degrees,
-   * and the spring it settles on. This is the paw's idea in Velikost: the
-   * three answers differ in a physical property, so the spring carries it and
-   * a long coat swings further and keeps swinging after a short one has
-   * stopped. Skew rather than rotation, about the root line, so the coat
-   * moves and the body it grows out of does not.
+   * The spring the coat settles on after a lean or a press. This is the
+   * paw's idea in Velikost: the three answers differ in a physical property,
+   * so the spring carries it, and a long coat keeps swinging after a short
+   * one has stopped.
    */
-  sway: number;
-  swaySpring: { stiffness: number; damping: number; mass: number };
+  spring: { stiffness: number; damping: number; mass: number };
   /**
-   * How flat the coat goes while the card is held down. The press is the one
-   * gesture a phone gets: hover never fires there, so without it the whole
-   * section is still on touch until the coat grows. A long coat has more to
-   * squash, so it flattens further.
+   * How far the coat leans when a pointer reaches for the card, in degrees.
+   * Skew rather than rotation, about the root line, so the coat moves and the
+   * body it grows out of does not. Absent for Kratka, whose 3.5 degrees moved
+   * the tips 0.3px.
+   */
+  sway?: number;
+  /**
+   * How flat the coat goes while the card is held down, as a scale toward
+   * the root line. The press is the one gesture a phone gets: hover never
+   * fires there, so without it the whole section is still on touch until the
+   * coat grows. A long coat has more to squash, so it flattens further, and
+   * even Kratka's tips drop more than a pixel.
    */
   press: number;
-  /**
-   * How far this coat stirs when a different length is picked, in degrees.
-   * The paw's neighbour lean, and it earns its place the same way: the three
-   * rows are one scale, so showing the others answer says they are a family,
-   * and the size of each answer says again which is longest.
-   */
-  ruffle: number;
 };
 
 type Coat = {
   strands: string[];
+  /** How low the coat reaches in the 24-box: its lowest tip, or the arc. */
+  hem: number;
   /** How long the coat takes to grow in. Longer hair takes longer. */
   grow: number;
   motion?: CoatMotion;
 };
 
-// 3.6, 7.2 and 10.6 units of fall in the 24-box: the whole range between the
-// arc and the floor of the box, because the fall is the only thing these
-// three answers differ in.
+// 6, 9.5 and 13 units of fall in the 24-box, in even steps, because the fall
+// is the only thing these three answers differ in and the column has to read
+// as a ramp.
 const COAT: Record<CoatLength, Coat> = {
   // No strands, so no sway group is drawn and there is nothing to give
   // motion to. The body edge still draws itself; see CoatLengthGlyph.
-  hairless: { strands: [], grow: 0.3 },
+  hairless: { strands: [], hem: EDGE_ENDS_Y, grow: 0.3 },
   short: {
-    strands: strandsFalling(3.6),
+    ...hangingCoat(6),
     grow: 0.28,
     motion: {
-      sway: 3.5,
-      swaySpring: { stiffness: 520, damping: 22, mass: 0.4 },
-      press: 0.86,
-      ruffle: 1.5,
+      spring: { stiffness: 520, damping: 22, mass: 0.4 },
+      press: 0.78,
     },
   },
   medium: {
-    strands: strandsFalling(7.2),
+    ...hangingCoat(9.5),
     grow: 0.37,
     motion: {
+      spring: { stiffness: 360, damping: 16, mass: 0.6 },
       sway: 6.5,
-      swaySpring: { stiffness: 360, damping: 16, mass: 0.6 },
       press: 0.76,
-      ruffle: 3,
     },
   },
   long: {
-    strands: strandsFalling(10.6),
+    ...hangingCoat(13),
     grow: 0.46,
     motion: {
+      spring: { stiffness: 250, damping: 12, mass: 0.85 },
       sway: 10,
-      swaySpring: { stiffness: 250, damping: 12, mass: 0.85 },
       press: 0.66,
-      ruffle: 5,
     },
   },
 };
@@ -1185,25 +1216,17 @@ const COAT: Record<CoatLength, Coat> = {
 const GROW_STAGGER = 0.05;
 
 const PRESS_DURATION = 0.1;
-const RUFFLE_DURATION = 0.5;
-// How far down the list the draught travels per row. The whole wave has to
-// finish inside CELEBRATION_MS, because that is when `ruffling` goes false
-// and any row still mid-keyframe snaps to rest: with four options the last
-// one ends at 3 * 0.06 + 0.5 = 0.68s against 0.7s. Adding a fifth option, or
-// shortening the celebration, has to move one of these three numbers.
-const RUFFLE_STEP_DELAY = 0.06;
-
 
 /**
  * The origin the coat turns about: the top of the strands' own bounding box,
  * which is the highest of the four roots. The roots sit on an arc rather than
- * a line, so the outer two shear by about 0.18 view-box units at the longest
- * coat's lean, which is under a sixth of a pixel at 20px.
+ * a line, so the outer two shear by about 0.13 view-box units at the longest
+ * coat's lean, 0.13px at 24px.
  *
  * fill-box rather than a measured point in the view box, so the four lengths
  * share one rule and none of them needs a number kept in step with the
- * geometry above. That makes the pivot content-dependent: these groups hold
- * the strands and nothing else, and anything added inside one moves it.
+ * geometry above. That makes the pivot content-dependent: the group holds
+ * the strands and nothing else, and anything added inside it moves it.
  *
  * originY and not transformOrigin. Motion owns transform-origin on anything
  * it animates and writes its own 50% 50% over a plain CSS value in the same
@@ -1229,10 +1252,6 @@ export type CoatIconMotion = {
   pressed: boolean;
   /** This card has just been picked and its gesture is still playing. */
   celebrating: boolean;
-  /** Another option in this section has just been picked. */
-  ruffling: boolean;
-  /** How many rows away the picked one is. */
-  neighbourDistance: number;
   /** Holds this card's icon back so a reset empties the section in order. */
   resetDelay: number;
 };
@@ -1262,44 +1281,17 @@ function coatPose(pose: CoatPose, motion: CoatMotion): Pose {
         transition: { duration: PRESS_DURATION, ease: "easeOut" },
       };
     case "reaching":
+      // A coat with no lean of its own stays where it is.
       return {
-        animate: { skewX: -motion.sway, scaleY: 1 },
-        transition: { type: "spring", ...motion.swaySpring },
+        animate: { skewX: motion.sway ? -motion.sway : 0, scaleY: 1 },
+        transition: { type: "spring", ...motion.spring },
       };
     case "rest":
       return {
         animate: { skewX: 0, scaleY: 1 },
-        transition: { type: "spring", ...motion.swaySpring },
+        transition: { type: "spring", ...motion.spring },
       };
   }
-}
-
-/**
- * The draught a card feels when a different length is picked, on its own
- * group.
- *
- * Its own, and not folded into coatPose, because the two would then write
- * skewX on one element: crossing a ruffling row with the pointer would swap a
- * keyframe array for a scalar, and Motion restarts a key whose previous value
- * was an array, so the draught would replay from zero and then be cut off
- * when the celebration window closes. Velikost avoids the same collision the
- * same way, by animating its neighbour lean and its hover lift on different
- * elements.
- *
- * `distance` and not a delay: the shared card loop knows where a row sits and
- * this file knows how long a coat takes to stir, which is the split size
- * already uses.
- */
-function rufflePose(motion: CoatMotion, distance: number): Pose {
-  return {
-    animate: { skewX: [0, -motion.ruffle, 0] },
-    // Springs take two keyframes, so the draught out and back runs as a tween.
-    transition: {
-      duration: RUFFLE_DURATION,
-      delay: distance * RUFFLE_STEP_DELAY,
-      ease: "easeInOut",
-    },
-  };
 }
 
 const STILL: Pose = {
@@ -1359,8 +1351,6 @@ function CoatLengthGlyph({
   className,
   hovered,
   pressed,
-  ruffling,
-  neighbourDistance,
   resetDelay,
 }: {
   length: CoatLength;
@@ -1389,13 +1379,10 @@ function CoatLengthGlyph({
         : retract,
   });
 
-  const still = shouldReduceMotion || !motion;
   const pose =
-    still || !motion
+    shouldReduceMotion || !motion
       ? STILL
       : coatPose(pressed ? "pressing" : hovered ? "reaching" : "rest", motion);
-  const draught =
-    still || !motion || !ruffling ? STILL : rufflePose(motion, neighbourDistance);
 
   return (
     <svg
@@ -1403,7 +1390,7 @@ function CoatLengthGlyph({
       data-coat-glyph={length}
       className={className}
       fill="none"
-      strokeWidth={1.65}
+      strokeWidth={COAT_STROKE}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
@@ -1412,7 +1399,7 @@ function CoatLengthGlyph({
       {/* Brez dlake has no coat to grow, so the body itself is what draws on
           the way in. Without it the one option whose answer is "nothing"
           would be the one option that does nothing when picked. It stays
-          outside the groups below: those pivot on the strands' bounding box,
+          outside the group below: that pivots on the strands' bounding box,
           and the body must not lean with a coat it does not have. */}
       {!motion && (
         <m.path d={COAT_EDGE} stroke="var(--brand-strong)" {...drawing(0)} />
@@ -1421,29 +1408,22 @@ function CoatLengthGlyph({
         <m.g
           style={SWAY_ORIGIN}
           initial={false}
-          animate={draught.animate}
-          transition={draught.transition}
+          animate={pose.animate}
+          transition={pose.transition}
         >
-          <m.g
-            style={SWAY_ORIGIN}
-            initial={false}
-            animate={pose.animate}
-            transition={pose.transition}
-          >
-            <g className="text-muted-foreground" stroke="currentColor">
-              {coat.strands.map((d) => (
-                <path key={d} d={d} />
-              ))}
-            </g>
-            {/* The accent copy draws itself the way the energy glyphs do, and
-                here that is the fact: picking a length is the coat growing to
-                it, root first, one strand behind the next. */}
-            <g stroke="var(--brand-strong)">
-              {coat.strands.map((d, index) => (
-                <m.path key={d} d={d} {...drawing(index * GROW_STAGGER)} />
-              ))}
-            </g>
-          </m.g>
+          <g className="text-muted-foreground" stroke="currentColor">
+            {coat.strands.map((d) => (
+              <path key={d} d={d} />
+            ))}
+          </g>
+          {/* The accent copy draws itself the way the energy glyphs do, and
+              here that is the fact: picking a length is the coat growing to
+              it, root first, one strand behind the next. */}
+          <g stroke="var(--brand-strong)">
+            {coat.strands.map((d, index) => (
+              <m.path key={d} d={d} {...drawing(index * GROW_STAGGER)} />
+            ))}
+          </g>
         </m.g>
       )}
     </svg>
@@ -1489,11 +1469,6 @@ function CoatCards({
   /** When the tick lands, which is once the icon's gesture has. */
   checkDelay: number;
   /**
-   * One object rather than four positional booleans. Dolžina dlake needs to
-   * know whether the pointer is on the card, and a fourth bare boolean beside
-   * checked and dead is a swap waiting to happen.
-   */
-  /**
    * Whether this section's icon answers a held pointer. Off by default: the
    * colour swatch has no press gesture, and registering the handlers anyway
    * put two renders of a ten-tile grid behind every tap on it.
@@ -1503,6 +1478,11 @@ function CoatCards({
     value: string;
     checked: boolean;
     dead: boolean;
+    /**
+     * One object rather than four positional booleans. Dolžina dlake needs
+     * to know whether the pointer is on the card, and a fourth bare boolean
+     * beside checked and dead is a swap waiting to happen.
+     */
     motion: CoatIconMotion;
   }) => ReactNode;
 }) {
@@ -1526,10 +1506,6 @@ function CoatCards({
     handlers: gestureHandlers,
   } = useFilterCardGestures({ press: tracksPress });
   const label = groupLabel(group, locale);
-
-  const celebrationIndex = options.findIndex(
-    ({ value }) => value === celebration?.value,
-  );
 
   return (
     <FilterCardSection
@@ -1557,16 +1533,11 @@ function CoatCards({
         const celebrating = celebration?.value === value && checked;
         const resetDelay = resetDelayOf(index);
         const gestures = gestureHandlers(value);
-        // The cards that did not change feel the draught. How far away they
-        // are is this loop's business; how long that takes belongs to the
-        // glyph, which is the split size already uses.
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
           settled: settledValue === value,
           pressed: pressedValue === value,
           celebrating,
-          ruffling: celebrationIndex >= 0 && !celebrating,
-          neighbourDistance: Math.abs(index - celebrationIndex),
           resetDelay,
         };
 
@@ -1685,6 +1656,11 @@ export function CoatLengthMark({
   className?: string;
 }) {
   const coat = Object.hasOwn(COAT, value) ? COAT[value as CoatLength] : COAT.long;
+  // The list draws every glyph against one datum, the arc at the same height,
+  // which is what lets the column read as a ramp and leaves a short coat in
+  // the top of its box. A mark stands alone beside a line of text, so it is
+  // centred on its own drawing instead. Kratka's sat 1.8px high in its pill.
+  const lift = CENTRE - (EDGE_APEX + coat.hem) / 2;
 
   return (
     <svg
@@ -1697,10 +1673,12 @@ export function CoatLengthMark({
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d={COAT_EDGE} />
-      {coat.strands.map((d) => (
-        <path key={d} d={d} />
-      ))}
+      <g transform={`translate(0 ${p2(lift)})`}>
+        <path d={COAT_EDGE} />
+        {coat.strands.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
     </svg>
   );
 }
@@ -2022,7 +2000,7 @@ export function CoatLengthCards(props: CoatCardsProps) {
           length={lengthOf(value)}
           checked={checked}
           {...motion}
-          className={cn("size-5", dead && "opacity-75")}
+          className={cn("size-6", dead && "opacity-75")}
         />
       )}
     />

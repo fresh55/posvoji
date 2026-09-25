@@ -8,6 +8,9 @@ import { useEffect, useRef } from "react";
  *  the same string rather than writing the breakpoint out again. */
 export const DESKTOP_QUERY = "(min-width: 64rem)";
 
+/** The other side of the same cutoff, for a component drawn only below lg. */
+export const BELOW_DESKTOP_QUERY = "not all and (min-width: 64rem)";
+
 /** Vaul portals a drawer straight to <body>, so a mobile filter drawer stays
  *  open and floating over the page if the viewport crosses into the desktop
  *  layout while it is open (a resize, or a phone rotated to landscape past

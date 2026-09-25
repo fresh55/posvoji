@@ -338,6 +338,19 @@ export function CountsRollWhile({
 }
 
 /**
+ * How a count badge comes and goes, beside "Filtri" in the sidebar's heading
+ * and on the phone's dock: a fade with the 95% scale the badge used to enter
+ * on (tw-animate's zoom-in-95 over 200ms), in both directions, so it leaves
+ * on its last number instead of vanishing in one frame. One constant for the
+ * two badges, so they cannot drift apart.
+ */
+export const COUNT_BADGE_MOTION = {
+  shown: { opacity: 1, scale: 1 },
+  hidden: { opacity: 0, scale: 0.95 },
+  fade: { duration: 0.2, ease: "easeOut" },
+} as const;
+
+/**
  * A changed number rolls rather than swapping in place, so the narrowing is
  * something you watch happen: the new one comes in from below when the
  * count grows and from above when it shrinks, the old one leaves the other
@@ -887,7 +900,7 @@ export function FilterCardTail({
   /** Lets the card name the description as its aria-describedby. */
   descriptionId?: string;
   /** On a tile, draw the line under the count rather than over it. For a
-   *  line that carries a number of its own ("Brez odgovora: 121"): over the
+   *  line that carries a number of its own ("Brez podatka: 121"): over the
    *  count it put two bare numbers one above the other, and a tile read
    *  "Otroke, 121, 2". The sidebar keeps the count on the label's line, so
    *  there the order is the same either way. */

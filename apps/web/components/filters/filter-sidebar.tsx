@@ -7,7 +7,11 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { CountRoll, CountsRollWhile } from "@/components/filters/filter-card";
+import {
+  COUNT_BADGE_MOTION,
+  CountRoll,
+  CountsRollWhile,
+} from "@/components/filters/filter-card";
 import {
   FilterGroupList,
   type CardGroup,
@@ -39,13 +43,6 @@ import type { LookupEntry } from "@/lib/municipality-coverage";
 import type { ShelterSummary } from "@/lib/shelter-summary";
 import type { AnimalSort } from "@/lib/sort";
 import { cn } from "@/lib/utils";
-
-/** How the heading's count badge comes and goes: the fade and the 95% scale
- *  the badge used to enter on (tw-animate's zoom-in-95 over 200ms), now in
- *  both directions. */
-const BADGE_SHOWN = { opacity: 1, scale: 1 };
-const BADGE_HIDDEN = { opacity: 0, scale: 0.95 };
-const BADGE_FADE = { duration: 0.2, ease: "easeOut" } as const;
 
 /** Everything the panel's Kje row needs, absent when the dataset has no
  *  shelters to choose between. The dialog behind the row is the picker's own,
@@ -193,11 +190,13 @@ export function FilterSidebar({
                   className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums transition-none"
                 >
                   <m.span
-                    initial={BADGE_HIDDEN}
-                    animate={BADGE_SHOWN}
-                    exit={BADGE_HIDDEN}
+                    initial={COUNT_BADGE_MOTION.hidden}
+                    animate={COUNT_BADGE_MOTION.shown}
+                    exit={COUNT_BADGE_MOTION.hidden}
                     transition={
-                      shouldReduceMotion ? { duration: 0 } : BADGE_FADE
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : COUNT_BADGE_MOTION.fade
                     }
                   >
                     <CountRoll value={activeValues} />

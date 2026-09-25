@@ -1,6 +1,14 @@
 import { SlidersHorizontal } from "lucide-react";
-import { domAnimation } from "motion/react";
-import { CountRoll } from "@/components/filters/filter-card";
+import {
+  AnimatePresence,
+  domAnimation,
+  m,
+  useReducedMotion,
+} from "motion/react";
+import {
+  COUNT_BADGE_MOTION,
+  CountRoll,
+} from "@/components/filters/filter-card";
 import { LazyMotion } from "@/components/motion-scope";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +22,7 @@ export function FilterSheetTrigger({
   ...props
 }: ComponentProps<typeof Button> & { activeCount: number }) {
   const { messages, t } = useI18n();
+  const shouldReduceMotion = useReducedMotion();
   return (
     <Button
       size="sm"
@@ -27,20 +36,36 @@ export function FilterSheetTrigger({
     >
       <SlidersHorizontal className="size-4" aria-hidden />
       {messages.filters}
-      {activeCount > 0 && (
-        <Badge
-          variant="secondary"
-          aria-hidden="true"
-          className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums"
-        >
-          {/* The number rolls the way every count on the panel does. Its own
-              LazyMotion, because the dock is drawn outside anything that
-              opens one. */}
-          <LazyMotion features={domAnimation}>
-            <CountRoll value={activeCount} />
-          </LazyMotion>
-        </Badge>
-      )}
+      {/* The number rolls the way every count on the panel does, and the
+          badge comes and goes the way the sidebar's does: it vanished in one
+          frame when the last filter came off. Its own LazyMotion, because the
+          dock is drawn outside anything that opens one. transition-none for
+          the reason the sidebar gives: the badge's own CSS transition would
+          lag a frame behind Motion's. */}
+      <LazyMotion features={domAnimation}>
+        <AnimatePresence initial={false}>
+          {activeCount > 0 && (
+            <Badge
+              key="count"
+              asChild
+              variant="secondary"
+              aria-hidden="true"
+              className="h-5 min-w-5 rounded-full px-1 text-xs tabular-nums transition-none"
+            >
+              <m.span
+                initial={COUNT_BADGE_MOTION.hidden}
+                animate={COUNT_BADGE_MOTION.shown}
+                exit={COUNT_BADGE_MOTION.hidden}
+                transition={
+                  shouldReduceMotion ? { duration: 0 } : COUNT_BADGE_MOTION.fade
+                }
+              >
+                <CountRoll value={activeCount} />
+              </m.span>
+            </Badge>
+          )}
+        </AnimatePresence>
+      </LazyMotion>
     </Button>
   );
 }

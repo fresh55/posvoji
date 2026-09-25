@@ -34,6 +34,11 @@ import {
 } from "@/components/filters/location-picker/model";
 import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { SortPicker } from "@/components/filters/sort-picker";
+import { CountsRollWhile } from "@/components/filters/filter-card";
+import {
+  BELOW_DESKTOP_QUERY,
+  DESKTOP_QUERY,
+} from "@/hooks/use-desktop-breakpoint-close";
 import { activeFilterCount } from "@/lib/filters";
 import { cn } from "@/lib/utils";
 import type { LookupEntry } from "@/lib/municipality-coverage";
@@ -323,7 +328,10 @@ export function AnimalFilters({
           data-slot="desktop-toolbar"
           className="hidden min-h-toolbar-row items-center justify-between gap-4 lg:flex"
         >
-          {speciesStrip}
+          {/* The strip is mounted twice, here and in the phone's row below,
+              and each copy is hidden on the other side of lg; its counts roll
+              only in the copy that is drawn (CountsRollWhile). */}
+          <CountsRollWhile query={DESKTOP_QUERY}>{speciesStrip}</CountsRollWhile>
 
           {/* min-w-0 shrink, and it was shrink-0. At 200% text this cluster
               asks for 496px inside the 384px the 1024 layout leaves it, and
@@ -403,7 +411,9 @@ export function AnimalFilters({
           data-slot="mobile-toolbar"
           className="md:flex md:min-h-11 md:items-center md:justify-between md:gap-4 lg:hidden"
         >
-          {speciesStrip}
+          <CountsRollWhile query={BELOW_DESKTOP_QUERY}>
+            {speciesStrip}
+          </CountsRollWhile>
 
           {/* From md there is room for sorting beside the species strip,
               except in a short viewport where this toolbar scrolls away.

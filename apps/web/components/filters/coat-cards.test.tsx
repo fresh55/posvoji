@@ -452,6 +452,41 @@ describe("the coat length glyph", () => {
   });
 });
 
+describe("the coat length tiles on the phone", () => {
+  const all = groupOptions("coatLength", [], "sl");
+
+  function renderTiles(options: typeof all) {
+    render(
+      <I18nProvider locale="sl">
+        <CoatLengthCards
+          options={options}
+          counts={new Map(options.map(({ value }) => [value, 2]))}
+          selected={[]}
+          onToggle={vi.fn()}
+          onToggleMany={vi.fn()}
+          layout="sheet"
+        />
+      </I18nProvider>,
+    );
+  }
+
+  // Brez dlake leaves with the pool that has no hairless animal, and the
+  // three short lengths that remain fit one row: two across put Dolga alone
+  // on a second.
+  it("puts the three lengths on one row once Brez dlake is gone", () => {
+    renderTiles(all.filter(({ value }) => value !== "hairless"));
+
+    expect(button("Kratka").parentElement?.className).toContain("grid-cols-3");
+  });
+
+  // At 320px three across would break "Brez dlake" over two lines.
+  it("keeps two across while Brez dlake is drawn", () => {
+    renderTiles(all);
+
+    expect(button("Kratka").parentElement?.className).toContain("grid-cols-2");
+  });
+});
+
 describe("earBeat", () => {
   // Why: NOTICE_SETTLE in coat-cards.tsx.
   it.each([

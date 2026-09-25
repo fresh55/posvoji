@@ -18,6 +18,7 @@ import {
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import { DRAW_IN } from "@/components/filters/drawn-glyph";
@@ -1712,9 +1713,18 @@ function CoatCards({
       resetAriaLabel={(locale === "sl" ? "Ponastavi: " : "Reset: ") + label}
       layout={layout}
       collapse={collapse}
-      // Three across at 320px would break "Večbarvna" and "Brez dlake" over
-      // two lines apiece; two keeps every label on one.
-      sheetColumns="grid-cols-2"
+      // Two across for Barva, where each solid colour stands beside its
+      // two-toned twin, and for Dolžina dlake while it draws Brez dlake:
+      // three across at 320px would break "Večbarvna" and "Brez dlake" over
+      // two lines apiece. Without Brez dlake, which the sheet leaves out
+      // while no animal in the pool is hairless (liveInPool), the lengths are
+      // three short words and take one row instead of two.
+      sheetColumns={
+        group === "coatLength" &&
+        !options.some(({ value }) => value === "hairless")
+          ? sheetColumnsFor(options.length)
+          : "grid-cols-2"
+      }
       tone="part"
       footer={<UnansweredNote tally={unanswered} />}
     >

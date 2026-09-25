@@ -2,7 +2,10 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
-import { standsOnLayerEntry } from "@/hooks/use-picker-history";
+import {
+  standsOnLayerEntry,
+  whenLayerCloses,
+} from "@/hooks/use-picker-history";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
@@ -42,41 +45,8 @@ import {
 /** The results block, which begins with the toolbar and holds every card. */
 const RESULTS_ANCHOR = 'section[aria-labelledby="rezultati"]';
 
-/**
- * Answering a filter with the same scroll offset leaves the visitor deep
- * inside a list they have never seen. Measured on a 390px phone: scrolled to
- * 30,000px of the 503-animal grid, tapping "Psi" left them at 5,263px of a
- * 17,071px list of dogs, a third of the way down their new results with no
- * sense of what was above. Every faceted search answers this the same way, by
- * returning to the top of the results, and that is where the toolbar and the
- * count are too. Somebody already at or above the results is left alone.
- */
-let pendingScroll: MutationObserver | undefined;
-
-export function scrollToResults(): void {
-  if (typeof window === "undefined") return;
-  if (
-    document.body.hasAttribute("data-scroll-locked") ||
-    getComputedStyle(document.body).overflow === "hidden"
-  ) {
-    if (!pendingScroll) {
-      pendingScroll = new MutationObserver(() => {
-        if (
-          document.body.hasAttribute("data-scroll-locked") ||
-          getComputedStyle(document.body).overflow === "hidden"
-        )
-          return;
-        pendingScroll?.disconnect();
-        pendingScroll = undefined;
-        requestAnimationFrame(scrollToResults);
-      });
-      pendingScroll.observe(document.body, {
-        attributes: true,
-        attributeFilter: ["data-scroll-locked", "style", "class"],
-      });
-    }
-    return;
-  }
+/** Takes the page to the top of its results, if it is below them. */
+function landOnResults(): void {
   const results = document.querySelector(RESULTS_ANCHOR);
   if (!results) return;
   const top = results.getBoundingClientRect().top + window.scrollY;
@@ -85,6 +55,60 @@ export function scrollToResults(): void {
   // Finish this move immediately so that measurement captures the new position
   // instead of cancelling an in-flight smooth scroll.
   window.scrollTo({ top, behavior: "auto" });
+}
+
+function scrollLocked(): boolean {
+  return (
+    document.body.hasAttribute("data-scroll-locked") ||
+    getComputedStyle(document.body).overflow === "hidden"
+  );
+}
+
+/**
+ * Answering a filter with the same scroll offset leaves the visitor deep
+ * inside a list they have never seen. Measured on a 390px phone: scrolled to
+ * 30,000px of the 503-animal grid, tapping "Psi" left them at 5,263px of a
+ * 17,071px list of dogs, a third of the way down their new results with no
+ * sense of what was above. Every faceted search answers this the same way, by
+ * returning to the top of the results, and that is where the toolbar and the
+ * count are too. Somebody already at or above the results is left alone.
+ *
+ * A filter answered inside a layer (the phone's sheet, the map) is answered
+ * behind it, while the page cannot be scrolled by hand, and the return waits
+ * for the layer to close. It lands in the first frame of the close, while the
+ * layer still covers the page (whenLayerCloses), so nothing moves once the
+ * layer has gone. The page's scroll lock going is the other way out and stays
+ * as a second look: it covers a lock no layer holds, and puts the page back
+ * on the results if anything moved it between the close and the unlock.
+ */
+let pendingScroll: MutationObserver | undefined;
+let withdrawLanding: (() => void) | undefined;
+
+export function scrollToResults(): void {
+  if (typeof window === "undefined") return;
+  if (!scrollLocked()) {
+    // A landing still waiting for a layer is this one, and must not fire
+    // again on the next layer that closes with nothing picked in it.
+    withdrawLanding?.();
+    withdrawLanding = undefined;
+    landOnResults();
+    return;
+  }
+  withdrawLanding ??= whenLayerCloses(() => {
+    withdrawLanding = undefined;
+    landOnResults();
+  });
+  if (pendingScroll) return;
+  pendingScroll = new MutationObserver(() => {
+    if (scrollLocked()) return;
+    pendingScroll?.disconnect();
+    pendingScroll = undefined;
+    requestAnimationFrame(scrollToResults);
+  });
+  pendingScroll.observe(document.body, {
+    attributes: true,
+    attributeFilter: ["data-scroll-locked", "style", "class"],
+  });
 }
 
 /**

@@ -72,6 +72,7 @@ export function GoodWithCards({
   options,
   counts,
   selected,
+  kept = [],
   resultCount,
   total,
   onToggle,
@@ -84,6 +85,9 @@ export function GoodWithCards({
   options: GoodWithOption[];
   counts: Map<string, number>;
   selected: GoodWithKey[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. */
+  kept?: readonly string[];
   /** Animals the current filters leave, and the pool they were taken from. */
   resultCount: number;
   total: number;
@@ -179,7 +183,7 @@ export function GoodWithCards({
       {options.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
         const checked = selected.includes(key);
-        const dead = isDeadOption(count, checked);
+        const dead = isDeadOption(count, checked, kept.includes(key));
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
         // A taste of the pick gesture for a card nobody has chosen yet and

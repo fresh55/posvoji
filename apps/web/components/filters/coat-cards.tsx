@@ -1602,6 +1602,10 @@ type CoatCardsProps = {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. Dolžina dlake's alone: Barva keeps
+   *  every swatch anyway. */
+  kept?: readonly string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
   layout: FilterCardLayout;
@@ -1639,6 +1643,7 @@ function CoatCards({
   options,
   counts,
   selected,
+  kept = [],
   onToggle,
   onToggleMany,
   layout,
@@ -1726,7 +1731,7 @@ function CoatCards({
       {options.map(({ value, label: option }, index) => {
         const count = counts.get(value) ?? 0;
         const checked = selected.includes(value);
-        const dead = isDeadOption(count, checked);
+        const dead = isDeadOption(count, checked, kept.includes(value));
         const celebrating = celebration?.value === value && checked;
         const resetDelay = resetDelayOf(index);
         const gestures = gestureHandlers(value);

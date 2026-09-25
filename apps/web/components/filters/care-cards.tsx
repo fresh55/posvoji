@@ -163,6 +163,7 @@ export function CareCards({
   options,
   counts,
   selected,
+  kept = [],
   resultCount,
   total,
   onToggle,
@@ -173,6 +174,9 @@ export function CareCards({
   options: CareOption[];
   counts: Map<string, number>;
   selected: CareKey[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. */
+  kept?: readonly string[];
   /** Animals the current filters leave, and the pool they were taken from. */
   resultCount: number;
   total: number;
@@ -251,7 +255,7 @@ export function CareCards({
       {options.map(({ key, label, description }, index) => {
             const count = counts.get(key) ?? 0;
             const checked = selected.includes(key);
-            const dead = isDeadOption(count, checked);
+            const dead = isDeadOption(count, checked, kept.includes(key));
             const hovered = hoveredKey === key;
             const celebrating = celebration?.value === key && checked;
             const heart = shouldReduceMotion

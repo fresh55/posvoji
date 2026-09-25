@@ -119,6 +119,7 @@ export function HealthToggleCards({
   toggles,
   counts,
   selected,
+  kept = [],
   onToggle,
   onToggleMany,
   layout = "sidebar",
@@ -131,6 +132,9 @@ export function HealthToggleCards({
   sectionKeys?: readonly ToggleKey[];
   counts: Map<string, number>;
   selected: ToggleKey[];
+  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
+   *  filter-groups.tsx); never dead. */
+  kept?: readonly string[];
   onToggle: (key: ToggleKey) => void;
   onToggleMany: (values: ToggleKey[]) => void;
   layout?: FilterCardLayout;
@@ -195,7 +199,7 @@ export function HealthToggleCards({
       {toggles.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
         const checked = selected.includes(key);
-        const dead = isDeadOption(count, checked);
+        const dead = isDeadOption(count, checked, kept.includes(key));
         const hovered = hoveredKey === key;
         const reading = celebration?.value === key && checked;
         const exitDelay = resetDelay(index);

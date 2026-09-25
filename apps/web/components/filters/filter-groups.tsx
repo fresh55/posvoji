@@ -40,6 +40,7 @@ import {
   picksEverySex,
   type CareKey,
   type CareOption,
+  type FilterFacet,
   type FilterOption,
   type Filters,
   type GoodWithKey,
@@ -66,9 +67,27 @@ type GroupProps = {
   /** Velikost on Vse, where a pick leaves out every cat (groupAsks in
    *  lib/filters/engine.ts) and the rows alone do not say so. */
   leavesOutCats?: boolean;
+  /** This section's picks the sidebar keeps drawn (KeptPicks). */
+  kept?: readonly string[];
 };
 
 export type CardGroup = Exclude<MultiGroup, "shelter">;
+
+/**
+ * The picks the sidebar keeps drawn once they come off, by section: those
+ * that read 0 while they were picked on the current species tab
+ * (use-animal-filter-model.ts remembers them until the tab changes).
+ *
+ * Such a row was drawn only for its pick, so unticking it took it away in the
+ * same render, from under the pointer and with keyboard focus on it. The
+ * sidebar answers a kept pick the way it answers a selection wherever it asks
+ * whether an option is dead: drawnOptions draws it, and its section leaves it
+ * enabled, since a disabled row gives up focus too. It reads 0 and can be
+ * picked again. The sheet passes none: a dead option keeps its tile there.
+ */
+export type KeptPicks = Partial<Record<FilterFacet, readonly string[]>>;
+
+const NOTHING_KEPT: readonly string[] = [];
 
 /** The two groups Videz owns, and so the ones the flat list skips. */
 const isAppearance = (
@@ -108,6 +127,7 @@ function SizeGroup({
   layout,
   unanswered,
   leavesOutCats,
+  kept,
 }: Omit<GroupProps, "group">) {
   const { locale, messages, t } = useI18n();
   const { isResetting, beginReset } = useResetStagger(
@@ -132,6 +152,7 @@ function SizeGroup({
           options={options}
           counts={counts}
           selected={selected}
+          kept={kept}
           onToggle={onToggle}
           isResetting={isResetting}
           layout={layout}
@@ -167,6 +188,7 @@ function SexGroup({
   collapse,
   layout,
   unanswered,
+  kept,
 }: Omit<GroupProps, "group">) {
   const { locale, messages } = useI18n();
   // The reset lives on the heading here, so the stagger does too, and the
@@ -193,6 +215,7 @@ function SexGroup({
           options={options}
           counts={counts}
           selected={selected}
+          kept={kept}
           onToggle={onToggle}
           layout={layout}
           resetDelay={resetDelay}
@@ -239,6 +262,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           options={rest.options}
           counts={rest.counts}
           selected={rest.selected}
+          kept={rest.kept}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           collapse={rest.collapse}
@@ -252,6 +276,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           options={rest.options}
           counts={rest.counts}
           selected={rest.selected}
+          kept={rest.kept}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           collapse={rest.collapse}
@@ -266,6 +291,7 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
           options={rest.options}
           counts={rest.counts}
           selected={rest.selected}
+          kept={rest.kept}
           onToggle={rest.onToggle}
           onToggleMany={rest.onToggleMany}
           layout={rest.layout}
@@ -334,6 +360,7 @@ export function FilterGroupList({
   onToggleManyProperties,
   layout = "sidebar",
   unanswered,
+  kept,
 }: {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
@@ -344,6 +371,9 @@ export function FilterGroupList({
   care?: CareSection;
   /** The sheet draws tiles; the sidebar draws rows. */
   layout?: FilterCardLayout;
+  /** The picks the sidebar keeps drawn once they come off (KeptPicks). Only
+   *  the sidebar passes them. */
+  kept?: KeptPicks;
   /** What each question leaves out for want of an answer (unansweredCounts).
    *  Without it the sections say nothing about it, which is all a caller
    *  that has no dataset behind it can honestly say. */
@@ -377,23 +407,36 @@ export function FilterGroupList({
   const drawn = <T,>(options: T[], isDead: (option: T) => boolean) =>
     drawnOptions(options, layout, isDead);
 
+  // A section's kept picks (KeptPicks), which count as picked in every dead
+  // test here and in the section's own, so a row drawn for them is also a
+  // row that can hold focus.
+  const keptOf = (facet: FilterFacet): readonly string[] =>
+    kept?.[facet] ?? NOTHING_KEPT;
+
   // The same call three times over, in the three sections whose options carry a
   // `key`: health, Družba and Lahko ponudim. Each differed only in which
-  // tally to count in and which list of chosen values to ask, and spelled the
-  // dead test out again to say so.
+  // tally to count in and which section's picks to ask, and spelled the dead
+  // test out again to say so.
   //
   // Two shapes and not one, because the options have two shapes. The card
   // groups key on `value` (FilterOption, which is what lib/filters builds a
   // group from) and these three key on `key`, so a single helper would have to
   // take a reader function per call and would be the thing it replaced.
   const drawnByKey = <T extends { key: string }>(
+    facet: "toggles" | "goodWith" | "care",
     options: T[],
     counts: Map<string, number>,
-    selected: readonly string[],
-  ): T[] =>
-    drawn(options, ({ key }) =>
-      isDeadOption(counts.get(key) ?? 0, selected.includes(key)),
+  ): T[] => {
+    const selected: readonly string[] = filters[facet];
+    const keptHere = keptOf(facet);
+    return drawn(options, ({ key }) =>
+      isDeadOption(
+        counts.get(key) ?? 0,
+        selected.includes(key),
+        keptHere.includes(key),
+      ),
     );
+  };
 
   // The card groups' own, keyed on `value`. Two keep every option in both
   // layouts. Starost's three stages are one drawing: the grove above the rows
@@ -409,8 +452,13 @@ export function FilterGroupList({
   ): FilterOption[] => {
     if (group === "age" || group === "coatColor") return options;
     const selected: readonly string[] = filters[group];
+    const keptHere = keptOf(group);
     return drawn(options, ({ value }) =>
-      isDeadOption(counts[group].get(value) ?? 0, selected.includes(value)),
+      isDeadOption(
+        counts[group].get(value) ?? 0,
+        selected.includes(value),
+        keptHere.includes(value),
+      ),
     );
   };
 
@@ -455,6 +503,7 @@ export function FilterGroupList({
         options={drawnByValue(group, options)}
         counts={groupCounts}
         selected={selected}
+        kept={keptOf(group)}
         onToggle={(value) => onToggle(group, value)}
         onToggleMany={(values) => onToggleMany(group, values)}
         collapse={collapseFor(
@@ -512,7 +561,12 @@ export function FilterGroupList({
                     longCoat={filters.coatLength.includes("long")}
                   />
                 ) : (
-                  <FilterGroup key={group} group={group} {...props} />
+                  <FilterGroup
+                    key={group}
+                    group={group}
+                    {...props}
+                    kept={keptOf(group)}
+                  />
                 );
               })}
             </div>
@@ -522,10 +576,11 @@ export function FilterGroupList({
 
       {toggles.length > 0 && (
         <HealthToggleCards
-          toggles={drawnByKey(toggles, toggleTally, filters.toggles)}
+          toggles={drawnByKey("toggles", toggles, toggleTally)}
           sectionKeys={toggles.map(({ key }) => key)}
           counts={toggleTally}
           selected={filters.toggles}
+          kept={keptOf("toggles")}
           onToggle={onToggleProperty}
           onToggleMany={onToggleManyProperties}
           layout={layout}
@@ -542,14 +597,11 @@ export function FilterGroupList({
 
       {goodWith && goodWith.options.length > 0 && (
         <GoodWithCards
-          options={drawnByKey(
-            goodWith.options,
-            goodWith.counts,
-            filters.goodWith,
-          )}
+          options={drawnByKey("goodWith", goodWith.options, goodWith.counts)}
           sectionKeys={goodWith.options.map(({ key }) => key)}
           counts={goodWith.counts}
           selected={filters.goodWith}
+          kept={keptOf("goodWith")}
           resultCount={goodWith.resultCount}
           total={goodWith.total}
           onToggle={goodWith.onToggle}
@@ -572,9 +624,10 @@ export function FilterGroupList({
           are looking for. */}
       {care && care.options.length > 0 && (
         <CareCards
-          options={drawnByKey(care.options, care.counts, filters.care)}
+          options={drawnByKey("care", care.options, care.counts)}
           counts={care.counts}
           selected={filters.care}
+          kept={keptOf("care")}
           resultCount={care.resultCount}
           total={care.total}
           onToggle={care.onToggle}

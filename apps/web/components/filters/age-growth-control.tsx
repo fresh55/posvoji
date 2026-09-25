@@ -411,16 +411,18 @@ export function plantMotion(cue: PlantCue): {
   }
 
   if (cue.gusting) {
-    // A plant still swaying comes upright over its turn's wait. The turns
-    // are too short for an ease-in to bring it back no faster than the sway
-    // it cuts short, so the settle is linear.
+    // A plant still swaying comes upright over its turn's wait, on a linear
+    // settle, which is the slowest pace a turn this short allows. One
+    // stagger is too short even for that while the reset redraws the list
+    // under it, so that plant holds where it is and the gust takes it from
+    // there.
     const wait = cue.index * GUST.stagger;
     return turning(
       waitThen(wait, GUST.shape.map((share) => share * growth.gust), {
         duration: GUST.duration,
         times: GUST.times,
         ease: "easeInOut",
-        settle: wait,
+        settle: wait > GUST.stagger ? wait : 0,
         settleEase: "linear",
       }),
     );

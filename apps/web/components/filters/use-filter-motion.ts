@@ -18,9 +18,11 @@ export type Celebration<T> = { value: T; id: number };
  * plays the track. Without a settle it holds where it starts, which suits a
  * track mounted with the gesture.
  *
- * The settle comes out of the wait. With no wait there is nothing to settle
- * in, so a track told to settle starts from wherever the value is in place of
- * its first keyframe, which is the same track for a value already there.
+ * The settle comes out of the wait. With a settle of 0 the value never goes
+ * to the first keyframe: it holds wherever it is through the wait and the
+ * track plays from there in place of that keyframe. With no wait there is
+ * nothing to settle in, so any settle does that at once. Either is the same
+ * track for a value already at the first keyframe.
  *
  * `times` and `ease` describe the track alone, as they would with a delay.
  * `settleEase` is the settle's own; a settle squeezed into a short wait moves
@@ -57,6 +59,17 @@ export function waitThen(
       return {
         keyframes: [null, ...keyframes.slice(1)],
         transition: { duration: total, times: played, ease: trackEase },
+      };
+    }
+    // Motion fills a null after the first with the keyframe before it.
+    if (settle === 0) {
+      return {
+        keyframes: [null, null, ...keyframes.slice(1)],
+        transition: {
+          duration: total,
+          times: [0, ...played],
+          ease: ["linear", ...trackEase],
+        },
       };
     }
     if (settle > 0) {

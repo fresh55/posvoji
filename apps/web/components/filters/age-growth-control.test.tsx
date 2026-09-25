@@ -311,22 +311,27 @@ describe("plantMotion", () => {
     expect(rotateTrack(transition).ease[0]).toBe("easeIn");
   });
 
-  it("settles a plant through its turn of the gust, and the first in the row into it", () => {
-    const first = plantMotion(cue({ gusting: true }));
-    const second = plantMotion(
-      cue({ stage: "odrasel", index: 1, gusting: true }),
+  // Why: the gust branch of plantMotion.
+  it("carries each plant into the gust from where it is, or upright first when its turn allows", () => {
+    const [first, second, third] = STAGES.map((stage, index) =>
+      plantMotion(cue({ stage, index, gusting: true })),
     );
 
     // No turn to wait for: the gust's first push takes it from where it is.
     expect(first.animate.rotate).toHaveLength(5);
     expect(rotateAt(first.transition, 1)).toBeCloseTo(0.3 * 0.7);
-    // Upright over its 0.09s turn, at the slowest pace that turn allows.
+    // One stagger: it holds where it is, then the gust takes it.
     expect(keyframes(second.animate.rotate).slice(0, 3)).toEqual([
-      null, 0, 0,
+      null, null, 6,
     ]);
     expect(rotateAt(second.transition, 1)).toBeCloseTo(0.09);
-    expect(rotateAt(second.transition, 2)).toBeCloseTo(0.09);
-    expect(rotateTrack(second.transition).ease[0]).toBe("linear");
+    // Two: upright over the whole turn, on a linear settle.
+    expect(keyframes(third.animate.rotate).slice(0, 3)).toEqual([
+      null, 0, 0,
+    ]);
+    expect(rotateAt(third.transition, 1)).toBeCloseTo(0.18);
+    expect(rotateAt(third.transition, 2)).toBeCloseTo(0.18);
+    expect(rotateTrack(third.transition).ease[0]).toBe("linear");
   });
 
   it("says goodbye on the click, or once a plant still moving is upright", () => {

@@ -346,6 +346,27 @@ describe("waitThen", () => {
     });
   });
 
+  it("holds wherever the value is through the wait with a settle of 0", () => {
+    const { keyframes, transition } = waitThen(0.09, [0, 6, -2, 0], {
+      duration: 0.7,
+      times: [0, 0.3, 0.6, 1],
+      ease: "easeInOut",
+      settle: 0,
+    });
+
+    // Motion fills the second null with the first: wherever the value is.
+    expect(keyframes).toEqual([null, null, 6, -2, 0]);
+    expect(transition.times?.map((time) => +time.toFixed(3))).toEqual([
+      0, 0.114, 0.38, 0.646, 1,
+    ]);
+    expect(transition.ease).toEqual([
+      "linear",
+      "easeInOut",
+      "easeInOut",
+      "easeInOut",
+    ]);
+  });
+
   it("settles on the ease it is given", () => {
     const { transition } = waitThen(0.09, [0, 6, 0], {
       duration: 0.7,

@@ -748,6 +748,14 @@ export function namesUnanswered({ asked, unanswered }: Unanswered): boolean {
   return unanswered > 0 && unanswered >= asked * UNANSWERED_SHARE;
 }
 
+/** Whether not one of the animals asked has an answer. Every option of the
+ *  question then counts 0, since the counts are taken over the same animals,
+ *  so there is nothing for the visitor to pick. /?zavetisce=macji-dol: none
+ *  of its 15 animals has an intake date. */
+export function answeredByNone(tally: Unanswered | undefined): boolean {
+  return tally !== undefined && tally.asked > 0 && tally.unanswered === tally.asked;
+}
+
 /** Half: the share of the animals asked that a question has to leave
  *  unanswered before the empty state names it as the reason nothing matched.
  *  A tenth is worth a line under a section, but a question answered for 85%

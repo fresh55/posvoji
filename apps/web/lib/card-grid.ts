@@ -210,17 +210,24 @@ export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 // automatic minimum from its content, and the content is a toolbar sized in
 // rem, so at 200% text the column refused to shrink.
 //
-// 224px and not 14rem, for the rail: a rem track grows with the text the same
-// way the toolbar does, and at 200% this one measured 448px, half of a 1024px
-// frame, which is what was left of the 80px the document still scrolled
-// sideways at 1024 once the toolbar could shrink. The rail's width is a
-// layout, not type: a sidebar that took half the page would be the wrong
-// answer to large text even if the page fitted. Identical at 100% text, and
-// CARD_PHOTO_SIZES below already states its own lengths in px for the same
-// reason. Measured with the px track: no overflow at 1024 or 1100, and at
-// 1440/200% the grid gets a second card column back.
+// clamp(224px,14rem,25%) for the rail. Everything inside the rail is set in
+// rem, so the track has to grow with the text too: a plain 224px track held
+// rows twice their size at a doubled browser font size (2200px wide, where lg
+// is reached at 32px text), and Samica sat on its own count while every
+// heading truncated. 14rem is the rail at any text size, and it is exactly
+// 224px at 16px, so default text draws the same page as before.
+//
+// The 25% cap is for text enlarged by a stylesheet rather than by the browser
+// setting. A root font size of 200% leaves the rem breakpoints where they
+// were, so lg starts at 1024px, and a bare 14rem track there is 448px, half
+// the frame, and scrolled the page 28px sideways. There the cap is below
+// 224px and the floor wins, which is the px track the page had. With the
+// browser setting lg is not reached until the frame has room for 14rem: at
+// 200% text the frame is 1920px when lg starts, and a quarter of it is 480px.
+// CARD_PHOTO_SIZES below states its own lengths in px, which is right at 16px
+// text, the only size it is tuned for.
 export const RESULTS_COLUMNS =
-  "lg:grid lg:grid-cols-[224px_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
+  "lg:grid lg:grid-cols-[clamp(224px,14rem,25%)_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
 
 // Which of those two tracks a block stands in, stated rather than left to
 // auto-placement, because the results now come first in the document: the

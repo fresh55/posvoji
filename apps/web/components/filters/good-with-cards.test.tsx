@@ -118,6 +118,41 @@ describe("GoodWithCards", () => {
     ).toBeTruthy();
   });
 
+  // /?zavetisce=zonzani: the shelter answered none of the three for any of its
+  // 23 animals, so every row reads 0 and there is no pick to explain.
+  it("says the shelter answered for none of them when no row has an answer", () => {
+    renderCards({
+      counts: new Map([["kids", 0], ["dogs", 0], ["cats", 0]]),
+      unanswered: {
+        kids: { asked: 23, unanswered: 23 },
+        dogs: { asked: 23, unanswered: 23 },
+        cats: { asked: 23, unanswered: 23 },
+      },
+    });
+    expect(
+      screen.getByText("Za nobeno od teh živali zavetišče ni odgovorilo."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/^Izbira pokaže/)).toBeNull();
+  });
+
+  // One row with no answer and one a visitor can still pick: the sentence is
+  // about the one that can be picked, and it is true.
+  it("keeps the pick sentence while a pickable row leaves animals out", () => {
+    renderCards({
+      counts: new Map([["kids", 0], ["dogs", 3], ["cats", 9]]),
+      unanswered: {
+        kids: { asked: 23, unanswered: 23 },
+        dogs: { asked: 23, unanswered: 20 },
+        cats: { asked: 23, unanswered: 1 },
+      },
+    });
+    expect(
+      screen.getByText(
+        "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
+      ),
+    ).toBeTruthy();
+  });
+
   // On a tile the line went between the label and the count, and at a third
   // of a phone it wrapped, so a tile read "Otroke, Brez odgovora:, 121, 2":
   // two bare numbers one above the other.

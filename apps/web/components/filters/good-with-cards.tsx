@@ -81,6 +81,7 @@ export function GoodWithCards({
   layout = "sidebar",
   collapse,
   unanswered,
+  sectionKeys,
 }: {
   options: GoodWithOption[];
   counts: Map<string, number>;
@@ -94,6 +95,8 @@ export function GoodWithCards({
   collapse?: SectionCollapse;
   /** Per question, what a pick leaves out for having no answer. */
   unanswered?: Readonly<Record<GoodWithKey, Unanswered>>;
+  /** Every question the section has, drawn or not (useRowNotes). */
+  sectionKeys?: readonly GoodWithKey[];
 }) {
   const { locale, messages, t } = useI18n();
   const shouldReduceMotion = useReducedMotion();
@@ -101,6 +104,7 @@ export function GoodWithCards({
     options.map(({ key }) => key),
     unanswered,
     "goodWithUnansweredRow",
+    sectionKeys,
   );
   const {
     celebration,
@@ -154,7 +158,8 @@ export function GoodWithCards({
       // The one place the section says its choices hold at once, and the one
       // the screen reader hears. Before a pick, and only while a row names
       // animals with no answer, it says what a pick will do with them: the
-      // sentence the hint used to carry where a mouse never saw it.
+      // sentence the hint used to carry where a mouse never saw it. Where no
+      // row has a single answer it says that instead (useRowNotes).
       footer={
         <>
           <p
@@ -163,8 +168,12 @@ export function GoodWithCards({
           >
             {outcome}
           </p>
-          {outcome === null && rowNotes.any && (
-            <SectionNote>{messages.goodWithUnansweredLine}</SectionNote>
+          {outcome === null && rowNotes.section !== undefined && (
+            <SectionNote>
+              {rowNotes.section === "none"
+                ? messages.goodWithUnansweredNone
+                : messages.goodWithUnansweredLine}
+            </SectionNote>
           )}
         </>
       }

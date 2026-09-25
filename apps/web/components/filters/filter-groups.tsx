@@ -156,8 +156,11 @@ function HealthToggleCards({
   layout = "sidebar",
   collapse,
   unanswered,
+  sectionKeys,
 }: {
   toggles: ToggleDef[];
+  /** Every test the section has, drawn or not (useRowNotes). */
+  sectionKeys?: readonly ToggleKey[];
   counts: Map<string, number>;
   selected: ToggleKey[];
   onToggle: (key: ToggleKey) => void;
@@ -173,6 +176,7 @@ function HealthToggleCards({
     toggles.map(({ key }) => key),
     unanswered,
     "unansweredRow",
+    sectionKeys,
   );
   const {
     celebration,
@@ -203,9 +207,13 @@ function HealthToggleCards({
       // saying how many cats have no result.
       sheetColumns={sheetColumnsFor(toggles.length, 2)}
       footer={
-        rowNotes.any ? (
-          <SectionNote>{messages.unansweredHides}</SectionNote>
-        ) : undefined
+        rowNotes.section === undefined ? undefined : (
+          <SectionNote>
+            {rowNotes.section === "none"
+              ? messages.unansweredNone
+              : messages.unansweredHides}
+          </SectionNote>
+        )
       }
     >
       {toggles.map(({ key, label }, index) => {
@@ -727,6 +735,7 @@ export function FilterGroupList({
       {toggles.length > 0 && (
         <HealthToggleCards
           toggles={drawnByKey(toggles, toggleTally, filters.toggles)}
+          sectionKeys={toggles.map(({ key }) => key)}
           counts={toggleTally}
           selected={filters.toggles}
           onToggle={onToggleProperty}
@@ -750,6 +759,7 @@ export function FilterGroupList({
             goodWith.counts,
             filters.goodWith,
           )}
+          sectionKeys={goodWith.options.map(({ key }) => key)}
           counts={goodWith.counts}
           selected={filters.goodWith}
           resultCount={goodWith.resultCount}

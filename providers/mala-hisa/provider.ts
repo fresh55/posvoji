@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import {
   lifeStageOf,
@@ -100,7 +101,11 @@ function normalizedText(value: string): string {
 const AGE_RANGE =
   /\b(\d+(?:[.,]\d+)?)\s*[–—-]\s*(\d+(?:[.,]\d+)?)\s*(mesec|meseca|mesece|mesecev|let|leta)\b/iu;
 
-export function parseApproximateAgeMonths(
+export function parseApproximateAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(
   value: string,
 ): number | undefined {
   // A single integer cannot faithfully preserve ranges such as 5–6 months.

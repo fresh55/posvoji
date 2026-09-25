@@ -46,6 +46,8 @@ const shelterText = fc.oneof(
       fc.oneof(
         fc.constantFrom(...TOKENS),
         fc.nat({ max: 3000 }).map(String),
+        // Past Number.MAX_SAFE_INTEGER once multiplied into months.
+        fc.bigInt({ min: 0n, max: 10n ** 18n }).map(String),
         fc.string({ maxLength: 3 }),
       ),
       { maxLength: 14 },

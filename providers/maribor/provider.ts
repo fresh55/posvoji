@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
@@ -103,6 +104,10 @@ function ageCount(raw: string | undefined): number {
 }
 
 export function parseApproximateAgeMonths(value: string | undefined): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(value: string | undefined): number | undefined {
   if (!value) return undefined;
   if (AGE_RANGE.test(value)) return undefined;
   const years = value.match(AGE_YEARS_PATTERN);

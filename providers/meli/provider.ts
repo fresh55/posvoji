@@ -2,6 +2,7 @@ import {
   cheerio,
   type AdoptionProvider,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   ImagePolicy,
@@ -88,7 +89,11 @@ function ageCount(raw: string | undefined): number {
   return Number((raw ?? "").replace(",", "."));
 }
 
-export function parseApproximateAgeMonths(
+export function parseApproximateAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(
   value: string,
 ): number | undefined {
   if (AGE_RANGE.test(value)) return undefined;

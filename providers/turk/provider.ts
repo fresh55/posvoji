@@ -3,6 +3,7 @@ import {
   type AdoptionProvider,
   type PoliteResponse,
   type SourceAnimalRef,
+  wholeMonths,
 } from "@posvoji/provider-sdk";
 import type {
   AnimalMedical,
@@ -217,6 +218,10 @@ const AGE_PATTERNS = [
 ];
 
 export function parseApproximateAgeMonths(value: string): number | undefined {
+  return wholeMonths(readAgeMonths(value));
+}
+
+function readAgeMonths(value: string): number | undefined {
   if (AGE_RANGE.test(value)) return undefined;
   const normalized = value.normalize("NFC").replace(/\s+/g, " ");
   for (const pattern of AGE_PATTERNS) {

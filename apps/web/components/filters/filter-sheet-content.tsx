@@ -31,8 +31,23 @@ import {
 // Vaul holds the scroll lock until its close animation finishes.
 const DRAWER_CLOSE_MS = 500;
 
-const SORT_CAPTION_CLASS = cn(SECTION_LABEL_CLASS, "mt-3", SORT_ROW_HIDDEN);
-const SORT_ROW_CLASS = cn("mt-1.5 h-11 w-full text-sm", SORT_ROW_HIDDEN);
+/**
+ * The sort caption and control, first in the sheet's scrolling body.
+ *
+ * They were pinned in the sheet's header, so all 78px of them stood over the
+ * sections for as long as the sheet was open, and the sections had 388px left
+ * at 390x844, 189 at 320x568 and 138 at 844x390. In the body they are the
+ * first thing seen on opening and scroll away with the rest, which gives the
+ * sections 466, 267 and 216. Order is read once and then left alone; the
+ * sections are what a visitor works through.
+ *
+ * SORT_ROW_HIDDEN on the block, so the caption and the control leave together
+ * wherever the toolbar carries the order instead, and the body's gap goes
+ * with them. The caption is the section headings' voice and height (min-h-5,
+ * then 8px to the control), so the block reads as one more section.
+ */
+const SORT_CAPTION_CLASS = cn(SECTION_LABEL_CLASS, "flex min-h-5 items-center");
+const SORT_ROW_CLASS = "mt-2 h-11 w-full text-sm";
 
 const SHEET_BLOCK_CLASS = "sm:mx-auto sm:w-[min(28rem,100%)]";
 
@@ -134,15 +149,6 @@ export function FilterSheetContent({
                 </button>
               )}
             </div>
-            <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
-              {messages.sortCaption}
-            </div>
-            <SortPicker
-              value={sort}
-              onChange={onSortChange}
-              labelledBy={sortCaptionId}
-              className={SORT_ROW_CLASS}
-            />
           </div>
         </div>
 
@@ -160,6 +166,18 @@ export function FilterSheetContent({
             SHEET_BLOCK_CHILDREN_CLASS,
           )}
         >
+          <div data-slot="sheet-sort" className={SORT_ROW_HIDDEN}>
+            <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
+              {messages.sortCaption}
+            </div>
+            <SortPicker
+              value={sort}
+              onChange={onSortChange}
+              labelledBy={sortCaptionId}
+              className={SORT_ROW_CLASS}
+            />
+          </div>
+
           {scope && (
             <LocationScopeRow
               options={scope.options}

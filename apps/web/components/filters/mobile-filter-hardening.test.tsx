@@ -543,7 +543,10 @@ describe("mobile filter hardening", () => {
 
     const dialog = await screen.findByRole("dialog");
     const sort = within(dialog).getByRole("combobox");
-    expect(sort.className.split(" ")).toContain("md:not-short:hidden");
+    // On the block the control shares with its caption, at the top of the
+    // scrolling body (filter-sheet-content.tsx), so both leave together.
+    const block = sort.closest('[data-slot="sheet-sort"]');
+    expect(block?.className.split(" ")).toContain("md:not-short:hidden");
   });
 
   it("does not repeat the species tabs inside the sheet", async () => {

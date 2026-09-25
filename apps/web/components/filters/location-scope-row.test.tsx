@@ -237,10 +237,11 @@ describe("Kje scope row in the filter sheet", () => {
     renderSheet();
     const dialog = await openSheet();
 
+    // Under the order only, which opens the body (filter-sheet-content.tsx).
     const body = dialog.querySelector(".overflow-y-auto") as HTMLElement;
-    expect(body.firstElementChild?.getAttribute("data-slot")).toBe(
-      "location-scope-row",
-    );
+    const [first, second] = [...body.children];
+    expect(first.getAttribute("data-slot")).toBe("sheet-sort");
+    expect(second.getAttribute("data-slot")).toBe("location-scope-row");
   });
 
   it("closes the drawer before asking for the map", async () => {

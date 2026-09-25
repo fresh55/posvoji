@@ -718,16 +718,27 @@ export function FilterGroupList({
                 const groupCounts = counts[group];
                 const props = {
                   layout,
-                  // The same rule the groups above get. Without it this was
-                  // the one block in the sidebar that drew rows the current
-                  // narrowing has no animals for: with no hairless animal in
-                  // the catalogue, Brez dlake sat there reading 0.
-                  options: drawn(options, ({ value }) =>
-                    isDeadOption(
-                      groupCounts.get(value) ?? 0,
-                      selected.includes(value),
-                    ),
-                  ),
+                  // Barva draws as a palette (CoatColorPalette in
+                  // coat-cards.tsx), a grid of swatches rather than a column
+                  // of rows, and drawnOptions dropping a dead one reflowed the
+                  // rest: each solid colour split from its two-toned twin.
+                  // The palette keeps every option and draws a dead swatch
+                  // disabled in its own cell instead, the way the sheet's
+                  // tiles already do for every section; only a row list keeps
+                  // the sidebar's usual rule of leaving a dead row out, so
+                  // Dolžina dlake here still gets it. A permanently dead
+                  // option, one the species pool never answers at all, is a
+                  // different question answered further up, in the options
+                  // the pool builds this list from (use-animal-filter-model.ts).
+                  options:
+                    group === "coatColor"
+                      ? options
+                      : drawn(options, ({ value }) =>
+                          isDeadOption(
+                            groupCounts.get(value) ?? 0,
+                            selected.includes(value),
+                          ),
+                        ),
                   counts: groupCounts,
                   selected,
                   onToggle: (value: string) => onToggle(group, value),

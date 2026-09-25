@@ -190,7 +190,14 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  * constant.
  */
 const LAYOUT_CLASS: Readonly<Record<FilterCardLayout, string>> = Object.freeze({
-  sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center`,
+  // justify-start, so every tile in a row starts its icon on the same line.
+  // The tiles in a row stretch to the tallest one, and centred content moved
+  // each tile's stack by half of whatever it lacked: at 320px "Nad 6 mesecev"
+  // takes two lines and its hourglass sat 7.5px above the other two, and Lahko
+  // ponudim's icons stepped the same way wherever one description took a
+  // second line. A tile's own content is taller than min-h, so a row in which
+  // nothing wraps lays out as it did.
+  sheet: `${DEAD_OPTION_CLASS} min-h-[4.75rem] flex-col items-center justify-start gap-0.5 px-1.5 py-2 text-center`,
   // PAW_BOX_TOP in size-paw-cards.tsx is worked out from this py-1.5 and the
   // icon well's size-7.5: the room the size paw has to hop in.
   sidebar: `${DEAD_OPTION_CLASS} min-h-10 flex-row items-center justify-start gap-2.5 px-2.5 py-1.5 pr-9 text-left`,
@@ -596,9 +603,17 @@ export const SIDEBAR_LABEL_CLASS = `truncate ${SIDEBAR_LABEL_TYPE}`;
  * there was the smallest type on the page under a 12px label it belongs to.
  * The label is text-xs in both layouts, so the sheet's step only stops the
  * count from sitting below the word it counts.
+ *
+ * The sidebar's column starts at min-w-6 and grows with its digits, in every
+ * section. A fixed w-8 left the label 86px of a 214px row, and "Nad 6
+ * mesecev" (88.5px) broke onto a second line. Three digits measure 23.3px at
+ * this size, so today's counts keep one column edge; a fourth measures 31.1px
+ * and widens the column into the label's room rather than running into the
+ * mark. The flex tail adds shrink-0, because a long label could otherwise
+ * squeeze the column back down to its minimum.
  */
 const SIDEBAR_COUNT_CLASS =
-  "w-8 text-right text-2xs tabular-nums text-muted-foreground";
+  "min-w-6 text-right text-2xs tabular-nums text-muted-foreground";
 
 const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
 

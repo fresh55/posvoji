@@ -6,6 +6,7 @@ import {
   careOptions,
   EMPTY_FILTERS,
   facetCounts,
+  goodWithOptions,
   groupOptions,
   TOGGLES,
   toggleLabel,
@@ -14,7 +15,11 @@ import {
   type MultiGroup,
   type UnansweredTally,
 } from "@/lib/filters";
-import { installFilterFoldSeams, openFilterSection } from "@/test/filter-folds";
+import {
+  installFilterFoldSeams,
+  openAllFilterSections,
+  openFilterSection,
+} from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
 installFilterFoldSeams();
@@ -23,6 +28,10 @@ globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObse
 
 const now = new Date("2026-09-21");
 
+const CAT_TESTS = TOGGLES.filter(
+  ({ key }) => key === "brez-fiv" || key === "brez-felv",
+).map((toggle) => ({ ...toggle, label: toggleLabel(toggle.key, "sl") }));
+
 function show({
   layout = "sidebar",
   groups = [],
@@ -30,6 +39,7 @@ function show({
   counts = {},
   toggles = false,
   care = false,
+  goodWith = false,
   unanswered,
 }: {
   layout?: "sidebar" | "sheet";
@@ -38,6 +48,7 @@ function show({
   counts?: Partial<Record<MultiGroup, [string, number][]>>;
   toggles?: boolean;
   care?: boolean;
+  goodWith?: boolean;
   unanswered?: UnansweredTally;
 }) {
   const onToggle = vi.fn();
@@ -53,19 +64,25 @@ function show({
         filters={filters}
         groups={groups.map((group) => ({ group, options: groupOptions(group, [], "sl") }))}
         counts={tally}
-        toggles={
-          toggles
-            ? TOGGLES.filter(({ key }) => key === "brez-fiv" || key === "brez-felv").map(
-                (toggle) => ({ ...toggle, label: toggleLabel(toggle.key, "sl") }),
-              )
-            : []
-        }
+        toggles={toggles ? CAT_TESTS : []}
         toggleTally={new Map([["brez-fiv", 227], ["brez-felv", 236]])}
+        goodWith={
+          goodWith
+            ? {
+                options: goodWithOptions("sl"),
+                counts: new Map(goodWithOptions("sl").map(({ key }) => [key, 3])),
+                resultCount: 10,
+                total: 10,
+                onToggle: vi.fn(),
+                onToggleMany: vi.fn(),
+              }
+            : undefined
+        }
         care={
           care
             ? {
                 options: careOptions("sl"),
-                counts: new Map([["patient", 3]]),
+                counts: new Map(careOptions("sl").map(({ key }) => [key, 3])),
                 resultCount: 10,
                 total: 10,
                 onToggle: vi.fn(),
@@ -180,5 +197,55 @@ describe("the health rows", () => {
     openFilterSection("Zdravje");
     expect(screen.queryByText(/Brez podatka/)).toBeNull();
     expect(screen.queryByText("Izbira pokaže le živali s podatkom.")).toBeNull();
+  });
+});
+
+describe("the sidebar's count column", () => {
+  // The real check is visual: every row measured at 1440, three digits on one
+  // column edge and "Nad 6 mesecev" on one line (countClass in filter-card.tsx
+  // has the numbers). jsdom has no layout, so this pins the class contract
+  // that holds it in every section that draws a row, the age grid and the
+  // waiting rows included: a column that starts at min-w-6 and grows with its
+  // digits, never a fixed width a fourth digit would spill out of into the
+  // mark.
+  it("starts at one minimum and grows with its digits in every section", () => {
+    const groups: CardGroup[] = ["sex", "age", "size", "energy", "coatLength", "waiting"];
+    show({
+      groups,
+      counts: Object.fromEntries(
+        groups.map((group) => [
+          group,
+          groupOptions(group, [], "sl").map(({ value }): [string, number] => [value, 3]),
+        ]),
+      ),
+      toggles: true,
+      care: true,
+      goodWith: true,
+    });
+    openAllFilterSections();
+
+    const labels = [
+      ...groups.flatMap((group) => groupOptions(group, [], "sl").map(({ label }) => label)),
+      ...goodWithOptions("sl").map(({ label }) => label),
+      ...careOptions("sl").map(({ label }) => label),
+      ...CAT_TESTS.map(({ label }) => label),
+    ];
+    const rows = [...document.querySelectorAll<HTMLElement>("button[aria-pressed]")];
+    for (const label of labels) {
+      const row = rows.find((button) =>
+        button.getAttribute("aria-label")?.startsWith(`${label},`),
+      );
+      const count = row?.querySelector(".tabular-nums");
+      expect(count, label).toBeTruthy();
+      const classes = [...(count?.classList ?? [])];
+      expect(classes, label).toEqual(expect.arrayContaining(["min-w-6", "text-right"]));
+      expect(classes.filter((name) => /^w-/.test(name)), label).toEqual([]);
+      // A flex line can squeeze an item below its content down to min-w-6.
+      if (count?.parentElement?.classList.contains("justify-between")) {
+        expect(classes, label).toContain("shrink-0");
+      }
+      // A fixed grid track would hold the count to its width all the same.
+      expect(row?.className, label).not.toMatch(/grid-cols-\[[^\]]*_[\d.]+(?:rem|px)\]/);
+    }
   });
 });

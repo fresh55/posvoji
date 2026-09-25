@@ -138,6 +138,17 @@ describe("the filter card's two surfaces", () => {
     }
   });
 
+  // The tiles in a row stretch to the tallest one, and centred content put a
+  // tile whose label took two lines 7.5px above its neighbours. jsdom lays
+  // nothing out, so the measurement is in filter-drawer-mobile.spec.ts and
+  // this pins the class that holds it.
+  it("starts every tile's content at the top", () => {
+    const tile = filterCardLayoutClass("sheet").split(" ");
+
+    expect(tile).toContain("justify-start");
+    expect(tile).not.toContain("justify-center");
+  });
+
   // The sidebar is lg-only and mouse-driven, and the panel had two sections
   // below its own fold at 1440x900.
   it("keeps a compact sidebar minimum while allowing labels to wrap", () => {

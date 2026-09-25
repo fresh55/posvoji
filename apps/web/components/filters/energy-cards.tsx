@@ -1,6 +1,6 @@
 "use client";
 
-import type { TargetAndTransition, Transition } from "motion/react";
+import type { Easing, TargetAndTransition, Transition } from "motion/react";
 import { m, useReducedMotion } from "motion/react";
 import type { EnergyLevel } from "@posvoji/schema";
 import {
@@ -33,40 +33,37 @@ import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 // The particles a level throws off. Positions are the end of the flight, in
-// px from the icon centre; delay is measured from the level's particleDelay.
+// px from the icon centre; delay is measured from the level's particleDelay;
+// size is the particle's box in px.
 type Particle = {
   x: number;
   y: number;
   delay: number;
-  className: string;
-  glyph?: string;
+  size: number;
 };
 
 type ParticleKind = "zzz" | "spark";
 
+// Drawn as strokes in a 6-unit box rather than set as text or dots: a 7px
+// letter blurred at 1x, and a round dot read as dust rather than static. A
+// spark is a short dash, turned to point along its own flight.
+const PARTICLE_PATHS: Record<ParticleKind, string> = {
+  zzz: "M1.4 1.4h3.2L1.4 4.6h3.2",
+  spark: "M1 3h4",
+};
+const PARTICLE_STROKE = 1.3;
+
 const PARTICLES: Record<ParticleKind, Particle[]> = {
   // Sleep leaves the moon slowly and upward.
   zzz: [
-    {
-      x: 7,
-      y: -13,
-      delay: 0,
-      className: "text-[9px] font-semibold leading-none",
-      glyph: "z",
-    },
-    {
-      x: 12,
-      y: -19,
-      delay: 0.26,
-      className: "text-[7px] font-semibold leading-none",
-      glyph: "z",
-    },
+    { x: 7, y: -13, delay: 0, size: 8 },
+    { x: 12, y: -19, delay: 0.26, size: 6 },
   ],
   // A discharge throws sparks off on diagonals, three ways at once.
   spark: [
-    { x: 11, y: -9, delay: 0, className: "size-1 rounded-full" },
-    { x: -10, y: -6, delay: 0.03, className: "size-0.5 rounded-full" },
-    { x: 8, y: 9, delay: 0.06, className: "size-0.5 rounded-full" },
+    { x: 11, y: -9, delay: 0, size: 6 },
+    { x: -10, y: -6, delay: 0.03, size: 4.5 },
+    { x: 8, y: 9, delay: 0.06, size: 4.5 },
   ],
 };
 
@@ -107,6 +104,18 @@ type Tempo = {
   // lift. A phone never sees it, so nothing here may carry meaning.
   hover: TargetAndTransition;
   hoverTransition: Transition;
+  // How the accent copy leaves when the level is switched off: the pose it
+  // drains into and the opacity keyframes it drains by. The muted outline
+  // underneath stays put.
+  leave: {
+    pose: TargetAndTransition;
+    opacity: (number | null)[];
+    times: number[];
+    duration: number;
+    ease: Easing;
+  };
+  // How long the mark the level leaves on a selected card takes to appear.
+  watermarkDuration: number;
   // The posture of a dead option. CSS only, no animation.
   deadClassName: string;
   countJolt: boolean;
@@ -147,6 +156,15 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     // A slow nod that stays down while the pointer does.
     hover: { rotate: -12, y: 0.5 },
     hoverTransition: { duration: 0.5, ease: "easeInOut" },
+    // Drifts off: the colour sinks and fades slowly.
+    leave: {
+      pose: { y: 1.5 },
+      opacity: [null, 0],
+      times: [0, 1],
+      duration: 0.4,
+      ease: "easeIn",
+    },
+    watermarkDuration: 0.6,
     deadClassName: "translate-y-0.5 opacity-75",
     countJolt: false,
   },
@@ -179,6 +197,15 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
     // One swell passes through, left to right, and the lines come back level.
     hover: { x: [null, 2, 0] },
     hoverTransition: { duration: 0.5, times: [0, 0.45, 1], ease: "easeInOut" },
+    // The water goes flat as the colour leaves it.
+    leave: {
+      pose: { scaleY: 0.5 },
+      opacity: [null, 0.8, 0],
+      times: [0, 0.5, 1],
+      duration: 0.26,
+      ease: "easeIn",
+    },
+    watermarkDuration: 0.3,
     deadClassName: "scale-y-75 opacity-75",
     countJolt: false,
   },
@@ -219,6 +246,16 @@ export const TEMPOS: Record<EnergyLevel, Tempo> = {
       times: [0, 0.25, 0.55, 0.8, 1],
       ease: "easeOut",
     },
+    // Fizzles: two failing flickers, then out.
+    leave: {
+      pose: {},
+      opacity: [null, 0.2, 0.8, 0.1, 0],
+      times: [0, 0.2, 0.45, 0.7, 1],
+      duration: 0.22,
+      ease: "linear",
+    },
+    // Stamped, not faded.
+    watermarkDuration: 0.1,
     deadClassName: "rotate-[20deg] opacity-75",
     countJolt: true,
   },
@@ -234,7 +271,6 @@ const COUNT_JOLT_DURATION = 0.18;
 const CHECK_DURATION = 0.14;
 // The mark the level leaves behind on a selected card.
 const WATERMARK_OPACITY = 0.08;
-const WATERMARK_IN_DURATION = 0.3;
 const WATERMARK_OUT_DURATION = 0.12;
 
 function lastParticleEnd(tempo: Tempo): number {
@@ -280,6 +316,7 @@ const GESTURE_REST: TargetAndTransition = {
 const PRESS_REST: TargetAndTransition = { x: 0, y: 0, rotate: 0, scale: 1 };
 const HOVER_REST: TargetAndTransition = { x: 0, y: 0, rotate: 0 };
 const CARD_REST: TargetAndTransition = { y: 0 };
+const LEAVE_REST: TargetAndTransition = { y: 0, scaleY: 1 };
 const REST_TRANSITION: Transition = { duration: 0.16 };
 
 // Only the card that changed moves. The others used to lean or shake in
@@ -335,6 +372,7 @@ function EnergyGlyph({
   className: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  const { leave } = tempo;
 
   return (
     <svg
@@ -351,13 +389,25 @@ function EnergyGlyph({
           <path key={d} d={d} />
         ))}
       </g>
-      <g stroke="var(--brand-strong)">
+      <m.g
+        stroke="var(--brand-strong)"
+        initial={false}
+        animate={checked ? LEAVE_REST : { ...LEAVE_REST, ...leave.pose }}
+        transition={
+          shouldReduceMotion || checked
+            ? { duration: 0 }
+            : { duration: leave.duration, delay: resetDelay, ease: leave.ease }
+        }
+      >
         {tempo.glyph.map((d, index) => (
           <m.path
             key={d}
             d={d}
             initial={false}
-            animate={{ pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 }}
+            animate={{
+              pathLength: checked ? 1 : 0,
+              opacity: checked ? 1 : leave.opacity,
+            }}
             transition={
               shouldReduceMotion
                 ? { duration: 0 }
@@ -371,11 +421,22 @@ function EnergyGlyph({
                     // unchecking never runs the draw backwards. On a reset it
                     // waits its turn with the halo around it, which was
                     // staggering out over a glyph that had already gone grey.
-                    { duration: 0.12, delay: resetDelay, ease: "easeOut" }
+                    {
+                      opacity: {
+                        duration: leave.duration,
+                        times: leave.times,
+                        ease: leave.ease,
+                        delay: resetDelay,
+                      },
+                      pathLength: {
+                        duration: 0,
+                        delay: resetDelay + leave.duration,
+                      },
+                    }
             }
           />
         ))}
-      </g>
+      </m.g>
     </svg>
   );
 }
@@ -457,6 +518,9 @@ export function EnergyCards({
             const particles = tempo.particle
               ? PARTICLES[tempo.particle]
               : undefined;
+            const particlePath = tempo.particle
+              ? PARTICLE_PATHS[tempo.particle]
+              : undefined;
 
             return (
               <m.button
@@ -516,7 +580,7 @@ export function EnergyCards({
                       ? { duration: 0 }
                       : checked
                         ? {
-                            duration: WATERMARK_IN_DURATION,
+                            duration: tempo.watermarkDuration,
                             delay: tempo.checkDelay,
                             ease: "easeOut",
                           }
@@ -570,15 +634,9 @@ export function EnergyCards({
                     ? particles.map((particle) => (
                         <m.span
                           key={`particle-${celebration?.id}-${particle.x}-${particle.y}`}
-                          className={cn(
-                            // Absolute, so nothing here can move the label or
-                            // the count.
-                            "pointer-events-none absolute text-brand-strong",
-                            particle.glyph
-                              ? undefined
-                              : "bg-brand-strong",
-                            particle.className,
-                          )}
+                          // Absolute, so nothing here can move the label or the
+                          // count.
+                          className="pointer-events-none absolute text-brand-strong"
                           initial={false}
                           animate={{
                             opacity: [0, 0.8, 0],
@@ -593,7 +651,27 @@ export function EnergyCards({
                             ease: "easeOut",
                           }}
                         >
-                          {particle.glyph}
+                          {/* The turn stays on the svg; the span owns
+                              transform. */}
+                          <svg
+                            viewBox="0 0 6 6"
+                            width={particle.size}
+                            height={particle.size}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={PARTICLE_STROKE}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={
+                              tempo.particle === "spark"
+                                ? {
+                                    rotate: `${Math.atan2(particle.y, particle.x)}rad`,
+                                  }
+                                : undefined
+                            }
+                          >
+                            <path d={particlePath} />
+                          </svg>
                         </m.span>
                       ))
                     : null}

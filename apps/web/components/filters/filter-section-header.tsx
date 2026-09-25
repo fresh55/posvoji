@@ -480,9 +480,16 @@ export function FilterSectionHeader({
         // one saying that animals with no shelter answer are left out of DOMA
         // IMAM. /80 measures 3.62:1 light and 5.20:1 dark, which is the 3:1 an
         // icon carrying meaning is held to.
+        //
+        // Not drawn on a coarse pointer. There it is a mark inside the fold
+        // trigger, so a tap on it folds the section, and the text it stands
+        // for opens on hover or keyboard focus, neither of which a tap gives.
+        // SectionHint draws the sentence in the body under the same query,
+        // and Starost, which keeps its hint out of the body, prints the
+        // ranges the hint states under its grove.
         <Info
           aria-hidden
-          className="size-3.5 shrink-0 text-muted-foreground/80"
+          className="size-3.5 shrink-0 text-muted-foreground/80 pointer-coarse:hidden"
           strokeWidth={1.8}
         />
       ) : null}
@@ -490,7 +497,23 @@ export function FilterSectionHeader({
         // motion-reduce:duration-0, not motion-reduce:animate-none: see the
         // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
         // guard does not actually take effect here.
-        <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
+        //
+        // Keyed, and the mark below too. The two are one ternary, and unkeyed
+        // React kept one span for both and swapped its classes. duration-200
+        // sets a transition duration over the default transition-property,
+        // which is all, so a fold tweened the chip out of the dot's dark green
+        // with its words unreadable on it, and an unfold shrank an empty pill
+        // into the dot. Keyed, each mounts fresh and plays only its own
+        // animate-in.
+        //
+        // text-2xs below lg and text-3xs from it, the one step up below lg
+        // that NOTE_CLASS takes for the same reason: at 10px the chip was the
+        // smallest type in the sheet, a phone held at arm's length, while
+        // 10px stays right for a 224px column.
+        <span
+          key="summary"
+          className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-2xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0 lg:text-3xs"
+        >
           {collapse.summary}
         </span>
       ) : active ? (
@@ -520,17 +543,22 @@ export function FilterSectionHeader({
         // already said: a folded section spells its answer in the chip, an
         // open one in the pressed state of its own rows.
         <span
+          key="answered"
           aria-hidden
           className="size-1.5 shrink-0 rounded-full bg-brand-border animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
         />
       ) : null}
       {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
           3.62:1 in light, 5.20:1 in dark. This is the one thing that says the
-          heading is a disclosure and not a label. */}
+          heading is a disclosure and not a label.
+
+          motion-reduce:transition-none, because the turn is a transition and
+          not an animation, so nothing else stops it: under reduced motion the
+          body lands at once and the chevron still turned for 200ms. */}
       <ChevronDown
         aria-hidden
         className={cn(
-          "ml-auto size-3.5 shrink-0 text-muted-foreground/80 transition-transform duration-200",
+          "ml-auto size-3.5 shrink-0 text-muted-foreground/80 transition-transform duration-200 motion-reduce:transition-none",
           !collapse.open && "-rotate-90",
         )}
       />

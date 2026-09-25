@@ -140,6 +140,73 @@ function Heading({ open, summary }: { open: boolean; summary: string | null }) {
   );
 }
 
+describe("the heading's marks", () => {
+  // One ternary drew both, and without keys React reused one span and
+  // tweened the chip out of the dot's classes.
+  it("draws the summary chip and the dot as two nodes", () => {
+    const { rerender } = render(<Heading open summary={null} />);
+    const trigger = screen.getByRole("button", { name: /^Energija/ });
+    const dot = trigger.querySelector(".bg-brand-border");
+    expect(dot).toBeTruthy();
+
+    rerender(<Heading open={false} summary="Miren" />);
+    const chip = [...trigger.querySelectorAll("span")].find(
+      (span) => span.textContent === "Miren",
+    );
+    expect(chip).toBeTruthy();
+    expect(chip).not.toBe(dot);
+    expect(dot?.isConnected).toBe(false);
+
+    rerender(<Heading open summary={null} />);
+    expect(trigger.querySelector(".bg-brand-border")).not.toBe(chip);
+    expect(chip?.isConnected).toBe(false);
+  });
+
+  // The classes and not a computed size: jsdom evaluates no media query.
+  it("prints the folded chip a step larger below lg", () => {
+    render(<Heading open={false} summary="Miren" />);
+    const chip = [
+      ...screen.getByRole("button", { name: /^Energija/ }).querySelectorAll("span"),
+    ].find((span) => span.textContent === "Miren");
+    const classes = [...(chip?.classList ?? [])];
+
+    expect(classes).toContain("text-2xs");
+    expect(classes).toContain("lg:text-3xs");
+    expect(classes).not.toContain("text-3xs");
+  });
+
+  it("stops the chevron turning under reduced motion", () => {
+    render(<Heading open summary={null} />);
+    const chevron = screen
+      .getByRole("button", { name: /^Energija/ })
+      .querySelector("svg.lucide-chevron-down");
+
+    expect(chevron?.classList.contains("motion-reduce:transition-none")).toBe(
+      true,
+    );
+  });
+
+  // A tap on the mark folded the section, and the text it stands for opens
+  // on hover or focus. The sentence is drawn in the body on a coarse pointer.
+  it("leaves the info mark out on a coarse pointer", () => {
+    render(
+      <I18nProvider locale="sl">
+        <FilterSectionHeader
+          label="Energija"
+          active={false}
+          collapse={collapse(true, null, "energy")}
+          hint="Po presoji zavetišča."
+        />
+      </I18nProvider>,
+    );
+    const info = screen
+      .getByRole("button", { name: /^Energija/ })
+      .querySelector("svg.lucide-info");
+
+    expect(info?.classList.contains("pointer-coarse:hidden")).toBe(true);
+  });
+});
+
 describe("the reset link in a folding heading", () => {
   // While pressed, the shared Button nudges its translate by a pixel, and a
   // link centred by a translate lost the centring with it and dropped half its

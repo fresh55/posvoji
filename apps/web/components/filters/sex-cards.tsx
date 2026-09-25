@@ -69,15 +69,48 @@ function isSexKind(value: string): value is SexKind {
 
 // The draw, one step per part. The last branch lands at 0.40s, which is where
 // the pop peaks.
-const DRAW = {
+type DrawStep = { duration: number; delay: number };
+export const SEX_DRAW = {
   ring: { duration: 0.18, delay: 0 },
   stem: { duration: 0.16, delay: 0.12 },
   branches: { duration: 0.14, delay: 0.26 },
-} as const;
+} as const satisfies Record<"ring" | Stroke["step"], DrawStep>;
+const DRAW = SEX_DRAW;
 const LANDED = DRAW.branches.delay + DRAW.branches.duration;
 
-const FADE_DURATION = 0.15;
 const DESELECT_DURATION = 0.24;
+// How faint the outline under a chosen sign is. It shows only where the ink
+// has not reached yet, and while the sign goes back into it on an untick.
+const OUTLINE_UNDER_INK = 0.2;
+
+/**
+ * How one part of the faint outline goes faint as the card is ticked, and
+ * comes back as it is unticked.
+ *
+ * On a tick each part fades on the clock its ink is drawn on, so the sign is
+ * inked over in the order it is built and is whole in every frame. The layer
+ * used to fade as one piece in 0.15s while the ink took 0.40s to reach the
+ * arrowhead or the crossbar, and for about 140ms the sign was a ring with a
+ * stub, or a ring on a stick. The ease is the draw's opposite: the part the
+ * pen has not reached keeps most of its ink until the pen is nearly there.
+ *
+ * The untick is one crossfade for the whole sign, which keeps it whole on the
+ * way out, and waits for the card's turn in a reset.
+ */
+export function outlineFade(
+  step: DrawStep,
+  {
+    checked,
+    reduceMotion,
+    wait,
+  }: { checked: boolean; reduceMotion: boolean; wait: number },
+): Transition {
+  if (reduceMotion) return OFF;
+  if (checked) {
+    return { duration: step.duration, delay: step.delay, ease: "easeIn" };
+  }
+  return { duration: DESELECT_DURATION, delay: wait, ease: "easeOut" };
+}
 
 const POP = { duration: 0.36, peak: 1.08 } as const;
 const POP_DELAY = LANDED - POP.duration / 2;
@@ -246,7 +279,7 @@ function SexGlyph({
   // What an untick waits before it starts, so a reset leaves in turn.
   const wait = shouldReduceMotion || checked ? 0 : resetDelay;
 
-  const drawn = (step: { duration: number; delay: number }) => ({
+  const drawn = (step: DrawStep) => ({
     initial: false as const,
     animate: { pathLength: checked ? 1 : 0, opacity: checked ? 1 : 0 },
     transition: shouldReduceMotion
@@ -256,6 +289,17 @@ function SexGlyph({
         : // The stroke comes off only once the layer has faded out, so
           // unticking never runs the draw backwards.
           { duration: 0, delay: DESELECT_DURATION + resetDelay },
+  });
+
+  // The same part of the faint outline, going faint as its ink draws over it.
+  const outlined = (step: DrawStep) => ({
+    initial: false as const,
+    animate: { opacity: checked ? OUTLINE_UNDER_INK : 1 },
+    transition: outlineFade(step, {
+      checked,
+      reduceMotion: shouldReduceMotion ?? false,
+      wait,
+    }),
   });
 
   // A part of the sign that takes its share of the finish, the wind-up, or
@@ -326,27 +370,15 @@ function SexGlyph({
 
   const layers = (
     <>
-      <m.g
-        className="text-muted-foreground"
-        stroke="currentColor"
-        initial={false}
-        animate={{ opacity: checked ? 0.2 : 1 }}
-        transition={{
-          duration: shouldReduceMotion
-            ? 0
-            : checked
-              ? FADE_DURATION
-              : DESELECT_DURATION,
-          delay: wait,
-          ease: "easeOut",
-        }}
-      >
-        {part("ring", <path d={ring} />)}
+      <g className="text-muted-foreground" stroke="currentColor">
+        {part("ring", <m.path d={ring} {...outlined(DRAW.ring)} />)}
         {part(
           "reach",
-          reach.map(({ d }) => <path key={d} d={d} />),
+          reach.map(({ d, step }) => (
+            <m.path key={d} d={d} {...outlined(DRAW[step])} />
+          )),
         )}
-      </m.g>
+      </g>
       <m.g
         stroke="var(--brand-strong)"
         initial={false}

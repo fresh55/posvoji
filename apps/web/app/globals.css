@@ -1119,6 +1119,20 @@
   [data-slot="dropdown-menu-content"] {
     animation: none;
   }
+
+  /* The phone's filter sheet, which vaul slides 608px up and back down over
+     half a second (390x844), on keyframes it ships with no reduced-motion
+     rule either. It appears and leaves in one frame instead: animation: none
+     for the same presence reason as above, which lets the content, its
+     overlay, the scroll lock and the focus trap go at the close rather than
+     500ms later. The transition is vaul's snap back after a drag that did not
+     close it. !important because vaul injects its stylesheet at runtime,
+     after this one and with four attributes to a selector. */
+  [data-vaul-drawer],
+  [data-vaul-overlay] {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* Focus in forced-colors mode. Windows high contrast keeps outlines and drops

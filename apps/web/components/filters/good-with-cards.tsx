@@ -1,6 +1,6 @@
 "use client";
 
-import { m, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import {
   CountRoll,
   FilterCardHoverLift,
@@ -41,8 +41,6 @@ import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 export type GoodWithOption = { key: GoodWithKey; label: string };
-
-const GESTURE_REST = { rotate: 0, scale: 1, x: 0, y: 0 };
 
 // The hold comes from the glyphs themselves, so the check and the ripple
 // never cut a laugh or a blink short when the choreography changes.
@@ -115,12 +113,12 @@ export function GoodWithCards({
     selected.length,
     options.length,
   );
-  const { hoveredValue: hoveredKey, handlers: hoverHandlers } =
-    useFilterCardHover<GoodWithKey>();
-
-  const celebrationIndex = options.findIndex(
-    ({ key }) => key === celebration?.value,
-  );
+  const {
+    hoveredValue: hoveredKey,
+    previewing: previewingKey,
+    settle,
+    handlers: hoverHandlers,
+  } = useFilterCardHover<GoodWithKey>();
 
   const chosen = orderedSelection(selected);
 
@@ -181,13 +179,19 @@ export function GoodWithCards({
       {options.map(({ key, label }, index) => {
         const count = counts.get(key) ?? 0;
         const checked = selected.includes(key);
+        const dead = isDeadOption(count, checked);
         const hovered = hoveredKey === key;
         const celebrating = celebration?.value === key && checked;
-        // The card that did not change leans away from the one that did.
-        const reacting = celebrationIndex >= 0 && !celebrating;
-        const tiltDirection = Math.sign(index - celebrationIndex) || 1;
+        // A taste of the pick gesture for a card nobody has chosen yet and
+        // that has something to pick.
+        const previewing = previewingKey(key) && !checked && !dead;
         const exitDelay = resetDelay(index);
-        const note = rowNotes.at(index);
+        // The "brez odgovora" line is a warning about what a pick would hide,
+        // so it belongs on rows nobody has pressed yet. Left on after a pick,
+        // it kept recomputing against the narrower result and changed a
+        // number the visitor never touched.
+        const rawNote = rowNotes.at(index);
+        const note = checked ? { ...rawNote, description: undefined } : rawNote;
 
         return (
           <button
@@ -199,9 +203,10 @@ export function GoodWithCards({
               } else {
                 celebrate(key);
               }
+              settle(key);
               onToggle(key);
             }}
-            disabled={isDeadOption(count, checked)}
+            disabled={dead}
             {...hoverHandlers(key)}
             aria-pressed={checked}
             aria-label={`${label}, ${animalCount(count, locale)}`}
@@ -233,10 +238,10 @@ export function GoodWithCards({
                 />
               ) : null}
               <FilterCardHoverLift hovered={hovered}>
-                {/* The gesture now lives inside the glyph, one part at a
-                    time. What is left out here is the neighbour's lean, which
-                    is the whole icon leaning away and nothing else. */}
-                <m.span
+                {/* The gesture, the preview and the dead posture all live
+                    inside the glyph, one part at a time, so this wrapper
+                    carries only colour. */}
+                <span
                   // The colour rides the wrapper rather than the glyph. It is
                   // a class here and not a motion target, so the only place to
                   // put the reset's turn is a transition-delay, and the glyph
@@ -247,29 +252,16 @@ export function GoodWithCards({
                     checked ? "text-brand-strong" : "text-muted-foreground",
                   )}
                   style={resetDelayStyle(checked, exitDelay)}
-                  initial={false}
-                  animate={
-                    reacting && !shouldReduceMotion
-                      ? { rotate: [0, tiltDirection * 2.5, 0], scale: 1, y: 0 }
-                      : GESTURE_REST
-                  }
-                  transition={
-                    reacting && !shouldReduceMotion
-                      ? { duration: 0.3, delay: 0.1, ease: "easeOut" }
-                      : { duration: 0.16 }
-                  }
                 >
                   <GoodWithGlyph
-                    // Remounting is what restarts the gesture: motion holds a
-                    // keyframe run to its own timeline, so swapping the target
-                    // on a live element does not replay it.
-                    key={celebrating ? celebration?.id : "rest"}
                     facet={key}
                     gesture={celebrating ? "celebrate" : "rest"}
+                    previewing={previewing}
+                    dead={dead}
                     shouldReduceMotion={shouldReduceMotion ?? false}
                     className="size-5"
                   />
-                </m.span>
+                </span>
               </FilterCardHoverLift>
             </FilterCardIconWell>
 

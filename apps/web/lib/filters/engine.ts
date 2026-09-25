@@ -1336,6 +1336,49 @@ export function visibleGroups(
   };
 }
 
+/**
+ * The options of a group the species pool can ever answer, with every other
+ * filter set aside, plus whatever the visitor has already picked.
+ *
+ * A row can read 0 two ways. The current narrowing left nothing standing:
+ * isDeadOption already answers that, and drawnOptions in filter-groups.tsx
+ * only hides it from the sidebar's rows, because loosening another filter can
+ * bring the option back, and the sheet's own tile still offers it for exactly
+ * that reason. The other way is that the catalogue holds no such animal at
+ * all, the way no animal is ever hairless: no pick anywhere else on the panel
+ * can bring that option back, so neither surface should draw it. This is the
+ * option-level twin of the rule visibleGroups already applies to a whole
+ * section (PR #231, which stopped drawing a section the pool answers nothing
+ * of); poolCounts below is that same pool, counted per option instead of
+ * per section.
+ *
+ * A selection stays regardless of its pool count, the same reason isDeadOption
+ * never calls a checked option dead: a value a shared link carries in still has
+ * to be visible to take back off, even if the pool cannot ever produce it.
+ */
+export function liveInPool<Option extends { value: string }>(
+  options: readonly Option[],
+  poolCounts: ReadonlyMap<string, number>,
+  selected: readonly string[],
+): Option[] {
+  return options.filter(
+    (option) =>
+      selected.includes(option.value) || (poolCounts.get(option.value) ?? 0) > 0,
+  );
+}
+
+/** The counts liveInPool reads: every option's share of the species tab alone,
+ *  with no other filter narrowing it. `pool` is already bySpecies(animals,
+ *  filters.species), so this asks facetCounts for "all" species again rather
+ *  than double-filtering, and for none of the other facets, which is what
+ *  EMPTY_FILTERS is. */
+export function poolCounts(
+  pool: AnimalFields[],
+  now: Date,
+): Record<MultiGroup, Map<string, number>> {
+  return facetCounts(pool, { ...EMPTY_FILTERS, species: "all" }, now);
+}
+
 // A selection the species tab no longer has a control for would go on narrowing
 // results with no way to switch it off, so changing species drops it from state
 // and from the URL rather than let it work unseen.

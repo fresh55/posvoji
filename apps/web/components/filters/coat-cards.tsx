@@ -6,6 +6,7 @@ import { memo, type ReactNode } from "react";
 import type { CoatColorCategory, CoatLength } from "@posvoji/schema";
 import {
   CountRoll,
+  DEAD_OPTION_CLASS,
   FILTER_CONTROL_CLASS,
   FILTER_HOVER_SPRING,
   FilterCardHoverLift,
@@ -17,6 +18,7 @@ import {
   filterCardLayoutClass,
   filterCardVariants,
   isDeadOption,
+  sheetColumnsFor,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import { DRAW_IN } from "@/components/filters/drawn-glyph";
@@ -28,6 +30,7 @@ import {
   useOneShotCelebration,
   useResetStagger,
   waitThen,
+  type Pose,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -216,6 +219,17 @@ const DISC_RADIUS = 9.5;
  * and before outline, so the chosen colours are simply the large ones.
  */
 const PICKED_SCALE = 1.07;
+
+/**
+ * A colour the current narrowing has no animal of stays in its own cell, in
+ * its own colour, at a little over half its size.
+ *
+ * Faded instead, as the sheet's tile used to draw it, Črna went grey beside
+ * Siva and Oranžna went peach, and the palette has no label under a swatch to
+ * say which colour it was. Size is already this control's grammar: a picked
+ * colour is the large one, so one nobody can pick is the small one.
+ */
+const DEAD_SCALE = 0.6;
 // A shade more than FilterCardHoverLift's 1.05 and -1, because this mark is
 // the 36px swatch rather than a 20px glyph in a 30px well. The speed is the
 // panel's, shared as FILTER_HOVER_SPRING.
@@ -306,6 +320,17 @@ const DOG_NOSE =
 const LIGHT_NOSE_ON = new Set<CoatColorFacet>(["black", "brown", "grey"]);
 
 /**
+ * The light edge a dark nose wears on a two-toned coat.
+ *
+ * The nose sits on the line where the two colours meet. On Črno-bela its dark
+ * half vanished into the black half of the face, and what was left on the
+ * white half read as a notch in the split. Stroked under the fill, so only its
+ * outer half shows, the edge gives the nose back its shape on the dark side
+ * and is lost against the white one.
+ */
+const NOSE_HALO = 1.3;
+
+/**
  * The long coat. When Dolga dlaka is picked beside a colour, the animals the
  * colours became grow it: a cat's or a rabbit's cheeks puff out into a ruff,
  * and a dog's long ears grow a feathered fringe. It is the one place the two
@@ -314,37 +339,56 @@ const LIGHT_NOSE_ON = new Set<CoatColorFacet>(["black", "brown", "grey"]);
  * Only for Dolga. A medium coat is most of the catalogue's coats and draws
  * nothing a short one does not.
  *
- * Measured at 36px against the alternatives: tufted tips on a cat's ears were
- * too small to see, a ruff on a dog is hidden behind its ears, and a cat with
- * both tips and ruff was busy.
+ * Both are the silhouette itself, rounded lobes that widen the head at the
+ * cheeks and carry the ears' ends down, rather than marks drawn on it. The
+ * ruff started as three thin tufts per cheek, which at 36px and on the
+ * phone's 26px tile read as a cat's whiskers, and the dog's fringe was four
+ * strands that barely showed at 1x. Measured at 36px against other
+ * alternatives: tufted tips on a cat's ears were too small to see, a ruff on
+ * a dog is hidden behind its ears, and a cat with both tips and ruff was busy.
  */
-function cheekRuff(): string {
-  // Three tufts off the lower left of the head, the left side's; the right is
-  // its mirror like the ears. Each stands on the disc a little inside its edge
-  // and points down and out.
-  return [150, 166, 182]
-    .map((angle) => {
-      const rad = (a: number) => (a * Math.PI) / 180;
-      const base0 = at(rad(angle - 7), DISC_RADIUS - 1.2);
-      const tip = at(rad(angle + 4), DISC_RADIUS + 2.3);
-      const base1 = at(rad(angle + 7), DISC_RADIUS - 1.2);
-      return `M${base0}L${tip}L${base1}Z`;
-    })
-    .join("");
+function cheekRuff(): { shape: string; edge: string } {
+  // The left cheek's; the right is its mirror, like the ears. Three lobes
+  // between 122 and 200 degrees, each leaving the head just inside its edge
+  // and bulging about two units past it.
+  const from = 122;
+  const to = 200;
+  const lobes = 3;
+  const step = (to - from) / lobes;
+  const rad = (a: number) => (a * Math.PI) / 180;
+  const valley = DISC_RADIUS - 0.2;
+  const bulge = DISC_RADIUS + 2.9;
+  let scallops = "";
+  for (let i = 0; i < lobes; i++) {
+    const start = from + i * step;
+    const end = start + step;
+    scallops += `C${at(rad(start + step * 0.05), bulge)} ${at(rad(end - step * 0.05), bulge)} ${at(rad(end), valley)}`;
+  }
+  // Drawn over the head, and closed along an arc just inside the disc's
+  // hairline, so the hairline stops where the ruff starts and head and fur
+  // are one outline. Behind the head, the hairline ran across the join and
+  // the lobes read as something stuck to a disc.
+  const inner = DISC_RADIUS - 0.7;
+  return {
+    shape: `M${at(rad(from), inner)}L${at(rad(from), valley)}${scallops}L${at(rad(to), inner)}A${inner} ${inner} 0 0 0 ${at(rad(from), inner)}Z`,
+    // Only the outer edge is inked: the closing arc lies on the face.
+    edge: `M${at(rad(from), valley)}${scallops}`,
+  };
 }
 
 const CHEEK_RUFF = cheekRuff();
 
-// The fringe off the bottom of a dog's long ear, in the ear's own frame: four
-// strands, and a top edge tucked up inside the ear, which is drawn over it.
+// The long coat on a dog's ear, in the ear's own frame: two rounded lobes
+// that carry the ear's end down and a little out, the way a spaniel's ear
+// feathers. The top edge is tucked up inside the ear, which is drawn over it.
 const DOG_FRINGE =
-  "M-7.6 12.4L-8.2 15L-6.6 13.9L-6.2 16.1L-5.1 14.3L-4.2 15.8L-3.9 13.2L-5.5 11Z";
+  "M-7.3 10.8C-8.4 12.3 -8.8 14.8 -8.3 16.2C-7.9 17.4 -6.6 17.7 -5.9 16.5C-5.4 17.7 -3.9 17.9 -3.3 16.7C-2.8 15.6 -3 13.6 -3.4 12.2Z";
 
-type EarFur = {
-  /** On the head beside the ear, or hanging off the ear and moving with it. */
-  at: "cheek" | "ear";
-  shape: string;
-};
+type EarFur =
+  /** Over the head at the cheeks. `edge` is the part of its outline inked. */
+  | { at: "cheek"; shape: string; edge: string }
+  /** Hanging off the ear and moving with it, under the ear's own edge. */
+  | { at: "ear"; shape: string };
 
 type EarPose = { y?: number; rotate?: number; scale?: number; opacity?: number };
 
@@ -384,7 +428,7 @@ type Ear = {
 const EARS: Record<EarKind, Ear> = {
   cat: {
     shape: pointedEar(8.4, 8.2),
-    fur: { at: "cheek", shape: CHEEK_RUFF },
+    fur: { at: "cheek", ...CHEEK_RUFF },
     place: earAt(-128, 6.6, -38),
     inFront: false,
     pose: { stowed: { y: 6.6 }, peeking: { y: 3.8 }, up: { y: 0 } },
@@ -397,19 +441,32 @@ const EARS: Record<EarKind, Ear> = {
     fur: { at: "ear", shape: DOG_FRINGE },
     place: "translate(8.6 3.4)",
     inFront: true,
+    // Stowed turned in over the face only a little further than the peek, so
+    // the ear comes up through a short arc. From -80 degrees the swing
+    // overshot 21 degrees outward while the spring carried the ear's size
+    // past 1.18, and the ears came up as a pair of wings 64px across, 7px
+    // past the palette's 50px cell, crossing the neighbours' on a switch to
+    // Psi.
     pose: {
-      stowed: { rotate: -80, scale: 0.3, opacity: 0 },
-      peeking: { rotate: -40, scale: 0.75, opacity: 1 },
+      stowed: { rotate: -45, scale: 0.3, opacity: 0 },
+      peeking: { rotate: -25, scale: 0.75, opacity: 1 },
       up: { rotate: 0, scale: 1, opacity: 1 },
     },
-    spring: { type: "spring", stiffness: 320, damping: 14 },
+    // The flop is the rotation's. The ear's size grows in on a spring of its
+    // own that does not overshoot.
+    spring: {
+      type: "spring",
+      stiffness: 320,
+      damping: 14,
+      scale: { type: "spring", stiffness: 320, damping: 36 },
+    },
   },
   // A rabbit's ears, shorter than a rabbit's ear wants to be. Any taller and
   // the tips of a picked swatch on the second row reach the count under the
   // first.
   other: {
     shape: longEar(3.9, 7),
-    fur: { at: "cheek", shape: CHEEK_RUFF },
+    fur: { at: "cheek", ...CHEEK_RUFF },
     place: earAt(-106, 7.4, -20),
     inFront: false,
     pose: { stowed: { y: 6.2 }, peeking: { y: 3.6 }, up: { y: 0 } },
@@ -612,18 +669,26 @@ const NOSE_VARIANTS: Variants = {
 const NOSE_ORIGIN = { transformBox: "fill-box", originX: 0.5, originY: 0.5 } as const;
 
 // The long coat arrives after the ears, and leaves with them. A ruff puffs
-// out from behind the head, from the disc's centre, with a spring that
-// overshoots, which is what fur does when it is shaken out; a fringe grows
-// down off the ear from its top edge.
+// out over the cheeks, from the disc's centre, with a spring that overshoots,
+// which is what fur does when it is shaken out; a fringe grows down off the
+// ear from its top edge. The ruff starts only a little inside its place: it
+// is drawn over the face, and from further in it would sweep across it.
 type FurState = "flat" | "fluffed";
 
-function furVariants(flat: TargetAndTransition, fluffed: TargetAndTransition): Variants {
+// Always drawn with the ears and only fluffed out on a pick, rather than
+// mounted when Dolga is pressed: under the swatch's own presence, which is
+// initial={false}, a node mounted later plays its entrance already finished.
+const furStateOf = (longCoat: boolean, state: EarState): FurState =>
+  longCoat && state === "up" ? "fluffed" : "flat";
+
+function furVariants(
+  flat: TargetAndTransition,
+  fluffed: TargetAndTransition,
+  spring: Transition,
+): Variants {
   return {
     flat: (exit: EarExit) => ({ ...flat, transition: tuck(exit) }),
-    fluffed: (exit: EarExit) => ({
-      ...fluffed,
-      transition: timed(exit, { type: "spring", stiffness: 380, damping: 13, delay: 0.12 }),
-    }),
+    fluffed: (exit: EarExit) => ({ ...fluffed, transition: timed(exit, spring) }),
   };
 }
 
@@ -634,11 +699,23 @@ const FUR: Record<
   { variants: Variants; origin: typeof CENTRE_ORIGIN | typeof FRINGE_ORIGIN }
 > = {
   cheek: {
-    variants: furVariants({ scale: 0.75, opacity: 0 }, { scale: 1, opacity: 1 }),
+    variants: furVariants(
+      { scale: 0.94, opacity: 0 },
+      { scale: 1, opacity: 1 },
+      { type: "spring", stiffness: 380, damping: 13, delay: 0.12 },
+    ),
     origin: CENTRE_ORIGIN,
   },
+  // The fringe waits for the ear to swing down. Grown during the swing it
+  // hung off the end of an ear still turned outward and took the ear's reach
+  // to the edge of the palette's cell. It overshoots less than the ruff: it
+  // grows toward the count under the swatch.
   ear: {
-    variants: furVariants({ scaleY: 0, opacity: 0 }, { scaleY: 1, opacity: 1 }),
+    variants: furVariants(
+      { scaleY: 0, opacity: 0 },
+      { scaleY: 1, opacity: 1 },
+      { type: "spring", stiffness: 380, damping: 20, delay: 0.3 },
+    ),
     origin: FRINGE_ORIGIN,
   },
 };
@@ -744,17 +821,13 @@ function EarPair({
 }) {
   const ear = EARS[kind];
   const fur = FUR[ear.fur.at];
-  // Always drawn with the ears and only fluffed out on a pick, rather than
-  // mounted when Dolga is pressed: under the section's presence a node
-  // mounted later plays its entrance already finished.
-  const furState: FurState = longCoat && state === "up" ? "fluffed" : "flat";
   const coat = (side: EarSide) => (
     <m.g
       style={fur.origin}
       variants={fur.variants}
       custom={exit}
       initial="flat"
-      animate={furState}
+      animate={furStateOf(longCoat, state)}
       exit="flat"
     >
       {children(side, "fur")}
@@ -767,7 +840,6 @@ function EarPair({
         const flick = earBeat(kind, side, beat, noticeDelay);
         return (
           <g key={side} transform={side === "right" ? MIRROR : undefined}>
-            {ear.fur.at === "cheek" && coat(side)}
             <g transform={ear.place}>
               <m.g
                 style={PIVOT}
@@ -781,7 +853,8 @@ function EarPair({
                     otherwise write one transform: a flick arriving while the
                     ear is still springing up would cut the spring off. */}
                 <m.g style={PIVOT} animate={flick.animate} transition={flick.transition}>
-                  {/* Under the ear, which covers the fringe's top edge. */}
+                  {/* Under the ear, which covers the fringe's top edge. A
+                      ruff grows on the cheeks instead: see CheekFur. */}
                   {ear.fur.at === "ear" && coat(side)}
                   {children(side, "ear")}
                 </m.g>
@@ -794,10 +867,82 @@ function EarPair({
   );
 }
 
+/**
+ * Both cheeks' ruff, in one paint, puffing out with the long coat.
+ *
+ * Its own component rather than a part of EarPair, because a ruff is drawn
+ * over the head while the ears it comes with are drawn behind it. Like the
+ * ears, the outline and the coat each draw a copy, and one component is how
+ * the two copies stay one ruff.
+ */
+function CheekFur({
+  state,
+  exit,
+  longCoat,
+  children,
+}: Pick<EarPairProps, "state" | "exit" | "longCoat"> & {
+  children: (side: EarSide) => ReactNode;
+}) {
+  const fur = FUR.cheek;
+
+  return (
+    <>
+      {EAR_SIDES.map((side) => (
+        <g key={side} transform={side === "right" ? MIRROR : undefined}>
+          <m.g
+            style={fur.origin}
+            variants={fur.variants}
+            custom={exit}
+            initial="flat"
+            animate={furStateOf(longCoat, state)}
+            exit="flat"
+          >
+            {children(side)}
+          </m.g>
+        </g>
+      ))}
+    </>
+  );
+}
+
+/** A ruff in the coat's own colours, over the edge of the head. */
+function CheekCoat({
+  colour,
+  ruff,
+  ...pair
+}: EarPairProps & {
+  colour: CoatColorFacet;
+  ruff: { shape: string; edge: string };
+}) {
+  const coats = EAR_COATS[colour];
+
+  return (
+    <g data-ruff="">
+      <CheekFur {...pair}>
+        {(side) => (
+          <>
+            <path d={ruff.shape} fill={SWATCHES[coats[side === "left" ? 0 : 1]]} />
+            <path
+              d={ruff.edge}
+              fill="none"
+              stroke={SWATCH_EDGE}
+              strokeWidth={1}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </>
+        )}
+      </CheekFur>
+    </g>
+  );
+}
+
 /** The ears in the coat's own colours. */
 function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet }) {
   const ear = EARS[pair.kind];
   const coats = EAR_COATS[colour];
+  // The nose sits on the split of a two-toned coat. See NOSE_HALO.
+  const halo = twoTonedOf(colour) !== undefined;
 
   return (
     <g data-ears={pair.kind} data-long-coat={pair.longCoat ? "" : undefined}>
@@ -805,8 +950,8 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
         {(side, part) => {
           const coat = coats[side === "left" ? 0 : 1];
           if (part === "fur") {
-            // A ruff is edged like the ears behind the head; a fringe hangs in
-            // front of the face and takes the ink its ear is edged in.
+            // A fringe hangs in front of the face and takes the ink its ear
+            // is edged in.
             return (
               <path
                 d={ear.fur.shape}
@@ -852,6 +997,10 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
           d={ear.nose}
           data-nose=""
           fill={LIGHT_NOSE_ON.has(colour) ? EAR_INK.black : SWATCHES.black}
+          stroke={halo ? EAR_INK.black : undefined}
+          strokeWidth={halo ? NOSE_HALO : undefined}
+          strokeLinejoin="round"
+          paintOrder="stroke"
           style={NOSE_ORIGIN}
           variants={NOSE_VARIANTS}
           custom={pair.exit}
@@ -865,9 +1014,10 @@ function EarCoat({ colour, ...pair }: EarPairProps & { colour: CoatColorFacet })
 }
 
 /**
- * One of the outline's two strokes: round the disc and round both ears. It
- * mounts with the pick, and its copies of the ears start from wherever the
- * coat's ears were, peeking under the pointer that clicked or stowed.
+ * One of the outline's two strokes: round the disc, both ears and whatever
+ * long coat the animal wears. It mounts with the pick, and its copies of the
+ * ears start from wherever the coat's ears were, peeking under the pointer
+ * that clicked or stowed.
  */
 function EarOutline({
   paint,
@@ -888,6 +1038,9 @@ function EarOutline({
       exit="off"
     >
       <circle cx={CENTRE} cy={CENTRE} r={DISC_RADIUS} />
+      {ear.fur.at === "cheek" && (
+        <CheekFur {...pair}>{() => <path d={ear.fur.shape} />}</CheekFur>
+      )}
       <EarPair {...pair}>
         {(_side, part) => <path d={part === "fur" ? ear.fur.shape : ear.shape} />}
       </EarPair>
@@ -917,6 +1070,7 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
   colour,
   kind,
   checked,
+  dead = false,
   peeking,
   beat,
   noticeDelay = 0,
@@ -928,6 +1082,11 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
   colour: CoatColorFacet;
   kind: EarKind;
   checked: boolean;
+  /**
+   * No animal in the current narrowing has this colour: drawn small, and it
+   * grows no ears under a pointer. See DEAD_SCALE.
+   */
+  dead?: boolean;
   /** Dolga dlaka is picked, so this colour's animal grows a long coat. */
   longCoat: boolean;
   /** A pointer or keyboard focus is on it: the tips of the ears show. */
@@ -947,13 +1106,16 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
 }) {
   const shouldReduceMotion = useReducedMotion() ?? false;
   const ear = EARS[kind];
-  const state: EarState = checked ? "up" : peeking ? "peeking" : "stowed";
+  // A dead colour is never checked, and a pointer left on it when it died
+  // does not bring its ears out either.
+  const state: EarState = checked ? "up" : peeking && !dead ? "peeking" : "stowed";
   const shown = state !== "stowed";
   const exit: EarExit = { delay: resetDelay, instant: shouldReduceMotion };
   const moving = shouldReduceMotion ? null : beat;
   const pair: EarPairProps = { kind, state, beat: moving, noticeDelay, exit, longCoat };
   const whole = swatchBeat(kind, moving);
-  const body = bodyPose(moving, checked && outlined ? PICKED_SCALE : 1, exit);
+  const rest = checked && outlined ? PICKED_SCALE : dead ? DEAD_SCALE : 1;
+  const body = bodyPose(moving, rest, exit);
   const faces = FACES[colour];
 
   return (
@@ -1004,8 +1166,14 @@ const CoatColorSwatch = memo(function CoatColorSwatch({
             stroke={SWATCH_EDGE}
             strokeWidth={faces ? 1.2 : 1}
           />
+          {/* Over the face and its hairline: a dog's ears, which hang in
+              front of the face, and a ruff, which carries the head's outline
+              out, so the hairline has to stop where the ruff starts. */}
           <AnimatePresence initial={false} custom={exit}>
             {shown && ear.inFront && <EarCoat key={kind} colour={colour} {...pair} />}
+            {shown && ear.fur.at === "cheek" && (
+              <CheekCoat key={`${kind}-cheeks`} colour={colour} ruff={ear.fur} {...pair} />
+            )}
           </AnimatePresence>
         </m.g>
       </m.g>
@@ -1050,12 +1218,24 @@ const EAR_COATS = byFacet(earCoats);
 
 // The body the coat sits on. One arc, the same in all four glyphs, so the
 // only thing that differs between them is what hangs off it.
-const EDGE_LEFT = 4.4;
-const EDGE_RIGHT = 19.6;
-const EDGE_ENDS_Y = 10.3;
-const EDGE_TOP_Y = 7.4;
-// The control point is the box centre, which is also what edgeY below assumes.
-const COAT_EDGE = `M${EDGE_LEFT} ${EDGE_ENDS_Y}Q${CENTRE} ${EDGE_TOP_Y} ${EDGE_RIGHT} ${EDGE_ENDS_Y}`;
+//
+// It spans most of the box and sits high in it, and it starts left of
+// centre because the strands lean right, so the longest coat's tips still
+// end inside the box. The glyph used to hang a 15-unit arc low in a 20px
+// box, and the three coats printed 14x4, 14x7 and 16x10px, half the ink of
+// every other icon in the panel; Kratka, the answer for most of the
+// catalogue, read as a strip of lashes.
+const EDGE_LEFT = 2.2;
+const EDGE_RIGHT = 18.2;
+const EDGE_ENDS_Y = 7.6;
+const EDGE_TOP_Y = 4.2;
+// The control point sits midway between the ends, which is what keeps edgeX
+// below a straight line.
+const EDGE_MID = (EDGE_LEFT + EDGE_RIGHT) / 2;
+const COAT_EDGE = `M${EDGE_LEFT} ${EDGE_ENDS_Y}Q${EDGE_MID} ${EDGE_TOP_Y} ${EDGE_RIGHT} ${EDGE_ENDS_Y}`;
+// Drawn at 24px, one unit to the pixel, as Spol's glyphs are, and a shade
+// under Spol's 2 so the four strands keep the daylight between them.
+const COAT_STROKE = 1.8;
 
 // Where each strand leaves the body, along that arc, and how long it runs
 // against the coat's own length. One row per strand rather than two
@@ -1063,9 +1243,9 @@ const COAT_EDGE = `M${EDGE_LEFT} ${EDGE_ENDS_Y}Q${CENTRE} ${EDGE_TOP_Y} ${EDGE_R
 // comment: the middle two run longest, which is what gives the coat a soft
 // crown rather than a hem cut straight across.
 //
-// Four strands, not five. Five across the 16 units the edge spans leaves
-// 1.3px of daylight between neighbours at 20px and the coat prints as a
-// smudge.
+// Four strands, not five. Five across the 16 units the edge spans leave
+// about a pixel of daylight between neighbours at 24px and the coat prints
+// as a smudge.
 const STRANDS: readonly { t: number; crown: number }[] = [
   { t: 0.15, crown: 0.82 },
   { t: 0.38, crown: 1 },
@@ -1082,6 +1262,17 @@ const edgeX = (t: number) => EDGE_LEFT + (EDGE_RIGHT - EDGE_LEFT) * t;
 const edgeY = (t: number) =>
   (1 - t) ** 2 * EDGE_ENDS_Y + 2 * (1 - t) * t * EDGE_TOP_Y + t ** 2 * EDGE_ENDS_Y;
 
+// The arc's highest point, at its middle.
+const EDGE_APEX = (EDGE_ENDS_Y + EDGE_TOP_Y) / 2;
+
+// Where a strand leaves the arc: clear of the arc's own stroke, so it starts
+// in the coat and not inside the line it hangs from.
+const rootY = (t: number) => edgeY(t) + 0.35;
+
+// How much of its fall a strand's tip ends below its root. The rest of the
+// fall goes into the bend.
+const TIP_DROP = 0.94;
+
 /**
  * One strand, falling `fall` from the arc at `t`. It leaves the body upright
  * and bends over as it runs out, which is the shape that reads as hair rather
@@ -1092,90 +1283,98 @@ const edgeY = (t: number) =>
  */
 function strandPath(t: number, fall: number): string {
   const x = edgeX(t);
-  // Clear of the arc's own stroke, so the strand starts in the coat and not
-  // inside the line it hangs from.
-  const y = edgeY(t) + 0.35;
+  const y = rootY(t);
   const drift = fall * LEAN;
-  return `M${p2(x)} ${p2(y)}C${p2(x + drift * 0.04)} ${p2(y + fall * 0.45)} ${p2(x + drift * 0.35)} ${p2(y + fall * 0.8)} ${p2(x + drift)} ${p2(y + fall * 0.94)}`;
+  return `M${p2(x)} ${p2(y)}C${p2(x + drift * 0.04)} ${p2(y + fall * 0.45)} ${p2(x + drift * 0.35)} ${p2(y + fall * 0.8)} ${p2(x + drift)} ${p2(y + fall * TIP_DROP)}`;
 }
 
-const strandsFalling = (fall: number): string[] =>
-  STRANDS.map(({ t, crown }) => strandPath(t, fall * crown));
+/** The strands of a coat that falls `fall`, and where its lowest tip ends. */
+function hangingCoat(fall: number): Pick<Coat, "strands" | "hem"> {
+  return {
+    strands: STRANDS.map(({ t, crown }) => strandPath(t, fall * crown)),
+    hem: Math.max(
+      ...STRANDS.map(({ t, crown }) => rootY(t) + fall * crown * TIP_DROP),
+    ),
+  };
+}
 
 /**
  * How a coat that has strands answers a pointer. Brez dlake has none, so it
- * has no motion of its own and the table below leaves this off rather than
- * carrying four numbers nothing can read.
+ * has no motion of its own and the table below leaves this off.
+ *
+ * Each gesture was measured at the size it is drawn, as the distance a
+ * strand's tip travels, and one that moved the tips less than about a pixel
+ * was taken out rather than kept for the table's symmetry. That took
+ * Kratka's lean, and the draught that used to stir the other rows when one
+ * was picked: at this size it moved their tips 0.15 to 1.1px, and with only
+ * Dolga's reaching a pixel it no longer said anything about the rows as a
+ * family.
  */
 type CoatMotion = {
   /**
-   * How far the coat leans when a pointer reaches for the card, in degrees,
-   * and the spring it settles on. This is the paw's idea in Velikost: the
-   * three answers differ in a physical property, so the spring carries it and
-   * a long coat swings further and keeps swinging after a short one has
-   * stopped. Skew rather than rotation, about the root line, so the coat
-   * moves and the body it grows out of does not.
+   * The spring the coat settles on after a lean or a press. This is the
+   * paw's idea in Velikost: the three answers differ in a physical property,
+   * so the spring carries it, and a long coat keeps swinging after a short
+   * one has stopped.
    */
-  sway: number;
-  swaySpring: { stiffness: number; damping: number; mass: number };
+  spring: { stiffness: number; damping: number; mass: number };
   /**
-   * How flat the coat goes while the card is held down. The press is the one
-   * gesture a phone gets: hover never fires there, so without it the whole
-   * section is still on touch until the coat grows. A long coat has more to
-   * squash, so it flattens further.
+   * How far the coat leans when a pointer reaches for the card, in degrees.
+   * Skew rather than rotation, about the root line, so the coat moves and the
+   * body it grows out of does not. Absent for Kratka, whose 3.5 degrees moved
+   * the tips 0.3px.
+   */
+  sway?: number;
+  /**
+   * How flat the coat goes while the card is held down, as a scale toward
+   * the root line. The press is the one gesture a phone gets: hover never
+   * fires there, so without it the whole section is still on touch until the
+   * coat grows. A long coat has more to squash, so it flattens further, and
+   * even Kratka's tips drop more than a pixel.
    */
   press: number;
-  /**
-   * How far this coat stirs when a different length is picked, in degrees.
-   * The paw's neighbour lean, and it earns its place the same way: the three
-   * rows are one scale, so showing the others answer says they are a family,
-   * and the size of each answer says again which is longest.
-   */
-  ruffle: number;
 };
 
 type Coat = {
   strands: string[];
+  /** How low the coat reaches in the 24-box: its lowest tip, or the arc. */
+  hem: number;
   /** How long the coat takes to grow in. Longer hair takes longer. */
   grow: number;
   motion?: CoatMotion;
 };
 
-// 3.6, 7.2 and 10.6 units of fall in the 24-box: the whole range between the
-// arc and the floor of the box, because the fall is the only thing these
-// three answers differ in.
+// 6, 9.5 and 13 units of fall in the 24-box, in even steps, because the fall
+// is the only thing these three answers differ in and the column has to read
+// as a ramp.
 const COAT: Record<CoatLength, Coat> = {
   // No strands, so no sway group is drawn and there is nothing to give
   // motion to. The body edge still draws itself; see CoatLengthGlyph.
-  hairless: { strands: [], grow: 0.3 },
+  hairless: { strands: [], hem: EDGE_ENDS_Y, grow: 0.3 },
   short: {
-    strands: strandsFalling(3.6),
+    ...hangingCoat(6),
     grow: 0.28,
     motion: {
-      sway: 3.5,
-      swaySpring: { stiffness: 520, damping: 22, mass: 0.4 },
-      press: 0.86,
-      ruffle: 1.5,
+      spring: { stiffness: 520, damping: 22, mass: 0.4 },
+      press: 0.78,
     },
   },
   medium: {
-    strands: strandsFalling(7.2),
+    ...hangingCoat(9.5),
     grow: 0.37,
     motion: {
+      spring: { stiffness: 360, damping: 16, mass: 0.6 },
       sway: 6.5,
-      swaySpring: { stiffness: 360, damping: 16, mass: 0.6 },
       press: 0.76,
-      ruffle: 3,
     },
   },
   long: {
-    strands: strandsFalling(10.6),
+    ...hangingCoat(13),
     grow: 0.46,
     motion: {
+      spring: { stiffness: 250, damping: 12, mass: 0.85 },
       sway: 10,
-      swaySpring: { stiffness: 250, damping: 12, mass: 0.85 },
       press: 0.66,
-      ruffle: 5,
     },
   },
 };
@@ -1185,25 +1384,17 @@ const COAT: Record<CoatLength, Coat> = {
 const GROW_STAGGER = 0.05;
 
 const PRESS_DURATION = 0.1;
-const RUFFLE_DURATION = 0.5;
-// How far down the list the draught travels per row. The whole wave has to
-// finish inside CELEBRATION_MS, because that is when `ruffling` goes false
-// and any row still mid-keyframe snaps to rest: with four options the last
-// one ends at 3 * 0.06 + 0.5 = 0.68s against 0.7s. Adding a fifth option, or
-// shortening the celebration, has to move one of these three numbers.
-const RUFFLE_STEP_DELAY = 0.06;
-
 
 /**
  * The origin the coat turns about: the top of the strands' own bounding box,
  * which is the highest of the four roots. The roots sit on an arc rather than
- * a line, so the outer two shear by about 0.18 view-box units at the longest
- * coat's lean, which is under a sixth of a pixel at 20px.
+ * a line, so the outer two shear by about 0.13 view-box units at the longest
+ * coat's lean, 0.13px at 24px.
  *
  * fill-box rather than a measured point in the view box, so the four lengths
  * share one rule and none of them needs a number kept in step with the
- * geometry above. That makes the pivot content-dependent: these groups hold
- * the strands and nothing else, and anything added inside one moves it.
+ * geometry above. That makes the pivot content-dependent: the group holds
+ * the strands and nothing else, and anything added inside it moves it.
  *
  * originY and not transformOrigin. Motion owns transform-origin on anything
  * it animates and writes its own 50% 50% over a plain CSS value in the same
@@ -1224,21 +1415,14 @@ const SWAY_ORIGIN = {
  */
 export type CoatIconMotion = {
   hovered: boolean;
-  /** A click has just landed on this card and the pointer has not left. */
-  settled: boolean;
+  /** Hovered or focused, and no click has landed on it since. */
+  previewing: boolean;
   pressed: boolean;
   /** This card has just been picked and its gesture is still playing. */
   celebrating: boolean;
-  /** Another option in this section has just been picked. */
-  ruffling: boolean;
-  /** How many rows away the picked one is. */
-  neighbourDistance: number;
   /** Holds this card's icon back so a reset empties the section in order. */
   resetDelay: number;
 };
-
-/** The shape size-paw-cards and energy-cards give their own pose helpers. */
-type Pose = { animate: TargetAndTransition; transition: Transition };
 
 /**
  * What the coat is doing, as one of three answers the pointer can ask for.
@@ -1262,44 +1446,17 @@ function coatPose(pose: CoatPose, motion: CoatMotion): Pose {
         transition: { duration: PRESS_DURATION, ease: "easeOut" },
       };
     case "reaching":
+      // A coat with no lean of its own stays where it is.
       return {
-        animate: { skewX: -motion.sway, scaleY: 1 },
-        transition: { type: "spring", ...motion.swaySpring },
+        animate: { skewX: motion.sway ? -motion.sway : 0, scaleY: 1 },
+        transition: { type: "spring", ...motion.spring },
       };
     case "rest":
       return {
         animate: { skewX: 0, scaleY: 1 },
-        transition: { type: "spring", ...motion.swaySpring },
+        transition: { type: "spring", ...motion.spring },
       };
   }
-}
-
-/**
- * The draught a card feels when a different length is picked, on its own
- * group.
- *
- * Its own, and not folded into coatPose, because the two would then write
- * skewX on one element: crossing a ruffling row with the pointer would swap a
- * keyframe array for a scalar, and Motion restarts a key whose previous value
- * was an array, so the draught would replay from zero and then be cut off
- * when the celebration window closes. Velikost avoids the same collision the
- * same way, by animating its neighbour lean and its hover lift on different
- * elements.
- *
- * `distance` and not a delay: the shared card loop knows where a row sits and
- * this file knows how long a coat takes to stir, which is the split size
- * already uses.
- */
-function rufflePose(motion: CoatMotion, distance: number): Pose {
-  return {
-    animate: { skewX: [0, -motion.ruffle, 0] },
-    // Springs take two keyframes, so the draught out and back runs as a tween.
-    transition: {
-      duration: RUFFLE_DURATION,
-      delay: distance * RUFFLE_STEP_DELAY,
-      ease: "easeInOut",
-    },
-  };
 }
 
 const STILL: Pose = {
@@ -1352,15 +1509,16 @@ function lengthOf(value: string): CoatLength {
  * off a ground line are. Hanging them instead is what makes them hair, and
  * the lean is what keeps them from printing as the rake the first attempt at
  * this glyph found: strands dropped straight down from the arc read as a comb.
+ *
+ * Memoised: every prop is a primitive, and the section renders again for each
+ * hover and press on any row.
  */
-function CoatLengthGlyph({
+const CoatLengthGlyph = memo(function CoatLengthGlyph({
   length,
   checked,
   className,
   hovered,
   pressed,
-  ruffling,
-  neighbourDistance,
   resetDelay,
 }: {
   length: CoatLength;
@@ -1389,13 +1547,10 @@ function CoatLengthGlyph({
         : retract,
   });
 
-  const still = shouldReduceMotion || !motion;
   const pose =
-    still || !motion
+    shouldReduceMotion || !motion
       ? STILL
       : coatPose(pressed ? "pressing" : hovered ? "reaching" : "rest", motion);
-  const draught =
-    still || !motion || !ruffling ? STILL : rufflePose(motion, neighbourDistance);
 
   return (
     <svg
@@ -1403,7 +1558,7 @@ function CoatLengthGlyph({
       data-coat-glyph={length}
       className={className}
       fill="none"
-      strokeWidth={1.65}
+      strokeWidth={COAT_STROKE}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
@@ -1412,7 +1567,7 @@ function CoatLengthGlyph({
       {/* Brez dlake has no coat to grow, so the body itself is what draws on
           the way in. Without it the one option whose answer is "nothing"
           would be the one option that does nothing when picked. It stays
-          outside the groups below: those pivot on the strands' bounding box,
+          outside the group below: that pivots on the strands' bounding box,
           and the body must not lean with a coat it does not have. */}
       {!motion && (
         <m.path d={COAT_EDGE} stroke="var(--brand-strong)" {...drawing(0)} />
@@ -1421,34 +1576,27 @@ function CoatLengthGlyph({
         <m.g
           style={SWAY_ORIGIN}
           initial={false}
-          animate={draught.animate}
-          transition={draught.transition}
+          animate={pose.animate}
+          transition={pose.transition}
         >
-          <m.g
-            style={SWAY_ORIGIN}
-            initial={false}
-            animate={pose.animate}
-            transition={pose.transition}
-          >
-            <g className="text-muted-foreground" stroke="currentColor">
-              {coat.strands.map((d) => (
-                <path key={d} d={d} />
-              ))}
-            </g>
-            {/* The accent copy draws itself the way the energy glyphs do, and
-                here that is the fact: picking a length is the coat growing to
-                it, root first, one strand behind the next. */}
-            <g stroke="var(--brand-strong)">
-              {coat.strands.map((d, index) => (
-                <m.path key={d} d={d} {...drawing(index * GROW_STAGGER)} />
-              ))}
-            </g>
-          </m.g>
+          <g className="text-muted-foreground" stroke="currentColor">
+            {coat.strands.map((d) => (
+              <path key={d} d={d} />
+            ))}
+          </g>
+          {/* The accent copy draws itself the way the energy glyphs do, and
+              here that is the fact: picking a length is the coat growing to
+              it, root first, one strand behind the next. */}
+          <g stroke="var(--brand-strong)">
+            {coat.strands.map((d, index) => (
+              <m.path key={d} d={d} {...drawing(index * GROW_STAGGER)} />
+            ))}
+          </g>
         </m.g>
       )}
     </svg>
   );
-}
+});
 
 type CoatCardsProps = {
   options: FilterOption[];
@@ -1460,6 +1608,24 @@ type CoatCardsProps = {
   collapse?: SectionCollapse;
   unanswered?: Unanswered;
 };
+
+/**
+ * Barva's tile on the phone: the swatch on a line of its own, the label and
+ * its count on one line under it.
+ *
+ * In the standard tile, label over count, ten colours stood 83px tall and
+ * took 492px of a sheet that shows 388 at 390x844 and 189 at 320x568, so a
+ * fifth of the sheet's scroll went to one part of one section. One line for
+ * the label and the count brings the tile to about 60px, and the two columns
+ * keep their order, so each solid colour still stands beside its two-toned
+ * twin.
+ *
+ * content-start for the reason the standard tile is justify-start: a row
+ * stretches to its tallest tile, and a stack centred in it would move each
+ * tile's swatch by half of whatever it lacked. items-baseline keeps the count
+ * on the label's baseline, though the label carries a margin of its own.
+ */
+const COMPACT_TILE_CLASS = `${DEAD_OPTION_CLASS} min-h-[3.75rem] flex-row flex-wrap content-start items-baseline justify-center gap-x-1.5 gap-y-0.5 px-1.5 py-1.5 text-center`;
 
 /**
  * One list for both halves of Videz. They differ in what goes in the icon
@@ -1479,30 +1645,42 @@ function CoatCards({
   collapse,
   unanswered,
   tracksPress = false,
+  compactTiles = false,
+  // Two across for Barva, where each solid colour stands beside its
+  // two-toned twin.
+  sheetColumns = "grid-cols-2",
   holdMs,
   checkDelay,
 }: CoatCardsProps & {
   group: "coatColor" | "coatLength";
   hint?: string;
+  /** The sheet's columns (FilterCardSection). */
+  sheetColumns?: string;
   /** How long a pick holds its gesture open; its tail snaps to rest after. */
   holdMs: number;
   /** When the tick lands, which is once the icon's gesture has. */
   checkDelay: number;
-  /**
-   * One object rather than four positional booleans. Dolžina dlake needs to
-   * know whether the pointer is on the card, and a fourth bare boolean beside
-   * checked and dead is a swap waiting to happen.
-   */
   /**
    * Whether this section's icon answers a held pointer. Off by default: the
    * colour swatch has no press gesture, and registering the handlers anyway
    * put two renders of a ten-tile grid behind every tap on it.
    */
   tracksPress?: boolean;
+  /**
+   * The sheet's tile with its label and count on one line under the icon,
+   * for a section with too many answers for the standard tile. See
+   * COMPACT_TILE_CLASS.
+   */
+  compactTiles?: boolean;
   renderIcon: (card: {
     value: string;
     checked: boolean;
     dead: boolean;
+    /**
+     * One object rather than four positional booleans. Dolžina dlake needs
+     * to know whether the pointer is on the card, and a fourth bare boolean
+     * beside checked and dead is a swap waiting to happen.
+     */
     motion: CoatIconMotion;
   }) => ReactNode;
 }) {
@@ -1519,17 +1697,14 @@ function CoatCards({
   );
   const {
     hoveredValue,
-    settledValue,
+    previewing,
     settle,
     pressedValue,
     release: releasePress,
     handlers: gestureHandlers,
   } = useFilterCardGestures({ press: tracksPress });
   const label = groupLabel(group, locale);
-
-  const celebrationIndex = options.findIndex(
-    ({ value }) => value === celebration?.value,
-  );
+  const compact = compactTiles && layout === "sheet";
 
   return (
     <FilterCardSection
@@ -1544,9 +1719,7 @@ function CoatCards({
       resetAriaLabel={(locale === "sl" ? "Ponastavi: " : "Reset: ") + label}
       layout={layout}
       collapse={collapse}
-      // Three across at 320px would break "Večbarvna" and "Brez dlake" over
-      // two lines apiece; two keeps every label on one.
-      sheetColumns="grid-cols-2"
+      sheetColumns={sheetColumns}
       tone="part"
       footer={<UnansweredNote tally={unanswered} />}
     >
@@ -1557,18 +1730,33 @@ function CoatCards({
         const celebrating = celebration?.value === value && checked;
         const resetDelay = resetDelayOf(index);
         const gestures = gestureHandlers(value);
-        // The cards that did not change feel the draught. How far away they
-        // are is this loop's business; how long that takes belongs to the
-        // glyph, which is the split size already uses.
         const motion: CoatIconMotion = {
           hovered: hoveredValue === value,
-          settled: settledValue === value,
+          previewing: previewing(value),
           pressed: pressedValue === value,
           celebrating,
-          ruffling: celebrationIndex >= 0 && !celebrating,
-          neighbourDistance: Math.abs(index - celebrationIndex),
           resetDelay,
         };
+        const well = (
+          <FilterCardIconWell
+            layout={layout}
+            checked={checked}
+            exitDelay={resetDelay}
+          >
+            {celebrating && !shouldReduceMotion ? (
+              <FilterCardRipple
+                key={`ring-${celebration?.id}`}
+                layout={layout}
+                opacity={RIPPLE_OPACITY}
+                scale={RIPPLE_SCALE}
+                duration={RIPPLE_DURATION}
+              />
+            ) : null}
+            <FilterCardHoverLift hovered={motion.hovered}>
+              {renderIcon({ value, checked, dead, motion })}
+            </FilterCardHoverLift>
+          </FilterCardIconWell>
+        );
 
         return (
           <button
@@ -1588,7 +1776,10 @@ function CoatCards({
             className={filterCardVariants({
               layout,
               selected: checked,
-              className: cn("flex", filterCardLayoutClass(layout)),
+              className: cn(
+                "flex",
+                compact ? COMPACT_TILE_CLASS : filterCardLayoutClass(layout),
+              ),
             })}
           >
             <FilterCardMark
@@ -1596,24 +1787,13 @@ function CoatCards({
               checked={checked}
               appearDelay={checkDelay}
             />
-            <FilterCardIconWell
-              layout={layout}
-              checked={checked}
-              exitDelay={resetDelay}
-            >
-              {celebrating && !shouldReduceMotion ? (
-                <FilterCardRipple
-                  key={`ring-${celebration?.id}`}
-                  layout={layout}
-                  opacity={RIPPLE_OPACITY}
-                  scale={RIPPLE_SCALE}
-                  duration={RIPPLE_DURATION}
-                />
-              ) : null}
-              <FilterCardHoverLift hovered={motion.hovered}>
-                {renderIcon({ value, checked, dead, motion })}
-              </FilterCardHoverLift>
-            </FilterCardIconWell>
+            {/* The well takes a line of its own, so the label and the count
+                share the next one. */}
+            {compact ? (
+              <span className="flex basis-full justify-center">{well}</span>
+            ) : (
+              well
+            )}
             <FilterCardTail
               layout={layout}
               label={option}
@@ -1685,6 +1865,11 @@ export function CoatLengthMark({
   className?: string;
 }) {
   const coat = Object.hasOwn(COAT, value) ? COAT[value as CoatLength] : COAT.long;
+  // The list draws every glyph against one datum, the arc at the same height,
+  // which is what lets the column read as a ramp and leaves a short coat in
+  // the top of its box. A mark stands alone beside a line of text, so it is
+  // centred on its own drawing instead. Kratka's sat 1.8px high in its pill.
+  const lift = CENTRE - (EDGE_APEX + coat.hem) / 2;
 
   return (
     <svg
@@ -1697,10 +1882,12 @@ export function CoatLengthMark({
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d={COAT_EDGE} />
-      {coat.strands.map((d) => (
-        <path key={d} d={d} />
-      ))}
+      <g transform={`translate(0 ${p2(lift)})`}>
+        <path d={COAT_EDGE} />
+        {coat.strands.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
     </svg>
   );
 }
@@ -1798,12 +1985,9 @@ function CoatColorPalette({
   // gated on :focus-visible. A second piece of focus state here overrode that
   // gate, because a later onFocus prop wins over the one the hook spreads in,
   // and a swatch stayed lifted and named after a mouse click.
-  //
-  // settledValue is the swatch a click last landed on: its ear tips stay down
-  // until the pointer or focus leaves (useFilterCardHover says why).
   const {
     hoveredValue,
-    settledValue,
+    previewing,
     settle,
     handlers: hoverHandlers,
   } = useFilterCardHover();
@@ -1862,9 +2046,13 @@ function CoatColorPalette({
         {options.map(({ value, label: option }, index) => {
           const count = counts.get(value) ?? 0;
           const checked = selected.includes(value);
+          // A dead colour keeps its cell rather than dropping out: the rest
+          // closing up behind it split the solid and two-toned pairs across
+          // rows. It is disabled, so no pointer or focus reaches it; the
+          // guard is for a pointer that was already on it when it died.
           const dead = isDeadOption(count, checked);
           const celebrating = celebration?.value === value && checked;
-          const hovered = hoveredValue === value;
+          const hovered = hoveredValue === value && !dead;
           // A colour picked earlier hears the new one land and turns the ear
           // on its side, later the further away it is.
           const beat: EarBeat = celebrating
@@ -1930,7 +2118,8 @@ function CoatColorPalette({
                   colour={colourOf(value)}
                   kind={kind}
                   checked={checked}
-                  peeking={hovered && settledValue !== value}
+                  dead={dead}
+                  peeking={previewing(value) && !dead}
                   beat={beat}
                   noticeDelay={noticeDelay}
                   resetDelay={resetDelayOf(index)}
@@ -1980,27 +2169,26 @@ export function CoatColorCards({
       hint={COLOUR_HINT[locale]}
       holdMs={EAR_BEAT_MS}
       checkDelay={EAR_CHECK_DELAY}
+      compactTiles
       renderIcon={({ value, checked, dead, motion }) => (
         <CoatColorSwatch
           colour={colourOf(value)}
           kind={kind}
           checked={checked}
-          peeking={motion.hovered && !motion.settled}
+          // A dead option keeps its full ink everywhere else in the filters,
+          // and a swatch is the one icon where that reads as available. Its
+          // count says 0 and its tick box is not drawn, and the swatch draws
+          // small in its own colour, as it does in the palette.
+          dead={dead}
+          peeking={motion.previewing}
           beat={motion.celebrating ? "picked" : null}
           resetDelay={motion.resetDelay}
           outlined={false}
           longCoat={longCoat}
-          className={cn(
-            // Bigger than the 20px glyph the other sections put in this well.
-            // A swatch is the answer itself rather than a picture of it, and
-            // the sheet is the only layout that still draws one in a tile.
-            "size-6.5 overflow-visible transition-opacity duration-200",
-            // A dead option keeps its full ink everywhere else in the filters,
-            // and a swatch is the one icon where that reads as available. Its
-            // count says 0 and its tick box is not drawn; the colour steps
-            // back without going grey.
-            dead && "opacity-60",
-          )}
+          // Bigger than the 20px glyph the other sections put in this well.
+          // A swatch is the answer itself rather than a picture of it, and
+          // the sheet is the only layout that still draws one in a tile.
+          className="size-6.5 overflow-visible"
         />
       )}
     />
@@ -2014,6 +2202,15 @@ export function CoatLengthCards(props: CoatCardsProps) {
       group="coatLength"
       holdMs={CELEBRATION_MS}
       checkDelay={CHECK_DELAY}
+      // Two across while the sheet draws Brez dlake: three across at 320px
+      // would break it over two lines. Without it, which the sheet leaves out
+      // while no animal in the pool is hairless (liveInPool), the lengths are
+      // three short words and take one row instead of two.
+      sheetColumns={
+        props.options.some(({ value }) => value === "hairless")
+          ? "grid-cols-2"
+          : sheetColumnsFor(props.options.length)
+      }
       // Length needs no explanation beyond its labels.
       // The coat is the one icon here that answers a held pointer.
       tracksPress
@@ -2022,7 +2219,7 @@ export function CoatLengthCards(props: CoatCardsProps) {
           length={lengthOf(value)}
           checked={checked}
           {...motion}
-          className={cn("size-5", dead && "opacity-75")}
+          className={cn("size-6", dead && "opacity-75")}
         />
       )}
     />

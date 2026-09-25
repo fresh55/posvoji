@@ -18,7 +18,6 @@ import {
   Ruler,
   ScanLine,
   Scissors,
-  ShieldCheck,
   Snail,
   Shrub,
   Sprout,
@@ -42,14 +41,19 @@ import type {
   ToggleKey,
 } from "@/lib/filters";
 
-// One icon per health trait, shared by the filter panel and the animal
-// dialog so the same fact never arrives wearing two different symbols.
+// One icon per health trait, shared by the chips, the animal dialog and the
+// poster so the same fact never arrives wearing two different symbols.
 // Keyed by ToggleKey, so a new trait fails to compile here.
+//
+// The two tests wear one tube, the one the filter panel draws for both rows
+// (health-glyphs.tsx): FIV and FeLV are one question in two halves, and FIV's
+// shield carried a tick at rest, which is the panel's mark for a chosen row
+// and the site's mark for a data-sharing shelter besides.
 export const HEALTH_ICONS: Record<ToggleKey, LucideIcon> = {
   sterilizacija: Scissors,
   cepljenje: Syringe,
   cip: ScanLine,
-  "brez-fiv": ShieldCheck,
+  "brez-fiv": TestTubeDiagonal,
   "brez-felv": TestTubeDiagonal,
 };
 

@@ -6,6 +6,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,7 +23,7 @@ import { FilterSidebar } from "./filter-sidebar";
 // The chunks a press on the sheet or the picker fetches, loaded with the file
 // so the first test to open either does not wait for them inside its find
 // (test/picker-chunks.ts says why).
-import "./filter-sheet-content";
+import { PICKER_HANDOFF_MS } from "./filter-sheet-content";
 import "@/test/picker-chunks";
 
 // The Kje row, in the two panels that draw it. Where shelter used to live only
@@ -242,30 +243,75 @@ describe("Kje scope row in the filter sheet", () => {
     renderSheet();
     const dialog = await openSheet();
 
+    // Under the order only, which opens the body (filter-sheet-content.tsx).
     const body = dialog.querySelector(".overflow-y-auto") as HTMLElement;
-    expect(body.firstElementChild?.getAttribute("data-slot")).toBe(
-      "location-scope-row",
-    );
+    const [first, second] = [...body.children];
+    expect(first.getAttribute("data-slot")).toBe("sheet-sort");
+    expect(second.getAttribute("data-slot")).toBe("location-scope-row");
   });
 
-  it("closes the drawer before asking for the map", async () => {
-    vi.useFakeTimers();
-    const onOpen = vi.fn();
+  it("closes the drawer before asking for the map, and waits for its entry", async () => {
+    const asked: { at: number; entry: unknown }[] = [];
+    const onOpen = vi.fn(() =>
+      asked.push({
+        at: performance.now(),
+        entry: window.history.state?.locationPicker,
+      }),
+    );
     renderSheet({ onOpen });
 
     fireEvent.click(screen.getByRole("button", { name: /^Filtri/ }));
     const dialog = screen.getByRole("dialog");
+    // The premise: the open drawer stands on a history entry of its own.
+    const drawerEntry: unknown = window.history.state?.locationPicker;
+    expect(typeof drawerEntry).toBe("string");
+    const pressed = performance.now();
     fireEvent.click(within(dialog).getByRole("button", { name: /Zavetišče:/ }));
 
-    // The drawer is on its way out and the map has not been asked for yet:
-    // two focus traps and two scroll locks over one press is what the wait is
-    // avoiding.
+    // The drawer is on its way out and the map has not been asked for yet.
     expect(onOpen).not.toHaveBeenCalled();
-    act(() => {
-      vi.advanceTimersByTime(500);
+    await waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
     });
-    expect(onOpen).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
+    // Most of the slide first, and the drawer's own history entry gone: the
+    // map's entry pushed over one whose pop was still on its way would be
+    // taken down by that pop.
+    expect(asked[0].at - pressed).toBeGreaterThanOrEqual(
+      PICKER_HANDOFF_MS - 5,
+    );
+    expect(asked[0].entry).not.toBe(drawerEntry);
+  });
+
+  it("leaves focus for the map rather than handing it back to the trigger", async () => {
+    // The map opens while the drawer is still leaving, and the drawer's own
+    // focus return comes when its content unmounts: it took focus out of the
+    // open map for the trigger behind it.
+    const unmounted = () =>
+      waitFor(() =>
+        expect(document.querySelector('[data-slot="drawer-content"]')).toBeNull(),
+      ).then(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    const onOpen = vi.fn();
+    renderSheet({ onOpen });
+    // Asked for each time: the trigger is drawn again once the sheet's chunk
+    // has arrived.
+    const trigger = () => screen.getByRole("button", { name: /^Filtri/ });
+
+    // The premise: an ordinary close hands focus back to the trigger.
+    fireEvent.click(trigger());
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Zapri" }));
+    await unmounted();
+    expect(document.activeElement).toBe(trigger());
+
+    fireEvent.click(trigger());
+    dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /Zavetišče:/ }));
+    await unmounted();
+    await waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+
+    expect(document.activeElement).not.toBe(trigger());
   });
 
   it("does not nest the picker's own dialog inside the drawer", async () => {

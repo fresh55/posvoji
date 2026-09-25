@@ -44,8 +44,8 @@ const emptyCounts = Object.fromEntries(
 
 /** The sheet as a phone opens it, with nothing filtered. The sort row is the
  *  part most of these tests are about, so every list is empty by default:
- *  what is left in the header is the title, the caption and the control under
- *  it. The fold tests below pass sections in. */
+ *  what is left is the title in the header and the caption and the control at
+ *  the top of the body. The fold tests below pass sections in. */
 function renderSheet(
   overrides: Partial<ComponentProps<typeof FilterSheet>> = {},
 ) {
@@ -127,7 +127,7 @@ describe("FilterSheet and the back gesture", () => {
 });
 
 describe("FilterSheet sort caption", () => {
-  it("says what the row under the title does", async () => {
+  it("says what the row at the top of the body does", async () => {
     // Without it the sheet opened on a bordered full-width select directly
     // under "Filtri", showing an order and a glyph and nothing saying it
     // ordered the list rather than narrowing it.
@@ -135,10 +135,31 @@ describe("FilterSheet sort caption", () => {
 
     const caption = within(dialog).getByText(sl.sortCaption);
     expect(caption.textContent).toBe(sl.sortCaption);
-    // And it leaves on exactly the query the row leaves on, so no label is
-    // left standing over a control the toolbar has taken over, and neither
+    // And it leaves with the control, on the block holding both, so no label
+    // is left standing over a control the toolbar has taken over, and neither
     // leaves on a landscape phone, where that toolbar scrolls away.
-    expect(caption.className.split(" ")).toContain("md:not-short:hidden");
+    const block = caption.closest('[data-slot="sheet-sort"]');
+    expect(block?.contains(within(dialog).getByRole("combobox"))).toBe(true);
+    expect(block?.className.split(" ")).toContain("md:not-short:hidden");
+  });
+
+  it("scrolls away with the sections instead of standing over them", async () => {
+    // Pinned in the header, the caption and the control took 78px from the
+    // sections for as long as the sheet was open: 388px of them were left at
+    // 390x844, 189 at 320x568. At the top of the body they are what opens
+    // the sheet and what the first scroll takes away.
+    const dialog = await openSheet(SEX_AND_SIZE);
+
+    const header = dialog.querySelector('[data-slot="filter-sheet-header"]');
+    const body = dialog.querySelector(".overflow-y-auto");
+    const block = dialog.querySelector('[data-slot="sheet-sort"]');
+    expect(header?.contains(block)).toBe(false);
+    expect(body?.firstElementChild).toBe(block);
+    expect(
+      block?.compareDocumentPosition(
+        within(dialog).getByRole("button", { name: /^Spol/ }),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("names the control with the caption and the current order", async () => {
@@ -224,11 +245,13 @@ describe("FilterSheet trigger badge", () => {
     const badge = document.querySelector('[data-slot="badge"]');
     expect(badge?.textContent).toBe("2");
     expect(badge?.className).not.toContain("min-[360px]");
-    // And the dot it stood in for is gone with it.
+    // And the dot it stood in for is gone with it. The trigger's own spans,
+    // since the badge holds the rolling number's.
     expect(document.querySelectorAll('[data-slot="badge"]').length).toBe(1);
     expect(
-      screen.getByRole("button", { name: /^Filtri/ }).querySelectorAll("span")
-        .length,
+      screen
+        .getByRole("button", { name: /^Filtri/ })
+        .querySelectorAll(":scope > span").length,
     ).toBe(1);
   });
 });

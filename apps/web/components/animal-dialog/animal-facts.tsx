@@ -231,8 +231,9 @@ function RequirementFact({
   );
 }
 
-// The missing-result pill wears the FIV badge's own mark, so the answer the
-// shelter recorded and the one it did not are visibly the same question.
+// The missing-result pill wears the tube both test badges wear, so the answer
+// the shelter recorded and the one it did not are visibly the same question.
+// It wore FIV's shield and its tick, on a pill saying there is no result.
 const UnknownTestIcon = HEALTH_ICONS["brez-fiv"];
 
 // An itemised health row lists only what the record answers, so a cat missing

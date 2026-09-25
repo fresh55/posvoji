@@ -1,15 +1,24 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
+import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
+import { pointer, pointerAway, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   AgeGrowthControl,
   groundSink,
   isAgeStageActive,
   plantMotion,
+  rowPlantPose,
   type PlantCue,
 } from "./age-growth-control";
 import { agePathTransition } from "./age-stage-icon";
@@ -46,6 +55,50 @@ function renderAgeControl(
   layout: "sidebar" | "sheet" = "sidebar",
 ): string {
   return renderToStaticMarkup(ageControl(selected, layout));
+}
+
+// The control with its selection in state, the way the page holds it, so a
+// pick lands and a reset empties it.
+function StatefulAgeControl({ initial = [] }: { initial?: string[] }) {
+  const [selected, setSelected] = useState(initial);
+  return (
+    <I18nProvider locale="sl">
+      <AgeGrowthControl
+        options={options}
+        counts={counts}
+        selected={selected}
+        onToggle={(value) =>
+          setSelected((current) =>
+            current.includes(value)
+              ? current.filter((item) => item !== value)
+              : [...current, value],
+          )
+        }
+        onToggleMany={(values) =>
+          setSelected((current) =>
+            current.filter((item) => !values.includes(item)),
+          )
+        }
+      />
+    </I18nProvider>
+  );
+}
+
+function grove(container: HTMLElement): HTMLElement {
+  const element = container.querySelector<HTMLElement>(
+    '[data-age-view="grove"]',
+  );
+  if (!element) throw new Error("no grove");
+  return element;
+}
+
+// A row's or a tile's plant, as opposed to the grove's.
+function rowPlant(container: HTMLElement, stage: AgeStage): SVGElement {
+  const icon = container.querySelector<SVGElement>(
+    `button [data-age-icon="${stage}"]`,
+  );
+  if (!icon) throw new Error(`no row plant for ${stage}`);
+  return icon;
 }
 
 /**
@@ -106,14 +159,6 @@ describe("AgeGrowthControl", () => {
 });
 
 describe("AgeGrowthControl grove", () => {
-  function grove(container: HTMLElement): HTMLElement {
-    const element = container.querySelector<HTMLElement>(
-      '[data-age-view="grove"]',
-    );
-    if (!element) throw new Error("no grove");
-    return element;
-  }
-
   // The ranges were a hover tooltip, which a phone never opens.
   it("prints each stage's range under its plant", () => {
     const { container } = render(ageControl());
@@ -422,6 +467,327 @@ describe("AgeGrowthControl sheet tiles", () => {
     // The count is the only thing that was 10px, so this says it moved.
     expect(html).not.toContain("text-3xs");
     expect(html).toContain("text-2xs");
+  });
+});
+
+describe("AgeGrowthControl row plants", () => {
+  // The canopy's colour, which is the svg's own, and each trunk's.
+  function inks(icon: SVGElement, stage: AgeStage) {
+    return {
+      canopy: icon.getAttribute("class") ?? "",
+      wood: [...icon.querySelectorAll("path")]
+        .filter((_, index) => AGE_STAGE_PATHS[stage][index].wood)
+        .map((path) => path.getAttribute("class") ?? ""),
+    };
+  }
+
+  // Green means chosen across the panel. The rows wore the grove's colours
+  // at rest and kept them through a pick, where every other row's icon is
+  // grey until it is chosen.
+  it("rests every row's plant in the muted ink and colours only the chosen one", () => {
+    const { container } = render(ageControl(["odrasel"]));
+
+    for (const stage of STAGES) {
+      const { canopy, wood } = inks(rowPlant(container, stage), stage);
+      if (stage === "odrasel") {
+        expect(canopy).toContain("text-grove-leaf");
+        for (const trunk of wood) expect(trunk).toContain("text-grove-wood");
+      } else {
+        expect(canopy).toContain("text-muted-foreground");
+        expect(canopy).not.toContain("text-grove");
+        for (const trunk of wood) {
+          expect(trunk).toContain("text-muted-foreground");
+          expect(trunk).not.toContain("text-grove");
+        }
+      }
+    }
+    // A shrub and a tree have trunks, so both kinds of path were checked.
+    expect(inks(rowPlant(container, "odrasel"), "odrasel").wood).toHaveLength(2);
+    expect(inks(rowPlant(container, "senior"), "senior").wood).toHaveLength(1);
+  });
+
+  it("leaves a dead stage's plant grey", () => {
+    const { container } = render(
+      ageControl(
+        [],
+        "sidebar",
+        undefined,
+        new Map([
+          ["mladicek", 0],
+          ["odrasel", 3],
+          ["senior", 3],
+        ]),
+      ),
+    );
+
+    expect(rowPlant(container, "mladicek").getAttribute("class")).toContain(
+      "text-muted-foreground",
+    );
+  });
+
+  it("keeps the grove's colours whatever is picked", () => {
+    for (const selected of [[], ["odrasel"], ["mladicek", "senior"]]) {
+      const { container } = render(ageControl(selected));
+      const plants = grove(container).querySelectorAll("[data-age-icon]");
+      expect(plants).toHaveLength(3);
+      for (const plant of plants) {
+        expect(plant.getAttribute("class")).toContain("text-grove-leaf");
+      }
+      cleanup();
+    }
+  });
+
+  it("lights a chosen row's icon well, and leaves the tile without one", () => {
+    const { container } = render(ageControl(["senior"]));
+    const halo = (stage: AgeStage) =>
+      rowPlant(container, stage)
+        .closest("span.grid")
+        ?.querySelector<HTMLElement>("span.rounded-full");
+
+    expect(halo("senior")?.style.opacity).toBe("1");
+    expect(halo("odrasel")?.style.opacity).toBe("0");
+
+    const sheet = render(ageControl(["senior"], "sheet"));
+    expect(sheet.container.querySelector("button span.rounded-full")).toBeNull();
+  });
+
+  // Why: the reset stagger has to reach the glyph, not just its halo.
+  it("gives the colour back in each row's turn on a reset", () => {
+    const { container } = render(
+      <StatefulAgeControl initial={["mladicek", "odrasel", "senior"]} />,
+    );
+    for (const stage of STAGES) {
+      expect(rowPlant(container, stage).getAttribute("class")).toContain(
+        "text-grove-leaf",
+      );
+    }
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ponastavi filter starosti" }),
+    );
+
+    expect(
+      STAGES.map((stage) => rowPlant(container, stage).style.transitionDelay),
+    ).toEqual(["", "0.045s", "0.09s"]);
+    for (const stage of STAGES) {
+      expect(rowPlant(container, stage).getAttribute("class")).toContain(
+        "text-muted-foreground",
+      );
+    }
+    // The trunk has a colour class of its own, so it takes the svg's turn.
+    for (const trunk of inks(rowPlant(container, "senior"), "senior").wood) {
+      expect(trunk).toContain("delay-[inherit]");
+    }
+  });
+
+  // The stages left out used to drop their captions to half opacity:
+  // 2.08:1 light and 2.68:1 dark at 11px.
+  it("keeps every range caption in full ink after a pick", () => {
+    const { container } = render(ageControl(["odrasel"]));
+    const captions = [
+      ...grove(container).querySelectorAll("[data-age-stage] > span:last-child"),
+    ];
+
+    expect(captions.map((caption) => caption.textContent)).toEqual([
+      "do 1 leta",
+      "1–8 let",
+      "8 let ali več",
+    ]);
+    for (const caption of captions) {
+      const classes = (caption.getAttribute("class") ?? "").split(" ");
+      expect(classes).toContain("text-muted-foreground");
+      expect(classes.filter((name) => /(^|:)opacity-/.test(name))).toEqual([]);
+      // 12px in the phone's sheet, 11px in the sidebar.
+      expect(classes).toContain("text-xs");
+      expect(classes).toContain("lg:text-2xs");
+    }
+  });
+
+  // The tiles centred plants of 20, 22 and 24px, which set their labels at
+  // 34, 35 and 36px and their counts a pixel apart the same way.
+  it("stands every tile's plant on the floor of one slot as tall as the tallest", () => {
+    const { container } = render(ageControl([], "sheet"));
+    const slots = STAGES.map((stage) => {
+      const plant = rowPlant(container, stage);
+      return [...(plant.closest("button")?.children ?? [])].find((child) =>
+        child.contains(plant),
+      );
+    });
+    const classes = slots.map((slot) => slot?.getAttribute("class") ?? "");
+
+    expect(new Set(classes).size).toBe(1);
+    expect(classes[0].split(" ")).toEqual(
+      expect.arrayContaining(["h-6", "items-end"]),
+    );
+    // h-6 is the tree's own size-6, the tallest of the three.
+    expect(rowPlant(container, "senior").getAttribute("class")).toContain(
+      "size-6",
+    );
+  });
+});
+
+describe("AgeGrowthControl row gestures", () => {
+  const row = (name: string) =>
+    screen.getByRole("button", { name: new RegExp(`^${name}, `) });
+  const leaning = (name: string) =>
+    row(name).querySelector("[data-leaning]") !== null;
+  const tucked = (name: string) =>
+    row(name).querySelector("[data-tucked]") !== null;
+  const hold = (
+    element: Element,
+    type: "pointerdown" | "pointerup",
+    pointerType = "mouse",
+  ) => pointer(element, type, { x: 0, y: 0, pointerType });
+
+  it("leans a row's plant toward a mouse and not toward a finger", () => {
+    render(ageControl());
+
+    pointerOnto(row("Odrasel"), "touch");
+    expect(leaning("Odrasel")).toBe(false);
+
+    pointerOnto(row("Odrasel"), "mouse");
+    expect(leaning("Odrasel")).toBe(true);
+  });
+
+  // The press is the one gesture a phone gets before the pick.
+  it("tucks the plant while its row is held, on a phone too", () => {
+    render(ageControl());
+
+    hold(row("Senior"), "pointerdown", "touch");
+    expect(tucked("Senior")).toBe(true);
+
+    hold(row("Senior"), "pointerup", "touch");
+    expect(tucked("Senior")).toBe(false);
+  });
+
+  it("stands the plant upright from a pick until the pointer leaves", async () => {
+    // Only the timers: the growth ends on one.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      render(<StatefulAgeControl />);
+
+      pointerOnto(row("Mladiček"), "mouse");
+      expect(leaning("Mladiček")).toBe(true);
+
+      hold(row("Mladiček"), "pointerdown");
+      expect(leaning("Mladiček")).toBe(false);
+      expect(tucked("Mladiček")).toBe(true);
+
+      hold(row("Mladiček"), "pointerup");
+      fireEvent.click(row("Mladiček"));
+      expect(row("Mladiček").getAttribute("aria-pressed")).toBe("true");
+      expect(leaning("Mladiček")).toBe(false);
+      expect(tucked("Mladiček")).toBe(false);
+
+      // Grown, and still upright while the pointer rests on it.
+      act(() => vi.advanceTimersByTime(2000));
+      expect(leaning("Mladiček")).toBe(false);
+
+      await pointerAway(row("Mladiček"));
+      pointerOnto(row("Mladiček"), "mouse");
+      expect(leaning("Mladiček")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // A pick that scrolls the page back to the results moves the sidebar
+  // under a resting pointer, which leaves the row and comes back.
+  it("keeps a growing plant upright when the pointer leaves and comes back", () => {
+    render(<StatefulAgeControl />);
+
+    pointerOnto(row("Mladiček"), "mouse");
+    fireEvent.click(row("Mladiček"));
+    pointerOff(row("Mladiček"));
+    pointerOnto(row("Mladiček"), "mouse");
+
+    expect(row("Mladiček").getAttribute("aria-pressed")).toBe("true");
+    expect(leaning("Mladiček")).toBe(false);
+  });
+
+  // The grove keeps the motion it has; a press there tucks nothing.
+  it("leaves the grove's plants to the grove when one is pressed", () => {
+    const { container } = render(ageControl());
+    const column = grove(container).querySelector('[data-age-stage="odrasel"]');
+
+    pointer(column!, "pointerdown", { x: 0, y: 0, pointerType: "touch" });
+
+    expect(container.querySelector("[data-tucked]")).toBeNull();
+  });
+});
+
+describe("rowPlantPose", () => {
+  const cue = (
+    overrides: Partial<Parameters<typeof rowPlantPose>[0]>,
+  ): Parameters<typeof rowPlantPose>[0] => ({
+    stage: "odrasel",
+    leaning: false,
+    tucked: false,
+    reduceMotion: false,
+    ...overrides,
+  });
+
+  it("tucks a held plant toward its base and gives the height back in width", () => {
+    for (const stage of STAGES) {
+      const { animate } = rowPlantPose(cue({ stage, tucked: true })).tuck;
+      expect(animate.scaleY).toBeGreaterThanOrEqual(0.88);
+      expect(animate.scaleY).toBeLessThanOrEqual(0.95);
+      expect(animate.scaleX).toBeGreaterThan(1);
+    }
+  });
+
+  // A shear about the foot, so the sprout's soil stays level while the plant
+  // above it bends; a negative skew carries the top toward the label.
+  it("leans from the base on a spring, the sprout furthest and the tree least", () => {
+    const leans = STAGES.map(
+      (stage) => rowPlantPose(cue({ stage, leaning: true })).lean,
+    );
+    const degrees = leans.map(({ animate }) => -(animate.skewX as number));
+
+    expect(leans.every(({ animate }) => animate.rotate === undefined)).toBe(
+      true,
+    );
+    expect(degrees.every((angle) => angle > 0 && angle <= 8)).toBe(true);
+    expect(degrees).toEqual([...degrees].sort((a, b) => b - a));
+    for (const { transition } of leans) {
+      expect(transition).toMatchObject({ type: "spring" });
+    }
+  });
+
+  // A pick, a release or a leave can cut either gesture short. A keyframe
+  // list would restart from its first frame; a single target carries on
+  // from wherever the plant is.
+  it("moves only ever towards a single target, so an interrupted gesture carries on", () => {
+    for (const stage of STAGES) {
+      for (const leaning of [false, true]) {
+        for (const tucked of [false, true]) {
+          const { lean, tuck } = rowPlantPose(cue({ stage, leaning, tucked }));
+          for (const value of [
+            ...Object.values(lean.animate),
+            ...Object.values(tuck.animate),
+          ]) {
+            expect(Array.isArray(value)).toBe(false);
+          }
+        }
+      }
+    }
+    // Let go, the plant springs back up.
+    expect(rowPlantPose(cue({})).tuck).toMatchObject({
+      animate: { scaleX: 1, scaleY: 1 },
+      transition: { type: "spring" },
+    });
+  });
+
+  it("holds the plant still under reduced motion", () => {
+    const { lean, tuck } = rowPlantPose(
+      cue({ leaning: true, tucked: true, reduceMotion: true }),
+    );
+
+    expect(lean).toEqual({ animate: { skewX: 0 }, transition: { duration: 0 } });
+    expect(tuck).toEqual({
+      animate: { scaleX: 1, scaleY: 1 },
+      transition: { duration: 0 },
+    });
   });
 });
 

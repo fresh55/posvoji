@@ -14,6 +14,8 @@ import {
   goodWithOptions,
   groupOptions,
   GROUPS,
+  liveInPool,
+  poolCounts,
   speciesCounts,
   speciesFacetCounts,
   toggleCounts,
@@ -25,6 +27,8 @@ import {
   valueChipLabel,
   visibleToggles,
   type FilterFacet,
+  type Filters,
+  type MultiGroup,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -46,6 +50,23 @@ type FilterActions = Pick<
   | "toggleCare"
   | "toggleManyCare"
 >;
+
+/** The picks liveInPool would drop once they come off: values the species
+ *  pool never answers, as "group:value", so one list can say which option of
+ *  which section it was. Every other option stays drawn on its own, and
+ *  neither shelter nor age goes through liveInPool. */
+function picksOutsidePool(
+  filters: Filters,
+  counts: Record<MultiGroup, Map<string, number>>,
+): string[] {
+  return GROUPS.flatMap((group) => {
+    if (group === "shelter" || group === "age") return [];
+    const values: readonly string[] = filters[group];
+    return values
+      .filter((value) => !counts[group].get(value))
+      .map((value) => `${group}:${value}`);
+  });
+}
 
 /** Facet options, counts and recovery chips all describe the same result set. */
 export function useAnimalFilterModel({
@@ -138,28 +159,73 @@ export function useAnimalFilterModel({
   // from under the press, and keyboard focus with it. Set while rendering,
   // React's own shape for state that follows a value (use-filter-sections.ts
   // has the same).
+  //
+  // The same goes for an option inside one. liveInPool below leaves out an
+  // option the pool never answers unless it is picked, so Miren carried to
+  // Mačke stood only for its pick, and pressing it off took the row away from
+  // under the press. An option picked on this tab stays for as long as the
+  // tab does, like its section. Only such picks are kept: remembering every
+  // pick put a second render of the whole page behind each first pick of an
+  // option, for rows that stay drawn anyway.
+  //
+  // What each option could ever answer for this species tab, with every other
+  // filter set aside (poolCounts in lib/filters/engine.ts, over `pool` alone).
+  // liveInPool uses it below to drop an option no animal in the pool ever
+  // answers, on both surfaces: unlike a current-narrowing zero, which
+  // drawnOptions in filter-groups.tsx hides from the sidebar's rows alone and
+  // the sheet still offers as a tile a later pick could revive, this kind
+  // cannot come back from any pick. No animal in the catalogue is ever
+  // hairless, so Brez dlake was the option that motivated it, but the rule is
+  // written for whichever option is next.
+  const livePoolCounts = useMemo(
+    () => poolCounts(pool, reference),
+    [pool, reference],
+  );
+  const picked = picksOutsidePool(filters, livePoolCounts);
   const [drawn, setDrawn] = useState(() => ({
     tab: filters.species,
     groups: GROUPS.filter((group) => shown[group]),
+    picked,
   }));
   const sameTab = drawn.tab === filters.species;
   const gained = GROUPS.filter(
     (group) => shown[group] && !(sameTab && drawn.groups.includes(group)),
   );
-  if (!sameTab || gained.length > 0) {
+  const gainedPicks = picked.filter(
+    (key) => !(sameTab && drawn.picked.includes(key)),
+  );
+  if (!sameTab || gained.length > 0 || gainedPicks.length > 0) {
     setDrawn({
       tab: filters.species,
       groups: sameTab ? [...drawn.groups, ...gained] : gained,
+      picked: sameTab ? [...drawn.picked, ...gainedPicks] : gainedPicks,
     });
   }
   const keptOnTab = drawn.groups;
+  const pickedOnTab = drawn.picked;
   const groups = useMemo(
     () =>
       GROUPS.filter(
         (group): group is CardGroup =>
           group !== "shelter" && (shown[group] || keptOnTab.includes(group)),
-      ).map((group) => ({ group, options: groupOptions(group, pool, locale) })),
-    [keptOnTab, locale, pool, shown],
+      ).map((group) => {
+        const options = groupOptions(group, pool, locale);
+        // Age keeps every stage regardless (drawnByValue in filter-groups.tsx
+        // carries the same exemption): the grove above the rows is one
+        // drawing of all three stages, not a list an option can drop out of.
+        if (group === "age") return { group, options };
+        // What was picked here on this tab counts as picked, which covers
+        // every current pick the pool does not answer.
+        const prefix = `${group}:`;
+        const kept = pickedOnTab
+          .filter((key) => key.startsWith(prefix))
+          .map((key) => key.slice(prefix.length));
+        return {
+          group,
+          options: liveInPool(options, livePoolCounts[group], kept),
+        };
+      }),
+    [keptOnTab, livePoolCounts, locale, pickedOnTab, pool, shown],
   );
   // The shelter picker uses the complete roster so visitors can widen their
   // search. Species and other filters change each shelter's count, not which

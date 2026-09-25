@@ -8,7 +8,13 @@ import {
   useReducedMotion,
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -66,10 +72,30 @@ function sectionLabelClass(tone: SectionTone = "section"): string {
 }
 
 const BODY_EASE = [0.16, 1, 0.3, 1] as const;
-/** The fold runs 0.3s; the section is measured once it has settled. Shared
- *  with the list above, which waits the same beat before putting a section an
- *  arriving address opened where it can be seen (filter-groups.tsx). */
-export const FOLD_SETTLE_MS = 350;
+/** The fold runs 0.3s; a section opened by its heading is measured once it
+ *  has settled (revealOnOpen below). */
+const FOLD_SETTLE_MS = 350;
+
+// The clip exists for the fold alone. A settled body lets focus rings and
+// tooltips spill past its box again, so overflow is hidden while the body
+// grows or shrinks and visible once it has finished opening.
+//
+// "hidden" is in the open target too, where it looks as if it said nothing:
+// the body starts clipped and stays clipped while it grows. It makes the
+// value a motion value as the open starts. transitionEnd writes through
+// Motion's setTarget, and for a key that is not a motion value yet that
+// records the value and schedules no render (VisualElement.addValue, Motion
+// 13.2). So a section opened in the sidebar and then left alone kept
+// overflow: hidden on the page, and its rows lost the focus ring down both
+// sides, until an unrelated render wrote the value out; a pick anywhere in
+// the panel did, which is why the clip came and went.
+const FOLDED = { height: 0, opacity: 0, overflow: "hidden" } as const;
+const OPENED = {
+  height: "auto",
+  opacity: 1,
+  overflow: "hidden",
+  transitionEnd: { overflow: "visible" },
+} as const;
 
 /** The folding half shared by sidebar and sheet. Without a collapse contract
     the body stays open with no disclosure id, as plain lists require. */
@@ -82,6 +108,21 @@ export function CollapsibleBody({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const open = collapse?.open ?? true;
+  // The body drawn in the fold's first render is already there: a section
+  // does not fold itself open on first paint, not while the sidebar hydrates
+  // and not while the sheet slides up. Every body after it unfolds, including
+  // this section's own once it has been folded. Adjusted during render rather
+  // than in an effect, the way CountRoll keeps its turn.
+  //
+  // Said on the body, and not as the presence's initial={false}. Motion hands
+  // that to every motion element under the fold, and PresenceChild memoises it
+  // for as long as the body stays, so anything mounted in the section later
+  // (the pick ripple, Doma imam's faces, the count roll) counted as present at
+  // first paint too and was written straight to the end of its mount
+  // animation. initial={false} on the body reaches the body and nothing under
+  // it.
+  const [openedAtMount, setOpenedAtMount] = useState(open);
+  if (openedAtMount && !open) setOpenedAtMount(false);
 
   return (
     <LazyMotion features={domAnimation}>
@@ -91,20 +132,14 @@ export function CollapsibleBody({
           and every motion component in the section renders again with it, a
           memoised one included. That was the whole panel's icons redrawn on
           each filter press, in the render the press's first frame waits for. */}
-      <AnimatePresence initial={false} presenceAffectsLayout={false}>
+      <AnimatePresence presenceAffectsLayout={false}>
         {open ? (
           <m.div
             key="body"
             id={collapse?.contentId}
-            // The clip exists for the fold alone. A settled body lets focus
-            // rings and tooltips spill past its box again.
-            initial={{ height: 0, opacity: 0, overflow: "hidden" }}
-            animate={{
-              height: "auto",
-              opacity: 1,
-              transitionEnd: { overflow: "visible" },
-            }}
-            exit={{ height: 0, opacity: 0, overflow: "hidden" }}
+            initial={openedAtMount ? false : FOLDED}
+            animate={OPENED}
+            exit={FOLDED}
             transition={
               shouldReduceMotion
                 ? { duration: 0 }
@@ -191,7 +226,69 @@ function moveSectionFocus(event: KeyboardEvent<HTMLButtonElement>) {
           ? triggers[0]
           : triggers[triggers.length - 1];
   event.preventDefault();
-  target?.focus();
+  if (!target) return;
+  // The panel moves first, and the page only by what the panel cannot do. A
+  // plain focus() scrolls every box it must to show a heading, the window
+  // included, and it centres: measured at 1440x900 from the top of the page,
+  // the second press down from Spol threw the window 480px and the site's
+  // title and the top of the grid went with it. scrollChildIntoViewY says why
+  // the panel is scrolled by hand.
+  //
+  // The section where it fits, then the heading itself. The heading's box
+  // stands past its section's by the -my-1 that centres it on the row, so
+  // brought in by its section alone the focused heading lost the edge of its
+  // ring along the panel's edge.
+  target.focus({ preventScroll: true });
+  scrollChildIntoViewY(target.closest("section") ?? target);
+  scrollChildIntoViewY(target);
+  revealInWindow(target);
+}
+
+// The room kept between a heading brought into the window and its edge.
+const WINDOW_MARGIN = 8;
+
+/**
+ * The window's share of bringing a focused heading into view: the least
+ * scroll that shows it, and nothing when it already shows.
+ *
+ * At the top of the page the sticky panel hangs below the window with only a
+ * few dozen pixels of scroll of its own (62 at 1440x900, 27 at 1280x720), so
+ * the panel alone left every heading from Energija down (from Videz at
+ * 1280x720) focused under the window's bottom edge, where a keyboard visitor
+ * could not see it. The nearest block, not the centre focus() would take, so
+ * the page moves by the height of a heading rather than by half a screen.
+ *
+ * jsdom answers 0 for the window's height; there is nothing to measure there.
+ */
+function revealInWindow(element: HTMLElement) {
+  const height = document.documentElement.clientHeight;
+  if (height === 0) return;
+  const { top, bottom } = element.getBoundingClientRect();
+  if (bottom > height - WINDOW_MARGIN) {
+    window.scrollBy({ top: bottom - height + WINDOW_MARGIN });
+  } else if (top < WINDOW_MARGIN) {
+    window.scrollBy({ top: top - WINDOW_MARGIN });
+  }
+}
+
+const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]";
+
+/** The first control of the section a reset belongs to, other than the reset
+    itself: where a header that does not fold hands focus after a keyboard
+    reset. A disabled row, an inert or hidden subtree and a stop taken out of
+    the tab order are passed over, since focus could not stay on any of them. */
+function firstControlOfSection(reset: HTMLElement): HTMLElement | null {
+  const section = reset.closest("section");
+  if (!section) return null;
+  return (
+    [...section.querySelectorAll<HTMLElement>(FOCUSABLE)].find(
+      (element) =>
+        element !== reset &&
+        element.tabIndex >= 0 &&
+        !element.matches(":disabled") &&
+        !element.closest('[inert], [aria-hidden="true"]'),
+    ) ?? null
+  );
 }
 
 /** Shared section heading and reset affordance for every filter group. With a
@@ -234,6 +331,27 @@ export function FilterSectionHeader({
     }, FOLD_SETTLE_MS);
   };
 
+  // The disclosure trigger, where a reset pressed from the keyboard leaves
+  // focus. Null in a header that does not fold.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // The reset goes inert in the render its own press causes, and an inert
+  // element cannot hold focus: a reset pressed with Enter or Space dropped
+  // focus to the page's body (in the sheet, to the drawer), and a screen
+  // reader lost its place with it. A click the keyboard made, which is what
+  // detail 0 means, hands focus to the section's own heading instead: it
+  // names the section just emptied and sits one Tab above its rows. A header
+  // that does not fold has no heading to press, so the first control in its
+  // section takes it (the Kje picker, a part's first option). A pointer press
+  // moves nothing; the pointer is where the visitor already is.
+  const reset = (event: MouseEvent<HTMLButtonElement>) => {
+    onReset?.();
+    if (event.detail !== 0) return;
+    const target =
+      triggerRef.current ?? firstControlOfSection(event.currentTarget);
+    target?.focus({ preventScroll: true });
+  };
+
   // Kept mounted while hidden so a reset that comes and goes fades rather than
   // shifting the row. A section with no reset at all has nothing to fade, and
   // an inert copy of the word would be one more node for nothing.
@@ -242,7 +360,7 @@ export function FilterSectionHeader({
       type="button"
       variant="link"
       size="xs"
-      onClick={onReset}
+      onClick={reset}
       // One expression for both halves of being unreachable; see
       // back-to-top.tsx for why this is not aria-hidden beside its own
       // tabIndex={-1}. The pointer is already gone below when !showReset, so
@@ -275,13 +393,24 @@ export function FilterSectionHeader({
         // than in the shared string above, so p-0 is not left in the class
         // list for the stylesheet's emit order to settle against px-1.
         //
-        // No -my-1 with it. The row places this button at top-1/2 and pulls it
-        // back by half its own height, so a taller box re-centres itself and
+        // No -my-1 with it. The box is centred on the row by its own auto
+        // margins between inset-y-0, so a taller box re-centres itself and
         // the ink does not move; a negative block margin would shift the ink
         // up by 4px. -mx-1 is needed, because right-6 pins the right margin
         // edge and without it the words would move 4px left.
+        //
+        // And no transform. This was centred with top-1/2 and
+        // -translate-y-1/2, which is the one thing a Button here cannot wear:
+        // ui/button.tsx presses with active:translate-y-px, and the two write
+        // the same translate, so while it was held the pull-back was gone and
+        // the link dropped by half its height and a pixel, 13px under a mouse
+        // and 23px under a finger's 44px box. A press at or above its middle
+        // was let go over the fold trigger it had dropped away from: under a
+        // mouse nothing happened at all, under a finger the section folded
+        // with its filter still on. With the margins doing the centring, the
+        // press is left its own 1px.
         collapse
-          ? "absolute right-6 top-1/2 -mx-1 -translate-y-1/2 px-1 py-1 pointer-coarse:min-h-11"
+          ? "absolute inset-y-0 right-6 -mx-1 my-auto h-fit px-1 py-1 pointer-coarse:min-h-11"
           : // 39.5px on a coarse pointer, not the 44 the utility's name
             // suggests: the overlay reaches 44px in both axes from the
             // control's centre, and this control sits in a flex row whose
@@ -314,6 +443,7 @@ export function FilterSectionHeader({
 
   const trigger = (
     <button
+      ref={triggerRef}
       type="button"
       onClick={(event) => {
         revealOnOpen(event);
@@ -373,9 +503,16 @@ export function FilterSectionHeader({
         // one saying that animals with no shelter answer are left out of DOMA
         // IMAM. /80 measures 3.62:1 light and 5.20:1 dark, which is the 3:1 an
         // icon carrying meaning is held to.
+        //
+        // Not drawn on a coarse pointer. There it is a mark inside the fold
+        // trigger, so a tap on it folds the section, and the text it stands
+        // for opens on hover or keyboard focus, neither of which a tap gives.
+        // SectionHint draws the sentence in the body under the same query,
+        // and Starost, which keeps its hint out of the body, prints the
+        // ranges the hint states under its grove.
         <Info
           aria-hidden
-          className="size-3.5 shrink-0 text-muted-foreground/80"
+          className="size-3.5 shrink-0 text-muted-foreground/80 pointer-coarse:hidden"
           strokeWidth={1.8}
         />
       ) : null}
@@ -383,7 +520,23 @@ export function FilterSectionHeader({
         // motion-reduce:duration-0, not motion-reduce:animate-none: see the
         // comment on DialogOverlay in ui/dialog.tsx for why the animate-none
         // guard does not actually take effect here.
-        <span className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-3xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0">
+        //
+        // Keyed, and the mark below too. The two are one ternary, and unkeyed
+        // React kept one span for both and swapped its classes. duration-200
+        // sets a transition duration over the default transition-property,
+        // which is all, so a fold tweened the chip out of the dot's dark green
+        // with its words unreadable on it, and an unfold shrank an empty pill
+        // into the dot. Keyed, each mounts fresh and plays only its own
+        // animate-in.
+        //
+        // text-2xs below lg and text-3xs from it, the one step up below lg
+        // that NOTE_CLASS takes for the same reason: at 10px the chip was the
+        // smallest type in the sheet, a phone held at arm's length, while
+        // 10px stays right for a 224px column.
+        <span
+          key="summary"
+          className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-2xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0 lg:text-3xs"
+        >
           {collapse.summary}
         </span>
       ) : active ? (
@@ -413,17 +566,22 @@ export function FilterSectionHeader({
         // already said: a folded section spells its answer in the chip, an
         // open one in the pressed state of its own rows.
         <span
+          key="answered"
           aria-hidden
           className="size-1.5 shrink-0 rounded-full bg-brand-border animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0"
         />
       ) : null}
       {/* /80 for the same reason as the info mark above, from /70: 2.99:1 to
           3.62:1 in light, 5.20:1 in dark. This is the one thing that says the
-          heading is a disclosure and not a label. */}
+          heading is a disclosure and not a label.
+
+          motion-reduce:transition-none, because the turn is a transition and
+          not an animation, so nothing else stops it: under reduced motion the
+          body lands at once and the chevron still turned for 200ms. */}
       <ChevronDown
         aria-hidden
         className={cn(
-          "ml-auto size-3.5 shrink-0 text-muted-foreground/80 transition-transform duration-200",
+          "ml-auto size-3.5 shrink-0 text-muted-foreground/80 transition-transform duration-200 motion-reduce:transition-none",
           !collapse.open && "-rotate-90",
         )}
       />

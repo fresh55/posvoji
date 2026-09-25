@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
+import { act, cleanup, render } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Celebration } from "@/components/filters/use-filter-motion";
 import { CITIES, cityAt, project } from "@/lib/geo";
 import { MINI_OUTLINE_PATH, MINI_REGION_PATHS, regionAt } from "@/lib/map-regions";
@@ -250,6 +251,81 @@ describe("MiniMap plate detail", () => {
 
   it("draws no dots on a pinless plate, which has no towns to draw", () => {
     expect(renderPlate([])).not.toContain("data-minimap-town-dot");
+  });
+});
+
+describe("MiniMap plate region transition", () => {
+  const roster = [pin("koper", "Zavetišče Koper", "Koper", 5)];
+
+  it("carries no transition on the render that first shows the plate", () => {
+    // renderToStaticMarkup never runs an effect, so this is the render every
+    // real page also paints first: the one a shared filtered link's own
+    // hydration correction to `selected` still has to land on top of.
+    // Region reshading must not animate through either.
+    const region = renderPlate(roster).match(
+      /<path[^>]*data-minimap-region-state="[^"]*"[^>]*>/,
+    )?.[0];
+    expect(region).toBeTruthy();
+    expect(region).not.toContain("transition-");
+  });
+
+  it("gives the icon size no transition, first paint or not", () => {
+    expect(renderMini(roster)).not.toContain("transition-");
+  });
+
+  describe("once the first paint has settled", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({
+        toFake: ["requestAnimationFrame", "cancelAnimationFrame"],
+      });
+    });
+
+    afterEach(() => {
+      cleanup();
+      vi.useRealTimers();
+    });
+
+    it("gives the plate's regions a 200ms fill and fill-opacity transition", () => {
+      const { container } = render(
+        <MiniMap
+          pins={roster}
+          selected={[]}
+          celebration={null}
+          detail="plate"
+          outlineWidth={2}
+        />,
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+
+      const region = container.querySelector("[data-minimap-region-state]");
+      const classes = region?.getAttribute("class");
+      expect(classes).toContain("transition-[fill,fill-opacity]");
+      expect(classes).toContain("duration-200");
+      // Off under reduced motion, the plain CSS way every other region
+      // transition in this codebase turns off (map-marker.tsx,
+      // shelter-map-region.tsx): a media query, not a JS branch, so it needs
+      // no separate rendering path to prove it is there.
+      expect(classes).toContain("motion-reduce:transition-none");
+    });
+
+    it("never gives the icon-size drawing a transition, ready or not", () => {
+      // "Only on the plate": the dock trigger and the sheet's own small glyph
+      // draw the same regions at icon size and must stay exactly as still on
+      // a pick as they always were.
+      const { container } = render(
+        <MiniMap pins={roster} selected={[]} celebration={null} />,
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+
+      const region = container.querySelector("[data-minimap-region-state]");
+      expect(region?.getAttribute("class")).not.toContain("transition-");
+    });
   });
 });
 

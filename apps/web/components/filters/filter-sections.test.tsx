@@ -562,6 +562,30 @@ describe("the sidebar heading", () => {
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("Filtri3");
   });
 
+  it("lets the badge leave on its last number rather than vanish", async () => {
+    // It went in one frame when the last value came off, the one count on
+    // the panel that did not move when it changed.
+    const panel = (filters: Filters) => (
+      <I18nProvider locale="sl">
+        <FilterSidebar
+          {...sidebarProps(filters)}
+          onToggle={NOOP}
+          onToggleMany={NOOP}
+          onToggleProperty={NOOP}
+          onToggleManyProperties={NOOP}
+        />
+      </I18nProvider>
+    );
+    const { rerender } = render(panel({ ...EMPTY_FILTERS, sex: ["male"] }));
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.textContent).toBe("Filtri1");
+
+    rerender(panel(EMPTY_FILTERS));
+
+    expect(heading.textContent).toBe("Filtri1");
+    await waitFor(() => expect(heading.textContent).toBe("Filtri"));
+  });
+
   it("leaves the clearing to the chips row", () => {
     // The head used to carry its own "Počisti vse" on the same handler as the
     // row's, 47px from it on a 1440 screen with both drawn at lg. The row is

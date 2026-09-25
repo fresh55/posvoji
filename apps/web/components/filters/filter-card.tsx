@@ -2,9 +2,22 @@
 
 import { Check } from "lucide-react";
 import { cva } from "class-variance-authority";
-import { domAnimation, m, useReducedMotion } from "motion/react";
+import {
+  AnimatePresence,
+  domAnimation,
+  m,
+  useReducedMotion,
+} from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
-import { useState, type ReactNode } from "react";
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import {
   CollapsibleBody,
   FilterSectionHeader,
@@ -12,6 +25,7 @@ import {
   type SectionCollapse,
   type SectionTone,
 } from "@/components/filters/filter-section-header";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { cn } from "@/lib/utils";
 
 /** A card is a row in the sidebar's one column, a tile in the sheet's three. */
@@ -98,12 +112,21 @@ const cardVariants = cva(
     // paint differently and the only thing selection decides. A resting card
     // needs no compound of its own: nothing upstream is spelled against
     // data-[state=off], so the layout's own ground stands unopposed.
+    //
+    // The tile answers :active by name as well, for the finger's sake. The
+    // sheet layout's active:bg-muted/40 is a pseudo-class, which outranks a
+    // bare bg-brand, and Chrome holds :active on a tapped tile until well
+    // after the tap has landed: a plain-button tile's green started 258-276ms
+    // after the tap on a 390px phone, where the toggle items' started at
+    // 107-119ms. active:bg-brand here drops the grey from the class list by
+    // position (cn), so the fill lands with the press whatever order the
+    // stylesheet emits the two in.
     compoundVariants: [
       {
         layout: "sheet",
         selected: true,
         class:
-          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand data-[state=on]:bg-brand",
+          "border-brand-border bg-brand hover:border-brand-border hover:bg-brand active:bg-brand data-[state=on]:bg-brand",
       },
       {
         layout: "sidebar",
@@ -230,13 +253,116 @@ export const FILTER_HOVER_SPRING = {
   mass: 0.5,
 } as const;
 
-const COUNT_ROLL_DURATION = 0.28;
+/**
+ * Which way a count moved. A number that grows comes in from below and one
+ * that shrinks comes in from above, so every count on the page, the row
+ * counts here and the grid's total in ResultCount, moves one way for one
+ * reason.
+ */
+export function countDirection(previous: number, next: number): -1 | 0 | 1 {
+  return Math.sign(next - previous) as -1 | 0 | 1;
+}
 
-// A changed number slides in rather than swapping in place, so the narrowing
-// is something you watch happen. Never on first paint: nothing narrowed
-// there. Every caller already sits inside its own LazyMotion, so this reads
-// domAnimation from that context instead of opening a second one.
-export function CountRoll({
+const COUNT_ROLL_DISTANCE = 6;
+const COUNT_ROLL = { duration: 0.24, ease: "easeOut" } as const;
+
+/** Where a number stands, as the transform string itself. */
+function rollOffset(px: number): string {
+  return px === 0 ? "none" : `translateY(${px}px)`;
+}
+
+// transform and not y. Motion runs y on the main thread, writing every
+// rolling number on every frame, where a transform string and opacity are
+// handed to the browser's own animations. A pick changes most of the counts
+// on the page at once, over thirty in the phone sheet with every section
+// open, so that is work worth keeping off the main thread.
+const countRollVariants = {
+  enter: (direction: number) => ({
+    transform: rollOffset(direction * COUNT_ROLL_DISTANCE),
+    opacity: 0,
+  }),
+  center: { transform: rollOffset(0), opacity: 1 },
+  exit: (direction: number) => ({
+    transform: rollOffset(-direction * COUNT_ROLL_DISTANCE),
+    opacity: 0,
+  }),
+};
+
+/** Whether the counts inside are drawn, and so worth rolling. */
+const CountsDrawn = createContext(true);
+
+/**
+ * Lets the counts inside roll only while `query` matches, for a panel that
+ * is mounted at every width and drawn at some. The sidebar is display:none
+ * below lg, where the phone sheet stands in for it, and its counts rolled
+ * there all the same: every pick on a phone started their animations and
+ * swapped their numbers for nobody, which with every section open was close
+ * to half the rolls a pick set off. Where the query does not match, a number
+ * changes in place, as it does under reduced motion.
+ *
+ * A media query and not a measurement, because a roll is decided in the
+ * render a pick makes and nothing may be read off the page there. A
+ * component of its own, so the answer that arrives after hydration renders
+ * the counts again and not the panel around them.
+ */
+export function CountsRollWhile({
+  query,
+  children,
+}: {
+  query: string;
+  children: ReactNode;
+}) {
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      const list = window.matchMedia?.(query);
+      list?.addEventListener("change", notify);
+      return () => list?.removeEventListener("change", notify);
+    },
+    [query],
+  );
+  // Stable, so React asks it once per render and not again after commit.
+  const matches = useCallback(
+    () => window.matchMedia?.(query)?.matches ?? true,
+    [query],
+  );
+  const drawn = useSyncExternalStore(subscribe, matches, () => true);
+  return <CountsDrawn.Provider value={drawn}>{children}</CountsDrawn.Provider>;
+}
+
+/**
+ * A changed number rolls rather than swapping in place, so the narrowing is
+ * something you watch happen: the new one comes in from below when the
+ * count grows and from above when it shrinks, the old one leaves the other
+ * way, 6px each over 0.24s, and the two cross so that one of them is always
+ * drawn.
+ *
+ * It keeps its own AnimatePresence, so the leaving number has a presence to
+ * exit in and no parent's initial={false} decides whether the arriving one
+ * rolls in.
+ *
+ * Both numbers share one grid cell while the old one leaves, rather than the
+ * old one being popped out of the flow. The count then keeps the wider of
+ * its two widths until the roll is over, so a number centred in a tile does
+ * not jump sideways when a digit goes, and nothing is measured or restyled
+ * in the commit a pick is waiting on. The cell clips, so the roll reads as a
+ * number passing through its own line rather than across the label above.
+ *
+ * Still on first paint, where nothing narrowed, and still through
+ * hydration: a link that restores its filters from the query changes every
+ * count in the render that ends hydration, and those land where they belong
+ * without a roll, as the grid's own count does (ResultCount). Under reduced
+ * motion the number changes in place. The markup is the same in every case,
+ * so what the server wrote is what the client hydrates.
+ *
+ * Memoised, because a section renders again for every press, hover and
+ * celebration timer on any of its rows, and none of those change a number:
+ * with a presence boundary of its own a count is no longer the cheapest thing
+ * in the row to render, so it sits those renders out.
+ *
+ * Every caller already sits inside its own LazyMotion, so this reads
+ * domAnimation from that context instead of opening a second one.
+ */
+export const CountRoll = memo(function CountRoll({
   value,
   className,
 }: {
@@ -244,31 +370,54 @@ export function CountRoll({
   className?: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
-  // Each change bumps the epoch, which remounts the number so the slide runs
-  // again. Epoch zero is the first paint and renders still.
-  const [displayed, setDisplayed] = useState({ value, epoch: 0 });
-  if (displayed.value !== value) {
-    setDisplayed({ value, epoch: displayed.epoch + 1 });
-  }
-
-  if (shouldReduceMotion) {
-    return <span className={className}>{value}</span>;
+  const drawn = useContext(CountsDrawn);
+  const live = useHydrated();
+  // Each roll is a new turn, and the turn is the number's key, so the one
+  // leaving and the one arriving are two elements. A change that does not
+  // roll keeps the turn and rewrites the number where it stands.
+  const [roll, setRoll] = useState({
+    value,
+    turn: 0,
+    direction: 0 as -1 | 0 | 1,
+    live,
+  });
+  if (roll.value !== value || roll.live !== live) {
+    const rolls =
+      roll.value !== value && roll.live && drawn && !shouldReduceMotion;
+    setRoll({
+      value,
+      live,
+      turn: rolls ? roll.turn + 1 : roll.turn,
+      direction: rolls ? countDirection(roll.value, value) : roll.direction,
+    });
   }
 
   return (
-    <span className={cn("relative inline-block", className)}>
-      <m.span
-        key={displayed.epoch}
-        className="block"
-        initial={displayed.epoch > 0 ? { y: -6, opacity: 0 } : false}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: COUNT_ROLL_DURATION, ease: "easeOut" }}
+    <span className={cn("inline-grid overflow-clip", className)}>
+      {/* presenceAffectsLayout off for CollapsibleBody's reason: nothing here
+          animates layout, and left on it hands the number a new presence
+          context on every render. */}
+      <AnimatePresence
+        initial={false}
+        custom={roll.direction}
+        presenceAffectsLayout={false}
       >
-        {value}
-      </m.span>
+        <m.span
+          key={roll.turn}
+          className="col-start-1 row-start-1"
+          custom={roll.direction}
+          variants={countRollVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={COUNT_ROLL}
+        >
+          {value}
+        </m.span>
+      </AnimatePresence>
     </span>
   );
-}
+});
 
 /**
  * "box" is a tick box, for a section whose answers add up. "dot" is the round
@@ -277,6 +426,17 @@ export function CountRoll({
  * the first, which a box never does anywhere else in the panel.
  */
 type SelectionShape = "box" | "dot";
+
+/**
+ * The box's colour change, in Motion's terms: duration-150 and Tailwind's
+ * default curve, which is what the box's own transition class runs on. The
+ * tick leaves on it so that the two leave together.
+ */
+const MARK_LEAVE = { duration: 0.15, ease: [0.4, 0, 0.2, 1] } as const;
+
+/** How long the tick takes to appear once its delay is up. Exported for the
+ *  sections whose celebration hold has to outlast it. */
+export const MARK_APPEAR_DURATION = 0.14;
 
 export function FilterSelectionMark({
   checked,
@@ -312,19 +472,33 @@ export function FilterSelectionMark({
           // The card is the group, and a disabled card in the filters is one
           // the current narrowing has no animals for; see DEAD_OPTION_CLASS
           // for why the rest of that dress is not in the cva.
-          "relative grid size-4.5 shrink-0 place-items-center border transition-[border-color,background-color,color] duration-150 group-disabled:hidden",
-          dot ? "rounded-full" : "rounded-sm",
+          //
+          // motion-reduce:transition-none, because under reduced motion the
+          // tick lands at once, and a box still easing its colour for 150ms
+          // around no tick was ten frames of a solid box with nothing in it.
+          "relative grid size-4.5 shrink-0 place-items-center border transition-[border-color,background-color] duration-150 group-disabled:hidden motion-reduce:transition-none",
+          // The ink belongs to the shape and not to the state. It used to go
+          // transparent with the box as well, so a leaving tick faded twice,
+          // once by its own opacity and once by its colour, and was gone
+          // while the box still had most of its fill: an unpick showed a
+          // coloured box with nothing in it for three or four frames, and a
+          // reset showed solid boxes without their ticks. The span inside
+          // now does all the fading, on the box's own clock (MARK_LEAVE).
+          //
+          // The dot is the same ink as the filled box's ground, so the two
+          // marks carry one accent. The tick is a token and not text-white,
+          // because this is the one place the strong accent is a ground and
+          // that ground is light in dark mode: a white tick on it measured
+          // 2.39:1. See --brand-strong-foreground in globals.css.
+          dot
+            ? "rounded-full text-brand-strong"
+            : "rounded-sm text-brand-strong-foreground",
           checked && dot
             ? // A ring and its dot rather than a filled disc, the shape a
-              // single choice is read as. The dot is the same ink as the
-              // filled box's ground, so the two marks carry one accent.
-              "border-brand-strong bg-background text-brand-strong"
+              // single choice is read as.
+              "border-brand-strong bg-background"
             : checked
-            ? // The ink is a token and not text-white, because this is the one
-              // place the strong accent is a ground and that ground is light in
-              // dark mode: a white tick on it measured 2.39:1. See
-              // --brand-strong-foreground in globals.css.
-              "border-brand-strong bg-brand-strong text-brand-strong-foreground"
+            ? "border-brand-strong bg-brand-strong"
             : // The control tier, by name. This is the boundary of a control,
               // which is what --control-border is for, and it was spelled as
               // muted-foreground/80 ten lines from a token that says the same
@@ -339,10 +513,13 @@ export function FilterSelectionMark({
               // this span spells no dark border of its own, so the token's own
               // dark value stands.
               // The checked box is not affected; its tick is 7.37:1.
-              "border-control-border bg-background text-transparent",
+              "border-control-border bg-background",
           className,
         )}
       >
+        {/* The way out runs on the box's clock, so at every frame the tick
+            is as far gone as the fill around it and neither is left drawn
+            without the other. It was 0.1s against the box's 0.15s. */}
         <m.span
           initial={false}
           animate={{
@@ -353,8 +530,12 @@ export function FilterSelectionMark({
             shouldReduceMotion
               ? { duration: 0 }
               : checked
-                ? { duration: 0.14, delay: appearDelay, ease: "easeOut" }
-                : { duration: 0.1, ease: "easeOut" }
+                ? {
+                    duration: MARK_APPEAR_DURATION,
+                    delay: appearDelay,
+                    ease: "easeOut",
+                  }
+                : MARK_LEAVE
           }
         >
           {dot ? (
@@ -554,6 +735,77 @@ export function FilterCardRipple({
   );
 }
 
+const WATERMARK_OPACITY = 0.08;
+const WATERMARK_SCALE = 1.06;
+/** How long a watermark takes to come in, unless its section says. Exported
+ *  for the sections whose celebration hold has to outlast it. */
+export const WATERMARK_APPEAR_DURATION = 0.3;
+const WATERMARK_LEAVE_DURATION = 0.12;
+
+/**
+ * The mark a chosen tile keeps in its corner: the section's own drawing,
+ * large and faint, clipped by the tile's overflow. The tile needs `isolate`,
+ * so the mark's negative z-index stays above the tile's own background.
+ *
+ * Tiles only. A sidebar row is 40px tall with the tick in the room at its
+ * right, and the mark sat a quarter under the tick, so the one control on the
+ * row stood on a smudge; the row says "chosen" the way every other row does.
+ *
+ * A real initial, so a tile checked from the URL stamps its mark on load
+ * instead of having it already there. The drawing keeps its own rotation;
+ * this span owns the transform.
+ */
+export function FilterCardWatermark({
+  layout,
+  checked,
+  appearDelay,
+  appearDuration = WATERMARK_APPEAR_DURATION,
+  exitDelay,
+  className,
+  children,
+}: {
+  layout: FilterCardLayout;
+  checked: boolean;
+  appearDelay: number;
+  appearDuration?: number;
+  /** The tile's turn in a reset. */
+  exitDelay: number;
+  className?: string;
+  children: ReactNode;
+}) {
+  const shouldReduceMotion = useReducedMotion();
+  if (layout !== "sheet") return null;
+  const away = shouldReduceMotion ? 1 : WATERMARK_SCALE;
+
+  return (
+    <m.span
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute -bottom-2 -right-1.5 -z-10",
+        className,
+      )}
+      initial={{ opacity: 0, scale: away }}
+      animate={{
+        opacity: checked ? WATERMARK_OPACITY : 0,
+        scale: checked ? 1 : away,
+      }}
+      transition={
+        shouldReduceMotion
+          ? { duration: 0 }
+          : checked
+            ? { duration: appearDuration, delay: appearDelay, ease: "easeOut" }
+            : {
+                duration: WATERMARK_LEAVE_DURATION,
+                delay: exitDelay,
+                ease: "easeOut",
+              }
+      }
+    >
+      {children}
+    </m.span>
+  );
+}
+
 /** The lift a pointer or keyboard focus gives the icon. */
 export function FilterCardHoverLift({
   hovered,
@@ -698,7 +950,7 @@ export function FilterCardTail({
   /** Lets the card name the description as its aria-describedby. */
   descriptionId?: string;
   /** On a tile, draw the line under the count rather than over it. For a
-   *  line that carries a number of its own ("Brez odgovora: 121"): over the
+   *  line that carries a number of its own ("Brez podatka: 121"): over the
    *  count it put two bare numbers one above the other, and a tile read
    *  "Otroke, 121, 2". The sidebar keeps the count on the label's line, so
    *  there the order is the same either way. */
@@ -736,26 +988,30 @@ export function FilterCardTail({
     );
   }
 
-  const line = (
-    <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-      <span
-        className={cn(
-          SIDEBAR_LABEL_TYPE,
-          "min-w-0 whitespace-normal leading-tight",
-          checked && "font-medium",
-        )}
-      >
-        {label}
-      </span>
-      {/* Only a flex item can be squeezed by a long label, so shrink-0 rides
-          with this line rather than with the voice the age grid shares. */}
-      {renderCount(cn(countClass(layout, checked), "shrink-0"))}
-    </span>
-  );
-  if (said === null) return line;
+  // One shape whether a description is drawn or not. The line used to come
+  // back bare without one and wrapped with one, and a row's description
+  // comes and goes with the other filters (Zdravje and Doma imam name their
+  // unanswered animals only while there are enough of them), so each change
+  // put the count in a new parent and remounted it: the number swapped in one
+  // frame instead of rolling. The column holding a lone line lays out as the
+  // line did.
   return (
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-      {line}
+      <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+        <span
+          className={cn(
+            SIDEBAR_LABEL_TYPE,
+            "min-w-0 whitespace-normal leading-tight",
+            checked && "font-medium",
+          )}
+        >
+          {label}
+        </span>
+        {/* Only a flex item can be squeezed by a long label, so shrink-0
+            rides with this line rather than with the voice the age grid
+            shares. */}
+        {renderCount(cn(countClass(layout, checked), "shrink-0"))}
+      </span>
       {said}
     </span>
   );

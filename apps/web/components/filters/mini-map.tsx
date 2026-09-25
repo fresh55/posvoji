@@ -4,6 +4,7 @@ import { domAnimation, m, useReducedMotion } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
 import { memo, useMemo, type CSSProperties } from "react";
 import type { Celebration } from "@/components/filters/use-filter-motion";
+import { useAfterFirstFrame } from "@/hooks/use-after-first-frame";
 import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";
 import {
   DENSITY_STEPS,
@@ -60,6 +61,11 @@ function MiniMapImpl({
   className?: string;
 }) {
   const shouldReduceMotion = useReducedMotion();
+  // The region transition below must not be there for the render that
+  // restores a shared link's selection, only for a visitor's picks after it.
+  // The plate is the only instance that draws the transition, so the others
+  // skip the frame.
+  const transitionReady = useAfterFirstFrame(detail === "plate");
   const towns = useMemo(() => layoutTowns(pins), [pins]);
   const { byRegion, regionIdByTownKey } = useMemo(
     () => groupTownsByRegion(towns, (at) => CITY_REGIONS[`${at.lat},${at.lon}`]),
@@ -139,6 +145,19 @@ function MiniMapImpl({
                 (stateName === "selected" || stateName === "mixed") &&
                   "fill-brand-strong",
                 plate && "stroke-background",
+                // The plate is the one instance a visitor watches settle after
+                // a pick; the dock's icon and the sheet's own small glyph are
+                // gone again before anyone could look this closely. Fill and
+                // fill-opacity get a 200ms transition there and nowhere else,
+                // so a pick that changes several regions' density at once
+                // (Psi moved six of twelve) reads as a wash settling rather
+                // than a repaint in one frame. transitionReady keeps it off
+                // for the render that first shows the plate's real state and
+                // for the hydration correction right behind it; only a pick
+                // after that may animate.
+                plate &&
+                  transitionReady &&
+                  "transition-[fill,fill-opacity] duration-200 motion-reduce:transition-none",
               )}
             />
           );

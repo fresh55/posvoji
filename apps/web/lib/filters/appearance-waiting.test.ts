@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Animal } from "@posvoji/schema";
 import {
-  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, groupOptions, valueChipLabel,
-  parseFilters, serializeFilters, toggleGroupValue, visibleGroups, waitingGroups,
+  applyFilters, chipGains, EMPTY_FILTERS, facetCounts, groupOptions, liveInPool,
+  poolCounts, valueChipLabel, parseFilters, serializeFilters, toggleGroupValue,
+  visibleGroups, waitingGroups,
   type Filters, type WaitingGroup,
 } from "../filters";
 
@@ -204,5 +205,59 @@ describe("time in shelter takes one threshold", () => {
   it("keeps the wider threshold from an address that carries two", () => {
     expect(parseFilters("cakanje=nad-3-leta,nad-6-mesecev").waiting).toEqual(["over-6-months"]);
     expect(serializeFilters(parseFilters("cakanje=nad-3-leta,nad-1-leto"))).toBe("cakanje=nad-1-leto");
+  });
+});
+
+// groupOptions hands every group a fixed catalogue regardless of what the
+// animals passed in actually carry (coatLength always offers "hairless"),
+// which is why Brez dlake sat on the panel as a permanent 0: no filter ever
+// narrowed it there, the catalogue simply holds no such animal. liveInPool is
+// the option-level filter that keeps a catalogue value off the panel unless
+// the pool answers it at least once.
+describe("liveInPool and poolCounts", () => {
+  it("drops an option the species pool never answers, on the list a picker builds from", () => {
+    const pool = [
+      animal("a", { coatLength: "short" }),
+      animal("b", { coatLength: "medium" }),
+      animal("c", { coatLength: "long" }),
+    ];
+    const options = groupOptions("coatLength", pool, "sl");
+    const counts = poolCounts(pool, now).coatLength;
+    expect(liveInPool(options, counts, []).map((o) => o.value)).toEqual([
+      "short",
+      "medium",
+      "long",
+    ]);
+  });
+
+  it("keeps a selected option even though the pool never answers it, so it can be taken off", () => {
+    const pool = [animal("a", { coatLength: "short" })];
+    const options = groupOptions("coatLength", pool, "sl");
+    const counts = poolCounts(pool, now).coatLength;
+    expect(liveInPool(options, counts, ["hairless"]).map((o) => o.value)).toEqual([
+      "short",
+      "hairless",
+    ]);
+  });
+
+  it("counts the species tab alone, not the filters currently narrowing it", () => {
+    const pool = [
+      animal("a", { species: "dog", sex: "male", coatColor: "black" }),
+      animal("b", { species: "dog", sex: "female", coatColor: "white" }),
+    ];
+    // Narrowed to Samec on a different axis: the white female fails it, so
+    // she drops out of every group's tally, coatColor included, the ordinary
+    // reason a row goes dead (isDeadOption) and not why an option should
+    // disappear from the list altogether. (coatColor's own filter cannot
+    // demonstrate this: facetCounts lifts a group's own axis when counting
+    // it, so a coatColor pick never zeroes another coatColor option.)
+    const narrowed = facetCounts(pool, { ...EMPTY_FILTERS, species: "dog", sex: ["male"] }, now);
+    expect(narrowed.coatColor.get("white") ?? 0).toBe(0);
+    // The pool (species tab, nothing else applied) still has her, so
+    // liveInPool keeps "white" for the picker to widen back to.
+    const counts = poolCounts(pool, now).coatColor;
+    expect(counts.get("white")).toBe(1);
+    const options = groupOptions("coatColor", pool, "sl");
+    expect(liveInPool(options, counts, []).map((o) => o.value)).toContain("white");
   });
 });

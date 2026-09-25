@@ -80,19 +80,40 @@ export const UNDO_WINDOW_MS = 7000;
 // the time it takes anyone to pick a card and open it.
 const IDLE_FALLBACK_MS = 2000;
 
-// How many cards play the entrance animation. Roughly the first three rows at
-// the widest layout, which is everything a visitor can see when the grid
-// changes; the rest are below the fold and arrive settled.
+// How many cards play an entrance animation at all. Roughly the first three
+// rows at the widest layout, which is everything a visitor can see when the
+// grid changes; the rest are below the fold and arrive settled.
 const STAGGERED_CARDS = 12;
 
 // Their delays, written once. As an object built in the render, each of the
 // twelve was a new prop on every render of this grid, which is a card that
 // cannot be skipped however little has changed about it: the card is memoised
 // (animal-card.tsx) and this is the one prop that would defeat it, on the
-// twelve cards at the top of the page.
+// twelve cards at the top of the page. Only CARD_ENTRANCE reads this; a
+// widening gives every one of the twelve the same instant, see CARD_SETTLE.
 const STAGGER_STYLE = Array.from({ length: STAGGERED_CARDS }, (_, ordinal) => ({
   animationDelay: `${ordinal * 30}ms`,
 }));
+
+// The ordinary arrival: a fade from nothing, risen from below and staggered by
+// STAGGER_STYLE, so a filter narrowing to a smaller list reads as the grid
+// answering one card after another. Also what plays on the very first paint
+// of a page that already carries a filter: the grid coming alive on load is
+// meant.
+const CARD_ENTRANCE =
+  "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none";
+
+// The widening arrival: unpick, clear or "Pokaži vse vrste" all put a card
+// back that was on screen a moment ago and got filtered out, not a card
+// arriving for the first time. CARD_ENTRANCE held such a card at opacity 0
+// for its stagger delay plus its own fade, up to about 530ms at worst, next
+// to the survivors it never touched, and a phone read that patchwork as an
+// almost blank grid at 82ms. No card may sit invisible
+// after a widening, so this drops the fade and the per-card wait entirely:
+// every card lands at once, opaque throughout, and only a small rise says the
+// grid just settled rather than stood still.
+const CARD_SETTLE =
+  "animate-in slide-in-from-bottom-1 duration-150 motion-reduce:animate-none";
 
 // Two columns is the narrowest the grid draws at normal text size (CARD_GRID),
 // so it is what an unmeasurable grid is charged for: a miss makes the step
@@ -362,6 +383,25 @@ export function AnimalGrid({
     () => applyFilters(animals, shownFilters, reference),
     [animals, shownFilters, reference],
   );
+  // Whether this render is answering a widening: unpick, clear and "Pokaži
+  // vse vrste" all raise this count, and that is the direction CARD_SETTLE
+  // exists for. Adjusted during render and not from an effect, on the same
+  // reasoning as useFilterSections' own arrival flag: a re-render an effect
+  // triggers would draw the old, invisible-card arrangement first and correct
+  // it a frame later, which is the bug. Seeded from the first render's own
+  // count, so the page's very first paint, the one arrival CARD_ENTRANCE is
+  // for, is never mistaken for a widening.
+  const [arrival, setArrival] = useState(() => ({
+    count: visible.length,
+    widening: false,
+  }));
+  if (visible.length !== arrival.count) {
+    setArrival({
+      count: visible.length,
+      widening: visible.length > arrival.count,
+    });
+  }
+  const { widening } = arrival;
   // Where Najbližje measures from, granted by the location picker's nearby
   // control and by nothing else. Null on the server and on the first client
   // render, which is what makes the option's absence in the sort picker and the
@@ -728,7 +768,10 @@ export function AnimalGrid({
                   // answering rather than the page blinking. Keyed by id, so a
                   // card that survives the filter keeps its DOM node and does
                   // not re-run this; only arriving cards do. fill-mode-backwards
-                  // holds a delayed card invisible until its turn.
+                  // holds a delayed card invisible until its turn -- except on
+                  // a widening, where that card is not arriving but coming
+                  // back, and CARD_SETTLE takes over so it is never the one
+                  // sitting invisible next to the survivors.
                   //
                   // The first dozen and no further. Vse used to render all 503
                   // matches at once, so animating every one of them started 503
@@ -745,11 +788,13 @@ export function AnimalGrid({
                   className={cn(
                     "card-paint",
                     ordinal < STAGGERED_CARDS &&
-                      "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-300 motion-reduce:animate-none",
+                      (widening ? CARD_SETTLE : CARD_ENTRANCE),
                   )}
                   // Past the twelfth there is no delay written, and the index
                   // is undefined there, which is what a settled card wants.
-                  style={STAGGER_STYLE[ordinal]}
+                  // None written for a widening either: every card in it lands
+                  // on the same instant, so there is no per-card wait to spell.
+                  style={widening ? undefined : STAGGER_STYLE[ordinal]}
                   // The tab already named the species, so the card's one fact
                   // line does not have to spend itself saying it again.
                   species={shownFilters.species}

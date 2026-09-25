@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { EnergyLevel } from "@posvoji/schema";
@@ -8,12 +8,13 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions, type Unanswered } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
 import { EnergyCards, TEMPOS } from "./energy-cards";
+import type { FilterCardLayout } from "./filter-card";
 import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
-import { pointerOnto } from "@/test/pointer";
+import { pointerAway, pointerOnto } from "@/test/pointer";
 
 // Motion asks matchMedia for "(prefers-reduced-motion)", not the ": reduce"
 // form, and only once per file, keeping the answer. A stub installed by one
@@ -29,6 +30,12 @@ afterEach(() => {
 });
 
 installFilterFoldSeams();
+// fireEvent's click carries detail 0, which is a keyboard's, so a reset
+// pressed here hands focus to its section's heading, and a heading with a hint
+// opens its tooltip on focus. Radix positions it with an observer jsdom does
+// not ship.
+class NoopResizeObserver { observe() {} unobserve() {} disconnect() {} }
+globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObserver;
 
 const options = groupOptions("energy", [], "sl");
 const counts = new Map(options.map(({ value }) => [value, 3]));
@@ -41,6 +48,7 @@ function renderCards(
     onToggle?: (value: string) => void;
     onToggleMany?: (values: string[]) => void;
     unanswered?: Unanswered;
+    layout?: FilterCardLayout;
   } = {},
 ) {
   const onToggle = overrides.onToggle ?? vi.fn();
@@ -54,6 +62,7 @@ function renderCards(
         onToggle={onToggle}
         onToggleMany={onToggleMany}
         unanswered={overrides.unanswered}
+        layout={overrides.layout}
       />
     </I18nProvider>,
   );
@@ -84,6 +93,32 @@ function StatefulCards() {
 
 const card = (label: string) =>
   screen.getByRole("button", { name: new RegExp(`^${label}, `) });
+
+const glyphOf = (button: HTMLElement) =>
+  button.querySelector("svg[data-energy-glyph]") as SVGSVGElement;
+
+// The glyph sits in three spans, innermost first: the press, the gesture a
+// pick plays, and the hover preview. Each owns its own transform.
+const gestureSpan = (button: HTMLElement) =>
+  glyphOf(button).parentElement?.parentElement as HTMLElement;
+const previewSpan = (button: HTMLElement) =>
+  gestureSpan(button).parentElement as HTMLElement;
+
+const rotation = (element: HTMLElement) =>
+  Number(/rotate\((-?[\d.]+)deg\)/.exec(element.style.transform)?.[1] ?? 0);
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Every transform Motion writes to the element until stop() is called. */
+function recordTransforms(element: HTMLElement) {
+  const seen: string[] = [];
+  const observer = new MutationObserver(() => seen.push(element.style.transform));
+  observer.observe(element, { attributes: true, attributeFilter: ["style"] });
+  return {
+    seen,
+    stop: () => observer.disconnect(),
+  };
+}
 
 describe("EnergyCards", () => {
   it("names the section and says where the answers come from", () => {
@@ -213,7 +248,7 @@ describe("EnergyCards", () => {
       expect(button.getAttribute("aria-pressed")).toBe("true");
     }
 
-    // Unchecking puts a hovered card back into its preview.
+    // Unchecking drives each level's leave.
     for (const { label } of [...options].reverse()) {
       fireEvent.click(card(label));
       expect(card(label).getAttribute("aria-pressed")).toBe("false");
@@ -223,6 +258,67 @@ describe("EnergyCards", () => {
       fireEvent.click(button);
       expect(button.getAttribute("aria-pressed")).toBe("true");
     }
+  });
+
+  // The preview shows what a pick would play. Unticking a level with the
+  // mouse still on it replayed it over the colour leaving: Miren nodded while
+  // it sank, Živahen twitched while it fizzled.
+  it("holds a level's preview back after an untick until the pointer leaves", async () => {
+    render(<StatefulCards />);
+    const miren = card("Miren");
+
+    pointerOnto(miren, "mouse");
+    await waitFor(() => expect(rotation(previewSpan(miren))).toBeCloseTo(-12));
+
+    fireEvent.click(miren);
+    fireEvent.click(miren);
+    expect(miren.getAttribute("aria-pressed")).toBe("false");
+    // Longer than the nod's own 0.5s.
+    await wait(700);
+    expect(rotation(previewSpan(miren))).toBe(0);
+
+    await pointerAway(miren);
+    pointerOnto(miren, "mouse");
+    await waitFor(() => expect(rotation(previewSpan(miren))).toBeCloseTo(-12));
+  });
+
+  it("draws Uravnotežen on without a settle after the draw", async () => {
+    render(<StatefulCards />);
+
+    // Miren rocks as it is picked, which is what makes the silence below
+    // mean something: the recording does catch a turning glyph.
+    const calm = recordTransforms(gestureSpan(card("Miren")));
+    fireEvent.click(card("Miren"));
+    await wait(400);
+    calm.stop();
+    expect(calm.seen.some((transform) => transform.includes("rotate"))).toBe(true);
+
+    const balanced = recordTransforms(gestureSpan(card("Uravnotežen")));
+    fireEvent.click(card("Uravnotežen"));
+    // Past the end of the settle that used to follow the draw (0.5 + 0.45s).
+    await wait(1100);
+    balanced.stop();
+    expect(balanced.seen.filter((transform) => transform.includes("rotate"))).toEqual([]);
+  });
+
+  // The watermark is a stamp on a card ground. A sidebar row has none, and
+  // its mark sat a quarter under the tick box.
+  it("stamps a chosen level's glyph on a sheet tile and not on a sidebar row", () => {
+    const selected = options.map(({ value }) => value);
+    const drawings = (value: string) => {
+      const [stroke] = TEMPOS[value as EnergyLevel].glyph;
+      const label = options.find((option) => option.value === value)?.label ?? value;
+      return [...card(label).querySelectorAll("svg")].filter((svg) =>
+        [...svg.querySelectorAll("path")].some((path) => path.getAttribute("d") === stroke),
+      ).length;
+    };
+
+    renderCards({ selected, layout: "sheet" });
+    for (const value of selected) expect(drawings(value)).toBe(2);
+    cleanup();
+
+    renderCards({ selected, layout: "sidebar" });
+    for (const value of selected) expect(drawings(value)).toBe(1);
   });
 
   // Picks every level and says what each pick drew around its icon: the ring

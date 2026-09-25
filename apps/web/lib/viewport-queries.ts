@@ -16,6 +16,9 @@ export const SHORT_VIEWPORT_QUERY = "(max-height: 32rem)";
  *  the same string rather than writing the breakpoint out again. */
 export const DESKTOP_QUERY = "(min-width: 64rem)";
 
+/** The other side of the same cutoff, for a component drawn only below lg. */
+export const BELOW_DESKTOP_QUERY = `not all and ${DESKTOP_QUERY}`;
+
 /** Whether the visitor has asked for less movement, which is the question every
  *  motion gate on the site starts with. */
 export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";

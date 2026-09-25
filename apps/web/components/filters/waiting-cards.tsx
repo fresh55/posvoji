@@ -22,6 +22,7 @@ import {
   useFilterCardGestures,
   useResetStagger,
   waitThen,
+  type Pose as Track,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import {
@@ -153,7 +154,6 @@ export function pickEnd(pour: Pour): number {
   return Math.max(TURN_DURATION, pourEnd(pour) + STREAM_TAIL);
 }
 
-type Track = { animate: TargetAndTransition; transition: Transition };
 type TrackName = "turn" | "ink" | "top" | "bottom" | "stream" | "rest";
 
 const STILL: Transition = { duration: 0 };
@@ -536,7 +536,7 @@ export function WaitingCards({
   );
   const {
     hoveredValue,
-    settledValue,
+    previewing,
     settle,
     pressedValue,
     release: releasePress,
@@ -636,11 +636,7 @@ export function WaitingCards({
                       threshold={threshold}
                       tracks={tracks}
                       previewing={
-                        hoveredValue === value &&
-                        settledValue !== value &&
-                        !checked &&
-                        !dead &&
-                        !reduced
+                        previewing(value) && !checked && !dead && !reduced
                       }
                       className={cn(
                         "size-5 transition-[opacity,transform] duration-200",

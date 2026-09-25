@@ -2,7 +2,10 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
-import { standsOnLayerEntry } from "@/hooks/use-picker-history";
+import {
+  standsOnLayerEntry,
+  whenLayerCloses,
+} from "@/hooks/use-picker-history";
 import {
   activeFilterCount,
   EMPTY_FILTERS,
@@ -42,6 +45,99 @@ import {
 /** The results block, which begins with the toolbar and holds every card. */
 const RESULTS_ANCHOR = 'section[aria-labelledby="rezultati"]';
 
+/** The results' grid of cards, which draws a filter change a render late
+ *  (animal-grid.tsx). */
+const CARD_GRID = "[data-card-grid]";
+
+/** The least time the page's scroll anchoring stays off after a return: the
+ *  chips band grows or collapses over 0.2s, and Motion measures it first. */
+export const RESULTS_ANCHORING_REST_MS = 400;
+
+/** How long the grid's cards have to stay as they are before its render
+ *  counts as landed, a few frames' worth. */
+export const GRID_SETTLE_MS = 150;
+
+/** The most time the anchoring stays off, for a change that leaves the drawn
+ *  cards as they were and so never says it has landed. */
+export const RESULTS_ANCHORING_REST_LIMIT_MS = 5000;
+
+let endAnchoringRest: (() => void) | undefined;
+
+/**
+ * Turns the browser's scroll anchoring off until the filter change has
+ * finished moving the page under a return to the results.
+ *
+ * Anchoring keeps whatever node it picked on screen still while the page
+ * above it changes, and a filter change goes on changing the page after the
+ * return: the chips band appears or collapses above the cards, and the grid
+ * draws its new ones a render later, where a card that was there before and
+ * is still there has moved. Measured at 1440x900 from 1500px down: a first
+ * pick landed 33 to 34px short of 231, so the sticky panel dropped under the
+ * pointer, which ended on the heading above the row it had pressed, and
+ * removing the last filter followed a surviving card 460px into the list.
+ * Motion added a move of its own, putting back a scroll it had saved while it
+ * measured the band's height. With anchoring off all of them land on 231.
+ *
+ * Off until the grid's cards have changed and settled, and not for a set
+ * time, because the grid's render is deferred and takes what the device
+ * gives it: 30-160ms after the press at full speed, 300ms to 2.3s at a
+ * quarter of it, when a first pick with a 400ms rest followed a card to the
+ * top of the page.
+ */
+function restAnchoring(): void {
+  endAnchoringRest?.();
+  const root = document.documentElement;
+  const grid = document.querySelector(CARD_GRID);
+  let floorPassed = false;
+  let gridSettled = grid === null;
+  let settling = 0;
+  const watch = new MutationObserver(() => {
+    window.clearTimeout(settling);
+    settling = window.setTimeout(() => {
+      gridSettled = true;
+      if (floorPassed) end();
+    }, GRID_SETTLE_MS);
+  });
+  const floor = window.setTimeout(() => {
+    floorPassed = true;
+    if (gridSettled) end();
+  }, RESULTS_ANCHORING_REST_MS);
+  const limit = window.setTimeout(() => end(), RESULTS_ANCHORING_REST_LIMIT_MS);
+  function end() {
+    watch.disconnect();
+    window.clearTimeout(settling);
+    window.clearTimeout(floor);
+    window.clearTimeout(limit);
+    // A rest a later return has replaced leaves the anchoring to that one.
+    if (endAnchoringRest !== end) return;
+    endAnchoringRest = undefined;
+    root.style.removeProperty("overflow-anchor");
+  }
+  if (grid) watch.observe(grid, { childList: true });
+  root.style.overflowAnchor = "none";
+  endAnchoringRest = end;
+}
+
+/** Takes the page to the top of its results, if it is below them. */
+function landOnResults(): void {
+  const results = document.querySelector(RESULTS_ANCHOR);
+  if (!results) return;
+  const top = results.getBoundingClientRect().top + window.scrollY;
+  if (window.scrollY <= top) return;
+  restAnchoring();
+  // Motion measures the incoming cards and restores the scroll it captured.
+  // Finish this move immediately so that measurement captures the new position
+  // instead of cancelling an in-flight smooth scroll.
+  window.scrollTo({ top, behavior: "auto" });
+}
+
+function scrollLocked(): boolean {
+  return (
+    document.body.hasAttribute("data-scroll-locked") ||
+    getComputedStyle(document.body).overflow === "hidden"
+  );
+}
+
 /**
  * Answering a filter with the same scroll offset leaves the visitor deep
  * inside a list they have never seen. Measured on a 390px phone: scrolled to
@@ -50,41 +146,43 @@ const RESULTS_ANCHOR = 'section[aria-labelledby="rezultati"]';
  * sense of what was above. Every faceted search answers this the same way, by
  * returning to the top of the results, and that is where the toolbar and the
  * count are too. Somebody already at or above the results is left alone.
+ *
+ * A filter answered inside a layer (the phone's sheet, the map) is answered
+ * behind it, while the page cannot be scrolled by hand, and the return waits
+ * for the layer to close. It lands in the first frame of the close, while the
+ * layer still covers the page (whenLayerCloses), so nothing moves once the
+ * layer has gone. The page's scroll lock going is the other way out and stays
+ * as a second look: it covers a lock no layer holds, and puts the page back
+ * on the results if anything moved it between the close and the unlock.
  */
 let pendingScroll: MutationObserver | undefined;
+let withdrawLanding: (() => void) | undefined;
 
 export function scrollToResults(): void {
   if (typeof window === "undefined") return;
-  if (
-    document.body.hasAttribute("data-scroll-locked") ||
-    getComputedStyle(document.body).overflow === "hidden"
-  ) {
-    if (!pendingScroll) {
-      pendingScroll = new MutationObserver(() => {
-        if (
-          document.body.hasAttribute("data-scroll-locked") ||
-          getComputedStyle(document.body).overflow === "hidden"
-        )
-          return;
-        pendingScroll?.disconnect();
-        pendingScroll = undefined;
-        requestAnimationFrame(scrollToResults);
-      });
-      pendingScroll.observe(document.body, {
-        attributes: true,
-        attributeFilter: ["data-scroll-locked", "style", "class"],
-      });
-    }
+  if (!scrollLocked()) {
+    // A landing still waiting for a layer is this one, and must not fire
+    // again on the next layer that closes with nothing picked in it.
+    withdrawLanding?.();
+    withdrawLanding = undefined;
+    landOnResults();
     return;
   }
-  const results = document.querySelector(RESULTS_ANCHOR);
-  if (!results) return;
-  const top = results.getBoundingClientRect().top + window.scrollY;
-  if (window.scrollY <= top) return;
-  // Motion measures the incoming cards and restores the scroll it captured.
-  // Finish this move immediately so that measurement captures the new position
-  // instead of cancelling an in-flight smooth scroll.
-  window.scrollTo({ top, behavior: "auto" });
+  withdrawLanding ??= whenLayerCloses(() => {
+    withdrawLanding = undefined;
+    landOnResults();
+  });
+  if (pendingScroll) return;
+  pendingScroll = new MutationObserver(() => {
+    if (scrollLocked()) return;
+    pendingScroll?.disconnect();
+    pendingScroll = undefined;
+    requestAnimationFrame(scrollToResults);
+  });
+  pendingScroll.observe(document.body, {
+    attributes: true,
+    attributeFilter: ["data-scroll-locked", "style", "class"],
+  });
 }
 
 /**

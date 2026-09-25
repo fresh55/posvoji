@@ -35,6 +35,12 @@ import { FilterChips, type Chip } from "./filter-chips";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
 
 installFilterFoldSeams();
+// fireEvent's click carries detail 0, which is a keyboard's, so a reset
+// pressed here hands focus to its section's heading, and a heading with a hint
+// opens its tooltip on focus. Radix positions it with an observer jsdom does
+// not ship.
+class NoopResizeObserver { observe() {} unobserve() {} disconnect() {} }
+globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObserver;
 
 afterEach(() => {
   window.history.replaceState(null, "", "/");
@@ -342,7 +348,7 @@ describe("filter flow interactions", () => {
     expect(matchingIds()).toBe("male-young");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki se razumejo z otroki in psi. 1 od 3. Živali brez odgovora zavetišča so skrite.",
+        "Prikazane so živali, ki se razumejo z otroki in psi: 1 od 3. Živali brez podatka so skrite.",
       ),
     ).toBeTruthy();
   });
@@ -380,7 +386,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?skrb=posvojitev-v-paru");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 2 od 3.",
+        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš: 2 od 3.",
       ),
     ).toBeTruthy();
   });
@@ -404,7 +410,7 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?skrb=potrpezljiv");
     expect(
       screen.getByText(
-        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš. 1 od 3.",
+        "Prikazane so živali, ki potrebujejo, kar lahko ponudiš: 1 od 3.",
       ),
     ).toBeTruthy();
   });

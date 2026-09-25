@@ -17,8 +17,10 @@ function show(layout: "sheet" | "sidebar", locale: "sl" | "en", filters: Filters
   counts.coatColor.set("black", 2);
   counts.coatColor.set("white", 1);
   counts.coatColor.set("orange-white", 1);
-  // Live, so the sidebar draws it: the palette leaves a zero-count colour out
-  // the way every other section leaves out a zero-count row.
+  // The sidebar palette no longer needs a live count to draw a swatch (below:
+  // every colour draws there now, dead or not), but a live one keeps this
+  // swatch enabled rather than disabled, closer to what the real dataset
+  // gives multicolour.
   counts.coatColor.set("multicolour", 1);
   counts.coatLength.set("long", 1);
   counts.waiting.set("over-1-year", 1);
@@ -69,14 +71,14 @@ describe.each(["sidebar", "sheet"] as const)("appearance and waiting in %s", lay
     expect(selected.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(selected);
     expect(onToggle).toHaveBeenCalledWith("coatColor", "orange");
-    // Videz answers a zero-count option the way every other section does now:
-    // the sheet greys the tile out, the sidebar leaves the row out. Before,
-    // it was the one block that drew dead rows in the column.
-    const brown = screen.queryByRole("button", { name: /^Brown,/ });
-    if (layout === "sheet") {
-      expect((brown as HTMLButtonElement).disabled).toBe(true);
-    } else {
-      expect(brown).toBeNull();
-    }
+    // Videz answers a zero-count option the way every other section does,
+    // greyed out rather than dropped: the sheet's tile always worked this
+    // way, and the sidebar's Barva palette now matches it, so a dead swatch
+    // keeps its cell instead of reflowing the grid and splitting a colour
+    // from its two-toned twin. A row list (Dolžina dlake, and every other
+    // section) still leaves a dead row out of the sidebar; only the palette
+    // changed.
+    const brown = screen.getByRole("button", { name: /^Brown,/ }) as HTMLButtonElement;
+    expect(brown.disabled).toBe(true);
   });
 });

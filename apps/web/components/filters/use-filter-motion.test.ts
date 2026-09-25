@@ -150,6 +150,64 @@ describe("useFilterCardHover", () => {
     act(() => result.current.handlers("small").onBlur());
     expect(result.current.hoveredValue).toBeNull();
   });
+
+  describe("the settle", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    // A pick moves the cards under a still pointer, and Chrome answers with a
+    // leave and an enter on the same card a few milliseconds apart. The card
+    // is where the pointer is, so it stays settled.
+    it("holds through a leave and an enter on the same card", () => {
+      const { result } = renderHook(() => useFilterCardHover());
+      const small = () => result.current.handlers("small");
+
+      act(() => small().onPointerEnter(pointerEvent("mouse")));
+      act(() => result.current.settle("small"));
+      act(() => small().onPointerLeave());
+      act(() => vi.advanceTimersByTime(5));
+      act(() => small().onPointerEnter(pointerEvent("mouse")));
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(result.current.settledValue).toBe("small");
+      expect(result.current.hoveredValue).toBe("small");
+    });
+
+    it("lets go once the pointer has really left", () => {
+      const { result } = renderHook(() => useFilterCardHover());
+
+      act(() => result.current.settle("small"));
+      act(() => result.current.handlers("small").onPointerLeave());
+      expect(result.current.hoveredValue).toBeNull();
+
+      act(() => vi.advanceTimersByTime(500));
+      expect(result.current.settledValue).toBeNull();
+    });
+
+    it("keeps one card's let-go when another card is left", () => {
+      const { result } = renderHook(() => useFilterCardHover());
+
+      act(() => result.current.settle("small"));
+      act(() => result.current.handlers("small").onPointerLeave());
+      act(() => result.current.handlers("large").onPointerLeave());
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(result.current.settledValue).toBeNull();
+    });
+
+    it("sets no state after unmount", () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { result, unmount } = renderHook(() => useFilterCardHover());
+
+      act(() => result.current.settle("small"));
+      act(() => result.current.handlers("small").onPointerLeave());
+      unmount();
+      act(() => vi.advanceTimersByTime(500));
+
+      expect(error).not.toHaveBeenCalled();
+      error.mockRestore();
+    });
+  });
 });
 
 describe("useResetStagger", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { TargetAndTransition, Transition } from "motion/react";
+import type { Transition } from "motion/react";
 import {
   animate,
   domAnimation,
@@ -15,12 +15,13 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
 import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
 import { useI18n } from "@/components/i18n-context";
+import { CountRoll } from "@/components/filters/filter-card";
 import {
   SPECIES_GLYPHS,
   SpeciesGlyphIcon,
@@ -67,9 +68,13 @@ const SLIDE_SPRING = {
 // size is the icon's default (species-glyph.tsx); this only steps it down.
 const GLYPH_CLASS = "max-[384px]:size-3.5";
 
+/** The properties a beat moves the glyph by. */
+type BeatTrack = "rotate" | "scaleX" | "scaleY" | "y";
+
 type Beat = {
-  /** What the glyph does, as keyframes on the svg itself. */
-  keyframes: TargetAndTransition;
+  /** What the glyph does, as keyframes on the svg itself. Every track starts
+   *  at rest, which is where a beat cut short settles back to (restPose). */
+  keyframes: Partial<Record<BeatTrack, number[]>>;
   /** Only the parts of the timing that differ per species. The delay and the
    *  duration are shared, so they are named once where the beat is used. */
   transition: Transition;
@@ -126,11 +131,24 @@ const BEAT_DURATION = 0.55;
 // that retuning the beat above cannot leave the hold behind it.
 const BEAT_MS = Math.round((BEAT_DELAY + BEAT_DURATION) * 1000) + 100;
 
-// Nothing to subscribe to: the answer changes exactly once, when React swaps
-// the server snapshot for the client one at the end of hydration.
-const subscribeToHydration = () => () => {};
-const hydratedOnClient = () => true;
-const hydratedOnServer = () => false;
+// A second species press takes the celebration away from the first tab in
+// the middle of its beat. The glyph used to hand straight over to the plain
+// icon then, which put the dog's head from -14 degrees back to 0 in a frame;
+// it comes back to rest over this long first, from wherever the beat had got
+// to, and the swap waits a frame or two past it.
+const SETTLE = { duration: 0.15, ease: "easeOut" } as const;
+const SETTLE_MS = Math.round(SETTLE.duration * 1000) + 50;
+
+/** Where each of a beat's tracks starts, which is the glyph at rest. */
+function restPose(
+  keyframes: Beat["keyframes"],
+): Partial<Record<BeatTrack, number>> {
+  const pose: Partial<Record<BeatTrack, number>> = {};
+  for (const track of Object.keys(keyframes) as BeatTrack[]) {
+    pose[track] = keyframes[track]?.[0];
+  }
+  return pose;
+}
 
 type Box = { left: number; top: number; width: number; height: number };
 
@@ -161,12 +179,24 @@ function SpeciesGlyph({
 }) {
   const paths = SPECIES_GLYPHS[tab];
 
+  // The beat on screen, which outlasts the celebration by the settle: a beat
+  // whose celebration another tab has taken keeps its glyph while it comes
+  // back to rest (SETTLE), and only then hands over to the plain icon.
+  const [shown, setShown] = useState(beatId);
+  if (beatId !== null && beatId !== shown) setShown(beatId);
+  const settling = beatId === null && shown !== null;
+  useEffect(() => {
+    if (!settling) return;
+    const timer = window.setTimeout(() => setShown(null), SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [settling]);
+
   // A plain svg while nothing is happening, and not an m.svg holding still.
   // Six of these sit on the page at rest (three species, two mounted copies),
   // and a motion element costs a visual element and a resolved origin each
   // even when it is animating nothing. The key below remounts the glyph for a
   // beat anyway, so there is nothing to carry across the swap.
-  if (beatId === null) {
+  if (shown === null) {
     return <SpeciesGlyphIcon tab={tab} className={GLYPH_CLASS} />;
   }
 
@@ -174,7 +204,7 @@ function SpeciesGlyph({
 
   return (
     <m.svg
-      key={beatId}
+      key={shown}
       aria-hidden
       viewBox="0 0 24 24"
       width="24"
@@ -186,12 +216,12 @@ function SpeciesGlyph({
       strokeLinecap="round"
       strokeLinejoin="round"
       style={{ originX: beat.originX, originY: beat.originY }}
-      animate={beat.keyframes}
-      transition={{
-        delay: BEAT_DELAY,
-        duration: BEAT_DURATION,
-        ...beat.transition,
-      }}
+      animate={settling ? restPose(beat.keyframes) : beat.keyframes}
+      transition={
+        settling
+          ? SETTLE
+          : { delay: BEAT_DELAY, duration: BEAT_DURATION, ...beat.transition }
+      }
     >
       {/* All of them at once. Drawing an animal part by part turns a beat
           into an assembly; the sweep is what the tap earns. */}
@@ -340,10 +370,11 @@ export function SpeciesTabs({
 
   // The pressed tab, and how many tabs there are to press. Everything else
   // that moves a pill moves its box too, which is what the ResizeObserver
-  // below is watching for: a count going from 99 to 100, a locale swapping
-  // every label, a font arriving late. Those all reach the fill through the
-  // observer, whose callback runs after layout and before paint, so the fill
-  // never draws a frame at the old width.
+  // below is watching for: a locale swapping every label, a font arriving
+  // late. A count no longer does, since each one holds its roster's width
+  // (the count below). Those all reach the fill through the observer, whose
+  // callback runs after layout and before paint, so the fill never draws a
+  // frame at the old width.
   //
   // Without a dependency list this read runs after every render of a row that
   // re-renders on scroll, and reading offsetLeft on a render that changed
@@ -400,11 +431,7 @@ export function SpeciesTabs({
   // link either mounts the fill under the restored tab or slides it there in
   // the first frames. Either is the row coming alive on load. A frame with a
   // pressed tab and nothing under it is not.
-  const hydrated = useSyncExternalStore(
-    subscribeToHydration,
-    hydratedOnClient,
-    hydratedOnServer,
-  );
+  const hydrated = useHydrated();
 
   const { celebration, celebrate } = useOneShotCelebration<SpeciesTab>(BEAT_MS);
 
@@ -632,10 +659,31 @@ export function SpeciesTabs({
                 trap next to --muted-foreground -- opacity-60 over an already
                 muted tone measures 2.46:1, under AA for 12px text, so the
                 token is used whole and stays quieter by contrast with the
-                label alone, not by fading further past it. */}
+                label alone, not by fading further past it.
+
+                The number rolls like every other count on the page
+                (CountRoll), and it sits in a box as wide as the tab's roster
+                number, which is drawn invisibly in the same cell by the
+                ::after. A faceted count is never more than its roster, and
+                with tabular digits the roster's number is the widest the
+                count can be, so a tab is as wide under any narrowing as
+                under none. Before, every digit a count lost or gained moved
+                every tab after it: a Samec pick took Psi from 124 to 75 and
+                moved Mačke and Ostale 7.8px left, Samec with Mladiček 23.3px.
+                Not min-width in ch: a ch in this face is 7.56px against a
+                7.78px tabular digit, so a three-digit box would still come
+                up short by most of a pixel. Generated content is not text,
+                so the tab's name and its textContent are unchanged, and
+                text-left keeps the short number beside its label. */}
             {!disabled && (
-              <span className="shrink-0 text-xs tabular-nums max-[384px]:text-2xs">
-                {counts[tab]}
+              <span
+                data-reserve={roster[tab]}
+                className="grid shrink-0 text-left text-xs tabular-nums after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-reserve)] max-[384px]:text-2xs"
+              >
+                <CountRoll
+                  value={counts[tab]}
+                  className="col-start-1 row-start-1"
+                />
               </span>
             )}
           </button>

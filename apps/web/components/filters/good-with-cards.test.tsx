@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
@@ -14,6 +15,7 @@ import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
+import { pointerAway, pointerOnto } from "@/test/pointer";
 import { FilterGroupList } from "./filter-groups";
 import { GoodWithCards } from "./good-with-cards";
 
@@ -57,6 +59,35 @@ function renderCards(
   return { onToggle, onToggleMany, container: view.container };
 }
 
+// A render that actually toggles, for the tests below that click a card and
+// then look at what a later render did to it: renderCards's default vi.fn()
+// never feeds a pick back in as a prop, so `selected` would never change.
+function renderStateful() {
+  function StatefulCards() {
+    const [selected, setSelected] = useState<GoodWithKey[]>([]);
+    return (
+      <I18nProvider locale="sl">
+        <GoodWithCards
+          options={options}
+          counts={counts}
+          selected={selected}
+          resultCount={70}
+          total={489}
+          onToggle={(key) =>
+            setSelected((current) =>
+              current.includes(key)
+                ? current.filter((entry) => entry !== key)
+                : [...current, key],
+            )
+          }
+          onToggleMany={() => undefined}
+        />
+      </I18nProvider>
+    );
+  }
+  render(<StatefulCards />);
+}
+
 // The three columns are for the three facets the section can hold. A dataset
 // that answers only two of them left the third of the row empty, which the
 // drawer's other sections never do because they count their own options.
@@ -96,19 +127,20 @@ describe("GoodWithCards", () => {
       },
     });
     const kids = screen.getByRole("button", { name: /^Otroke, / });
-    // A no-break space after the colon, so the number never wraps away from
-    // the words it counts on a tile a third of a phone wide.
-    expect(kids.textContent).toContain("Brez odgovora:\u00a0121");
+    // A no-break space between the two words and a plain one after the
+    // colon, so a tile a third of a phone wide breaks at the colon and never
+    // leaves "Brez" alone on its line.
+    expect(kids.textContent).toContain("Brez\u00a0podatka: 121");
     expect(
       document.getElementById(kids.getAttribute("aria-describedby") ?? "")
         ?.textContent,
-    ).toBe("Brez odgovora:\u00a0121");
+    ).toBe("Brez\u00a0podatka: 121");
     expect(
       screen.getByRole("button", { name: /^Psa, / }).textContent,
-    ).toContain("Brez odgovora:\u00a0102");
+    ).toContain("Brez\u00a0podatka: 102");
     // Five of 124 is under the tenth the panel bothers saying.
     const cats = screen.getByRole("button", { name: /^Mačko, / });
-    expect(cats.textContent).not.toContain("Brez odgovora");
+    expect(cats.textContent).not.toContain("Brez\u00a0podatka");
     expect(cats.getAttribute("aria-describedby")).toBeNull();
     // What a pick does with them, said once under the rows before any pick.
     expect(
@@ -154,7 +186,7 @@ describe("GoodWithCards", () => {
   });
 
   // On a tile the line went between the label and the count, and at a third
-  // of a phone it wrapped, so a tile read "Otroke, Brez odgovora:, 121, 2":
+  // of a phone it wrapped, so a tile read "Otroke, Brez podatka:, 121, 2":
   // two bare numbers one above the other.
   it("puts the count before the line on a phone tile", () => {
     renderCards({
@@ -168,7 +200,7 @@ describe("GoodWithCards", () => {
     });
     expect(
       screen.getByRole("button", { name: /^Otroke, / }).textContent,
-    ).toBe("Otroke7Brez odgovora:\u00a0121");
+    ).toBe("Otroke7Brez\u00a0podatka: 121");
   });
 
   it("hands that sentence to the outcome once something is picked", () => {
@@ -186,7 +218,7 @@ describe("GoodWithCards", () => {
       ),
     ).toBeNull();
     expect(
-      screen.getByText(/Živali brez odgovora zavetišča so skrite\.$/),
+      screen.getByText(/Živali brez podatka so skrite\.$/),
     ).toBeTruthy();
   });
 
@@ -311,43 +343,43 @@ describe("the outcome sentence", () => {
   it("carries the preposition of whichever facet comes first", () => {
     renderCards({ selected: ["kids"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki. 70 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0otroki: 70 od 489. Živali brez podatka so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["dogs"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo s psi. 70 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo s\u00a0psi: 70 od 489. Živali brez podatka so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["cats"], resultCount: 70 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z mačkami. 70 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0mačkami: 70 od 489. Živali brez podatka so skrite.",
     );
   });
 
   it("joins two and three facets in the fixed card order", () => {
     renderCards({ selected: ["dogs", "kids"], resultCount: 24 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki in psi. 24 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0otroki in psi: 24 od 489. Živali brez podatka so skrite.",
     );
     cleanup();
 
     renderCards({ selected: ["cats", "dogs", "kids"], resultCount: 12 });
     expect(sentence()).toBe(
-      "Prikazane so živali, ki se razumejo z otroki, psi in mačkami. 12 od 489. Živali brez odgovora zavetišča so skrite.",
+      "Prikazane so živali, ki se razumejo z\u00a0otroki, psi in mačkami: 12 od 489. Živali brez podatka so skrite.",
     );
   });
 
   it("reads the same way in English", () => {
     renderCards({ locale: "en", selected: ["kids"], resultCount: 70 });
-    expect(sentence()).toBe("Showing animals that get on with kids. 70 of 489. Animals the shelter has not answered for stay hidden.");
+    expect(sentence()).toBe("Showing animals that get on with kids: 70 of 489. Animals with no answer stay hidden.");
     cleanup();
 
     renderCards({ locale: "en", selected: ["kids", "dogs"], resultCount: 24 });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids and dogs. 24 of 489. Animals the shelter has not answered for stay hidden.",
+      "Showing animals that get on with kids and dogs: 24 of 489. Animals with no answer stay hidden.",
     );
     cleanup();
 
@@ -357,8 +389,110 @@ describe("the outcome sentence", () => {
       resultCount: 12,
     });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids, dogs and cats. 12 of 489. Animals the shelter has not answered for stay hidden.",
+      "Showing animals that get on with kids, dogs and cats: 12 of 489. Animals with no answer stay hidden.",
     );
+  });
+});
+
+describe("interrupted gestures", () => {
+  // The glyph used to remount on the key that switched it between "celebrate"
+  // and "rest", which threw away the live value Motion was mid-animation on
+  // and painted the rest pose in one frame instead of easing to it. Kept
+  // mounted, the same svg element carries the gesture through the interrupt.
+  it("keeps the same glyph element when another facet's pick interrupts its gesture", () => {
+    renderStateful();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    const before = document.querySelector('svg[data-good-with-glyph="kids"]');
+    expect(before).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    const after = document.querySelector('svg[data-good-with-glyph="kids"]');
+    expect(after).toBe(before);
+  });
+});
+
+describe("hover preview", () => {
+  it("previews the gesture for a real mouse and not for a touch", () => {
+    renderCards();
+    const dogs = screen.getByRole("button", { name: /^Psa, / });
+
+    pointerOnto(dogs, "touch");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
+  });
+
+  it("does not preview a card that is already picked", () => {
+    renderCards({ selected: ["dogs"] });
+    const dogs = screen.getByRole("button", { name: /^Psa, / });
+
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+  });
+
+  // settledValue is the guard: without it, unticking a card the mouse never
+  // left showed the hover preview on top of the leave, the same bug found on
+  // Energija.
+  it("settles after a click so an untick under the pointer does not replay it", async () => {
+    renderStateful();
+    const dogs = screen.getByRole("button", { name: /^Psa, / });
+
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
+
+    fireEvent.click(dogs);
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+
+    fireEvent.click(dogs);
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
+
+    await pointerAway(dogs);
+    pointerOnto(dogs, "mouse");
+    expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
+  });
+});
+
+describe("the dead posture", () => {
+  it("closes a dead option's eyes and dims it, rather than leaving it upright", () => {
+    renderCards({ counts: new Map([["kids", 0], ["dogs", 2], ["cats", 2]]) });
+
+    const dead = screen.getByRole("button", { name: /^Otroke, / });
+    const svg = dead.querySelector("svg[data-good-with-glyph]");
+    expect(svg?.getAttribute("class")).toContain("opacity-60");
+    const eyes = [...(svg?.querySelectorAll("path") ?? [])];
+    expect(eyes.some((eye) => eye.getAttribute("class")?.includes("scale-y-[0.08]"))).toBe(true);
+  });
+
+  it("leaves a live option's face alone", () => {
+    renderCards({ counts: new Map([["kids", 0], ["dogs", 2], ["cats", 2]]) });
+
+    const live = screen.getByRole("button", { name: /^Psa, / });
+    const svg = live.querySelector("svg[data-good-with-glyph]");
+    expect(svg?.getAttribute("class")).not.toContain("opacity-60");
+    const eyes = [...(svg?.querySelectorAll("path") ?? [])];
+    expect(eyes.some((eye) => eye.getAttribute("class")?.includes("scale-y-[0.08]"))).toBe(false);
+  });
+});
+
+describe("the unanswered line after a pick", () => {
+  // The line said what a pick would hide, so once a row is picked it has
+  // nothing left to warn about. Left on, it kept recomputing against the
+  // narrower result and changed a number the visitor never touched.
+  it("keeps the line on unpicked rows only", () => {
+    renderCards({
+      selected: ["kids"],
+      unanswered: {
+        kids: { asked: 491, unanswered: 479 },
+        dogs: { asked: 491, unanswered: 15 },
+        cats: { asked: 491, unanswered: 15 },
+      },
+    });
+
+    const kids = screen.getByRole("button", { name: /^Otroke, / });
+    expect(kids.textContent).not.toContain("Brez\u00a0podatka");
+    expect(kids.getAttribute("aria-describedby")).toBeNull();
   });
 });
 

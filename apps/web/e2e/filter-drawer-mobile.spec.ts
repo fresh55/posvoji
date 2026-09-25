@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { pickerTrigger } from "./picker";
 
 // The drawer this file exercises is FilterSheet's, opened from the "Filtri"
 // button in the mobile dock (animal-filters.tsx). It is the only Drawer this
@@ -11,6 +12,44 @@ function filtriTrigger(page: Page): Locator {
 
 function drawerContent(page: Page): Locator {
   return page.locator('[data-slot="drawer-content"]');
+}
+
+type CloseFrame = { y: number; top: number; sheet: boolean };
+
+/** Presses a button in the open sheet and reads every frame for the next
+ *  1.5s: the window's scroll, where the results begin, and whether the sheet
+ *  is still in the document. */
+function closeAndWatch(page: Page, label: RegExp): Promise<CloseFrame[]> {
+  return page.evaluate(
+    (source) =>
+      new Promise<CloseFrame[]>((resolve) => {
+        const results = document.querySelector(
+          'section[aria-labelledby="rezultati"]',
+        )!;
+        const button = [
+          ...document.querySelectorAll<HTMLButtonElement>(
+            '[data-slot="drawer-content"] button',
+          ),
+        ].find((b) =>
+          new RegExp(source).test(
+            (b.getAttribute("aria-label") ?? b.innerText).trim(),
+          ),
+        )!;
+        const frames: CloseFrame[] = [];
+        const started = performance.now();
+        button.click();
+        (function frame() {
+          frames.push({
+            y: Math.round(window.scrollY),
+            top: Math.round(results.getBoundingClientRect().top + window.scrollY),
+            sheet: document.querySelector('[data-slot="drawer-content"]') !== null,
+          });
+          if (performance.now() - started < 1500) requestAnimationFrame(frame);
+          else resolve(frames);
+        })();
+      }),
+    label.source,
+  );
 }
 
 test("opening the Filtri drawer moves focus inside its content", async ({
@@ -260,4 +299,96 @@ test.describe("approved mobile filter regressions", () => {
     await page.getByRole("option", { name: "Ime A–Ž" }).click();
     await expect(sort).toContainText("Ime A–Ž");
   });
+});
+
+// Closing the sheet pops the history entry it opened on, and the browser used
+// to put the page's scroll back where it was on that pop: a pick from 3000px
+// down slid the sheet away over the old list, then jumped to the results once
+// the sheet had gone (use-picker-history.ts, use-animal-filters.ts).
+test.describe("the page under the closing sheet", () => {
+  test("is on the results by the time the sheet has gone, and moves no more", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => window.scrollTo(0, 2000));
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    await expect(content).toBeVisible();
+    await content.getByRole("button", { name: /^Samec,/ }).click();
+    await expect(page).toHaveURL(/[?&]spol=samec(&|$)/);
+
+    const frames = await closeAndWatch(page, /^Pokaži/);
+
+    const bare = frames.filter((frame) => !frame.sheet);
+    expect(bare.length).toBeGreaterThan(0);
+    for (const frame of bare) expect(frame.y).toBe(frame.top);
+  });
+
+  test("stays where it was when the sheet closes with nothing picked", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => window.scrollTo(0, 2000));
+    const start = await page.evaluate(() => Math.round(window.scrollY));
+    await filtriTrigger(page).click();
+    await expect(drawerContent(page)).toBeVisible();
+
+    const frames = await closeAndWatch(page, /^Zapri$/);
+
+    const bare = frames.filter((frame) => !frame.sheet);
+    expect(bare.length).toBeGreaterThan(0);
+    for (const frame of bare) expect(frame.y).toBe(start);
+  });
+});
+
+test.describe("the sheet under reduced motion", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+  });
+
+  test("appears and leaves without sliding, and hands the page back", async ({ page }) => {
+    await page.goto("/");
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    await expect(content).toBeVisible();
+    // vaul slid it 608px on open and on close with the setting on.
+    await expect(content).toHaveCSS("animation-name", "none");
+    await expect(page.locator("[data-vaul-overlay]")).toHaveCSS(
+      "animation-name",
+      "none",
+    );
+
+    await content.getByRole("button", { name: "Zapri", exact: true }).click();
+
+    await expect(content).toHaveCount(0);
+    await expect(page.locator("body")).not.toHaveAttribute(
+      "data-scroll-locked",
+      /.*/,
+    );
+    await expect(filtriTrigger(page)).toBeFocused();
+  });
+});
+
+// The Kje row closes the sheet and opens the map it hands the press to. The
+// map now opens before the sheet has finished leaving, so the sheet's own
+// focus return, which comes when its content unmounts, must not take focus
+// out of the map.
+test("hands the Kje row over to the map with focus inside it", async ({ page }) => {
+  await page.goto("/");
+  await filtriTrigger(page).click();
+  const content = drawerContent(page);
+  await expect(content).toBeVisible();
+
+  await content.getByRole("button", { name: /^Zavetišče:/ }).click();
+
+  const picker = page.getByRole("dialog", { name: "Izberi zavetišča" });
+  await expect(picker).toBeVisible();
+  await expect(content).toHaveCount(0);
+  await expect
+    .poll(() => picker.evaluate((dialog) => dialog.contains(document.activeElement)))
+    .toBe(true);
+  expect(
+    await page.evaluate(() => typeof history.state?.locationPicker),
+  ).toBe("string");
+
+  await page.keyboard.press("Escape");
+
+  await expect(picker).toBeHidden();
+  await expect(pickerTrigger(page)).toBeFocused();
 });

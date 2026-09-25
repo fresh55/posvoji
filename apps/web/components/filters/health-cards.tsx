@@ -114,6 +114,10 @@ export function HealthToggleCards({
     <FilterCardSection
       label={messages.health}
       hint={messages.healthFilterHint}
+      // The rows name FIV and FeLV and nothing else on the panel says what
+      // they are. The dialog explains each result once it is on an animal;
+      // the visitor choosing a row needs it here, on a phone too.
+      lead={messages.healthLead}
       active={selected.length > 0}
       onReset={() => {
         clearCelebration();

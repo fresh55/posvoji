@@ -290,6 +290,13 @@ const sl = {
   // answer is said under the rows, where a mouse can read it too.
   energyFilterHint: "Po presoji zavetišča.",
   healthFilterHint: "Žival mora imeti vse izbrane lastnosti.",
+  // What the two tests are, drawn above the rows on every surface: the rows
+  // say FIV and FeLV, and the panel said nowhere what they stand for. One
+  // line in the sidebar and at 320 (205 of 224px, 223 of 278px). The
+  // no-break spaces hold each half together, so enlarged text breaks it at
+  // the comma rather than leaving "levkemija." on a line of its own.
+  healthLead:
+    "FIV\u00a0je\u00a0mačji\u00a0aids, FeLV\u00a0mačja\u00a0levkemija.",
   // The first sentence says the rows are a wait and not an age, and where it
   // is counted from. The second says what the round marks show: a second pick
   // replaces the first. Each row reads the whole hint out as its description
@@ -841,6 +848,8 @@ const en: Messages = {
   ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
   energyFilterHint: "As judged by the shelter.",
   healthFilterHint: "An animal has to have every trait you pick.",
+  healthLead:
+    "FIV\u00a0is\u00a0feline\u00a0AIDS, FeLV\u00a0feline\u00a0leukemia.",
   waitingFilterHint:
     "Counted from the day the animal came to the shelter. Pick one threshold.",
   resetWaitingFilters: "Reset the waiting time",

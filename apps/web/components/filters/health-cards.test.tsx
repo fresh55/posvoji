@@ -8,7 +8,7 @@ import { I18nProvider } from "@/components/i18n-provider";
 import { HEALTH_ICONS } from "@/lib/animal-icons";
 import { TOGGLES, toggleLabel, type ToggleKey } from "@/lib/filters";
 import { FILTER_TOGGLE_KEYS } from "@/lib/filters/contracts";
-import type { Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import { pointerOff, pointerOnto } from "@/test/pointer";
 import { HealthToggleCards } from "./health-cards";
 import {
@@ -81,6 +81,32 @@ const pathData = (root: Element) =>
   [...root.querySelectorAll("path")].map((path) => path.getAttribute("d"));
 
 describe("HealthToggleCards", () => {
+  it("says what FIV and FeLV are, drawn above the rows and not in a tooltip", () => {
+    renderCards();
+
+    expect(screen.getByRole("heading", { name: "Zdravje" })).toBeTruthy();
+    const lead = screen.getByText("FIV je mačji aids, FeLV mačja levkemija.");
+    // Not the hint's dress, which a folding section hides on a fine pointer.
+    expect(lead.className).not.toContain("hidden");
+  });
+
+  it("says it in English too", () => {
+    renderCards({ locale: "en" });
+    expect(
+      screen.getByText("FIV is feline AIDS, FeLV feline leukemia."),
+    ).toBeTruthy();
+  });
+
+  // Why: the comment on healthLead in lib/i18n.ts.
+  it.each(["sl", "en"] as const)(
+    "lets the %s lead break only between its two halves",
+    (locale) => {
+      const halves = getMessages(locale).healthLead.split(" ");
+      expect(halves).toHaveLength(2);
+      expect(halves[0].endsWith(",")).toBe(true);
+    },
+  );
+
   it("renders one row per test with its label, count and aria-label", () => {
     renderCards();
 

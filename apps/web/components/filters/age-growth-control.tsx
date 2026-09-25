@@ -908,7 +908,11 @@ export function AgeGrowthControl({
                           // to have the first column instead, which left this
                           // the one section in the sidebar whose check was on
                           // the other side of the row from the rest.
-                          "grid h-10 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_2rem] items-center gap-2 px-2.5 pr-9 text-left",
+                          //
+                          // The count's column is auto, so its width is the
+                          // count's own (countClass): the same minimum and the
+                          // same growth as the count in every other row.
+                          "grid h-10 w-full shrink grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2.5 pr-9 text-left",
                     ),
                   })}
                 >

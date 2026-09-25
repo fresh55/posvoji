@@ -124,6 +124,52 @@ test.describe("approved mobile filter regressions", () => {
     await expect(content).toBeVisible();
   });
 
+  // The tiles in a row stretch to the tallest one. While each tile centred its
+  // own content, the tile whose label took two lines sat its hourglass 7.5px
+  // above the other two.
+  test("keeps a row's icons on one line when one tile's label wraps", async ({ page }) => {
+    await page.goto("/");
+    await filtriTrigger(page).click();
+    const content = drawerContent(page);
+    await content.getByRole("button", { name: /^Čaka na dom/ }).click();
+
+    const names = [/^Nad 6\smesecev,/, /^Nad 1\sleto,/, /^Nad 3\sleta,/];
+    for (const name of names) {
+      await expect(content.getByRole("button", { name })).toBeVisible();
+    }
+    const tiles = content.locator("button[aria-pressed]").filter({ hasText: /^Nad\s/ });
+
+    // All three in one frame, and again until the section's reveal has
+    // settled: WebKit was still moving the row on the first read.
+    await expect(async () => {
+      const measured = await tiles.evaluateAll((elements) =>
+        elements.map((element) => {
+          const box = element.getBoundingClientRect();
+          // The mark is absolutely placed; the icon well is the first child
+          // in the flow and the label the second.
+          const [icon, label] = [...element.children].filter(
+            (child) => getComputedStyle(child).position !== "absolute",
+          );
+          return {
+            top: Math.round(box.top),
+            icon: icon.getBoundingClientRect().top - box.top,
+            lines: Math.round(
+              label.getBoundingClientRect().height /
+                parseFloat(getComputedStyle(label).lineHeight),
+            ),
+          };
+        }),
+      );
+
+      // The premise: one row, and only the first label on two lines.
+      expect(new Set(measured.map(({ top }) => top)).size).toBe(1);
+      expect(measured.map(({ lines }) => lines)).toEqual([2, 1, 1]);
+      for (const { icon } of measured.slice(1)) {
+        expect(icon).toBeCloseTo(measured[0].icon, 0);
+      }
+    }).toPass({ timeout: 5_000 });
+  });
+
   test("opens the section selected by a filtered link and keeps manual folding available", async ({ page }) => {
     await page.goto("/?velikost=majhna");
     await page.evaluate(() => localStorage.setItem("posvoji:filter-sections", JSON.stringify({ size: false })));

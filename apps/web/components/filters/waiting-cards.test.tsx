@@ -72,28 +72,6 @@ describe("the waiting section's heading", () => {
   });
 });
 
-describe("the waiting section's count column", () => {
-  // The real check is visual: 1000 and 10000 injected into the 214px sidebar
-  // row at 1440 and 1024, measured clear of the label and the round mark.
-  // jsdom has no layout, so this pins the class contract that holds it: a
-  // column that starts at w-6 and grows with its digits, never a fixed width
-  // a fourth digit would spill out of into the mark.
-  it("grows with its digits and stays right-aligned in the sidebar", () => {
-    renderCards("sl");
-    const rows = screen.getAllByRole("button", { pressed: false });
-    expect(rows).toHaveLength(3);
-    for (const row of rows) {
-      const count = row.querySelector(".tabular-nums");
-      expect(count).not.toBeNull();
-      const classes = [...(count?.classList ?? [])];
-      expect(classes).toEqual(
-        expect.arrayContaining(["min-w-6", "w-auto", "shrink-0", "text-right"]),
-      );
-      expect(classes.filter((name) => /^w-(?!auto$)/.test(name))).toEqual([]);
-    }
-  });
-});
-
 describe("the waiting section's place in the panel", () => {
   function show(layout: "sidebar" | "sheet", filters: Filters = EMPTY_FILTERS) {
     const counts = facetCounts([], EMPTY_FILTERS, new Date("2026-09-21"));

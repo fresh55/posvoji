@@ -657,16 +657,7 @@ export function WaitingCards({
               label={option}
               checked={checked}
               renderCount={(className) => (
-                <CountRoll
-                  value={count}
-                  // Narrower than the other sections' column, so "Nad 6
-                  // mesecev" stays on one line, and a minimum so it grows.
-                  className={
-                    layout === "sidebar"
-                      ? cn(className, "w-auto min-w-6")
-                      : className
-                  }
-                />
+                <CountRoll value={count} className={className} />
               )}
             />
           </button>

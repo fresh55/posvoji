@@ -14,7 +14,7 @@ import {
   openFilterSection,
 } from "@/test/filter-folds";
 import { FilterGroupList, type CardGroup } from "./filter-groups";
-import { pointerOff, pointerOnto } from "@/test/pointer";
+import { pointerAway, pointerOnto } from "@/test/pointer";
 
 installFilterFoldSeams();
 // fireEvent's click carries detail 0, which is a keyboard's, so a reset
@@ -264,7 +264,7 @@ describe("EnergyCards", () => {
     await wait(700);
     expect(rotation(previewSpan(miren))).toBe(0);
 
-    pointerOff(miren);
+    await pointerAway(miren);
     pointerOnto(miren, "mouse");
     await waitFor(() => expect(rotation(previewSpan(miren))).toBeCloseTo(-12));
   });

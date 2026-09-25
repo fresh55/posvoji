@@ -12,7 +12,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { groupOptions } from "@/lib/filters";
-import { pointer, pointerOff, pointerOnto } from "@/test/pointer";
+import { pointer, pointerAway, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   AgeGrowthControl,
   groundSink,
@@ -660,7 +660,7 @@ describe("AgeGrowthControl row gestures", () => {
     expect(tucked("Senior")).toBe(false);
   });
 
-  it("stands the plant upright from a pick until the pointer leaves", () => {
+  it("stands the plant upright from a pick until the pointer leaves", async () => {
     // Only the timers: the growth ends on one.
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {
@@ -683,7 +683,7 @@ describe("AgeGrowthControl row gestures", () => {
       act(() => vi.advanceTimersByTime(2000));
       expect(leaning("Mladiček")).toBe(false);
 
-      pointerOff(row("Mladiček"));
+      await pointerAway(row("Mladiček"));
       pointerOnto(row("Mladiček"), "mouse");
       expect(leaning("Mladiček")).toBe(true);
     } finally {

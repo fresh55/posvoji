@@ -13,7 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AnimalSize } from "@posvoji/schema";
 import { I18nProvider } from "@/components/i18n-provider";
 import { EMPTY_FILTERS, facetCounts, groupOptions } from "@/lib/filters";
-import { pointer, pointerOff, pointerOnto } from "@/test/pointer";
+import { pointer, pointerAway, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   installFilterFoldSeams,
   openFilterSection,
@@ -419,7 +419,7 @@ describe("SizePawCards under the pointer", () => {
     fireEvent.click(card);
     await waitFor(() => expect(tipped(options[1].label)).toBe(false));
 
-    pointerOff(card);
+    await pointerAway(card);
     pointerOnto(card, "mouse");
     expect(tipped(options[1].label)).toBe(true);
   });

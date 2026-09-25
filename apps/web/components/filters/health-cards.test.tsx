@@ -9,7 +9,7 @@ import { HEALTH_ICONS } from "@/lib/animal-icons";
 import { TOGGLES, toggleLabel, type ToggleKey } from "@/lib/filters";
 import { FILTER_TOGGLE_KEYS } from "@/lib/filters/contracts";
 import { getMessages, type Locale } from "@/lib/i18n";
-import { pointerOff, pointerOnto } from "@/test/pointer";
+import { pointerAway, pointerOnto } from "@/test/pointer";
 import { HealthToggleCards } from "./health-cards";
 import {
   CHECK_DELAY,
@@ -385,7 +385,7 @@ describe("HealthToggleCards under the pointer", () => {
     );
     expect(tipped("Brez FIV")).toBe(false);
 
-    pointerOff(row("Brez FIV"));
+    await pointerAway(row("Brez FIV"));
     pointerOnto(row("Brez FIV"), "mouse");
     expect(tipped("Brez FIV")).toBe(true);
   });

@@ -1,5 +1,6 @@
-import { fireEvent } from "@testing-library/react";
+import { act, fireEvent } from "@testing-library/react";
 import { vi } from "vitest";
+import { SETTLE_GRACE_MS } from "@/components/filters/use-filter-motion";
 
 /**
  * The gesture and preload seams every jsdom suite in this app needs.
@@ -77,6 +78,25 @@ export const pointerOnto = (element: Element, pointerType: "mouse" | "touch") =>
   pointer(element, "pointerover", { x: 0, y: 0, pointerType });
 export const pointerOff = (element: Element) =>
   pointer(element, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
+
+/**
+ * A pointer leaving a card for good: pointerOff, and then the wait a leave
+ * takes to let go of a card a click settled (SETTLE_GRACE_MS in
+ * use-filter-motion.ts). A leave and an enter in the same tick are what a
+ * layout shift under a still pointer delivers, and the card stays settled
+ * through those, so a test about the pointer really coming back has to say
+ * that it went. Works under fake timers and real ones.
+ */
+export async function pointerAway(element: Element) {
+  pointerOff(element);
+  if (vi.isFakeTimers()) {
+    act(() => vi.advanceTimersByTime(SETTLE_GRACE_MS));
+    return;
+  }
+  await act(
+    () => new Promise<void>((resolve) => setTimeout(resolve, SETTLE_GRACE_MS)),
+  );
+}
 
 /** Where a gesture's clock starts. Any number but zero would do. */
 export const GESTURE_T0 = 1000;

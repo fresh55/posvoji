@@ -1,7 +1,7 @@
 "use client";
 
 import type { Easing, Transition } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, PointerEvent } from "react";
 
 export type Celebration<T> = { value: T; id: number };
@@ -214,15 +214,28 @@ type HoverHandlers = {
   onBlur: () => void;
 };
 
+// How long a leave waits before it lets go of a settled card. A pick changes
+// the panel's height (a section above gains or drops a row), so the cards
+// move under a pointer that has not, and Chrome answers that with a leave and
+// an enter on the same card within about 5ms. Let go of at once, the settle
+// was gone before that enter, and an untick under a still mouse replayed the
+// hover preview on top of the leave (Uravnotežen, with Spol's second row
+// coming back above it). A pointer that really has left is over another card
+// or none, where this card's preview cannot show, so the wait costs a real
+// leave nothing. Exported for the test helper that stands for a pointer
+// really leaving (pointerAway in test/pointer.ts).
+export const SETTLE_GRACE_MS = 80;
+
 // A tap leaves focus on the button, so the lift is limited to a real mouse and
 // to keyboard focus. Anything else would leave a card lit after a touch.
 //
 // settle(value) marks the card a press just landed on, until the pointer or
-// focus leaves it. Most sections ignore it: a lift after a click is ordinary
-// hover feedback. Barva reads it, because its hover draws the ear tips halfway
-// to the picked pose, and a colour unpicked under the mouse that kept them up
-// read as a pick that had not come off. Velikost reads it, because its hover
-// tips the paw onto its heel and a landing has to take the weight flat.
+// focus leaves it. A lift after a click is ordinary hover feedback, but every
+// section whose hover previews its own pick reads it, so that a card unticked
+// under the mouse does not play that preview the moment its pick comes off:
+// Barva's ear tips, Velikost's paw tipped onto its heel (a landing has to take
+// the weight flat), Energija's nod, swell and twitch, Starost's lean, Doma
+// imam's ears and smile, Zdravje's tube and Čaka na dom's glass.
 export function useFilterCardHover<T extends string = string>(): {
   hoveredValue: T | null;
   settledValue: T | null;
@@ -231,28 +244,65 @@ export function useFilterCardHover<T extends string = string>(): {
 } {
   const [hoveredValue, setHoveredValue] = useState<T | null>(null);
   const [settledValue, setSettledValue] = useState<T | null>(null);
+  // One pending let-go per card, so leaving a second card never cancels the
+  // first card's. Read in handlers and effects only.
+  const letGo = useRef<Map<T, number>>(new Map());
 
-  const handlers = useCallback((value: T): HoverHandlers => {
-    const leave = () => {
-      const drop = (current: T | null) => (current === value ? null : current);
-      setHoveredValue(drop);
-      setSettledValue(drop);
-    };
-    return {
-      onPointerEnter: (event) => {
-        if (event.pointerType !== "mouse") return;
-        setHoveredValue(value);
-      },
-      onPointerLeave: leave,
-      onFocus: (event) => {
-        if (!event.currentTarget.matches(":focus-visible")) return;
-        setHoveredValue(value);
-      },
-      onBlur: leave,
+  useEffect(() => {
+    const timers = letGo.current;
+    return () => {
+      for (const timer of timers.values()) window.clearTimeout(timer);
+      timers.clear();
     };
   }, []);
 
-  return { hoveredValue, settledValue, settle: setSettledValue, handlers };
+  const keepSettled = useCallback((value: T) => {
+    window.clearTimeout(letGo.current.get(value));
+    letGo.current.delete(value);
+  }, []);
+
+  const settle = useCallback(
+    (value: T) => {
+      keepSettled(value);
+      setSettledValue(value);
+    },
+    [keepSettled],
+  );
+
+  const handlers = useCallback(
+    (value: T): HoverHandlers => {
+      const drop = (current: T | null) => (current === value ? null : current);
+      const leave = () => {
+        setHoveredValue(drop);
+        const timers = letGo.current;
+        window.clearTimeout(timers.get(value));
+        timers.set(
+          value,
+          window.setTimeout(() => {
+            timers.delete(value);
+            setSettledValue(drop);
+          }, SETTLE_GRACE_MS),
+        );
+      };
+      return {
+        onPointerEnter: (event) => {
+          if (event.pointerType !== "mouse") return;
+          keepSettled(value);
+          setHoveredValue(value);
+        },
+        onPointerLeave: leave,
+        onFocus: (event) => {
+          if (!event.currentTarget.matches(":focus-visible")) return;
+          keepSettled(value);
+          setHoveredValue(value);
+        },
+        onBlur: leave,
+      };
+    },
+    [keepSettled],
+  );
+
+  return { hoveredValue, settledValue, settle, handlers };
 }
 
 type PressHandlers = {

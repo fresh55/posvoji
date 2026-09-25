@@ -15,7 +15,7 @@ import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
-import { pointerOff, pointerOnto } from "@/test/pointer";
+import { pointerAway, pointerOnto } from "@/test/pointer";
 import { FilterGroupList } from "./filter-groups";
 import { GoodWithCards } from "./good-with-cards";
 
@@ -435,7 +435,7 @@ describe("hover preview", () => {
   // settledValue is the guard: without it, unticking a card the mouse never
   // left showed the hover preview on top of the leave, the same bug found on
   // Energija.
-  it("settles after a click so an untick under the pointer does not replay it", () => {
+  it("settles after a click so an untick under the pointer does not replay it", async () => {
     renderStateful();
     const dogs = screen.getByRole("button", { name: /^Psa, / });
 
@@ -448,7 +448,7 @@ describe("hover preview", () => {
     fireEvent.click(dogs);
     expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
 
-    pointerOff(dogs);
+    await pointerAway(dogs);
     pointerOnto(dogs, "mouse");
     expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
   });

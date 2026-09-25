@@ -20,7 +20,7 @@ import {
   installFilterFoldSeams,
   openFilterSection,
 } from "@/test/filter-folds";
-import { pointer, pointerOff, pointerOnto } from "@/test/pointer";
+import { pointer, pointerAway, pointerOff, pointerOnto } from "@/test/pointer";
 import {
   CoatColorCards,
   CoatLengthCards,
@@ -143,7 +143,7 @@ describe.each(["sidebar", "sheet"] as const)("colour swatches in the %s", (layou
     // The ears tuck away before they leave the document.
     await waitFor(() => expect(earsOf("Rjava")).toBeNull());
 
-    pointerOff(button("Rjava"));
+    await pointerAway(button("Rjava"));
     pointerOnto(button("Rjava"), "mouse");
     expect(earsOf("Rjava")).toBe("cat");
   });

@@ -1,13 +1,7 @@
 // @vitest-environment jsdom
-//
-// jsdom, not the plain node environment this file got away with before: the
-// celebration pulse pulls in motion/react's useReducedMotion, which reads
-// window.matchMedia. Without a window at all it degrades to "not reduced"
-// rather than throwing, so the file would still run under node, but a real
-// window is what every other reduced-motion mock in this codebase needs.
 
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Celebration } from "@/components/filters/use-filter-motion";
 import { CITIES, cityAt, project } from "@/lib/geo";
 import { MINI_OUTLINE_PATH, MINI_REGION_PATHS, regionAt } from "@/lib/map-regions";
@@ -21,6 +15,19 @@ import {
 } from "@/lib/map-layout";
 import { ShelterMap } from "./shelter-map";
 import { MiniMap } from "./mini-map";
+
+// Motion asks matchMedia for "(prefers-reduced-motion)", not the ": reduce"
+// form, and only once per file, keeping the answer. A stub installed by one
+// test never reaches it, so the hook is the seam.
+const motion = vi.hoisted(() => ({ reduced: false }));
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => motion.reduced,
+}));
+
+afterEach(() => {
+  motion.reduced = false;
+});
 
 function pin(
   value: string,
@@ -307,13 +314,22 @@ describe("MiniMap celebration pulse", () => {
     expect(html).not.toContain("data-minimap-celebration-region");
   });
 
-  // Not tested here: suppression under prefers-reduced-motion. motion/react's
-  // useReducedMotion reads window.matchMedia through a module-level singleton
-  // that only ever initialises once per test file, so a mock installed after
-  // earlier tests in this file have already rendered a MiniMap comes too
-  // late to change what the hook already latched onto. The gate itself
-  // mirrors the same useReducedMotion() guard every other filter celebration
-  // in this codebase uses (SizePawCards, AgeGrowthControl).
+  it("draws no flash under reduced motion", () => {
+    const celebrate = () =>
+      renderMini(
+        [pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)],
+        ["ljubljana"],
+        { value: "ljubljana", id: 1 },
+      );
+
+    const moving = celebrate();
+    motion.reduced = true;
+    const still = celebrate();
+
+    // The flash is really drawn with motion on, or its absence proves nothing.
+    expect(moving).toContain("data-minimap-celebration-region");
+    expect(still).not.toContain("data-minimap-celebration-region");
+  });
 });
 
 

@@ -137,15 +137,23 @@ export function careMatches(animal: AnimalFields, key: CareKey): boolean {
   }
 }
 
-// Boundaries in months: under a year is a baby, past eight a senior. The
-// schema's lifeStageOf draws the same lines for ingest. Importing it here
-// would ship zod to the browser, so a test holds the two together instead.
+// Boundaries in months: under a year is a baby, one to three a young animal,
+// three to eight an adult, past eight a senior. The schema's lifeStageOf draws
+// the first and the last of these lines for ingest. Importing it here would
+// ship zod to the browser, so a test holds the two together instead. The line
+// at three years is the filter's own: Odrasel spanning one to eight held most
+// of the list, and a young animal past the puppy stage could not be asked for.
 const PUPPY_MAX_EXCLUSIVE = 12;
+const YOUNG_MAX_EXCLUSIVE = 36;
 const ADULT_MAX_EXCLUSIVE = 96;
 
-const GROUP_OF_STAGE: Record<LifeStage, AgeGroup> = {
+// A stage the shelter stated without a number. The schema's adult runs from
+// one year to eight, across Mlad and Odrasel both, so it answers neither: the
+// animal is filed under no stage and counted with the unanswered rather than
+// guessed into one.
+const GROUP_OF_STAGE: Record<LifeStage, AgeGroup | undefined> = {
   young: "mladicek",
-  adult: "odrasel",
+  adult: undefined,
   senior: "senior",
 };
 
@@ -194,13 +202,15 @@ function ageFrom(
 // Exported so the dialog can show the same life stage the filter buckets by.
 export function ageGroup(months: number): AgeGroup {
   if (months < PUPPY_MAX_EXCLUSIVE) return "mladicek";
+  if (months < YOUNG_MAX_EXCLUSIVE) return "mlad";
   if (months < ADULT_MAX_EXCLUSIVE) return "odrasel";
   return "senior";
 }
 
 /** The stage the filter files an animal under: from its age where one is
- *  known, otherwise from the stage the shelter stated without a number. The
- *  dialog and the poster read this too, so all three agree. */
+ *  known, otherwise from the stage the shelter stated without a number, where
+ *  that stage falls inside one of the filter's (GROUP_OF_STAGE). The dialog
+ *  and the poster read this too, so all three agree. */
 export function ageStage(
   animal: {
     birthDate?: string;

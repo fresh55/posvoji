@@ -478,7 +478,10 @@ export function AnimalFacts({
   }, [showHealthDetails]);
   const months = ageInMonths(animal, reference);
   // The stage the shelter stated where it gave no number, so the filter that
-  // found this animal under Senior is not contradicted by a missing age.
+  // found this animal under Senior is not contradicted by a missing age. A
+  // stated adult prints nothing: it is one to eight years, which is Mlad or
+  // Odrasel, and the filter files it under neither (ageStage), so "Odrasel"
+  // with the shrub would claim three to eight years the shelter never said.
   const statedStage =
     months === undefined ? ageStage(animal, reference) : undefined;
   const sex = animal.sex && animal.sex !== "unknown" ? animal.sex : undefined;
@@ -572,8 +575,8 @@ export function AnimalFacts({
               {sex && (
                 <Fact icon={SEX_ICONS[sex]}>{sexLabel(sex, locale)}</Fact>
               )}
-              {/* The same sprout, shrub or tree the age filter buckets by,
-                  so the sidebar and the badge tell one story. */}
+              {/* The same sprout, sapling, shrub or tree the age filter
+                  buckets by, so the sidebar and the badge tell one story. */}
               {months !== undefined && (
                 <Fact
                   iconNode={

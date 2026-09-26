@@ -249,6 +249,14 @@ describe("the fact tiles", () => {
     expect(tiles(container)).toEqual(["Mačka", "Starost: senior"]);
   });
 
+  // One to eight years is Mlad or Odrasel, and the filter and the dialog name
+  // neither, so the sheet prints no age rather than one of the two.
+  it("prints no age tile for a stated adult", () => {
+    const { container } = poster({ animal: animal({ lifeStage: "adult" }) });
+    expect(tiles(container)).toEqual(["Mačka"]);
+    expect(container.querySelector('[data-fact="age"]')).toBeNull();
+  });
+
   // A sheet read across a room cannot be corrected by the description beside
   // it, because there is none: the identity three describe one animal and the
   // listing covers three. The species and the health record stay, both being
@@ -347,7 +355,7 @@ describe("the fact tiles", () => {
     expect(tiles(container)).toEqual(["Mačka", "Se razume z otroki"]);
   });
 
-  it("draws the age filter's own sprout, shrub and tree", () => {
+  it("draws the age filter's own sprout, sapling, shrub and tree", () => {
     const { container } = poster({
       animal: animal({ approximateAgeMonths: 3 }),
     });
@@ -357,6 +365,25 @@ describe("the fact tiles", () => {
     // its soil, the stem and a leaf either side.
     const age = container.querySelectorAll('[data-fact="age"] svg path');
     expect(age.length).toBe(4);
+    cleanup();
+
+    // Six for the sapling of a two-year-old: its stem, two twigs and three
+    // leaves.
+    const { container: young } = poster({
+      animal: animal({ approximateAgeMonths: 24 }),
+    });
+    expect(
+      young.querySelectorAll('[data-fact="age"] svg path'),
+    ).toHaveLength(6);
+    cleanup();
+
+    // Four for the shrub of a five-year-old: trunk, branch, two halves.
+    const { container: adult } = poster({
+      animal: animal({ approximateAgeMonths: 60 }),
+    });
+    expect(
+      adult.querySelectorAll('[data-fact="age"] svg path'),
+    ).toHaveLength(4);
     cleanup();
 
     // And a tree for an animal past the adult bucket.

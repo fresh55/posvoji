@@ -79,8 +79,11 @@ part of the portal form.
 
 ## Life stage
 
-`lifeStage` (young, adult, senior: the site's Mladiček, Odrasel and Senior)
-records a stage the shelter states where it gives no age a number can carry.
+`lifeStage` (young, adult, senior) records a stage the shelter states where
+it gives no age a number can carry. The site files young under Mladiček (under
+a year) and senior under Senior (eight years or more). Adult is one to eight
+years, which the site splits into Mlad (one to three) and Odrasel (three to
+eight), so a stated adult is filed under neither and counts as unanswered.
 It comes from a claim here with text evidence ("odrasel", "senior", a kitten
 from a litter taken in with its mother), from a provider parser reading a
 range that stays inside one stage ("8–10 let"), or from a photo review in

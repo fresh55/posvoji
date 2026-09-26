@@ -620,10 +620,11 @@ describe("the sidebar's surfaces", () => {
     const options = container.querySelectorAll<HTMLElement>(
       '[data-slot="toggle-group-item"], button[aria-pressed]',
     );
-    // Two sexes, three ages, three sizes, two of three energies (no animal in
-    // the fixture is Uravnotežen, and the sidebar leaves a dead option out)
-    // and two household answers. No health traits: this fixture is dogs.
-    expect(options).toHaveLength(12);
+    // Two sexes, four ages (Starost draws a stage even with no animal in it),
+    // three sizes, two of three energies (no animal in the fixture is
+    // Uravnotežen, and the sidebar leaves a dead option out) and two
+    // household answers. No health traits: this fixture is dogs.
+    expect(options).toHaveLength(13);
 
     for (const option of options) {
       expect(option.className).toContain("border-transparent");

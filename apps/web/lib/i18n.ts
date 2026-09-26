@@ -285,7 +285,7 @@ const sl = {
   resetEnergyFilters: "Ponastavi filter energije",
   resetHealthFilters: "Ponastavi zdravstvene filtre",
   resetShelterFilters: "Ponastavi izbor zavetišč",
-  ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, odrasla žival od 1 do manj kot 8 let, starejša žival od 8 let naprej.",
+  ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, mlada žival od 1 do manj kot 3 let, odrasla žival od 3 do manj kot 8 let, starejša žival od 8 let naprej.",
   // Where the answer comes from, and nothing else: how many animals have no
   // answer is said under the rows, where a mouse can read it too.
   energyFilterHint: "Po presoji zavetišča.",
@@ -379,14 +379,18 @@ const sl = {
   bandTopicCats: "podatka o mačkah",
   bandTopicFiv: "podatka o FIV",
   bandTopicFelv: "podatka o FeLV",
-  ageRangeYoung: "manj kot 1 leto",
-  ageRangeAdult: "1–8 let",
+  ageRangeBaby: "manj kot 1 leto",
+  ageRangeYoung: "1–3 leta",
+  ageRangeAdult: "3–8 let",
   ageRangeSenior: "8 let ali več",
-  // The same ranges printed under the grove's three plants, where a column
-  // is about 72px wide in the sidebar. "do 1 leta" is the hint's own wording.
-  ageCaptionYoung: "do 1 leta",
-  ageCaptionAdult: "1–8 let",
-  ageCaptionSenior: "8 let ali več",
+  // The same ranges printed under the grove's four plants, where a column is
+  // 51.5px wide in the narrowest sidebar (214px). "do 1 leta" is the hint's
+  // own wording. "8 let ali več" measures 58.8px at 11px and no longer fits a
+  // quarter; "od 8 let" does, and closes the row the way "do 1 leta" opens it.
+  ageCaptionBaby: "do 1 leta",
+  ageCaptionYoung: "1–3 leta",
+  ageCaptionAdult: "3–8 let",
+  ageCaptionSenior: "od 8 let",
   filters: "Filtri",
   // Selected values, not sections. The chips row counts the same things, and
   // two numbers on one screen that both read as "how many filters" have to
@@ -889,7 +893,7 @@ const en: Messages = {
   resetEnergyFilters: "Reset energy filters",
   resetHealthFilters: "Reset health filters",
   resetShelterFilters: "Reset the shelter selection",
-  ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
+  ageFilterHint: "Choose one or more ages: baby under 1 year, young from 1 to under 3 years, adult from 3 to under 8 years, senior from 8 years.",
   energyFilterHint: "As judged by the shelter.",
   healthFilterHint: "An animal has to have every trait you pick.",
   healthLead:
@@ -937,12 +941,17 @@ const en: Messages = {
   bandTopicCats: "data on cats",
   bandTopicFiv: "data on FIV",
   bandTopicFelv: "data on FeLV",
-  ageRangeYoung: "under 1 year",
-  ageRangeAdult: "1–8 years",
+  ageRangeBaby: "under 1 year",
+  ageRangeYoung: "1–3 years",
+  ageRangeAdult: "3–8 years",
   ageRangeSenior: "8 years or older",
-  ageCaptionYoung: "under 1 year",
-  ageCaptionAdult: "1–8 years",
-  ageCaptionSenior: "8+ years",
+  // Abbreviated to fit a 51.5px column with room between neighbours: at 11px
+  // "under 1 year" measures 66.1px, and "1–3 years" (51.3px) beside
+  // "3–8 years" left under a pixel between them, which read as one run.
+  ageCaptionBaby: "0–1 yr",
+  ageCaptionYoung: "1–3 yrs",
+  ageCaptionAdult: "3–8 yrs",
+  ageCaptionSenior: "8+ yrs",
   filters: "Filters",
   filtersWithCount: "Filters, {count} active",
   activeFilters: "Active filters",

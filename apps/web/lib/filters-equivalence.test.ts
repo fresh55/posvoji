@@ -83,8 +83,9 @@ function dataset(count: number): Animal[] {
     ]);
     const answer = () => pick(["yes", "no", "unknown", undefined] as const);
     const flag = () => pick([true, false, undefined] as const);
-    const months = pick([undefined, 3, 11, 12, 40, 95, 96, 130]);
-    const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20"]);
+    const months = pick([undefined, 3, 11, 12, 35, 36, 40, 95, 96, 130]);
+    // 1, 90, 12 and 36 months at NOW.
+    const born = pick([undefined, "2026-07-01", "2019-02-01", "2025-08-20", "2023-08-20"]);
     const lifeStage = pick([undefined, "young", "adult", "senior"] as const);
     const adoptionRequirements = {
       indoorOnly: flag(),
@@ -154,7 +155,8 @@ function slowGroupValue(
       const months = ageInMonths(animal, NOW);
       if (months !== undefined) return ageGroup(months);
       if (animal.lifeStage === "young") return "mladicek";
-      if (animal.lifeStage === "adult") return "odrasel";
+      // One to eight years, which is Mlad or Odrasel: no answer.
+      if (animal.lifeStage === "adult") return undefined;
       return animal.lifeStage;
     }
     case "size":
@@ -505,6 +507,8 @@ function states(): Filters[] {
   only({ sex: ["male", "female"] });
   only({ age: ["mladicek"] });
   only({ age: ["mladicek", "senior"] });
+  only({ age: ["mlad"] });
+  only({ age: ["mlad", "odrasel"] });
   only({ size: ["small"] });
   only({ size: ["small", "large"] });
   only({ coatColor: ["black"] });
@@ -653,11 +657,18 @@ describe("the index keeps answering for whatever date it is asked about", () => 
         birthDate: "2026-01-01",
       },
     ];
-    const young: Filters = { ...EMPTY_FILTERS, age: ["mladicek"] };
+    const baby: Filters = { ...EMPTY_FILTERS, age: ["mladicek"] };
+    const young: Filters = { ...EMPTY_FILTERS, age: ["mlad"] };
     const adult: Filters = { ...EMPTY_FILTERS, age: ["odrasel"] };
-    expect(applyFilters(born, young, new Date("2026-06-01T00:00:00Z"))).toHaveLength(1);
-    expect(applyFilters(born, adult, new Date("2026-06-01T00:00:00Z"))).toHaveLength(0);
-    expect(applyFilters(born, young, new Date("2027-06-01T00:00:00Z"))).toHaveLength(0);
-    expect(applyFilters(born, adult, new Date("2027-06-01T00:00:00Z"))).toHaveLength(1);
+    const at = (date: string) => new Date(`${date}T00:00:00Z`);
+    expect(applyFilters(born, baby, at("2026-06-01"))).toHaveLength(1);
+    expect(applyFilters(born, young, at("2026-06-01"))).toHaveLength(0);
+    expect(applyFilters(born, baby, at("2027-06-01"))).toHaveLength(0);
+    expect(applyFilters(born, young, at("2027-06-01"))).toHaveLength(1);
+    expect(applyFilters(born, adult, at("2027-06-01"))).toHaveLength(0);
+    // 35 months, then 36: the same animal crosses from Mlad to Odrasel.
+    expect(applyFilters(born, young, at("2028-12-01"))).toHaveLength(1);
+    expect(applyFilters(born, young, at("2029-01-01"))).toHaveLength(0);
+    expect(applyFilters(born, adult, at("2029-01-01"))).toHaveLength(1);
   });
 });

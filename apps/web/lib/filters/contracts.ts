@@ -4,7 +4,7 @@ import type {
 import type { SpeciesTab } from "@/lib/species";
 
 export type SpeciesFilter = "all" | SpeciesTab;
-export type AgeGroup = "mladicek" | "odrasel" | "senior";
+export type AgeGroup = "mladicek" | "mlad" | "odrasel" | "senior";
 export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
 
 /** Colours with a paired swatch. Review categories are stored directly. */

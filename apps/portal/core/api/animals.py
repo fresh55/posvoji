@@ -51,13 +51,11 @@ def list_animals(request, slug: str):
         if not isinstance(animal_id, str):
             logger.warning("skipping a record of %s that has no id", shelter.slug)
             continue
-        # The list is read off the merged dataset, so every record on it is
-        # also the one the public site shows.
         item = merge_animal(
             animal,
             overrides.get(animal_id),
+            animal_id=animal_id,
             crawled=crawled.get((shelter.slug, animal_id)),
-            published=animal,
         )
         try:
             AnimalOut.model_validate(item)
@@ -144,11 +142,4 @@ def upsert_override(
             override.updated_by = request.user
             override.save()
 
-    # An animal the merged dataset does not hold yet, or a missing file, has
-    # nothing published to report, and the answer says so with a null.
-    return merge_animal(
-        animal or {"id": animal_id},
-        override,
-        crawled=crawled_animal,
-        published=animal,
-    )
+    return merge_animal(animal, override, animal_id=animal_id, crawled=crawled_animal)

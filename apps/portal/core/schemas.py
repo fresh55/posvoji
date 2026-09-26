@@ -108,18 +108,17 @@ class PublishedAnswersOut(Schema):
     Read off the merged dataset, which holds the reviewed enrichment and the
     corrections of the last export on top of the crawl. Display only: an
     answer here is never an override, and the export never reads it. null is
-    no answer on the public site. The vocabularies are the override's own, and
-    core/dataset.py drops a value outside them before it gets here.
+    no answer on the public site. core/dataset.py drops a value outside the
+    override's vocabulary before it gets here, so the fields are plain strings
+    like AnimalOut's.
     """
 
-    model_config = ConfigDict(use_enum_values=True)
-
-    size: OverrideSize | None = None
-    energy: OverrideEnergy | None = None
-    goodWithKids: OverrideCompatibility | None = None
-    goodWithDogs: OverrideCompatibility | None = None
-    goodWithCats: OverrideCompatibility | None = None
-    apartmentOk: OverrideCompatibility | None = None
+    size: str | None = None
+    energy: str | None = None
+    goodWithKids: str | None = None
+    goodWithDogs: str | None = None
+    goodWithCats: str | None = None
+    apartmentOk: str | None = None
 
 
 class AnimalOut(Schema):

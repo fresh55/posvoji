@@ -102,6 +102,26 @@ class DevLoginIn(Schema):
     slug: str = Field(max_length=64)
 
 
+class PublishedAnswersOut(Schema):
+    """What the public site shows for the answers the portal asks for.
+
+    Read off the merged dataset, which holds the reviewed enrichment and the
+    corrections of the last export on top of the crawl. Display only: an
+    answer here is never an override, and the export never reads it. null is
+    no answer on the public site. The vocabularies are the override's own, and
+    core/dataset.py drops a value outside them before it gets here.
+    """
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    size: OverrideSize | None = None
+    energy: OverrideEnergy | None = None
+    goodWithKids: OverrideCompatibility | None = None
+    goodWithDogs: OverrideCompatibility | None = None
+    goodWithCats: OverrideCompatibility | None = None
+    apartmentOk: OverrideCompatibility | None = None
+
+
 class AnimalOut(Schema):
     id: str
     species: str | None = None
@@ -121,6 +141,8 @@ class AnimalOut(Schema):
     specialNeeds: bool | None = None
     thumbnailUrl: str | None = None
     overrides: dict[str, Any] = {}
+    # null when the animal is not in the merged dataset, or there is none.
+    published: PublishedAnswersOut | None = None
 
 
 class AnimalOverrideIn(Schema):

@@ -32,13 +32,9 @@ import {
 /** Every value the filter state holds, zavetišče included. The panels used to
  *  count a narrower set: shelter had no section in either of them, so a badge
  *  counting it promised a control the sheet did not hold. Both panels open
- *  with a Kje row now, so there is one count again and it is this one.
- *
- *  A search counts as one, however many words it holds: it is one pill in the
- *  chips row and one field in the panel. */
+ *  with a Kje row now, so there is one count again and it is this one. */
 export function activeFilterCount(filters: Filters): number {
   return (
-    (filters.query === "" ? 0 : 1) +
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length +
     filters.goodWith.length +
@@ -1007,11 +1003,9 @@ type Relaxed = { groups: number; goodWith: number; toggles: number };
  * A question only lets its unanswered through when they are a share worth
  * naming, the tenth namesUnanswered draws a section's line at, of the animals
  * the band draws from: the species tab, the shelters picked and the needs
- * offered, measured over `measuredOver` (the whole dataset, where the grid
- * has narrowed the list by a search first). That keeps Spol, whose unknowns
- * are 8 of 491, strict, so the band never grows by a handful of records a
- * shelter happened to leave blank, and a search for one name cannot make a
- * tenth out of one animal. It still relaxes a gap one shelter has: Mačji dol
+ * offered. That keeps Spol, whose unknowns are 8 of 491, strict, so the band
+ * never grows by a handful of records a shelter happened to leave blank. It
+ * still relaxes a gap one shelter has: Mačji dol
  * states an age for 1 of its 15 cats. The other questions picked are left out
  * of that measure, because they are the ones the band relaxes. Measured over
  * what they leave, Brez FIV and Brez FeLV picked together were each counted
@@ -1027,7 +1021,6 @@ export function unansweredBand<T extends AnimalFields>(
   animals: T[],
   filters: Filters,
   now: Date,
-  measuredOver: AnimalFields[] = animals,
 ): UnansweredBand<T> {
   const band: T[] = [];
   const pass = passOf(animals, filters, now);
@@ -1046,7 +1039,7 @@ export function unansweredBand<T extends AnimalFields>(
   };
   // The array itself and not a copy: the index behind every count is kept
   // per array (indexOf), and the dataset's is already built.
-  const relaxed = relaxedOf(unansweredCounts(measuredOver, scope, now), query);
+  const relaxed = relaxedOf(unansweredCounts(animals, scope, now), query);
   const lacking: Relaxed = { groups: 0, goodWith: 0, toggles: 0 };
   if ((relaxed.groups | relaxed.goodWith | relaxed.toggles) === 0) {
     return { animals: band, missing: [] };
@@ -1604,8 +1597,6 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   const keep = (group: MultiGroup) => groupFitsSpecies(group, filters.species);
   return {
     species: filters.species,
-    // The search field is on every tab.
-    query: filters.query,
     sex: keep("sex") ? filters.sex : [],
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],

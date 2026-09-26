@@ -268,21 +268,6 @@ describe("unansweredBand on the groups", () => {
 });
 
 describe("which questions the band may leave unanswered", () => {
-  // The grid narrows the list by a search before it asks for the band. One
-  // unsexed animal among the six a query found is a sixth, but the question
-  // is Spol's over the tab, where it is one in eleven.
-  it("measures a question over the population it is given, not the list searched", () => {
-    const sexed = Array.from({ length: 10 }, (_, n) =>
-      animal("dog", { sex: n % 2 === 0 ? "male" : "female" }),
-    );
-    const unsexed = animal("dog", { sex: "unknown" });
-    const dataset = [...sexed, unsexed];
-    const found = [...sexed.slice(0, 5), unsexed];
-    const female = only({ sex: ["female"] });
-    expect(ids(unansweredBand(found, female, now).animals)).toEqual(ids([unsexed]));
-    expect(unansweredBand(found, female, now, dataset).animals).toEqual([]);
-  });
-
   it("keeps a question strict while its blanks are under a tenth of the animals asked", () => {
     const sexed = (count: number) =>
       Array.from({ length: count }, (_, n) =>

@@ -381,7 +381,6 @@ describe("FilterGroupList energy group", () => {
         <FilterGroupList
           filters={{
             species: "all",
-            query: "",
             sex: [],
             age: [],
             size: [],

@@ -179,7 +179,7 @@ export function isDeadOption(
  *
  * So the label keeps the full muted ink, 5.54:1, which is a tile's resting ink
  * and the one a sidebar label steps back to from its foreground
- * (SIDEBAR_LABEL_REST), and the two things that are actually true of a dead
+ * (sidebarLabelInk), and the two things that are actually true of a dead
  * option are what say so: the count reads 0, and the box there would be
  * nothing to tick in is not drawn (group-disabled:hidden on
  * FilterSelectionMark). In the sidebar the row is usually not drawn at all;
@@ -863,21 +863,31 @@ export function FilterCardHoverLift({
 const SIDEBAR_LABEL_TYPE = "text-xs xl:text-sm";
 export const SIDEBAR_LABEL_CLASS = `truncate ${SIDEBAR_LABEL_TYPE}`;
 
+/** One step under SIDEBAR_LABEL_TYPE, for what the sidebar prints beside and
+ *  under its labels: counts, descriptions and notes. 11px in the 224px rail
+ *  and 12px from xl. The sheet is never drawn from xl, so there it is 11px;
+ *  NOTE_TYPE in filter-section-header.tsx is the size for words the sheet
+ *  prints larger. */
+export const SIDEBAR_NOTE_TYPE = "text-2xs xl:text-xs";
+
 /**
- * The ink a sidebar label rests in, which is the page's foreground and not the
- * muted grey it shared with its count. The count and a row's description keep
- * the grey, so the row still reads label first; the label had been the same
- * grey as the number beside it, lighter than the facts on every card beside
- * the rail. A chosen row's label takes the fill's ink from the row, so this is
- * for the resting state only.
+ * The ink a sidebar label is drawn in. At rest that is the page's foreground
+ * and not the muted grey it shared with its count. The count and a row's
+ * description keep the grey, so the row still reads label first; the label
+ * had been the same grey as the number beside it, lighter than the facts on
+ * every card beside the rail. A chosen row's label takes the fill's ink from
+ * the row, and only its weight from here.
  *
  * A dead row steps back to the grey (DEAD_OPTION_CLASS): a near-black label
  * beside a 0 and no box to tick reads as an answer to press.
  *
  * Exported for the age rows, which draw their own label (SIDEBAR_LABEL_CLASS).
  */
-export const SIDEBAR_LABEL_REST =
-  "text-foreground group-disabled:text-muted-foreground";
+export function sidebarLabelInk(checked: boolean): string {
+  return checked
+    ? "font-medium"
+    : "text-foreground group-disabled:text-muted-foreground";
+}
 
 /**
  * The resting voice of the count, per layout. Not exported: everything that
@@ -901,8 +911,7 @@ export const SIDEBAR_LABEL_REST =
  * shrink-0, because a long label could otherwise squeeze the column back down
  * to its minimum.
  */
-const SIDEBAR_COUNT_CLASS =
-  "min-w-6 text-right text-2xs tabular-nums text-muted-foreground xl:text-xs";
+const SIDEBAR_COUNT_CLASS = `min-w-6 text-right tabular-nums text-muted-foreground ${SIDEBAR_NOTE_TYPE}`;
 
 const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
 
@@ -961,8 +970,8 @@ const DESCRIPTION_CLASS: Readonly<
     chosen: "line-clamp-2 max-w-full text-2xs leading-snug text-brand-foreground/80",
   }),
   sidebar: Object.freeze({
-    rest: "text-2xs leading-snug text-muted-foreground xl:text-xs",
-    chosen: "text-2xs leading-snug text-brand-foreground/80 xl:text-xs",
+    rest: `leading-snug text-muted-foreground ${SIDEBAR_NOTE_TYPE}`,
+    chosen: `leading-snug text-brand-foreground/80 ${SIDEBAR_NOTE_TYPE}`,
   }),
 });
 
@@ -1039,7 +1048,7 @@ export function FilterCardTail({
           className={cn(
             SIDEBAR_LABEL_TYPE,
             "min-w-0 whitespace-normal leading-tight",
-            checked ? "font-medium" : SIDEBAR_LABEL_REST,
+            sidebarLabelInk(checked),
           )}
         >
           {label}

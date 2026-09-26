@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { adoptableNow, listedAtTime, type AnimalFields } from "@/lib/animal";
+import { newsTime, type AnimalFields } from "@/lib/animal";
 import { LAST_VISIT_KEY, VISIT_SINCE_KEY } from "@/lib/last-visit";
 
 // What a returning visitor has not seen yet, worked out in their own browser.
@@ -27,7 +27,6 @@ import { LAST_VISIT_KEY, VISIT_SINCE_KEY } from "@/lib/last-visit";
 //
 // Both keys live in lib/last-visit.ts, beside the blocking script that reads
 // them before the results are painted and has to agree with beginVisit below.
-export { LAST_VISIT_KEY, VISIT_SINCE_KEY };
 
 const listeners = new Set<() => void>();
 // Null for a first visit, and on the server, and until a page with cards on
@@ -77,20 +76,6 @@ function beginVisit(seen: number): void {
   for (const listener of listeners) listener();
 }
 
-/** Whether an animal was listed after the threshold. Both halves have to be
- *  known: no threshold is a first visit, and a first visit has seen nothing,
- *  which is not the same as everything being new to it. */
-export function isNewListing(
-  listedAt: number | undefined,
-  threshold: number | null,
-): boolean {
-  return (
-    threshold !== null &&
-    listedAt !== undefined &&
-    listedAtTime(listedAt) > threshold
-  );
-}
-
 // The subscription every reader below shares. Subscribing is what begins the
 // visit, so the hydrating render reads the server's answer, no threshold, and
 // the marks arrive in the commit after, the way use-nearby-origin.ts hands
@@ -137,17 +122,16 @@ export function useVisitRead(reference: Date): boolean {
 
 const notNew = () => false;
 
-/** Whether an animal is news to a returning visitor: listed since their last
- *  visit, and one they can act on now. A new intake on hold (quarantine,
- *  mostly) is sorted after every adoptable animal whatever the order, so the
- *  notice could not put it first, and the feeds leave it out for the same
- *  reason (lib/feeds.ts). The notice, the mark and the blocking script that
- *  holds the notice's place (components/site-page.tsx) all ask this. */
+/** Whether an animal is news to a returning visitor (newsTime in
+ *  lib/animal.ts) listed after the threshold. Both halves have to be known:
+ *  no threshold is a first visit, and a first visit has seen nothing, which
+ *  is not the same as everything being new to it. */
 export function isNewsToVisitor(
   animal: Pick<AnimalFields, "listedAt" | "status">,
   threshold: number | null,
 ): boolean {
-  return adoptableNow(animal.status) && isNewListing(animal.listedAt, threshold);
+  const time = newsTime(animal);
+  return threshold !== null && time !== undefined && time > threshold;
 }
 
 /** Whether one animal is news to this visitor (isNewsToVisitor). The

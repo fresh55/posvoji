@@ -112,8 +112,8 @@ describe("the waiting section's place in the panel", () => {
     );
   }
 
-  // SECTION_ORDER in filter-groups.tsx says why it is last, and why Starost,
-  // which counts in the same months and years, is at the other end.
+  // FILTER_FACETS in lib/filters/contracts.ts says why it is last, and why
+  // Starost, which counts in the same months and years, is at the other end.
   it.each(["sidebar", "sheet"] as const)("closes the list in the %s", (layout) => {
     show(layout);
     expect(sectionLabels()).toEqual([

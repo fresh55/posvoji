@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
-import { LAST_VISIT_KEY, resetLastVisitStore } from "@/hooks/use-last-visit";
+import { resetLastVisitStore } from "@/hooks/use-last-visit";
 import {
   resetNearbyOriginStore,
   usePublishNearbyOrigin,
@@ -27,6 +27,7 @@ import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { animalsForClient } from "@/lib/dataset";
 import { cityAt, distanceKm, formatKm } from "@/lib/geo";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
+import { LAST_VISIT_KEY } from "@/lib/last-visit";
 import { PHOTO_TRANSITION_NAME } from "@/lib/photo-morph";
 import { pointer } from "@/test/pointer";
 import { stubViewTransition } from "@/test/view-transition";

@@ -8,7 +8,10 @@ import {
   ageInMonths,
   FILTER_METADATA,
   type GoodWithKey,
+  type MultiGroup,
+  type Question,
   type SpeciesFilter,
+  type ToggleKey,
 } from "@/lib/filters";
 
 const SPECIES: Record<Locale, Record<Species, string>> = {
@@ -104,9 +107,7 @@ const SHELTER_FORMS: [string, string, string, string] = [
 ];
 
 export function animalCount(n: number, locale: Locale): string {
-  return locale === "sl"
-    ? plural(n, ANIMAL_FORMS)
-    : `${n} ${n === 1 ? "animal" : "animals"}`;
+  return locale === "sl" ? plural(n, ANIMAL_FORMS) : tabCountEn(n, "all");
 }
 
 export function shelterCount(n: number, locale: Locale): string {
@@ -301,7 +302,7 @@ const TAB_AT: Record<SpeciesFilter, [string, string, string, string]> = {
 };
 
 const TAB_SHOWN: Record<SpeciesFilter, [string, string, string, string]> = {
-  all: ["žival", "živali", "živali", "živali"],
+  all: ANIMAL_FORMS,
   dog: ["psa", "psa", "pse", "psov"],
   cat: ["mačko", "mački", "mačke", "mačk"],
   other: ["drugo žival", "drugi živali", "druge živali", "drugih živali"],
@@ -351,6 +352,57 @@ export function tabPronoun(
   if (locale === "en") return n === 1 ? "it" : "them";
   if (n === 1) return species === "dog" ? "ga" : "jo";
   return n === 2 ? "ju" : "jih";
+}
+
+type QuestionTopic =
+  | "Sex"
+  | "Age"
+  | "Size"
+  | "Energy"
+  | "CoatColor"
+  | "CoatLength"
+  | "Waiting"
+  | "Kids"
+  | "Dogs"
+  | "Cats"
+  | "Fiv"
+  | "Felv";
+
+const GROUP_TOPIC: Record<Exclude<MultiGroup, "shelter">, QuestionTopic> = {
+  sex: "Sex",
+  age: "Age",
+  size: "Size",
+  energy: "Energy",
+  coatColor: "CoatColor",
+  coatLength: "CoatLength",
+  waiting: "Waiting",
+};
+
+const GOOD_WITH_TOPIC: Record<GoodWithKey, QuestionTopic> = {
+  kids: "Kids",
+  dogs: "Dogs",
+  cats: "Cats",
+};
+
+const TOGGLE_TOPIC: Partial<Record<ToggleKey, QuestionTopic>> = {
+  "brez-fiv": "Fiv",
+  "brez-felv": "Felv",
+};
+
+/** How one filter question is named in lib/i18n.ts: the part of the empty
+ *  state's knownTopic* and the band's bandTopic* keys after the prefix. Keyed
+ *  by facet so a new question fails to compile here rather than going
+ *  unnamed. Only the toggles the panel offers can be picked, so only they
+ *  have words. */
+export function questionTopic(question: Question): QuestionTopic | undefined {
+  switch (question.facet) {
+    case "goodWith":
+      return GOOD_WITH_TOPIC[question.key];
+    case "toggles":
+      return TOGGLE_TOPIC[question.key];
+    default:
+      return GROUP_TOPIC[question.facet];
+  }
 }
 
 /** The line under an animal's name: the species, then the breed where the

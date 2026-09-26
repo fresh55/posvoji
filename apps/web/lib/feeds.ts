@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import type { Animal, Dataset } from "@posvoji/schema";
-import { adoptableNow, listedAtOf, listedAtTime } from "@/lib/animal";
+import { listedAtOf, listedAtTime, newsTime } from "@/lib/animal";
 import { animalPath } from "@/lib/animal-path";
-import { EMPTY_FILTERS, serializeFilters } from "@/lib/filters";
+import {
+  bySpecies,
+  EMPTY_FILTERS,
+  serializeFilters,
+  type SpeciesFilter,
+} from "@/lib/filters";
 import { getMessages, type Locale } from "@/lib/i18n";
 import {
   animalMetaParts,
@@ -13,8 +18,8 @@ import {
 import { homePath } from "@/lib/shelter-path";
 import { SITE_URL } from "@/lib/site";
 import { SITE_NAME } from "@/lib/site-metadata";
-import { serializeSort } from "@/lib/sort";
-import { TAB_OF_SPECIES, type SpeciesTab } from "@/lib/species";
+import { serializeSort, sortAnimals } from "@/lib/sort";
+import { SPECIES_TAB_ORDER } from "@/lib/species";
 
 /**
  * Atom feeds of the newest listings, which is how a visitor is told about new
@@ -36,12 +41,10 @@ import { TAB_OF_SPECIES, type SpeciesTab } from "@/lib/species";
  */
 
 /** The feeds: every species, and one per species tab. */
-export type FeedScope = "all" | SpeciesTab;
-
-export const FEED_SCOPES: readonly FeedScope[] = ["all", "dog", "cat", "other"];
+const FEED_SCOPES: readonly SpeciesFilter[] = ["all", ...SPECIES_TAB_ORDER];
 
 /** How far back a feed reaches from the dataset's generatedAt. */
-export const FEED_WINDOW_DAYS = 30;
+const FEED_WINDOW_DAYS = 30;
 
 /** The most entries a feed carries. */
 export const FEED_LIMIT = 50;
@@ -57,7 +60,7 @@ const FEED_DIRECTORY: Record<Locale, string> = {
   en: "/en/new-listings",
 };
 
-const FEED_FILES: Record<Locale, Record<FeedScope, string>> = {
+const FEED_FILES: Record<Locale, Record<SpeciesFilter, string>> = {
   sl: { all: "vse.xml", dog: "psi.xml", cat: "macke.xml", other: "ostale.xml" },
   en: { all: "all.xml", dog: "dogs.xml", cat: "cats.xml", other: "other.xml" },
 };
@@ -83,7 +86,7 @@ const FEED_TEXT: Record<Locale, { title: string; subtitle: string }> = {
 const TAG_AUTHORITY = "tag:posvoji.si,2026-09-26:";
 
 /** A feed's path, from the site's root. */
-export function feedPath(locale: Locale, scope: FeedScope): string {
+export function feedPath(locale: Locale, scope: SpeciesFilter): string {
   return `${FEED_DIRECTORY[locale]}/${FEED_FILES[locale][scope]}`;
 }
 
@@ -93,12 +96,15 @@ export function feedFileParams(locale: Locale): { feed: string }[] {
 }
 
 /** Which feed a file name is, or undefined for one that is none of them. */
-export function feedScopeOf(locale: Locale, file: string): FeedScope | undefined {
+export function feedScopeOf(
+  locale: Locale,
+  file: string,
+): SpeciesFilter | undefined {
   return FEED_SCOPES.find((scope) => FEED_FILES[locale][scope] === file);
 }
 
 /** "Nove objave na Posvoji.si", or with the species it covers after a colon. */
-export function feedTitle(locale: Locale, scope: FeedScope): string {
+function feedTitle(locale: Locale, scope: SpeciesFilter): string {
   const { title } = FEED_TEXT[locale];
   if (scope === "all") return title;
   return `${title}: ${speciesScopeLabel(scope, locale).toLocaleLowerCase(locale)}`;
@@ -126,40 +132,37 @@ export function withFeedLinks(metadata: Metadata, locale: Locale): Metadata {
   };
 }
 
+/** A dataset animal with the listing time the grid's projection carries
+ *  (lib/animal.ts), which the dataset's own animals do not. */
+type FeedAnimal = Animal & { listedAt: number };
+
 /**
  * The animals a feed carries: listed in the FEED_WINDOW_DAYS before the
- * dataset was generated, newest first, ties by id as every order in
- * lib/sort.ts breaks them, at most FEED_LIMIT.
+ * dataset was generated, in the Nove objave order, at most FEED_LIMIT.
  *
- * Only animals a visitor can adopt now. An entry is an invitation to go and
- * look, and a reader keeps it as it was when it arrived, so an entry for an
- * animal on hold would go on saying so after the hold had ended. One that
- * becomes adoptable inside the window arrives then, as an entry the reader
- * has not seen.
- *
- * The listing time is listedAt, the grid's own (lib/animal.ts), so the feed
- * and the Nove objave order agree about which animal is newer.
+ * Only animals a visitor can adopt now (newsTime in lib/animal.ts). An entry
+ * is an invitation to go and look, and a reader keeps it as it was when it
+ * arrived. One that becomes adoptable inside the window arrives then, as an
+ * entry the reader has not seen.
  */
 export function feedAnimals(
   animals: readonly Animal[],
   generatedAt: string,
-  scope: FeedScope,
-): Animal[] {
-  const from = Date.parse(generatedAt) - FEED_WINDOW_DAYS * DAY_MS;
-  return animals
-    .flatMap((animal) => {
-      const listedAt = listedAtOf(animal.source.firstSeenAt);
-      if (listedAt === undefined || listedAtTime(listedAt) < from) return [];
-      if (!adoptableNow(animal.status)) return [];
-      if (scope !== "all" && TAB_OF_SPECIES[animal.species] !== scope) return [];
-      return [{ animal, listedAt }];
-    })
-    .sort(
-      (left, right) =>
-        right.listedAt - left.listedAt || left.animal.id.localeCompare(right.animal.id),
-    )
-    .slice(0, FEED_LIMIT)
-    .map(({ animal }) => animal);
+  scope: SpeciesFilter,
+): FeedAnimal[] {
+  const reference = new Date(generatedAt);
+  const from = reference.getTime() - FEED_WINDOW_DAYS * DAY_MS;
+  const listed: FeedAnimal[] = [];
+  for (const animal of animals) {
+    const listedAt = listedAtOf(animal.source.firstSeenAt);
+    if (listedAt === undefined) continue;
+    const time = newsTime({ listedAt, status: animal.status });
+    if (time !== undefined && time >= from) listed.push({ ...animal, listedAt });
+  }
+  return sortAnimals(bySpecies(listed, scope), "newly-listed", "sl", reference).slice(
+    0,
+    FEED_LIMIT,
+  );
 }
 
 /**
@@ -177,7 +180,7 @@ export function buildFeed({
 }: {
   dataset: Pick<Dataset, "generatedAt" | "animals"> | null;
   locale: Locale;
-  scope: FeedScope;
+  scope: SpeciesFilter;
 }): string {
   const generatedAt = dataset?.generatedAt ?? new Date(0).toISOString();
   const reference = new Date(generatedAt);
@@ -191,7 +194,7 @@ export function buildFeed({
     `  <id>${xml(self)}</id>`,
     `  <title>${xml(feedTitle(locale, scope))}</title>`,
     `  <subtitle>${xml(FEED_TEXT[locale].subtitle)}</subtitle>`,
-    `  <updated>${new Date(generatedAt).toISOString()}</updated>`,
+    `  <updated>${reference.toISOString()}</updated>`,
     `  <link rel="self" type="application/atom+xml" href="${xml(self)}"/>`,
     `  <link rel="alternate" type="text/html" href="${xml(resultsUrl(locale, scope))}"/>`,
     `  <author><name>${SITE_NAME}</name><uri>${SITE_URL}</uri></author>`,
@@ -221,7 +224,7 @@ export function feedResponse(
 // The results page the feed is a copy of: the same species, in the Nove
 // objave order, through the grid's own two codecs so the link cannot spell a
 // parameter the page does not read.
-function resultsUrl(locale: Locale, scope: FeedScope): string {
+function resultsUrl(locale: Locale, scope: SpeciesFilter): string {
   const query = [
     serializeFilters({ ...EMPTY_FILTERS, species: scope }),
     serializeSort("newly-listed"),
@@ -231,10 +234,8 @@ function resultsUrl(locale: Locale, scope: FeedScope): string {
   return `${SITE_URL}${homePath(locale)}?${query}`;
 }
 
-function entry(animal: Animal, locale: Locale, reference: Date): string {
-  const listed = new Date(
-    listedAtTime(listedAtOf(animal.source.firstSeenAt) ?? 0),
-  ).toISOString();
+function entry(animal: FeedAnimal, locale: Locale, reference: Date): string {
+  const listed = new Date(listedAtTime(animal.listedAt)).toISOString();
   const name = animal.name ?? getMessages(locale).unnamed;
   // The card's own line as the Vse tab draws it, species first, then the
   // shelter, which the card draws on a line of its own.

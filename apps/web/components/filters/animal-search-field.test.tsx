@@ -18,6 +18,7 @@ import {
   AnimalSearchField,
   QUERY_WRITE_DELAY_MS,
 } from "./animal-search-field";
+import { stubMatchMedia } from "@/test/grid-stubs";
 import { FilterSheet } from "./filter-sheet";
 import { FilterSidebar } from "./filter-sidebar";
 // The sheet's body and the picker's chunks, loaded with the file so no test
@@ -27,15 +28,7 @@ import "@/test/picker-chunks";
 
 const sl = getMessages("sl");
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+stubMatchMedia();
 
 Element.prototype.scrollIntoView = vi.fn();
 

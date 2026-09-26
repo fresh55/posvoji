@@ -31,10 +31,12 @@ import { WaitingCards } from "@/components/filters/waiting-cards";
 import { useResetStagger } from "@/components/filters/use-filter-motion";
 import {
   answeredSections,
+  SECTION_OF_FACET,
   useFilterSections,
   type FilterSectionKey,
 } from "@/components/filters/use-filter-sections";
 import {
+  FILTER_FACETS,
   groupLabel,
   namesUnanswered,
   picksEverySex,
@@ -90,44 +92,13 @@ export type KeptPicks = Partial<Record<FilterFacet, readonly string[]>>;
 const NOTHING_KEPT: readonly string[] = [];
 
 /**
- * The order the panel asks its questions in, top to bottom, in the sidebar and
- * the sheet alike. Kje comes before all of it, drawn by each surface itself.
- *
- * It is the order adopters decide in rather than the order an animal's record
- * reads in. In the ASPCA's study of 1,491 adopters, behaviour with people and
- * age mattered to about two thirds or more and sex to about a third, and UK
- * rescues ask where, then what the home already holds, then age, and do not
- * offer sex at all. So age and size first, then what the home already holds
- * (Doma imam) and the lab answer a household with a cat needs beside it
- * (Zdravje: FIV and FeLV), then temperament, then sex and looks. The two
- * sections about what the visitor can give and how long an animal has waited
- * close the list.
- *
- * Čaka na dom stays last, and never beside Starost: the same months and years
- * beside the age rows read as an age.
- *
- * The chips row reads in the same order (FILTER_FACETS in
- * lib/filters/contracts.ts), and filter-groups.test.tsx holds the two together.
+ * The order the panel's sections are drawn in: FILTER_FACETS' order
+ * (lib/filters/contracts.ts says why), by the section that holds each facet.
+ * Kje comes before all of it, drawn by each surface itself.
  */
-export const SECTION_ORDER = [
-  "age",
-  "size",
-  "goodWith",
-  "health",
-  "energy",
-  "sex",
-  "appearance",
-  "care",
-  "waiting",
-] as const satisfies readonly FilterSectionKey[];
-
-// A section missing from SECTION_ORDER fails to compile here.
-const everySectionOrdered: [
-  Exclude<FilterSectionKey, (typeof SECTION_ORDER)[number]>,
-] extends [never]
-  ? true
-  : never = true;
-void everySectionOrdered;
+export const SECTION_ORDER: readonly FilterSectionKey[] = [
+  ...new Set(FILTER_FACETS.flatMap((facet) => SECTION_OF_FACET[facet] ?? [])),
+];
 
 /** The two groups Videz owns. */
 const isAppearance = (

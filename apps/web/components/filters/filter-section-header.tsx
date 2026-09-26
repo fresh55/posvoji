@@ -157,17 +157,15 @@ export function CollapsibleBody({
   );
 }
 
+/** The size of words the sheet and the sidebar both draw, a section's notes
+ *  and the age captions: SIDEBAR_NOTE_TYPE (filter-card.tsx) from lg, and
+ *  12px in the sheet, which is below lg, where 11px was the smallest type on
+ *  the page. */
+export const NOTE_TYPE = "text-xs lg:text-2xs xl:text-xs";
+
 // The voice a section explains itself in when the words are drawn: the hint
-// and the lead above the rows, the notes under them. 12px in the sheet, 11px
-// in the sidebar at lg and 12px again from xl. The sizes are one decision
-// about column width and not three tastes: at lg the sidebar is a 224px column
-// beside the grid, from xl it is a card column whose labels step up to 14px
-// (SIDEBAR_LABEL_TYPE in filter-card.tsx), and a note stays one step under
-// them, while the sheet is a phone held at arm's length, where 11px was the
-// smallest type on the page. The sheet is below lg and the sidebar only from
-// it, so the width gate says which one this is.
-const NOTE_CLASS =
-  "text-xs leading-snug text-muted-foreground lg:text-2xs xl:text-xs";
+// and the lead above the rows, the notes under them.
+const NOTE_CLASS = `leading-snug text-muted-foreground ${NOTE_TYPE}`;
 
 /** The hint sentence a section keeps under its header. A folding section moves
     the hint into the header tooltip, which a touch screen cannot open, so

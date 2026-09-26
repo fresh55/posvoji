@@ -2,7 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { AnimalGrid } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { resetLastVisitStore } from "@/hooks/use-last-visit";
@@ -12,17 +12,13 @@ import {
   NEW_LISTINGS_DATASET_KEY,
   NEW_LISTINGS_SLOT,
 } from "@/lib/last-visit";
-import { restoreGridColumns, stubIdleCallback } from "@/test/grid-stubs";
+import {
+  restoreGridColumns,
+  stubIdleCallback,
+  stubMatchMedia,
+} from "@/test/grid-stubs";
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+stubMatchMedia();
 Object.defineProperty(window, "scrollTo", {
   configurable: true,
   value: () => {},

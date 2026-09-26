@@ -8,20 +8,13 @@ import { AnimalGrid } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { resetAnimalDescriptionsStore } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
+import { stubMatchMedia } from "@/test/grid-stubs";
 
 // A search link shared by hand, /?isci=ovcar, as the static export serves it:
 // the unfiltered page, then hydration. The same order animal-grid.hydration
 // .test.tsx pins for a filter, with the search in front of the filters.
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: (media: string) => ({
-    matches: false,
-    media,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-  }),
-});
+stubMatchMedia();
 
 // The query's pill arrives in the chips row, and motion measures it by reading
 // the scroll position and putting it back, which jsdom cannot do.

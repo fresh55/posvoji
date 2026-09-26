@@ -11,6 +11,16 @@ import {
   TARGET_ROWS,
 } from "./grid-rendering";
 
+type Chunk = { of: ClientAnimal[]; drawn: number; settled: boolean };
+
+/** The count as it stands for `run`: one counted against another list starts
+ *  again from the top. */
+function chunkFor(chunk: Chunk, run: ClientAnimal[]): Chunk {
+  return chunk.of === run
+    ? chunk
+    : { of: run, drawn: INITIAL_CARDS, settled: false };
+}
+
 export function useIncrementalGrid(
   sorted: ClientAnimal[],
   isDialogOpen: boolean,
@@ -52,17 +62,12 @@ export function useIncrementalGrid(
   // and no render of the new list is ever made against the old one's count.
   // `settled` is the auto-step budget being spent: from then on the grid only
   // grows by the button below, and a new list starts the budget over.
-  const [chunk, setChunk] = useState<{
-    of: ClientAnimal[];
-    drawn: number;
-    settled: boolean;
-  }>({
+  const [chunk, setChunk] = useState<Chunk>({
     of: run,
     drawn: INITIAL_CARDS,
     settled: false,
   });
-  const drawn = chunk.of === run ? chunk.drawn : INITIAL_CARDS;
-  const settled = chunk.of === run && chunk.settled;
+  const { drawn, settled } = chunkFor(chunk, run);
   // slice clamps, so the whole list and a prefix of it are the same call.
   const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
   const hasMore = drawn < sorted.length;
@@ -158,7 +163,7 @@ export function useIncrementalGrid(
             // short of the budget can take the count past it (showFrom
             // below), and the clamp would then take cards back off the page.
             setChunk((previous) => {
-              const from = previous.of === run ? previous.drawn : INITIAL_CARDS;
+              const from = chunkFor(previous, run).drawn;
               const drawn = Math.max(
                 from,
                 Math.min(from + rows * columns, budget),
@@ -191,9 +196,7 @@ export function useIncrementalGrid(
     focusOrdinal.current = drawn;
     setChunk((previous) => ({
       of: run,
-      drawn:
-        (previous.of === run ? previous.drawn : INITIAL_CARDS) +
-        CARDS_PER_CLICK,
+      drawn: chunkFor(previous, run).drawn + CARDS_PER_CLICK,
       settled: true,
     }));
   }, [drawn, run]);
@@ -207,10 +210,7 @@ export function useIncrementalGrid(
     (ordinal: number) => {
       focusOrdinal.current = ordinal;
       setChunk((previous) => {
-        const current =
-          previous.of === run
-            ? previous
-            : { drawn: INITIAL_CARDS, settled: false };
+        const current = chunkFor(previous, run);
         return {
           of: run,
           drawn: Math.max(current.drawn, ordinal + INITIAL_CARDS),
@@ -220,6 +220,11 @@ export function useIncrementalGrid(
     },
     [run],
   );
+  // And for a press that puts a new list in its place, such as an order: the
+  // card at `ordinal` of the list it brings takes focus once it is drawn.
+  const focusOnDraw = useCallback((ordinal: number) => {
+    focusOrdinal.current = ordinal;
+  }, []);
   useEffect(() => {
     const ordinal = focusOrdinal.current;
     if (ordinal === null) return;
@@ -236,5 +241,6 @@ export function useIncrementalGrid(
     watchSentinel,
     showMore,
     showFrom,
+    focusOnDraw,
   };
 }

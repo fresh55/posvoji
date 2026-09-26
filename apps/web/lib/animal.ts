@@ -55,7 +55,7 @@ export type AnimalFields = Omit<Animal, "images" | "source"> & {
  *  nothing more at twice the cost: over the 491 animals of the 25 Sep
  *  dataset they added 1,977 bytes to the gzipped grid payload, and minutes
  *  925. */
-export const LISTED_AT_UNIT_MS = 60_000;
+const LISTED_AT_UNIT_MS = 60_000;
 
 /** listedAt from a source.firstSeenAt, or undefined where it will not parse. */
 export function listedAtOf(firstSeenAt: string): number | undefined {
@@ -77,6 +77,21 @@ export function listedAtTime(listedAt: number): number {
  *  asks it. */
 export function adoptableNow(status: AdoptionStatus): boolean {
   return status === "available" || status === "unknown";
+}
+
+/** When an animal was first listed, in milliseconds since 1970, where it is
+ *  news to a returning visitor: listed, and adoptable now. A new intake on
+ *  hold (quarantine, mostly) is sorted after every adoptable animal whatever
+ *  the order, so the notice could not put it first, and a feed entry would
+ *  go on saying it was on hold after the hold had ended. The notice, the Novo
+ *  mark, the script that holds the notice's place and the feeds all read
+ *  this. */
+export function newsTime(
+  animal: Pick<AnimalFields, "listedAt" | "status">,
+): number | undefined {
+  return animal.listedAt !== undefined && adoptableNow(animal.status)
+    ? listedAtTime(animal.listedAt)
+    : undefined;
 }
 
 /** When this animal's wait began, as far as the record can say it, and

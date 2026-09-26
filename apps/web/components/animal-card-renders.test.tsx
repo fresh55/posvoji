@@ -7,13 +7,14 @@ import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { I18nProvider } from "@/components/i18n-provider";
-import { LAST_VISIT_KEY, resetLastVisitStore } from "@/hooks/use-last-visit";
+import { resetLastVisitStore } from "@/hooks/use-last-visit";
 import {
   resetNearbyOriginStore,
   usePublishNearbyOrigin,
 } from "@/hooks/use-nearby-origin";
 import { animalsForClient } from "@/lib/dataset";
 import { cityAt } from "@/lib/geo";
+import { LAST_VISIT_KEY } from "@/lib/last-visit";
 
 // What a new origin and a returning visitor's threshold cost the grid.
 //

@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 // is the day this site added the animal, a date with a plus on it, and was
 // free: DoorOpen is the other date, the arrival at the shelter, and
 // CalendarClock is the dialog's quiet stay line.
-const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
+export const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
   "longest-in-shelter": Hourglass,
   "newly-listed": CalendarPlus,
   "newest-arrivals": DoorOpen,

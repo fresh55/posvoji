@@ -198,8 +198,9 @@ export function useAnimalFilterModel({
   // The tab as a search leaves it, which is what "{count} od {total}" under
   // Družba and Lahko ponudim counts against: the count beside it is the
   // search's result.
-  const searchedPool = useMemo(
-    () => (animals === dataset ? pool : bySpecies(animals, filters.species)),
+  const searchedTotal = useMemo(
+    () =>
+      (animals === dataset ? pool : bySpecies(animals, filters.species)).length,
     [animals, dataset, filters.species, pool],
   );
   // Zavetisce is split off from the rest. The others are short runs of options
@@ -341,7 +342,7 @@ export function useAnimalFilterModel({
       ),
       counts: goodWithTally,
       resultCount: resultCount,
-      total: searchedPool.length,
+      total: searchedTotal,
       onToggle: toggleGoodWith,
       onToggleMany: toggleManyGoodWith,
     };
@@ -351,7 +352,7 @@ export function useAnimalFilterModel({
     locale,
     pool,
     resultCount,
-    searchedPool.length,
+    searchedTotal,
     toggleGoodWith,
     toggleManyGoodWith,
   ]);
@@ -366,7 +367,7 @@ export function useAnimalFilterModel({
       ),
       counts: careTally,
       resultCount: resultCount,
-      total: searchedPool.length,
+      total: searchedTotal,
       onToggle: toggleCare,
       onToggleMany: toggleManyCare,
     };
@@ -377,7 +378,7 @@ export function useAnimalFilterModel({
     locale,
     pool,
     resultCount,
-    searchedPool.length,
+    searchedTotal,
     toggleCare,
     toggleManyCare,
   ]);

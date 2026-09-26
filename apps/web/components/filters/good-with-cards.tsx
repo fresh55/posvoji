@@ -13,6 +13,7 @@ import {
   filterCardVariants,
   isDeadOption,
   sheetColumnsFor,
+  SIDEBAR_NOTE_TYPE,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
@@ -162,15 +163,11 @@ export function GoodWithCards({
       // animals with no answer, it says what a pick will do with them: the
       // sentence the hint used to carry where a mouse never saw it. Where no
       // row has a single answer it says that instead (useRowNotes).
-      //
-      // 12px from xl, one step under the rail's 14px labels there
-      // (SIDEBAR_LABEL_TYPE in filter-card.tsx). The sheet is never drawn
-      // from xl, so the gate is the sidebar's alone.
       footer={
         <>
           <p
             aria-live="polite"
-            className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0 xl:text-xs"
+            className={`mt-2 leading-snug text-muted-foreground empty:mt-0 ${SIDEBAR_NOTE_TYPE}`}
           >
             {outcome}
           </p>

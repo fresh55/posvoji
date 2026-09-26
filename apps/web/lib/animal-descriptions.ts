@@ -10,10 +10,9 @@ type AnimalDetails = Readonly<Record<string, AnimalDetail>>;
 const SOURCE = "/generated/animal-details.json";
 const EMPTY: AnimalDetails = {};
 const listeners = new Set<() => void>();
-let current: AnimalDetails = EMPTY;
-/** `current` once the fetch has settled. Kept apart because a failed fetch
- *  settles on the same empty map the store starts from. */
-let settled: AnimalDetails | undefined;
+/** Undefined until the fetch has settled, and a failed fetch settles too, on
+ *  an empty map. */
+let current: AnimalDetails | undefined;
 let inFlight: Promise<AnimalDetails> | undefined;
 
 function subscribe(listener: () => void): () => void {
@@ -42,7 +41,6 @@ export function prefetchAnimalDescriptions(): Promise<AnimalDetails> {
   if (inFlight) return inFlight;
   inFlight = load().then((details) => {
     current = details;
-    settled = details;
     for (const listener of listeners) listener();
     return details;
   });
@@ -61,7 +59,7 @@ function useAnimalDetail(id: string | undefined): AnimalDetail | undefined {
 
   return useSyncExternalStore(
     subscribe,
-    () => id === undefined ? undefined : current[id],
+    () => (id === undefined ? undefined : current?.[id]),
     getServerSnapshot,
   );
 }
@@ -77,7 +75,7 @@ export function useAnimalSource(
 }
 
 function getSettled(): AnimalDetails | undefined {
-  return settled;
+  return current;
 }
 
 /** Every animal's details once the one fetch has settled, undefined until
@@ -101,8 +99,7 @@ export function useSettledAnimalDescriptions(
 
 /** Test-only: each test starts without the previous page's cached response. */
 export function resetAnimalDescriptionsStore(): void {
-  current = EMPTY;
-  settled = undefined;
+  current = undefined;
   inFlight = undefined;
   for (const listener of listeners) listener();
 }

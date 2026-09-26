@@ -789,12 +789,9 @@ const sl = {
   newListingsTwo: "{count} novi objavi od zadnjega obiska.",
   newListingsFew: "{count} nove objave od zadnjega obiska.",
   newListingsMany: "{count} novih objav od zadnjega obiska.",
-  // Its one button. The pronoun follows how many listings there are and not
-  // the numeral's grammar: jo for one, the dual ju for two, jih for more, 101
-  // included.
-  showNewListingsFirstOne: "Pokaži jo najprej",
-  showNewListingsFirstTwo: "Pokaži ju najprej",
-  showNewListingsFirstMany: "Pokaži jih najprej",
+  // Its one button. {them} is tabPronoun's (lib/labels.ts): jo for one, the
+  // dual ju for two, jih for more, 101 included.
+  showNewListingsFirst: "Pokaži {them} najprej",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -1162,9 +1159,7 @@ const en: Messages = {
   newListingsTwo: "{count} new listings since your last visit.",
   newListingsFew: "{count} new listings since your last visit.",
   newListingsMany: "{count} new listings since your last visit.",
-  showNewListingsFirstOne: "Show it first",
-  showNewListingsFirstTwo: "Show them first",
-  showNewListingsFirstMany: "Show them first",
+  showNewListingsFirst: "Show {them} first",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

@@ -28,7 +28,7 @@ const STORAGE_KEY = "posvoji:filter-sections";
 // pick leaves out every cat (groupAsks in lib/filters/engine.ts), so there it
 // folds, and Mačke draws no Velikost at all. Spol opened beside Starost until
 // the panel was put in the order adopters decide in, where it comes sixth
-// (SECTION_ORDER in filter-groups.tsx); it folds with the rest.
+// (FILTER_FACETS in lib/filters/contracts.ts); it folds with the rest.
 //
 // On a short desktop everything starts folded (openByDefault). Saved choices
 // always override these defaults, and an answer arriving in the address
@@ -59,7 +59,7 @@ const SECTION_KEYS = Object.keys(DEFAULT_OPEN) as FilterSectionKey[];
  * fold, so an address carrying only shelters has not answered anything the
  * panel can make room for.
  */
-const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
+export const SECTION_OF_FACET: Record<FilterFacet, FilterSectionKey | null> = {
   sex: "sex",
   age: "age",
   size: "size",
@@ -339,6 +339,14 @@ export function useFilterSections({
     (key: FilterSectionKey) => held[key] ?? (overrides[key] ?? defaultOpen(key)),
     [held, overrides, defaultOpen],
   );
+  // Called while rendering, by the two adjustments below.
+  const holdOpen = (keys: FilterSectionKey[]) => {
+    if (keys.length === 0) return;
+    setHeld((previous) => ({
+      ...previous,
+      ...Object.fromEntries(keys.map((key) => [key, true])),
+    }));
+  };
 
   // Adjusted during render rather than in an effect, so the panel arrives in
   // the same paint as the grid its filter narrowed; an effect would draw the
@@ -358,19 +366,15 @@ export function useFilterSections({
   // every answered section too).
   const [defaultsSeen, setDefaultsSeen] = useState({ species, short });
   if (defaultsSeen.species !== species || defaultsSeen.short !== short) {
-    const keep = SECTION_KEYS.filter(
-      (key) =>
-        active?.[key] &&
-        held[key] === undefined &&
-        overrides[key] === undefined &&
-        openByDefault(key, layout, defaultsSeen.short, defaultsSeen.species),
+    holdOpen(
+      SECTION_KEYS.filter(
+        (key) =>
+          active?.[key] &&
+          held[key] === undefined &&
+          overrides[key] === undefined &&
+          openByDefault(key, layout, defaultsSeen.short, defaultsSeen.species),
+      ),
     );
-    if (keep.length > 0) {
-      setHeld((previous) => ({
-        ...previous,
-        ...Object.fromEntries(keep.map((key) => [key, true])),
-      }));
-    }
     setDefaultsSeen({ species, short });
   }
 
@@ -390,15 +394,11 @@ export function useFilterSections({
       setHeld(arrivalHold(active, overrides, layout));
     } else {
       const before = new Set(seen.split(" "));
-      const gained = SECTION_KEYS.filter(
-        (key) => active?.[key] && !before.has(key) && !isOpen(key),
+      holdOpen(
+        SECTION_KEYS.filter(
+          (key) => active?.[key] && !before.has(key) && !isOpen(key),
+        ),
       );
-      if (gained.length > 0) {
-        setHeld((previous) => ({
-          ...previous,
-          ...Object.fromEntries(gained.map((key) => [key, true])),
-        }));
-      }
     }
     setSeen(answered);
   }

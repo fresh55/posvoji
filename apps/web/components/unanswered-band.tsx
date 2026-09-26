@@ -3,55 +3,24 @@
 import { useId, type ReactNode, type Ref } from "react";
 import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
-import type {
-  GoodWithKey,
-  MultiGroup,
-  Question,
-  SpeciesFilter,
-  ToggleKey,
-} from "@/lib/filters";
+import type { Question, SpeciesFilter } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
-import { tabCountAt, tabCountShown, tabPronoun } from "@/lib/labels";
+import {
+  questionTopic,
+  tabCountAt,
+  tabCountShown,
+  tabPronoun,
+} from "@/lib/labels";
 import { COARSE_ACTION } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 
-// The words for what the band lacks, when it lacks one thing. Keyed by facet
-// so a new question fails to compile here rather than going unnamed; only the
-// toggles the panel offers can be picked, so only they have words.
-const GROUP_TOPIC: Record<Exclude<MultiGroup, "shelter">, TranslationKey> = {
-  sex: "bandTopicSex",
-  age: "bandTopicAge",
-  size: "bandTopicSize",
-  energy: "bandTopicEnergy",
-  coatColor: "bandTopicCoatColor",
-  coatLength: "bandTopicCoatLength",
-  waiting: "bandTopicWaiting",
-};
-
-const GOOD_WITH_TOPIC: Record<GoodWithKey, TranslationKey> = {
-  kids: "bandTopicKids",
-  dogs: "bandTopicDogs",
-  cats: "bandTopicCats",
-};
-
-const TOGGLE_TOPIC: Partial<Record<ToggleKey, TranslationKey>> = {
-  "brez-fiv": "bandTopicFiv",
-  "brez-felv": "bandTopicFelv",
-};
-
-/** The one question the band's animals leave unanswered, or undefined when
- *  they leave several and the words have to cover all of them. */
+/** The words for the one question the band's animals leave unanswered, or
+ *  undefined when they leave several and the words have to cover all of
+ *  them. */
 function topicOf(missing: readonly Question[]): TranslationKey | undefined {
   if (missing.length !== 1) return undefined;
-  const [question] = missing;
-  switch (question.facet) {
-    case "goodWith":
-      return GOOD_WITH_TOPIC[question.key];
-    case "toggles":
-      return TOGGLE_TOPIC[question.key];
-    default:
-      return GROUP_TOPIC[question.facet];
-  }
+  const topic = questionTopic(missing[0]);
+  return topic && (`bandTopic${topic}` as const);
 }
 
 /**

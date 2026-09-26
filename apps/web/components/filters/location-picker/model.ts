@@ -48,23 +48,14 @@ export function pickerRecoveryActions(
 }
 
 // Search text with its accents taken off, so a keyboard without them finds
-// every name. NFD splits č ć š ž into a letter and a combining mark and the
-// mark is dropped; đ is its own letter with no decomposition, so it is named
-// here.
+// every name: the grid search's own folder (foldText in lib/filters/search.ts).
 //
 // Not the same function as lib/geo.ts cityKey, and not the same alphabet: that
 // one folds five letters by hand and never normalises, which is enough for the
-// town table it keys. Three more of these exist (shelter-initial.ts, the
-// slugify in animal-path.ts), no two spelled alike. One folder in lib/ would
-// be the right answer and is a change for its own pass, since the slug one
-// addresses animals.
-export function fold(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/đ/g, "d");
-}
+// town table it keys. shelter-initial.ts and the slugify in animal-path.ts
+// fold their own way too; moving them onto foldText is a pass of its own,
+// since the slug one addresses animals.
+export { foldText as fold } from "@/lib/filters/search";
 
 export function visibleTrigger(): HTMLElement | null {
   if (typeof document === "undefined") return null;

@@ -77,7 +77,7 @@ function renderModel(filters: Filters) {
 }
 
 describe("the chips row", () => {
-  // The panel's order, Kje first (SECTION_ORDER in filters/filter-groups.tsx),
+  // The panel's order, Kje first (FILTER_FACETS in lib/filters/contracts.ts),
   // whatever order the answers were given in or the URL holds them in.
   it("reads every facet's chips in the order the panel asks", () => {
     const first = (group: Parameters<typeof groupOptions>[0]) =>

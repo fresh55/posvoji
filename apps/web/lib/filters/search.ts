@@ -28,11 +28,12 @@ export function tidyQuery(raw: string): string {
 
 /** Text as both sides are compared: accents off, lowercase. NFD splits č š ž
  *  ć into a letter and a combining mark and the mark goes; đ has no
- *  decomposition, so it is named. "Ovčar", "ovcar" and "OVČAR" are one word. */
+ *  decomposition, so it is named. "Ovčar", "ovcar" and "OVČAR" are one word.
+ *  The location picker's search folds with it too. */
 export function foldText(text: string): string {
   return text
     .normalize("NFD")
-    .replace(/\p{M}/gu, "")
+    .replace(/\p{Diacritic}/gu, "")
     .toLowerCase()
     .replace(/đ/g, "d");
 }

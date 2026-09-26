@@ -7,7 +7,6 @@ import {
   careOptions,
   EMPTY_FILTERS,
   facetCounts,
-  FILTER_FACETS,
   goodWithOptions,
   groupOptions,
   toggleLabel,
@@ -22,10 +21,8 @@ import {
 import {
   drawnOptions,
   FilterGroupList,
-  SECTION_ORDER,
   type CardGroup,
 } from "./filter-groups";
-import { answeredSections } from "./use-filter-sections";
 
 installFilterFoldSeams();
 class NoopResizeObserver { observe() {} unobserve() {} disconnect() {} }
@@ -97,7 +94,7 @@ function openSections(): (string | undefined)[] {
   ].map((button) => button.firstElementChild?.textContent?.trim());
 }
 
-// SECTION_ORDER in filter-groups.tsx says where the order comes from.
+// FILTER_FACETS in lib/filters/contracts.ts says where the order comes from.
 describe("the order the panel asks in", () => {
   it.each(["sidebar", "sheet"] as const)(
     "reads age, size, the home, health, temperament, sex, looks, then the two that close it in the %s",
@@ -117,18 +114,6 @@ describe("the order the panel asks in", () => {
       ]);
     },
   );
-
-  // The chips row above the grid reads its pills in FILTER_FACETS order, so a
-  // visitor meets their answers in the order they gave them. Kje first, then
-  // every facet in the section that holds it.
-  it("reads the chips row in the same order", () => {
-    expect(FILTER_FACETS[0]).toBe("shelter");
-    const sections = FILTER_FACETS.flatMap((facet) =>
-      Object.keys(answeredSections({ ...EMPTY_FILTERS, [facet]: ["x"] } as Filters)),
-    );
-
-    expect([...new Set(sections)]).toEqual(SECTION_ORDER);
-  });
 });
 
 describe("the sections open on an address that asks nothing", () => {

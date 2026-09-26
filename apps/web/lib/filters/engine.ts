@@ -159,15 +159,22 @@ const PUPPY_MAX_EXCLUSIVE = 12;
 const YOUNG_MAX_EXCLUSIVE = 36;
 const ADULT_MAX_EXCLUSIVE = 96;
 
-// A stage the shelter stated without a number. The schema's adult runs from
-// one year to eight, across Mlad and Odrasel both, so it answers neither: the
-// animal is filed under no stage and counted with the unanswered rather than
-// guessed into one.
-const GROUP_OF_STAGE: Record<LifeStage, AgeGroup | undefined> = {
-  young: "mladicek",
-  adult: undefined,
-  senior: "senior",
+// The groups a stage the shelter stated without a number spans. The schema's
+// adult runs from one year to eight, across Mlad and Odrasel both, so it is
+// filed under neither: the animal is counted with the unanswered rather than
+// guessed into one. It still rules out the groups outside its span, which the
+// band reads (statesOtherwise).
+const GROUPS_OF_STAGE: Record<LifeStage, readonly AgeGroup[]> = {
+  young: ["mladicek"],
+  adult: ["mlad", "odrasel"],
+  senior: ["senior"],
 };
+
+/** The one group a stated stage is filed under, where it spans one. */
+function groupOfStage(stage: LifeStage | undefined): AgeGroup | undefined {
+  const span = stage && GROUPS_OF_STAGE[stage];
+  return span?.length === 1 ? span[0] : undefined;
+}
 
 // A date-only ISO string parses as UTC midnight, so both sides of the
 // subtraction have to be read in UTC. Reading one of them locally shifted the
@@ -221,7 +228,7 @@ export function ageGroup(months: number): AgeGroup {
 
 /** The stage the filter files an animal under: from its age where one is
  *  known, otherwise from the stage the shelter stated without a number, where
- *  that stage falls inside one of the filter's (GROUP_OF_STAGE). The dialog
+ *  that stage falls inside one of the filter's (GROUPS_OF_STAGE). The dialog
  *  and the poster read this too, so all three agree. */
 export function ageStage(
   animal: {
@@ -233,7 +240,7 @@ export function ageStage(
 ): AgeGroup | undefined {
   const months = ageInMonths(animal, now);
   if (months !== undefined) return ageGroup(months);
-  return animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage];
+  return groupOfStage(animal.lifeStage);
 }
 
 function matchesSpecies(animal: AnimalFields, species: SpeciesFilter): boolean {
@@ -301,10 +308,10 @@ type FilterIndex = {
   readonly born: Column<number>;
   /** The stated stage, read only where neither of the two above answers. */
   readonly stage: Column<AgeGroup>;
-  /** Whether the only age on record is a stated adult: filed under no age
-   *  group, since it could be Mlad or Odrasel, but a stated answer that rules
-   *  Mladiček and Senior out (statesOtherwise). */
-  readonly statedAdult: readonly boolean[];
+  /** Where the only age on record is a stated stage, the groups it spans
+   *  (GROUPS_OF_STAGE): one that spans two is filed under neither, but rules
+   *  out the rest (statesOtherwise). */
+  readonly statedSpan: Column<readonly AgeGroup[]>;
   readonly toggles: readonly number[];
   readonly goodWith: readonly number[];
   readonly care: readonly number[];
@@ -348,7 +355,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
   const stage: (AgeGroup | undefined)[] = [];
-  const statedAdult: boolean[] = [];
+  const statedSpan: (readonly AgeGroup[] | undefined)[] = [];
   const toggles: number[] = [];
   const goodWith: number[] = [];
   const care: number[] = [];
@@ -364,13 +371,16 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     coatLength.push(animal.coatLength);
     intakeStart.push(intakeStartOf(stayStart(animal)?.date));
     shelter.push(animal.shelter.id);
+    const birth = bornAt(animal.birthDate);
     approximate.push(animal.approximateAgeMonths);
-    born.push(bornAt(animal.birthDate));
-    stage.push(animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage]);
-    statedAdult.push(
-      animal.lifeStage === "adult" &&
+    born.push(birth);
+    stage.push(groupOfStage(animal.lifeStage));
+    statedSpan.push(
+      animal.lifeStage &&
         animal.approximateAgeMonths === undefined &&
-        bornAt(animal.birthDate) === undefined,
+        birth === undefined
+        ? GROUPS_OF_STAGE[animal.lifeStage]
+        : undefined,
     );
     toggles.push(maskOf(TOGGLES.length, (bit) => TOGGLES[bit].matches(animal)));
     goodWith.push(
@@ -402,7 +412,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     approximate,
     born,
     stage,
-    statedAdult,
+    statedSpan,
     toggles,
     goodWith,
     care,
@@ -888,27 +898,12 @@ export function unansweredCounts(
   return { groups, goodWith, toggles };
 }
 
-/** A question the visitor has answered, and how much of the species tab the
- *  shelters answered it for. A group is named by its facet; a facet of an
- *  AND section carries its key as well. */
-export type Coverage =
-  | {
-      readonly facet: Exclude<MultiGroup, "shelter">;
-      readonly asked: number;
-      readonly answered: number;
-    }
-  | {
-      readonly facet: "goodWith";
-      readonly key: GoodWithKey;
-      readonly asked: number;
-      readonly answered: number;
-    }
-  | {
-      readonly facet: "toggles";
-      readonly key: ToggleKey;
-      readonly asked: number;
-      readonly answered: number;
-    };
+/** A question the visitor has answered (Question), and how much of the
+ *  species tab the shelters answered it for. */
+export type Coverage = Question & {
+  readonly asked: number;
+  readonly answered: number;
+};
 
 /**
  * Of the questions the visitor has answered, the one the shelters answered
@@ -972,8 +967,8 @@ export function thinnestAnswer(
   return thinnest;
 }
 
-/** A question the visitor answered, named the way Coverage names one: a group
- *  by its facet, a facet of an AND section by its key as well. */
+/** A question the visitor answered: a group by its facet, a facet of an AND
+ *  section by its key as well. */
 export type Question =
   | { readonly facet: Exclude<MultiGroup, "shelter"> }
   | { readonly facet: "goodWith"; readonly key: GoodWithKey }
@@ -1126,12 +1121,17 @@ function leavesBlank(pass: Pass, slot: number, failed: number): boolean {
 
 /** A stated "adult" with no number files an animal under no age group, since
  *  it could be Mlad or Odrasel, but it answers the question enough to rule
- *  out Mladiček and Senior: under a pick of those alone it is a contrary
- *  answer, not a missing one. */
+ *  out Mladiček and Senior: under a pick of those alone, a pick its span does
+ *  not meet, it is a contrary answer, not a missing one. */
 function statesOtherwise(pass: Pass, slot: number, group: MultiGroup): boolean {
-  if (group !== "age" || !pass.index.statedAdult[slot]) return false;
+  if (group !== "age") return false;
+  const span = pass.index.statedSpan[slot];
   const picked = pass.query.groups.age;
-  return picked !== null && !picked.has("mlad") && !picked.has("odrasel");
+  return (
+    span !== undefined &&
+    picked !== null &&
+    !span.some((stage) => picked.has(stage))
+  );
 }
 
 function questionsOf(lacking: Relaxed): Question[] {

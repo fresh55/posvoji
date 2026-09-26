@@ -1,12 +1,8 @@
 import type { ClientAnimal } from "@/lib/animal";
 import { unansweredBand, type Filters } from "@/lib/filters";
-import type { LatLon } from "@/lib/geo";
-import type { Locale } from "@/lib/i18n";
-import { sortAnimals, type AnimalSort } from "@/lib/sort";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const NONE: ClientAnimal[] = [];
-const unranked = (list: ClientAnimal[]) => list;
 
 /**
  * The home grid's band: the animals the filters hide only for want of an
@@ -20,31 +16,25 @@ const unranked = (list: ClientAnimal[]) => list;
  */
 export function useUnansweredBand({
   animals,
-  dataset = animals,
+  dataset,
   filters,
   reference,
   sorted,
-  sort,
-  locale,
-  origin,
-  rank = unranked,
+  arrange,
 }: {
   animals: ClientAnimal[];
-  /** The whole dataset, where a search has narrowed `animals`: which
+  /** The whole dataset, which is `animals` until a search narrows it: which
    *  questions may relax is measured over the tab and not over what a query
    *  found (unansweredBand in lib/filters/engine.ts). */
-  dataset?: ClientAnimal[];
+  dataset: ClientAnimal[];
   /** The filters the matches were drawn with, the deferred ones. */
   filters: Filters;
   reference: Date;
   /** The matches, in the order the grid shows them. */
   sorted: ClientAnimal[];
-  sort: AnimalSort;
-  locale: Locale;
-  origin?: LatLon;
-  /** The search's own order over the sorted list (useAnimalSearch), which the
-   *  band keeps the way the matches do: what a query found by name first. */
-  rank?: (list: ClientAnimal[]) => ClientAnimal[];
+  /** What put the matches in that order, the chosen sort and a search's own
+   *  ranking after it, which the band is put in too. */
+  arrange: (list: ClientAnimal[]) => ClientAnimal[];
 }) {
   const band = useMemo(
     () => unansweredBand(animals, filters, reference, dataset),
@@ -58,11 +48,8 @@ export function useUnansweredBand({
 
   // In the order chosen for the matches, which the band follows under them.
   const bandSorted = useMemo(
-    () =>
-      shown
-        ? rank(sortAnimals(band.animals, sort, locale, reference, origin))
-        : NONE,
-    [band.animals, locale, origin, rank, reference, shown, sort],
+    () => (shown ? arrange(band.animals) : NONE),
+    [arrange, band.animals, shown],
   );
   // What the grid draws and the dialog steps through.
   const list = useMemo(

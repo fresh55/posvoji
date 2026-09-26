@@ -79,7 +79,6 @@ export {
   type Coverage,
   type Question,
   type Unanswered,
-  type UnansweredBand,
   type UnansweredTally,
 } from "./filters/engine";
 

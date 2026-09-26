@@ -23,13 +23,14 @@ import {
   FilterCardMark,
   FilterCardTail,
   SIDEBAR_LABEL_CLASS,
-  SIDEBAR_LABEL_REST,
   countClass,
   filterCardVariants,
+  sidebarLabelInk,
 } from "@/components/filters/filter-card";
 import {
   CollapsibleBody,
   FilterSectionHeader,
+  NOTE_TYPE,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import { UnansweredNote } from "@/components/filters/unanswered-note";
@@ -46,6 +47,7 @@ import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FilterOption, Unanswered } from "@/lib/filters";
 import { groupLabel } from "@/lib/filters";
+import type { TranslationKey } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -106,16 +108,8 @@ type Stage = {
   /** Where the plant's lowest stroke ends, in the icon's 24-unit box, with the
    *  sprout's soil left out the way the grove leaves it out. */
   base: number;
-  rangeKey:
-    | "ageRangeBaby"
-    | "ageRangeYoung"
-    | "ageRangeAdult"
-    | "ageRangeSenior";
-  captionKey:
-    | "ageCaptionBaby"
-    | "ageCaptionYoung"
-    | "ageCaptionAdult"
-    | "ageCaptionSenior";
+  rangeKey: Extract<TranslationKey, `ageRange${string}`>;
+  captionKey: Extract<TranslationKey, `ageCaption${string}`>;
   growth: Growth;
 };
 
@@ -1091,12 +1085,12 @@ export function AgeGrowthControl({
                       captions of the stages left out used to drop to half
                       opacity, which measured 2.08:1 light and 2.68:1 dark at
                       11px: words nobody could read, saying what the faded,
-                      shrunken plant above them already says. Below lg, in the
-                      phone's sheet, they are a step up, at the 12px its tiles
-                      print their labels and counts in, and so they are again
-                      from xl, where the rail is a card column wide and its
-                      counts are 12px too. */}
-                  <span className="mt-1 text-xs leading-none whitespace-nowrap text-muted-foreground tabular-nums lg:text-2xs xl:text-xs">
+                      shrunken plant above them already says. The notes' size
+                      (NOTE_TYPE): in the phone's sheet the 12px its tiles
+                      print their labels and counts in. */}
+                  <span
+                    className={`mt-1 leading-none whitespace-nowrap text-muted-foreground tabular-nums ${NOTE_TYPE}`}
+                  >
                     {messages[stage.captionKey]}
                   </span>
                 </span>
@@ -1263,7 +1257,7 @@ export function AgeGrowthControl({
                         className={cn(
                           "min-w-0",
                           SIDEBAR_LABEL_CLASS,
-                          checked ? "font-medium" : SIDEBAR_LABEL_REST,
+                          sidebarLabelInk(checked),
                         )}
                       >
                         {label}

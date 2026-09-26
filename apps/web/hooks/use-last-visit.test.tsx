@@ -5,15 +5,13 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listedAtOf } from "@/lib/animal";
+import { LAST_VISIT_KEY, VISIT_SINCE_KEY } from "@/lib/last-visit";
 import {
-  isNewListing,
   isNewsToVisitor,
-  LAST_VISIT_KEY,
   resetLastVisitStore,
   useIsNewListing,
   useNewListingCount,
   useVisitSince,
-  VISIT_SINCE_KEY,
 } from "./use-last-visit";
 
 // The dataset's generatedAt, which is what a visit writes down.
@@ -42,19 +40,23 @@ afterEach(() => {
   resetLastVisitStore();
 });
 
-describe("isNewListing", () => {
+describe("isNewsToVisitor", () => {
   const threshold = Date.parse(EARLIER);
+  const available = (time: string | undefined) => ({
+    listedAt: time === undefined ? undefined : listed(time),
+    status: "available" as const,
+  });
 
   it("is new only when listed after the threshold", () => {
-    expect(isNewListing(listed("2026-09-22T10:00:00Z"), threshold)).toBe(true);
-    expect(isNewListing(listed("2026-09-18T10:00:00Z"), threshold)).toBe(false);
+    expect(isNewsToVisitor(available("2026-09-22T10:00:00Z"), threshold)).toBe(true);
+    expect(isNewsToVisitor(available("2026-09-18T10:00:00Z"), threshold)).toBe(false);
   });
 
   // A first visit has seen nothing, which is not the same as everything on
   // the page being new to it.
   it("marks nothing without a threshold or a listing time", () => {
-    expect(isNewListing(listed("2026-09-22T10:00:00Z"), null)).toBe(false);
-    expect(isNewListing(undefined, threshold)).toBe(false);
+    expect(isNewsToVisitor(available("2026-09-22T10:00:00Z"), null)).toBe(false);
+    expect(isNewsToVisitor(available(undefined), threshold)).toBe(false);
   });
 });
 

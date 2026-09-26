@@ -14,10 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useAnimalSearch } from "@/hooks/use-animal-search";
-import { useNewListingCount, useVisitRead } from "@/hooks/use-last-visit";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
-import { NewListingsNotice } from "@/components/new-listings-notice";
-import { NEW_LISTINGS_DATASET_KEY, NEW_LISTINGS_SLOT } from "@/lib/last-visit";
+import { NewListings } from "@/components/new-listings-notice";
 import type { ClientAnimal } from "@/lib/animal";
 import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
 import {
@@ -34,12 +32,10 @@ import {
   type Coverage,
   type FilterOption,
   type Filters,
-  type GoodWithKey,
-  type MultiGroup,
   type SpeciesFilter,
-  type ToggleKey,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
+import { questionTopic } from "@/lib/labels";
 import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
 import { getSearchSnapshot } from "@/lib/location-search";
 import type { LookupEntry } from "@/lib/municipality-coverage";
@@ -60,11 +56,9 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { cardLink } from "./grid-rendering";
 import {
   BandDivider,
   BandOffer,
@@ -154,40 +148,11 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
   other: "speciesAbsenceOther",
 };
 
-// The question the empty state names when a thin answer is the likeliest
-// reason nothing matched (thinnestAnswer in lib/filters). Keyed by facet so
-// a new one fails to compile here rather than going unexplained. Only the
-// toggles the panel still offers can be answered, so only they have words.
-const GROUP_TOPIC_KEY: Record<Exclude<MultiGroup, "shelter">, TranslationKey> = {
-  sex: "knownTopicSex",
-  age: "knownTopicAge",
-  size: "knownTopicSize",
-  energy: "knownTopicEnergy",
-  coatColor: "knownTopicCoatColor",
-  coatLength: "knownTopicCoatLength",
-  waiting: "knownTopicWaiting",
-};
-
-const GOOD_WITH_TOPIC_KEY: Record<GoodWithKey, TranslationKey> = {
-  kids: "knownTopicKids",
-  dogs: "knownTopicDogs",
-  cats: "knownTopicCats",
-};
-
-const TOGGLE_TOPIC_KEY: Partial<Record<ToggleKey, TranslationKey>> = {
-  "brez-fiv": "knownTopicFiv",
-  "brez-felv": "knownTopicFelv",
-};
-
+// The words for the question the empty state names when a thin answer is the
+// likeliest reason nothing matched (thinnestAnswer in lib/filters).
 function topicKey(coverage: Coverage): TranslationKey | undefined {
-  switch (coverage.facet) {
-    case "goodWith":
-      return GOOD_WITH_TOPIC_KEY[coverage.key];
-    case "toggles":
-      return TOGGLE_TOPIC_KEY[coverage.key];
-    default:
-      return GROUP_TOPIC_KEY[coverage.facet];
-  }
+  const topic = questionTopic(coverage);
+  return topic && (`knownTopic${topic}` as const);
 }
 
 // Which of the three shelter-absence sentences a selection takes. The verb
@@ -446,38 +411,17 @@ export function AnimalGrid({
   const nearby = useNearbyOrigin();
   // A search puts what it found by name first, then by breed, then by
   // description, each in the chosen order (rankBySearch in
-  // lib/filters/search.ts).
-  const sorted = useMemo(
-    () => rank(sortAnimals(visible, sort, locale, reference, nearby?.at)),
-    [visible, sort, locale, reference, nearby, rank],
+  // lib/filters/search.ts). The band below is put in the same order.
+  const arrange = useCallback(
+    (list: ClientAnimal[]) =>
+      rank(sortAnimals(list, sort, locale, reference, nearby?.at)),
+    [sort, locale, reference, nearby, rank],
   );
+  const sorted = useMemo(() => arrange(visible), [arrange, visible]);
   // The order the cards are in, which is what the long-stay mark below asks
   // about. sortAnimals resolves the same thing for itself, so this reads it
   // from the one function that decides it rather than restating the fallback.
   const order = effectiveSort(sort, nearby?.at);
-
-  // How many of the matches were listed since this visitor's last visit, for
-  // the notice above the cards, and the press that puts them first. Zero on a
-  // first visit, on the server and through hydration.
-  const newListings = useNewListingCount(visible, reference);
-  // The notice goes as its button is pressed, so focus is handed on to the
-  // first card of the new order once it is drawn (the effect after the grid
-  // below), the way the band hands it to its first card.
-  const focusFirstCard = useRef(false);
-  const showNewFirst = useCallback(() => {
-    focusFirstCard.current = true;
-    setSort("newly-listed");
-  }, [setSort]);
-  // The blocking script before the grid held the notice's place from the
-  // first paint (lib/last-visit.ts); the place goes back to the layout once
-  // the visit has been read, which is the same commit that draws the notice
-  // or finds nothing to draw. After it, so the notice is already standing in
-  // the place it takes over.
-  const visitRead = useVisitRead(reference);
-  useEffect(() => {
-    if (!visitRead) return;
-    delete document.documentElement.dataset[NEW_LISTINGS_DATASET_KEY];
-  }, [visitRead]);
 
   // The animals the filters hide only for want of an answer, offered under
   // the last match and drawn after the matches once asked for. band.list is
@@ -490,10 +434,7 @@ export function AnimalGrid({
     filters: shownFilters,
     reference,
     sorted,
-    sort,
-    locale,
-    origin: nearby?.at,
-    rank,
+    arrange,
   });
 
   // What the dialog steps through is what the visitor is looking at: the list
@@ -546,6 +487,7 @@ export function AnimalGrid({
     watchSentinel,
     showMore,
     showFrom,
+    focusOnDraw,
   } = useIncrementalGrid(band.list, selected !== undefined, sorted);
 
   // The band's press: shown, with its first card drawn and focused, since the
@@ -558,13 +500,13 @@ export function AnimalGrid({
   // Where the band's cards start among the drawn ones, while it is shown.
   const bandStart = band.shown ? sorted.length : undefined;
 
-  // The notice's press, answered once the grid is drawn in the order it asked
-  // for: its first card takes focus, the new listing the visitor came for.
-  useEffect(() => {
-    if (!focusFirstCard.current || order !== "newly-listed") return;
-    focusFirstCard.current = false;
-    cardLink(gridRef.current?.querySelector("article") ?? undefined)?.focus();
-  }, [order, page, gridRef]);
+  // The new-listings notice's press. The notice goes as the order it offers
+  // arrives, so the first card of that order takes focus once it is drawn:
+  // the new listing the visitor came for.
+  const showNewFirst = useCallback(() => {
+    focusOnDraw(0);
+    setSort("newly-listed");
+  }, [focusOnDraw, setSort]);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
@@ -805,15 +747,14 @@ export function AnimalGrid({
             unanswered={unanswered}
           />
 
-          {/* Held open before the first paint while the script before the grid
-              expects a notice (lib/last-visit.ts, the rule in app/globals.css),
-              and out of the column's gap whenever it is empty. Under the Nove
-              objave order the new listings are already first. */}
-          <div data-slot={NEW_LISTINGS_SLOT}>
-            {order !== "newly-listed" && (
-              <NewListingsNotice count={newListings} onShowFirst={showNewFirst} />
-            )}
-          </div>
+          {/* How many of the matches were listed since this visitor's last
+              visit, and the press that puts them first. */}
+          <NewListings
+            animals={visible}
+            reference={reference}
+            hidden={order === "newly-listed"}
+            onShowFirst={showNewFirst}
+          />
 
           {isEmpty ? (
             <EmptyState>

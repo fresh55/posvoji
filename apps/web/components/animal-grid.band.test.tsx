@@ -10,7 +10,7 @@ import {
 } from "@testing-library/react";
 import type { Animal, Species } from "@posvoji/schema";
 import { renderToString } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { AnimalGrid, INITIAL_CARDS } from "./animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
 import { animalsForClient } from "@/lib/dataset";
@@ -22,20 +22,13 @@ import {
   stubGridColumns,
   stubIdleCallback,
   stubIntersectionObserver,
+  stubMatchMedia,
 } from "@/test/grid-stubs";
 // The dialog's chunk, which one test here opens (test/picker-chunks.ts says
 // why a suite imports what it opens).
 import "@/components/animal-dialog/animal-dialog";
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
+stubMatchMedia();
 Object.defineProperty(window, "scrollTo", {
   configurable: true,
   value: () => {},

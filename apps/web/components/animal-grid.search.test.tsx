@@ -12,13 +12,13 @@ import {
 import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalGrid, INITIAL_CARDS } from "./animal-grid";
-import { resetFilterSectionsStore } from "@/components/filters/use-filter-sections";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
   prefetchAnimalDescriptions,
   resetAnimalDescriptionsStore,
 } from "@/lib/animal-descriptions";
 import { animalsForClient } from "@/lib/dataset";
+import { installFilterFoldSeams, openFilterSection } from "@/test/filter-folds";
 import { phoneRow, stickyRow } from "@/test/filter-rows";
 import {
   columnTracks,
@@ -26,6 +26,7 @@ import {
   stubGridColumns,
   stubIdleCallback,
   stubIntersectionObserver,
+  stubMatchMedia,
 } from "@/test/grid-stubs";
 // The chunks the grid fetches for the dialog, the filter sheet and the
 // picker, loaded with the file so no test waits for them inside a find
@@ -37,19 +38,8 @@ import "@/test/picker-chunks";
 // The search as the page runs it: the grid, the rail, the chips row and the
 // dialog host around one query in the address.
 
-Object.defineProperty(window, "matchMedia", {
-  configurable: true,
-  value: vi.fn().mockImplementation((media: string) => ({
-    matches: false,
-    media,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  })),
-});
-Object.defineProperty(window, "scrollTo", {
-  configurable: true,
-  value: () => {},
-});
+stubMatchMedia();
+installFilterFoldSeams();
 class NoopResizeObserver {
   observe() {}
   unobserve() {}
@@ -211,28 +201,18 @@ describe("the search over the grid", () => {
   });
 
   it("counts the facets over what it found", async () => {
-    // Spol starts folded (use-filter-sections.ts). A stored fold opens it
-    // without the press, whose reveal jsdom has no layout for.
-    window.localStorage.setItem(
-      "posvoji:filter-sections",
-      JSON.stringify({ sex: true }),
-    );
-    resetFilterSectionsStore();
-    try {
-      window.history.replaceState(null, "", "/?isci=ov%C4%8D");
-      renderGrid();
-      await waitFor(() => expect(cardNames()).toHaveLength(4));
+    window.history.replaceState(null, "", "/?isci=ov%C4%8D");
+    renderGrid();
+    await waitFor(() => expect(cardNames()).toHaveLength(4));
+    // Spol starts folded (use-filter-sections.ts).
+    openFilterSection("Spol");
 
-      const rail = screen.getByRole("complementary");
-      // Rex and Bor are male, Ovčka and Ajda female; Muri, a male, is not
-      // found.
-      expect(
-        within(rail).getByRole("button", { name: /^Samec/ }).textContent,
-      ).toContain("2");
-    } finally {
-      window.localStorage.removeItem("posvoji:filter-sections");
-      resetFilterSectionsStore();
-    }
+    const rail = screen.getByRole("complementary");
+    // Rex and Bor are male, Ovčka and Ajda female; Muri, a male, is not
+    // found.
+    expect(
+      within(rail).getByRole("button", { name: /^Samec/ }).textContent,
+    ).toContain("2");
   });
 
   it("leads the chips row with the query, and its pill takes the search off", async () => {

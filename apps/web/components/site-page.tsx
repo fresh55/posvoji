@@ -6,7 +6,7 @@ import { CAT_CORNER, HomeCat } from "@/components/home-cat";
 import { NewListingsScript } from "@/components/new-listings-script";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
-import { adoptableNow, listedAtTime, type ClientAnimal } from "@/lib/animal";
+import { newsTime, type ClientAnimal } from "@/lib/animal";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { byShelterName, shelterCount } from "@/lib/labels";
@@ -15,17 +15,16 @@ import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
 
-/** The time the newest animal the notice would count was first listed, in
- *  the unit it counts in (listedAtTime), or undefined when none carries one.
- *  Adoptable ones only, the rule the notice counts by (isNewsToVisitor in
- *  hooks/use-last-visit.ts): measured over every animal, a new intake on hold
- *  held a place the notice then left empty. */
+/** The time the newest animal the notice would count was first listed
+ *  (newsTime), or undefined when there is none. Measured over every animal,
+ *  a new intake on hold held a place the notice then left empty. */
 function newestListing(animals: readonly ClientAnimal[]): number | undefined {
   let newest: number | undefined;
-  for (const { listedAt, status } of animals) {
-    if (listedAt === undefined || !adoptableNow(status)) continue;
-    const time = listedAtTime(listedAt);
-    if (newest === undefined || time > newest) newest = time;
+  for (const animal of animals) {
+    const time = newsTime(animal);
+    if (time !== undefined && (newest === undefined || time > newest)) {
+      newest = time;
+    }
   }
   return newest;
 }

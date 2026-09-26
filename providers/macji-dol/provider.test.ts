@@ -196,6 +196,14 @@ describe("parseDetail", () => {
     expect(parseDetail(html).goodWith).toBeUndefined();
   });
 
+  it("reads the same company named with z or s", () => {
+    const html = listing(`
+      <div class="summary"><article><div class="entry-content">
+        <p><strong>DRUŽABNOST:</strong> z nevsiljivimi ljudmi, z mačkami, s psi</p>
+      </div></article></div>`);
+    expect(parseDetail(html).goodWith).toEqual({ cats: "yes", dogs: "yes" });
+  });
+
   it("refuses a page that carries no product container", () => {
     expect(() =>
       parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),

@@ -242,11 +242,12 @@ export function CareCards({
       // carries the line saying which animals it shows.
       sheetColumns={sheetColumnsFor(options.length, 2)}
       // What the section did to the list, and the one line the screen reader
-      // hears. Nothing selected says nothing.
+      // hears. Nothing selected says nothing. 12px from xl with the rail's
+      // labels, as in Doma imam.
       footer={
         <p
           aria-live="polite"
-          className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0"
+          className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0 xl:text-xs"
         >
           {outcome}
         </p>

@@ -159,12 +159,15 @@ export function CollapsibleBody({
 
 // The voice a section explains itself in when the words are drawn: the hint
 // and the lead above the rows, the notes under them. 12px in the sheet, 11px
-// in the sidebar. The two sizes are one decision about column width and not
-// two tastes: the sidebar is a 224px column beside the grid, while the sheet
-// is a phone held at arm's length, where 11px was the smallest type on the
-// page. The sheet is below lg and the sidebar only from it, so the width gate
-// says which one this is.
-const NOTE_CLASS = "text-xs leading-snug text-muted-foreground lg:text-2xs";
+// in the sidebar at lg and 12px again from xl. The sizes are one decision
+// about column width and not three tastes: at lg the sidebar is a 224px column
+// beside the grid, from xl it is a card column whose labels step up to 14px
+// (SIDEBAR_LABEL_TYPE in filter-card.tsx), and a note stays one step under
+// them, while the sheet is a phone held at arm's length, where 11px was the
+// smallest type on the page. The sheet is below lg and the sidebar only from
+// it, so the width gate says which one this is.
+const NOTE_CLASS =
+  "text-xs leading-snug text-muted-foreground lg:text-2xs xl:text-xs";
 
 /** The hint sentence a section keeps under its header. A folding section moves
     the hint into the header tooltip, which a touch screen cannot open, so
@@ -369,8 +372,10 @@ export function FilterSectionHeader({
       aria-hidden={!showReset}
       aria-label={resetAriaLabel}
       className={cn(
-        // text-xs below lg and text-2xs from it, the same one decision the
-        // hint above states: 11px is a 224px column's size, not a phone's.
+        // text-xs below lg and text-2xs from it: 11px is a desktop column's
+        // size, not a phone's. It stays 11px from xl, where the notes step
+        // back up, because it stands in the heading row, one step under the
+        // 12px caption, and the headings keep their size at every width.
         "h-auto text-xs font-normal text-muted-foreground transition-opacity hover:text-foreground lg:text-2xs",
         !showReset && "pointer-events-none opacity-0",
         // 53x19 drawn, and the one press that undoes a whole section. Two
@@ -532,7 +537,8 @@ export function FilterSectionHeader({
         // text-2xs below lg and text-3xs from it, the one step up below lg
         // that NOTE_CLASS takes for the same reason: at 10px the chip was the
         // smallest type in the sheet, a phone held at arm's length, while
-        // 10px stays right for a 224px column.
+        // 10px stays right in the rail's heading row, which keeps its size
+        // at every width.
         <span
           key="summary"
           className="max-w-28 truncate rounded-full border border-brand-border/50 bg-brand px-2 py-px text-2xs font-medium normal-case tracking-normal text-brand-foreground animate-in fade-in zoom-in-95 duration-200 motion-reduce:duration-0 lg:text-3xs"

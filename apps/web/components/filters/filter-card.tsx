@@ -177,11 +177,13 @@ export function isDeadOption(
  * narrowing has none of. Under /?vrsta=pes four such rows were 160 of the
  * 243px the sidebar overflowed at 1280x720.
  *
- * So the label keeps the full muted ink it has at rest, 5.54:1, and the two
- * things that are actually true of a dead option are what say so: the count
- * reads 0, and the box there would be nothing to tick in is not drawn
- * (group-disabled:hidden on FilterSelectionMark). In the sidebar the row is
- * not drawn at all; see drawnOptions in filter-groups.tsx.
+ * So the label keeps the full muted ink, 5.54:1, which is a tile's resting ink
+ * and the one a sidebar label steps back to from its foreground
+ * (SIDEBAR_LABEL_REST), and the two things that are actually true of a dead
+ * option are what say so: the count reads 0, and the box there would be
+ * nothing to tick in is not drawn (group-disabled:hidden on
+ * FilterSelectionMark). In the sidebar the row is usually not drawn at all;
+ * see drawnOptions in filter-groups.tsx.
  *
  * It rides here rather than on the cva because the cva's default layout is the
  * tile and the portal calls it without one, so a variant or a compound would
@@ -841,15 +843,41 @@ export function FilterCardHoverLift({
 }
 
 /**
- * The voice a sidebar row sets its label in.
+ * The voice a sidebar row sets its label in: 12px at lg and 14px from xl.
+ *
+ * From xl the rail is a card column, 285 to 291px beside cards whose names are
+ * 18px and whose facts are 14px near-black (RESULTS_COLUMNS in
+ * lib/card-grid.ts), and 12px grey labels were the smallest and lightest words
+ * on that row. At lg the rail is still 224px and the step does not fit it.
+ * With the rail's own 10px scrollbar a label has 96px there, and "Nad 6
+ * mesecev" is 103px at 14px, the second line the count column's min-w-6 was
+ * measured to take away; the lines a step below, at 12px, would break too
+ * ("Zdravila, dieta ali pomoč" is 138px, under a label and count 128px wide).
+ * So the whole step, count, descriptions and notes with it, waits for xl.
  *
  * Exported because the age rows cannot use FilterCardTail: that tail is a flex
  * line and the age row is a three-column grid, so it draws its own label and
  * count and borrows the sizes from here. Hand-copied they drifted, and Starost
  * printed 11px over 10px while every other section printed 12 over 11.
  */
-const SIDEBAR_LABEL_TYPE = "text-xs";
+const SIDEBAR_LABEL_TYPE = "text-xs xl:text-sm";
 export const SIDEBAR_LABEL_CLASS = `truncate ${SIDEBAR_LABEL_TYPE}`;
+
+/**
+ * The ink a sidebar label rests in, which is the page's foreground and not the
+ * muted grey it shared with its count. The count and a row's description keep
+ * the grey, so the row still reads label first; the label had been the same
+ * grey as the number beside it, lighter than the facts on every card beside
+ * the rail. A chosen row's label takes the fill's ink from the row, so this is
+ * for the resting state only.
+ *
+ * A dead row steps back to the grey (DEAD_OPTION_CLASS): a near-black label
+ * beside a 0 and no box to tick reads as an answer to press.
+ *
+ * Exported for the age rows, which draw their own label (SIDEBAR_LABEL_CLASS).
+ */
+export const SIDEBAR_LABEL_REST =
+  "text-foreground group-disabled:text-muted-foreground";
 
 /**
  * The resting voice of the count, per layout. Not exported: everything that
@@ -857,22 +885,24 @@ export const SIDEBAR_LABEL_CLASS = `truncate ${SIDEBAR_LABEL_TYPE}`;
  * state with it, and a caller reaching past that would print a number the
  * brand fill measures 4.45:1 against at 11-12px.
  *
- * 11px is a narrow column's size. The sidebar is 224px wide beside a grid and
- * can spend the step; the sheet is a phone held at arm's length, and 11px
- * there was the smallest type on the page under a 12px label it belongs to.
- * The label is text-xs in both layouts, so the sheet's step only stops the
+ * In the sidebar it is one step under the label beside it: 11px at lg, where
+ * the rail is 224px wide and can spend the step, and 12px from xl, where the
+ * label is 14px (SIDEBAR_LABEL_TYPE). The sheet is a phone held at arm's
+ * length, and 11px there was the smallest type on the page under a 12px label
+ * it belongs to. The sheet's label is text-xs, so its step only stops the
  * count from sitting below the word it counts.
  *
  * The sidebar's column starts at min-w-6 and grows with its digits, in every
  * section. A fixed w-8 left the label 86px of a 214px row, and "Nad 6
  * mesecev" (88.5px) broke onto a second line. Three digits measure 23.3px at
- * this size, so today's counts keep one column edge; a fourth measures 31.1px
- * and widens the column into the label's room rather than running into the
- * mark. The flex tail adds shrink-0, because a long label could otherwise
- * squeeze the column back down to its minimum.
+ * 12px and 21.4px at 11px, so today's counts keep one column edge at both
+ * sizes; a fourth measures 31.1px at 12px and widens the column into the
+ * label's room rather than running into the mark. The flex tail adds
+ * shrink-0, because a long label could otherwise squeeze the column back down
+ * to its minimum.
  */
 const SIDEBAR_COUNT_CLASS =
-  "min-w-6 text-right text-2xs tabular-nums text-muted-foreground";
+  "min-w-6 text-right text-2xs tabular-nums text-muted-foreground xl:text-xs";
 
 const SHEET_COUNT_CLASS = "text-xs tabular-nums text-muted-foreground";
 
@@ -931,8 +961,8 @@ const DESCRIPTION_CLASS: Readonly<
     chosen: "line-clamp-2 max-w-full text-2xs leading-snug text-brand-foreground/80",
   }),
   sidebar: Object.freeze({
-    rest: "text-2xs leading-snug text-muted-foreground",
-    chosen: "text-2xs leading-snug text-brand-foreground/80",
+    rest: "text-2xs leading-snug text-muted-foreground xl:text-xs",
+    chosen: "text-2xs leading-snug text-brand-foreground/80 xl:text-xs",
   }),
 });
 
@@ -1009,7 +1039,7 @@ export function FilterCardTail({
           className={cn(
             SIDEBAR_LABEL_TYPE,
             "min-w-0 whitespace-normal leading-tight",
-            checked && "font-medium",
+            checked ? "font-medium" : SIDEBAR_LABEL_REST,
           )}
         >
           {label}

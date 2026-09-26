@@ -82,7 +82,10 @@ function AnimalStep({
       // press steps in place, the way the edge arrows do.
       href={animalPath(animal, locale)}
       // Not speculated: the site's rules fetch a same-origin link's page on a
-      // press, and a plain press here never goes to it.
+      // press, and a plain press here never goes to it. Chrome keys a
+      // candidate by its address, though, so where the grid has drawn this
+      // animal's card, the card still makes its page one, and a press here
+      // fetches it the way a press on the card would.
       data-no-speculate=""
       data-slot="animal-step"
       data-direction={direction}

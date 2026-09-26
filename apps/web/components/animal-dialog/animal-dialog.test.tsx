@@ -3036,6 +3036,21 @@ describe("animal dialog", () => {
     expect(within(dialog).getByText("Ta žival je že našla nov dom.")).toBeTruthy();
   });
 
+  // The shell keeps the bar's height clear for a focused control only while
+  // the bar is there to cover one.
+  it("keeps focus clear of the sticky bar only while it is drawn", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    const { unmount } = renderGrid();
+    const shell = await screen.findByRole("dialog");
+    expect(shell.className).toContain("phone-shell:scroll-pb-");
+    unmount();
+
+    window.history.replaceState(null, "", "/?zival=lucky");
+    renderGrid([ADOPTED]);
+    const bare = await screen.findByRole("dialog");
+    expect(bare.className).not.toContain("scroll-pb");
+  });
+
   // The line is the provider's own Slovenian, printed verbatim, so on an
   // English page it has to say which language it is in.
   it("marks the attribution Slovenian away from the Slovenian pages", () => {

@@ -8,6 +8,7 @@ import {
   fetchAnimals,
   saveAnimal,
   type PortalAnimal,
+  type PortalPublished,
 } from "@/lib/portal-api";
 
 // Only the two calls the hook makes are stubbed. PortalError and
@@ -121,6 +122,38 @@ describe("the name the public site can already have a page for", () => {
   });
 });
 
+describe("the answers the public site shows", () => {
+  const PUBLISHED: PortalPublished = {
+    size: null,
+    energy: "lively",
+    goodWithKids: null,
+    goodWithDogs: null,
+    goodWithCats: "yes",
+    apartmentOk: null,
+  };
+
+  // Every page reads the list, so the list is where they are filled in: as
+  // it arrives, and as each save answers.
+  it("are what the list holds, loaded and saved", async () => {
+    const { result } = await load([animal({ published: PUBLISHED })]);
+
+    expect(result.current.animals[0].goodWithCats).toBe("yes");
+    expect(result.current.animals[0].overrides).toEqual({});
+
+    vi.mocked(saveAnimal).mockResolvedValue(
+      animal({ name: "Murka", overrides: { name: "Murka" }, published: PUBLISHED }),
+    );
+    let saved: PortalAnimal | null = null;
+    await act(async () => {
+      saved = await result.current.save("testno:1", { name: "Murka" });
+    });
+
+    expect(saved).toBe(result.current.animals[0]);
+    expect(result.current.animals[0].name).toBe("Murka");
+    expect(result.current.animals[0].energy).toBe("lively");
+  });
+});
+
 describe("a list read under a shelter it was not fetched for", () => {
   it("is loading, with nothing of the previous shelter's, from the first render", async () => {
     vi.mocked(fetchAnimals).mockImplementation(async (slug) =>
@@ -167,14 +200,14 @@ describe("one animal saved twice at once", () => {
     const { result } = await load([animal()]);
     const queue = heldSaves();
 
-    let first: Promise<boolean> = Promise.resolve(false);
-    let second: boolean | null = null;
+    let first: Promise<PortalAnimal | null> = Promise.resolve(null);
+    let second: PortalAnimal | null | undefined;
     await act(async () => {
       first = result.current.save("testno:1", { name: "Murka" });
       second = await result.current.save("testno:1", { name: "Murkica" });
     });
 
-    expect(second).toBe(false);
+    expect(second).toBeNull();
     expect(queue).toHaveLength(1);
     expect(sentPatches()).toEqual([["testno:1", { name: "Murka" }]]);
     expect(result.current.saveStates["testno:1"]).toEqual({ status: "saving" });
@@ -183,18 +216,18 @@ describe("one animal saved twice at once", () => {
       queue[0].resolve(animal({ name: "Murka", overrides: { name: "Murka" } }));
       await first;
     });
-    expect(await first).toBe(true);
+    expect(await first).toBe(result.current.animals[0]);
     expect(result.current.animals[0].name).toBe("Murka");
 
     // Once it has answered, the same animal saves again.
     vi.mocked(saveAnimal).mockResolvedValue(
       animal({ name: "Murkica", overrides: { name: "Murkica" } }),
     );
-    let third = false;
+    let third: PortalAnimal | null = null;
     await act(async () => {
       third = await result.current.save("testno:1", { name: "Murkica" });
     });
-    expect(third).toBe(true);
+    expect(third).toBe(result.current.animals[0]);
     expect(result.current.animals[0].name).toBe("Murkica");
   });
 
@@ -220,12 +253,12 @@ describe("a session that ends during a save", () => {
     const { result, onUnauthorized } = await load([animal()]);
     vi.mocked(saveAnimal).mockRejectedValue(new PortalError(401));
 
-    let saved = true;
+    let saved: PortalAnimal | null | undefined;
     await act(async () => {
       saved = await result.current.save("testno:1", { name: "Murka" });
     });
 
-    expect(saved).toBe(false);
+    expect(saved).toBeNull();
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
     expect(result.current.saveStates["testno:1"]).toEqual({ status: "idle" });
   });

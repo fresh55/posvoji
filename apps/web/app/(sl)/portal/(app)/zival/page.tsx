@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { LoaderCircle } from "lucide-react";
 import { AnimalEditorPage } from "@/components/portal/animal-editor-page";
+import { PortalPending } from "@/components/portal/notice";
 import { PortalPageTransition } from "@/components/portal/portal-transition";
 import { portalText } from "@/components/portal/portal-text";
 
@@ -27,14 +27,7 @@ export const metadata: Metadata = {
 export default function PortalAnimal() {
   return (
     <PortalPageTransition>
-      <Suspense
-        fallback={
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <LoaderCircle className="size-4 animate-spin" aria-hidden />
-            {portalText.loading}
-          </p>
-        }
-      >
+      <Suspense fallback={<PortalPending label={portalText.loading} />}>
         <AnimalEditorPage />
       </Suspense>
     </PortalPageTransition>

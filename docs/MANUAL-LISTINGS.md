@@ -211,3 +211,13 @@ Manual shelters get a different editor from crawled ones. There is no crawled
 baseline, so no override marks, no revert, no "empty means your site's value".
 Create and edit are one form that sends the whole listing. The crawled editor
 is untouched.
+
+Both kinds of shelter also get the quick answers page,
+`/portal/odgovori?zavetisce=<slug>`: the three household questions, size
+(never for a cat) and energy, one animal at a time, each answer saved on the
+tap. For a listing the tap sends the whole listing with that one field
+changed, the same full replace the status buttons send. Only one save of a
+listing is out at a time and the next is built on the listing the previous one
+returned, because two replaces in flight would each carry the other's field
+back as it was. Ne vem never stores a value: on a listing it empties the field
+if the shelter had filled it, and otherwise changes nothing.

@@ -124,6 +124,29 @@ export const PORTAL_FIELDS = [
 ] as const;
 export type PortalField = (typeof PORTAL_FIELDS)[number];
 
+/**
+ * The answers the portal asks a shelter for, the ones the published dataset
+ * reports beside each animal (PortalPublished).
+ */
+export const PUBLISHED_FIELDS = [
+  "size",
+  "energy",
+  "goodWithKids",
+  "goodWithDogs",
+  "goodWithCats",
+  "apartmentOk",
+] as const satisfies readonly PortalField[];
+export type PublishedField = (typeof PUBLISHED_FIELDS)[number];
+
+/**
+ * What the public site shows for those answers, read off the dataset it was
+ * last built from. That dataset carries the reviewed enrichment on top of the
+ * crawl, and the corrections of the last export, so it can answer where the
+ * crawled values of PortalAnimal cannot. Display only: null is no answer on
+ * the public site.
+ */
+export type PortalPublished = Record<PublishedField, string | null>;
+
 /** One animal, crawled values already merged with the shelter's overrides. */
 export type PortalAnimal = {
   id: string;
@@ -145,6 +168,12 @@ export type PortalAnimal = {
   thumbnailUrl: string | null;
   /** Only the fields the shelter changed, with the value it changed them to. */
   overrides: Partial<Record<PortalField, unknown>>;
+  /**
+   * Beside the values above, never merged into them: those are what an
+   * override is made against. Null for an animal the published dataset does
+   * not hold, and absent from an API older than the field.
+   */
+  published?: PortalPublished | null;
 };
 
 /**

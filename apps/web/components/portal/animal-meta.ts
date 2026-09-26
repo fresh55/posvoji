@@ -1,7 +1,7 @@
 // What the card and the editor page's summary both say about one animal: the
-// line under the name, the address of its public page, and which of the
-// adopter's filters it still leaves blank. Written once, because the two are
-// the same animal on two screens.
+// line under the name, the address of its public page, the answers the public
+// site shows, and which of the adopter's filters it still leaves blank.
+// Written once, because the two are the same animal on two screens.
 
 import {
   SEARCHABLE_FIELDS,
@@ -16,12 +16,40 @@ import { ageInMonths } from "@/lib/filters";
 import { formatAge, pick } from "@/lib/labels";
 import { isOverridden } from "@/components/portal/animal-draft";
 import { fill, portalText } from "@/components/portal/portal-text";
-import type {
-  PortalAnimal,
-  PortalListing,
-  PortalShelter,
-  PortalStatus,
+import {
+  PUBLISHED_FIELDS,
+  type PortalAnimal,
+  type PortalListing,
+  type PortalShelter,
+  type PortalStatus,
 } from "@/lib/portal-api";
+
+/**
+ * The animal with the answers the public site shows filled in, in the order
+ * the site itself decides them: the shelter's own correction, then the
+ * published dataset, then the crawl.
+ *
+ * The API keeps the published answers apart because the crawled values are
+ * what a correction is made against. The list hook holds every animal as this
+ * view, so everything that shows an answer or asks whether one is missing
+ * reads it: the editor's rows and marks, the row's "manjka" count, the "Za
+ * pregled" chip and the quick answers. The editor builds its draft and its
+ * patch from the same view, so a published answer the shelter leaves alone is
+ * never sent back as a correction.
+ *
+ * The published dataset carries the corrections of the last export, so one
+ * the shelter has taken back since still shows here until the next export.
+ */
+export function withPublished(animal: PortalAnimal): PortalAnimal {
+  const published = animal.published;
+  if (!published) return animal;
+  const view: PortalAnimal = { ...animal };
+  for (const field of PUBLISHED_FIELDS) {
+    const value = published[field];
+    if (value !== null && !isOverridden(animal, field)) view[field] = value;
+  }
+  return view;
+}
 
 /**
  * What the line under the name is read off. A crawled animal and a manual

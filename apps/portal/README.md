@@ -100,6 +100,13 @@ Corrections keep winning until explicitly cleared. Review source changes in
 the correction and reset its baseline. Ingest records the results in
 `data/dist/overrides.json`.
 
+Each animal the routes return also carries `published`: what `DATASET_PATH`
+shows for size, energy, the three "good with" answers and `apartmentOk`, which
+includes the reviewed enrichment the crawled file lacks. It is display only
+and never becomes a correction. The editor shows the shelter's correction
+first, then the published value, then the crawl. `published` is `null` for an
+animal the file does not hold, or when there is no file.
+
 Providers with `ingestion: manual` use listing routes instead. `POST` creates,
 `PUT` replaces the whole listing, and `DELETE` archives it. Photos accept JPEG,
 PNG or WebP up to 15 MB; the portal strips metadata and resizes to at most

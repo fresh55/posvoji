@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import type { ReactElement, ReactNode, Ref } from "react";
 import {
   LoaderCircle,
   SearchX,
@@ -8,7 +8,12 @@ import {
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
-import { PORTAL_LOGIN_PATH, PORTAL_PATH } from "@/hooks/use-portal-session";
+import type { PortalListState } from "@/hooks/portal-list";
+import {
+  PORTAL_LOGIN_PATH,
+  PORTAL_PATH,
+  type PortalSessionState,
+} from "@/hooks/use-portal-session";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,6 +41,16 @@ export function PortalPending({ label }: { label: string }) {
       <LoaderCircle className="size-4 animate-spin" aria-hidden />
       {label}
     </p>
+  );
+}
+
+/** A page with nothing to show yet: the portal's name and the line. */
+export function PortalPendingPage({ label }: { label: string }) {
+  return (
+    <>
+      <PortalPageHeading />
+      <PortalPending label={label} />
+    </>
   );
 }
 
@@ -118,6 +133,14 @@ export function PortalNotice({
 }
 
 /**
+ * The frame of a one-line notice above the list: a sentence, and the button
+ * that acts on it, which drops under the sentence when the line runs out of
+ * room. Each notice sets its own gap between the two.
+ */
+export const LIST_BANNER =
+  "flex flex-wrap items-center justify-between gap-x-4 rounded-ui border bg-muted/30 px-3 py-2.5 text-sm";
+
+/**
  * The session check itself did not answer, so the portal knows neither who is
  * here nor that nobody is.
  *
@@ -165,22 +188,31 @@ export function SessionError({
 
 /**
  * No animal or listing under this address: a wrong id, a shelter the account
- * does not have, or an address that names neither.
+ * does not have, or an address that names neither. A page that is not about
+ * one animal says what it could not open in its own words.
  */
-export function EditorNotFound() {
+export function EditorNotFound({
+  icon = SearchX,
+  title = portalText.editorNotFoundTitle,
+  lead = portalText.editorNotFoundLead,
+}: {
+  icon?: LucideIcon;
+  title?: string;
+  lead?: string;
+}) {
   return (
     <>
       <PortalPageHeading />
       <PortalNotice
-        icon={SearchX}
-        title={portalText.editorNotFoundTitle}
+        icon={icon}
+        title={title}
         action={
           <Button asChild variant="outline" size="sm">
             <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
           </Button>
         }
       >
-        {portalText.editorNotFoundLead}
+        {lead}
       </PortalNotice>
     </>
   );
@@ -214,4 +246,55 @@ export function EditorListError({
       </PortalNotice>
     </>
   );
+}
+
+/**
+ * What a page draws while there is no session to work under, or null once
+ * there is: the line while it is read and while a visitor without one is sent
+ * to the login, and the notice when it could not be read.
+ */
+export function sessionGate(
+  session: PortalSessionState,
+  onRetry: () => void,
+): ReactElement | null {
+  if (session.status === "loading" || session.status === "anonymous") {
+    return (
+      <PortalPendingPage
+        label={
+          session.status === "anonymous"
+            ? portalText.redirecting
+            : portalText.loading
+        }
+      />
+    );
+  }
+  if (session.status === "error") {
+    return (
+      <>
+        <PortalPageHeading />
+        <SessionError offline={session.offline} onRetry={onRetry} />
+      </>
+    );
+  }
+  return null;
+}
+
+/**
+ * What a page draws until the list its subject is in has arrived, or null
+ * once it has: the notice when the list could not be read, and the line while
+ * it is on its way. `showing` is whether the portal is on the shelter the
+ * address names yet; until it is, that shelter's list is not the one here.
+ */
+export function listGate(
+  showing: boolean,
+  state: PortalListState,
+  onReload: () => void,
+): ReactElement | null {
+  if (showing && state.status === "error") {
+    return <EditorListError message={state.message} onReload={onReload} />;
+  }
+  if (!showing || state.status !== "ready") {
+    return <PortalPendingPage label={portalText.loading} />;
+  }
+  return null;
 }

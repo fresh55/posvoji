@@ -7,6 +7,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Glyph } from "@/components/portal/glyph";
+import { LIST_BANNER } from "@/components/portal/notice";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
 import type { PortalBulkState } from "@/hooks/use-portal-animals";
@@ -50,10 +51,7 @@ export function ReviewBanner({
   const mark = done ? Check : failed ? TriangleAlert : null;
 
   return (
-    <div
-      role="status"
-      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-ui border bg-muted/30 px-3 py-2.5 text-sm"
-    >
+    <div role="status" className={cn(LIST_BANNER, "gap-y-2")}>
       <p
         className={cn(
           "min-w-0 flex-1",

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import { cn } from "@/lib/utils";
 
 // The frame both editor pages draw around their form. A crawled animal and a
 // manual listing are edited on the same page, so the way back to the list, the
@@ -27,17 +28,18 @@ function opensElsewhere(event: React.MouseEvent): boolean {
 /** Where the shelter is, and the way back to the list. */
 export function EditorBreadcrumb({
   name,
-  blocked,
+  blocked = false,
   saving = false,
   onBlocked,
 }: {
   /** The animal being edited, which is where this trail ends. */
   name: string;
   /** Whether leaving would drop typed work that has not been asked about. */
-  blocked: boolean;
+  blocked?: boolean;
   /** A save is on its way. The link waits with the rest of the page. */
   saving?: boolean;
-  onBlocked: () => void;
+  /** What a click held back by `blocked` does instead. */
+  onBlocked?: () => void;
 }) {
   return (
     <nav
@@ -63,7 +65,7 @@ export function EditorBreadcrumb({
           // asked about yet.
           if (blocked) {
             event.preventDefault();
-            onBlocked();
+            onBlocked?.();
           }
         }}
         className="rounded-ui underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:text-muted-foreground aria-disabled:hover:no-underline"
@@ -79,13 +81,60 @@ export function EditorBreadcrumb({
 }
 
 /**
+ * The frame of a bar pinned to the bottom of a phone screen and in the flow
+ * of the page from lg. The bottom padding carries the phone's home indicator.
+ *
+ * PortalShell pads by --portal-save-bar-height after the footer whenever the
+ * page holds a [data-save-bar], so its links stay reachable too, and the frame
+ * keeps that height measured: a wrapped error line and the phone's safe area
+ * both make the bar taller than its buttons. `className` adds to the frame.
+ */
+export function PinnedBar({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  const barRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const shell = bar?.closest<HTMLElement>("[data-portal-shell]");
+    if (!bar || !shell) return;
+    const measure = () => {
+      const height = bar.getBoundingClientRect().height;
+      if (height > 0) shell.style.setProperty("--portal-save-bar-height", `${height}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(bar);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      shell.style.removeProperty("--portal-save-bar-height");
+    };
+  }, []);
+
+  return (
+    <div
+      ref={barRef}
+      data-save-bar
+      className={cn(
+        className,
+        "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
  * One bar, in two places. Beside the form on a wide screen, where the summary
  * is sticky and it rides along; pinned to the bottom of the window below that,
  * where the summary is at the top of a page the shelter has scrolled away
  * from.
- *
- * The bottom padding carries the phone's home indicator. PortalShell reserves
- * the measured bar height after the footer so its links stay reachable too.
  *
  * A save that did not go through is said in the bar, above the buttons: it is
  * the one part of the page that is on screen wherever the shelter pressed
@@ -113,34 +162,9 @@ export function EditorSaveBar({
 }) {
   const hintId = useId();
   const notice = hint ?? (!saving && dirty ? portalText.unsavedChanges : null);
-  const barRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const bar = barRef.current;
-    const shell = bar?.closest<HTMLElement>("[data-portal-shell]");
-    if (!bar || !shell) return;
-    // The clearance belongs after the footer, and includes a wrapped error
-    // message and the phone's safe area, not just the buttons' normal height.
-    const measure = () => {
-      const height = bar.getBoundingClientRect().height;
-      if (height > 0) shell.style.setProperty("--portal-save-bar-height", `${height}px`);
-    };
-    measure();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(bar);
-    window.addEventListener("resize", measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", measure);
-      shell.style.removeProperty("--portal-save-bar-height");
-    };
-  }, []);
 
   return (
-    <div
-      ref={barRef}
-      data-save-bar
-      className="space-y-2 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2"
-    >
+    <PinnedBar className="space-y-2">
       {error}
       {notice && (
         <p id={hintId} role="status" className="text-sm text-muted-foreground">
@@ -166,7 +190,7 @@ export function EditorSaveBar({
           {saving ? portalText.saving : portalText.save}
         </Button>
       </div>
-    </div>
+    </PinnedBar>
   );
 }
 

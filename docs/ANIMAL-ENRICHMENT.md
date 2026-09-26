@@ -122,6 +122,12 @@ Not used: a post's publish date, because sites reuse old posts for new animals
 animal, which belongs to the earlier stay, and `firstSeenAt`, which is when
 this site found the listing.
 
+`firstSeenAt` answers a different question, which is what is new on this
+site, and that is where it is read: the grid's projection carries it as
+`listedAt` (`apps/web/lib/animal.ts`), in whole minutes, for the "Nove objave"
+order and the Novo mark a returning visitor sees, and the feeds of new
+listings date their entries by it (`apps/web/lib/feeds.ts`).
+
 ## Verification and release
 
 Run `pnpm check` before release. Enrichment tests cover stale evidence, permission,

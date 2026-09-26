@@ -122,7 +122,10 @@ datasets as it reads them (`RETIRED_ANIMAL_FIELDS` in
 `apps/ingest/src/run-guards.ts`) and writes them without it, keeping every
 `firstSeenAt`. No operator step is needed. If an export stops on
 `Unrecognized key` for a removed field, add the field to that list. Do not use
-`--discard-previous`, which resets every `firstSeenAt`. Do not
+`--discard-previous`, which resets every `firstSeenAt`: that is the listing
+date the "Nove objave" order, the Novo mark and the feeds of new listings
+read, so every animal would turn up as new to every returning visitor and
+fill the feeds. Do not
 `--retry-publish` a generation sealed before such a promotion either: it builds
 the saved datasets unchanged, and the site build rejects the removed field. Run
 the crawl or `--republish` instead.

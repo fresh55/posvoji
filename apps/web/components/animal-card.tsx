@@ -16,6 +16,7 @@ import type { DialogOrigin } from "@/components/animal-dialog/animal-dialog";
 import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-context";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { ShelterDistance } from "@/components/shelter-distance";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import type { ClientAnimal } from "@/lib/animal";
@@ -623,6 +624,14 @@ export const AnimalCard = memo(function AnimalCard({
           <span className="min-w-0 truncate">
             {shelterChipLabel(animal.shelter.name)}
           </span>
+          {/* How far the shelter's town is, once the visitor has given the
+              location picker a place: "Horjul · 24 km". A visitor from
+              Maribor cannot place Horjul, Zavod Muri or Turk by name, and
+              until this the distance was only in the picker. Nothing is drawn
+              without an origin, and the name truncates before the distance
+              does. Its own component, so a new origin renders the number and
+              not the card; see shelter-distance.tsx. */}
+          <ShelterDistance city={animal.shelter.city} />
           {/* The chevron appears when a pointer or the keyboard is already
               on the card. At rest the muted line is enough on its own, now
               that the house that used to sit beside it is gone.

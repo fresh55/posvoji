@@ -17,9 +17,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
+import {
+  resetNearbyOriginStore,
+  usePublishNearbyOrigin,
+} from "@/hooks/use-nearby-origin";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { animalsForClient } from "@/lib/dataset";
+import { cityAt, distanceKm, formatKm } from "@/lib/geo";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
 import { PHOTO_TRANSITION_NAME } from "@/lib/photo-morph";
 import { pointer } from "@/test/pointer";
@@ -460,6 +465,109 @@ describe("AnimalCard shelter line", () => {
     expect(
       screen.getByRole("link", { name: "Test" }).getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
+  });
+});
+
+// The writer, standing in for the location picker: it draws nothing and
+// publishes the point a typed place resolves to, which is the whole of what
+// the picker hands the rest of the page.
+function GrantOrigin({ city }: { city: string }) {
+  usePublishNearbyOrigin({ at: cityAt(city)!, source: "typed", label: city });
+  return null;
+}
+
+describe("AnimalCard distance", () => {
+  beforeEach(() => resetNearbyOriginStore());
+  afterEach(() => resetNearbyOriginStore());
+
+  // The fixture's shelter is in Ljubljana, which is under a kilometre from a
+  // visitor who typed Ljubljana; Maribor is the far one.
+  const inMaribor = () =>
+    animal({
+      shelter: { id: "test-shelter", name: "Zavetišče Test", city: "Maribor" },
+    });
+
+  it("draws no distance while nobody has given a place", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={inMaribor()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Test" })).toBeTruthy();
+    expect(document.querySelector('[data-slot="shelter-km"]')).toBeNull();
+  });
+
+  it("puts the distance to the shelter's town after its name", () => {
+    render(
+      <I18nProvider locale="sl">
+        <GrantOrigin city="Ljubljana" />
+        <AnimalCard
+          animal={inMaribor()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    // The measure Najbližje sorts by: the town, in a straight line.
+    const km = formatKm(distanceKm(cityAt("Ljubljana")!, cityAt("Maribor")!));
+    expect(km).toMatch(/^\d+ km$/);
+    // Part of the link's own text, so the name a screen reader hears is the
+    // line the eye reads. \s because the spaces around the middot are held
+    // ones, and the name computation keeps one of the two.
+    expect(
+      screen
+        .getByRole("link", { name: new RegExp(`^Test\\s·\\s${km}$`) })
+        .getAttribute("href"),
+    ).toBe("/zavetisca/test-shelter");
+  });
+
+  it("says less than a kilometre in the page's own words", () => {
+    render(
+      <I18nProvider locale="sl">
+        <GrantOrigin city="Ljubljana" />
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      document.querySelector('[data-slot="shelter-km"]')?.textContent,
+    ).toBe("\u00a0·\u00a0manj kot 1 km");
+  });
+
+  // The name is the half that gives way on a narrow card; the distance is a
+  // box of its own that does not shrink or wrap. jsdom lays nothing out, so
+  // this pins the two boxes the layout rests on, and the 320px screenshots
+  // are the measurement.
+  it("keeps the distance whole and lets the name truncate", () => {
+    render(
+      <I18nProvider locale="sl">
+        <GrantOrigin city="Ljubljana" />
+        <AnimalCard
+          animal={inMaribor()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    const km = document.querySelector('[data-slot="shelter-km"]')!;
+    expect(km.className).toContain("shrink-0");
+    expect(km.className).toContain("whitespace-nowrap");
+    expect(km.previousElementSibling?.className).toContain("truncate");
   });
 });
 

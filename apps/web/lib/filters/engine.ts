@@ -936,6 +936,162 @@ export function thinnestAnswer(
   return thinnest;
 }
 
+/** A question the visitor answered, named the way Coverage names one: a group
+ *  by its facet, a facet of an AND section by its key as well. */
+export type Question =
+  | { readonly facet: Exclude<MultiGroup, "shelter"> }
+  | { readonly facet: "goodWith"; readonly key: GoodWithKey }
+  | { readonly facet: "toggles"; readonly key: ToggleKey };
+
+export type UnansweredBand<T> = {
+  /** In the order they were given. */
+  readonly animals: T[];
+  /** The questions they leave unanswered between them. */
+  readonly missing: readonly Question[];
+};
+
+/** Which picked questions the band lets through unanswered, one mask per
+ *  kind: GROUP_BITS for the groups, each AND section's own bits for its keys.
+ *  The same shape records what the band's animals lack between them. */
+type Relaxed = { groups: number; goodWith: number; toggles: number };
+
+/**
+ * The animals a pick hides only for want of an answer: they fail the filter,
+ * and every question they fail is one they leave unanswered. Everything else
+ * holds as it does for applyFilters. "Doma imam: Otroke" is answered for 12
+ * of 491 animals, so Psi and Otroke shows 2 of 124 dogs, and for 121 of the
+ * other 122 nobody said. The grid offers these after its matches rather than
+ * mixing them in: matching stays strict, and a family that is shown 2 dogs
+ * and unticks the filter sees all 124, the one that is not good with children
+ * among them.
+ *
+ * An answer that contradicts a pick keeps the animal out: a no, a positive
+ * test, a known size, age or wait that differs. The species tab, Kje and
+ * Lahko ponudim keep out whoever they keep out of the result. Every animal
+ * answers the first two, and one with no need stated is not missing an answer
+ * to the third: it has no need for the visitor's offer to meet.
+ *
+ * A question only lets its unanswered through when they are a share worth
+ * naming, the tenth namesUnanswered draws a section's line at, of the animals
+ * the band draws from: the species tab, the shelters picked and the needs
+ * offered. That keeps Spol, whose unknowns are 8 of 491, strict, so the band
+ * never grows by a handful of records a shelter happened to leave blank, and
+ * it still relaxes a gap one shelter has: Mačji dol states an age for 4 of its
+ * 15 cats. The other questions picked are left out of that measure, because
+ * they are the ones the band relaxes. Measured over what they leave, Brez FIV
+ * and Brez FeLV picked together were each counted over the cats the other one
+ * leaves, which are the tested ones, and the band offered nothing while 120
+ * cats have neither result.
+ *
+ * A question the species is not asked is not unanswered either: a cat has no
+ * size and a dog no FIV result, so a size picked on Vse leaves every cat out
+ * of the band as well.
+ */
+export function unansweredBand<T extends AnimalFields>(
+  animals: T[],
+  filters: Filters,
+  now: Date,
+): UnansweredBand<T> {
+  const pass = passOf(animals, filters, now);
+  const scope: Filters = {
+    ...EMPTY_FILTERS,
+    species: filters.species,
+    shelter: filters.shelter,
+    care: filters.care,
+  };
+  const relaxed = relaxedOf(unansweredCounts(animals, scope, now), pass.query);
+  const band: T[] = [];
+  const lacking: Relaxed = { groups: 0, goodWith: 0, toggles: 0 };
+  if ((relaxed.groups | relaxed.goodWith | relaxed.toggles) === 0) {
+    return { animals: band, missing: [] };
+  }
+  const { index, query } = pass;
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!speciesAt(pass, slot)) continue;
+    if (!answersAny(index.care[slot], query.care)) continue;
+    const species = index.species[slot];
+    // Each key of an AND section the animal does not answer yes to has to be
+    // one the band relaxes and one the record leaves blank: a no is an
+    // answer, and so is onlyPet for the two animal questions
+    // (goodWithAnswer). Every household question is asked of every animal, a
+    // test of cats alone (TOGGLES_ASKED).
+    const goodWith = andFailedAt(pass, slot, "goodWith");
+    const blankGoodWith = relaxed.goodWith & ~index.goodWithAnswered[slot];
+    if ((goodWith & ~blankGoodWith) !== 0) continue;
+    const toggles = andFailedAt(pass, slot, "toggles");
+    const blankToggles =
+      relaxed.toggles & TOGGLES_ASKED[species] & ~index.togglesAnswered[slot];
+    if ((toggles & ~blankToggles) !== 0) continue;
+    const groups = groupsFailedAt(pass, slot);
+    if ((groups & ~relaxed.groups) !== 0) continue;
+    if (!leavesBlank(pass, slot, groups)) continue;
+    // Failing nothing is a match, which the result already shows.
+    if ((groups | goodWith | toggles) === 0) continue;
+    band.push(animals[slot]);
+    lacking.groups |= groups;
+    lacking.goodWith |= goodWith;
+    lacking.toggles |= toggles;
+  }
+  return { animals: band, missing: questionsOf(lacking) };
+}
+
+/** The picked questions whose unanswered share is worth naming. Kje is left
+ *  out by name, though every animal answers it anyway. */
+function relaxedOf(tally: UnansweredTally, query: Query): Relaxed {
+  let groups = 0;
+  for (const group of GROUPS) {
+    if (group === "shelter" || query.groups[group] === null) continue;
+    if (namesUnanswered(tally.groups[group])) groups |= GROUP_BITS[group];
+  }
+  return {
+    groups,
+    goodWith: maskOf(
+      GOOD_WITH_KEYS.length,
+      (bit) =>
+        (query.goodWith & (1 << bit)) !== 0 &&
+        namesUnanswered(tally.goodWith[GOOD_WITH_KEYS[bit]]),
+    ),
+    toggles: maskOf(
+      TOGGLE_KEYS.length,
+      (bit) =>
+        (query.toggles & (1 << bit)) !== 0 &&
+        namesUnanswered(tally.toggles[TOGGLE_KEYS[bit]]),
+    ),
+  };
+}
+
+/** Whether every group in `failed` is one this animal is asked and leaves
+ *  unanswered, rather than one it answers some other way. */
+function leavesBlank(pass: Pass, slot: number, failed: number): boolean {
+  if (failed === 0) return true;
+  const species = pass.index.species[slot];
+  return GROUPS.every(
+    (group) =>
+      (failed & GROUP_BITS[group]) === 0 ||
+      (groupAsks(group, species) && !answeredAt(pass, slot, group)),
+  );
+}
+
+function questionsOf(lacking: Relaxed): Question[] {
+  const questions: Question[] = [];
+  for (const group of GROUPS) {
+    if (group !== "shelter" && (lacking.groups & GROUP_BITS[group]) !== 0) {
+      questions.push({ facet: group });
+    }
+  }
+  GOOD_WITH_KEYS.forEach((key, bit) => {
+    if ((lacking.goodWith & (1 << bit)) !== 0) {
+      questions.push({ facet: "goodWith", key });
+    }
+  });
+  TOGGLE_KEYS.forEach((key, bit) => {
+    if ((lacking.toggles & (1 << bit)) !== 0) {
+      questions.push({ facet: "toggles", key });
+    }
+  });
+  return questions;
+}
+
 /** What each active value is costing: how many more animals show if it comes
  *  off, everything else left alone. Keyed the way the chips row keys itself.
  *

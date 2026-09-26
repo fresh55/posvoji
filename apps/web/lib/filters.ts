@@ -58,6 +58,7 @@ export {
   namesUnanswered,
   picksEverySex,
   thinnestAnswer,
+  unansweredBand,
   unansweredCounts,
   goodWithAnswer,
   goodWithCounts,
@@ -76,7 +77,9 @@ export {
   visibleGroups,
   visibleToggles,
   type Coverage,
+  type Question,
   type Unanswered,
+  type UnansweredBand,
   type UnansweredTally,
 } from "./filters/engine";
 

@@ -3,6 +3,7 @@
 import { CalendarClock, ExternalLink, Heart, Hourglass } from "lucide-react";
 import { useI18n } from "@/components/i18n-context";
 import { ShelterAvatar } from "@/components/shelter-avatar";
+import { ShelterDistance } from "@/components/shelter-distance";
 import type { AnimalFields } from "@/lib/animal";
 import type { ShelterLogos } from "@/lib/shelter-logos";
 import { shelterPath } from "@/lib/shelter-path";
@@ -141,8 +142,14 @@ export function ShelterBlock({
               {shelter.name}
             </a>
           </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {shelter.city}
+          {/* The town, and how far it is once the visitor has given the
+              location picker a place: "Horjul · 24 km", the measure the card
+              under this dialog and the picker's own rows print. Only the town
+              truncates. The animal's own page has no picker and so no
+              distance; see shelter-distance.tsx. */}
+          <p className="flex text-xs text-muted-foreground">
+            <span className="min-w-0 truncate">{shelter.city}</span>
+            <ShelterDistance city={shelter.city} />
           </p>
           {/* No number here. The shelter page the name above links to holds
               its phone, mail and site, and adoption starts with the shelter's

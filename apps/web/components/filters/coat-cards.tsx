@@ -19,6 +19,7 @@ import {
   filterCardVariants,
   isDeadOption,
   sheetColumnsFor,
+  SIDEBAR_NOTE_TYPE,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import { DRAW_IN } from "@/components/filters/drawn-glyph";
@@ -2033,10 +2034,13 @@ function CoatColorPalette({
         // One line, held open, so Dolžina dlake below does not move as the
         // pointer crosses the grid. aria-live, because for a keyboard reader
         // this line is the only place the swatch under focus is named.
+        //
+        // Idle, it is a section note, and it takes the sidebar's note size
+        // (SIDEBAR_NOTE_TYPE). leading-4 holds either size on one 16px line.
         <>
           <p
             aria-live="polite"
-            className="mt-2 min-h-4 truncate text-2xs leading-4 text-muted-foreground"
+            className={`mt-2 min-h-4 truncate leading-4 text-muted-foreground ${SIDEBAR_NOTE_TYPE}`}
           >
             {readout}
           </p>
@@ -2133,10 +2137,12 @@ function CoatColorPalette({
                   className="size-9 overflow-visible"
                 />
               </m.span>
+              {/* The rows' count size (countClass in filter-card.tsx). */}
               <CountRoll
                 value={count}
                 className={cn(
-                  "text-2xs tabular-nums",
+                  "tabular-nums",
+                  SIDEBAR_NOTE_TYPE,
                   checked
                     ? "font-medium text-foreground"
                     : "text-muted-foreground",

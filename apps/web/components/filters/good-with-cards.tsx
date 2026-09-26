@@ -13,6 +13,7 @@ import {
   filterCardVariants,
   isDeadOption,
   sheetColumnsFor,
+  SIDEBAR_NOTE_TYPE,
   type FilterCardLayout,
 } from "@/components/filters/filter-card";
 import {
@@ -166,7 +167,7 @@ export function GoodWithCards({
         <>
           <p
             aria-live="polite"
-            className="mt-2 text-2xs leading-snug text-muted-foreground empty:mt-0"
+            className={`mt-2 leading-snug text-muted-foreground empty:mt-0 ${SIDEBAR_NOTE_TYPE}`}
           >
             {outcome}
           </p>

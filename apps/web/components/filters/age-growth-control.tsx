@@ -25,10 +25,12 @@ import {
   SIDEBAR_LABEL_CLASS,
   countClass,
   filterCardVariants,
+  sidebarLabelInk,
 } from "@/components/filters/filter-card";
 import {
   CollapsibleBody,
   FilterSectionHeader,
+  NOTE_TYPE,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
 import { UnansweredNote } from "@/components/filters/unanswered-note";
@@ -45,6 +47,7 @@ import { useI18n } from "@/components/i18n-context";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FilterOption, Unanswered } from "@/lib/filters";
 import { groupLabel } from "@/lib/filters";
+import type { TranslationKey } from "@/lib/i18n";
 import { animalCount } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
@@ -65,9 +68,10 @@ function still(length: number, value: number): number[] {
 }
 
 // Each stage grows at its own tempo, the way each paw in Velikost lands with
-// its own weight. The sprout shoots up past its height and flutters; the shrub
-// rises and sways once; the tree comes up slowly, barely overshoots, and swings
-// long and deep enough to shake a leaf loose.
+// its own weight. The sprout shoots up past its height and flutters; the
+// sapling springs up and swings three times, each swing slower and smaller
+// than the sprout's; the shrub rises and sways once; the tree comes up slowly,
+// barely overshoots, and swings long and deep enough to shake a leaf loose.
 type Growth = {
   /** scaleY from the base while the paths draw. scaleX gives back what scaleY
    *  takes, so the plant reads as one body stretching rather than a picture
@@ -81,7 +85,8 @@ type Growth = {
   checkDelay: number;
   /** What it does when it is unpicked, each in its own register: the sprout
    *  wilts and folds its leaves (the icon folds them on AGE_WILT's clock),
-   *  the shrub shivers, the tree gives a little as its leaf lets go. */
+   *  the sapling whips over and springs back past upright, the shrub
+   *  shivers, the tree gives a little as its leaf lets go. */
   farewell: Gesture;
   /** Degrees a reset's gust bends it: the sprout furthest, the tree least. */
   gust: number;
@@ -103,8 +108,8 @@ type Stage = {
   /** Where the plant's lowest stroke ends, in the icon's 24-unit box, with the
    *  sprout's soil left out the way the grove leaves it out. */
   base: number;
-  rangeKey: "ageRangeYoung" | "ageRangeAdult" | "ageRangeSenior";
-  captionKey: "ageCaptionYoung" | "ageCaptionAdult" | "ageCaptionSenior";
+  rangeKey: Extract<TranslationKey, `ageRange${string}`>;
+  captionKey: Extract<TranslationKey, `ageCaption${string}`>;
   growth: Growth;
 };
 
@@ -114,8 +119,8 @@ const STAGES: Record<AgeStage, Stage> = {
     groveClassName: "size-7",
     rowClassName: "size-5",
     base: 21,
-    rangeKey: "ageRangeYoung",
-    captionKey: "ageCaptionYoung",
+    rangeKey: "ageRangeBaby",
+    captionKey: "ageCaptionBaby",
     growth: {
       rise: {
         values: [0.4, 1.16, 0.93, 1.03, 1],
@@ -139,6 +144,45 @@ const STAGES: Record<AgeStage, Stage> = {
       lean: 7,
       spring: { stiffness: 420, damping: 11, mass: 0.4 },
       tuck: 0.9,
+    },
+  },
+  // Every number here sits between the sprout's and the shrub's: a young
+  // tree is springier than a bush and steadier than a shoot. The row's plant
+  // stays at the sprout's size-5, where the sapling's own height already
+  // stands it between the two (18px against 16.4 and 19).
+  mlad: {
+    grovePx: 30,
+    groveClassName: "size-7.5",
+    rowClassName: "size-5",
+    base: 22,
+    rangeKey: "ageRangeYoung",
+    captionKey: "ageCaptionYoung",
+    growth: {
+      rise: {
+        values: [0.48, 1.11, 0.955, 1.015, 1],
+        widths: [1, 0.94, 1.03, 0.995, 1],
+        times: [0, 0.48, 0.72, 0.87, 1],
+        duration: 0.53,
+      },
+      sway: {
+        values: [0, 0, 7.5, -4, 1.5, 0],
+        times: [0, 0.36, 0.55, 0.74, 0.88, 1],
+        duration: 0.75,
+      },
+      checkDelay: 0.33,
+      // A whip: bent over fast, it springs back past upright and each swing
+      // back is slower and smaller than the one before.
+      farewell: {
+        rotate: [0, 6, -3.5, 1.5, -0.5, 0],
+        x: still(6, 0),
+        scaleY: still(6, 1),
+        times: [0, 0.2, 0.44, 0.66, 0.84, 1],
+        duration: 0.7,
+      },
+      gust: 8,
+      lean: 6,
+      spring: { stiffness: 380, damping: 12.5, mass: 0.5 },
+      tuck: 0.91,
     },
   },
   odrasel: {
@@ -218,6 +262,14 @@ const LEAF_CLASS = "text-grove-leaf";
 const WOOD_CLASS = "text-grove-wood";
 const MUTED_CLASS = "text-muted-foreground";
 
+// The phone sheet's four tiles: two rows of two until the screen takes four
+// across. Four across at 320px left each tile 65px, and the check box in its
+// corner ran into the plant, the tree by 1.3px and the shrub by 0.6px. At
+// 360px the tiles are 75px and the nearest plant clears the box by 3.7px. In
+// rem, so a larger text size, which grows everything inside a tile, keeps the
+// two rows longer.
+const SHEET_TILES_CLASS = "grid grid-cols-2 min-[22.5rem]:grid-cols-4";
+
 const STANDARD_EASE = [0.16, 1, 0.3, 1] as const;
 const CELEBRATION_GUARD_MS = 80;
 // Half the icon's 1.7 stroke, in the same 24-unit box as STAGES[].base.
@@ -251,7 +303,7 @@ function celebrationSeconds(stage: AgeStage, reduceMotion: boolean) {
 /**
  * How far a plant's box is lowered so its lowest stroke sits on the middle of
  * its ground line. Each mark ends at a different height in its 24-unit box
- * and they are drawn at three sizes, so one padding left the trees standing a
+ * and they are drawn at four sizes, so one padding left the trees standing a
  * pixel above the ground and the sprout on a strip of soil of its own.
  */
 export function groundSink(stage: AgeStage): number {
@@ -301,7 +353,7 @@ const GUST = {
   times: [0, 0.3, 0.6, 0.82, 1],
   duration: 0.7,
   // Slower than the reset's own 0.045s turn-taking, so it reads as wind
-  // crossing the row rather than three plants moving together.
+  // crossing the row rather than the plants moving together.
   stagger: 0.09,
 };
 // How long a plant still moving from a pick (its own growth, or its lean away
@@ -845,7 +897,7 @@ export function AgeGrowthControl({
           <div
             aria-hidden="true"
             data-age-view="grove"
-            className="relative mb-2 grid grid-cols-3 px-1"
+            className="relative mb-2 grid grid-cols-4 px-1"
           >
             {/* The ground line sits 5px above the plant boxes' foot, which is
                 where each column's own green stretch of it is drawn. */}
@@ -1033,10 +1085,12 @@ export function AgeGrowthControl({
                       captions of the stages left out used to drop to half
                       opacity, which measured 2.08:1 light and 2.68:1 dark at
                       11px: words nobody could read, saying what the faded,
-                      shrunken plant above them already says. Below lg, in the
-                      phone's sheet, they are a step up, at the 12px its tiles
+                      shrunken plant above them already says. The notes' size
+                      (NOTE_TYPE): in the phone's sheet the 12px its tiles
                       print their labels and counts in. */}
-                  <span className="mt-1 text-xs leading-none whitespace-nowrap text-muted-foreground tabular-nums lg:text-2xs">
+                  <span
+                    className={`mt-1 leading-none whitespace-nowrap text-muted-foreground tabular-nums ${NOTE_TYPE}`}
+                  >
                     {messages[stage.captionKey]}
                   </span>
                 </span>
@@ -1057,7 +1111,10 @@ export function AgeGrowthControl({
             // answer Tab in two ways depending on which section you were in.
             rovingFocus={false}
             spacing={layout === "sheet" ? 1.5 : 1}
-            className="w-full items-stretch"
+            className={cn(
+              "w-full items-stretch",
+              layout === "sheet" && SHEET_TILES_CLASS,
+            )}
           >
             {options.map(({ value, label }, index) => {
               if (!isAgeStage(value)) return null;
@@ -1153,9 +1210,10 @@ export function AgeGrowthControl({
                       in the column lights. A tile has no well, as Spol's and
                       Velikost's have none: its plant stands alone in the
                       middle of the card. It stands in a slot as tall as the
-                      tallest plant, on the slot's floor, so the three
-                      plants' heights no longer push their labels and counts
-                      to three different lines (34, 35 and 36px down). */}
+                      tallest plant, on the slot's floor, so the plants'
+                      heights no longer push their labels and counts to
+                      different lines (34, 35 and 36px down when there were
+                      three). */}
                   {layout === "sheet" ? (
                     <span
                       aria-hidden
@@ -1199,7 +1257,7 @@ export function AgeGrowthControl({
                         className={cn(
                           "min-w-0",
                           SIDEBAR_LABEL_CLASS,
-                          checked && "font-medium",
+                          sidebarLabelInk(checked),
                         )}
                       >
                         {label}

@@ -10,7 +10,7 @@ import {
   EditorBreadcrumb,
   EditorSaveBar,
 } from "@/components/portal/editor-chrome";
-import { Glyph } from "@/components/portal/glyph";
+import { PortalThumb } from "@/components/portal/glyph";
 import {
   NEW_DRAFT_ID,
   birthDateFault,
@@ -37,7 +37,6 @@ import {
   fieldRow,
   isPortalField,
   isPortalStatus,
-  portalSpeciesIcon,
   readBoxControl,
 } from "@/components/portal/portal-fields";
 import { usePortal } from "@/components/portal/portal-provider";
@@ -323,8 +322,6 @@ function ListingEditor({
   const name = listing?.name ?? portalText.listingNewTitle;
   const status =
     listing && isPortalStatus(listing.status) ? listing.status : null;
-  const speciesIcon = portalSpeciesIcon(listing?.species ?? draft.species);
-  const photo = listing?.photos[0];
   const statusFailure = slot.failureFrom("status");
   const archiveFailure = slot.failureFrom("archive");
   // The public page is still filed under the name the list loaded with, so the
@@ -498,24 +495,10 @@ function ListingEditor({
         <div className="grid gap-8 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">
             <div className="flex items-start gap-3">
-              {photo ? (
-                // The API host is not one next/image knows, and the stored
-                // copy is already capped at 2048px.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={photo.url}
-                  alt=""
-                  decoding="async"
-                  className="size-16 shrink-0 rounded-ui border bg-muted/40 object-cover"
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className="grid size-16 shrink-0 place-items-center rounded-ui border bg-muted/40 text-muted-foreground"
-                >
-                  <Glyph icon={speciesIcon} className="size-6" />
-                </span>
-              )}
+              <PortalThumb
+                src={listing?.photos[0]?.url ?? null}
+                species={listing?.species ?? draft.species}
+              />
 
               <div className="min-w-0 flex-1 space-y-1">
                 <h1 className="min-w-0 wrap-anywhere text-xl font-semibold tracking-tight">

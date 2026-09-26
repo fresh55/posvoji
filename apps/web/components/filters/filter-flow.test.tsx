@@ -47,9 +47,10 @@ afterEach(() => {
 });
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
-const AGE_GROUPS: AgeGroup[] = ["mladicek", "odrasel", "senior"];
+const AGE_GROUPS: AgeGroup[] = ["mladicek", "mlad", "odrasel", "senior"];
 const AGE_LABELS: Record<AgeGroup, string> = {
   mladicek: "Mladiček",
+  mlad: "Mlad",
   odrasel: "Odrasel",
   senior: "Senior",
 };
@@ -115,7 +116,11 @@ const ANIMALS = [
   animal("male-senior", "male", 120, "large"),
 ];
 
-function FilterFlowHarness() {
+// Two, so Mlad has an animal to pick. Kept out of ANIMALS, whose three are
+// what every other count and sentence in this file is written against.
+const YOUNG_ADULT = animal("female-young", "female", 20, "small");
+
+function FilterFlowHarness({ animals = ANIMALS }: { animals?: Animal[] }) {
   const {
     filters,
     sort,
@@ -131,15 +136,15 @@ function FilterFlowHarness() {
     setSort,
     clearAll,
   } = useAnimalFilters();
-  const matching = applyFilters(ANIMALS, filters, NOW);
-  const shown = visibleGroups(ANIMALS, filters, NOW);
+  const matching = applyFilters(animals, filters, NOW);
+  const shown = visibleGroups(animals, filters, NOW);
   const groups = GROUPS.filter(
     (group): group is CardGroup => group !== "shelter" && shown[group],
   ).map((group) => ({
     group,
-    options: groupOptions(group, ANIMALS, "sl"),
+    options: groupOptions(group, animals, "sl"),
   }));
-  const toggles = visibleToggles(ANIMALS, filters.species, filters.toggles).map(
+  const toggles = visibleToggles(animals, filters.species, filters.toggles).map(
     (definition) => ({
       ...definition,
       label: toggleLabel(definition.key, "sl"),
@@ -151,7 +156,7 @@ function FilterFlowHarness() {
         key: `${group}:${value}`,
         facet: group,
         value,
-        label: optionLabel(group, value, ANIMALS, "sl"),
+        label: optionLabel(group, value, animals, "sl"),
         onRemove: () => toggle(group, value),
       })),
     ),
@@ -177,23 +182,23 @@ function FilterFlowHarness() {
       onRemove: () => toggleCare(key),
     })),
   ];
-  const goodWithKeys = visibleGoodWith(ANIMALS, filters.goodWith);
+  const goodWithKeys = visibleGoodWith(animals, filters.goodWith);
   const goodWith = {
     options: goodWithOptions("sl").filter(({ key }) =>
       goodWithKeys.includes(key),
     ),
-    counts: goodWithCounts(ANIMALS, filters, NOW),
+    counts: goodWithCounts(animals, filters, NOW),
     resultCount: matching.length,
-    total: ANIMALS.length,
+    total: animals.length,
     onToggle: toggleGoodWith,
     onToggleMany: toggleManyGoodWith,
   };
-  const careKeys = visibleCare(ANIMALS, filters.care);
+  const careKeys = visibleCare(animals, filters.care);
   const care = {
     options: careOptions("sl").filter(({ key }) => careKeys.includes(key)),
-    counts: careCounts(ANIMALS, filters, NOW),
+    counts: careCounts(animals, filters, NOW),
     resultCount: matching.length,
-    total: ANIMALS.length,
+    total: animals.length,
     onToggle: toggleCare,
     onToggleMany: toggleManyCare,
   };
@@ -204,9 +209,9 @@ function FilterFlowHarness() {
         <FilterGroupList
           filters={filters}
           groups={groups}
-          counts={facetCounts(ANIMALS, filters, NOW)}
+          counts={facetCounts(animals, filters, NOW)}
           toggles={toggles}
-          toggleTally={toggleCounts(ANIMALS, filters, NOW)}
+          toggleTally={toggleCounts(animals, filters, NOW)}
           goodWith={goodWith}
           care={care}
           onToggle={toggle}
@@ -241,10 +246,10 @@ function FilterFlowHarness() {
   );
 }
 
-function renderFilters() {
-  const result = render(<FilterFlowHarness />);
-  // Every section but Spol and Starost folds closed (use-filter-sections.ts),
-  // and these tests press the options inside them.
+function renderFilters(animals: Animal[] = ANIMALS) {
+  const result = render(<FilterFlowHarness animals={animals} />);
+  // Every section but Starost, and Velikost on Psi, folds closed
+  // (use-filter-sections.ts), and these tests press the options inside them.
   openAllFilterSections();
   return result;
 }
@@ -277,18 +282,32 @@ describe("filter flow interactions", () => {
     expect(query()).toBe("?spol=samec,samica");
   });
 
+  // The comma after the label: "Mlad" alone also starts "Mladiček".
   it("keeps all ages selected and shareable", () => {
-    renderFilters();
+    renderFilters([...ANIMALS, YOUNG_ADULT]);
     for (const value of AGE_GROUPS) {
       fireEvent.click(
-        screen.getByRole("button", { name: new RegExp(`^${AGE_LABELS[value]}`) }),
+        screen.getByRole("button", { name: new RegExp(`^${AGE_LABELS[value]},`) }),
       );
     }
 
     for (const value of AGE_GROUPS) {
-      expect(pressed(new RegExp(`^${AGE_LABELS[value]}`))).toBe("true");
+      expect(pressed(new RegExp(`^${AGE_LABELS[value]},`))).toBe("true");
     }
-    expect(query()).toBe("?starost=mladicek,odrasel,senior");
+    expect(query()).toBe("?starost=mladicek,mlad,odrasel,senior");
+  });
+
+  it("narrows to the young stage and shares it as mlad", () => {
+    renderFilters([...ANIMALS, YOUNG_ADULT]);
+    fireEvent.click(screen.getByRole("button", { name: /^Mlad,/ }));
+
+    expect(pressed(/^Mlad,/)).toBe("true");
+    expect(pressed(/^Mladiček,/)).toBe("false");
+    expect(matchingIds()).toBe("female-young");
+    expect(query()).toBe("?starost=mlad");
+    expect(
+      screen.getByRole("button", { name: "Odstrani filter Mlad" }),
+    ).toBeTruthy();
   });
 
   // Sterilisation, vaccination and the chip stay facts on the animal and are

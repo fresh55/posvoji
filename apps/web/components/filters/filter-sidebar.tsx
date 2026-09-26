@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimalSearchField } from "@/components/filters/animal-search-field";
 import { CountBadge } from "@/components/filters/count-badge";
 import { CountsRollWhile } from "@/components/filters/filter-card";
 import {
@@ -164,6 +165,12 @@ export function FilterSidebar({
           {/* The same badge the phone's dock shows next to "Filtri". */}
           <CountBadge count={activeValues} />
         </h2>
+
+        {/* The search, first under the heading and above Kje: a visitor who
+            arrives with a name asks that before anything the sections ask.
+            Not a section, so no hairline over it; it belongs to the panel's
+            head. */}
+        <AnimalSearchField query={filters.query} />
 
         {/* Kje first, above every folding section. It is the question a visitor
             answers before any of the others -- how far they are willing to go --

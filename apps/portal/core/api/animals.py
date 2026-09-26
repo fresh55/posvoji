@@ -54,6 +54,7 @@ def list_animals(request, slug: str):
         item = merge_animal(
             animal,
             overrides.get(animal_id),
+            animal_id=animal_id,
             crawled=crawled.get((shelter.slug, animal_id)),
         )
         try:
@@ -141,4 +142,4 @@ def upsert_override(
             override.updated_by = request.user
             override.save()
 
-    return merge_animal(animal or {"id": animal_id}, override, crawled=crawled_animal)
+    return merge_animal(animal, override, animal_id=animal_id, crawled=crawled_animal)

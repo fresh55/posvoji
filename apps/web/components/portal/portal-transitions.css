@@ -1,4 +1,4 @@
-/* The step between the portal's two pages.
+/* The step between the portal's pages.
 
    The public site is a static export that navigates with plain anchors, and
    the browser cross-fades those documents itself (the @view-transition rule
@@ -10,11 +10,11 @@
    page body carries runs its exit and enter animation on the way through.
 
    A stylesheet of its own, loaded from the portal's own layout. In the
-   built export its chunk is referenced by portal.html and portal/zival.html
-   and by no other page; were Next ever to fold it into a shared sheet, the
-   reduce block below would reach pages whose motion is already gated on
-   no-preference, which is the same swap it asks for. The class names are the
-   ones portal-transition.tsx hands React.
+   built export its chunk is referenced by portal.html, portal/zival.html
+   and portal/odgovori.html and by no other page; were Next ever to fold it
+   into a shared sheet, the reduce block below would reach pages whose motion
+   is already gated on no-preference, which is the same swap it asks for. The
+   class names are the ones portal-transition.tsx hands React.
 
    Asymmetric, in the shape the rest of the site's motion has. The page that
    is leaving goes quickly so it does not compete with what is arriving; what

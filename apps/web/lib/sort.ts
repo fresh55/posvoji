@@ -5,6 +5,10 @@ import type { Locale } from "./i18n";
 
 export const ANIMAL_SORTS = [
   "longest-in-shelter",
+  // Right after the default, because it is the order a returning visitor asks
+  // for: the default puts the longest waits first, deliberately, which leaves
+  // this week's listings at the end of a list of five hundred.
+  "newly-listed",
   "newest-arrivals",
   "youngest",
   "oldest",
@@ -38,6 +42,7 @@ const SORT_SLUGS: Record<AnimalSort, string> = {
   // link carrying it explicitly (someone bookmarked it before this changed,
   // or copied one from another visitor) still parses back to it.
   "longest-in-shelter": "cakajoci",
+  "newly-listed": "objave",
   "newest-arrivals": "novi",
   youngest: "najmlajsi",
   oldest: "najstarejsi",
@@ -83,7 +88,7 @@ export function effectiveSort(
 // Unknown values always follow known ones. The wait is ordered by stayStart,
 // the date the V zavetišču filter reads. firstSeenAt is not a substitute: it
 // says when Posvoji.si found the listing, not when the animal entered the
-// shelter.
+// shelter. That is the question Nove objave asks instead, through listedAt.
 function compareOptional(
   left: string | undefined,
   right: string | undefined,
@@ -177,6 +182,13 @@ export function sortAnimals<T extends AnimalFields>(
       case "longest-in-shelter":
         // ISO dates sort chronologically as strings; oldest means longest.
         compared = compareOptional(stayStart(left)?.date, stayStart(right)?.date, 1);
+        break;
+      case "newly-listed":
+        // When this site first listed the animal, newest first. Not the
+        // arrival, which is the order below: a shelter this site starts
+        // reading brings animals that came in years ago, and all of them are
+        // new here.
+        compared = compareOptionalNumber(left.listedAt, right.listedAt, -1);
         break;
       case "newest-arrivals":
         // A floor is the latest day the arrival can have been, so it would

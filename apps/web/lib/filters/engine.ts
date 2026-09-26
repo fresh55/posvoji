@@ -32,9 +32,13 @@ import {
 /** Every value the filter state holds, zavetišče included. The panels used to
  *  count a narrower set: shelter had no section in either of them, so a badge
  *  counting it promised a control the sheet did not hold. Both panels open
- *  with a Kje row now, so there is one count again and it is this one. */
+ *  with a Kje row now, so there is one count again and it is this one.
+ *
+ *  A search counts as one, however many words it holds: it is one pill in the
+ *  chips row and one field in the panel. */
 export function activeFilterCount(filters: Filters): number {
   return (
+    (filters.query === "" ? 0 : 1) +
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length +
     filters.goodWith.length +
@@ -96,6 +100,18 @@ export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean
   return goodWithAnswer(animal, key) === "yes";
 }
 
+/** Whether the shelter said anything to one household question. A home
+ *  without young children is not a no to children, since older ones may fit,
+ *  but it is what the shelter said about them, and the dialog shows it in
+ *  place of "Ni podatka o otrocih". Such an animal is not missing that answer:
+ *  "Brez podatka" does not count it and the band does not offer it. */
+function answersGoodWith(animal: AnimalFields, key: GoodWithKey): boolean {
+  return (
+    goodWithAnswer(animal, key) !== undefined ||
+    (key === "kids" && animal.adoptionRequirements?.noYoungKids === true)
+  );
+}
+
 // An animal is asked what its own tab asks (groupFitsSpecies below), in a
 // list that mixes species too. Velikost sorts dogs, but for cats it is a
 // distinction nobody shops on, so a size a cat's listing happens to carry is
@@ -133,17 +149,32 @@ export function careMatches(animal: AnimalFields, key: CareKey): boolean {
   }
 }
 
-// Boundaries in months: under a year is a baby, past eight a senior. The
-// schema's lifeStageOf draws the same lines for ingest. Importing it here
-// would ship zod to the browser, so a test holds the two together instead.
+// Boundaries in months: under a year is a baby, one to three a young animal,
+// three to eight an adult, past eight a senior. The schema's lifeStageOf draws
+// the first and the last of these lines for ingest. Importing it here would
+// ship zod to the browser, so a test holds the two together instead. The line
+// at three years is the filter's own: Odrasel spanning one to eight held most
+// of the list, and a young animal past the puppy stage could not be asked for.
 const PUPPY_MAX_EXCLUSIVE = 12;
+const YOUNG_MAX_EXCLUSIVE = 36;
 const ADULT_MAX_EXCLUSIVE = 96;
 
-const GROUP_OF_STAGE: Record<LifeStage, AgeGroup> = {
-  young: "mladicek",
-  adult: "odrasel",
-  senior: "senior",
+// The groups a stage the shelter stated without a number spans. The schema's
+// adult runs from one year to eight, across Mlad and Odrasel both, so it is
+// filed under neither: the animal is counted with the unanswered rather than
+// guessed into one. It still rules out the groups outside its span, which the
+// band reads (statesOtherwise).
+const GROUPS_OF_STAGE: Record<LifeStage, readonly AgeGroup[]> = {
+  young: ["mladicek"],
+  adult: ["mlad", "odrasel"],
+  senior: ["senior"],
 };
+
+/** The one group a stated stage is filed under, where it spans one. */
+function groupOfStage(stage: LifeStage | undefined): AgeGroup | undefined {
+  const span = stage && GROUPS_OF_STAGE[stage];
+  return span?.length === 1 ? span[0] : undefined;
+}
 
 // A date-only ISO string parses as UTC midnight, so both sides of the
 // subtraction have to be read in UTC. Reading one of them locally shifted the
@@ -190,13 +221,15 @@ function ageFrom(
 // Exported so the dialog can show the same life stage the filter buckets by.
 export function ageGroup(months: number): AgeGroup {
   if (months < PUPPY_MAX_EXCLUSIVE) return "mladicek";
+  if (months < YOUNG_MAX_EXCLUSIVE) return "mlad";
   if (months < ADULT_MAX_EXCLUSIVE) return "odrasel";
   return "senior";
 }
 
 /** The stage the filter files an animal under: from its age where one is
- *  known, otherwise from the stage the shelter stated without a number. The
- *  dialog and the poster read this too, so all three agree. */
+ *  known, otherwise from the stage the shelter stated without a number, where
+ *  that stage falls inside one of the filter's (GROUPS_OF_STAGE). The dialog
+ *  and the poster read this too, so all three agree. */
 export function ageStage(
   animal: {
     birthDate?: string;
@@ -207,7 +240,7 @@ export function ageStage(
 ): AgeGroup | undefined {
   const months = ageInMonths(animal, now);
   if (months !== undefined) return ageGroup(months);
-  return animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage];
+  return groupOfStage(animal.lifeStage);
 }
 
 function matchesSpecies(animal: AnimalFields, species: SpeciesFilter): boolean {
@@ -275,6 +308,10 @@ type FilterIndex = {
   readonly born: Column<number>;
   /** The stated stage, read only where neither of the two above answers. */
   readonly stage: Column<AgeGroup>;
+  /** Where the only age on record is a stated stage, the groups it spans
+   *  (GROUPS_OF_STAGE): one that spans two is filed under neither, but rules
+   *  out the rest (statesOtherwise). */
+  readonly statedSpan: Column<readonly AgeGroup[]>;
   readonly toggles: readonly number[];
   readonly goodWith: readonly number[];
   readonly care: readonly number[];
@@ -318,6 +355,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
   const stage: (AgeGroup | undefined)[] = [];
+  const statedSpan: (readonly AgeGroup[] | undefined)[] = [];
   const toggles: number[] = [];
   const goodWith: number[] = [];
   const care: number[] = [];
@@ -333,9 +371,17 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     coatLength.push(animal.coatLength);
     intakeStart.push(intakeStartOf(stayStart(animal)?.date));
     shelter.push(animal.shelter.id);
+    const birth = bornAt(animal.birthDate);
     approximate.push(animal.approximateAgeMonths);
-    born.push(bornAt(animal.birthDate));
-    stage.push(animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage]);
+    born.push(birth);
+    stage.push(groupOfStage(animal.lifeStage));
+    statedSpan.push(
+      animal.lifeStage &&
+        animal.approximateAgeMonths === undefined &&
+        birth === undefined
+        ? GROUPS_OF_STAGE[animal.lifeStage]
+        : undefined,
+    );
     toggles.push(maskOf(TOGGLES.length, (bit) => TOGGLES[bit].matches(animal)));
     goodWith.push(
       maskOf(GOOD_WITH_KEYS.length, (bit) =>
@@ -349,9 +395,8 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
       maskOf(TOGGLES.length, (bit) => TOGGLES[bit].answered(animal)),
     );
     goodWithAnswered.push(
-      maskOf(
-        GOOD_WITH_KEYS.length,
-        (bit) => goodWithAnswer(animal, GOOD_WITH_KEYS[bit]) !== undefined,
+      maskOf(GOOD_WITH_KEYS.length, (bit) =>
+        answersGoodWith(animal, GOOD_WITH_KEYS[bit]),
       ),
     );
   }
@@ -367,6 +412,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     approximate,
     born,
     stage,
+    statedSpan,
     toggles,
     goodWith,
     care,
@@ -852,27 +898,12 @@ export function unansweredCounts(
   return { groups, goodWith, toggles };
 }
 
-/** A question the visitor has answered, and how much of the species tab the
- *  shelters answered it for. A group is named by its facet; a facet of an
- *  AND section carries its key as well. */
-export type Coverage =
-  | {
-      readonly facet: Exclude<MultiGroup, "shelter">;
-      readonly asked: number;
-      readonly answered: number;
-    }
-  | {
-      readonly facet: "goodWith";
-      readonly key: GoodWithKey;
-      readonly asked: number;
-      readonly answered: number;
-    }
-  | {
-      readonly facet: "toggles";
-      readonly key: ToggleKey;
-      readonly asked: number;
-      readonly answered: number;
-    };
+/** A question the visitor has answered (Question), and how much of the
+ *  species tab the shelters answered it for. */
+export type Coverage = Question & {
+  readonly asked: number;
+  readonly answered: number;
+};
 
 /**
  * Of the questions the visitor has answered, the one the shelters answered
@@ -934,6 +965,193 @@ export function thinnestAnswer(
     }
   }
   return thinnest;
+}
+
+/** A question the visitor answered: a group by its facet, a facet of an AND
+ *  section by its key as well. */
+export type Question =
+  | { readonly facet: Exclude<MultiGroup, "shelter"> }
+  | { readonly facet: "goodWith"; readonly key: GoodWithKey }
+  | { readonly facet: "toggles"; readonly key: ToggleKey };
+
+export type UnansweredBand<T> = {
+  /** In the order they were given. */
+  readonly animals: T[];
+  /** The questions they leave unanswered between them. */
+  readonly missing: readonly Question[];
+};
+
+/** Which picked questions the band lets through unanswered, one mask per
+ *  kind: GROUP_BITS for the groups, each AND section's own bits for its keys.
+ *  The same shape records what the band's animals lack between them. */
+type Relaxed = { groups: number; goodWith: number; toggles: number };
+
+/**
+ * The animals a pick hides only for want of an answer: they fail the filter,
+ * and every question they fail is one they leave unanswered. Everything else
+ * holds as it does for applyFilters. "Doma imam: Otroke" is answered for 12
+ * of 491 animals, so Psi and Otroke shows 2 of 124 dogs, and for 121 of the
+ * other 122 nobody said. The grid offers these after its matches rather than
+ * mixing them in: matching stays strict, and a family that is shown 2 dogs
+ * and unticks the filter sees all 124, the one that is not good with children
+ * among them.
+ *
+ * An answer that contradicts a pick keeps the animal out: a no, a positive
+ * test, a known size, age or wait that differs. A home without young children
+ * keeps it out of Otroke as well: not a no, but an answer (answersGoodWith).
+ * The species tab, Kje and
+ * Lahko ponudim keep out whoever they keep out of the result. Every animal
+ * answers the first two, and one with no need stated is not missing an answer
+ * to the third: it has no need for the visitor's offer to meet.
+ *
+ * A question only lets its unanswered through when they are a share worth
+ * naming, the tenth namesUnanswered draws a section's line at, of the animals
+ * the band draws from: the species tab, the shelters picked and the needs
+ * offered, measured over `measuredOver` (the whole dataset, where the grid
+ * has narrowed the list by a search first). That keeps Spol, whose unknowns
+ * are 8 of 491, strict, so the band never grows by a handful of records a
+ * shelter happened to leave blank, and a search for one name cannot make a
+ * tenth out of one animal. It still relaxes a gap one shelter has: Mačji dol
+ * states an age for 1 of its 15 cats. The other questions picked are left out
+ * of that measure, because they are the ones the band relaxes. Measured over
+ * what they leave, Brez FIV and Brez FeLV picked together were each counted
+ * over the cats the other one leaves, which are the tested ones, and the band
+ * offered nothing while 120 cats have neither result.
+ *
+ * A question the species is not asked is not unanswered either: a cat has no
+ * size and a dog no FIV result, so a size picked on Vse leaves every cat out
+ * of the band as well. Nor is an age a shelter stated as "adult": filed under
+ * no age group, it still rules out Mladiček and Senior (statesOtherwise).
+ */
+export function unansweredBand<T extends AnimalFields>(
+  animals: T[],
+  filters: Filters,
+  now: Date,
+  measuredOver: AnimalFields[] = animals,
+): UnansweredBand<T> {
+  const band: T[] = [];
+  const pass = passOf(animals, filters, now);
+  const { index, query } = pass;
+  // Nothing picked that could be relaxed, and no need to count anything.
+  const asksAnything =
+    query.goodWith !== 0 ||
+    query.toggles !== 0 ||
+    GROUPS.some((group) => group !== "shelter" && query.groups[group] !== null);
+  if (!asksAnything) return { animals: band, missing: [] };
+  const scope: Filters = {
+    ...EMPTY_FILTERS,
+    species: filters.species,
+    shelter: filters.shelter,
+    care: filters.care,
+  };
+  // The array itself and not a copy: the index behind every count is kept
+  // per array (indexOf), and the dataset's is already built.
+  const relaxed = relaxedOf(unansweredCounts(measuredOver, scope, now), query);
+  const lacking: Relaxed = { groups: 0, goodWith: 0, toggles: 0 };
+  if ((relaxed.groups | relaxed.goodWith | relaxed.toggles) === 0) {
+    return { animals: band, missing: [] };
+  }
+  for (let slot = 0; slot < lengthOf(pass); slot += 1) {
+    if (!speciesAt(pass, slot)) continue;
+    if (!answersAny(index.care[slot], query.care)) continue;
+    const species = index.species[slot];
+    // Each key of an AND section the animal does not answer yes to has to be
+    // one the band relaxes and one the record leaves blank: a no is an
+    // answer, and so are onlyPet for the two animal questions and noYoungKids
+    // for the children's (answersGoodWith). Every household question is asked
+    // of every animal, a test of cats alone (TOGGLES_ASKED).
+    const goodWith = andFailedAt(pass, slot, "goodWith");
+    const blankGoodWith = relaxed.goodWith & ~index.goodWithAnswered[slot];
+    if ((goodWith & ~blankGoodWith) !== 0) continue;
+    const toggles = andFailedAt(pass, slot, "toggles");
+    const blankToggles =
+      relaxed.toggles & TOGGLES_ASKED[species] & ~index.togglesAnswered[slot];
+    if ((toggles & ~blankToggles) !== 0) continue;
+    const groups = groupsFailedAt(pass, slot);
+    if ((groups & ~relaxed.groups) !== 0) continue;
+    if (!leavesBlank(pass, slot, groups)) continue;
+    // Failing nothing is a match, which the result already shows.
+    if ((groups | goodWith | toggles) === 0) continue;
+    band.push(animals[slot]);
+    lacking.groups |= groups;
+    lacking.goodWith |= goodWith;
+    lacking.toggles |= toggles;
+  }
+  return { animals: band, missing: questionsOf(lacking) };
+}
+
+/** The picked questions whose unanswered share is worth naming. Kje is left
+ *  out by name, though every animal answers it anyway. */
+function relaxedOf(tally: UnansweredTally, query: Query): Relaxed {
+  let groups = 0;
+  for (const group of GROUPS) {
+    if (group === "shelter" || query.groups[group] === null) continue;
+    if (namesUnanswered(tally.groups[group])) groups |= GROUP_BITS[group];
+  }
+  return {
+    groups,
+    goodWith: maskOf(
+      GOOD_WITH_KEYS.length,
+      (bit) =>
+        (query.goodWith & (1 << bit)) !== 0 &&
+        namesUnanswered(tally.goodWith[GOOD_WITH_KEYS[bit]]),
+    ),
+    toggles: maskOf(
+      TOGGLE_KEYS.length,
+      (bit) =>
+        (query.toggles & (1 << bit)) !== 0 &&
+        namesUnanswered(tally.toggles[TOGGLE_KEYS[bit]]),
+    ),
+  };
+}
+
+/** Whether every group in `failed` is one this animal is asked and leaves
+ *  unanswered, rather than one it answers some other way. */
+function leavesBlank(pass: Pass, slot: number, failed: number): boolean {
+  if (failed === 0) return true;
+  const species = pass.index.species[slot];
+  return GROUPS.every(
+    (group) =>
+      (failed & GROUP_BITS[group]) === 0 ||
+      (groupAsks(group, species) &&
+        !answeredAt(pass, slot, group) &&
+        !statesOtherwise(pass, slot, group)),
+  );
+}
+
+/** A stated "adult" with no number files an animal under no age group, since
+ *  it could be Mlad or Odrasel, but it answers the question enough to rule
+ *  out Mladiček and Senior: under a pick of those alone, a pick its span does
+ *  not meet, it is a contrary answer, not a missing one. */
+function statesOtherwise(pass: Pass, slot: number, group: MultiGroup): boolean {
+  if (group !== "age") return false;
+  const span = pass.index.statedSpan[slot];
+  const picked = pass.query.groups.age;
+  return (
+    span !== undefined &&
+    picked !== null &&
+    !span.some((stage) => picked.has(stage))
+  );
+}
+
+function questionsOf(lacking: Relaxed): Question[] {
+  const questions: Question[] = [];
+  for (const group of GROUPS) {
+    if (group !== "shelter" && (lacking.groups & GROUP_BITS[group]) !== 0) {
+      questions.push({ facet: group });
+    }
+  }
+  GOOD_WITH_KEYS.forEach((key, bit) => {
+    if ((lacking.goodWith & (1 << bit)) !== 0) {
+      questions.push({ facet: "goodWith", key });
+    }
+  });
+  TOGGLE_KEYS.forEach((key, bit) => {
+    if ((lacking.toggles & (1 << bit)) !== 0) {
+      questions.push({ facet: "toggles", key });
+    }
+  });
+  return questions;
 }
 
 /** What each active value is costing: how many more animals show if it comes
@@ -1386,6 +1604,8 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   const keep = (group: MultiGroup) => groupFitsSpecies(group, filters.species);
   return {
     species: filters.species,
+    // The search field is on every tab.
+    query: filters.query,
     sex: keep("sex") ? filters.sex : [],
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],

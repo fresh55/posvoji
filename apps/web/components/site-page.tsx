@@ -3,8 +3,10 @@ import { AnimalGrid } from "@/components/animal-grid";
 import { FoundAnimalButton } from "@/components/found-animal-button";
 import { FoundAnimalRedirect } from "@/components/found-animal-redirect";
 import { CAT_CORNER, HomeCat } from "@/components/home-cat";
+import { NewListingsScript } from "@/components/new-listings-script";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
+import { newsTime, type ClientAnimal } from "@/lib/animal";
 import { animalsForClient, loadDataset } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { byShelterName, shelterCount } from "@/lib/labels";
@@ -12,6 +14,20 @@ import { verificationDate } from "@/lib/source-freshness";
 import { buildMunicipalityEntries } from "@/lib/municipality-coverage";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { loadShelters } from "@/lib/shelters";
+
+/** The time the newest animal the notice would count was first listed
+ *  (newsTime), or undefined when there is none. Measured over every animal,
+ *  a new intake on hold held a place the notice then left empty. */
+function newestListing(animals: readonly ClientAnimal[]): number | undefined {
+  let newest: number | undefined;
+  for (const animal of animals) {
+    const time = newsTime(animal);
+    if (time !== undefined && (newest === undefined || time > newest)) {
+      newest = time;
+    }
+  }
+  return newest;
+}
 
 export function SitePage({ locale }: { locale: Locale }) {
   const dataset = loadDataset();
@@ -35,6 +51,7 @@ export function SitePage({ locale }: { locale: Locale }) {
   // Read once: the hero row and the footer both ask it, and they must not
   // drift into two different answers about whether the lookup exists.
   const hasLookup = municipalities.length > 0;
+  const gridAnimals = animalsForClient(animals, { deferPhotos: true });
 
   return (
     <SiteShell
@@ -155,11 +172,14 @@ export function SitePage({ locale }: { locale: Locale }) {
         <HomeCat locale={locale} />
       </div>
 
+      {/* Before the grid, so the notice's place is held from the first
+          paint for a visitor with something new to see (lib/last-visit.ts). */}
+      <NewListingsScript newest={newestListing(gridAnimals)} />
       <AnimalGrid
         // Everything above this line is counted on the server and stays
         // here; the grid is a client component, so what it is given is
         // what ends up in the page's flight payload.
-        animals={animalsForClient(animals, { deferPhotos: true })}
+        animals={gridAnimals}
         logos={getShelterLogos()}
         referenceDate={dataset?.generatedAt ?? new Date().toISOString()}
         municipalitiesUrl={clientPayload("municipalities", municipalities).url}

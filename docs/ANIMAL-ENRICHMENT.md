@@ -52,6 +52,14 @@ this expanded strict schema before consuming an enriched dataset.
    the applied-field report marks these removals with `operation: "clear"`.
 5. Cache media, validate and publish using the existing export transaction.
 
+The portal edits against the crawl from before this enrichment (step 2). For
+size, energy, the three `goodWith` answers and `apartmentOk` it also shows
+what the published dataset holds, so a reviewed answer is what the shelter sees
+standing until it picks another. The portal's quick answers page never sends
+an `unknown` for its Ne vem card: a correction suppresses the enrichment of its
+field, so an `unknown` would take a reviewed answer off the site and leave
+adopters nothing to search by.
+
 The manifest is loaded and validated once per export. A malformed or missing
 manifest stops the export. A removed animal never gets recreated. Revoked
 permission or a changed description prevents the addition from shipping.
@@ -79,8 +87,11 @@ part of the portal form.
 
 ## Life stage
 
-`lifeStage` (young, adult, senior: the site's Mladiček, Odrasel and Senior)
-records a stage the shelter states where it gives no age a number can carry.
+`lifeStage` (young, adult, senior) records a stage the shelter states where
+it gives no age a number can carry. The site files young under Mladiček (under
+a year) and senior under Senior (eight years or more). Adult is one to eight
+years, which the site splits into Mlad (one to three) and Odrasel (three to
+eight), so a stated adult is filed under neither and counts as unanswered.
 It comes from a claim here with text evidence ("odrasel", "senior", a kitten
 from a litter taken in with its mother), from a provider parser reading a
 range that stays inside one stage ("8–10 let"), or from a photo review in
@@ -119,6 +130,12 @@ Not used: a post's publish date, because sites reuse old posts for new animals
 animal, which belongs to the earlier stay, and `firstSeenAt`, which is when
 this site found the listing.
 
+`firstSeenAt` answers a different question, which is what is new on this
+site, and that is where it is read: the grid's projection carries it as
+`listedAt` (`apps/web/lib/animal.ts`), in whole minutes, for the "Nove objave"
+order and the Novo mark a returning visitor sees, and the feeds of new
+listings date their entries by it (`apps/web/lib/feeds.ts`).
+
 ## Verification and release
 
 Run `pnpm check` before release. Enrichment tests cover stale evidence, permission,
@@ -130,6 +147,19 @@ The public filters show all applicable options with their real counts. A zero
 means no confirmed matching records, not proof that no animal has that property.
 Species-specific rules remain: feline tests apply to cats, and cat size does not
 become an available filter just to fill the panel.
+
+Matching stays strict: every count, tab and chip counts confirmed matches only.
+Under the last match, and in place of an empty result, the grid offers the
+animals a pick hid only because the picked question has no answer for them, and
+draws them below a divider when the visitor asks (`unansweredBand` in
+`apps/web/lib/filters/engine.ts`). A recorded answer that contradicts a pick
+keeps an animal out of that band too: a "no", a positive test, a known size, age
+or wait that differs, `noYoungKids` under Otroke, and a stated "adult" under a
+Mladiček or Senior pick. Only
+a question left unanswered for a tenth or more of the animals in view (the
+species tab, the shelters picked and the needs offered, before any search) is
+relaxed, the share that puts a "Brez podatka" line under a filter section. On
+Vse, Psi and Mačke that keeps Spol, Barva and Dolžina dlake strict.
 
 Use the normal committed-code production promotion procedure in
 [PRODUCTION-OPERATIONS.md](PRODUCTION-OPERATIONS.md). The production host should

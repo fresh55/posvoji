@@ -20,42 +20,48 @@
 // cards: the eye had nothing telling it where a card ended. The column gap is
 // what the widths below are derived from, and below xl it does not move.
 //
-// From xl the column gap is 20px. 16px between two 307px squares read as a
-// contact sheet, the pictures all but touching, and 20px is what the 2xl band
-// below can spare. 24px would be better still and is not available: at 1536
-// four 18rem columns and three 24px gaps need 1224 of the 1216 the breakpoint
-// leaves, so the row drops to three columns of 389px, which is smaller
-// pictures with more room around them, the opposite of the point. At 20px the
-// same sum is 1212 and four columns hold, measured rather than derived: four
-// of 289px at 1536 and four of 305px once the frame caps.
+// From xl the column gap is 20px, and the filter rail stands the same 20px off
+// the grid (RESULTS_COLUMNS below), which makes the rail one more column of the
+// row. 16px between two squares this size read as a contact sheet, the
+// pictures all but touching. 24px would be better still and is not available:
+// at 1536 with Chrome's 15px scrollbar, a rail of one fifth and four 17rem
+// columns at 24px leave 0.8px to spare, where 20px leaves 13.6px.
 //
-// From xl the cards are larger and there are three of them. A 228px photo is a
-// thumbnail, and the photograph is the thing this page is for, so where there
-// is room the picture takes it. The floor cannot simply be raised for every
-// width: auto-fill drops a column the moment the floor stops fitting, and a
-// 15rem floor at lg would leave two enormous cards beside the sidebar. xl is
-// where the page frame stops growing at 80rem, so the count settles at three.
+// From xl the cards are larger and there are three of them beside the rail. A
+// 228px photo is a thumbnail, and the photograph is the thing this page is
+// for, so where there is room the picture takes it. The floor cannot simply be
+// raised for every width: auto-fill drops a column the moment the floor stops
+// fitting, and a 15rem floor at lg would leave two enormous cards beside the
+// sidebar. xl is where the page frame stops growing at 80rem and the rail
+// takes one column of four, so the count settles at three of 289px.
 //
 // The card's name steps up at this same breakpoint (xl:text-lg on the h3 in
-// animal-card.tsx), because a 16px name beside a 307px photograph reads as a
+// animal-card.tsx), because a 16px name beside a 289px photograph reads as a
 // caption. It is spelled there rather than here, since it has one consumer
 // and nothing derives from it, and a breakpoint cannot be hoisted into a
 // constant anyway: Tailwind generates a rule only for a literal class string.
 // So moving the floor below moves the picture and leaves the type behind.
 //
 // From 2xl the frame itself grows to 100rem (--page-max, set by the results
-// page in site-shell.tsx) and the floor goes up with it, to 18rem. Both halves
-// are needed and neither works alone: a wider frame at the 15rem floor packs
-// five 243px columns into the new room, which is smaller cards and more of
-// them, the opposite of the point. 18rem is the floor that makes the answer
-// four, and four is what keeps the card at 305px, within two pixels of the
-// 307px it is at xl. So a 1920 screen draws nearly the same card as a 1440
-// one, and draws one more.
+// page in site-shell.tsx) and the rail becomes one column of five, so four
+// cards stand beside it: 275px at 1536 with a scrollbar and 291px once the
+// frame caps at 1600, against 289px at xl. A 1920 screen draws nearly the
+// same card as a 1440 one, and draws one more.
+//
+// The floor there is 17rem, which four columns clear at 1536 by 13.6px with a
+// 15px scrollbar (4 x 272 + 60 = 1148 of 1161.6) and five never reach. It was
+// 18rem beside a 224px rail, which cleared it by 4px without a scrollbar and
+// not at all with one: from 1536 to 1546 in Chrome on Windows the row fell to
+// three cards of 387 to 390px, on 1536x864, the second commonest desktop
+// screen in Slovenia (10% on StatCounter, August 2026). Beside the rail its
+// fifth alone would hold the count at four. The floor is for a grid drawn
+// without one on the 100rem frame, 1536px wide, where 15rem columns come
+// within 4px of a sixth.
 export const CARD_GRID =
   "grid grid-cols-[repeat(auto-fill,minmax(max(8rem,calc(50%_-_0.5rem)),1fr))] gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-5" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
   " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" +
-  " 2xl:grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]";
+  " 2xl:grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]";
 
 // How wide a card's photo actually renders, which is what decides the rung a
 // browser downloads. Derived from CARD_GRID above and from the page's own
@@ -84,10 +90,10 @@ export const CARD_GRID =
 // average 12.6KB at 320, 24.0KB at 480 and 36.8KB at 640, and a master 51.7KB.
 // A desktop at 1x moves from the 320 rung to the 480 one, and draws three of
 // them to a row instead of four, so a row costs 72KB where it cost 50KB and the
-// photograph it is spent on is 307px rather than 228px. Above the fold that is
-// close to a wash, because the row is 431px tall now and fewer of them fit.
+// photograph it is spent on is 289px rather than 228px. Above the fold that is
+// close to a wash, because the row is 419px tall now and fewer of them fit.
 //
-// A desktop at 2x asks for 618px of height and the ladder's top rung is 640
+// A desktop at 2x asks for 578px of height and the ladder's top rung is 640
 // wide, which is 480 tall on a 4/3 source and not enough, so it takes the
 // master. That is the right file for the box and the most expensive line here.
 // A rung between 640 and the master, 800 or 960, would land it nearer 40KB; the
@@ -109,33 +115,30 @@ export const CARD_GRID =
 // --gutter is 1rem below sm, 1.5rem from sm
 // and 2rem from lg (globals.css), and the grid's own column gap is 1rem up to
 // xl and 1.25rem from there.
-// From lg the results section is a 224px sidebar plus a 2rem column gap ahead
-// of the grid. Columns are two fixed ones below sm and auto-fill minmax(13rem)
-// above it, which is what the breakpoints between the bands are: each one is
-// the width where another 13rem column starts fitting.
+// From lg the results section is the filter rail and a gap ahead of the grid
+// (RESULTS_COLUMNS below): a 224px rail and 2rem up to xl, and from xl a rail
+// as wide as a card, 1.25rem off the grid. Columns are two fixed ones below sm
+// and auto-fill minmax(13rem) above it, which is what the breakpoints between
+// the bands are: each one is the width where another 13rem column starts
+// fitting.
 //
 //   ≤639     2 cols, 1rem gutter:  (100vw - 32 - 16)/2  =  50vw - 24px
 //   640-703  2 cols, 1.5rem:       (100vw - 48 - 16)/2  =  50vw - 32px
 //   704-927  3 cols, 1.5rem:       (100vw - 48 - 32)/3
 //   928-1023 4 cols, 1.5rem:       (100vw - 48 - 48)/4  →  208-232px
-//   1024-1199 3 cols beside the sidebar, 2rem gutter:
+//   1024-1199 3 cols beside the rail, 2rem gutter:
 //                                  (100vw - 64 - 256 - 32)/3
-//   1200-1279 4 cols beside the sidebar                    →  208-228px
-//   1280-1535 the xl floor takes over: 3 cols of a grid that
-//           an 80rem frame has capped at 960px, at the
-//           20px gap the grid takes from xl                →  307px
-//   1536+    the 2xl floor and a 100rem frame: 4 cols of a
-//           grid that is 1216px at the breakpoint and
-//           1280px once the frame caps                     →  289-305px
-//
-// That last band clears its floor by 4px and no more: four 18rem columns and
-// three 20px gaps need 1212 of the 1216 the breakpoint leaves. Anything that
-// moves the sidebar's 224px, the 2rem gutter or the grid's own gap at 2xl
-// spends that slack and drops the row to three columns of 392px, which the
-// 412px band below would then under-declare by a quarter.
+//   1200-1279 4 cols beside the rail                       →  208-228px
+//   1280-1535 the rail and 3 cols are four equal columns of
+//           a frame capped at 80rem, 20px apart:
+//           (1280 - 64 - 3 x 20)/4                         →  289px
+//   1536-1599 the rail and 4 cols are five, while the 100rem
+//           frame grows: (100vw - 64 - 4 x 20)/5
+//                                  =  (100vw - 144)/5      →  278-291px
+//   1600+    the same five once the frame caps             →  291px
 //
 // Every band from 704 up is then multiplied by 4/3 for the square box, which is
-// what turns "/3" into "* 4 / 9" and 232 into 309.
+// what turns "/3" into "* 4 / 9", "/5" into "* 4 / 15" and 232 into 309.
 //
 // The two narrow bands are stated as their widest card rather than as a calc,
 // because across each of them every plausible device ratio lands on the same
@@ -157,21 +160,22 @@ export const CARD_GRID =
 // on what is beside the animal. One shape also means the grid keeps its rhythm
 // across every breakpoint instead of changing proportion at sm.
 //
-// It costs height: a desktop card goes from about 261px to about 409px, so
-// roughly a fifth fewer fit a screen. CARD_PHOTO_SIZES below pays the other
+// It costs height: a 289px desktop card is about 387px tall where a 4/3 photo
+// would make it about 315px, so roughly a fifth fewer fit a screen. CARD_PHOTO_SIZES below pays the other
 // half of the bill.
 //
 // It also costs sharpness on a retina desktop, which is the trade this frame
 // is worth writing down rather than discovering again. cover scales a photo
-// until the box is filled, so a 307px square box on a 3:2 master asks for a
-// 920px file: 54% of desktop cards upscale at DPR 2, by a median of 1.23x, and
-// 87 of the leads are soft only because the ingest master is capped at 800px
-// (DERIVATIVE_VERSION in apps/ingest/src/cache-images.ts). At 1.23x on a
-// photograph that is soft rather than blocky, and the alternative is 4/3 on
-// every card, which is the third of the box spent on what is beside the animal
-// that this shape exists to take back. So the square stays and the upscale is
-// accepted; 1024px lead masters would settle it properly and are ingest's
-// change, not this file's.
+// until the box is filled, so a 289px square box on a 3:2 master asks for an
+// 867px file. Measured when the card was 307px and asked for 920: 54% of
+// desktop cards upscaled at DPR 2, by a median of 1.23x, and 87 of the leads
+// were soft only because the ingest master is capped at 800px
+// (DERIVATIVE_VERSION in apps/ingest/src/cache-images.ts); the narrower card
+// asks less of every one of them. At 1.23x on a photograph that is soft rather
+// than blocky, and the alternative is 4/3 on every card, which is the third of
+// the box spent on what is beside the animal that this shape exists to take
+// back. So the square stays and the upscale is accepted; 1024px lead masters
+// would settle it properly and are ingest's change, not this file's.
 export const CARD_PHOTO_ASPECT = "aspect-square";
 // The same shape as a number, for the crop: the photo has to know how much
 // wider or taller than its box it is to keep the animal inside (see
@@ -189,19 +193,29 @@ export const CARD_PHOTO_RADIUS = "rounded-2xl";
 // What the results page hands SiteShell to widen the frame it centres on.
 //
 // It lives here and not at the shell, because the number is only right in
-// company: 100rem is the frame that leaves 1280px of grid after the gutters and
-// the sidebar, which is four 305px columns at the 18rem floor above, which is
-// what the last band of CARD_PHOTO_SIZES is declared for. Those three move
-// together or not at all, so they are read from one file.
+// company: 100rem is the frame that leaves 1536px after the gutters, which is
+// the rail and four cards, five columns of 291px at the 17rem floor above,
+// which is what the last band of CARD_PHOTO_SIZES is declared for. Those three
+// move together or not at all, so they are read from one file.
 export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 
 // The two columns the results page draws from lg: the filter rail, then the
-// grid. Here rather than in animal-grid.tsx because the 224px is already this
-// file's number - the bands below are derived from "a 224px sidebar plus a 2rem
-// column gap", and the note above says what moving it costs. Two elements wear
-// this string, the results block and the stand-in that holds its place while a
-// filtered link hydrates, and they have to agree about the page's shape or the
-// grid jumps sideways when the real one arrives.
+// grid. Here rather than in animal-grid.tsx because the rail's width is this
+// file's number: the bands of CARD_PHOTO_SIZES are derived from it. Two
+// elements wear this string, the results block and the stand-in that holds its
+// place while a filtered link hydrates, and they have to agree about the
+// page's shape or the grid jumps sideways when the real one arrives.
+//
+// At lg the rail is 224px and 2rem off the grid, inside the range the cards
+// run through there (208 to 278px, three columns and then four), and it stays
+// so. From xl it is one column of the card row: a quarter of the section less
+// three 1.25rem gaps, from 2xl a fifth less four, and the grid's own 1.25rem
+// stands between rail and grid in place of the 2rem. Measured with a 15px
+// scrollbar, rail and card then agree to the pixel: 285px at 1280, 289px at
+// 1440, 275px at 1536 and 291px at 1920. Held at 224px beside cards of 288 to
+// 307px, the rail was the narrowest column on the page and its type the
+// smallest, and several of its labels had been renamed only to fit it
+// (lib/filters/metadata.ts).
 //
 // Both tracks are stated so that 200% browser text cannot push the page
 // sideways, and each half was needed:
@@ -226,8 +240,16 @@ export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 // 200% text the frame is 1920px when lg starts, and a quarter of it is 480px.
 // CARD_PHOTO_SIZES below states its own lengths in px, which is right at 16px
 // text, the only size it is tuned for.
+//
+// The share from xl goes inside the same clamp, as max(14rem, share), so both
+// guards hold there too. With the browser setting everything scales together,
+// the share with it, and the rail stays a card wide. With a stylesheet's
+// doubled root the share is the smaller of the two and the cap decides, as it
+// did before: 324px of a 1297px section at 1440, and 444px of 1777px at 1920.
 export const RESULTS_COLUMNS =
-  "lg:grid lg:grid-cols-[clamp(224px,14rem,25%)_minmax(0,1fr)] lg:items-start lg:gap-column-gap";
+  "lg:grid lg:grid-cols-[clamp(224px,14rem,25%)_minmax(0,1fr)] lg:items-start lg:gap-column-gap" +
+  " xl:grid-cols-[clamp(224px,max(14rem,calc((100%_-_3_*_1.25rem)/4)),25%)_minmax(0,1fr)] xl:gap-x-5" +
+  " 2xl:grid-cols-[clamp(224px,max(14rem,calc((100%_-_4_*_1.25rem)/5)),25%)_minmax(0,1fr)]";
 
 // Which of those two tracks a block stands in, stated rather than left to
 // auto-placement, because the results now come first in the document: the
@@ -251,10 +273,16 @@ export const CARD_PHOTO_SIZES =
   " (max-width: 1023px) 309px," +
   " (max-width: 1199px) calc((100vw - 352px) * 4 / 9)," +
   " (max-width: 1279px) 304px," +
-  " 412px";
-// The last band covers xl and 2xl together. At xl the card is 307px and 412 is
-// within 1% of its 4/3 (it was exactly 4/3 of the 309px card a 16px gap drew);
-// from 2xl it is 289px at the breakpoint and 305px once the frame has capped,
-// so 412 over-declares by at most 7% at the narrow end of that range.
-// Over-declaring costs a fraction of a rung and never softness,
-// and a seventh band to save it would be a band nobody can check by eye.
+  " (min-width: 1536px) and (max-width: 1599px) calc((100vw - 144px) * 4 / 15)," +
+  " 389px";
+// The last band covers xl and the capped 2xl frame together: 389 is 4/3 of the
+// 291px card from 1600 up, and over-declares the 289px card at xl by 1%, which
+// moves no device ratio from 1x to 2x onto another rung.
+//
+// The band before it is the 2xl frame still growing, and it is a band of its
+// own for one screen. Stated as the flat 389 it over-declared 1536 by 6%, and
+// 1536x864 is what a 1920x1080 screen reports at 125% scaling: 1.25 x 389 is
+// 486 device px, which asks for the 640 rung where 1.25 x 371 = 464 fits the
+// 480 one, four photos a row at 36.8KB rather than 24.0KB on the second
+// commonest desktop screen here. Over-declaring usually costs a fraction of a
+// rung and never softness; there it cost a whole one.

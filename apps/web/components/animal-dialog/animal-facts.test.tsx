@@ -154,7 +154,7 @@ describe("recorded energy", () => {
 describe("a stated life stage", () => {
   it.each([
     ["young", "sl", "Mladiček"],
-    ["adult", "sl", "Odrasel"],
+    ["young", "en", "Baby"],
     ["senior", "en", "Senior"],
   ] as const)("names %s in %s where the shelter gave no age", (lifeStage, locale, label) => {
     renderFacts({ lifeStage }, locale);
@@ -165,11 +165,27 @@ describe("a stated life stage", () => {
     expect(within(row).getAllByRole("listitem")).toHaveLength(1);
   });
 
+  // Adult is one to eight years, which is Mlad or Odrasel. The filter files
+  // it under neither, and "Odrasel" with the shrub would say three to eight.
+  it("names no stage for a stated adult", () => {
+    renderFacts({ lifeStage: "adult" });
+    expect(screen.queryByRole("list", { name: "Podrobnosti o živali" })).toBeNull();
+
+    cleanup();
+    renderFacts({ lifeStage: "adult", sex: "female" });
+    const row = screen.getByRole("list", { name: "Podrobnosti o živali" });
+    expect(within(row).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(row).queryByText("Odrasel")).toBeNull();
+    expect(row.querySelector("[data-age-icon]")).toBeNull();
+  });
+
   it("gives way to a stated age", () => {
     renderFacts({ lifeStage: "senior", approximateAgeMonths: 30 });
     const row = screen.getByRole("list", { name: "Podrobnosti o živali" });
     expect(within(row).queryByText("Senior")).toBeNull();
     expect(within(row).getAllByRole("listitem")).toHaveLength(1);
+    // 30 months is Mlad, and the badge draws the sapling the filter draws.
+    expect(row.querySelector('[data-age-icon="mlad"]')).toBeTruthy();
   });
 });
 

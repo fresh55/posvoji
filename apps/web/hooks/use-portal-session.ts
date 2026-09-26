@@ -13,6 +13,7 @@ import {
 export const PORTAL_LOGIN_PATH = "/portal/prijava";
 export const PORTAL_PATH = "/portal";
 export const PORTAL_ANIMAL_PATH = "/portal/zival";
+export const PORTAL_ANSWERS_PATH = "/portal/odgovori";
 
 // What the guard tells the login page when it sends a visitor back. The two
 // halves are separate so the page reads the query with the same words the
@@ -28,7 +29,7 @@ export const PORTAL_LOGOUT_FAILED_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR_PA
  * that stores nothing throws on each of these calls, and the portal carries on
  * as if the entry were simply empty.
  */
-function slot(key: string) {
+export function slot(key: string) {
   return {
     write(value: string): void {
       try {
@@ -117,6 +118,20 @@ export function portalAnimalPath(
 export function portalNewListingPath(shelter: string): string {
   const query = new URLSearchParams({ zavetisce: shelter, nova: "1" });
   return `${PORTAL_ANIMAL_PATH}?${query}`;
+}
+
+/**
+ * The quick answers page, on the shelter the questions are asked of and, once
+ * a round has one, the animal it is on. The animal is in the address so that
+ * a reload lands on it again, for the same reason the editor names its own.
+ */
+export function portalAnswersPath(
+  shelter: string,
+  animalId?: string | null,
+): string {
+  const query = new URLSearchParams({ zavetisce: shelter });
+  if (animalId) query.set("id", animalId);
+  return `${PORTAL_ANSWERS_PATH}?${query}`;
 }
 
 /**

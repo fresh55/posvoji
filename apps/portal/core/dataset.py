@@ -1,15 +1,16 @@
 """Read side of the crawled dataset.
 
 apps/ingest writes two files per run. data/dist/animals.json is what the
-site reads: the crawl with the shelters' overrides merged in.
-data/dist/animals.crawled.json is the same run's records before any override
-was merged. The portal only reads them, never writes them, and keeps working
-when a file is missing because the pipeline may not have run yet.
+site reads: the crawl with the reviewed enrichment and the shelters' overrides
+merged in. data/dist/animals.crawled.json is the same run's records before
+either was merged. The portal only reads them, never writes them, and keeps
+working when a file is missing because the pipeline may not have run yet.
 
-The listing uses DATASET_PATH for published identities and cached thumbnails,
-then applies current overrides to the editable facts in CRAWLED_DATASET_PATH.
-Baselines and conflicts also read the crawled file: reading the merged file
-would mistake a previously published correction for the crawl's own value.
+The listing uses DATASET_PATH for published identities, cached thumbnails and
+the answers the public site shows, then applies current overrides to the
+editable facts in CRAWLED_DATASET_PATH. Baselines and conflicts also read the
+crawled file: reading the merged file would mistake a previously published
+correction for the crawl's own value.
 """
 
 import json
@@ -19,7 +20,12 @@ from typing import Any
 
 from django.conf import settings
 
-from .models import OVERRIDE_FIELDS, AnimalOverride, has_control_character
+from .models import (
+    COLUMN_BY_JSON_KEY,
+    OVERRIDE_FIELDS,
+    AnimalOverride,
+    has_control_character,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -216,23 +222,81 @@ def crawled_values(animal: Animal) -> dict[str, Any]:
     return values
 
 
+# The answers the portal asks a shelter for, each with the values its override
+# column takes: the three household questions, size, energy and the flat.
+# These are the filters adopters narrow the site by that the crawl rarely
+# reads, and the ones the quick answers page and the editor's "missing" marks
+# are about.
+PUBLISHED_ANSWERS: dict[str, frozenset[str]] = {
+    key: frozenset(
+        value
+        for value, _ in AnimalOverride._meta.get_field(COLUMN_BY_JSON_KEY[key]).choices
+    )
+    for key in (
+        "size",
+        "energy",
+        "goodWithKids",
+        "goodWithDogs",
+        "goodWithCats",
+        "apartmentOk",
+    )
+}
+
+
+def published_answers(animal: Animal) -> dict[str, str | None]:
+    """What the public site shows for the answers the portal asks for.
+
+    Read off a record of the merged dataset, which carries the reviewed
+    enrichment the crawled file does not: on the 2026-09-25 export that was
+    184 "good with cats" answers the portal could not show. Display only.
+    Nothing here is ever written back as an override.
+
+    A value outside the field's vocabulary reads as no answer rather than
+    failing validation, which would drop the whole animal from the list.
+    """
+    values = crawled_values(animal)
+    answers: dict[str, str | None] = {}
+    for key, vocabulary in PUBLISHED_ANSWERS.items():
+        value = values.get(key)
+        answers[key] = value if isinstance(value, str) and value in vocabulary else None
+    return answers
+
+
 def merge_animal(
-    animal: Animal, override: AnimalOverride | None, *, crawled: Animal | None = None
+    animal: Animal | None,
+    override: AnimalOverride | None,
+    *,
+    animal_id: str,
+    crawled: Animal | None = None,
 ) -> dict[str, Any]:
     """Crawled facts with current overrides and the published thumbnail.
+
+    `animal` is the animal's record in the merged dataset, or None when that
+    does not hold it: the shelter can be ahead of the crawl, or the file can
+    be missing. The answer is then built on `animal_id` alone.
 
     The published record may contain corrections from an earlier export, so
     clearing an override must fall back to the crawled record's editable
     values. Keep its cached thumbnail from animal; the crawled snapshot has
     no cached URLs. Older datasets without a crawled record still fall back
     to animal.
+
+    What the published record shows for the portal's questions travels beside
+    the editable facts, never in them: the facts are what an override is made
+    against, and a published value only becomes the shelter's own when the
+    shelter picks it. Because the record includes the corrections of the last
+    export, a correction taken back since still shows there until the next
+    one. Without a record there is nothing published, and the answer says so
+    with a null.
     """
+    record = animal or {"id": animal_id}
     overrides = override.overridden_fields() if override is not None else {}
     merged: dict[str, Any] = {
-        "id": animal.get("id"),
-        "species": animal.get("species"),
-        **crawled_values(crawled or animal),
-        "thumbnailUrl": thumbnail_url(animal),
+        "id": record.get("id"),
+        "species": record.get("species"),
+        **crawled_values(crawled or record),
+        "thumbnailUrl": thumbnail_url(record),
+        "published": published_answers(animal) if animal is not None else None,
     }
     merged.update(overrides)
     # A shelter's age answer replaces the crawl's other representation.

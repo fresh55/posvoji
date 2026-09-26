@@ -80,7 +80,10 @@ export const PortalAnimalRow = memo(function PortalAnimalRow({
   hasDraft?: boolean;
   saveState: PortalSaveState;
   /** The list's own save, which the row calls with this animal's id. */
-  onSave: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
+  onSave: (
+    animalId: string,
+    patch: PortalAnimalPatch,
+  ) => Promise<PortalAnimal | null>;
 }) {
   const shouldReduceMotion = useReducedMotion();
   const now = useMemo(() => new Date(), []);

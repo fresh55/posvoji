@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   hasUnconfirmedStatus,
   statusOf,
+  withPublished,
 } from "@/components/portal/animal-meta";
 import { portalText } from "@/components/portal/portal-text";
 import {
@@ -33,9 +34,10 @@ export type PortalBulkState =
   | { status: "done"; total: number }
   | { status: "failed"; failed: number; total: number };
 
-/** What one PUT settled as. A 401 is neither: nothing was stored and nothing
- *  more can be, so it is the caller who decides what happens next. */
-type SaveOutcome = "saved" | "failed" | "unauthorized";
+/** What one PUT settled as: the animal as the list now holds it, or a failure.
+ *  A 401 is neither: nothing was stored and nothing more can be, so it is the
+ *  caller who decides what happens next. */
+type SaveOutcome = PortalAnimal | "failed" | "unauthorized";
 
 // One value each, so a consumer that keys a memo on the list is not woken by
 // a fresh [] on every render of a shelter that has not loaded yet.
@@ -46,6 +48,10 @@ const LOADING: PortalListState = { status: "loading" };
  * The shelter's animals plus a per-animal save state. Saving is not
  * optimistic: the PUT answers with the merged animal, so the card is replaced
  * with what the server actually stored rather than with a guess.
+ *
+ * Every animal is held as the public site shows it (see withPublished), the
+ * ones the list arrived with and the ones a save answered with alike, so no
+ * page that reads the list has to ask for that view itself.
  */
 export function usePortalAnimals(
   slug: string | null,
@@ -55,7 +61,10 @@ export function usePortalAnimals(
   state: PortalListState;
   saveStates: Record<string, PortalSaveState>;
   reload: () => void;
-  save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
+  save: (
+    animalId: string,
+    patch: PortalAnimalPatch,
+  ) => Promise<PortalAnimal | null>;
   confirmStatuses: () => Promise<void>;
   bulk: PortalBulkState;
   publicName: (animal: PortalAnimal) => string | null;
@@ -134,7 +143,7 @@ export function usePortalAnimals(
     fetchAnimals(slug).then(
       (list) => {
         if (!live) return;
-        setAnimals(list);
+        setAnimals(list.map(withPublished));
         setListedNames(new Map(list.map((animal) => [animal.id, animal.name])));
         setListSlug(slug);
         setState({ status: "ready" });
@@ -192,7 +201,7 @@ export function usePortalAnimals(
       }));
 
       try {
-        const saved = await saveAnimal(slug, animalId, patch);
+        const saved = withPublished(await saveAnimal(slug, animalId, patch));
         // Replaced in place: re-sorting here would move the card out from
         // under the hand that just tapped it.
         setAnimals((current) =>
@@ -203,7 +212,7 @@ export function usePortalAnimals(
           [animalId]: { status: "saved" },
         }));
         flashSaved(animalId);
-        return "saved";
+        return saved;
       } catch (error) {
         if (isUnauthorized(error)) {
           // Nothing was stored, and the row must not be left saying it is
@@ -228,18 +237,21 @@ export function usePortalAnimals(
   );
 
   const save = useCallback(
-    async (animalId: string, patch: PortalAnimalPatch): Promise<boolean> => {
+    async (
+      animalId: string,
+      patch: PortalAnimalPatch,
+    ): Promise<PortalAnimal | null> => {
       // The row's controls are disabled while it saves; this is the same
       // rule underneath them, for a tap that gets past the disabled state.
       // The second PUT is dropped rather than queued: it was made from a
       // record the first is about to replace.
-      if (inFlight.current.has(animalId)) return false;
+      if (inFlight.current.has(animalId)) return null;
       const outcome = await runSave(animalId, patch);
       if (outcome === "unauthorized") {
         unauthorized.current();
-        return false;
+        return null;
       }
-      return outcome === "saved";
+      return outcome === "failed" ? null : outcome;
     },
     [runSave],
   );

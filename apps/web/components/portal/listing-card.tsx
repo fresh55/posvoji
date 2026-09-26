@@ -7,7 +7,7 @@ import {
   missingSearchableFields,
   portalMetaLine,
 } from "@/components/portal/animal-meta";
-import { Glyph } from "@/components/portal/glyph";
+import { Glyph, PortalThumb } from "@/components/portal/glyph";
 import { listingInput } from "@/components/portal/listing-draft";
 import { DraftMark, PORTAL_BADGE } from "@/components/portal/override-mark";
 import {
@@ -64,27 +64,13 @@ export function PortalListingCard({
   return (
     <article className="space-y-3 rounded-ui border p-3 transition-colors hover:border-foreground/25 focus-within:border-foreground/25 sm:p-4">
       <div className="flex items-start gap-3">
-        {photo ? (
-          // The API host is not one next/image knows, and the stored copy is
-          // already capped at 2048px; the box is what sizes it.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photo.url}
-            width={photo.width}
-            height={photo.height}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            className="size-16 shrink-0 rounded-ui border bg-muted/40 object-cover"
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="grid size-16 shrink-0 place-items-center rounded-ui border bg-muted/40 text-muted-foreground"
-          >
-            <Glyph icon={speciesIcon} className="size-6" />
-          </span>
-        )}
+        <PortalThumb
+          src={photo?.url ?? null}
+          width={photo?.width}
+          height={photo?.height}
+          loading="lazy"
+          species={listing.species}
+        />
 
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

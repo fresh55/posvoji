@@ -72,7 +72,12 @@ export type PortalContextValue = {
   animalState: PortalListState;
   saveStates: Record<string, PortalSaveState>;
   reloadAnimals: () => void;
-  save: (animalId: string, patch: PortalAnimalPatch) => Promise<boolean>;
+  /** Resolves to the animal as the list now holds it, or null when nothing
+   *  was stored. */
+  save: (
+    animalId: string,
+    patch: PortalAnimalPatch,
+  ) => Promise<PortalAnimal | null>;
   /**
    * Making the crawl's reading of the status the shelter's own, for every
    * animal named at once. The banner above the list is the only caller: the
@@ -115,6 +120,29 @@ export function usePortal(): PortalContextValue {
   const value = useContext(PortalContext);
   if (!value) throw new Error("usePortal outside PortalProvider");
   return value;
+}
+
+/**
+ * The shelter a page's address names, checked against the session. `known`
+ * is whether the account has it: a slug it has no access to is not a shelter
+ * a page can show, whatever the address says. `showing` is whether it is the
+ * shelter the portal is looking at.
+ *
+ * The address decides that for the whole portal, so a reload under the
+ * second shelter lands on the right list and Back to the list leaves it there.
+ */
+export function useAddressedShelter(slug: string | null): {
+  known: boolean;
+  showing: boolean;
+} {
+  const { shelters, active, setActive } = usePortal();
+  const known = shelters.some((shelter) => shelter.slug === slug);
+
+  useEffect(() => {
+    if (slug && known && slug !== active) setActive(slug);
+  }, [active, known, setActive, slug]);
+
+  return { known, showing: known && slug === active };
 }
 
 /** The email, the way to the public page and the way out. One header for both
@@ -254,7 +282,10 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   // page. Recorded here rather than in the hook: the hook answers for one
   // shelter's list, and this outlives a client navigation between the pages.
   const save = useCallback(
-    async (animalId: string, patch: PortalAnimalPatch): Promise<boolean> => {
+    async (
+      animalId: string,
+      patch: PortalAnimalPatch,
+    ): Promise<PortalAnimal | null> => {
       const saved = await saveAnimalFields(animalId, patch);
       if (saved) setLastSaved(animalId);
       return saved;

@@ -3,6 +3,10 @@
 import { Undo2, X } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useId, useRef, useState, type ReactNode } from "react";
+import {
+  AnimalSearchField,
+  SEARCH_FIELD_ATTRIBUTE,
+} from "@/components/filters/animal-search-field";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-context";
 import { RemovableChips } from "@/components/filters/filter-chips";
@@ -165,6 +169,19 @@ export function FilterSheetContent({
           handingOff.current = false;
           event.preventDefault();
         }}
+        // The first Escape in a filled search field empties it, the way it
+        // does on the page, and the second closes the sheet. The dialog hears
+        // the key before the field does, so it is told to let this one go.
+        onEscapeKeyDown={(event) => {
+          const target = event.target;
+          if (
+            target instanceof HTMLInputElement &&
+            target.hasAttribute(SEARCH_FIELD_ATTRIBUTE) &&
+            target.value !== ""
+          ) {
+            event.preventDefault();
+          }
+        }}
       >
         <div
           data-slot="filter-sheet-header"
@@ -214,6 +231,12 @@ export function FilterSheetContent({
             SHEET_BLOCK_CHILDREN_CLASS,
           )}
         >
+          {/* First, as it is under the panel's heading at lg: the name a
+              visitor arrived with comes before the order and before Kje. The
+              sheet opens with focus on its close button, so the keyboard
+              stays down until the field is tapped. */}
+          <AnimalSearchField query={filters.query} />
+
           <div data-slot="sheet-sort" className={SORT_ROW_HIDDEN}>
             <div id={sortCaptionId} className={SORT_CAPTION_CLASS}>
               {messages.sortCaption}

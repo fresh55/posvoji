@@ -11,9 +11,26 @@ import {
   TARGET_ROWS,
 } from "./grid-rendering";
 
+type Chunk = { of: ClientAnimal[]; drawn: number; settled: boolean };
+
+/** The count as it stands for `run`: one counted against another list starts
+ *  again from the top. */
+function chunkFor(chunk: Chunk, run: ClientAnimal[]): Chunk {
+  return chunk.of === run
+    ? chunk
+    : { of: run, drawn: INITIAL_CARDS, settled: false };
+}
+
 export function useIncrementalGrid(
   sorted: ClientAnimal[],
   isDialogOpen: boolean,
+  /** The list a new one is told apart by, when that is not the whole of
+   *  `sorted`. The home grid draws its band of unanswered animals after its
+   *  matches (use-unanswered-band.ts), and the band arriving or leaving at a
+   *  press is the same list going on, not a new one, so the matches are what
+   *  the count is kept against: a filter or a sort hands down new matches and
+   *  starts from the top, and opening the band does not. */
+  run: ClientAnimal[] = sorted,
 ) {
   // Whether a dialog stands over the grid, which is the automatic step's own
   // question: behind one, a step commits fewer rows
@@ -45,17 +62,12 @@ export function useIncrementalGrid(
   // and no render of the new list is ever made against the old one's count.
   // `settled` is the auto-step budget being spent: from then on the grid only
   // grows by the button below, and a new list starts the budget over.
-  const [chunk, setChunk] = useState<{
-    of: ClientAnimal[];
-    drawn: number;
-    settled: boolean;
-  }>({
-    of: sorted,
+  const [chunk, setChunk] = useState<Chunk>({
+    of: run,
     drawn: INITIAL_CARDS,
     settled: false,
   });
-  const drawn = chunk.of === sorted ? chunk.drawn : INITIAL_CARDS;
-  const settled = chunk.of === sorted && chunk.settled;
+  const { drawn, settled } = chunkFor(chunk, run);
   // slice clamps, so the whole list and a prefix of it are the same call.
   const page = useMemo(() => sorted.slice(0, drawn), [sorted, drawn]);
   const hasMore = drawn < sorted.length;
@@ -107,7 +119,7 @@ export function useIncrementalGrid(
       // jsdom, and anything else with no observer, gets the whole list rather
       // than a grid with no way to grow.
       if (typeof IntersectionObserver === "undefined") {
-        setChunk({ of: sorted, drawn: sorted.length, settled: true });
+        setChunk({ of: run, drawn: sorted.length, settled: true });
         return;
       }
       const observer = new IntersectionObserver(
@@ -146,13 +158,17 @@ export function useIncrementalGrid(
             // one task, ahead of that frame, so the fresh observation sees
             // the sentinel the step moved. What bounds the commit behind a
             // dialog is the small stride above, which needs no slicing.
+            //
+            // Never below where the grid already is, though: a band opened
+            // short of the budget can take the count past it (showFrom
+            // below), and the clamp would then take cards back off the page.
             setChunk((previous) => {
-              const drawn = Math.min(
-                (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-                  rows * columns,
-                budget,
+              const from = chunkFor(previous, run).drawn;
+              const drawn = Math.max(
+                from,
+                Math.min(from + rows * columns, budget),
               );
-              return { of: sorted, drawn, settled: drawn >= budget };
+              return { of: run, drawn, settled: drawn >= budget };
             });
             // The re-arm. Nothing else asks this observer for another entry.
             observer.unobserve(node);
@@ -164,7 +180,7 @@ export function useIncrementalGrid(
       observer.observe(node);
       return () => observer.disconnect();
     },
-    [sorted],
+    [run, sorted],
   );
 
   // The button's step, once the automatic budget above is spent. Focus moves
@@ -174,24 +190,57 @@ export function useIncrementalGrid(
   //
   // A ref rather than state: nothing renders from this, it only says which
   // card the next paint should hand focus to. The effect below runs off the
-  // count the press changed, so it lands after those cards exist.
+  // cards the press changed, so it lands after those cards exist.
   const focusOrdinal = useRef<number | null>(null);
   const showMore = useCallback(() => {
     focusOrdinal.current = drawn;
     setChunk((previous) => ({
-      of: sorted,
-      drawn:
-        (previous.of === sorted ? previous.drawn : INITIAL_CARDS) +
-        CARDS_PER_CLICK,
+      of: run,
+      drawn: chunkFor(previous, run).drawn + CARDS_PER_CLICK,
       settled: true,
     }));
-  }, [drawn, sorted]);
+  }, [drawn, run]);
+  // The same for a press that adds to the list rather than to what is drawn
+  // of it: the band's button, which goes as the band arrives. The list from
+  // `ordinal` on is drawn at least a first render's worth, so there is a card
+  // there to hand focus to, and whatever the grid had reached stays. So does
+  // the way it grows: a band opened before the budget is spent goes on by the
+  // automatic steps, and one opened after it by the button.
+  const showFrom = useCallback(
+    (ordinal: number) => {
+      focusOrdinal.current = ordinal;
+      setChunk((previous) => {
+        const current = chunkFor(previous, run);
+        return {
+          of: run,
+          drawn: Math.max(current.drawn, ordinal + INITIAL_CARDS),
+          settled: current.settled,
+        };
+      });
+    },
+    [run],
+  );
+  // And for a press that puts a new list in its place, such as an order: the
+  // card at `ordinal` of the list it brings takes focus once it is drawn.
+  const focusOnDraw = useCallback((ordinal: number) => {
+    focusOrdinal.current = ordinal;
+  }, []);
   useEffect(() => {
     const ordinal = focusOrdinal.current;
     if (ordinal === null) return;
     focusOrdinal.current = null;
     cardLink(gridRef.current?.querySelectorAll("article")[ordinal])?.focus();
-  }, [drawn]);
+  }, [page]);
 
-  return { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore };
+  return {
+    page,
+    drawn,
+    hasMore,
+    settled,
+    gridRef,
+    watchSentinel,
+    showMore,
+    showFrom,
+    focusOnDraw,
+  };
 }

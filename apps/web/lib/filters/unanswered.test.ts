@@ -81,6 +81,14 @@ describe("unansweredCounts", () => {
     expect(tally.goodWith.cats).toEqual({ asked: 4, unanswered: 3 });
   });
 
+  it("counts a home without young children as an answer to the children's question", () => {
+    const noYoungKids = animal("dog", { adoptionRequirements: { noYoungKids: true } });
+    const silent = animal("dog");
+    const tally = unansweredCounts([noYoungKids, silent], EMPTY_FILTERS, now);
+    expect(tally.goodWith.kids).toEqual({ asked: 2, unanswered: 1 });
+    expect(tally.goodWith.cats).toEqual({ asked: 2, unanswered: 2 });
+  });
+
   it("counts what a picked household question is hiding, over the list without it", () => {
     const yes = animal("dog", { goodWith: { kids: "yes" } });
     const no = animal("dog", { goodWith: { kids: "no" } });

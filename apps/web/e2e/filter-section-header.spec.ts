@@ -55,6 +55,9 @@ test("resets Spol from a mouse press anywhere on its Ponastavi", async ({
     // is no longer inert and hidden.
     const reset = sexSection(sidebar).getByRole("button", { name: RESET });
     await expect(reset).toBeVisible();
+    // Spol is asked after the adopter's first questions, so at 1280x720 its
+    // heading is below the rail's fold and a press at its box lands nowhere.
+    await reset.scrollIntoViewIfNeeded();
     const box = await settledBox(reset);
 
     await page.mouse.move(box.x + box.width / 2, box.y + box.height * at);
@@ -92,6 +95,8 @@ test.describe("on a phone", () => {
     await expect(sheet).toBeVisible();
     const reset = sexSection(sheet).getByRole("button", { name: RESET });
     await expect(reset).toBeVisible();
+    // Below the sheet's first screen since Spol moved down the list.
+    await reset.scrollIntoViewIfNeeded();
     const box = await settledBox(reset);
 
     // A finger held for 80ms, long enough for the press state to be drawn

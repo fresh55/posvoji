@@ -260,11 +260,19 @@ export const FILTER_METADATA = {
       labels: { sl: "Samica", en: "Female" },
     },
   ],
+  // Odrasel keeps its slug as the middle stage splits in two, so a link shared
+  // before Mlad existed now asks for three to eight years rather than one to
+  // eight.
   age: [
     {
       value: "mladicek",
       slug: "mladicek",
-      labels: { sl: "Mladiček", en: "Young" },
+      labels: { sl: "Mladiček", en: "Baby" },
+    },
+    {
+      value: "mlad",
+      slug: "mlad",
+      labels: { sl: "Mlad", en: "Young" },
     },
     {
       value: "odrasel",

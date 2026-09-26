@@ -244,7 +244,7 @@ describe("on a phone", () => {
   });
 });
 
-// The dialog dresses this button as the third control of its title row. Both
+// The dialog dresses this button for its title row. Both
 // buttons this component can be are the same element, so the classes have to
 // reach whichever one the platform leaves standing, and neither may lose the
 // 44px the phone layout holds every control to.

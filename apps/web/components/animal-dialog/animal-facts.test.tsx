@@ -94,25 +94,17 @@ describe("a fact that names what it measures", () => {
     });
   }
 
+  // One row per wording and language. The coat's words are the chip's, whose
+  // own table is pinned in lib/filters; hairless is here because it is the one
+  // that needs no noun put in front of it.
   it.each([
-    ["sl", "small", "Velikost: majhna"],
-    ["sl", "medium", "Velikost: srednja"],
-    ["sl", "large", "Velikost: velika"],
-    ["en", "medium", "Size: medium"],
-  ] as const)("names the size in %s (%s)", (locale, size, text) => {
-    renderFacts({ size }, locale);
-    const [pill] = within(identityRow(locale)).getAllByRole("listitem");
-    expect(pill.textContent).toBe(text);
-  });
-
-  it.each([
-    ["sl", "short", "Kratka dlaka"],
-    ["sl", "medium", "Srednja dlaka"],
-    ["sl", "hairless", "Brez dlake"],
-    ["en", "short", "Short coat"],
-    ["en", "hairless", "Hairless"],
-  ] as const)("names the coat in %s (%s)", (locale, coatLength, text) => {
-    renderFacts({ coatLength }, locale);
+    [{ size: "medium" }, "sl", "Velikost: srednja"],
+    [{ size: "medium" }, "en", "Size: medium"],
+    [{ coatLength: "short" }, "sl", "Kratka dlaka"],
+    [{ coatLength: "short" }, "en", "Short coat"],
+    [{ coatLength: "hairless" }, "sl", "Brez dlake"],
+  ] as const)("prints %o in %s as %s", (fields, locale, text) => {
+    renderFacts(fields, locale);
     const [pill] = within(identityRow(locale)).getAllByRole("listitem");
     expect(pill.textContent).toBe(text);
   });

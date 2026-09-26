@@ -9,9 +9,8 @@ import { touch } from "./touch";
 // two on PageUp and PageDown. Both start at sm: below it the arrows are not
 // drawn and a phone has no page keys, so the only way to the animal after this
 // one was to close the dialog and find the next card. The phone gets the pair
-// as two links at the end of the card, each naming the animal it leads to.
-// They used to be round chevrons on the title row, under the fan's
-// "Foto 1 / 13", and were pressed for the next photo.
+// as two links at the end of the card, each naming the animal it leads to
+// (animal-steps.tsx).
 //
 // A real mobile context and not a narrow desktop window, because what is asked
 // here is what a thumb gets: the tap has to arrive as a tap, and the dialog's
@@ -125,12 +124,10 @@ test("leaves the edge arrows to the wider layout", async ({ page }) => {
 // The longest name in the register: "brezrepa tritačka Luna" at Mačja hiša,
 // which writes a descriptor in front of the name across its listings. 22
 // characters where the median name has five. It is what the title row has to
-// survive, so it is named here rather than looked for. At 360px it once pushed
-// the three round controls beside it to a second line (the title row's comment
-// in animal-dialog.tsx); the share button is the row's one control now, and
-// the name has the rest of the line. When the dataset stops carrying this
-// animal the dialog never opens, and the message on the first assertion below
-// names the id rather than failing as a bare visibility timeout.
+// survive, so it is named here rather than looked for. When the dataset stops
+// carrying this animal the dialog never opens, and the message on the first
+// assertion below names the id rather than failing as a bare visibility
+// timeout.
 const BREZREPA_LUNA = "macja-hisa:4872";
 const BREZREPA_LUNA_NAME = "brezrepa tritačka Luna";
 
@@ -206,9 +203,8 @@ test.describe("under real touch points", () => {
     const next = stepLink(page, "next");
     await expect(next).toBeVisible();
 
-    // The end of the card is where a reader arrives by scrolling; the sticky
-    // bar below it must not be what the finger lands on.
-    await next.scrollIntoViewIfNeeded();
+    // The trial click scrolls the link into view and waits until nothing,
+    // the sticky bar included, stands over the point it would press.
     await next.click({ trial: true });
 
     // Hit-tested rather than aimed: a point the link does not answer for is a

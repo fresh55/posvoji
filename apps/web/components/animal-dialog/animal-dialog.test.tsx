@@ -2386,10 +2386,8 @@ describe("animal dialog", () => {
   });
 
   // The edge arrows start at sm and the page keys they double for need a
-  // keyboard, so a phone gets the same two steps as links. They used to be two
-  // round chevrons on the title row, under the fan's "Foto 1 / 13", where they
-  // were read as the next photo. They stand at the end of the card now and
-  // name the animal they lead to.
+  // keyboard, so a phone gets the same two steps as links at the end of the
+  // card (animal-steps.tsx says why not on the title row).
   //
   // jsdom draws no Tailwind, so which of the two pairs is on screen is pinned
   // in the browser suite (e2e/animal-dialog-mobile.spec.ts). What is pinned
@@ -2410,6 +2408,15 @@ describe("animal dialog", () => {
     // new tab.
     expect(previous?.getAttribute("href")).toBe(animalPath(REX, "sl"));
     expect(next?.getAttribute("href")).toBe(animalPath(ADOPTED, "sl"));
+    // A page nobody pressing it goes to is not fetched ahead of the press.
+    expect(previous?.hasAttribute("data-no-speculate")).toBe(true);
+    // Rex's lead photo as ingest's small copy, and Lucky, who has none, as
+    // the species.
+    const photo = previous!.querySelector("img");
+    expect(photo?.getAttribute("src")).toBe("/media/animals/rex-1.thumb.webp");
+    expect(photo?.getAttribute("alt")).toBe("");
+    expect(next!.querySelector("img")).toBeNull();
+    expect(next!.querySelector("svg.lucide-cat")).toBeTruthy();
 
     // One named group, after the shelter's box, and nothing of it left on the
     // title row.
@@ -2431,25 +2438,6 @@ describe("animal dialog", () => {
     expect(controls).toHaveLength(2);
     expect(controls[0]).toBe(within(dialog).getByRole("button", { name: "Deli" }));
     expect(controls[1]).toBe(slot(dialog, "dialog-close-card"));
-  });
-
-  // A photo where the neighbour has one, the species where it has none.
-  it("shows the neighbour's first photo beside its name", async () => {
-    renderDialog(MURI, [REX, MURI]);
-    const dialog = await screen.findByRole("dialog");
-
-    const photo = stepLink(dialog, "previous")!.querySelector("img");
-    expect(photo?.getAttribute("src")).toBe("/media/animals/rex-1.webp");
-    expect(photo?.getAttribute("alt")).toBe("");
-  });
-
-  it("draws the species for a neighbour with no photo", async () => {
-    renderDialog(REX, [REX, MURI]);
-    const dialog = await screen.findByRole("dialog");
-
-    const next = stepLink(dialog, "next")!;
-    expect(next.querySelector("img")).toBeNull();
-    expect(next.querySelector("svg.lucide-cat")).toBeTruthy();
   });
 
   // The edge arrows are drawn at the edges but written last. Standing first,
@@ -2643,13 +2631,11 @@ describe("animal dialog", () => {
   // The arrows and the page keys are pressed again and again, so they keep
   // focus where it was. Only a step from the end of the card moves it. Four
   // animals, so the step from the second lands on one that still has an arrow
-  // on each side, and the pressed one stays in the tree.
+  // on each side, and the pressed one stays in the tree. With no dates to
+  // sort by, the list falls through to id order (lib/sort.ts).
   it("leaves focus on the edge arrow a step was taken with", async () => {
-    const queue = ["2023-01-01", "2023-06-01", "2024-01-01", "2024-06-01"].map(
-      (intakeDate, index) =>
-        animal(`queue-${index}`, ["Ena", "Dva", "Tri", "Štiri"][index], {
-          intakeDate,
-        }),
+    const queue = ["Ena", "Dva", "Tri", "Štiri"].map((name, index) =>
+      animal(`queue-${index}`, name),
     );
     window.history.replaceState(null, "", `/?zival=${queue[1].id}`);
     renderGrid(queue);

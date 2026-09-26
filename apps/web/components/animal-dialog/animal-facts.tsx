@@ -49,7 +49,8 @@ import {
   ADOPTION_REQUIREMENT_LABELS,
   valueChipLabel,
 } from "@/lib/filters/metadata";
-import { ageLabel, sexLabel, sizeLabel } from "@/lib/labels";
+import { ageLabel, sexLabel, sizeFact } from "@/lib/labels";
+import { MUTED_LINK } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 
 const SEX_ICONS: Record<Exclude<Sex, "unknown">, LucideIcon> = {
@@ -415,10 +416,10 @@ const PHOTO_CREDIT_ONLY =
 // 10 let", "Velikost: srednja", "Kratka dlaka". The icon was meant to carry
 // that and did not: "Kratka" beside a few drawn strands was short and nothing
 // in particular, and "Srednja" was the answer to both the size and the coat.
-// The rest name themselves (the sex, the colours, the energy, a stated stage),
-// and for those the prefix gives a screen reader the heading the eye can do
-// without. A fact whose symbol is not a plain Lucide icon hands it in as a
-// node instead.
+// The rest name themselves. The sex reads as a whole fact and takes no prefix;
+// the colours, the energy and a stated stage give a screen reader the heading
+// the eye can do without. A fact whose symbol is not a plain Lucide icon hands
+// it in as a node instead.
 function Fact({
   icon: Icon,
   iconNode,
@@ -619,11 +620,7 @@ export function AnimalFacts({
                     />
                   }
                 >
-                  {/* Lowercase after the colon, the way the card prints the
-                      same word in its middot list. */}
-                  {t("factSizeValue", {
-                    size: sizeLabel(animal.size, locale).toLocaleLowerCase(locale),
-                  })}
+                  {sizeFact(animal.size, locale)}
                 </Fact>
               )}
               {animal.coatColors && (
@@ -851,18 +848,18 @@ export function AnimalFacts({
             ))}
           </div>
           {clampDescription && (
-            // pointer-coarse:tap-target because a thumb got the 16px of its
-            // line and nothing more, the one control in the card under the
-            // 44px floor. The overlay reaches 14px up into the last clamped
-            // line, which is a press on the text it opens, and 14px down,
-            // short of the shelter's box: 24px below it in the dialog and 20px
-            // on the animal's page.
+            // MUTED_LINK for the finger's box it gives a coarse pointer: a
+            // thumb got the 16px of this line and nothing more, the one control
+            // in the card under the 44px floor. The box reaches 14px up into
+            // the last clamped line, which is a press on the text it opens, and
+            // 14px down, short of the shelter's box: 24px below it in the
+            // dialog and 20px on the animal's page.
             <button
               type="button"
               aria-expanded={showFullDescription}
               aria-controls={descriptionId}
               onClick={() => setShowFullDescription((open) => !open)}
-              className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground pointer-coarse:tap-target"
+              className={cn(MUTED_LINK, "cursor-pointer text-xs underline")}
             >
               {showFullDescription ? messages.showLess : messages.readMore}
             </button>

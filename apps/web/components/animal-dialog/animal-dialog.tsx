@@ -105,13 +105,6 @@ export type DialogOrigin = {
 // landscape bug nothing would catch. PHONE_SHELL below is the same boundary
 // for the places that have to ask rather than style.
 //
-// The scroll padding at the foot of the phone shell is for the sticky call to
-// action. The shell is the scrollport there, and a control Tab brings in from
-// below was scrolled to the bottom edge, which is under the bar: in a 1280x500
-// window, the phone shell by height, the health pill stood 19px of its 26
-// under it. 5.5rem is the bar's 77px and some air, and the inset is the one
-// the bar adds on a phone with a home indicator.
-//
 // morph-still carries nothing of its own. It is the hook the one rule scoped
 // to a running morph is keyed on (globals.css): Blink builds the invalidation
 // set for `[data-photo-morph] X` from X alone, and that rule used to name
@@ -120,7 +113,7 @@ export type DialogOrigin = {
 // inside the transition's own capture. A class only this box wears is a set of
 // one. It is not the content's own styling class and nothing else may use it.
 const CONTENT_CLASS =
-  "morph-still fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:scroll-pb-[calc(5.5rem+env(safe-area-inset-bottom))] phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
+  "morph-still fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame. The pull up under
 // the photos is on the wrapper around it (CARD_FRAME_CLASS), so that the edge
@@ -219,6 +212,18 @@ const NAV_SHIFT_MAX = 24;
 // than with background, and an unprefixed fill from here would lose to it.
 const PHONE_SHARE_CLASS =
   "phone-shell:rounded-full phone-shell:border-border phone-shell:bg-background/80 phone-shell:shadow-xs phone-shell:hover:bg-background phone-shell:dark:border-input phone-shell:dark:bg-input/30 phone-shell:dark:hover:bg-input/50 ";
+
+// The phone's sticky call to action at the foot of the shell, and the room the
+// shell keeps clear above it while it is drawn. The shell is the scrollport
+// there, and a control Tab brought in from below was scrolled to its bottom
+// edge, under the bar: in a 1280x500 window, the phone shell by height, the
+// health pill stood 19px of its 26 beneath it. The clearance is the bar's own
+// sum, so the two change together: its 1rem above the 44px button, the same
+// bottom padding, its 1px rule, and half a rem of air.
+const STICKY_CTA_CLASS =
+  "sticky inset-x-0 bottom-0 z-30 mt-auto border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] desktop-box:hidden";
+const STICKY_CTA_CLEARANCE =
+  "phone-shell:scroll-pb-[calc(3.75rem+1px+max(1rem,env(safe-area-inset-bottom))+0.5rem)]";
 
 const DRAG_SPRING = {
   type: "spring",
@@ -430,10 +435,8 @@ function OpenAnimalDialog({
   // descriptions overflow a short desktop viewport.
   //
   // The phone scrolls the whole shell rather than the card, and nothing put
-  // that back: a step taken halfway down one animal opened the next one
-  // halfway down. It mattered little while the steps sat on the title row,
-  // which is at the top, and it matters now that they stand at the end of the
-  // card. Only for an animal arriving, not for the close, where the shell is
+  // that back, so a step from the end of one animal opened the next at its
+  // end. Only for an animal arriving, not for the close, where the shell is
   // still fading out and a jump to the top would show.
   const focusAfterStep = useRef(false);
   useEffect(() => {
@@ -443,8 +446,8 @@ function OpenAnimalDialog({
     if (contentRef.current) contentRef.current.scrollTop = 0;
     if (!focusAfterStep.current) return;
     focusAfterStep.current = false;
-    // Where an open lands, which is the animal: its front print, or its name
-    // when it has no photo to put in front.
+    // The animal itself: its front print, where an open lands too, or its
+    // name when it has no photo to put in front.
     const target =
       frontPrintOf(contentRef.current) ??
       contentRef.current?.querySelector<HTMLElement>('[data-slot="dialog-title"]');
@@ -622,8 +625,6 @@ function OpenAnimalDialog({
     place >= 0 && place < siblings.length - 1
       ? siblings[place + 1]
       : undefined;
-  const previousId = previous?.id;
-  const nextId = next?.id;
 
   // A step from the end of the card, where the phone's two steps stand. The
   // arrows and the page keys keep focus where it was, so they can be pressed
@@ -652,10 +653,10 @@ function OpenAnimalDialog({
       event.preventDefault();
       return;
     }
-    const target = event.key === "PageUp" ? previousId : nextId;
+    const target = event.key === "PageUp" ? previous : next;
     if (!target) return;
     event.preventDefault();
-    onNavigate(target);
+    onNavigate(target.id);
   }
 
   // Radix would hand the open to the first focusable child, which since the
@@ -818,7 +819,7 @@ function OpenAnimalDialog({
         <DialogPrimitive.Content
           ref={contentRef}
           data-slot="animal-dialog"
-          className={CONTENT_CLASS}
+          className={cn(CONTENT_CLASS, stickyCta && STICKY_CTA_CLEARANCE)}
           style={{ transformOrigin: zoomOrigin(origin) }}
           onKeyDown={handleKeyDown}
           onOpenAutoFocus={openOnFrontPrint}
@@ -1043,11 +1044,6 @@ function OpenAnimalDialog({
                           it. shrink-0 so the name is measured against what
                           they leave rather than squeezing them. */}
                       <span className="ms-auto flex shrink-0 items-center gap-1">
-                        {/* No steps to other animals here. On the phone a
-                            round chevron under the fan's count was read as the
-                            next photo; the steps stand at the end of the card
-                            instead (AnimalSteps), and from sm up at the edges
-                            of the box. */}
                         <DialogShareButton
                           path={href}
                           name={name}
@@ -1166,14 +1162,14 @@ function OpenAnimalDialog({
                     the trigger's own props over the attribute it sets, so
                     this drops it and leaves the name to say it once. */}
                 <TooltipProvider>
-                  {previousId && (
+                  {previous && (
                     <Tooltip>
                       <TooltipTrigger asChild aria-describedby={undefined}>
                         <Button
                           type="button"
                           variant="outline"
                           size="icon-sm"
-                          onClick={() => onNavigate(previousId)}
+                          onClick={() => onNavigate(previous.id)}
                           aria-label={messages.previousAnimal}
                           className={`${ANIMAL_NAV_CLASS} left-0 -translate-x-1/2`}
                         >
@@ -1185,14 +1181,14 @@ function OpenAnimalDialog({
                       </TooltipContent>
                     </Tooltip>
                   )}
-                  {nextId && (
+                  {next && (
                     <Tooltip>
                       <TooltipTrigger asChild aria-describedby={undefined}>
                         <Button
                           type="button"
                           variant="outline"
                           size="icon-sm"
-                          onClick={() => onNavigate(nextId)}
+                          onClick={() => onNavigate(next.id)}
                           aria-label={messages.nextAnimal}
                           className={`${ANIMAL_NAV_CLASS} right-0 translate-x-1/2`}
                         >
@@ -1215,10 +1211,7 @@ function OpenAnimalDialog({
 
                   What it is gated on is above; see stickyCta. */}
               {stickyCta && (
-                <div
-                  data-slot="sticky-cta"
-                  className="sticky inset-x-0 bottom-0 z-30 mt-auto border-t bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] desktop-box:hidden"
-                >
+                <div data-slot="sticky-cta" className={STICKY_CTA_CLASS}>
                   <Button asChild size="sm" className="h-11 w-full">
                     <a
                       href={source?.sourceUrl ?? href}

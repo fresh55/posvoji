@@ -127,12 +127,12 @@ const sl = {
   previousAnimal: "Prejšnja žival",
   nextAnimal: "Naslednja žival",
   // The phone's two steps at the end of the animal dialog's card. Each prints
-  // the short word over the name of the animal it leads to, and is heard whole.
+  // the short word over the name of the animal it leads to, and is heard whole:
+  // previousAnimal or nextAnimal as the step, the edge arrows' own words.
   otherAnimals: "Druge živali",
   previousShort: "Prejšnja",
   nextShort: "Naslednja",
-  previousAnimalNamed: "Prejšnja žival: {name}",
-  nextAnimalNamed: "Naslednja žival: {name}",
+  animalStepNamed: "{step}: {name}",
   share: "Deli",
   linkCopied: "Povezava kopirana",
   foundHome: "Ta žival je že našla nov dom.",
@@ -145,9 +145,6 @@ const sl = {
   // something a translator can see and change. A bare "2 leti" beside a box
   // whose first line is a wait was read as the wait.
   factAgeValue: "Starost: {age}",
-  // The same for the size. "Srednja" alone was also the coat's answer, and the
-  // growing paw beside it did not say which of the two it was.
-  factSizeValue: "Velikost: {size}",
   // The same fact as the card prints it: lowercase and without the colon, so
   // it sits in the middot list beside the species. A bare "5 mesecev" under a
   // grid whose default order is the longest wait first was read as the wait,
@@ -796,8 +793,7 @@ const en: Messages = {
   otherAnimals: "Other animals",
   previousShort: "Previous",
   nextShort: "Next",
-  previousAnimalNamed: "Previous animal: {name}",
-  nextAnimalNamed: "Next animal: {name}",
+  animalStepNamed: "{step}: {name}",
   share: "Share",
   linkCopied: "Link copied",
   foundHome: "This animal has already found a home.",
@@ -807,7 +803,6 @@ const en: Messages = {
   factBreed: "Breed",
   factTimeInShelter: "In the shelter",
   factAgeValue: "Age: {age}",
-  factSizeValue: "Size: {size}",
 
 
 

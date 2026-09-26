@@ -5,7 +5,9 @@ import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-context";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
+import { thumbnailUrl } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
+import { opensElsewhere } from "@/lib/opens-elsewhere";
 import { cn } from "@/lib/utils";
 
 type Direction = "previous" | "next";
@@ -63,9 +65,13 @@ function AnimalStep({
 }) {
   const { locale, messages, t } = useI18n();
   const name = animal.name ?? messages.unnamed;
-  // The photo its card leads with. A client animal's photos are already the
-  // ones it may draw.
-  const photo = animal.images[0];
+  // The photo its card leads with, as the 112px copy ingest cuts beside every
+  // cached one. It is the file the stage's wash draws for that photo, so the
+  // animal just stepped from is already in the cache and the one ahead has
+  // its wash fetched early. The width ladder's smallest rung is 320px, eight
+  // times this box.
+  const lead = animal.images[0];
+  const photo = lead && { ...lead, src: thumbnailUrl(lead.src), widths: undefined };
   const SpeciesMark = SPECIES_ICONS[animal.species];
   const onward = direction === "next";
   const Chevron = onward ? ChevronRight : ChevronLeft;
@@ -75,24 +81,20 @@ function AnimalStep({
       // modified click or a long press still opens its page elsewhere. A plain
       // press steps in place, the way the edge arrows do.
       href={animalPath(animal, locale)}
+      // Not speculated: the site's rules fetch a same-origin link's page on a
+      // press, and a plain press here never goes to it.
+      data-no-speculate=""
       data-slot="animal-step"
       data-direction={direction}
       // The caption on screen is the short one, because a 320px screen gives
       // each half 140px. The name a reader hears is whole, and it starts with
       // what is printed.
-      aria-label={t(onward ? "nextAnimalNamed" : "previousAnimalNamed", {
+      aria-label={t("animalStepNamed", {
+        step: onward ? messages.nextAnimal : messages.previousAnimal,
         name,
       })}
       onClick={(event) => {
-        if (
-          event.metaKey ||
-          event.ctrlKey ||
-          event.shiftKey ||
-          event.altKey ||
-          event.button !== 0
-        ) {
-          return;
-        }
+        if (opensElsewhere(event)) return;
         event.preventDefault();
         onStep(animal.id);
       }}

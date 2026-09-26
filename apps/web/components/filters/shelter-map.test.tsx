@@ -32,6 +32,7 @@ import {
   REGION_DWELL_MS,
   ShelterMap,
 } from "./shelter-map";
+import { PlateFurniture } from "./shelter-map-furniture";
 
 function pin(
   value: string,
@@ -399,7 +400,8 @@ describe("ShelterMap cluster wedges", () => {
     const disc = document.querySelector('[data-disc-shelter="zahod"]')!;
     fireEvent.pointerEnter(disc);
 
-    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+    // In the words the picker's rows print (shelterChipLabel).
+    expect(screen.getByText("Zahod")).toBeTruthy();
     expect(screen.getByText("20 živali")).toBeTruthy();
   });
 
@@ -523,7 +525,7 @@ describe("ShelterMap satellite markers", () => {
     fireEvent.pointerEnter(
       document.querySelector('[data-disc-shelter="sia-in-lu"]')!,
     );
-    expect(screen.getByText("Zavetišče Sia in Lu")).toBeTruthy();
+    expect(screen.getByText("Sia in Lu")).toBeTruthy();
     expect(screen.getByText("11 živali")).toBeTruthy();
   });
 
@@ -1023,13 +1025,27 @@ describe("ShelterMap inert regions", () => {
     hoverRegion(inert);
 
     expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
-    // Both names, joined by the middot the map's other metadata pairs use,
-    // under a verb in the dual: two shelters are "skrbita", never "skrbi".
+    // Both names, joined the way the sentence's language joins a list, under
+    // a verb in the dual: two shelters are "skrbita", never "skrbi". Joined by
+    // middots, a wrapped card left one hanging at the end of a line.
     expect(
       screen.getByText(
-        "Zanje skrbita Zavetišče Nova Gorica · Zavetišče Ajdovščina",
+        "Zanje skrbita Nova Gorica in Ajdovščina",
       ),
     ).toBeTruthy();
+  });
+
+  it("names each shelter as the picker's rows print it", () => {
+    const { inert } = renderLive(
+      onlyLjubljana,
+      new Map([[GORISKA, ["Zavetišče Johanca (Veterina Tolmin)", "Zavetišče Oskar Vitovlje"]]]),
+    );
+
+    hoverRegion(inert);
+
+    expect(document.querySelector("[data-callout-note]")?.textContent).toBe(
+      "Zanje skrbita Johanca in Oskar Vitovlje",
+    );
   });
 
   it("counts the shelters the way Slovenian does, one, two and more", () => {
@@ -1043,9 +1059,9 @@ describe("ShelterMap inert regions", () => {
     // it is the one a single plural would have got wrong.
     expect(named(["A"])).toBe("Zanje skrbi A");
     cleanup();
-    expect(named(["A", "B"])).toBe("Zanje skrbita A · B");
+    expect(named(["A", "B"])).toBe("Zanje skrbita A in B");
     cleanup();
-    expect(named(["A", "B", "C"])).toBe("Zanje skrbijo A · B · C");
+    expect(named(["A", "B", "C"])).toBe("Zanje skrbijo A, B in C");
   });
 
   it("says nothing extra where the coverage table has nothing to say", () => {
@@ -1070,7 +1086,7 @@ describe("ShelterMap inert regions", () => {
     );
 
     expect(regionTag(html, "Goriška")).toContain(
-      'aria-label="Goriška: Ni zavetišč v tej regiji. Zanje skrbi Zavetišče Nova Gorica"',
+      'aria-label="Goriška: Ni zavetišč v tej regiji. Zanje skrbi Nova Gorica"',
     );
     // Still not a control: naming a shelter somewhere else does not make this
     // region pressable.
@@ -1101,7 +1117,7 @@ describe("ShelterMap inert regions", () => {
       const html = renderToStaticMarkup(unlistedMap);
 
       expect(regionTag(html, "Goriška")).toContain(
-        'aria-label="Goriška: Trenutno brez objavljenih živali. Zanje skrbita Zavetišče Nova Gorica · Zavetišče Ajdovščina"',
+        'aria-label="Goriška: Trenutno brez objavljenih živali. Zanje skrbita Nova Gorica in Ajdovščina"',
       );
       // Empty ground the set does not name still has no shelters on it.
       expect(regionTag(html, "Podravska")).toContain(
@@ -1119,7 +1135,7 @@ describe("ShelterMap inert regions", () => {
       ).toBe("Trenutno brez objavljenih živali");
       expect(screen.queryByText("Ni zavetišč v tej regiji")).toBeNull();
       expect(container.querySelector("[data-callout-note]")?.textContent).toBe(
-        "Zanje skrbita Zavetišče Nova Gorica · Zavetišče Ajdovščina",
+        "Zanje skrbita Nova Gorica in Ajdovščina",
       );
     });
 
@@ -1255,7 +1271,7 @@ describe("ShelterMap region dwell", () => {
     expect(screen.getByText("Goriška")).toBeTruthy();
     // The covered-by line is the whole reason this callout survived: nothing
     // else on the plate can say who takes a stray found here.
-    expect(screen.getByText("Zanje skrbi Zavetišče Nova Gorica")).toBeTruthy();
+    expect(screen.getByText("Zanje skrbi Nova Gorica")).toBeTruthy();
   });
 
   it("answers a live region once the pointer has stayed, and names it", () => {
@@ -1464,7 +1480,7 @@ describe("ShelterMap region dwell", () => {
     // two facts the callout shows (see the inert-region tests above).
     expect(map.inert.getAttribute("tabindex")).toBeNull();
     expect(map.inert.getAttribute("aria-label")).toContain(
-      "Zanje skrbi Zavetišče Nova Gorica",
+      "Zanje skrbi Nova Gorica",
     );
   });
 });
@@ -1707,25 +1723,26 @@ describe("ShelterMap logo in the annotation", () => {
     ).container;
   }
 
-  it("draws the shelter's mark over the card's title", () => {
+  // Ten of the eleven marks spell the shelter's name, which the title then said
+  // again, at a size where the mark's own lettering could not be read, and
+  // the tallest row on the card was the one saying the least. The row's
+  // details draw the mark at a size it can be read.
+  it("draws no mark on the card, whatever the summary carries", () => {
     const container = renderWithLogo();
 
     fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
 
-    const mark = container.querySelector("[data-callout-logo] img");
-    expect(mark?.getAttribute("src")).toBe(logo.url);
-    expect(mark?.getAttribute("alt")).toBe("");
-    // A light chip in dark mode only, as the shelter cards draw this mark.
-    expect(container.querySelector("[data-callout-logo]")?.className).toContain("dark:bg-stone-100");
+    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
+    expect(container.querySelector("[data-map-callout] img")).toBeNull();
   });
 
-  it("leaves it out while the list's details are describing that shelter", () => {
+  it("draws the name alone while the list's details are describing that shelter", () => {
     const container = renderWithLogo("ljubljana");
 
     fireEvent.pointerEnter(container.querySelector('[data-marker-key="ljubljana"]')!);
 
-    expect(container.querySelector("[data-map-callout]")).not.toBeNull();
-    expect(container.querySelector("[data-callout-logo]")).toBeNull();
+    const chip = container.querySelector("[data-callout-chip]")!;
+    expect([...chip.children].map((child) => child.textContent)).toEqual(["Ljubljana"]);
   });
 });
 
@@ -2147,28 +2164,83 @@ describe("ShelterMap label priority", () => {
     };
   }
 
+  // Horjul alone. Its card keeps off every other coin, and with Ljubljana's
+  // coin on the plate it stands clear of Ljubljana altogether. With no coin
+  // there, the card is set to the right, twenty units east, straight over the
+  // anchor standing at Ljubljana's projected point.
+  const horjulAlone = [pins[0]];
+
   it("takes the anchor an annotation is drawn across off the plate", () => {
-    const map = renderMapDom();
+    const map = renderMapDom(horjulAlone);
     expect(map.anchor("Ljubljana")).not.toBeNull();
 
-    // Horjul sits twenty units west of Ljubljana, so its annotation is set to
-    // the right and runs straight over the anchor captioning Ljubljana's coin.
     fireEvent.pointerEnter(map.marker("horjul"));
 
     expect(map.anchor("Ljubljana")).toBeNull();
-    // Maribor is
-    // most of a country away and keeps its name: what gives way is the type
-    // under the annotation, not the type on the plate.
+    // Maribor is most of a country away and keeps its name: what gives way is
+    // the type under the annotation, not the type on the plate.
     expect(map.anchor("Maribor")).not.toBeNull();
   });
 
   it("gives the anchor straight back when the annotation goes", () => {
-    const map = renderMapDom();
+    const map = renderMapDom(horjulAlone);
     fireEvent.pointerEnter(map.marker("horjul"));
     expect(map.anchor("Ljubljana")).toBeNull();
 
     fireEvent.pointerLeave(map.marker("horjul"));
     expect(map.anchor("Ljubljana")).not.toBeNull();
+  });
+
+  it("takes the anchor of the town a card is about off, wherever the card stands", () => {
+    const map = renderMapDom();
+    expect(map.anchor("Maribor")).not.toBeNull();
+
+    // The card names Maribor in its title, and the grey name beside the coin
+    // was the same word a second time wherever the card stood clear of it.
+    fireEvent.pointerEnter(map.marker("maribor"));
+    expect(map.anchor("Maribor")).toBeNull();
+    expect(map.anchor("Ljubljana")).not.toBeNull();
+
+    fireEvent.pointerLeave(map.marker("maribor"));
+    expect(map.anchor("Maribor")).not.toBeNull();
+  });
+
+  it("takes a neighbour's name and the sea's off wherever a card stands on them", () => {
+    const furniture = (calloutRects: { x: number; y: number; width: number; height: number }[]) =>
+      render(
+        <svg>
+          <PlateFurniture towns={[]} calloutRects={calloutRects} names={new Map()} wide />
+        </svg>,
+      ).container;
+
+    // A card standing over the Friuli plain and the gulf, where a card can go
+    // now that it goes round its coin: the names it covers would otherwise be
+    // left as their first letter or two beside its edge.
+    const covered = furniture([
+      { x: 0, y: 128, width: 30, height: 12 },
+      { x: 0, y: 185, width: 30, height: 15 },
+    ]);
+    expect(covered.querySelector('[data-map-neighbor="ITALIJA"]')).toBeNull();
+    expect(covered.querySelector("[data-map-sea-label]")).toBeNull();
+    // What no card is on keeps its name.
+    expect(covered.querySelector('[data-map-neighbor="AVSTRIJA"]')).not.toBeNull();
+    expect(covered.querySelector('[data-map-neighbor="MADŽARSKA"]')).not.toBeNull();
+    cleanup();
+
+    const clear = furniture([]);
+    expect(clear.querySelector('[data-map-neighbor="ITALIJA"]')).not.toBeNull();
+    expect(clear.querySelector("[data-map-sea-label]")).not.toBeNull();
+  });
+
+  it("keeps a card off the other coins when it has a clear spot", () => {
+    const map = renderMapDom();
+
+    fireEvent.pointerEnter(map.marker("horjul"));
+
+    // The card used to be set right of Horjul and hid the Ljubljana coin whole.
+    expect(map.container.querySelector("[data-map-callout]")?.getAttribute("data-callout-side")).not.toBe(
+      "right",
+    );
   });
 
   it("moves no mark out of the way, only type", () => {
@@ -2785,19 +2857,23 @@ describe("ShelterMap marker keyboard", () => {
     fireEvent.keyDown(map.coin("celje"), { key: " " });
 
     expect(map.onPick).not.toHaveBeenCalled();
-    expect(screen.getByText("Zavetišče Vzhod")).toBeTruthy();
+    expect(screen.getByText("Vzhod")).toBeTruthy();
     expect(screen.getByText("60 živali")).toBeTruthy();
   });
 
   it("raises the annotation on focus and takes it away on blur", () => {
     const map = renderKeyboard();
+    const title = () =>
+      document.querySelector("[data-callout-title]")?.textContent ?? null;
 
     fireEvent.focusIn(map.coin("maribor"));
-    expect(screen.getByText("Zavetišče Maribor")).toBeTruthy();
+    // In the row's words, and read off the card: the town's grey name beside
+    // the coin says "Maribor" too, whenever the card is not up.
+    expect(title()).toBe("Maribor");
     expect(screen.getByText("40 živali")).toBeTruthy();
 
     fireEvent.focusOut(map.coin("maribor"));
-    expect(screen.queryByText("Zavetišče Maribor")).toBeNull();
+    expect(title()).toBeNull();
   });
 
   it("draws keyboard focus as the heaviest line on the plate", () => {
@@ -2889,7 +2965,7 @@ describe("ShelterMap wedge keyboard", () => {
     // under it. Driven through the same onHoverShelter path a wedge hover
     // takes, so the callout, the leaning disc and the list row cannot learn to
     // answer a keyboard differently.
-    expect(screen.getByText("Zavetišče Vzhod")).toBeTruthy();
+    expect(screen.getByText("Vzhod")).toBeTruthy();
     expect(screen.getByText("60 živali")).toBeTruthy();
     // And the same fact out loud, for the reader who never sees either.
     expect(celje.getAttribute("aria-label")).toBe("Zavetišče Vzhod: 60 živali");
@@ -2923,7 +2999,7 @@ describe("ShelterMap wedge keyboard", () => {
     fireEvent.keyDown(celje, { key: "Enter" });
 
     fireEvent.keyDown(celje, { key: "ArrowRight" });
-    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+    expect(screen.getByText("Zahod")).toBeTruthy();
     expect(screen.getByText("20 živali")).toBeTruthy();
     // The press was consumed here. A keypress that walked the plate as well
     // would leave the keyboard in two places at once.
@@ -2932,9 +3008,9 @@ describe("ShelterMap wedge keyboard", () => {
     // These wrap, where the plate's own arrows do not: the marks in a coin are
     // arranged around one point and there is no edge to fall off.
     fireEvent.keyDown(celje, { key: "ArrowRight" });
-    expect(screen.getByText("Zavetišče Vzhod")).toBeTruthy();
+    expect(screen.getByText("Vzhod")).toBeTruthy();
     fireEvent.keyDown(celje, { key: "ArrowLeft" });
-    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+    expect(screen.getByText("Zahod")).toBeTruthy();
   });
 
   it("picks exactly the mark it is standing on", () => {
@@ -3012,7 +3088,7 @@ describe("ShelterMap wedge keyboard", () => {
     fireEvent.keyDown(celje, { key: "Enter" });
     fireEvent.focusOut(celje);
 
-    expect(screen.queryByText("Zavetišče Vzhod")).toBeNull();
+    expect(screen.queryByText("Vzhod")).toBeNull();
     expect(celje.getAttribute("data-marker-drilled")).toBeNull();
 
     // A coin the visitor comes back to is always found at coin level, rather
@@ -3094,7 +3170,7 @@ describe("ShelterMap drilled coin, blurred", () => {
     await nextFrame();
 
     expect(celje.getAttribute("data-marker-drilled")).toBe("zahod");
-    expect(screen.queryByText("Zavetišče Zahod")).not.toBeNull();
+    expect(screen.queryByText("Zahod")).not.toBeNull();
   });
 
   it("closes it when it is still the one on screen", async () => {
@@ -3132,7 +3208,7 @@ describe("ShelterMap distance from the origin", () => {
     pin("maribor", "Zavetišče Maribor", "Maribor", 40),
   ];
 
-  function renderWithOrigin(origin?: LatLon) {
+  function renderWithOrigin(origin?: LatLon, describedElsewhere?: string) {
     const { container } = render(
       <I18nProvider locale="sl">
         <ShelterMap
@@ -3140,6 +3216,7 @@ describe("ShelterMap distance from the origin", () => {
           selected={[]}
           onPick={() => undefined}
           origin={origin}
+          describedElsewhere={describedElsewhere}
         />
       </I18nProvider>,
     );
@@ -3202,24 +3279,41 @@ describe("ShelterMap distance from the origin", () => {
     );
   });
 
-  it("labels the line with the same kilometres the rows carry", () => {
+  const koperToMaribor = formatKm(
+    distanceKm(cityAt("Koper")!, cityAt("Maribor")!),
+    "manj kot 1 km",
+  );
+
+  it("puts the kilometres the rows carry on the card, and leaves the line bare", () => {
     const container = renderWithOrigin(cityAt("Koper"));
     hover(container, "maribor");
 
+    // The name is the town, so the place line is the distance alone, as the
+    // row's is. On the line it sat beside the next coin's number, and on the
+    // short lines to the nearest shelters there was no room to set it at all.
+    expect(container.querySelector("[data-callout-place]")?.textContent).toBe(
+      koperToMaribor,
+    );
+    expect(container.querySelector("[data-map-distance-label]")).toBeNull();
+    expect(container.querySelector("[data-map-distance]")).not.toBeNull();
+  });
+
+  it("writes them on the line while the card is saying nothing but the name", () => {
+    // The list's details are describing Maribor, so its card is the name alone.
+    const container = renderWithOrigin(cityAt("Koper"), "maribor");
+    hover(container, "maribor");
+
+    expect(container.querySelector("[data-callout-place]")).toBeNull();
     expect(
       container.querySelector("[data-map-distance-label]")?.textContent,
-    ).toBe(
-      formatKm(
-        distanceKm(cityAt("Koper")!, cityAt("Maribor")!),
-        "manj kot 1 km",
-      ),
-    );
+    ).toBe(koperToMaribor);
   });
 
   it("drops the label, not the line, on a segment too short to hold it", () => {
     // Fifteen-odd kilometres due north of Ljubljana: far enough that a line
     // exists between the ring and the coin, too short to set type across.
-    const container = renderWithOrigin({ lat: 46.2, lon: 14.5058 });
+    // Described elsewhere, so the card leaves the distance to the line.
+    const container = renderWithOrigin({ lat: 46.2, lon: 14.5058 }, "ljubljana");
     hover(container, "ljubljana");
 
     expect(container.querySelector("[data-map-distance]")).not.toBeNull();
@@ -3278,7 +3372,10 @@ describe("ShelterMap species annotation", () => {
     const row = container.querySelector("[data-callout-species]");
     expect(row).not.toBeNull();
     expect(row!.textContent).toBe("3119");
-    expect(container.querySelector(".lucide-dog")).not.toBeNull();
+    expect(container.querySelector('[data-callout-species-entry="dog"] svg')).not.toBeNull();
+    // The breakdown adds up to the coin's number, so it is the count: no line
+    // of words says "50 živali" over it a second time.
+    expect(container.querySelector("[data-callout-metadata]")).toBeNull();
   });
 
   it("omits the full-shelter species breakdown when the map count is filtered", () => {
@@ -3336,8 +3433,10 @@ describe("ShelterMap species annotation", () => {
       container.querySelector('[data-marker-key="ljubljana"]')!,
     );
 
-    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    expect(container.querySelector("[data-callout-title]")?.textContent).toBe("Ljubljana");
     expect(container.querySelector("[data-callout-species]")).toBeNull();
+    // With no breakdown to be the count, the words say it.
+    expect(screen.getByText("50 živali")).toBeTruthy();
   });
 });
 
@@ -3635,7 +3734,7 @@ describe("ShelterMap without hover", () => {
 
     tap(map.coin("ljubljana"));
     expect(map.onPick).not.toHaveBeenCalled();
-    expect(screen.getByText("Zavetišče Ljubljana")).toBeTruthy();
+    expect(document.querySelector("[data-callout-title]")?.textContent).toBe("Ljubljana");
     expect(screen.getByText("5 živali")).toBeTruthy();
 
     tap(map.coin("ljubljana"));
@@ -3656,7 +3755,7 @@ describe("ShelterMap without hover", () => {
     expect(map.onPick).not.toHaveBeenCalled();
     // The wedge answers for its own shelter, which is the one question the
     // town's own name cannot answer.
-    expect(screen.getByText("Zavetišče Zahod")).toBeTruthy();
+    expect(screen.getByText("Zahod")).toBeTruthy();
 
     tap(map.wedge("zahod"));
     expect(map.onPick).toHaveBeenCalledWith(["zahod"], {
@@ -3682,12 +3781,12 @@ describe("ShelterMap without hover", () => {
     // A lone coin.
     tap(map.coin("ljubljana"));
     expect(action()?.textContent).toBe("Izberi");
-    expect(action()?.getAttribute("aria-label")).toBe("Izberi: Zavetišče Ljubljana");
+    expect(action()?.getAttribute("aria-label")).toBe("Izberi: Ljubljana");
 
     // One mark inside a shared coin.
     tap(map.wedge("zahod"));
     expect(action()?.textContent).toBe("Izberi");
-    expect(action()?.getAttribute("aria-label")).toBe("Izberi: Zavetišče Zahod");
+    expect(action()?.getAttribute("aria-label")).toBe("Izberi: Zahod");
   });
 
   it("says a drop the same way, verb alone, for one picked shelter", () => {
@@ -3701,7 +3800,7 @@ describe("ShelterMap without hover", () => {
     tap(document.querySelector('[data-marker-key="ljubljana"]')!);
 
     expect(
-      screen.getByRole("button", { name: "Odstrani iz izbora: Zavetišče Ljubljana" })
+      screen.getByRole("button", { name: "Odstrani iz izbora: Ljubljana" })
         .textContent,
     ).toBe("Odstrani iz izbora");
   });

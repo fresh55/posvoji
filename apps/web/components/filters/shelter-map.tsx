@@ -150,6 +150,10 @@ export const NO_HOVER = "(hover: none)";
 const PICKED_DOT_PX = 3.5;
 const PICKED_DOT_RING_PX = 1.5;
 
+// The air a card leaves round every coin it keeps off, in screen pixels, so a
+// card that clears a coin is seen to clear it rather than to graze it.
+const CARD_COIN_AIR_PX = 6;
+
 // A presentation map has no selection by definition. Keep one stable array so
 // its regions and markers do not redraw merely because the parent did.
 const EMPTY_SELECTION: string[] = [];
@@ -603,33 +607,51 @@ export function ShelterMap({
     (activeTown?.shelters.length === 1 ? activeTown.shelters[0] : undefined);
   /** This annotation is about the shelter something else already describes,
    *  so everything that other thing says is dropped from it and only the name
-   *  is left. Both the count and the species line go, which is what makes
-   *  MapCallout draw its dense one-line label instead of a card: see `dense`
-   *  there. The other shelter in a shared town is untouched, because
+   *  is left. The place, the count and the species line all go, which is what
+   *  makes MapCallout draw its dense one-line label instead of a card: see
+   *  `dense` there. The other shelter in a shared town is untouched, because
    *  calloutShelter is the wedge under the pointer. */
   const saidElsewhere =
     Boolean(describedElsewhere) && calloutShelter?.value === describedElsewhere;
-  /** The shelter's own mark over the card's title, when the card is about one
-   *  shelter and nothing else on screen is describing it already. */
-  const calloutLogo = calloutShelter && !saidElsewhere
-    ? summaries?.get(calloutShelter.value)?.logo
-    : undefined;
 
-  /** The line under the annotation's title, when the annotation carries one.
-   *  A wedge under the pointer answers for its own shelter; a town answers for
-   *  itself, and one with nothing to pick says so rather than counting out the
-   *  nought it has. */
-  const townMetadata = !activeTown
+  /** The card's name, in the words the list's rows print (shelterChipLabel),
+   *  so the card and the row it lights up say the same thing. It said the
+   *  registry name once, "Zavetišče Maribor (Snaga)", beside a row, a picked
+   *  name and a footer chip that all said "Maribor". A town holding several
+   *  shelters answers by the town's name. No logo over it: ten of the eleven
+   *  marks spell the name the title then said again, at a size where their
+   *  own lettering could not be read. The row's details carry the mark at a
+   *  size it can be. */
+  const calloutTitle = !activeTown
+    ? ""
+    : calloutShelter
+      ? shelterChipLabel(calloutShelter.label)
+      : activeTown.city;
+
+  /** Where it is, the way the row says it: the town, unless the name already
+   *  is the town, and how far, once there is a place to measure from. The
+   *  distance used to stand halfway along the dashed line to the coin, where
+   *  it sat beside the next coin's number, and on the short lines to the
+   *  nearest shelters, the ones a visitor is looking for, there was no room
+   *  to set it at all. */
+  const calloutPlace = !activeTown
     ? undefined
-    : hoveredShelter
-      ? shelterAvailability(hoveredShelter, locale) ?? filteredAnimalCount(hoveredShelter.count, locale)
-      : activeTown.shelters.every((shelter) => shelter.selectable === false)
-        ? messages.noAnimalsListed
-        : townCount(activeTown) === 0
-          ? mapAvailabilityText[locale].noMatches
-        : activeTown.shelters.length > 1
-          ? `${shelterCount(activeTown.shelters.length, locale)} · ${filteredAnimalCount(townCount(activeTown), locale)}`
-          : filteredAnimalCount(townCount(activeTown), locale);
+    : [
+        calloutShelter &&
+        activeTown.city.localeCompare(calloutTitle, undefined, {
+          sensitivity: "base",
+        }) !== 0
+          ? activeTown.city
+          : undefined,
+        origin
+          ? formatKm(
+              distanceKm(origin, (calloutShelter ?? activeTown.shelters[0]).at),
+              messages.lessThanOneKm,
+            )
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join(" · ") || undefined;
 
   /** Who lives there, when the annotation is about one house. A cluster's own
    *  card answers for its town, and the breakdown of a town is a fact about no
@@ -639,8 +661,28 @@ export function ShelterMap({
     : undefined;
   // A full-shelter breakdown cannot explain a filtered badge. Keep the map's
   // compact callout scoped to its count; the list details explain the full roster.
-  const calloutSpecies = summarySpecies?.reduce((total, item) => total + item.count, 0) === calloutShelter?.count
+  const calloutSpecies = summarySpecies?.length && summarySpecies.reduce((total, item) => total + item.count, 0) === calloutShelter?.count
     ? summarySpecies : undefined;
+
+  /** The count, where the species line is not there to be it. The breakdown
+   *  adds up to the number on the coin, and "20 živali" over "9 · 11" said the
+   *  coin's number twice more. A wedge under the pointer answers for its own
+   *  shelter; a town answers for itself, and one with nothing to pick says so
+   *  rather than counting out the nought it has. */
+  const townMetadata = !activeTown
+    ? undefined
+    : hoveredShelter
+      ? shelterAvailability(hoveredShelter, locale) ??
+        (calloutSpecies ? undefined : filteredAnimalCount(hoveredShelter.count, locale))
+      : activeTown.shelters.every((shelter) => shelter.selectable === false)
+        ? messages.noAnimalsListed
+        : townCount(activeTown) === 0
+          ? mapAvailabilityText[locale].noMatches
+        : activeTown.shelters.length > 1
+          ? `${shelterCount(activeTown.shelters.length, locale)} · ${filteredAnimalCount(townCount(activeTown), locale)}`
+          : calloutSpecies
+            ? undefined
+            : filteredAnimalCount(townCount(activeTown), locale);
 
   // Memoized so the highlighted town's region is a lookup rather than a second
   // point-in-polygon pass over every render.
@@ -1197,6 +1239,55 @@ export function ShelterMap({
         : plateTypeAvoid,
     [originMark, plateTypeAvoid],
   );
+  /** What a card keeps off when it has a spot to choose, beyond its own
+   *  mark: every coin with a few pixels of air round it, so a card's edge is
+   *  never left running through one, the picked names, the origin's mark and
+   *  name, and any spotlight card standing. A coin half under an opaque card
+   *  read as a cut coin, and as the card's own: hovering Celje sliced the
+   *  Dramlje coin in half. Only the coins carry a key, so a town's card can
+   *  leave its own coin out. */
+  const cardAvoid = useMemo(() => {
+    const air = CARD_COIN_AIR_PX / plateScale;
+    const rects: (CalloutRect & { key?: string })[] = plateMarks.map((box) =>
+      box.key === undefined
+        ? box
+        : {
+            ...box,
+            x: box.x - air,
+            y: box.y - air,
+            width: box.width + air * 2,
+            height: box.height + air * 2,
+          },
+    );
+    if (originName) rects.push(originName.box);
+    if (originMark) {
+      rects.push({
+        x: originMark.x - originMark.r,
+        y: originMark.y - originMark.r,
+        width: originMark.r * 2,
+        height: originMark.r * 2,
+      });
+    }
+    for (const [key, rect] of Object.entries(calloutRects)) {
+      if (key.startsWith("spotlight-")) rects.push(rect);
+    }
+    return rects;
+  }, [calloutRects, originMark, originName, plateMarks, plateScale]);
+  /** Who answers for an empty region, under the line saying it has no
+   *  shelters: the only thing left to say about ground with none on it. A live
+   *  region carries none; see the region card below. */
+  const regionNote =
+    hoveredRegion && !hoveredRegion.stats.live && !byRegion.has(hoveredRegion.region.id)
+      ? coveredByLine(regionShelterNames?.get(hoveredRegion.region.id), t, locale)
+      : undefined;
+  /** Whether the town under the pointer has its card up. A picked coin names
+   *  itself under the coin instead, and a spotlit town already wears a
+   *  persistent card saying the same thing. */
+  const townCardShown =
+    activeTown !== undefined &&
+    markersVisible &&
+    !namedUnderCoin &&
+    !spotlightTowns.some((town) => town.key === activeTown.key);
 
   return (
     <svg
@@ -1331,6 +1422,10 @@ export function ShelterMap({
         calloutRects={anchorAvoid}
         names={namePlacements}
         wide={markersVisible}
+        // The town whose card is up. The card names the town, in its title
+        // or its place line, and the grey name beside the coin was the same
+        // word a second time wherever the card stood clear of it.
+        namedCity={townCardShown ? activeTown.city : undefined}
       />
 
       {originOnMap && originRadiusKm ? (
@@ -1418,49 +1513,48 @@ export function ShelterMap({
               scale={plateScale}
               // The same number the list rows carry, from the same two
               // functions, so the map and the row cannot disagree about how far
-              // away a town is.
-              label={formatKm(
-                distanceKm(origin, activeTown.shelters[0].at),
-                messages.lessThanOneKm,
-              )}
+              // away a town is. Written on the line only while no card says
+              // it: the card carries it in its place line.
+              label={
+                townCardShown && !saidElsewhere
+                  ? undefined
+                  : formatKm(
+                      distanceKm(origin, activeTown.shelters[0].at),
+                      messages.lessThanOneKm,
+                    )
+              }
             />
           )}
 
-          {/* Keep the active tooltip above every marker. A spotlighted town
-            already wears a persistent card saying the same thing, so hover
-            must not stack a second card on top of it. */}
-          {activeTown &&
-            !namedUnderCoin &&
-            !spotlightTowns.some((t) => t.key === activeTown.key) && (
-              <MapCallout
-                x={activeTown.x}
-                y={activeTown.y}
-                reach={activeTown.r}
-                scale={plateScale}
-                // One town annotation at a time, whichever town it is about, so
-                // one name covers the site rather than one per town.
-                rectKey="town"
-                onRect={handleCalloutRect}
-                // Every coin but the one being named. The chip is opaque, so
-                // the side it takes is the side of the plate it deletes, and
-                // frame fit alone had it deleting the largest mark on the map
-                // (hovering Zavod Muri covered the Celje coin whole).
-                avoid={plateMarks.filter((box) => box.key !== activeTown.key)}
-                // A wedge under the pointer names its own shelter. Without that a
-                // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
-                // at, which is the one question the cluster cannot answer.
-                title={
-                  hoveredShelter ? hoveredShelter.label : townLabel(activeTown)
-                }
-                // The name always; the rest only when nothing else is already
-                // saying it. Both lines go together, which is what leaves
-                // MapCallout drawing its dense one-line label.
-                metadata={saidElsewhere ? undefined : townMetadata}
-                species={saidElsewhere ? undefined : calloutSpecies}
-                logo={calloutLogo}
-                action={armedTown?.key === activeTown.key ? armedAction : undefined}
-              />
-            )}
+          {/* Keep the active tooltip above every marker. */}
+          {townCardShown && (
+            <MapCallout
+              x={activeTown.x}
+              y={activeTown.y}
+              reach={activeTown.r}
+              scale={plateScale}
+              // One town annotation at a time, whichever town it is about, so
+              // one name covers the site rather than one per town.
+              rectKey="town"
+              onRect={handleCalloutRect}
+              // Everything but the coin being named. The chip is opaque, so
+              // the spot it takes is the part of the plate it deletes, and
+              // frame fit alone had it deleting the largest mark on the map
+              // (hovering Zavod Muri covered the Celje coin whole).
+              avoid={cardAvoid.filter((box) => box.key !== activeTown.key)}
+              // A wedge under the pointer names its own shelter. Without that a
+              // cluster answered "Celje, 2 zavetišči" whichever coin you aimed
+              // at, which is the one question the cluster cannot answer.
+              title={calloutTitle}
+              // The name always; the rest only when nothing else is already
+              // saying it. All of it goes together, which is what leaves
+              // MapCallout drawing its dense one-line label.
+              place={saidElsewhere ? undefined : calloutPlace}
+              metadata={saidElsewhere ? undefined : townMetadata}
+              species={saidElsewhere ? undefined : calloutSpecies}
+              action={armedTown?.key === activeTown.key ? armedAction : undefined}
+            />
+          )}
         </g>
       )}
 
@@ -1478,7 +1572,7 @@ export function ShelterMap({
           // A region's chip stands at the region's label point, which is
           // routinely inside a cluster of coins, and it owns none of them: the
           // same courtesy as the town chip above, with nothing to leave out.
-          avoid={markersVisible ? plateMarks : undefined}
+          avoid={markersVisible ? cardAvoid : undefined}
           title={hoveredRegion.region.name}
           action={armedRegion?.region.id === hoveredRegion.region.id ? armedAction : undefined}
           metadata={
@@ -1499,14 +1593,7 @@ export function ShelterMap({
           // tap it cannot see. Naming somebody else's coverage under a live
           // region's own counts would be a second answer to a question nobody
           // asked here.
-          note={
-            hoveredRegion.stats.live
-              ? undefined
-              : !byRegion.has(hoveredRegion.region.id) ? coveredByLine(
-                  regionShelterNames?.get(hoveredRegion.region.id),
-                  t,
-                ) : undefined
-          }
+          note={regionNote}
         />
       )}
 
@@ -1583,11 +1670,16 @@ export function ShelterMap({
             return rect ? [rect] : [];
           })}
           // The spotlighted shelter by name, not its town: in a shared town
-          // the answer is one of the discs, and the card must say which.
+          // the answer is one of the discs, and the card must say which. In
+          // the picker's words where the picker draws it (countOnMarkers), as
+          // its rows, its picked names and its hover card do; the found-animal
+          // page keeps the registry name a visitor phones about.
           title={
             town.shelters
               .filter((shelter) => spotlightValues?.includes(shelter.value))
-              .map((shelter) => shelter.label)
+              .map((shelter) =>
+                countOnMarkers ? shelterChipLabel(shelter.label) : shelter.label,
+              )
               .join(" · ") || townLabel(town)
           }
           metadata={spotlightNote ?? ""}

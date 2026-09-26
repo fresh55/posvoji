@@ -131,6 +131,56 @@ function anchorBox(
     height: CITY_ANCHOR_TYPE * (ANCHOR_ASCENT + ANCHOR_DESCENT),
   };
 }
+// A spaced capital's width as a share of the size: capitals average near
+// 0.68 em in this family and the tracking adds 0.16, rounded outward for the
+// reason ANCHOR_WIDTH_PER_CHAR gives.
+const NEIGHBOR_WIDTH_PER_CHAR = 0.88;
+// The sea's italic lower case, likewise rounded outward.
+const SEA_WIDTH_PER_CHAR = 0.56;
+
+/** The box a set of corners spans, for a label turned on the plate. */
+function spanOf(points: [number, number][]): CalloutRect {
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/** The box a neighbour's name takes up, turned with it where it runs along a
+ *  sliver of its country. */
+function neighborBox(label: (typeof NEIGHBOR_LABELS)[number]): CalloutRect {
+  const width = label.text.length * NEIGHBOR_TYPE * NEIGHBOR_WIDTH_PER_CHAR;
+  const left =
+    label.anchor === "start" ? 0 : label.anchor === "end" ? -width : -width / 2;
+  const top = -NEIGHBOR_TYPE * ANCHOR_ASCENT;
+  const bottom = NEIGHBOR_TYPE * ANCHOR_DESCENT;
+  const turn = ((label.rotate ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(turn);
+  const sin = Math.sin(turn);
+  return spanOf(
+    (
+      [
+        [left, top],
+        [left + width, top],
+        [left, bottom],
+        [left + width, bottom],
+      ] as [number, number][]
+    ).map(([dx, dy]) => [label.x + dx * cos - dy * sin, label.y + dx * sin + dy * cos]),
+  );
+}
+
+const SEA_BOX: CalloutRect = (() => {
+  const width =
+    Math.max(...SEA_LABEL.lines.map((line) => line.length)) *
+    SEA_LABEL.size *
+    SEA_WIDTH_PER_CHAR;
+  const top = SEA_LABEL.y - SEA_LABEL.size * ANCHOR_ASCENT;
+  const bottom =
+    SEA_LABEL.y + (SEA_LABEL.lines.length - 1) * SEA_LABEL.leading + SEA_LABEL.size * ANCHOR_DESCENT;
+  return { x: SEA_LABEL.x - width / 2, y: top, width, height: bottom - top };
+})();
+
 const CITY_ANCHORS: {
   city: string;
   anchor: "start" | "end";
@@ -145,6 +195,7 @@ export function PlateFurniture({
   calloutRects,
   names,
   wide,
+  namedCity,
 }: {
   towns: Town[];
   /** Every annotation standing on the plate right now, and the origin's name
@@ -158,6 +209,9 @@ export function PlateFurniture({
   /** Whether the plate has measured itself large enough to carry this layer
    *  at all: markersVisible in ShelterMap. See the gate below. */
   wide: boolean;
+  /** The town a card is naming right now. Its anchor comes off wherever the
+   *  card stands: the card says the town's name already. */
+  namedCity?: string;
 }) {
   // Two answers to one question, each for the moment the other cannot give.
   // Before anything is measured `wide` is true, which keeps the server's
@@ -184,44 +238,52 @@ export function PlateFurniture({
       data-map-furniture
       className={cn("pointer-events-none", PLATE_TOO_SMALL)}
     >
-      {NEIGHBOR_LABELS.map((label) => (
-        <text
-          key={label.text}
-          data-map-neighbor={label.text}
-          x={label.x}
-          y={label.y}
-          textAnchor={label.anchor}
-          fontSize={NEIGHBOR_TYPE}
-          transform={
-            label.rotate != null
-              ? `rotate(${label.rotate} ${label.x} ${label.y})`
-              : undefined
-          }
-          className={cn("uppercase tracking-[0.16em]", FURNITURE_INK)}
-        >
-          {label.text}
-        </text>
-      ))}
-
-      <text
-        data-map-sea-label
-        x={SEA_LABEL.x}
-        y={SEA_LABEL.y}
-        textAnchor="middle"
-        fontSize={SEA_LABEL.size}
-        fontStyle="italic"
-        className={FURNITURE_INK}
-      >
-        {SEA_LABEL.lines.map((line, index) => (
-          <tspan
-            key={line}
-            x={SEA_LABEL.x}
-            y={SEA_LABEL.y + index * SEA_LABEL.leading}
+      {/* The neighbours and the sea give way to a card the way the town
+          anchors below do. A card stands over the neighbours' ground now that
+          it can go over, under and round its coin, and a name half under an
+          opaque card was left as its first letter or two. */}
+      {NEIGHBOR_LABELS.map((label) =>
+        calloutRects.some((rect) => boxesOverlap(neighborBox(label), rect)) ? null : (
+          <text
+            key={label.text}
+            data-map-neighbor={label.text}
+            x={label.x}
+            y={label.y}
+            textAnchor={label.anchor}
+            fontSize={NEIGHBOR_TYPE}
+            transform={
+              label.rotate != null
+                ? `rotate(${label.rotate} ${label.x} ${label.y})`
+                : undefined
+            }
+            className={cn("uppercase tracking-[0.16em]", FURNITURE_INK)}
           >
-            {line}
-          </tspan>
-        ))}
-      </text>
+            {label.text}
+          </text>
+        ),
+      )}
+
+      {!calloutRects.some((rect) => boxesOverlap(SEA_BOX, rect)) && (
+        <text
+          data-map-sea-label
+          x={SEA_LABEL.x}
+          y={SEA_LABEL.y}
+          textAnchor="middle"
+          fontSize={SEA_LABEL.size}
+          fontStyle="italic"
+          className={FURNITURE_INK}
+        >
+          {SEA_LABEL.lines.map((line, index) => (
+            <tspan
+              key={line}
+              x={SEA_LABEL.x}
+              y={SEA_LABEL.y + index * SEA_LABEL.leading}
+            >
+              {line}
+            </tspan>
+          ))}
+        </text>
+      )}
 
       {CITY_ANCHORS.map((anchor) => {
         // The town's laid-out disc when the city has one, so the name stays
@@ -253,10 +315,13 @@ export function PlateFurniture({
         // is, with no transition of its own: this is not a state the name is
         // in, it is a name that is not being drawn.
         //
-        // Anchor text only. The coins never move for an annotation, being
-        // the subject it is about, and the neighbour and sea names are set
-        // out over ground that draws no markers and raises no annotations.
+        // Type only. The coins never move for an annotation, being the
+        // subject it is about.
         if (calloutRects.some((rect) => boxesOverlap(box, rect))) return null;
+        // And the anchor of the town a card is about, wherever the card went:
+        // the card names the town, and the grey name beside the coin was the
+        // same word a second time a few units from it.
+        if (anchor.city === namedCity) return null;
         // The picked names outrank an anchor the same way. A picked town
         // carries its name under its coin, in full ink and a heavier weight,
         // and the anchor beside it was the same word a second time a few

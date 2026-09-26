@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
-import { parseFilters, type FilterFacet, type Filters } from "@/lib/filters";
+import {
+  parseFilters,
+  type FilterFacet,
+  type Filters,
+  type SpeciesFilter,
+} from "@/lib/filters";
 import { getSearchSnapshot } from "@/lib/location-search";
 import type { FilterCardLayout } from "./filter-card";
 
@@ -18,15 +23,21 @@ export type FilterSectionKey =
 
 const STORAGE_KEY = "posvoji:filter-sections";
 
-// Sex and age start open, on an address that asks nothing. On a short desktop,
-// age starts folded so the remaining headings fit. Saved choices always
-// override this height default, and an answer arriving in the address
-// rearranges both ends of it: the section holding it opens, and these two give
-// up their room if nobody has answered them (useFilterSections).
-const DEFAULT_OPEN: Record<FilterSectionKey, boolean> = {
-  sex: true,
+// What starts open on an address that asks nothing: Starost, and Velikost on
+// the Psi tab, a species name meaning open on that tab alone. On Vse a size
+// pick leaves out every cat (groupAsks in lib/filters/engine.ts), so there it
+// folds, and Mačke draws no Velikost at all. Spol opened beside Starost until
+// the panel was put in the order adopters decide in, where it comes sixth
+// (SECTION_ORDER in filter-groups.tsx); it folds with the rest.
+//
+// On a short desktop everything starts folded (openByDefault). Saved choices
+// always override these defaults, and an answer arriving in the address
+// rearranges both ends of them: the section holding it opens, and the open
+// ones give up their room if nobody has answered them (useFilterSections).
+const DEFAULT_OPEN: Record<FilterSectionKey, boolean | SpeciesFilter> = {
+  sex: false,
   age: true,
-  size: false,
+  size: "dog",
   energy: false,
   appearance: false,
   waiting: false,
@@ -205,29 +216,40 @@ function answeredOnly(active: Overrides | undefined): Overrides {
   );
 }
 
+/** Whether a section starts open, before any answer or stored fold. A pure
+ *  function of these four, so a species tab or a window crossing the short
+ *  desktop's height moves the defaults and nothing else. */
 function openByDefault(
   key: FilterSectionKey,
   layout: FilterCardLayout,
   short: boolean,
+  species: SpeciesFilter,
 ): boolean {
-  return DEFAULT_OPEN[key] && !(layout === "sidebar" && short && key === "age");
+  // Every section folded, so the rail on a short desktop is the whole list of
+  // headings: at 1280x720 Kje and the eight headings come to 629px of the
+  // rail's 696, where Spol left open among them used to overflow it.
+  if (layout === "sidebar" && short) return false;
+  const open = DEFAULT_OPEN[key];
+  return open === true || open === species;
 }
 
 /**
  * What the panel holds open and shut on an address that arrived answering it.
  *
  * One rule: a section is open if it holds an answer, and shut if it does not,
- * over every section the visitor has not stored a fold for. Sex and age are
- * not special here; they are only the two the rule has anything to say about,
- * because they are the two that would otherwise be open with nothing in them.
+ * over every section the visitor has not stored a fold for. The sections open
+ * by default are not special here; they are only the ones the rule has
+ * anything to say about, because they would otherwise be open with nothing in
+ * them.
  *
  * They are open by default because they are what a visitor reaches for first,
  * which is an answer about an address that asks nothing. On a filtered link
- * they are two unanswered questions standing between the top of the panel and
- * the sections that visitor arrived with: 294px of them at 1440x900, with the
- * answered heading below at 1200 in a panel whose own box ends at 1041, so
- * nothing but the page could have scrolled it into view. Folded, that heading
- * comes up to 699 and onto the screen with nothing scrolled at all.
+ * they are unanswered questions standing between the top of the panel and the
+ * sections that visitor arrived with. Measured at 1440x900 on
+ * /?cakanje=nad-1-leto, Starost's 207px put the answered heading at 1053,
+ * under the window's edge at 900; on Psi Velikost's 185px more put it at 1246,
+ * past the end of the panel's own box at 1107. Folded, the heading comes up
+ * to 838 on either tab, on screen with nothing scrolled at all.
  *
  * A stored fold is a decision, either way, and is left alone.
  */
@@ -263,27 +285,33 @@ function arrivalHold(
     leaves it open rather than folding away under the pointer that just cleared
     it.
 
-    The other half is the room those answers need. Sex and age are open by
-    default because they are what a visitor reaches for first, which is an
-    answer about an address that asks nothing; on a filtered link they are two
-    unanswered questions standing between the panel's top and the sections this
-    visitor came with. Measured at 1440x900 on /?cakanje=nad-1-leto: 294px of
-    them, and the one answered heading below at 1200, where a panel whose whole
-    box ends at 1041 cannot show it. Folded, the answered heading comes up to
-    the window's own edge without scrolling anything at all.
+    The other half is the room those answers need. The sections open by
+    default are what a visitor reaches for first, which is an answer about an
+    address that asks nothing; on a filtered link they are unanswered questions
+    standing between the panel's top and the sections this visitor came with
+    (arrivalHold has the numbers).
 
     So they yield, and only where that is not a decision being taken from
     anyone: on an address that arrived carrying filters, in the sidebar, once
     per visit, and never over a fold the visitor has set themselves. A first
     press does not qualify, which is the whole reason the address is asked
-    rather than the count. */
+    rather than the count.
+
+    The defaults move with the species tab and the window's height
+    (openByDefault), and they move only the sections nobody has answered. An
+    answered section that a default held open stays open when the default
+    goes: a size picked on Psi keeps Velikost open on Vse, where its note says
+    that the pick leaves every cat out. */
 export function useFilterSections({
   active,
   layout = "sidebar",
+  species = "all",
 }: {
   /** Which sections hold an answer right now. */
   active?: Overrides;
   layout?: FilterCardLayout;
+  /** The species tab, which Velikost's default reads (DEFAULT_OPEN). */
+  species?: SpeciesFilter;
 } = {}): {
   isOpen: (key: FilterSectionKey) => boolean;
   toggleSection: (key: FilterSectionKey) => void;
@@ -303,8 +331,8 @@ export function useFilterSections({
   const short = useSyncExternalStore(subscribeHeight, shortDesktop, serverHeight);
   const [landedAnswering] = useState(landedOnAnswers);
   const defaultOpen = useCallback(
-    (key: FilterSectionKey) => openByDefault(key, layout, short),
-    [layout, short],
+    (key: FilterSectionKey) => openByDefault(key, layout, short, species),
+    [layout, short, species],
   );
 
   const isOpen = useCallback(
@@ -322,6 +350,30 @@ export function useFilterSections({
   // No useMemo around the key: the caller builds `active` fresh every render
   // (filter-groups.tsx), so a dependency on it can never match, and ten key
   // reads and a join are cheaper than the bookkeeping that would wrap them.
+  //
+  // First the defaults moving, on a species tab or across the short desktop's
+  // height: an answered section they held open is held open in their place,
+  // so only what nobody has answered folds. Only ever towards open, so it
+  // cannot undo what an arrival in the same render holds (arrivalHold opens
+  // every answered section too).
+  const [defaultsSeen, setDefaultsSeen] = useState({ species, short });
+  if (defaultsSeen.species !== species || defaultsSeen.short !== short) {
+    const keep = SECTION_KEYS.filter(
+      (key) =>
+        active?.[key] &&
+        held[key] === undefined &&
+        overrides[key] === undefined &&
+        openByDefault(key, layout, defaultsSeen.short, defaultsSeen.species),
+    );
+    if (keep.length > 0) {
+      setHeld((previous) => ({
+        ...previous,
+        ...Object.fromEntries(keep.map((key) => [key, true])),
+      }));
+    }
+    setDefaultsSeen({ species, short });
+  }
+
   const answered = answeredKey(active);
   const [seen, setSeen] = useState(answered);
   if (seen !== answered) {

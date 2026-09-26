@@ -4,7 +4,7 @@ import { renderHook } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { describe, expect, it } from "vitest";
 import { animalsForClient } from "@/lib/dataset";
-import { EMPTY_FILTERS, type Filters } from "@/lib/filters";
+import { EMPTY_FILTERS, groupOptions, type Filters } from "@/lib/filters";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
@@ -75,6 +75,44 @@ function renderModel(filters: Filters) {
   );
   return { ...hook, renders: () => renders };
 }
+
+describe("the chips row", () => {
+  // The panel's order, Kje first (SECTION_ORDER in filters/filter-groups.tsx),
+  // whatever order the answers were given in or the URL holds them in.
+  it("reads every facet's chips in the order the panel asks", () => {
+    const first = (group: Parameters<typeof groupOptions>[0]) =>
+      groupOptions(group, [], "sl")[0].value;
+    const everything = {
+      ...DOGS,
+      waiting: [first("waiting")],
+      care: ["patient"],
+      sex: [first("sex")],
+      coatLength: [first("coatLength")],
+      energy: [first("energy")],
+      toggles: ["brez-fiv"],
+      coatColor: [first("coatColor")],
+      goodWith: ["kids"],
+      size: [first("size")],
+      age: [first("age")],
+      shelter: ["test-shelter"],
+    } as Filters;
+    const { result } = renderModel(everything);
+
+    expect(result.current.chips.map(({ facet }) => facet)).toEqual([
+      "shelter",
+      "age",
+      "size",
+      "goodWith",
+      "toggles",
+      "energy",
+      "sex",
+      "coatColor",
+      "coatLength",
+      "care",
+      "waiting",
+    ]);
+  });
+});
 
 describe("the picks the sidebar keeps drawn", () => {
   it("keeps a pick that read 0 once it comes off, until the tab changes", () => {

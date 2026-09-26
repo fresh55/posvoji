@@ -312,6 +312,8 @@ test.describe("the page under the closing sheet", () => {
     await filtriTrigger(page).click();
     const content = drawerContent(page);
     await expect(content).toBeVisible();
+    // Spol folds by default (use-filter-sections.ts), so it is opened first.
+    await content.getByRole("button", { name: /^Spol/ }).click();
     await content.getByRole("button", { name: /^Samec,/ }).click();
     await expect(page).toHaveURL(/[?&]spol=samec(&|$)/);
 

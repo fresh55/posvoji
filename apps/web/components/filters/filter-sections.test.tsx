@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect, useState } from "react";
 import type { Animal } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -257,15 +257,31 @@ function arrive(url: string): void {
 }
 
 
+/** A desktop under 50rem tall, the SHORT_DESKTOP query in
+ *  use-filter-sections.ts. */
+function stubShortDesktop(): void {
+  vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+    matches: query.includes("49.99rem"), media: query, onchange: null,
+    addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+  })));
+}
+
+/** Every section heading in the panel, in order, and whether each is open. */
+function folds(): [string | undefined, string | null][] {
+  return [
+    ...document.querySelectorAll<HTMLButtonElement>("h3 button[aria-expanded]"),
+  ].map((button) => [
+    button.firstElementChild?.textContent?.trim(),
+    button.getAttribute("aria-expanded"),
+  ]);
+}
+
 describe("collapsible filter sections", () => {
-  it("folds age on short desktops without replacing a saved choice", () => {
-    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
-      matches: query.includes("49.99rem"), media: query, onchange: null,
-      addEventListener: vi.fn(), removeEventListener: vi.fn(),
-      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
-    })));
+  it("folds every section on a short desktop without replacing a saved choice", () => {
+    stubShortDesktop();
     const { unmount } = renderSidebar();
-    expect(expanded("Starost")).toBe("false");
+    expect(folds().every(([, open]) => open === "false")).toBe(true);
     expect(stored()).toBeNull();
     fireEvent.click(header("Starost"));
     expect(expanded("Starost")).toBe("true");
@@ -274,10 +290,23 @@ describe("collapsible filter sections", () => {
     expect(expanded("Starost")).toBe("true");
   });
 
+  // The whole list of headings on a short desktop, Velikost on Psi included:
+  // it is the other section open by default, and with Starost it would take
+  // the rail's fold at 1280x720.
+  it("folds Velikost on Psi too on a short desktop", () => {
+    stubShortDesktop();
+    window.history.replaceState(null, "", "/?vrsta=pes");
+    renderSidebar();
+
+    expect(folds().map(([label]) => label)).toContain("Velikost");
+    expect(folds().every(([, open]) => open === "false")).toBe(true);
+  });
+
   // Drawn text under the rows, where a mouse reads it too: it used to be the
   // hint, which folds into the heading's tooltip on a mouse.
   it("says what energy leaves out, with other filters applied and its own selection lifted", () => {
     renderSidebar();
+    fireEvent.click(header("Spol"));
     fireEvent.click(header("Energija"));
     const line = /^Brez podatka: 1\. Izbira pokaže le živali s podatkom\.$/;
     expect(screen.getByText(line)).toBeTruthy();
@@ -297,6 +326,7 @@ describe("collapsible filter sections", () => {
   // The line is what tells a visitor that the press was taken.
   it("says under Spol that both ticked show every animal", () => {
     renderSidebar();
+    fireEvent.click(header("Spol"));
     const line = "Izbrana sta oba, zato vidiš vse živali.";
     fireEvent.click(screen.getByRole("button", { name: /^Samec,/ }));
     expect(screen.queryByText(line)).toBeNull();
@@ -307,26 +337,106 @@ describe("collapsible filter sections", () => {
   });
 
   it("opens what a visitor reaches for first and folds the rest away", () => {
-    // Two sections and no more. The panel scrolls on its own, so anything
-    // past its fold is reached by scrolling the panel and not the page, and
-    // open by default Velikost cost 185px of a first screen that was already
-    // 96px over at 1440x900.
+    // Starost alone on Vse, in the panel's order. The panel scrolls on its
+    // own, so anything past its fold is reached by scrolling the panel and not
+    // the page. Velikost folds here, where a pick leaves every cat out, and
+    // Spol, which opened beside Starost before the panel took the order
+    // adopters decide in, folds with the rest.
     renderSidebar();
 
-    expect(expanded("Spol")).toBe("true");
-    expect(expanded("Starost")).toBe("true");
-    expect(card(/^Samec/)).toBeTruthy();
-    expect(card(/^Mladiček/)).toBeTruthy();
-
-    expect(expanded("Velikost")).toBe("false");
+    expect(folds()).toEqual([
+      ["Starost", "true"],
+      ["Velikost", "false"],
+      ["Doma imam", "false"],
+      ["Energija", "false"],
+      ["Spol", "false"],
+    ]);
     expect(card(/^Majhna/)).toBeNull();
-    expect(expanded("Energija")).toBe("false");
-    expect(expanded("Doma imam")).toBe("false");
+    expect(card(/^Samec/)).toBeNull();
     expect(card(/^Miren/)).toBeNull();
     expect(card(/^Otroke/)).toBeNull();
     // No health section on Vse: FIV and FeLV are cat questions, and the three
     // a dog could be asked are facts on the animal, not filters.
     expect(screen.queryByRole("button", { name: /^Zdravje/ })).toBeNull();
+  });
+
+  it("opens Velikost beside Starost on Psi", () => {
+    window.history.replaceState(null, "", "/?vrsta=pes");
+    renderSidebar();
+
+    expect(expanded("Starost")).toBe("true");
+    expect(expanded("Velikost")).toBe("true");
+    expect(card(/^Majhna/)).toBeTruthy();
+    expect(expanded("Spol")).toBe("false");
+    // The tab is not an answer, so nothing was stored for it.
+    expect(stored()).toBeNull();
+  });
+
+  it("moves Velikost's default with the tab and leaves a fold set by hand alone", () => {
+    renderSidebar();
+    expect(expanded("Velikost")).toBe("false");
+
+    arrive("/?vrsta=pes");
+    expect(expanded("Velikost")).toBe("true");
+
+    arrive("/");
+    expect(expanded("Velikost")).toBe("false");
+
+    // Folded by hand on Psi, it stays folded there.
+    arrive("/?vrsta=pes");
+    fireEvent.click(header("Velikost"));
+    arrive("/");
+    arrive("/?vrsta=pes");
+    expect(expanded("Velikost")).toBe("false");
+  });
+
+  // Picked on Psi, where Velikost was open by default, and taken to Vse, where
+  // its default is folded: the section holds the answer and, on Vse, the note
+  // saying that the pick leaves every cat out, so it stays where it was.
+  it("keeps an answered section open when the tab moves its default", () => {
+    window.history.replaceState(null, "", "/?vrsta=pes");
+    renderSidebar();
+    fireEvent.click(screen.getByRole("button", { name: /^Majhna,/ }));
+    expect(expanded("Velikost")).toBe("true");
+
+    arrive("/?velikost=majhna");
+    expect(expanded("Velikost")).toBe("true");
+    expect(
+      screen.getByText("Mačk po velikosti ne ločimo, zato jih izbira ne pokaže."),
+    ).toBeTruthy();
+
+    // Cleared there, it stays open under the press that cleared it, the way
+    // a revealed section does.
+    arrive("/");
+    expect(expanded("Velikost")).toBe("true");
+  });
+
+  // The same with a window crossing the short desktop's height: an answered
+  // section the defaults held open keeps its room, and only the unanswered
+  // ones fold.
+  it("keeps an answered section open when the window turns short", () => {
+    const listeners = new Set<() => void>();
+    let short = false;
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      get matches() {
+        return query.includes("49.99rem") ? short : false;
+      },
+      media: query, onchange: null,
+      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
+      addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
+    })));
+    window.history.replaceState(null, "", "/?vrsta=pes");
+    renderSidebar();
+    fireEvent.click(screen.getByRole("button", { name: /^Majhna,/ }));
+
+    short = true;
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+
+    expect(expanded("Velikost")).toBe("true");
+    expect(expanded("Starost")).toBe("false");
   });
 
   it("unfolds a section from its header and folds it back", async () => {
@@ -382,13 +492,13 @@ describe("collapsible filter sections", () => {
 
   it("leaves the visitor's own fold alone when another section is answered", () => {
     renderSidebar();
-    fireEvent.click(header("Spol"));
-    expect(expanded("Spol")).toBe("false");
+    fireEvent.click(header("Starost"));
+    expect(expanded("Starost")).toBe("false");
 
     arrive("/?velikost=majhna");
 
     expect(expanded("Velikost")).toBe("true");
-    expect(expanded("Spol")).toBe("false");
+    expect(expanded("Starost")).toBe("false");
   });
 
   it("keeps a revealed section open once its answer is cleared", () => {
@@ -419,12 +529,15 @@ describe("collapsible filter sections", () => {
   });
 
   it("marks an answered section whose cards are drawn", () => {
+    // Open and unanswered: no mark.
     const { unmount } = renderStatic(EMPTY_FILTERS);
-    expect(expanded("Spol")).toBe("true");
-    expect(mark("Spol")).toBeNull();
+    expect(expanded("Starost")).toBe("true");
+    expect(mark("Starost")).toBeNull();
     unmount();
 
+    // Folded by default, open because it holds the answer.
     renderStatic({ ...EMPTY_FILTERS, sex: ["female"] });
+    expect(expanded("Spol")).toBe("true");
     expect(mark("Spol")).toBeTruthy();
     // The heading still reads as itself: the mark is not in the name.
     expect(header("Spol").textContent).toBe("Spol");
@@ -463,21 +576,26 @@ describe("collapsible filter sections", () => {
     expect(broughtIntoView).toHaveBeenCalledTimes(1);
   });
 
+  // In the panel's order (SECTION_ORDER in filter-groups.tsx), which this
+  // fixture's dogs answer five sections of.
   it("walks the section headers with the arrow keys", () => {
     renderSidebar();
 
-    header("Spol").focus();
-    fireEvent.keyDown(header("Spol"), { key: "ArrowDown" });
-    expect(document.activeElement).toBe(header("Starost"));
+    header("Starost").focus();
+    fireEvent.keyDown(header("Starost"), { key: "ArrowDown" });
+    expect(document.activeElement).toBe(header("Velikost"));
 
-    fireEvent.keyDown(header("Starost"), { key: "End" });
-    expect(document.activeElement).toBe(header("Doma imam"));
+    fireEvent.keyDown(header("Velikost"), { key: "End" });
+    expect(document.activeElement).toBe(header("Spol"));
 
-    fireEvent.keyDown(header("Doma imam"), { key: "ArrowUp" });
+    fireEvent.keyDown(header("Spol"), { key: "ArrowUp" });
     expect(document.activeElement).toBe(header("Energija"));
 
-    fireEvent.keyDown(header("Energija"), { key: "Home" });
-    expect(document.activeElement).toBe(header("Spol"));
+    fireEvent.keyDown(header("Energija"), { key: "ArrowUp" });
+    expect(document.activeElement).toBe(header("Doma imam"));
+
+    fireEvent.keyDown(header("Doma imam"), { key: "Home" });
+    expect(document.activeElement).toBe(header("Starost"));
   });
 
   // The classes and not the computed style: jsdom ships no browser stylesheet,
@@ -526,14 +644,14 @@ describe("remembered folds", () => {
     fireEvent.click(header("Energija"));
     expect(stored()).toEqual({ energy: true });
 
-    fireEvent.click(header("Spol"));
-    expect(stored()).toEqual({ energy: true, sex: false });
+    fireEvent.click(header("Starost"));
+    expect(stored()).toEqual({ energy: true, age: false });
   });
 
   it("restores the stored folds in a fresh render", () => {
     const { unmount } = renderSidebar();
     fireEvent.click(header("Energija"));
-    fireEvent.click(header("Spol"));
+    fireEvent.click(header("Starost"));
     unmount();
 
     // A new tab reads the same storage and starts from nothing else.
@@ -541,8 +659,22 @@ describe("remembered folds", () => {
     renderSidebar();
 
     expect(expanded("Energija")).toBe("true");
+    expect(expanded("Starost")).toBe("false");
     expect(expanded("Spol")).toBe("false");
-    expect(expanded("Starost")).toBe("true");
+  });
+
+  // A fold is stored per section and not per tab: Velikost folded by hand on
+  // Psi, where it opens by default, is still folded there on the next visit.
+  it("keeps a fold against a default that only one tab has", () => {
+    window.history.replaceState(null, "", "/?vrsta=pes");
+    const { unmount } = renderSidebar();
+    fireEvent.click(header("Velikost"));
+    expect(stored()).toEqual({ size: false });
+    unmount();
+
+    resetFilterSectionsStore();
+    renderSidebar();
+    expect(expanded("Velikost")).toBe("false");
   });
 });
 
@@ -662,27 +794,43 @@ describe("the sidebar's surfaces", () => {
   });
 });
 
+/** The landing's one tick, after which the address has reached the panel. */
+async function landed(): Promise<void> {
+  await act(() => new Promise((resolve) => window.setTimeout(resolve, 10)));
+}
+
 describe("the room an arriving answer is given", () => {
   it("folds the unanswered defaults on an address that came filtered", async () => {
     renderLandingOn("/?velikost=majhna");
 
-    // Two questions this visitor has not answered, 294px of them, standing
-    // between the top of the panel and the section they arrived with.
-    await waitFor(() => expect(expanded("Spol")).toBe("false"));
-    expect(expanded("Starost")).toBe("false");
+    // The question this visitor has not answered, standing between the top of
+    // the panel and the section they arrived with (arrivalHold has the
+    // numbers).
+    await waitFor(() => expect(expanded("Starost")).toBe("false"));
     expect(expanded("Velikost")).toBe("true");
     expect(mark("Velikost")).toBeTruthy();
+    expect(expanded("Spol")).toBe("false");
+  });
+
+  it("folds both of Psi's defaults when the answer is elsewhere", async () => {
+    renderLandingOn("/?vrsta=pes&energija=miren");
+
+    await waitFor(() => expect(expanded("Energija")).toBe("true"));
+    expect(expanded("Starost")).toBe("false");
+    expect(expanded("Velikost")).toBe("false");
   });
 
   it("leaves them open when the visitor answers the first question themselves", () => {
+    window.history.replaceState(null, "", "/?vrsta=pes");
     renderSidebar();
-    expect(expanded("Spol")).toBe("true");
+    expect(expanded("Starost")).toBe("true");
+    expect(expanded("Velikost")).toBe("true");
 
     // A press, not an arrival. The panel is already being read.
-    fireEvent.click(screen.getByRole("button", { name: /^Samica,/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Majhna,/ }));
 
-    expect(expanded("Spol")).toBe("true");
     expect(expanded("Starost")).toBe("true");
+    expect(expanded("Velikost")).toBe("true");
   });
 
   it("never gives up a fold the visitor set themselves", async () => {
@@ -692,15 +840,26 @@ describe("the room an arriving answer is given", () => {
 
     renderLandingOn("/?velikost=majhna");
 
-    await waitFor(() => expect(expanded("Spol")).toBe("false"));
+    await waitFor(() => expect(expanded("Velikost")).toBe("true"));
     expect(expanded("Starost")).toBe("true");
   });
 
   it("asks nothing of the defaults on an address with no filters", async () => {
     renderLandingOn("/");
+    await landed();
 
-    await waitFor(() => expect(card(/^Samec/)).toBeTruthy());
-    expect(expanded("Spol")).toBe("true");
     expect(expanded("Starost")).toBe("true");
+    expect(expanded("Velikost")).toBe("false");
+    expect(expanded("Spol")).toBe("false");
+  });
+
+  // The tab is a param of its own and not an answer, so Psi's two defaults
+  // stay open on a link carrying nothing else (landedOnAnswers).
+  it("asks nothing of the defaults on an address carrying only the tab", async () => {
+    renderLandingOn("/?vrsta=pes");
+    await landed();
+
+    expect(expanded("Starost")).toBe("true");
+    expect(expanded("Velikost")).toBe("true");
   });
 });

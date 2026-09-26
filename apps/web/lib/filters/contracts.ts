@@ -117,10 +117,11 @@ export const GROUPS: MultiGroup[] = [
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
 /** The order the panel asks its questions in, and the order of the active
- *  filters row. */
+ *  filters row: Kje, then the sections in SECTION_ORDER
+ *  (components/filters/filter-groups.tsx says why that order). */
 export const FILTER_FACETS = [
-  "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
-  "toggles", "goodWith", "care", "waiting",
+  "shelter", "age", "size", "goodWith", "toggles", "energy", "sex",
+  "coatColor", "coatLength", "care", "waiting",
 ] as const satisfies readonly FilterFacet[];
 
 // A facet missing from FILTER_FACETS fails to compile here.

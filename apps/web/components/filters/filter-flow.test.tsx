@@ -248,8 +248,8 @@ function FilterFlowHarness({ animals = ANIMALS }: { animals?: Animal[] }) {
 
 function renderFilters(animals: Animal[] = ANIMALS) {
   const result = render(<FilterFlowHarness animals={animals} />);
-  // Every section but Spol and Starost folds closed (use-filter-sections.ts),
-  // and these tests press the options inside them.
+  // Every section but Starost, and Velikost on Psi, folds closed
+  // (use-filter-sections.ts), and these tests press the options inside them.
   openAllFilterSections();
   return result;
 }

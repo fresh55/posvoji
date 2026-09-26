@@ -134,5 +134,29 @@ describe("the new-listings notice in the grid", () => {
       (heading) => heading.textContent,
     );
     expect(names.slice(0, 2)).toEqual(["new-b", "new-a"]);
+    // The button went with the notice; focus goes to the first new listing
+    // rather than falling to the page.
+    const first = document.querySelector("[data-card-grid] article");
+    expect(first?.contains(document.activeElement)).toBe(true);
+    expect(first?.querySelector("h3")?.textContent).toBe("new-b");
+  });
+
+  // A new intake on hold sorts after every adoptable animal whatever the
+  // order, so a notice counting it would promise a card it cannot put first.
+  it("leaves a new listing on hold out of the count", async () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2026-01-01T00:00:00.000Z");
+    const held = { ...animal("new-held", "2026-01-07T00:00:00.000Z"), status: "hold" as const };
+    render(
+      <I18nProvider locale="sl">
+        <AnimalGrid
+          animals={animalsForClient([...ANIMALS, held])}
+          logos={{}}
+          referenceDate="2026-01-10T00:00:00.000Z"
+        />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText("2 novi objavi od zadnjega obiska."),
+    ).toBeTruthy();
   });
 });

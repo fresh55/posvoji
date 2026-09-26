@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listedAtOf } from "@/lib/animal";
 import {
   isNewListing,
+  isNewsToVisitor,
   LAST_VISIT_KEY,
   resetLastVisitStore,
   useIsNewListing,
@@ -123,9 +124,12 @@ describe("the visit marker", () => {
 });
 
 describe("the new-listing hooks", () => {
-  const newer = { listedAt: listed("2026-09-22T10:00:00Z") };
-  const older = { listedAt: listed("2026-09-18T10:00:00Z") };
-  const unknown = {};
+  const newer = { listedAt: listed("2026-09-22T10:00:00Z"), status: "available" as const };
+  const older = { listedAt: listed("2026-09-18T10:00:00Z"), status: "available" as const };
+  const unknown = { status: "available" as const };
+  // Listed since the visit, but in quarantine: sorted after every adoptable
+  // animal whatever the order, so the notice cannot put it first.
+  const held = { listedAt: listed("2026-09-23T10:00:00Z"), status: "hold" as const };
 
   it("counts the listings since the last visit", () => {
     localStorage.setItem(LAST_VISIT_KEY, EARLIER);
@@ -134,6 +138,17 @@ describe("the new-listing hooks", () => {
     );
 
     expect(result.current).toBe(2);
+  });
+
+  it("counts only what can be adopted now", () => {
+    localStorage.setItem(LAST_VISIT_KEY, EARLIER);
+    const { result } = renderHook(() =>
+      useNewListingCount([newer, held], REFERENCE),
+    );
+
+    expect(result.current).toBe(1);
+    expect(isNewsToVisitor(held, Date.parse(EARLIER))).toBe(false);
+    expect(isNewsToVisitor(newer, Date.parse(EARLIER))).toBe(true);
   });
 
   it("counts nothing on a first visit", () => {
@@ -150,7 +165,7 @@ describe("the new-listing hooks", () => {
   it("hydrates to the server's answer and marks after it", async () => {
     localStorage.setItem(LAST_VISIT_KEY, EARLIER);
     function Mark() {
-      return useIsNewListing(newer.listedAt, REFERENCE) ? <b>Novo</b> : <i />;
+      return useIsNewListing(newer, REFERENCE) ? <b>Novo</b> : <i />;
     }
 
     const container = document.createElement("div");

@@ -191,6 +191,34 @@ describe("unansweredBand on the groups", () => {
     expect(ids(result.animals)).toEqual(ids([ageless]));
   });
 
+  // A stated "adult" could be Mlad or Odrasel, so no age group files it; but
+  // it is still an answer, and it says neither Mladiček nor Senior.
+  it("holds a stated adult only where an adult could answer the pick", () => {
+    const statedAdult = animal("cat", { lifeStage: "adult" });
+    const ageless = animal("cat");
+    const pool = [statedAdult, ageless];
+    expect(ids(band(pool, only({ age: ["mladicek"] })).animals)).toEqual(
+      ids([ageless]),
+    );
+    expect(ids(band(pool, only({ age: ["senior"] })).animals)).toEqual(
+      ids([ageless]),
+    );
+    expect(ids(band(pool, only({ age: ["mlad"] })).animals)).toEqual(
+      ids([statedAdult, ageless]),
+    );
+    expect(
+      ids(band(pool, only({ age: ["mladicek", "odrasel"] })).animals),
+    ).toEqual(ids([statedAdult, ageless]));
+  });
+
+  // Where a number is on record the stated stage is not read at all.
+  it("reads an age before a stated adult", () => {
+    const aged = animal("cat", { lifeStage: "adult", approximateAgeMonths: 4 });
+    expect(band([aged, animal("cat")], only({ age: ["senior"] })).animals).not.toContain(
+      aged,
+    );
+  });
+
   it("never asks a cat its size, on Vse either", () => {
     const small = animal("dog", { size: "small" });
     const unsizedDog = animal("dog");
@@ -229,6 +257,21 @@ describe("unansweredBand on the groups", () => {
 });
 
 describe("which questions the band may leave unanswered", () => {
+  // The grid narrows the list by a search before it asks for the band. One
+  // unsexed animal among the six a query found is a sixth, but the question
+  // is Spol's over the tab, where it is one in eleven.
+  it("measures a question over the population it is given, not the list searched", () => {
+    const sexed = Array.from({ length: 10 }, (_, n) =>
+      animal("dog", { sex: n % 2 === 0 ? "male" : "female" }),
+    );
+    const unsexed = animal("dog", { sex: "unknown" });
+    const dataset = [...sexed, unsexed];
+    const found = [...sexed.slice(0, 5), unsexed];
+    const female = only({ sex: ["female"] });
+    expect(ids(unansweredBand(found, female, now).animals)).toEqual(ids([unsexed]));
+    expect(unansweredBand(found, female, now, dataset).animals).toEqual([]);
+  });
+
   it("keeps a question strict while its blanks are under a tenth of the animals asked", () => {
     const sexed = (count: number) =>
       Array.from({ length: count }, (_, n) =>

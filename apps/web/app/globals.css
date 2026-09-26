@@ -907,13 +907,14 @@
    every width now (CARD_PHOTO_ASPECT in lib/card-grid.ts, which CSS cannot
    import, so this is the copy that has to be kept honest by hand). Square means
    the card's height follows its width, and its width is not one number any
-   more: about 163px on a 375px phone, about 307px in an xl column.
+   more: about 163px on a 375px phone, about 289px in an xl column.
 
    So this takes one value per band of card width. 17rem is 272px, a little
    above the 263px phone card. From sm the measured card is 323px at 768 and
    345px at 834 (three columns, no rail), so 22rem (352px); from lg it is 318px
-   beside the rail at 1024 to 1199, so 20rem (320px); from xl it is 405px, so
-   25rem (400px, the one value that sits under). Those figures include the 4px
+   beside the rail at 1024 to 1199, so 20rem (320px); from xl, where the rail
+   is a card column wide and the card 289px, it is about 387px, so 25rem
+   (400px), and at 2xl 373 to 389px under the same value. Those figures include the 4px
    the shelter row's padding added on fine pointers in the 2026-09-17 pass; a
    phone's 44px coarse row absorbed it. One 25rem value from sm
    used to cover all of that, and it was 86px over the real card at 1024: the

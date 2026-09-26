@@ -637,10 +637,12 @@ describe("AnimalCard Novo mark", () => {
     expect(screen.getByText("New")).toBeTruthy();
   });
 
-  // The mark has to share the photo with either of the other two, and in a
-  // row that wraps it can meet neither: the status reads first, the wait
-  // keeps its corner last, and all three come after the animal's name.
-  it("draws Novo between the status and the wait, after the name", () => {
+  // The mark shares the photo with the wait and, in a row that wraps, can meet
+  // neither the wait nor the status: the status reads first, the wait keeps
+  // its corner last, and all of them come after the animal's name. A listing
+  // that cannot be adopted now wears its status and not Novo
+  // (isNewsToVisitor in hooks/use-last-visit.ts).
+  it("draws Novo before the wait, after the name, and not on a held animal", () => {
     localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
     const { unmount } = renderCard({
       ...listedOn(LISTED),
@@ -650,7 +652,6 @@ describe("AnimalCard Novo mark", () => {
     const held = document.querySelector('[data-slot="photo-marks"]');
     expect(Array.from(held!.children, (mark) => mark.textContent)).toEqual([
       "trenutno ni na voljo",
-      "Novo",
     ]);
     unmount();
 

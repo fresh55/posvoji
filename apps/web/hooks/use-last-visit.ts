@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import { listedAtTime, type AnimalFields } from "@/lib/animal";
+import { adoptableNow, listedAtTime, type AnimalFields } from "@/lib/animal";
 import { LAST_VISIT_KEY, VISIT_SINCE_KEY } from "@/lib/last-visit";
 
 // What a returning visitor has not seen yet, worked out in their own browser.
@@ -137,24 +137,38 @@ export function useVisitRead(reference: Date): boolean {
 
 const notNew = () => false;
 
-/** Whether one animal is new to this visitor. The snapshot is the answer and
- *  not the threshold, so a card whose answer stays the same when the
- *  threshold arrives does not render again. */
+/** Whether an animal is news to a returning visitor: listed since their last
+ *  visit, and one they can act on now. A new intake on hold (quarantine,
+ *  mostly) is sorted after every adoptable animal whatever the order, so the
+ *  notice could not put it first, and the feeds leave it out for the same
+ *  reason (lib/feeds.ts). The notice, the mark and the blocking script that
+ *  holds the notice's place (components/site-page.tsx) all ask this. */
+export function isNewsToVisitor(
+  animal: Pick<AnimalFields, "listedAt" | "status">,
+  threshold: number | null,
+): boolean {
+  return adoptableNow(animal.status) && isNewListing(animal.listedAt, threshold);
+}
+
+/** Whether one animal is news to this visitor (isNewsToVisitor). The
+ *  snapshot is the answer and not the threshold, so a card whose answer stays
+ *  the same when the threshold arrives does not render again. */
 export function useIsNewListing(
-  listedAt: number | undefined,
+  animal: Pick<AnimalFields, "listedAt" | "status">,
   reference: Date,
 ): boolean {
+  const { listedAt, status } = animal;
   return useSyncExternalStore(
     useVisitSubscription(reference),
-    () => isNewListing(listedAt, since),
+    () => isNewsToVisitor({ listedAt, status }, since),
     notNew,
   );
 }
 
-/** How many of these animals are new to this visitor: zero on a first visit,
+/** How many of these animals are news to this visitor: zero on a first visit,
  *  on the server and through hydration. */
 export function useNewListingCount(
-  animals: readonly Pick<AnimalFields, "listedAt">[],
+  animals: readonly Pick<AnimalFields, "listedAt" | "status">[],
   reference: Date,
 ): number {
   const threshold = useVisitSince(reference);
@@ -162,8 +176,7 @@ export function useNewListingCount(
     () =>
       threshold === null
         ? 0
-        : animals.filter((animal) => isNewListing(animal.listedAt, threshold))
-            .length,
+        : animals.filter((animal) => isNewsToVisitor(animal, threshold)).length,
     [animals, threshold],
   );
 }

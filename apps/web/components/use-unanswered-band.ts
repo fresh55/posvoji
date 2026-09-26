@@ -20,6 +20,7 @@ const unranked = (list: ClientAnimal[]) => list;
  */
 export function useUnansweredBand({
   animals,
+  dataset = animals,
   filters,
   reference,
   sorted,
@@ -29,6 +30,10 @@ export function useUnansweredBand({
   rank = unranked,
 }: {
   animals: ClientAnimal[];
+  /** The whole dataset, where a search has narrowed `animals`: which
+   *  questions may relax is measured over the tab and not over what a query
+   *  found (unansweredBand in lib/filters/engine.ts). */
+  dataset?: ClientAnimal[];
   /** The filters the matches were drawn with, the deferred ones. */
   filters: Filters;
   reference: Date;
@@ -42,8 +47,8 @@ export function useUnansweredBand({
   rank?: (list: ClientAnimal[]) => ClientAnimal[];
 }) {
   const band = useMemo(
-    () => unansweredBand(animals, filters, reference),
-    [animals, filters, reference],
+    () => unansweredBand(animals, filters, reference, dataset),
+    [animals, dataset, filters, reference],
   );
   const [open, setOpen] = useState(false);
   // Adjusted while rendering, as AnimalGrid adjusts its arrival: from an

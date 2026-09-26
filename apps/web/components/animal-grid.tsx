@@ -60,9 +60,11 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { cardLink } from "./grid-rendering";
 import {
   BandDivider,
   BandOffer,
@@ -458,7 +460,14 @@ export function AnimalGrid({
   // the notice above the cards, and the press that puts them first. Zero on a
   // first visit, on the server and through hydration.
   const newListings = useNewListingCount(visible, reference);
-  const showNewFirst = useCallback(() => setSort("newly-listed"), [setSort]);
+  // The notice goes as its button is pressed, so focus is handed on to the
+  // first card of the new order once it is drawn (the effect after the grid
+  // below), the way the band hands it to its first card.
+  const focusFirstCard = useRef(false);
+  const showNewFirst = useCallback(() => {
+    focusFirstCard.current = true;
+    setSort("newly-listed");
+  }, [setSort]);
   // The blocking script before the grid held the notice's place from the
   // first paint (lib/last-visit.ts); the place goes back to the layout once
   // the visit has been read, which is the same commit that draws the notice
@@ -477,6 +486,7 @@ export function AnimalGrid({
   // matches' own.
   const band = useUnansweredBand({
     animals,
+    dataset,
     filters: shownFilters,
     reference,
     sorted,
@@ -547,6 +557,14 @@ export function AnimalGrid({
   }, [openBand, showFrom, sorted.length]);
   // Where the band's cards start among the drawn ones, while it is shown.
   const bandStart = band.shown ? sorted.length : undefined;
+
+  // The notice's press, answered once the grid is drawn in the order it asked
+  // for: its first card takes focus, the new listing the visitor came for.
+  useEffect(() => {
+    if (!focusFirstCard.current || order !== "newly-listed") return;
+    focusFirstCard.current = false;
+    cardLink(gridRef.current?.querySelector("article") ?? undefined)?.focus();
+  }, [order, page, gridRef]);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands

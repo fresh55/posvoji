@@ -485,7 +485,7 @@ export const AnimalCard = memo(function AnimalCard({
             this heading. At the default offset the rule cuts through the
             descenders of a name like "Srečko"; 4px clears them, and it is
             what the shelter line below already underlines at. */}
-        {/* 18px from xl, 16px below it. The card is about 307px wide from
+        {/* 18px from xl, 16px below it. The card is 275 to 291px wide from
             xl and a 16px name beside a photograph that size read as a
             caption; on the smaller cards below xl it is the right size for
             the box. The step is at the breakpoint where the card grows
@@ -707,7 +707,11 @@ export const AnimalCard = memo(function AnimalCard({
           overlay
           className="max-[359px]:px-1.5"
         />
-        <NewListingMark listedAt={animal.listedAt} reference={reference} />
+        <NewListingMark
+          listedAt={animal.listedAt}
+          status={animal.status}
+          reference={reference}
+        />
         {showWaitMark && wait !== undefined && (
           // On the photo, opposite the counter, for the same reason the
           // status is: it is a flag about the animal's situation, not one of
@@ -754,9 +758,10 @@ export const AnimalCard = memo(function AnimalCard({
 });
 
 /**
- * "Novo", on the photo of a card listed since the visitor's last visit
- * (hooks/use-last-visit.ts), and nothing for anyone else: a first visit has
- * seen nothing, so nothing on it is new.
+ * "Novo", on the photo of a card listed since the visitor's last visit that
+ * can be adopted now (isNewsToVisitor in hooks/use-last-visit.ts), and
+ * nothing for anyone else: a first visit has seen nothing, so nothing on it
+ * is new, and a new intake on hold already wears its status.
  *
  * The wait's quiet tier and not a colour of its own. It is a flag about what
  * this visitor has seen, the same kind of fact the wait is about the animal,
@@ -771,13 +776,15 @@ export const AnimalCard = memo(function AnimalCard({
  */
 function NewListingMark({
   listedAt,
+  status,
   reference,
 }: {
   listedAt: number | undefined;
+  status: ClientAnimal["status"];
   reference: Date;
 }) {
   const { messages } = useI18n();
-  const isNew = useIsNewListing(listedAt, reference);
+  const isNew = useIsNewListing({ listedAt, status }, reference);
   if (!isNew) return null;
   return <Badge variant="overlay-quiet">{messages.newListingMark}</Badge>;
 }

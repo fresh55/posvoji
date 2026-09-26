@@ -113,9 +113,11 @@ export function useAnimalFilterModel({
    *  it (hooks/use-animal-search.ts). */
   animals: ClientAnimal[];
   /** The whole dataset, which decides what the panel offers: the tabs, the
-   *  shelters and each section's options. A search narrows the counts beside
-   *  them and never the panel itself, or the tabs and the sections would come
-   *  and go under the field with every word typed. */
+   *  shelters, the sections and each section's options. A search narrows the
+   *  counts beside them and not that list, or the tabs and the sections would
+   *  come and go under the field with every word typed. The sidebar still
+   *  leaves out a row that reads 0 (drawnOptions in filters/filter-groups.tsx),
+   *  as it does under any narrowing, so a search for one name draws few rows. */
   dataset?: ClientAnimal[];
   logos: ShelterLogos;
   reference: Date;

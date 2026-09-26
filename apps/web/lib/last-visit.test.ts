@@ -9,7 +9,9 @@ import {
 } from "./last-visit";
 
 const NEWEST = Date.parse("2026-01-10T08:30:00.000Z");
-const run = (newest = NEWEST) => new Function(newListingsScript(newest))();
+const CLEAR_AFTER_MS = 10_000;
+const run = (newest = NEWEST) =>
+  new Function(newListingsScript(newest, CLEAR_AFTER_MS))();
 const marked = () => NEW_LISTINGS_DATASET_KEY in document.documentElement.dataset;
 
 afterEach(() => {
@@ -58,6 +60,23 @@ describe("the script that holds the new-listings notice's place", () => {
     localStorage.setItem(LAST_VISIT_KEY, "nekoč");
     run();
     expect(marked()).toBe(false);
+  });
+
+  // A page that never hydrates has nothing to give the place back, so the
+  // script takes its own mark off, as the pre-hydration mark does.
+  it("takes the mark off itself when nothing else does", () => {
+    vi.useFakeTimers();
+    try {
+      localStorage.setItem(LAST_VISIT_KEY, "2026-01-09T12:00:00.000Z");
+      run();
+      expect(marked()).toBe(true);
+      vi.advanceTimersByTime(CLEAR_AFTER_MS - 1);
+      expect(marked()).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(marked()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("marks nothing and throws nothing where storage is refused", () => {

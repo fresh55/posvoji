@@ -35,15 +35,23 @@ export const NEW_LISTINGS_SLOT = "new-listings";
  * such a link shows the stand-in until hydration (lib/prehydration-script.ts),
  * so the place it gives back is never on screen.
  *
- * `newest` is that listing's time in milliseconds since 1970.
+ * `newest` is that listing's time in milliseconds since 1970. `clearAfterMs`
+ * is how long the mark may stand before the script takes it off itself, for
+ * the page that never hydrates: the grid is what gives the place back, and
+ * without it the held place would stand empty above the cards for good. The
+ * caller passes the pre-hydration mark's own allowance
+ * (PREHYDRATION_CLEAR_MS), which is the same wait for the same failure.
  */
-export function newListingsScript(newest: number): string {
+export function newListingsScript(newest: number, clearAfterMs: number): string {
   return `(function () {
   try {
     var since = sessionStorage.getItem(${JSON.stringify(VISIT_SINCE_KEY)});
     if (since === null) since = localStorage.getItem(${JSON.stringify(LAST_VISIT_KEY)});
     if (since && Date.parse(since) < ${newest}) {
       document.documentElement.dataset.${NEW_LISTINGS_DATASET_KEY} = "";
+      setTimeout(function () {
+        delete document.documentElement.dataset.${NEW_LISTINGS_DATASET_KEY};
+      }, ${clearAfterMs});
     }
   } catch (error) {}
 })();`;

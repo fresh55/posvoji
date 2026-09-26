@@ -289,6 +289,10 @@ type FilterIndex = {
   readonly born: Column<number>;
   /** The stated stage, read only where neither of the two above answers. */
   readonly stage: Column<AgeGroup>;
+  /** Whether the only age on record is a stated adult: filed under no age
+   *  group, since it could be Mlad or Odrasel, but a stated answer that rules
+   *  Mladiček and Senior out (statesOtherwise). */
+  readonly statedAdult: readonly boolean[];
   readonly toggles: readonly number[];
   readonly goodWith: readonly number[];
   readonly care: readonly number[];
@@ -332,6 +336,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
   const approximate: (number | undefined)[] = [];
   const born: (number | undefined)[] = [];
   const stage: (AgeGroup | undefined)[] = [];
+  const statedAdult: boolean[] = [];
   const toggles: number[] = [];
   const goodWith: number[] = [];
   const care: number[] = [];
@@ -350,6 +355,11 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     approximate.push(animal.approximateAgeMonths);
     born.push(bornAt(animal.birthDate));
     stage.push(animal.lifeStage && GROUP_OF_STAGE[animal.lifeStage]);
+    statedAdult.push(
+      animal.lifeStage === "adult" &&
+        animal.approximateAgeMonths === undefined &&
+        bornAt(animal.birthDate) === undefined,
+    );
     toggles.push(maskOf(TOGGLES.length, (bit) => TOGGLES[bit].matches(animal)));
     goodWith.push(
       maskOf(GOOD_WITH_KEYS.length, (bit) =>
@@ -381,6 +391,7 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
     approximate,
     born,
     stage,
+    statedAdult,
     toggles,
     goodWith,
     care,
@@ -988,38 +999,50 @@ type Relaxed = { groups: number; goodWith: number; toggles: number };
  * A question only lets its unanswered through when they are a share worth
  * naming, the tenth namesUnanswered draws a section's line at, of the animals
  * the band draws from: the species tab, the shelters picked and the needs
- * offered. That keeps Spol, whose unknowns are 8 of 491, strict, so the band
- * never grows by a handful of records a shelter happened to leave blank, and
- * it still relaxes a gap one shelter has: Mačji dol states an age for 4 of its
- * 15 cats. The other questions picked are left out of that measure, because
- * they are the ones the band relaxes. Measured over what they leave, Brez FIV
- * and Brez FeLV picked together were each counted over the cats the other one
- * leaves, which are the tested ones, and the band offered nothing while 120
- * cats have neither result.
+ * offered, measured over `measuredOver` (the whole dataset, where the grid
+ * has narrowed the list by a search first). That keeps Spol, whose unknowns
+ * are 8 of 491, strict, so the band never grows by a handful of records a
+ * shelter happened to leave blank, and a search for one name cannot make a
+ * tenth out of one animal. It still relaxes a gap one shelter has: Mačji dol
+ * states an age for 1 of its 15 cats. The other questions picked are left out
+ * of that measure, because they are the ones the band relaxes. Measured over
+ * what they leave, Brez FIV and Brez FeLV picked together were each counted
+ * over the cats the other one leaves, which are the tested ones, and the band
+ * offered nothing while 120 cats have neither result.
  *
  * A question the species is not asked is not unanswered either: a cat has no
  * size and a dog no FIV result, so a size picked on Vse leaves every cat out
- * of the band as well.
+ * of the band as well. Nor is an age a shelter stated as "adult": filed under
+ * no age group, it still rules out Mladiček and Senior (statesOtherwise).
  */
 export function unansweredBand<T extends AnimalFields>(
   animals: T[],
   filters: Filters,
   now: Date,
+  measuredOver: AnimalFields[] = animals,
 ): UnansweredBand<T> {
+  const band: T[] = [];
   const pass = passOf(animals, filters, now);
+  const { index, query } = pass;
+  // Nothing picked that could be relaxed, and no need to count anything.
+  const asksAnything =
+    query.goodWith !== 0 ||
+    query.toggles !== 0 ||
+    GROUPS.some((group) => group !== "shelter" && query.groups[group] !== null);
+  if (!asksAnything) return { animals: band, missing: [] };
   const scope: Filters = {
     ...EMPTY_FILTERS,
     species: filters.species,
     shelter: filters.shelter,
     care: filters.care,
   };
-  const relaxed = relaxedOf(unansweredCounts(animals, scope, now), pass.query);
-  const band: T[] = [];
+  // The array itself and not a copy: the index behind every count is kept
+  // per array (indexOf), and the dataset's is already built.
+  const relaxed = relaxedOf(unansweredCounts(measuredOver, scope, now), query);
   const lacking: Relaxed = { groups: 0, goodWith: 0, toggles: 0 };
   if ((relaxed.groups | relaxed.goodWith | relaxed.toggles) === 0) {
     return { animals: band, missing: [] };
   }
-  const { index, query } = pass;
   for (let slot = 0; slot < lengthOf(pass); slot += 1) {
     if (!speciesAt(pass, slot)) continue;
     if (!answersAny(index.care[slot], query.care)) continue;
@@ -1082,8 +1105,20 @@ function leavesBlank(pass: Pass, slot: number, failed: number): boolean {
   return GROUPS.every(
     (group) =>
       (failed & GROUP_BITS[group]) === 0 ||
-      (groupAsks(group, species) && !answeredAt(pass, slot, group)),
+      (groupAsks(group, species) &&
+        !answeredAt(pass, slot, group) &&
+        !statesOtherwise(pass, slot, group)),
   );
+}
+
+/** A stated "adult" with no number files an animal under no age group, since
+ *  it could be Mlad or Odrasel, but it answers the question enough to rule
+ *  out Mladiček and Senior: under a pick of those alone it is a contrary
+ *  answer, not a missing one. */
+function statesOtherwise(pass: Pass, slot: number, group: MultiGroup): boolean {
+  if (group !== "age" || !pass.index.statedAdult[slot]) return false;
+  const picked = pass.query.groups.age;
+  return picked !== null && !picked.has("mlad") && !picked.has("odrasel");
 }
 
 function questionsOf(lacking: Relaxed): Question[] {

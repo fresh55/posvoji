@@ -182,8 +182,8 @@ describe("the note under Ne vem", () => {
   });
 
   it("says a crawled answer stays, and why", () => {
-    expect(unknownNote(record({ size: "medium" }), "size", false, true)).toBe("site");
-    expect(unknownNote(record({ goodWithCats: "yes" }), "goodWithCats", false, true)).toBe("site");
+    expect(unknownNote(record({ size: "medium" }), "size", false, true)).toBe("public");
+    expect(unknownNote(record({ goodWithCats: "yes" }), "goodWithCats", false, true)).toBe("public");
   });
 
   it("says nothing before Ne vem, or over a stored unknown", () => {

@@ -10,6 +10,7 @@ import { AnimalForm } from "@/components/portal/animal-form";
 import {
   portalMetaLine,
   portalPublicPath,
+  withPublished,
 } from "@/components/portal/animal-meta";
 import { ConfirmDialog } from "@/components/portal/confirm-dialog";
 import {
@@ -171,7 +172,10 @@ export function AnimalEditorPage() {
       // A different animal is a different form with a different draft, so it
       // is a different component instance and not this one re-used.
       key={animal.id}
-      animal={animal}
+      // The form, its draft, its patch and its marks all start from what the
+      // public site shows. A published answer the shelter leaves alone is
+      // then no change, and is never sent back as a correction.
+      animal={withPublished(animal)}
       account={account}
       shelter={activeShelter.slug}
       shelterName={activeShelter.name}

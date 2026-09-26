@@ -15,6 +15,7 @@ import {
   missingSearchableFields,
   portalMetaLine,
   portalPublicPath,
+  withPublished,
 } from "@/components/portal/animal-meta";
 import { Glyph } from "@/components/portal/glyph";
 import { DraftMark, OverrideMark } from "@/components/portal/override-mark";
@@ -93,7 +94,9 @@ export const PortalAnimalRow = memo(function PortalAnimalRow({
   const overrideCount = Object.keys(animal.overrides).length;
   const saving = saveState.status === "saving";
   const failed = saveState.status === "error";
-  const missing = missingSearchableFields(animal);
+  // Asked of what the public site shows, so an answer it already has is not
+  // counted as one the shelter still owes.
+  const missing = missingSearchableFields(withPublished(animal));
   const editPath = portalAnimalPath(shelter.slug, animal.id);
   // The public page is still filed under the older name, so the link in the
   // menu does not match the name in the row and the menu has to say why.

@@ -233,15 +233,14 @@ export function nextOpen(
  *   data says nobody knows.
  * - The household questions do have one, but the public filters count it as
  *   no answer, so storing it would tell adopters nothing.
- * - What the portal shows as the crawl is the crawl before the reviewed
- *   enrichment (animals.crawled.json; see docs/ANIMAL-ENRICHMENT.md). A
- *   stored answer suppresses the enrichment of its field, and on the
- *   2026-09-25 export the public site had 184 "good with cats" answers the
- *   portal does not show. An "unknown" sent from a one-tap Ne vem would
- *   replace answers the shelter cannot see from here.
+ * - A stored answer suppresses the reviewed enrichment of its field (see
+ *   docs/ANIMAL-ENRICHMENT.md). An "unknown" sent from a one-tap Ne vem
+ *   would take a reviewed answer off the public site and leave adopters
+ *   nothing to search by in its place.
  *
- * A value only the crawl has cannot be emptied from the portal at all, so
- * there Ne vem changes nothing, and the page says why.
+ * An answer the public site shows that is not the shelter's own, read off
+ * its page or out of the reviewed enrichment, cannot be emptied from the
+ * portal at all, so there Ne vem changes nothing, and the page says why.
  */
 export function answerPatch(
   record: QuickRecord,
@@ -271,20 +270,20 @@ export function answerPatch(
 
 /**
  * The note a row carries after Ne vem, once nothing is still on its way:
- * "open" when the field is now empty, "site" when a value the crawl read is
- * what stands. None where the stored answer is the shelter's own, which Ne
- * vem would have taken back, or where it is a stored "unknown", which is
- * already the Ne vem card.
+ * "open" when the field is now empty, "public" when an answer the public site
+ * shows, and the shelter did not give, is what stands. None where the answer
+ * is the shelter's own, which Ne vem would have taken back, or where it is a
+ * stored "unknown", which is already the Ne vem card.
  */
 export function unknownNote(
   record: QuickRecord,
   field: QuickField,
   own: boolean,
   picked: boolean,
-): "open" | "site" | null {
+): "open" | "public" | null {
   if (!picked) return null;
   const value = record[field];
   if (!isAnswer(field, value)) return "open";
   if (own || value === UNKNOWN) return null;
-  return "site";
+  return "public";
 }

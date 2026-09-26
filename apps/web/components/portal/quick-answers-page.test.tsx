@@ -25,6 +25,7 @@ import {
   type PortalAnimal,
   type PortalAnimalPatch,
   type PortalListing,
+  type PortalPublished,
   type PortalShelter,
 } from "@/lib/portal-api";
 
@@ -260,6 +261,112 @@ describe("the answers already there", () => {
   });
 });
 
+describe("answers the public site already shows", () => {
+  const NOTHING: PortalPublished = {
+    size: null,
+    energy: null,
+    goodWithKids: null,
+    goodWithDogs: null,
+    goodWithCats: null,
+    apartmentOk: null,
+  };
+
+  it("chooses them, in the order the site decides", async () => {
+    await open([
+      animal({
+        // The crawl says medium; the published dataset, which the site is
+        // built from, says large.
+        size: "medium",
+        // The shelter has answered since the last export.
+        energy: "calm",
+        overrides: { energy: "calm" },
+        published: {
+          ...NOTHING,
+          size: "large",
+          energy: "lively",
+          goodWithCats: "yes",
+        },
+      }),
+    ]);
+
+    expect(checked(portalText.fieldSize, "Velika")).toBe(true);
+    expect(checked(portalText.fieldEnergy, "Miren")).toBe(true);
+    expect(checked(portalText.quickCats, "Da")).toBe(true);
+    expect(checked(portalText.quickKids, "Da")).toBe(false);
+  });
+
+  it("asks only the animals still missing one, and counts them so", async () => {
+    await open([
+      animal({ id: "testno:1", name: "Ajda" }),
+      // Every answer the page asks is published: nothing to ask.
+      animal({
+        id: "testno:2",
+        name: "Bor",
+        published: {
+          ...NOTHING,
+          size: "small",
+          energy: "calm",
+          goodWithKids: "yes",
+          goodWithDogs: "no",
+          goodWithCats: "unknown",
+        },
+      }),
+      animal({ id: "testno:3", name: "Cene" }),
+    ]);
+
+    expect(shown()).toBe("Ajda");
+    expect(progress(1, 2)).toBeTruthy();
+    fireEvent.click(nextButton());
+    await waitFor(() => expect(shown()).toBe("Cene"));
+  });
+
+  it("keeps one on Ne vem and says why", async () => {
+    await open([
+      animal({ published: { ...NOTHING, goodWithCats: "no", energy: "lively" } }),
+    ]);
+
+    fireEvent.click(card(portalText.fieldEnergy, portalText.quickUnknown));
+
+    expect(saveAnimal).not.toHaveBeenCalled();
+    expect(checked(portalText.fieldEnergy, "Živahen")).toBe(true);
+    expect(screen.getByText(portalText.quickUnknownPublic)).toBeTruthy();
+  });
+
+  it("saves another answer over one as the shelter's own", async () => {
+    await open([animal({ published: { ...NOTHING, energy: "lively" } })]);
+
+    fireEvent.click(card(portalText.fieldEnergy, "Miren"));
+
+    expect(saveAnimal).toHaveBeenCalledWith("testno", "testno:1", {
+      energy: "calm",
+    });
+    await waitFor(() => expect(checked(portalText.fieldEnergy, "Miren")).toBe(true));
+  });
+
+  // The published dataset carries the corrections of the last export. Taking
+  // the shelter's own answer back shows what the site still shows until the
+  // next one, and says it stays until another is picked.
+  it("shows the published answer again once the shelter's own is taken back", async () => {
+    await open([
+      animal({
+        energy: "calm",
+        overrides: { energy: "calm" },
+        published: { ...NOTHING, energy: "lively" },
+      }),
+    ]);
+
+    fireEvent.click(card(portalText.fieldEnergy, portalText.quickUnknown));
+
+    expect(saveAnimal).toHaveBeenCalledWith("testno", "testno:1", {
+      energy: null,
+    });
+    await waitFor(() => {
+      expect(screen.getByText(portalText.quickUnknownPublic)).toBeTruthy();
+    });
+    expect(checked(portalText.fieldEnergy, "Živahen")).toBe(true);
+  });
+});
+
 describe("a tap", () => {
   it("saves that one answer at once and says so", async () => {
     await open([animal()]);
@@ -311,7 +418,7 @@ describe("a tap", () => {
 
     expect(saveAnimal).not.toHaveBeenCalled();
     expect(checked(portalText.quickCats, "Da")).toBe(true);
-    expect(screen.getByText(portalText.quickUnknownSite)).toBeTruthy();
+    expect(screen.getByText(portalText.quickUnknownPublic)).toBeTruthy();
   });
 
   // The data has no "unknown" energy: an empty field is how it says so.
@@ -348,7 +455,7 @@ describe("a tap", () => {
 
     expect(saveAnimal).not.toHaveBeenCalled();
     expect(checked(portalText.fieldSize, "Srednja")).toBe(true);
-    expect(screen.getByText(portalText.quickUnknownSite)).toBeTruthy();
+    expect(screen.getByText(portalText.quickUnknownPublic)).toBeTruthy();
   });
 
   it("queues a second tap behind a save still out, instead of dropping it", async () => {

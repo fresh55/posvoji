@@ -1190,6 +1190,69 @@ describe("work the shelter typed and did not save", () => {
   });
 });
 
+// The published dataset carries the reviewed enrichment the crawled values
+// lack. The form shows what the public site shows, and an answer the shelter
+// leaves alone is never sent back as a correction.
+describe("answers the public site already shows", () => {
+  const PUBLISHED = {
+    size: null,
+    energy: "lively",
+    goodWithKids: null,
+    goodWithDogs: null,
+    goodWithCats: "yes",
+    apartmentOk: null,
+  };
+
+  it("are chosen, unmarked, and nothing to save", async () => {
+    await open({ published: PUBLISHED });
+
+    expect(
+      within(row(portalText.fieldEnergy))
+        .getByRole("radio", { name: ENERGY_META.lively.label })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(
+      within(row(portalText.fieldGoodWithCats))
+        .getByRole("radio", { name: COMPATIBILITY_META.yes.label })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(within(fieldRow("energy")).queryByText(portalText.missingBadge)).toBeNull();
+    expect(within(fieldRow("goodWithKids")).getByText(portalText.missingBadge)).toBeTruthy();
+    expect(saveButton().disabled).toBe(true);
+  });
+
+  it("give way to the shelter's own, which alone is sent", async () => {
+    await open({ published: PUBLISHED });
+
+    fireEvent.click(
+      within(row(portalText.fieldEnergy)).getByRole("radio", {
+        name: ENERGY_META.calm.label,
+      }),
+    );
+    fireEvent.click(saveButton());
+
+    await waitFor(() => expect(saveAnimal).toHaveBeenCalled());
+    expect(saveAnimal).toHaveBeenCalledWith("testno", "testno:1", {
+      energy: "calm",
+    });
+  });
+
+  it("stay behind the shelter's own correction", async () => {
+    await open({
+      energy: "calm",
+      overrides: { energy: "calm" },
+      published: PUBLISHED,
+    });
+
+    expect(
+      within(row(portalText.fieldEnergy))
+        .getByRole("radio", { name: ENERGY_META.calm.label })
+        .getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(screen.getByText(portalText.fieldOwnLine)).toBeTruthy();
+  });
+});
+
 describe("what the summary says beside the form", () => {
   it("ticks off the filters the animal already answers", async () => {
     await open({ energy: "calm" });

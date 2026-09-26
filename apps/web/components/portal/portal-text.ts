@@ -330,10 +330,11 @@ export const portalText = {
   // quick-answers.ts says why), so the answer stays empty and the animal
   // keeps its place among those still missing one.
   quickUnknownOpen: "Ostane brez odgovora. Ko boste vedeli, ga izberite.",
-  // The same tap on a value the crawl read off the shelter's own page, which
-  // the portal can replace but not empty.
-  quickUnknownSite:
-    "Ta odgovor smo prebrali z vaše spletne strani, zato ostane. Če ne drži, izberite pravega.",
+  // The same tap on an answer the public site already shows and the shelter
+  // did not give: read off its own page, or out of its descriptions. The
+  // portal can replace such an answer but not empty it.
+  quickUnknownPublic:
+    "Ta odgovor je že na javni strani in ostane, dokler ne izberete drugega.",
   quickDoneTitle: "Vse živali imajo odgovore",
   quickDoneLead: "Na javni strani bodo vidni najpozneje v 12 urah.",
   // The round is over but some animals were skipped or left on Ne vem. The

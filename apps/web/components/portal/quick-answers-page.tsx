@@ -18,7 +18,10 @@ import {
   type ReactNode,
 } from "react";
 import { isOverridden } from "@/components/portal/animal-draft";
-import { portalMetaLine } from "@/components/portal/animal-meta";
+import {
+  portalMetaLine,
+  withPublished,
+} from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
 import {
   EditorBreadcrumb,
@@ -95,21 +98,26 @@ function writeRound(account: string, shelter: string, round: string[]): void {
 }
 
 /**
- * A crawled animal as the saved patch leaves it, for the next save in the
- * same run of taps to be built on. The list hook replaces its own copy from
- * the server's answer; this only has to be right about which of the five are
- * the shelter's own now, and what they hold. A cleared field reads as empty,
- * whatever the crawl has under it, which at worst resends a value that is
- * already there.
+ * A crawled animal as the saved patch leaves it, as the page shows it, for
+ * the next save in the same run of taps to be built on. The list hook
+ * replaces its own copy from the server's answer; this only has to be right
+ * about which of the five are the shelter's own now, and what they show. A
+ * cleared field shows what the public site shows, or nothing: the crawl's
+ * value under a correction never reaches the page, which at worst resends a
+ * value that is already there.
  */
 function withPatch(animal: PortalAnimal, patch: QuickPatch): PortalAnimal {
   const next: PortalAnimal = { ...animal, overrides: { ...animal.overrides } };
   for (const field of QUICK_FIELDS) {
     if (!(field in patch)) continue;
     const value = patch[field] ?? null;
-    next[field] = value;
-    if (value === null) delete next.overrides[field];
-    else next.overrides[field] = value;
+    if (value === null) {
+      delete next.overrides[field];
+      next[field] = animal.published?.[field] ?? null;
+    } else {
+      next.overrides[field] = value;
+      next[field] = value;
+    }
   }
   return next;
 }
@@ -160,6 +168,10 @@ export function QuickAnswersPage() {
   const slug = params.get("zavetisce");
   const requested = params.get("id");
   const known = shelters.some((shelter) => shelter.slug === slug);
+  // The animals as the public site shows them. An answer it already has is
+  // chosen on the page and not asked for, in the order the site decides:
+  // the shelter's own, then the published one, then the crawl's.
+  const shownAnimals = useMemo(() => animals.map(withPublished), [animals]);
 
   // The address decides which shelter the portal is looking at, as it does
   // on the editor page, so Back to the list lands on the same shelter.
@@ -256,7 +268,7 @@ export function QuickAnswersPage() {
       account={account}
       shelter={activeShelter.slug}
       requested={requested}
-      records={animals}
+      records={shownAnimals}
       saveStates={saveStates}
       photo={(animal) =>
         animal.thumbnailUrl ? thumbnailUrl(animal.thumbnailUrl) : null
@@ -562,7 +574,7 @@ function AnswerCard<R extends QuickRecord>({
                 <p id={noteId} className="text-sm text-muted-foreground">
                   {note === "open"
                     ? portalText.quickUnknownOpen
-                    : portalText.quickUnknownSite}
+                    : portalText.quickUnknownPublic}
                 </p>
               )}
             </div>

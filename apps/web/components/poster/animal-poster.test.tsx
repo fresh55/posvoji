@@ -337,6 +337,16 @@ describe("the fact tiles", () => {
     expect(container.textContent).not.toContain("Raje brez psov");
   });
 
+  it("prints no dog or cat tile for an animal that has to be the only pet", () => {
+    const { container } = poster({
+      animal: animal({
+        goodWith: { kids: "yes", cats: "yes" },
+        adoptionRequirements: { onlyPet: true },
+      }),
+    });
+    expect(tiles(container)).toEqual(["Mačka", "Se razume z otroki"]);
+  });
+
   it("draws the age filter's own sprout, shrub and tree", () => {
     const { container } = poster({
       animal: animal({ approximateAgeMonths: 3 }),

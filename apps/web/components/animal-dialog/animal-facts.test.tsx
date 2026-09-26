@@ -348,6 +348,19 @@ describe("the družba row", () => {
     expect(buttons[0].textContent).toContain("Se razume z otroki");
   });
 
+  // Meli's Tomi "nima težav z mačkami" but has to live alone. Doma imam: Mačko
+  // leaves him out, and a "Se razume z mačkami" beside "Mora biti edina žival
+  // pri hiši" told the visitor the opposite.
+  it("answers dogs and cats no for an animal that has to be the only pet", () => {
+    renderFacts({ goodWith: { cats: "yes" }, adoptionRequirements: { onlyPet: true } });
+
+    const row = screen.getByRole("list", { name: "Družba" });
+    expect(within(row).getByText("Raje brez mačk")).toBeTruthy();
+    expect(within(row).getByText("Raje brez psov")).toBeTruthy();
+    expect(within(row).getByText("Ni podatka o otrocih")).toBeTruthy();
+    expect(within(row).queryByText("Se razume z mačkami")).toBeNull();
+  });
+
   // "Ni primeren za družine z majhnimi otroki" is said by the conditions row.
   // An unanswered children pill beside it would read as no answer at all.
   it("leaves children to the conditions row when that is all the shelter said", () => {

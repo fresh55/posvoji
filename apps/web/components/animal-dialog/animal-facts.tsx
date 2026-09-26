@@ -749,7 +749,9 @@ export function AnimalFacts({
               className={FACT_ROW_CLASS}
             >
               {goodWithKeys.map((key) => {
-                const answer = animal.goodWith?.[key] ?? "unknown";
+                // The filters' answer, so an animal that has to be the only
+                // pet says no to dogs and cats here as it does under Doma imam.
+                const answer = goodWithAnswer(animal, key) ?? "unknown";
                 return (
                   <GoodWithFact
                     key={key}

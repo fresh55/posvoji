@@ -45,8 +45,12 @@ import {
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import { quotedLang } from "@/lib/i18n-format";
-import { ADOPTION_REQUIREMENT_LABELS } from "@/lib/filters/metadata";
-import { ageLabel, sexLabel, sizeLabel } from "@/lib/labels";
+import {
+  ADOPTION_REQUIREMENT_LABELS,
+  valueChipLabel,
+} from "@/lib/filters/metadata";
+import { ageLabel, sexLabel, sizeFact } from "@/lib/labels";
+import { MUTED_LINK } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 
 const SEX_ICONS: Record<Exclude<Sex, "unknown">, LucideIcon> = {
@@ -408,10 +412,14 @@ function clampsDescription(paragraphs: string[]): boolean {
 const PHOTO_CREDIT_ONLY =
   /^(?:Foto|Fotografij[ae]|Fotografiral[ai]?|Vse fotografije)\s*:?\s+\p{Lu}[^.]{2,40}$/u;
 
-// The icon carries the meaning on screen; a screen reader gets the same
-// meaning from the prefix instead. Facts that read as a full sentence on their
-// own (the sex) need no prefix. A fact whose symbol is not a plain Lucide icon
-// hands it in as a node instead.
+// A fact whose value does not say what it measures says it in words: "Starost:
+// 10 let", "Velikost: srednja", "Kratka dlaka". The icon was meant to carry
+// that and did not: "Kratka" beside a few drawn strands was short and nothing
+// in particular, and "Srednja" was the answer to both the size and the coat.
+// The rest name themselves. The sex reads as a whole fact and takes no prefix;
+// the colours, the energy and a stated stage give a screen reader the heading
+// the eye can do without. A fact whose symbol is not a plain Lucide icon hands
+// it in as a node instead.
 function Fact({
   icon: Icon,
   iconNode,
@@ -614,9 +622,8 @@ export function AnimalFacts({
                       aria-hidden
                     />
                   }
-                  prefix={messages.factSize}
                 >
-                  {sizeLabel(animal.size, locale)}
+                  {sizeFact(animal.size, locale)}
                 </Fact>
               )}
               {animal.coatColors && (
@@ -627,7 +634,15 @@ export function AnimalFacts({
                   iconNode={<CoatColorDots values={animal.coatColors} />}
                   prefix={groupLabel("coatColor", locale)}
                 >
-                  {animal.coatColors.map(color => optionLabel("coatColor", color, [], locale)).join(", ")}
+                  {/* A list, so only its first word takes the capital the
+                      filter's option names each start with: "Siva, rjava",
+                      not "Siva, Rjava". */}
+                  {animal.coatColors
+                    .map((color, index) => {
+                      const label = optionLabel("coatColor", color, [], locale);
+                      return index === 0 ? label : label.toLocaleLowerCase(locale);
+                    })
+                    .join(", ")}
                 </Fact>
               )}
               {animal.coatLength && (
@@ -638,9 +653,12 @@ export function AnimalFacts({
                       className="size-3.5 shrink-0 opacity-70"
                     />
                   }
-                  prefix={groupLabel("coatLength", locale)}
                 >
-                  {optionLabel("coatLength", animal.coatLength, [], locale)}
+                  {/* The chip's wording and not the option's: "Kratka dlaka"
+                      is how the active filter already says it where no
+                      heading stands over it, and "Brez dlake" needs no noun
+                      put in front of it. */}
+                  {valueChipLabel("coatLength", animal.coatLength, locale)}
                 </Fact>
               )}
               {animal.energy && (
@@ -833,12 +851,18 @@ export function AnimalFacts({
             ))}
           </div>
           {clampDescription && (
+            // MUTED_LINK for the finger's box it gives a coarse pointer: a
+            // thumb got the 16px of this line and nothing more, the one control
+            // in the card under the 44px floor. The box reaches 14px up into
+            // the last clamped line, which is a press on the text it opens, and
+            // 14px down, short of the shelter's box: 24px below it in the
+            // dialog and 20px on the animal's page.
             <button
               type="button"
               aria-expanded={showFullDescription}
               aria-controls={descriptionId}
               onClick={() => setShowFullDescription((open) => !open)}
-              className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              className={cn(MUTED_LINK, "cursor-pointer text-xs underline")}
             >
               {showFullDescription ? messages.showLess : messages.readMore}
             </button>

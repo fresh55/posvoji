@@ -126,6 +126,13 @@ const sl = {
   openDetails: "Odpri podrobnosti o {name}",
   previousAnimal: "Prejšnja žival",
   nextAnimal: "Naslednja žival",
+  // The phone's two steps at the end of the animal dialog's card. Each prints
+  // the short word over the name of the animal it leads to, and is heard whole:
+  // previousAnimal or nextAnimal as the step, the edge arrows' own words.
+  otherAnimals: "Druge živali",
+  previousShort: "Prejšnja",
+  nextShort: "Naslednja",
+  animalStepNamed: "{step}: {name}",
   share: "Deli",
   linkCopied: "Povezava kopirana",
   foundHome: "Ta žival je že našla nov dom.",
@@ -133,7 +140,6 @@ const sl = {
   animalDetails: "Podrobnosti o živali",
   factAge: "Starost",
   factBreed: "Pasma",
-  factSize: "Velikost",
   factTimeInShelter: "V zavetišču",
   // The label and its value as one string, so the punctuation between them is
   // something a translator can see and change. A bare "2 leti" beside a box
@@ -851,6 +857,10 @@ const en: Messages = {
   openDetails: "Open details for {name}",
   previousAnimal: "Previous animal",
   nextAnimal: "Next animal",
+  otherAnimals: "Other animals",
+  previousShort: "Previous",
+  nextShort: "Next",
+  animalStepNamed: "{step}: {name}",
   share: "Share",
   linkCopied: "Link copied",
   foundHome: "This animal has already found a home.",
@@ -858,7 +868,6 @@ const en: Messages = {
   animalDetails: "Animal details",
   factAge: "Age",
   factBreed: "Breed",
-  factSize: "Size",
   factTimeInShelter: "In the shelter",
   factAgeValue: "Age: {age}",
 

@@ -19,6 +19,7 @@ import {
   photoDotWindow,
   type PermittedPhoto,
 } from "@/lib/animal-images";
+import { opensElsewhere } from "@/lib/opens-elsewhere";
 import { preloadPhotos } from "@/lib/preload-photos";
 import { declareAxis, swipeVerdict } from "@/lib/swipe";
 import { cn } from "@/lib/utils";
@@ -621,12 +622,7 @@ export function PhotoGallery({
     // A held modifier or a non-primary button is asking the browser for a tab,
     // and that has to win over a stale suppression: the card's own handler
     // deliberately lets those through, and this path used to swallow them.
-    const modified =
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      event.button !== 0;
+    const modified = opensElsewhere(event);
     const suppressed = suppressImageLink.current;
     suppressImageLink.current = false;
     if (suppressed && !modified) {

@@ -178,22 +178,28 @@ async function settle() {
 // here carry one.
 describe("animal grid renders", () => {
   it("leaves the other cards alone when one of them opens", async () => {
-    const [first, second] = animalsForClient([
+    // Three, and the one counted is not beside the one opened. The dialog's
+    // steps draw the first photo of the animal either side (animal-steps.tsx),
+    // so a read of a neighbour's images no longer says whether its card
+    // rendered. Nothing in the dialog reads the third one's. The list is in id
+    // order, which is where the default sort falls through to on a tie.
+    const [first, second, third] = animalsForClient([
       animal("dog-muri", "dog", "muri"),
       animal("dog-tretje", "dog", "tretje"),
+      animal("dog-zadnji", "dog", "zadnji"),
     ]);
     let reads = 0;
     const counted = {
-      ...second,
+      ...third,
       get images() {
         reads++;
-        return second.images;
+        return third.images;
       },
     };
     render(
       <I18nProvider locale="sl">
         <AnimalGrid
-          animals={[first, counted]}
+          animals={[first, second, counted]}
           logos={{}}
           referenceDate="2026-01-01"
         />

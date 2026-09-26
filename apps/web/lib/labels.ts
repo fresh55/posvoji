@@ -707,6 +707,16 @@ export function sexFact(
   return sexLabel(animal.sex, locale).toLocaleLowerCase(locale);
 }
 
+/** The size as a fact standing on its own, the way the animal's dialog, its
+ *  page and its poster print it: "Velikost: srednja". The card's middot list
+ *  keeps the bare word, because its line holds two facts at 375px and no
+ *  more. */
+export function sizeFact(size: AnimalSize, locale: Locale): string {
+  return translate(locale, "factSizeValue", {
+    size: sizeLabel(size, locale).toLocaleLowerCase(locale),
+  });
+}
+
 export function sexLabel(
   sex: Exclude<Sex, "unknown">,
   locale: Locale,

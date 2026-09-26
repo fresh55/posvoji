@@ -72,13 +72,59 @@ function descriptionBlock(): HTMLElement | null {
 
 describe("reviewed appearance and only-pet facts", () => {
   it.each([
-    ["sl", "Črna, Bela", "Dolga", "Mora biti edina žival pri hiši"],
-    ["en", "Black, White", "Long", "Needs to be the only pet"],
+    ["sl", "Črna, bela", "Dolga dlaka", "Mora biti edina žival pri hiši"],
+    ["en", "Black, white", "Long coat", "Needs to be the only pet"],
   ] as const)("keeps detailed colours alongside a single filter category in %s", (locale, colors, length, home) => {
     renderFacts({ coatColor: "black", coatColors: ["black", "white"], coatLength: "long", adoptionRequirements: { onlyPet: true } }, locale);
     expect(screen.getByText(colors)).toBeTruthy();
     expect(screen.getByText(length)).toBeTruthy();
     expect(screen.getByText(home)).toBeTruthy();
+  });
+});
+
+// "Kratka" and "Srednja" said nothing about what was short or medium, and
+// "Srednja" was the answer to the size and to the coat alike. The icon beside
+// each was meant to say which, and a visitor could not read it. The pill says
+// it in words instead, and says it once: the heading that used to be for a
+// screen reader only would now repeat what is on screen.
+describe("a fact that names what it measures", () => {
+  function identityRow(locale: Locale) {
+    return screen.getByRole("list", {
+      name: locale === "sl" ? "Podrobnosti o živali" : "Animal details",
+    });
+  }
+
+  // One row per wording and language. The coat's words are the chip's, whose
+  // own table is pinned in lib/filters; hairless is here because it is the one
+  // that needs no noun put in front of it.
+  it.each([
+    [{ size: "medium" }, "sl", "Velikost: srednja"],
+    [{ size: "medium" }, "en", "Size: medium"],
+    [{ coatLength: "short" }, "sl", "Kratka dlaka"],
+    [{ coatLength: "short" }, "en", "Short coat"],
+    [{ coatLength: "hairless" }, "sl", "Brez dlake"],
+  ] as const)("prints %o in %s as %s", (fields, locale, text) => {
+    renderFacts(fields, locale);
+    const [pill] = within(identityRow(locale)).getAllByRole("listitem");
+    expect(pill.textContent).toBe(text);
+  });
+
+  // The two that share a word stay apart once each names its own noun.
+  it("tells a medium animal from a medium coat", () => {
+    renderFacts({ size: "medium", coatLength: "medium" });
+    const pills = within(identityRow("sl"))
+      .getAllByRole("listitem")
+      .map((pill) => pill.textContent);
+    expect(pills).toEqual(["Velikost: srednja", "Srednja dlaka"]);
+  });
+
+  // The colours name themselves, so they keep the heading for a screen reader
+  // alone, and the list reads as one: only its first word is capitalised.
+  it("keeps the colours' heading off the screen", () => {
+    renderFacts({ coatColors: ["grey", "brown", "white"] });
+    const [pill] = within(identityRow("sl")).getAllByRole("listitem");
+    expect(pill.querySelector(".sr-only")?.textContent).toBe("Barva: ");
+    expect(screen.getByText("Siva, rjava, bela")).toBeTruthy();
   });
 });
 

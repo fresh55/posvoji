@@ -24,6 +24,7 @@ import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { FAN_PHOTO_SIZES, FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
+import { opensElsewhere } from "@/lib/opens-elsewhere";
 import {
   CARD_PHOTO_ASPECT,
   CARD_PHOTO_RADIUS,
@@ -253,15 +254,7 @@ export const AnimalCard = memo(function AnimalCard({
   // the tab it asked for. A plain click stays on the page and opens the
   // dialog, and carries this card's photograph into it.
   function openDialog(event: MouseEvent<HTMLAnchorElement>) {
-    if (
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      event.button !== 0
-    ) {
-      return;
-    }
+    if (opensElsewhere(event)) return;
     event.preventDefault();
     const rect = cardRef.current?.getBoundingClientRect();
     // Where the dialog grows from when nothing carries the photo: the card's

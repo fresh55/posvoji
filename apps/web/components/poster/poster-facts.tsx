@@ -31,7 +31,7 @@ import {
 import {
   ageLabel,
   sexLabel,
-  sizeLabel,
+  sizeFact,
   speciesLabel,
   stayStatement,
 } from "@/lib/labels";
@@ -166,7 +166,9 @@ export function posterTiles(
   if (!severalAnimals && animal.size) {
     tiles.push({
       key: "size",
-      label: sizeLabel(animal.size, locale),
+      // Named, like the age above and the dialog's size fact: "Srednja" and a
+      // paw read across a room as nothing in particular.
+      label: sizeFact(animal.size, locale),
       tone: "identity",
       glyph: {
         kind: "lucide",

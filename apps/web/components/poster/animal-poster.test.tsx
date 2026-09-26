@@ -229,7 +229,7 @@ describe("the fact tiles", () => {
       "Mačka",
       "Samica",
       "Starost: 2 leti",
-      "Srednja",
+      "Velikost: srednja",
       "Cepljenje",
     ]);
     // No sex, no age, no size and no health record on this one, and the sheet
@@ -292,7 +292,7 @@ describe("the fact tiles", () => {
     const grey = [...container.querySelectorAll(".poster-tile--identity")].map(
       (tile) => tile.textContent,
     );
-    expect(grey).toEqual(["Mačka", "Samica", "Majhna"]);
+    expect(grey).toEqual(["Mačka", "Samica", "Velikost: majhna"]);
   });
 
   it("prints a health tile only where the record says yes", () => {

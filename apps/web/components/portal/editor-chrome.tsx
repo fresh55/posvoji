@@ -6,6 +6,7 @@ import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
 import { PORTAL_PATH } from "@/hooks/use-portal-session";
+import { opensElsewhere } from "@/lib/opens-elsewhere";
 import { cn } from "@/lib/utils";
 
 // The frame both editor pages draw around their form. A crawled animal and a
@@ -13,17 +14,6 @@ import { cn } from "@/lib/utils";
 // bar that saves, and the line about work that was left behind are one copy
 // each: a shelter that learns them on one kind must not meet a different
 // arrangement on the other.
-
-/** A click that opens the link somewhere other than this tab. */
-function opensElsewhere(event: React.MouseEvent): boolean {
-  return (
-    event.button !== 0 ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.shiftKey ||
-    event.altKey
-  );
-}
 
 /** Where the shelter is, and the way back to the list. */
 export function EditorBreadcrumb({

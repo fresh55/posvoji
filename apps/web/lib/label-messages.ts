@@ -12,6 +12,9 @@ export const labelMessages = {
     // description under it to correct them the way the dialog does.
     cardSeveralAnimals: "več živali",
     factStayValue: "V zavetišču: {duration}",
+    // "Srednja" alone was also the coat's answer, and the growing paw beside it
+    // did not say which of the two it was.
+    factSizeValue: "Velikost: {size}",
     longStayWholeLife: "{name} v zavetišču čaka že {duration}, skoraj vse svoje življenje.",
     longStay: "{name} v zavetišču čaka že {duration}.",
     longStayWholeLifeUnnamed: "V zavetišču čaka že {duration}, skoraj vse svoje življenje.",
@@ -33,6 +36,7 @@ export const labelMessages = {
     cardAge: "{age}\u00a0old",
     cardSeveralAnimals: "several animals",
     factStayValue: "In the shelter: {duration}",
+    factSizeValue: "Size: {size}",
     longStayWholeLife: "{name} has been waiting in the shelter for {duration}, almost its whole life.",
     longStay: "{name} has been waiting in the shelter for {duration}.",
     longStayWholeLifeUnnamed: "At the shelter for {duration} now, almost its whole life.",

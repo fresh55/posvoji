@@ -348,6 +348,30 @@ describe("the družba row", () => {
     expect(buttons[0].textContent).toContain("Se razume z otroki");
   });
 
+  // "Ni primeren za družine z majhnimi otroki" is said by the conditions row.
+  // An unanswered children pill beside it would read as no answer at all.
+  it("leaves children to the conditions row when that is all the shelter said", () => {
+    renderFacts({ goodWith: { cats: "yes" }, adoptionRequirements: { noYoungKids: true } });
+
+    const conditions = screen.getByRole("list", { name: "Pogoji posvojitve" });
+    expect(within(conditions).getByText("Potrebuje dom brez majhnih otrok")).toBeTruthy();
+    const row = screen.getByRole("list", { name: "Družba" });
+    expect(within(row).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(row).queryByText("Ni podatka o otrocih")).toBeNull();
+    expect(within(row).getByText("Ni podatka o psih")).toBeTruthy();
+  });
+
+  it("draws no row for the condition alone", () => {
+    renderFacts({ adoptionRequirements: { noYoungKids: true } });
+    expect(screen.queryByRole("list", { name: "Družba" })).toBeNull();
+  });
+
+  it("keeps a recorded answer about children beside the condition", () => {
+    renderFacts({ goodWith: { kids: "no" }, adoptionRequirements: { noYoungKids: true } });
+    const row = screen.getByRole("list", { name: "Družba" });
+    expect(within(row).getByText("Raje brez otrok")).toBeTruthy();
+  });
+
   it("names the animal in the popover sentence", async () => {
     renderFacts({ goodWith: { cats: "yes" } });
 
@@ -755,9 +779,10 @@ describe("reviewed adoption requirements", () => {
 
   it("shows confirmed requirements in the animal facts", () => {
     renderFacts({ adoptionRequirements: {
-      indoorOnly: true, bondedPair: true, experiencedCarer: true, ongoingCare: true,
+      indoorOnly: true, bondedPair: true, experiencedCarer: true, ongoingCare: true, noYoungKids: true,
     } }, "en");
-    for (const label of ["Needs an indoor-only home", "Adopted only as a pair", "Needs an experienced hand", "Needs daily care"]) {
+    for (const label of ["Needs an indoor-only home", "Adopted only as a pair", "Needs an experienced hand", "Needs daily care",
+      "Needs a home without young children"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
   });

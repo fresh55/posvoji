@@ -27,6 +27,7 @@ import {
 export const ADOPTION_REQUIREMENT_LABELS = {
   indoorOnly: { sl: "Potrebuje dom brez izhoda", en: "Needs an indoor-only home" },
   onlyPet: { sl: "Mora biti edina žival pri hiši", en: "Needs to be the only pet" },
+  noYoungKids: { sl: "Potrebuje dom brez majhnih otrok", en: "Needs a home without young children" },
   bondedPair: { sl: "Posvoji se samo v paru", en: "Adopted only as a pair" },
   experiencedCarer: { sl: "Potrebuje izkušeno roko", en: "Needs an experienced hand" },
   ongoingCare: { sl: "Potrebuje dnevno nego", en: "Needs daily care" },

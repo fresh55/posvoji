@@ -58,10 +58,12 @@ const REQUIREMENT_KEYS = Object.keys(ADOPTION_REQUIREMENT_LABELS) as
 
 // A requirement a Lahko ponudim row finds wears that row's mark. The two the
 // filters leave to the animal, indoor-only and only-pet, draw the home they
-// ask for.
+// ask for. Young children wear Doma imam's mark for children, the question
+// the requirement answers.
 const REQUIREMENT_ICONS: Record<(typeof REQUIREMENT_KEYS)[number], LucideIcon> = {
   indoorOnly: Building2,
   onlyPet: House,
+  noYoungKids: GOOD_WITH_ICONS.kids,
   bondedPair: CARE_ICONS["bonded-pair"],
   experiencedCarer: CARE_ICONS["experienced-carer"],
   ongoingCare: CARE_ICONS["ongoing-care"],
@@ -501,9 +503,18 @@ export function AnimalFacts({
     medical.length > 0 && !fullRecord
       ? healthGapKey(animal.species, animal.medical)
       : undefined;
+  // Where all the shelter said about children is the requirement row's
+  // "Potrebuje dom brez majhnih otrok", the children pill stays out: "Ni
+  // podatka o otrocih" beside it would say there is no answer.
+  const goodWithKeys =
+    animal.adoptionRequirements?.noYoungKids === true &&
+    animal.goodWith?.kids !== "yes" &&
+    animal.goodWith?.kids !== "no"
+      ? GOOD_WITH_KEYS.filter((key) => key !== "kids")
+      : GOOD_WITH_KEYS;
   // One answered question is enough to show the row, and the row then answers
-  // all three. A shelter that has recorded nothing says nothing here.
-  const hasGoodWith = GOOD_WITH_KEYS.some(
+  // the rest. A shelter that has recorded nothing says nothing here.
+  const hasGoodWith = goodWithKeys.some(
     (key) => animal.goodWith?.[key] !== undefined,
   );
   const apartment =
@@ -737,7 +748,7 @@ export function AnimalFacts({
               aria-label={messages.goodWithFacts}
               className={FACT_ROW_CLASS}
             >
-              {GOOD_WITH_KEYS.map((key) => {
+              {goodWithKeys.map((key) => {
                 const answer = animal.goodWith?.[key] ?? "unknown";
                 return (
                   <GoodWithFact

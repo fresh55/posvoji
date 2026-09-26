@@ -165,6 +165,10 @@ export const AnimalAdoptionRequirements = z.strictObject({
   experiencedCarer: z.boolean().optional(),
   ongoingCare: z.boolean().optional(),
   onlyPet: z.boolean().optional(),
+  // "Ni primeren za družine z majhnimi otroki". Not a no to children in
+  // general, so goodWith.kids stays unanswered beside it: a home with older
+  // children may still fit.
+  noYoungKids: z.boolean().optional(),
 });
 export type AnimalAdoptionRequirements = z.infer<typeof AnimalAdoptionRequirements>;
 

@@ -19,6 +19,8 @@ and past events. Keep unclear or conditional answers absent. In particular:
 - Indoor-only placement does not establish apartment suitability.
 - A friendly or playful animal is not automatically child-compatible or lively.
 - Compatibility with older children does not answer compatibility with all children.
+- "Not for a family with small children" is `adoptionRequirements.noYoungKids`,
+  not `goodWith.kids: no`. The children answer stays absent beside it.
 - Preferred joint adoption and arriving with a sibling do not establish required
   adoption together.
 - A resolved injury does not establish current ongoing care. Report treatment
@@ -27,8 +29,9 @@ and past events. Keep unclear or conditional answers absent. In particular:
   an explicit `replaces` baseline and a second review of the new evidence.
 
 The added optional `Animal.adoptionRequirements` object distinguishes
-`indoorOnly`, `bondedPair`, `experiencedCarer` and `ongoingCare` from energy,
-apartment suitability and the existing patience/special-needs field. These
+`indoorOnly`, `bondedPair`, `experiencedCarer`, `ongoingCare`, `onlyPet` and
+`noYoungKids` from energy, apartment suitability, the household answers in
+`goodWith` and the existing patience/special-needs field. These
 requirements mean explicit current placement or care requirements, not a
 probability or a general recommendation for every animal. Consumers must accept
 this expanded strict schema before consuming an enriched dataset.

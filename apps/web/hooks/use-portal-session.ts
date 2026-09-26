@@ -29,7 +29,7 @@ export const PORTAL_LOGOUT_FAILED_PATH = `${PORTAL_LOGIN_PATH}?${PORTAL_ERROR_PA
  * that stores nothing throws on each of these calls, and the portal carries on
  * as if the entry were simply empty.
  */
-function slot(key: string) {
+export function slot(key: string) {
   return {
     write(value: string): void {
       try {

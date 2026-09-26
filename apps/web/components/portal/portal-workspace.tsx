@@ -14,7 +14,6 @@ import {
   hasMissingSearchableFields,
   hasUnconfirmedStatus,
   needsReview,
-  withPublished,
 } from "@/components/portal/animal-meta";
 import { PortalAnimalRow } from "@/components/portal/animal-row";
 import {
@@ -167,12 +166,9 @@ export function PortalWorkspace() {
   // The animals the quick answers round would ask something, counted with
   // the round's own rule and over the whole list, for the reason the chips
   // count the whole list: a count that moved with the filter would say
-  // nothing about the work left. An answer the public site already shows is
-  // not asked for, so a crawled animal is counted as the site shows it.
+  // nothing about the work left.
   const quickCount = useMemo(() => {
-    const records: readonly QuickRecord[] = manual
-      ? listings
-      : animals.map(withPublished);
+    const records: readonly QuickRecord[] = manual ? listings : animals;
     return records.filter(needsAnswers).length;
   }, [animals, listings, manual]);
   const visible = manual ? visibleListings : visibleAnimals;

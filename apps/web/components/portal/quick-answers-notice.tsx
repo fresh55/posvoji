@@ -1,9 +1,10 @@
 import { MessageCircleQuestionMark } from "lucide-react";
 import Link from "next/link";
-import { fill, portalText } from "@/components/portal/portal-text";
+import { LIST_BANNER } from "@/components/portal/notice";
+import { fillOneOrMany, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
 import { portalAnswersPath } from "@/hooks/use-portal-session";
-import { pick } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 
 /**
  * The way into the quick answers: one line saying how many animals still
@@ -24,18 +25,14 @@ export function QuickAnswersNotice({
   if (count === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 rounded-ui border bg-muted/30 px-3 py-2.5 text-sm">
+    <div className={cn(LIST_BANNER, "gap-y-2.5")}>
       {/* A basis of its own, so on a phone the button goes under the line
           rather than squeezing it into a column one word wide. */}
       <p className="min-w-0 grow basis-64 text-muted-foreground">
-        {fill(
-          pick(count, [
-            portalText.quickNoticeOne,
-            portalText.quickNoticeMany,
-            portalText.quickNoticeMany,
-            portalText.quickNoticeMany,
-          ]),
-          { count },
+        {fillOneOrMany(
+          count,
+          portalText.quickNoticeOne,
+          portalText.quickNoticeMany,
         )}
       </p>
       <Button asChild size="sm">

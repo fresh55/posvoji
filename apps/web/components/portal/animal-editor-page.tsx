@@ -10,7 +10,6 @@ import { AnimalForm } from "@/components/portal/animal-form";
 import {
   portalMetaLine,
   portalPublicPath,
-  withPublished,
 } from "@/components/portal/animal-meta";
 import { ConfirmDialog } from "@/components/portal/confirm-dialog";
 import {
@@ -18,25 +17,25 @@ import {
   EditorBreadcrumb,
   EditorSaveBar,
 } from "@/components/portal/editor-chrome";
-import { Glyph } from "@/components/portal/glyph";
+import { PortalThumb } from "@/components/portal/glyph";
 import { ListingEditorPage } from "@/components/portal/listing-editor-page";
 import {
-  EditorListError,
   EditorNotFound,
   FieldError,
-  PortalPageHeading,
-  PortalPending,
-  SessionError,
+  listGate,
+  sessionGate,
 } from "@/components/portal/notice";
 import { OverrideMark } from "@/components/portal/override-mark";
 import {
   READ_BOXES,
   isPortalField,
-  portalSpeciesIcon,
   readBoxControl,
   type ReadBox,
 } from "@/components/portal/portal-fields";
-import { usePortal } from "@/components/portal/portal-provider";
+import {
+  useAddressedShelter,
+  usePortal,
+} from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
 import { SaveStatusPip } from "@/components/portal/save-status";
 import { SearchableChecklist } from "@/components/portal/searchable-checklist";
@@ -61,7 +60,7 @@ import type {
 } from "@/lib/portal-api";
 import { ExternalLink } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 /**
  * One animal, edited on a page of its own.
@@ -79,10 +78,7 @@ export function AnimalEditorPage() {
     session,
     reloadSession,
     account,
-    shelters,
-    active,
     activeShelter,
-    setActive,
     manual,
     animals,
     animalState,
@@ -96,74 +92,31 @@ export function AnimalEditorPage() {
   const animalId = params.get("id");
   const requested = params.get("polje");
   const polje = isPortalField(requested) ? requested : null;
-
-  // A slug the account has no access to is not a shelter this page can show,
-  // whatever the address says.
-  const known = shelters.some((shelter) => shelter.slug === slug);
-
-  // The URL decides which shelter the whole portal is looking at, so a reload
-  // under the second shelter lands on the right list and Back leaves it there.
-  useEffect(() => {
-    if (slug && known && slug !== active) setActive(slug);
-  }, [active, known, setActive, slug]);
+  const { known, showing } = useAddressedShelter(slug);
 
   // A shelter with no catalogue of its own has no crawled animal to edit: the
   // same address opens one of its listings, on the same frame. Which of the
-  // two this is follows the active shelter, which the effect above has just
-  // taken from the address.
+  // two this is follows the active shelter, which the hook above takes from
+  // the address.
   if (manual) return <ListingEditorPage />;
 
-  const showing = known && slug === active;
   const animal = showing
     ? (animals.find((candidate) => candidate.id === animalId) ?? null)
     : null;
 
   const notFound = <EditorNotFound />;
 
-  if (session.status === "loading" || session.status === "anonymous") {
-    return (
-      <>
-        <PortalPageHeading />
-        <PortalPending
-          label={
-            session.status === "anonymous"
-              ? portalText.redirecting
-              : portalText.loading
-          }
-        />
-      </>
-    );
-  }
-
-  if (session.status === "error") {
-    return (
-      <>
-        <PortalPageHeading />
-        <SessionError offline={session.offline} onRetry={reloadSession} />
-      </>
-    );
-  }
+  const noSession = sessionGate(session, reloadSession);
+  if (noSession) return noSession;
 
   // A shelter the account does not have is answered at once: nothing is
   // loading that could turn it into an animal.
   if (!slug || !animalId || !known) return notFound;
 
-  if (showing && animalState.status === "error") {
-    return (
-      <EditorListError message={animalState.message} onReload={reloadAnimals} />
-    );
-  }
-
   // An id with no animal is only a wrong id once the list it would be in has
   // arrived. Until then the page is still loading, not empty.
-  if (!showing || animalState.status !== "ready") {
-    return (
-      <>
-        <PortalPageHeading />
-        <PortalPending label={portalText.loading} />
-      </>
-    );
-  }
+  const noList = listGate(showing, animalState, reloadAnimals);
+  if (noList) return noList;
 
   if (!animal || !activeShelter || !account) return notFound;
 
@@ -172,10 +125,7 @@ export function AnimalEditorPage() {
       // A different animal is a different form with a different draft, so it
       // is a different component instance and not this one re-used.
       key={animal.id}
-      // The form, its draft, its patch and its marks all start from what the
-      // public site shows. A published answer the shelter leaves alone is
-      // then no change, and is never sent back as a correction.
-      animal={withPublished(animal)}
+      animal={animal}
       account={account}
       shelter={activeShelter.slug}
       shelterName={activeShelter.name}
@@ -210,7 +160,7 @@ function AnimalEditor({
   /** The public page is still filed under the name the list loaded with. */
   renamed: boolean;
   saveState: PortalSaveState;
-  onSave: (patch: PortalAnimalPatch) => Promise<boolean>;
+  onSave: (patch: PortalAnimalPatch) => Promise<PortalAnimal | null>;
   field: PortalField | null;
   onDone: () => void;
 }) {
@@ -288,7 +238,6 @@ function AnimalEditor({
 
   const name = animal.name ?? portalText.unnamed;
   const overrideCount = Object.keys(animal.overrides).length;
-  const speciesIcon = portalSpeciesIcon(animal.species);
   // The age and the date have their own messages, beside the boxes they are
   // about. What is left is the save that did not go through, said in the bar
   // or under the status buttons, whichever started it.
@@ -416,25 +365,12 @@ function AnimalEditor({
         <div className="grid gap-8 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-6">
             <div className="flex items-start gap-3">
-              {animal.thumbnailUrl ? (
-                // Same reasoning as the card: a cache-permitted photo can
-                // still fall back to the shelter's own host, which next/image
-                // would need a build-time allowlist for.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={thumbnailUrl(animal.thumbnailUrl)}
-                  alt=""
-                  decoding="async"
-                  className="size-16 shrink-0 rounded-ui border bg-muted/40 object-cover"
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className="grid size-16 shrink-0 place-items-center rounded-ui border bg-muted/40 text-muted-foreground"
-                >
-                  <Glyph icon={speciesIcon} className="size-6" />
-                </span>
-              )}
+              <PortalThumb
+                src={
+                  animal.thumbnailUrl ? thumbnailUrl(animal.thumbnailUrl) : null
+                }
+                species={animal.species}
+              />
 
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

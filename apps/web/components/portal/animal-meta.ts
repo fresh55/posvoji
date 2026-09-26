@@ -24,21 +24,18 @@ import {
   type PortalStatus,
 } from "@/lib/portal-api";
 
-// One view per record the API sent, so a memoised row or form handed the
-// view of the same record gets the same object back.
-const views = new WeakMap<PortalAnimal, PortalAnimal>();
-
 /**
  * The animal with the answers the public site shows filled in, in the order
  * the site itself decides them: the shelter's own correction, then the
  * published dataset, then the crawl.
  *
  * The API keeps the published answers apart because the crawled values are
- * what a correction is made against. Everything that shows an answer or asks
- * whether one is missing reads this view instead: the editor's rows and marks,
- * the row's "manjka" count, the "Za pregled" chip and the quick answers. The
- * editor builds its draft and its patch from the same view, so a published
- * answer the shelter leaves alone is never sent back as a correction.
+ * what a correction is made against. The list hook holds every animal as this
+ * view, so everything that shows an answer or asks whether one is missing
+ * reads it: the editor's rows and marks, the row's "manjka" count, the "Za
+ * pregled" chip and the quick answers. The editor builds its draft and its
+ * patch from the same view, so a published answer the shelter leaves alone is
+ * never sent back as a correction.
  *
  * The published dataset carries the corrections of the last export, so one
  * the shelter has taken back since still shows here until the next export.
@@ -46,14 +43,11 @@ const views = new WeakMap<PortalAnimal, PortalAnimal>();
 export function withPublished(animal: PortalAnimal): PortalAnimal {
   const published = animal.published;
   if (!published) return animal;
-  const cached = views.get(animal);
-  if (cached) return cached;
   const view: PortalAnimal = { ...animal };
   for (const field of PUBLISHED_FIELDS) {
     const value = published[field];
     if (value !== null && !isOverridden(animal, field)) view[field] = value;
   }
-  views.set(animal, view);
   return view;
 }
 
@@ -222,14 +216,9 @@ export function hasUnconfirmedStatus(animal: PortalAnimal): boolean {
   return status !== null && source === "site";
 }
 
-/**
- * The same question as missingSearchableFields, without building the list,
- * and asked of what the public site shows: an answer it already has is not
- * missing.
- */
+/** The same question as missingSearchableFields, without building the list. */
 export function hasMissingSearchableFields(animal: PortalAnimal): boolean {
-  const shown = withPublished(animal);
-  return SEARCHABLE_FIELDS.some((field) => shown[field.key] === null);
+  return SEARCHABLE_FIELDS.some((field) => animal[field.key] === null);
 }
 
 /**

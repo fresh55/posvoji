@@ -18,31 +18,30 @@ import {
   type ReactNode,
 } from "react";
 import { isOverridden } from "@/components/portal/animal-draft";
-import {
-  portalMetaLine,
-  withPublished,
-} from "@/components/portal/animal-meta";
+import { portalMetaLine } from "@/components/portal/animal-meta";
 import { ChoiceGrid } from "@/components/portal/choice-grid";
-import {
-  EditorBreadcrumb,
-  useSaveBarClearance,
-} from "@/components/portal/editor-chrome";
-import { Glyph } from "@/components/portal/glyph";
+import { EditorBreadcrumb, PinnedBar } from "@/components/portal/editor-chrome";
+import { Glyph, PortalThumb } from "@/components/portal/glyph";
 import { listingInput } from "@/components/portal/listing-draft";
 import {
-  EditorListError,
+  EditorNotFound,
   FieldError,
   PortalNotice,
-  PortalPageHeading,
-  PortalPending,
-  SessionError,
+  PortalPendingPage,
+  listGate,
+  sessionGate,
 } from "@/components/portal/notice";
-import { portalSpeciesIcon } from "@/components/portal/portal-fields";
-import { usePortal } from "@/components/portal/portal-provider";
-import { fill, portalText } from "@/components/portal/portal-text";
+import {
+  useAddressedShelter,
+  usePortal,
+} from "@/components/portal/portal-provider";
+import {
+  fill,
+  fillOneOrMany,
+  portalText,
+} from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
 import {
-  QUICK_FIELDS,
   UNKNOWN,
   isAnswer,
   needsAnswers,
@@ -56,17 +55,20 @@ import {
 } from "@/components/portal/quick-answers";
 import { SaveStatusPip } from "@/components/portal/save-status";
 import { IDLE, type PortalSaveState } from "@/hooks/portal-list";
-import { PORTAL_PATH, portalAnswersPath } from "@/hooks/use-portal-session";
+import {
+  PORTAL_PATH,
+  portalAnswersPath,
+  slot,
+} from "@/hooks/use-portal-session";
 import { markKey, useQuickAnswerSaves } from "@/hooks/use-quick-answer-saves";
 import { thumbnailUrl } from "@/lib/animal-images";
-import { pick } from "@/lib/labels";
-import type { PortalAnimal } from "@/lib/portal-api";
 
 // The round a tab is working through, so a reload keeps both the animal and
 // the count it was at. sessionStorage for the reason the drafts use it: the
 // round belongs to this tab and this sitting, not to the next person to open
 // the portal in this browser. Keyed by account and shelter, each part encoded
-// so neither can be crafted to reach the other's key.
+// so neither can be crafted to reach the other's key. Where storage is
+// blocked nothing is kept, and a reload starts a new round on the same animal.
 const ROUND_PREFIX = "posvoji.portal.odgovori:";
 
 export function roundKey(account: string, shelter: string): string {
@@ -74,62 +76,23 @@ export function roundKey(account: string, shelter: string): string {
 }
 
 function readRound(account: string, shelter: string): string[] | null {
+  const raw = slot(roundKey(account, shelter)).peek();
+  if (!raw) return null;
   try {
-    const raw = window.sessionStorage.getItem(roundKey(account, shelter));
-    if (!raw) return null;
     const stored: unknown = JSON.parse(raw);
     return Array.isArray(stored) &&
       stored.every((id): id is string => typeof id === "string")
       ? stored
       : null;
   } catch {
-    // Storage blocked, or something that is not ours under the key. Either
-    // way the round starts again from the list.
+    // Something that is not ours under the key. The round starts again from
+    // the list.
     return null;
   }
 }
 
 function writeRound(account: string, shelter: string, round: string[]): void {
-  try {
-    window.sessionStorage.setItem(roundKey(account, shelter), JSON.stringify(round));
-  } catch {
-    // Storage blocked: a reload then starts a new round, on the same animal.
-  }
-}
-
-/**
- * A crawled animal as the saved patch leaves it, as the page shows it, for
- * the next save in the same run of taps to be built on. The list hook
- * replaces its own copy from the server's answer; this only has to be right
- * about which of the five are the shelter's own now, and what they show. A
- * cleared field shows what the public site shows, or nothing: the crawl's
- * value under a correction never reaches the page, which at worst resends a
- * value that is already there.
- */
-function withPatch(animal: PortalAnimal, patch: QuickPatch): PortalAnimal {
-  const next: PortalAnimal = { ...animal, overrides: { ...animal.overrides } };
-  for (const field of QUICK_FIELDS) {
-    if (!(field in patch)) continue;
-    const value = patch[field] ?? null;
-    if (value === null) {
-      delete next.overrides[field];
-      next[field] = animal.published?.[field] ?? null;
-    } else {
-      next.overrides[field] = value;
-      next[field] = value;
-    }
-  }
-  return next;
-}
-
-/** A state with no animal to show yet: the portal's name and the line. */
-function Pending({ label }: { label: string }) {
-  return (
-    <>
-      <PortalPageHeading />
-      <PortalPending label={label} />
-    </>
-  );
+  slot(roundKey(account, shelter)).write(JSON.stringify(round));
 }
 
 /**
@@ -147,10 +110,7 @@ export function QuickAnswersPage() {
     session,
     reloadSession,
     account,
-    shelters,
-    active,
     activeShelter,
-    setActive,
     manual,
     animals,
     animalState,
@@ -167,70 +127,31 @@ export function QuickAnswersPage() {
 
   const slug = params.get("zavetisce");
   const requested = params.get("id");
-  const known = shelters.some((shelter) => shelter.slug === slug);
-  // The animals as the public site shows them. An answer it already has is
-  // chosen on the page and not asked for, in the order the site decides:
-  // the shelter's own, then the published one, then the crawl's.
-  const shownAnimals = useMemo(() => animals.map(withPublished), [animals]);
-
   // The address decides which shelter the portal is looking at, as it does
   // on the editor page, so Back to the list lands on the same shelter.
-  useEffect(() => {
-    if (slug && known && slug !== active) setActive(slug);
-  }, [active, known, setActive, slug]);
+  const { known, showing } = useAddressedShelter(slug);
 
-  if (session.status === "loading" || session.status === "anonymous") {
-    return (
-      <Pending
-        label={
-          session.status === "anonymous"
-            ? portalText.redirecting
-            : portalText.loading
-        }
-      />
-    );
-  }
-
-  if (session.status === "error") {
-    return (
-      <>
-        <PortalPageHeading />
-        <SessionError offline={session.offline} onRetry={reloadSession} />
-      </>
-    );
-  }
+  const noSession = sessionGate(session, reloadSession);
+  if (noSession) return noSession;
 
   if (!slug || !known) {
     return (
-      <>
-        <PortalPageHeading />
-        <PortalNotice
-          icon={Flag}
-          title={portalText.quickNotFoundTitle}
-          action={
-            <Button asChild variant="outline" size="sm">
-              <Link href={PORTAL_PATH}>{portalText.backToList}</Link>
-            </Button>
-          }
-        >
-          {portalText.quickNotFoundLead}
-        </PortalNotice>
-      </>
-    );
-  }
-
-  const showing = slug === active;
-  const listState = manual ? listingState : animalState;
-  if (showing && listState.status === "error") {
-    return (
-      <EditorListError
-        message={listState.message}
-        onReload={manual ? reloadListings : reloadAnimals}
+      <EditorNotFound
+        icon={Flag}
+        title={portalText.quickNotFoundTitle}
+        lead={portalText.quickNotFoundLead}
       />
     );
   }
-  if (!showing || listState.status !== "ready" || !activeShelter || !account) {
-    return <Pending label={portalText.loading} />;
+
+  const noList = listGate(
+    showing,
+    manual ? listingState : animalState,
+    manual ? reloadListings : reloadAnimals,
+  );
+  if (noList) return noList;
+  if (!activeShelter || !account) {
+    return <PortalPendingPage label={portalText.loading} />;
   }
 
   // Both saves below clear the provider's note of the last save. The list
@@ -268,7 +189,7 @@ export function QuickAnswersPage() {
       account={account}
       shelter={activeShelter.slug}
       requested={requested}
-      records={shownAnimals}
+      records={animals}
       saveStates={saveStates}
       photo={(animal) =>
         animal.thumbnailUrl ? thumbnailUrl(animal.thumbnailUrl) : null
@@ -277,7 +198,7 @@ export function QuickAnswersPage() {
       send={async (animal, patch) => {
         const saved = await save(animal.id, patch);
         clearLastSaved();
-        return saved ? withPatch(animal, patch) : null;
+        return saved;
       }}
     />
   );
@@ -381,11 +302,7 @@ function QuickAnswers<R extends QuickRecord>({
       {/* Nothing typed here waits to be saved, so the way back is never
           held: an answer on its way when the shelter leaves still lands, and
           the list reports it on the animal's row. */}
-      <EditorBreadcrumb
-        name={portalText.quickTitle}
-        blocked={false}
-        onBlocked={() => {}}
-      />
+      <EditorBreadcrumb name={portalText.quickTitle} />
 
       <div className="space-y-2">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -492,25 +409,7 @@ function AnswerCard<R extends QuickRecord>({
           <SaveStatusPip state={saveState} />
         </div>
         <div className="flex items-start gap-3">
-          {photo ? (
-            // Same reasoning as the editor: a cache-permitted photo can
-            // still fall back to the shelter's own host, and a listing's
-            // is served by the API, neither of which next/image knows.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={photo}
-              alt=""
-              decoding="async"
-              className="size-16 shrink-0 rounded-ui border bg-muted/40 object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="grid size-16 shrink-0 place-items-center rounded-ui border bg-muted/40 text-muted-foreground"
-            >
-              <Glyph icon={portalSpeciesIcon(record.species)} className="size-6" />
-            </span>
-          )}
+          <PortalThumb src={photo} species={record.species} />
           <div className="min-w-0 flex-1 space-y-1">
             <h2
               id={`${uid}-name`}
@@ -608,15 +507,8 @@ function QuickBar({
   onPrevious: () => void;
   onNext: () => void;
 }) {
-  const barRef = useRef<HTMLDivElement>(null);
-  useSaveBarClearance(barRef);
-
   return (
-    <div
-      ref={barRef}
-      data-save-bar
-      className="max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2"
-    >
+    <PinnedBar>
       <div className="mx-auto max-w-xl space-y-2">
         {error}
         {/* Naprej takes the rest of the row where a thumb has to find it; on
@@ -644,7 +536,7 @@ function QuickBar({
           </Button>
         </div>
       </div>
-    </div>
+    </PinnedBar>
   );
 }
 
@@ -682,14 +574,10 @@ function RoundOver({
       >
         {remaining === 0
           ? portalText.quickDoneLead
-          : fill(
-              pick(remaining, [
-                portalText.quickEndOne,
-                portalText.quickEndMany,
-                portalText.quickEndMany,
-                portalText.quickEndMany,
-              ]),
-              { count: remaining },
+          : fillOneOrMany(
+              remaining,
+              portalText.quickEndOne,
+              portalText.quickEndMany,
             )}
       </PortalNotice>
     </div>

@@ -4,13 +4,11 @@
 // same predicate the page walks by.
 
 import { CircleHelp, type LucideIcon } from "lucide-react";
+import { CHOICES } from "@/components/portal/draft-fields";
 import {
   COMPATIBILITY_META,
   ENERGY_META,
   SIZE_META,
-  isPortalCompatibility,
-  isPortalEnergy,
-  isPortalSize,
   type ChoiceMeta,
 } from "@/components/portal/portal-fields";
 import { portalText } from "@/components/portal/portal-text";
@@ -149,11 +147,16 @@ export function questionsFor(species: string | null): readonly QuickQuestion[] {
     : QUICK_QUESTIONS.filter((question) => question.field !== "size");
 }
 
-/** Whether a stored value is an answer the page can show as a card. */
-export function isAnswer(field: QuickField, value: string | null): boolean {
-  if (field === "size") return isPortalSize(value);
-  if (field === "energy") return isPortalEnergy(value);
-  return isPortalCompatibility(value);
+/**
+ * Whether a stored value is an answer the page can show as a card: one of the
+ * values the editor's row for the field holds, which is also what a patch of
+ * that field can carry.
+ */
+export function isAnswer<Field extends QuickField>(
+  field: Field,
+  value: string | null,
+): value is NonNullable<QuickPatch[Field]> {
+  return value !== null && CHOICES[field].includes(value);
 }
 
 /** The questions this record still has no answer to. */
@@ -242,9 +245,9 @@ export function nextOpen(
  * its page or out of the reviewed enrichment, cannot be emptied from the
  * portal at all, so there Ne vem changes nothing, and the page says why.
  */
-export function answerPatch(
+export function answerPatch<Field extends QuickField>(
   record: QuickRecord,
-  field: QuickField,
+  field: Field,
   choice: string,
   own: boolean,
 ): QuickPatch | null {
@@ -254,17 +257,8 @@ export function answerPatch(
     patch[field] = null;
     return patch;
   }
-  if (choice === record[field]) return null;
-  if (field === "size") {
-    if (!isPortalSize(choice)) return null;
-    patch.size = choice;
-  } else if (field === "energy") {
-    if (!isPortalEnergy(choice)) return null;
-    patch.energy = choice;
-  } else {
-    if (!isPortalCompatibility(choice)) return null;
-    patch[field] = choice;
-  }
+  if (choice === record[field] || !isAnswer(field, choice)) return null;
+  patch[field] = choice;
   return patch;
 }
 

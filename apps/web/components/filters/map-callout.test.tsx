@@ -1,132 +1,122 @@
 // @vitest-environment jsdom
-// jsdom lays nothing out, so scrollHeight is mocked rather than measured. The
-// mock overrides every element alike, so it cannot reproduce the real bug
-// (a div pinned to the block's own height by h-full, whose scrollHeight can
-// then never report less than that height) — only jsdom's own layout engine
-// could. What it does prove is that the arithmetic between "content this
-// tall" and "block this tall" is not secretly biased to grow only, which is
-// the symptom a regression here would reintroduce.
+// jsdom lays nothing out, so the chip's size is mocked rather than measured.
+// The mock overrides every element alike, which is enough to prove the
+// arithmetic between "a chip this big" and "a box this big on the plate", and
+// that it follows the chip down as well as up.
 
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SPECIES_GLYPHS } from "@/components/filters/species-glyph";
 import { MAP_HEIGHT, MAP_WIDTH } from "@/lib/geo";
 import {
   calloutType,
   DEFAULT_PLATE_SCALE,
   MapCallout,
+  speciesByTab,
 } from "./map-callout";
 import type { CalloutRect } from "./map-callout-layout";
 
 afterEach(() => cleanup());
 
-let mockedScrollHeight = 0;
+let mockedWidth = 0;
+let mockedHeight = 0;
 
 beforeEach(() => {
-  mockedScrollHeight = 0;
-  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+  mockedWidth = 0;
+  mockedHeight = 0;
+  Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
     configurable: true,
-    get: () => mockedScrollHeight,
+    get: () => mockedWidth,
+  });
+  Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+    configurable: true,
+    get: () => mockedHeight,
   });
 });
 
 afterEach(() => {
-  Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetWidth");
+  Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
 });
 
-function foreignObjectHeight(container: HTMLElement): number {
-  return Number(
-    container.querySelector("foreignObject")?.getAttribute("height"),
-  );
+const chipOf = (container: HTMLElement) =>
+  container.querySelector<HTMLElement>("[data-callout-chip]")!;
+
+/** The x and y scale of the group that sets the card on the plate. */
+function cardScale(container: HTMLElement): number {
+  const transform =
+    container.querySelector("foreignObject")?.parentElement?.getAttribute("transform") ?? "";
+  return Number(transform.match(/scale\(([\d.]+)\)/)?.[1]);
 }
 
-describe("MapCallout height", () => {
-  // The default scale is what every test below renders at, so the padding
-  // and the floor are read off the same function the component itself
-  // calls rather than copied as numbers that could drift from it.
+describe("MapCallout size", () => {
   const type = calloutType(DEFAULT_PLATE_SCALE);
-  // What the object carries beyond the measured type: the chip's own vertical
-  // padding, and the margin the shadow needs outside the chip. A chip with
-  // nothing under its title is padded like a tooltip and the rest like a card,
-  // so which padding applies is part of the arithmetic.
-  const padded = (content: number, dense = false) =>
-    content + (dense ? type.padYTight : type.padY) * 2 + type.bleed * 2;
 
-  it("grows the block to fit a tall one, then shrinks it back for a shorter one", () => {
-    mockedScrollHeight = 100;
+  function reported(onRect: ReturnType<typeof vi.fn>): CalloutRect {
+    return onRect.mock.calls.at(-1)![1] as CalloutRect;
+  }
+
+  it("is placed by the size its chip is drawn at, and follows it both ways", () => {
+    mockedWidth = 120;
+    mockedHeight = 90;
+    const onRect = vi.fn();
+    const props = { x: 50, y: 100, reach: 5, rectKey: "town", onRect };
     const { container, rerender } = render(
       <svg>
-        <MapCallout
-          x={50}
-          y={50}
-          reach={5}
-          title="A very long title that wraps several times over"
-          metadata="two lines of metadata besides it"
-        />
+        <MapCallout {...props} title="A very long title that wraps" metadata="two lines" />
       </svg>,
     );
 
-    expect(foreignObjectHeight(container)).toBeCloseTo(padded(100), 5);
+    expect(reported(onRect).width).toBeCloseTo(120 * type.unit, 5);
+    expect(reported(onRect).height).toBeCloseTo(90 * type.unit, 5);
+    // The object holds the chip and the shadow round it, in the card's pixels.
+    expect(Number(container.querySelector("foreignObject")?.getAttribute("height"))).toBe(90 + 20);
 
-    mockedScrollHeight = 50;
+    mockedWidth = 60;
+    mockedHeight = 40;
     rerender(
       <svg>
-        <MapCallout x={50} y={50} reach={5} title="Short" metadata="" />
+        <MapCallout {...props} title="Short" />
       </svg>,
     );
 
-    // The bug this guards against measured a div bound to the block's own
-    // height, so scrollHeight could only ever hold steady or climb. This
-    // checks the number actually came back down, not merely that it moved.
-    // Title alone now, so it is a tooltip and padded as one.
-    expect(foreignObjectHeight(container)).toBeCloseTo(padded(50, true), 5);
-    expect(foreignObjectHeight(container)).toBeLessThan(padded(100));
+    // A report that only ever grew would be the bug this guards against.
+    expect(reported(onRect).width).toBeCloseTo(60 * type.unit, 5);
+    expect(reported(onRect).height).toBeCloseTo(40 * type.unit, 5);
   });
 
-  it("still floors at the block's own minimum once content is shorter than it", () => {
-    mockedScrollHeight = 1;
-    const { container } = render(
+  it("stands in the column and a floor for a chip nothing has laid out", () => {
+    const onRect = vi.fn();
+    render(
       <svg>
-        <MapCallout x={50} y={50} reach={5} title="Hi" metadata="" />
+        <MapCallout x={50} y={100} reach={5} title="Hi" rectKey="town" onRect={onRect} />
       </svg>,
     );
 
-    expect(foreignObjectHeight(container)).toBeCloseTo(
-      padded(type.floor, true),
-      5,
-    );
+    expect(reported(onRect).width).toBeCloseTo(type.width, 5);
+    expect(reported(onRect).height).toBeCloseTo(type.floor, 5);
   });
 
   it("pads a card more than a tooltip, and only vertically", () => {
-    mockedScrollHeight = 40;
-    const chipStyle = (props: { metadata: string }) =>
-      render(
-        <svg>
-          <MapCallout x={50} y={50} reach={5} title="Zavetišče" {...props} />
-        </svg>,
-      ).container.querySelector<HTMLElement>("[data-callout-chip]")!.style;
-
-    const card = chipStyle({ metadata: "63 živali" });
-    const tooltip = chipStyle({ metadata: "" });
+    const chip = (props: { metadata?: string }) =>
+      chipOf(
+        render(
+          <svg>
+            <MapCallout x={50} y={50} reach={5} title="Zavetišče" {...props} />
+          </svg>,
+        ).container,
+      ).className;
 
     // A name with a count under it is a small card and wants a card's room; a
-    // name on its own is a tooltip and nine points of air over one word is a
-    // plaque.
-    expect(Number.parseFloat(card.paddingBlock)).toBeGreaterThan(
-      Number.parseFloat(tooltip.paddingBlock),
-    );
-    // The left edge is the same on every chip the plate draws, whatever it is
-    // carrying.
-    expect(card.paddingInline).toBe(tooltip.paddingInline);
+    // name on its own is a tooltip and a card's air over one word is a plaque.
+    expect(chip({ metadata: "63 živali" })).toContain("py-2.5");
+    expect(chip({})).toContain("py-1.5");
+    // The left edge is the same on every chip the plate draws.
+    expect(chip({ metadata: "63 živali" })).toContain("px-3");
+    expect(chip({})).toContain("px-3");
   });
 });
 
-function fontSizeOf(container: HTMLElement, selector: string): number {
-  const node = container.querySelector<HTMLElement>(selector);
-  return Number.parseFloat(node?.style.fontSize ?? "");
-}
-
-// A tooltip chip and not a panel: the surface is the site's popover, drawn
-// small, and the plate's older card chrome is not coming back with it.
 describe("MapCallout as an annotation", () => {
   function annotation() {
     return render(
@@ -141,10 +131,9 @@ describe("MapCallout as an annotation", () => {
 
     // The caret was the one path this component ever drew, and it is not
     // coming back: the leader line already answers "which mark is this
-    // about", and only when the frame has actually moved the chip off it.
-    expect(container.querySelector("path")).toBeNull();
-    // The surface is one element. A chip with a second box behind it is the
-    // panel this stopped being.
+    // about", and only when the card has actually been moved off it. The
+    // species glyphs are paths of their own, inside the chip.
+    expect(container.querySelector("g > path")).toBeNull();
     expect(container.querySelectorAll("[data-callout-chip]")).toHaveLength(1);
   });
 
@@ -156,11 +145,60 @@ describe("MapCallout as an annotation", () => {
   });
 });
 
-// The annotation sits on a surface now. It was haloed type laid straight on
-// the country, which put the contrast at the mercy of whatever region was
-// underneath: over the darkest density greens the knockout had to be pushed
-// until the names read as stickers. A popover chip makes the same question a
-// matter of tokens, and the plate keeps its own quiet by staying small.
+// The card is laid out in the pixels it is read at and set on the plate by one
+// SVG transform. Laid out in plate units, Chrome snapped every icon to a whole
+// unit, about three pixels on a desktop plate, and a class inside it such as
+// the touch button's mt-2 came out at 29 pixels.
+describe("MapCallout in its own pixels", () => {
+  function scaleAt(scale: number) {
+    return cardScale(
+      render(
+        <svg>
+          <MapCallout x={50} y={100} reach={5} title="Ljubljana" metadata="5 živali" scale={scale} />
+        </svg>,
+      ).container,
+    );
+  }
+
+  it("is set on the plate by an SVG transform, never a CSS one", () => {
+    const { container } = render(
+      <svg>
+        <MapCallout x={50} y={100} reach={5} title="Ljubljana" metadata="5 živali" />
+      </svg>,
+    );
+
+    expect(cardScale(container)).toBeCloseTo(calloutType(DEFAULT_PLATE_SCALE).unit, 5);
+    // WebKit paints nothing at all for a box with a CSS transform inside a
+    // foreignObject. The transform has to be the object's parent's.
+    for (const node of container.querySelectorAll<HTMLElement>("foreignObject *")) {
+      expect(node.style.transform).toBe("");
+    }
+  });
+
+  it("draws a pixel as a pixel wherever the plate lets it", () => {
+    for (const scale of [2.2, 3.2]) {
+      expect(scaleAt(scale) * scale).toBeCloseTo(1, 5);
+    }
+  });
+
+  it("clamps the large-plate end, so no plate can produce absurd type", () => {
+    expect(scaleAt(20)).toBe(scaleAt(10));
+  });
+
+  it("never draws its smallest line under eleven pixels, whatever the plate", () => {
+    // text-xs, twelve of the card's pixels.
+    for (const scale of [0.5, 1.12, 1.6, 2.2, 4.4]) {
+      expect(12 * scaleAt(scale) * scale).toBeGreaterThanOrEqual(11 - 1e-9);
+    }
+  });
+
+  it("keeps the card off most of the country", () => {
+    for (const scale of [0.5, 1.12, 2.2, 4.4]) {
+      expect(calloutType(scale).width).toBeLessThanOrEqual(MAP_WIDTH * 0.55 + 1e-9);
+    }
+  });
+});
+
 describe("MapCallout surface", () => {
   function chipped() {
     return render(
@@ -178,53 +216,26 @@ describe("MapCallout surface", () => {
     ).container;
   }
 
-  const chip = (container: HTMLElement) =>
-    container.querySelector<HTMLElement>("[data-callout-chip]")!;
+  it("draws the site's popover surface under the type", () => {
+    const surface = chipOf(chipped());
 
-  it("draws a real popover surface under the type", () => {
-    const surface = chip(chipped());
-
-    // The site's own popover tokens, so contrast is guaranteed in both themes
-    // rather than argued about per region fill. Opaque: this was bg-popover/95
-    // on the reasoning that a chip that translucent never has to be read
-    // against the country under it, which argues for opacity rather than for
-    // 95% of it, and it left the product with one see-through surface.
+    // Opaque, so contrast is a matter of tokens rather than of the region
+    // underneath.
     expect(surface.className).toContain("bg-popover");
     expect(surface.className).not.toContain("bg-popover/");
     expect(surface.className).toContain("text-popover-foreground");
-    // The one corner every surface in the app carries, scaled to the plate.
     expect(surface.className).toContain("rounded-ui");
-    expect(Number.parseFloat(surface.style.borderRadius)).toBeGreaterThan(0);
   });
 
-  it("draws its edge as a spread ring, which is the only hairline available", () => {
-    const surface = chip(chipped());
+  it("takes its edge and lift from Select and the menus: a ring, and a shadow on light only", () => {
+    const surface = chipOf(chipped());
 
-    // Never a border: this box is laid out in user units and scaled up by the
-    // plate, and Chrome floors a fractional border-width to one whole unit
-    // before that transform, which came out as a 2.6-pixel frame on a plate
-    // drawn at 2.63. A box-shadow spread honours the fraction.
-    expect(surface.style.borderWidth).toBe("");
-    expect(surface.className).not.toContain("border-border");
-    expect(surface.style.getPropertyValue("--callout-ring")).toMatch(
-      /^0 0 0 [\d.]+px var\(--border\)$/,
-    );
-  });
-
-  it("lifts on light and keeps the ring on dark, the way the coins do", () => {
-    const surface = chip(chipped());
-
-    expect(surface.className).toContain(
-      "shadow-[var(--callout-ring),var(--callout-lift)]",
-    );
-    // Black on a near-black plate is mud, so dark drops the lift. The ring is
-    // the chip's own edge and stays in both themes, off --border either way.
-    expect(surface.className).toContain("dark:shadow-[var(--callout-ring)]");
-    // The offsets are in plate units, so only this render knows them: the
-    // utility reads them out of a variable set here.
-    expect(surface.style.getPropertyValue("--callout-lift")).toMatch(
-      /^0 [\d.]+px [\d.]+px rgb\(0 0 0 \/ [\d.]+\)$/,
-    );
+    expect(surface.className).toContain("ring-1");
+    expect(surface.className).toContain("ring-foreground/10");
+    expect(surface.className).toContain("shadow-md");
+    // Black on a near-black plate is mud, so dark keeps the ring alone.
+    expect(surface.className).toContain("dark:shadow-none");
+    expect(surface.className).not.toContain("border");
   });
 
   it("carries no halo on any line of the annotation", () => {
@@ -235,50 +246,38 @@ describe("MapCallout surface", () => {
       "[data-callout-metadata]",
       "[data-callout-note]",
     ]) {
-      expect(
-        container.querySelector<HTMLElement>(selector)!.style.textShadow,
-      ).toBe("");
+      expect(container.querySelector<HTMLElement>(selector)!.style.textShadow).toBe("");
     }
-    // And none on the glyphs, which took theirs as a filter.
     expect(
-      container.querySelector<HTMLElement>("[data-callout-species]")!.style
-        .filter,
+      container.querySelector<HTMLElement>("[data-callout-species]")!.style.filter,
     ).toBe("");
   });
 
-  it("takes only the width its words need, up to the reserved column", () => {
-    const surface = chip(chipped());
+  it("takes only the width its words need, up to the column", () => {
+    const container = chipped();
+    const surface = chipOf(container);
 
-    // A one-word region name is a chip, not a plaque. The column is still what
-    // the plate lays out and reports against, so the cap is what keeps the
-    // measured height honest: the type wraps at the column either way.
     expect(surface.className).toContain("w-fit");
     expect(surface.className).toContain("max-w-full");
+    // The object is the whole column wide wherever the chip stands, so the
+    // chip is laid out at one width and measured at it.
+    expect(Number(container.querySelector("foreignObject")?.getAttribute("width"))).toBeCloseTo(
+      calloutType(DEFAULT_PLATE_SCALE).columnPx + 20,
+      5,
+    );
   });
 
   it("keeps the object's margin wide enough for the shadow it has to hold", () => {
     const container = chipped();
-    const surface = chip(container);
-    const bleed = container.querySelector<HTMLElement>("foreignObject > div")!;
-    const lift = surface.style.getPropertyValue("--callout-lift");
-    const [, offset, blur] = lift.match(/([\d.]+)px ([\d.]+)px/) ?? [];
+    const margin = container.querySelector<HTMLElement>("foreignObject > div")!;
 
-    // A foreignObject clips at its own box, so the wrapper's inset has to
-    // cover everything the shadow puts outside the chip. Read off the DOM
-    // rather than restated as a number here: this is the guard against a
-    // heavier lift outgrowing the box that carries it. The tolerance is the
-    // three decimals the offsets are written to in the variable, and nothing
-    // more.
-    expect(
-      Number.parseFloat(bleed.style.padding) + 0.001,
-    ).toBeGreaterThanOrEqual(Number(offset) + Number(blur));
+    // A foreignObject clips at its own box. shadow-md reaches nine pixels
+    // under its box, so the margin has to be at least that.
+    expect(Number.parseFloat(margin.style.padding)).toBeGreaterThanOrEqual(9);
   });
 });
 
-// Three facts on a card have to read as three lines. At a two-point size step,
-// one weight and 1.15 leading they read as one paragraph that changed its mind
-// twice, which is what the screenshot of the old chip showed.
-describe("MapCallout type hierarchy", () => {
+describe("MapCallout lines", () => {
   function lines() {
     const container = render(
       <svg>
@@ -286,17 +285,19 @@ describe("MapCallout type hierarchy", () => {
           x={50}
           y={100}
           reach={5}
-          title="Zavetišče Ljubljana"
-          metadata="63 živali"
+          title="Mačja hiša"
+          place="Celje · 70 km"
+          metadata="Ni zavetišč v tej regiji"
           note="Zanje skrbi Zavetišče Nova Gorica"
           species={[{ species: "dog", count: 41 }]}
         />
       </svg>,
     ).container;
-    const at = (selector: string) =>
-      container.querySelector<HTMLElement>(selector)!;
+    const at = (selector: string) => container.querySelector<HTMLElement>(selector)!;
     return {
+      chip: chipOf(container),
       title: at("[data-callout-title]"),
+      place: at("[data-callout-place]"),
       metadata: at("[data-callout-metadata]"),
       note: at("[data-callout-note]"),
       species: at("[data-callout-species]"),
@@ -304,60 +305,87 @@ describe("MapCallout type hierarchy", () => {
   }
 
   it("leads with the title on size and on weight together", () => {
-    const { title, metadata } = lines();
+    const { title, metadata, place } = lines();
 
-    expect(Number.parseFloat(title.style.fontSize)).toBeGreaterThan(
-      Number.parseFloat(metadata.style.fontSize),
-    );
+    expect(title.className).toContain("text-sm");
     expect(title.className).toContain("font-semibold");
-    // The answer under it is muted, so the two are a heading and a body and
-    // not two greys a point apart.
-    expect(metadata.className).toContain("text-muted-foreground");
-  });
-
-  it("sets the card at a card's leading", () => {
-    const { title, metadata, note } = lines();
-
-    for (const line of [title, metadata, note]) {
-      expect(Number(line.style.lineHeight)).toBeGreaterThan(1.15);
+    for (const line of [metadata, place]) {
+      expect(line.className).toContain("text-xs");
+      expect(line.className).toContain("text-muted-foreground");
     }
-    // One leading across the card: a heading set looser than its own body is
-    // two cards stacked.
-    expect(metadata.style.lineHeight).toBe(title.style.lineHeight);
   });
 
-  it("gives the species row more air than the lines of words above it", () => {
-    const { metadata, note, species } = lines();
-    const gap = (node: HTMLElement) => Number.parseFloat(node.style.marginTop);
+  it("reads name, place, then the facts, in that order", () => {
+    const { chip } = lines();
 
-    expect(gap(metadata)).toBeGreaterThan(0);
-    // The two muted lines are the same kind of thing and are spaced alike.
-    expect(gap(note)).toBeCloseTo(gap(metadata), 5);
-    // The glyph row is a different kind of fact and has to be seen arriving.
-    expect(gap(species)).toBeGreaterThan(gap(metadata));
+    expect(
+      [...chip.children].map((child) =>
+        [...child.attributes].find((a) => a.name.startsWith("data-callout-"))?.name,
+      ),
+    ).toEqual([
+      "data-callout-title",
+      "data-callout-place",
+      "data-callout-metadata",
+      "data-callout-note",
+      "data-callout-species",
+    ]);
+  });
+
+  it("binds the place to the name and a note to its fact, and sets the facts apart", () => {
+    const { place, metadata, note, species } = lines();
+
+    // The place is the second half of who this is; a note is the second half
+    // of the fact above it. A fact is a new thing and is seen arriving.
+    expect(place.className).toContain("mt-0.5");
+    expect(note.className).toContain("mt-0.5");
+    expect(metadata.className).toContain("mt-1.5");
+    expect(species.className).toContain("mt-1.5");
+  });
+
+  it("draws no place line for a card that was given none", () => {
+    const { container } = render(
+      <svg>
+        <MapCallout x={50} y={100} reach={5} title="Maribor" metadata="20 živali" />
+      </svg>,
+    );
+
+    expect(container.querySelector("[data-callout-place]")).toBeNull();
   });
 });
 
 describe("MapCallout leader line", () => {
-  function leader(y: number) {
+  const type = calloutType(DEFAULT_PLATE_SCALE);
+
+  function leader(y: number, earlier?: CalloutRect[]) {
     const { container } = render(
       <svg>
-        <MapCallout x={50} y={y} reach={5} title="Ljubljana" metadata="5" />
+        <MapCallout
+          x={160}
+          y={y}
+          reach={5}
+          title="Ljubljana"
+          metadata="5"
+          earlierCallouts={earlier}
+        />
       </svg>,
     );
     return container.querySelector("[data-map-leader]");
   }
 
-  it("draws none while the label sits beside the thing it names", () => {
-    // Mid-plate, with nothing to clamp against. An adjacent label needs no
-    // line to say what it belongs to, and an atlas draws none.
+  // An earlier persistent card standing on the spot this one would take, so
+  // the separation moves it well off its mark.
+  const blocking = [{ x: 160 + 5 + type.labelGap, y: 70, width: type.width, height: 70 }];
+
+  it("draws none while the card stands beside the thing it names", () => {
     expect(leader(MAP_HEIGHT / 2)).toBeNull();
   });
 
-  it("draws one once the frame has pushed the label off its mark", () => {
-    // Hard against the top edge, where the block can no longer be centred on
-    // the marker. Leaders exist for displaced labels and for no others.
-    const line = leader(2);
+  it("draws none at the plate's edge, where the card slides or goes under instead", () => {
+    expect(leader(2)).toBeNull();
+  });
+
+  it("draws one once the card has been pushed off its mark", () => {
+    const line = leader(105, blocking);
 
     expect(line).not.toBeNull();
     expect(line!.getAttribute("stroke-width")).toBe("0.5");
@@ -365,18 +393,14 @@ describe("MapCallout leader line", () => {
   });
 
   it("starts the line at the marker's edge, never at its centre", () => {
-    const line = leader(2)!;
+    const line = leader(105, blocking)!;
     const x1 = Number(line.getAttribute("x1"));
     const y1 = Number(line.getAttribute("y1"));
 
-    // reach is 5, so the first inked point is five units out from (50, 2).
-    expect(Math.hypot(x1 - 50, y1 - 2)).toBeCloseTo(5, 5);
+    expect(Math.hypot(x1 - 160, y1 - 105)).toBeCloseTo(5, 5);
   });
 });
 
-// The second metadata line. An empty region says there are no shelters in it
-// and then says who answers for it anyway, which is two statements and so two
-// lines.
 describe("MapCallout note line", () => {
   function renderNote(note?: string) {
     return render(
@@ -396,19 +420,14 @@ describe("MapCallout note line", () => {
   it("sets it under the metadata, in the same register", () => {
     const container = renderNote("Zanje skrbi Zavetišče Nova Gorica");
     const note = container.querySelector<HTMLElement>("[data-callout-note]");
-    const metadata = container.querySelector<HTMLElement>(
-      "[data-callout-metadata]",
-    );
+    const metadata = container.querySelector<HTMLElement>("[data-callout-metadata]");
 
     expect(note).not.toBeNull();
     expect(note!.textContent).toBe("Zanje skrbi Zavetišče Nova Gorica");
-    // Its own line and not a longer first one, at the same size as the line it
-    // follows, so the two read as one answer in two parts.
-    expect(note!.style.fontSize).toBe(metadata!.style.fontSize);
-    // Document order: the fact first, then who to call about it.
+    expect(note!.className).toContain("text-xs");
+    expect(metadata!.className).toContain("text-xs");
     expect(
-      metadata!.compareDocumentPosition(note!) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      metadata!.compareDocumentPosition(note!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -420,56 +439,73 @@ describe("MapCallout note line", () => {
 
 describe("MapCallout species line", () => {
   function renderSpecies(
-    species?: { species: "dog" | "cat"; count: number }[],
+    species?: { species: "dog" | "cat" | "rabbit" | "other"; count: number }[],
   ) {
     return render(
       <svg>
-        <MapCallout
-          x={50}
-          y={100}
-          reach={5}
-          title="Zavetišče Ljubljana"
-          metadata="63 živali"
-          species={species}
-        />
+        <MapCallout x={50} y={100} reach={5} title="Ljubljana" species={species} />
       </svg>,
     ).container;
   }
 
-  it("says who lives there, one glyph and one count per species", () => {
+  it("counts by species tab, in the tabs' order, one glyph and one count each", () => {
+    const container = renderSpecies([
+      { species: "cat", count: 24 },
+      { species: "rabbit", count: 1 },
+      { species: "dog", count: 22 },
+      { species: "other", count: 2 },
+    ]);
+    const entries = [...container.querySelectorAll("[data-callout-species-entry]")];
+
+    // A rabbit counts under "other", the way the tabs above the grid count it.
+    expect(entries.map((entry) => entry.getAttribute("data-callout-species-entry"))).toEqual([
+      "dog",
+      "cat",
+      "other",
+    ]);
+    expect(entries.map((entry) => entry.textContent)).toEqual(["22", "24", "3"]);
+  });
+
+  it("draws the species tabs' own glyphs", () => {
     const container = renderSpecies([
       { species: "dog", count: 41 },
-      { species: "cat", count: 22 },
+      { species: "rabbit", count: 1 },
     ]);
-    const row = container.querySelector("[data-callout-species]");
+    const paths = (tab: string) =>
+      [
+        ...container.querySelectorAll(`[data-callout-species-entry="${tab}"] path`),
+      ].map((path) => path.getAttribute("d"));
 
-    expect(row).not.toBeNull();
-    expect(row!.textContent).toBe("4122");
-    // The site's own species icons, the ones the tabs and the fact chips set.
-    expect(container.querySelector(".lucide-dog")).not.toBeNull();
-    expect(container.querySelector(".lucide-cat")).not.toBeNull();
-    expect(
-      container.querySelectorAll("[data-callout-species-entry]"),
-    ).toHaveLength(2);
+    expect(paths("dog")).toEqual([...SPECIES_GLYPHS.dog]);
+    // "Other" wears the rabbit, as its tab does.
+    expect(paths("other")).toEqual([...SPECIES_GLYPHS.other]);
   });
 
-  it("leaves the glyphs bare, because the chip is their ground now", () => {
-    const row = renderSpecies([
-      { species: "dog", count: 41 },
-    ]).querySelector<HTMLElement>("[data-callout-species]");
+  it("sets the numbers in ink and keeps the glyphs quiet", () => {
+    const entry = renderSpecies([{ species: "dog", count: 41 }]).querySelector(
+      "[data-callout-species-entry]",
+    )!;
 
-    // They used to carry a drop-shadow knockout of their own, which is what an
-    // icon takes instead of a text-shadow. On a surface there is nothing to
-    // knock out.
-    expect(row!.style.filter).toBe("");
-    expect(row!.className).toContain("text-muted-foreground");
+    expect(entry.querySelector("svg")!.getAttribute("class")).toContain("text-muted-foreground");
+    expect(entry.querySelector("span")!.className).toContain("text-foreground");
+    expect(entry.querySelector("span")!.className).toContain("font-medium");
   });
 
-  it("draws no third line for an annotation that was given none", () => {
+  it("draws no line for an annotation given none, or only zeroes", () => {
     expect(renderSpecies().querySelector("[data-callout-species]")).toBeNull();
+    expect(renderSpecies([]).querySelector("[data-callout-species]")).toBeNull();
     expect(
-      renderSpecies([]).querySelector("[data-callout-species]"),
+      renderSpecies([{ species: "dog", count: 0 }]).querySelector("[data-callout-species]"),
     ).toBeNull();
+  });
+
+  it("folds the species into tabs without losing an animal", () => {
+    expect(
+      speciesByTab([
+        { species: "other", count: 2 },
+        { species: "rabbit", count: 3 },
+      ]),
+    ).toEqual([{ tab: "other", count: 5 }]);
   });
 });
 
@@ -477,39 +513,28 @@ describe("MapCallout species line", () => {
 // the species line once, which split one shelter's facts in two around a
 // control. The facts are what the press is decided on, so they come first.
 describe("MapCallout action", () => {
-  function armed() {
+  function armed(scale = DEFAULT_PLATE_SCALE) {
     return render(
       <svg>
         <MapCallout
           x={50}
           y={100}
           reach={5}
-          title="Zavetišče Ljubljana"
-          metadata="63 živali"
+          title="Ljubljana"
+          place="Ljubljana · 3 km"
           species={[{ species: "dog", count: 41 }]}
-          logo={{
-            url: "/media/shelter-logos/ljubljana.webp",
-            chipOnLight: false,
-            chipOnDark: true,
-            opaque: false,
-            width: 300,
-            height: 100,
-          }}
           action={{ label: "Izberi", onClick: () => undefined }}
+          scale={scale}
         />
       </svg>,
     ).container;
   }
 
   it("comes after every fact on the card, the species line included", () => {
-    const container = armed();
-    const parts = [
-      ...container.querySelector("[data-callout-title]")!.parentElement!
-        .children,
-    ].map((part) =>
+    const parts = [...chipOf(armed()).children].map((part) =>
       [
-        "data-callout-logo",
         "data-callout-title",
+        "data-callout-place",
         "data-callout-metadata",
         "data-callout-note",
         "data-callout-species",
@@ -518,9 +543,8 @@ describe("MapCallout action", () => {
     );
 
     expect(parts).toEqual([
-      "data-callout-logo",
       "data-callout-title",
-      "data-callout-metadata",
+      "data-callout-place",
       "data-callout-species",
       "data-map-action",
     ]);
@@ -530,31 +554,46 @@ describe("MapCallout action", () => {
     const button = armed().querySelector("[data-map-action]")!;
 
     expect(button.textContent).toBe("Izberi");
-    expect(button.getAttribute("aria-label")).toBe("Izberi: Zavetišče Ljubljana");
+    expect(button.getAttribute("aria-label")).toBe("Izberi: Ljubljana");
+  });
+
+  it("takes a tap on its body, and only an armed card does", () => {
+    // Passed through, a tap on the card landed on whatever coin it covered
+    // and armed that one instead.
+    expect(chipOf(armed()).className).toContain("pointer-events-auto");
+    const hover = render(
+      <svg>
+        <MapCallout x={50} y={100} reach={5} title="Ljubljana" metadata="5" />
+      </svg>,
+    ).container;
+    expect(chipOf(hover).className).not.toContain("pointer-events-auto");
+  });
+
+  it("keeps a 44 pixel target on screen at any plate", () => {
+    for (const scale of [0.9, 2.2, 4.4]) {
+      const container = armed(scale);
+      const button = container.querySelector<HTMLElement>("[data-map-action]")!;
+      const onScreen = Number.parseFloat(button.style.minHeight) * cardScale(container) * scale;
+      expect(onScreen).toBeGreaterThanOrEqual(44 - 1e-9);
+      cleanup();
+    }
   });
 });
 
-// The chip is opaque, so anything of the plate's own type underneath it is
-// simply gone rather than interleaved with. The map settles that by taking the
-// covered name off the plate, and this is the half of it the annotation owes:
-// saying where its chip ended up, padding and all.
+// The rectangle the annotation reports. The plate takes a town anchor off
+// wherever a card is drawn across it, and that is only as good as this report
+// saying where its chip ended up.
 describe("MapCallout rectangle report", () => {
   const type = calloutType(DEFAULT_PLATE_SCALE);
-  // The reported box is the chip, not the type inside it: the measured content
-  // at its floor, plus the padding above and below it.
-  const boxHeight = type.floor + type.padY * 2;
 
-  function renderReporting(
-    onRect: (key: string, rect: unknown) => void,
-    x = 50,
-  ) {
+  function renderReporting(onRect: (key: string, rect: unknown) => void, x = 50) {
     return render(
       <svg>
         <MapCallout
           x={x}
           y={100}
           reach={5}
-          title="Zavetišče Horjul"
+          title="Horjul"
           metadata="12 živali"
           rectKey="town"
           onRect={onRect}
@@ -567,14 +606,13 @@ describe("MapCallout rectangle report", () => {
     const onRect = vi.fn();
     renderReporting(onRect);
 
-    // The block sits a gap off the marker's edge and centred on it: the same
-    // arithmetic the component lays the foreignObject out with, read back from
-    // the outside.
+    // A gap off the marker's edge and centred on it: the same arithmetic the
+    // card is laid out with, read back from the outside.
     expect(onRect).toHaveBeenLastCalledWith("town", {
       x: 50 + 5 + type.labelGap,
-      y: 100 - boxHeight / 2,
+      y: 100 - type.floor / 2,
       width: type.width,
-      height: boxHeight,
+      height: type.floor,
     });
   });
 
@@ -585,41 +623,22 @@ describe("MapCallout rectangle report", () => {
 
     rerender(
       <svg>
-        <MapCallout
-          x={50}
-          y={100}
-          reach={5}
-          title="Zavetišče Horjul"
-          metadata="12 živali"
-          rectKey="town"
-          onRect={onRect}
-        />
+        <MapCallout x={50} y={100} reach={5} title="Horjul" metadata="12 živali" rectKey="town" onRect={onRect} />
       </svg>,
     );
-
-    // Nothing about the block changed, so nothing is said. The map keeps state
-    // off these reports, and a report per render would be a render per render.
+    // Nothing about the block changed, so nothing is said.
     expect(onRect).not.toHaveBeenCalled();
 
     rerender(
       <svg>
-        <MapCallout
-          x={120}
-          y={100}
-          reach={5}
-          title="Zavetišče Horjul"
-          metadata="12 živali"
-          rectKey="town"
-          onRect={onRect}
-        />
+        <MapCallout x={120} y={100} reach={5} title="Horjul" metadata="12 živali" rectKey="town" onRect={onRect} />
       </svg>,
     );
-
     expect(onRect).toHaveBeenLastCalledWith("town", {
       x: 120 + 5 + type.labelGap,
-      y: 100 - boxHeight / 2,
+      y: 100 - type.floor / 2,
       width: type.width,
-      height: boxHeight,
+      height: type.floor,
     });
   });
 
@@ -632,8 +651,6 @@ describe("MapCallout rectangle report", () => {
   });
 
   it("says nothing at all to a map that did not ask", () => {
-    // Every other annotation on the plate renders without this prop, and the
-    // effect has to stay a no-op for them rather than a throw.
     expect(() =>
       render(
         <svg>
@@ -644,23 +661,18 @@ describe("MapCallout rectangle report", () => {
   });
 });
 
-// Which side of the mark the chip takes. The chip is opaque, so whatever it
-// lands on is gone while it is up, and the side used to be decided by frame fit
-// alone: the hover over Zavod Muri covered the Celje coin whole. `avoid` is a
-// preference laid over that rule rather than a replacement for it, so the frame
-// still decides first and a caller with nothing to protect gets the old answer.
+// Which spot beside the mark the chip takes. The chip is opaque, so whatever it
+// lands on is gone while it is up. placeCallout's own tests cover the spots;
+// these pin that the card hands it the frame and the marks it was given.
 describe("MapCallout side choice", () => {
   const type = calloutType(DEFAULT_PLATE_SCALE);
   const REACH = 5;
-  // The frame margin the plate's furniture keeps. Private to the component and
-  // restated here on purpose: the placement arithmetic is the thing under test,
-  // and reading the number back out of the component would only assert that it
-  // equals itself.
-  const FRAME_MARGIN = 2;
+  // The card keeps its shadow's reach in from the plate's edge, ten of its
+  // pixels, and never less than the plate labels' two units. Restated rather
+  // than read out of the component, so the test does not assert that a
+  // number equals itself.
+  const margin = Math.max(2, 10 * type.unit);
 
-  // Where the chip actually landed, read off the report rather than off the
-  // classes: this is the same rectangle the plate suppresses town anchors
-  // against, and it is the only place the side choice is visible as a number.
   function placed(
     x: number,
     avoid?: readonly CalloutRect[],
@@ -673,7 +685,7 @@ describe("MapCallout side choice", () => {
           x={x}
           y={MAP_HEIGHT / 2}
           reach={REACH}
-          title="Zavetišče Horjul"
+          title="Horjul"
           metadata="12 živali"
           rectKey="town"
           avoid={avoid}
@@ -688,191 +700,72 @@ describe("MapCallout side choice", () => {
   const rightOf = (x: number) => x + REACH + type.labelGap;
   const leftOf = (x: number) => x - REACH - type.labelGap - type.width;
 
-  // The rule as it stood before anything was avoided: the right side, unless
-  // the reserved column runs off the frame there. One mark on each side of that
-  // line states it, each with its premise asserted rather than assumed.
-  it("keeps the chip on the right while its column fits there", () => {
+  it("keeps the chip on the right while it fits there", () => {
     const x = 120;
-    expect(rightOf(x) + type.width).toBeLessThanOrEqual(
-      MAP_WIDTH - FRAME_MARGIN,
-    );
+    expect(rightOf(x) + type.width).toBeLessThanOrEqual(MAP_WIDTH - margin);
 
     expect(placed(x).x).toBeCloseTo(rightOf(x), 5);
-    // An empty list is the same answer as no list at all, which is what a
-    // caller with nothing painted near it hands in.
     expect(placed(x, []).x).toBeCloseTo(rightOf(x), 5);
   });
 
-  it("takes it to the left once that column would run off the frame", () => {
+  it("takes it to the left once it would run off the frame", () => {
     const x = 260;
-    expect(rightOf(x) + type.width).toBeGreaterThan(MAP_WIDTH - FRAME_MARGIN);
+    expect(rightOf(x) + type.width).toBeGreaterThan(MAP_WIDTH - margin);
 
     expect(placed(x).x).toBeCloseTo(leftOf(x), 5);
-    expect(placed(x, []).x).toBeCloseTo(leftOf(x), 5);
-    // Which is the whole of what the frame had to say: the chip it moved is
-    // inside it, all of it.
-    expect(placed(x).x).toBeGreaterThanOrEqual(FRAME_MARGIN);
-    expect(placed(x).x + type.width).toBeLessThanOrEqual(
-      MAP_WIDTH - FRAME_MARGIN,
-    );
+    expect(placed(x).x).toBeGreaterThanOrEqual(margin);
+    expect(placed(x).x + type.width).toBeLessThanOrEqual(MAP_WIDTH - margin);
   });
 
   it("flips to the quiet side when a mark is painted on the one it prefers", () => {
     const x = 160;
-    // The premise, asserted rather than assumed: at this x the chip fits on
-    // either side, so the frame has nothing to say and what is already painted
-    // is what decides.
-    expect(rightOf(x) + type.width).toBeLessThanOrEqual(
-      MAP_WIDTH - FRAME_MARGIN,
-    );
-    expect(leftOf(x)).toBeGreaterThanOrEqual(FRAME_MARGIN);
-
+    expect(leftOf(x)).toBeGreaterThanOrEqual(margin);
     const right = placed(x);
     expect(right.x).toBeCloseTo(rightOf(x), 5);
 
-    // One coin, sitting inside the box the chip would otherwise take.
-    const marker = { x: right.x + 1, y: right.y + 1, width: 6, height: 6 };
+    // One coin filling the box the chip would otherwise take.
+    const marker = { x: right.x, y: right.y, width: right.width, height: right.height };
 
     expect(placed(x, [marker]).x).toBeCloseTo(leftOf(x), 5);
   });
 
-  it("stays right when both sides would hide exactly as much", () => {
+  it("keeps off what the page paints over the plate", () => {
     const x = 160;
     const right = placed(x);
-    const left = { ...right, x: leftOf(x) };
-    // The same mark inside each candidate box, so the two sides cover the same
-    // area as each other. Neither one reaches the other box: the two positions
-    // are a chip's width and two gaps apart.
-    const marks = [
-      { x: right.x + 1, y: right.y + 1, width: 6, height: 6 },
-      { x: left.x + 1, y: left.y + 1, width: 6, height: 6 },
-    ];
-
-    // Ties go right, which is the side this read as before anything was
-    // avoided, so a plate crowded evenly on both sides draws what it always
-    // drew.
-    expect(placed(x, marks).x).toBeCloseTo(rightOf(x), 5);
+    cleanup();
+    // A plate drawn at one pixel to the unit, and the map credit standing on
+    // the spot the card would take. The credit paints above the plate, so a
+    // card under it had the credit's lines drawn across its own.
+    const own = Object.getOwnPropertyDescriptor(SVGSVGElement.prototype, "getScreenCTM");
+    Object.defineProperty(SVGSVGElement.prototype, "getScreenCTM", {
+      configurable: true,
+      value: () => ({ a: 1, d: 1, e: 0, f: 0 }),
+    });
+    const credit = document.createElement("p");
+    credit.setAttribute("data-map-overlay", "");
+    credit.getBoundingClientRect = () =>
+      ({ left: right.x, top: right.y, width: right.width, height: right.height }) as DOMRect;
+    document.body.appendChild(credit);
+    try {
+      expect(placed(x).x).toBeCloseTo(leftOf(x), 5);
+    } finally {
+      credit.remove();
+      if (own) Object.defineProperty(SVGSVGElement.prototype, "getScreenCTM", own);
+      else Reflect.deleteProperty(SVGSVGElement.prototype, "getScreenCTM");
+    }
   });
 
   it("keeps the quieter side while separating an earlier persistent label", () => {
     const x = 160;
     const right = placed(x);
-    const marker = { x: right.x + 1, y: right.y + 1, width: 6, height: 6 };
+    const marker = { x: right.x, y: right.y, width: right.width, height: right.height };
     const earlier = placed(x, [marker]);
 
     const separated = placed(x, [marker], [earlier]);
     expect(separated.x).toBeCloseTo(leftOf(x), 5);
     expect(
       separated.y + separated.height <= earlier.y ||
-      earlier.y + earlier.height <= separated.y,
+        earlier.y + earlier.height <= separated.y,
     ).toBe(true);
-  });
-});
-
-// The type is written in the pixels it is read at and divided by the plate's
-// scale, so one name comes out one size on a tablet plate and on a desktop
-// one. Set in user units it swung by half between the two.
-describe("MapCallout type scale", () => {
-  function titleSize(scale: number): number {
-    const { container } = render(
-      <svg>
-        <MapCallout
-          x={50}
-          y={100}
-          reach={5}
-          title="Ljubljana"
-          metadata="5"
-          scale={scale}
-        />
-      </svg>,
-    );
-    return fontSizeOf(container, "[data-callout-title]");
-  }
-
-  it("shrinks the type in user units as the plate is drawn larger", () => {
-    const small = titleSize(2.2);
-    const large = titleSize(3.2);
-
-    expect(large).toBeLessThan(small);
-    // Which is the whole point of the division: the rendered size holds.
-    expect(small * 2.2).toBeCloseTo(large * 3.2, 5);
-  });
-
-  it("clamps the large-plate end, so no plate can produce absurd type", () => {
-    // Twenty pixels to the unit is a plate that exists nowhere, and the
-    // honest division there would set the name under a pixel tall.
-    expect(titleSize(20)).toBe(titleSize(10));
-  });
-
-  // The other end is not a clamp in user units any more. It was, and on a
-  // phone plate (about 1.12 pixels to the unit) it set the title out at eight
-  // rendered pixels, which is the one thing this file exists to prevent.
-  it("never sets the title under eleven rendered pixels, whatever the plate", () => {
-    for (const scale of [0.5, 1.12, 1.6, 2.2, 4.4]) {
-      expect(titleSize(scale) * scale).toBeGreaterThanOrEqual(11 - 1e-9);
-    }
-  });
-
-  it("keeps the block of type off most of the country", () => {
-    // What the type floor above costs on a small plate: the column would grow
-    // to two thirds of the map, so it is capped instead.
-    for (const scale of [0.5, 1.12, 2.2, 4.4]) {
-      expect(calloutType(scale).width).toBeLessThanOrEqual(MAP_WIDTH * 0.55);
-    }
-  });
-
-  it("holds the chip's own geometry to one rendered size, like the type", () => {
-    const chipAt = (scale: number) => {
-      const { container } = render(
-        <svg>
-          <MapCallout
-            x={50}
-            y={100}
-            reach={5}
-            title="Ljubljana"
-            metadata="5 živali"
-            scale={scale}
-          />
-        </svg>,
-      );
-      const chip = container.querySelector<HTMLElement>("[data-callout-chip]")!;
-      return {
-        radius: Number.parseFloat(chip.style.borderRadius),
-        padX: Number.parseFloat(chip.style.paddingInline),
-        padY: Number.parseFloat(chip.style.paddingBlock),
-      };
-    };
-
-    const small = chipAt(2.2);
-    const large = chipAt(3.2);
-
-    // Corners, padding and border all divide by the plate's scale the way the
-    // type does, so a chip is the same object at every plate size. Written in
-    // user units they would have grown with the plate: a corner tuned on a
-    // tablet reads as square on a wide desktop.
-    expect(small.radius * 2.2).toBeCloseTo(large.radius * 3.2, 5);
-    expect(small.padX * 2.2).toBeCloseTo(large.padX * 3.2, 5);
-    expect(small.padY * 2.2).toBeCloseTo(large.padY * 3.2, 5);
-  });
-
-  it("keeps the metadata a step under the title at every scale", () => {
-    for (const scale of [1, 2.2, 4.4]) {
-      const { container } = render(
-        <svg>
-          <MapCallout
-            x={50}
-            y={100}
-            reach={5}
-            title="Ljubljana"
-            metadata="5 živali"
-            scale={scale}
-          />
-        </svg>,
-      );
-
-      expect(fontSizeOf(container, "[data-callout-metadata]")).toBeLessThan(
-        fontSizeOf(container, "[data-callout-title]"),
-      );
-    }
   });
 });

@@ -38,7 +38,9 @@ export function OriginDistance({
 }: {
   origin: LatLon;
   town: Town;
-  label: string;
+  /** The distance, written on the line. Omitted while the town's card says
+   *  it, and then the line runs bare. */
+  label?: string;
   scale: number;
 }) {
   const at = project(origin);
@@ -67,13 +69,13 @@ export function OriginDistance({
         strokeLinecap="round"
         className="stroke-foreground opacity-55"
       />
-      {length - ORIGIN_REACH - end >= DISTANCE_LABEL_MIN && (
+      {label && length - ORIGIN_REACH - end >= DISTANCE_LABEL_MIN && (
         <PlateLabel
           data-map-distance-label=""
           x={(x1 + x2) / 2}
           y={(y1 + y2) / 2}
           anchor="middle"
-          size={type.metadata}
+          size={type.plateText}
           halo={type.halo}
           className="fill-foreground/70"
         >

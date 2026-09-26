@@ -1079,9 +1079,12 @@ describe("ShelterMap per-shelter targets", () => {
     fireEvent.pointerOver(target("sia-in-lu"));
 
     expect(onHoverShelters).toHaveBeenCalledWith(["sia-in-lu"]);
-    expect(screen.getByText("Zavetišče Sia in Lu")).toBeTruthy();
+    // The shelter by the name its row prints, and its town only as where it
+    // is, under the name: never the town's own answer for both shelters.
+    expect(document.querySelector("[data-callout-title]")?.textContent).toBe("Sia in Lu");
+    expect(document.querySelector("[data-callout-place]")?.textContent).toBe("Celje");
     expect(screen.getByText("11 živali")).toBeTruthy();
-    expect(screen.queryByText("Celje")).toBeNull();
+    expect(screen.queryByText(/2 zavetišči/)).toBeNull();
   });
 });
 
@@ -1494,9 +1497,10 @@ describe("LocationPicker map picking", () => {
   it("stops the hovered marker repeating what the open details already say", () => {
     openMap();
 
-    // With nothing open, the marker annotates in full.
+    // With nothing open, the marker annotates in full: where the shelter is,
+    // and who lives there, which is the count as well.
     fireEvent.pointerEnter(marker("maribor"));
-    expect(dialog().querySelector("[data-callout-metadata]")).toBeTruthy();
+    expect(dialog().querySelector("[data-callout-place]")).toBeTruthy();
     expect(dialog().querySelector("[data-callout-species]")).toBeTruthy();
 
     fireEvent.pointerLeave(marker("maribor"));
@@ -1507,9 +1511,10 @@ describe("LocationPicker map picking", () => {
     // The count and the species breakdown go, because the panel open in the
     // list is already carrying both. It is the open details that suppress
     // them now, never a click: a click leaves nothing on screen to repeat.
+    expect(dialog().querySelector("[data-callout-place]")).toBeNull();
     expect(dialog().querySelector("[data-callout-metadata]")).toBeNull();
     expect(dialog().querySelector("[data-callout-species]")).toBeNull();
-    expect(screen.getAllByText("Zavetišče Sever").length).toBeGreaterThan(0);
+    expect(dialog().querySelector("[data-callout-title]")?.textContent).toBe("Sever");
   });
 });
 
@@ -2128,12 +2133,12 @@ describe("LocationPicker shelter spotlight", () => {
 
   /** The spotlight's own annotation, found by the name it carries rather than
    *  by document order: the region holding the dialog's opening focus wears
-   *  an annotation of its own, and it is drawn first. */
+   *  an annotation of its own, and it is drawn first. In the words the
+   *  picker's rows print, as every name the picker's map sets. */
   const spotlightCallout = () =>
     Array.from(dialog().querySelectorAll("[data-map-callout]")).find(
       (callout) =>
-        callout.querySelector("[data-callout-title]")?.textContent ===
-        "Zavetišče Jug",
+        callout.querySelector("[data-callout-title]")?.textContent === "Jug",
     );
 
   it("opens the map with the asked-for shelter ringed and named", () => {
@@ -2230,14 +2235,14 @@ describe("LocationPicker region coverage", () => {
     expect(screen.getByText("Ni zavetišč v tej regiji")).toBeTruthy();
     // Placed by the same two steps a town is placed by, so a name lands in
     // the region the map would have drawn that municipality in.
-    expect(screen.getByText("Zanje skrbi Zavetišče Nova Gorica")).toBeTruthy();
+    expect(screen.getByText("Zanje skrbi Nova Gorica")).toBeTruthy();
   });
 
   it("carries the same fact in the region's own label", async () => {
     await openPicker({ municipalities });
 
     expect(region("Goriška").getAttribute("aria-label")).toBe(
-      "Goriška: Ni zavetišč v tej regiji. Zanje skrbi Zavetišče Nova Gorica",
+      "Goriška: Ni zavetišč v tej regiji. Zanje skrbi Nova Gorica",
     );
   });
 

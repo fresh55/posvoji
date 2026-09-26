@@ -80,6 +80,9 @@ export function MapAttribution({
     return (
       <p
         data-slot="map-attribution"
+        // Painted over the plate, so a card on the plate keeps off it rather
+        // than having these lines drawn across its own (see MapCallout).
+        data-map-overlay=""
         className={cn(
           "pointer-events-none text-right text-3xs leading-tight text-muted-foreground",
           className,

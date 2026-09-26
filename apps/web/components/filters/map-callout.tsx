@@ -1,22 +1,17 @@
 "use client";
 
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Species } from "@posvoji/schema";
 
-import { logoChipClassName, markBox } from "@/components/shelter-avatar";
-import { SPECIES_ICONS } from "@/lib/animal-icons";
+import { SpeciesGlyphIcon } from "@/components/filters/species-glyph";
 import { KM_PER_MAP_UNIT, MAP_HEIGHT, MAP_WIDTH, project, type LatLon } from "@/lib/geo";
-import type { ShelterLogo } from "@/lib/shelter-logos";
+import { SPECIES_ORDER, TAB_OF_SPECIES, type SpeciesTab } from "@/lib/species";
 import { cn } from "@/lib/utils";
 import {
   avoidCalloutOverlap,
-  coveredArea,
+  placeCallout,
   type CalloutRect,
+  type CalloutSide,
 } from "./map-callout-layout";
 import {
   labelBox,
@@ -25,100 +20,176 @@ import {
   type NamePlacement,
 } from "./map-names";
 
-// Screen-pixel sizes, converted to SVG units by calloutType.
-const TITLE_PX = 12;
-const META_PX = 11;
-const LEADING = 1.35;
-const LINE_GAP_PX = 4;
-const SPECIES_GAP_PX = 7;
-// Text halo for the distance label drawn directly over the map.
+// The type the plate sets straight on the map (the origin's name, the ring's
+// distance, the distance on a line), in screen pixels. calloutType converts
+// it to user units.
+const PLATE_TEXT_PX = 11;
+// Text halo for the labels drawn directly over the map.
 const HALO_PX = 1.7;
 
-const PAD_X_PX = 12;
-const PAD_Y_PX = 8;
-// Title-only labels use tighter vertical padding.
-const PAD_Y_TIGHT_PX = 6;
-const RADIUS_PX = 10;
-// Use a shadow spread for fractional SVG-unit widths. Chrome rounds a
-// CSS border up to one unit, making it thicker when the map is scaled.
-const RING_PX = 1;
-const SHADOW_Y_PX = 1;
-const SHADOW_BLUR_PX = 2;
-const SHADOW_ALPHA = 0.18;
+// The card's own sizes, in the pixels it is read at. The card is laid out in
+// them and set on the plate by one SVG transform, so every length inside it, a
+// class's included, is a pixel on screen. Laid out in user units, as it was,
+// Chrome snapped each icon's box to a whole unit, about three pixels on a
+// desktop plate: the species glyphs sat off their numbers with their chins cut,
+// and the touch button's mt-2 came out at 29 pixels.
+//
+// An SVG transform on the object's parent and not a CSS transform inside it:
+// WebKit paints nothing at all for a transformed box inside a foreignObject.
+const CARD_WIDTH_PX = 224;
+// What shadow-md reaches past the chip, which the object has to hold or clip.
+const CARD_BLEED_PX = 10;
+// How far the shadow reaches under the chip, which the plate's own edge clips
+// like any other: the card keeps at least this far in from it. Nine is the
+// reach itself, and the plate's column can run a fraction of a pixel short of
+// the drawing, so a pixel is kept over.
+const SHADOW_REACH_PX = 10;
+// The further gaps a card may stand off its mark at when every spot at the
+// ordinary one would rest on a neighbour.
+const FARTHER_PX = [8, 16] as const;
+// The chip's height before it has been measured: a title and one line of
+// facts, with the card's padding.
+const CARD_FLOOR_PX = 60;
+// The smallest line on the card, and the least it may be drawn at.
+const CARD_META_PX = 12;
+const MIN_TEXT_PX = 11;
+// The touch button's height on screen, whatever the plate is drawn at.
+const TARGET_PX = 44;
+
 const LABEL_GAP_PX = 12;
 const LEADER_GAP_PX = 3;
-// Air round a logo that needs a chip to sit on, and the gap under it.
-const LOGO_CHIP_PX = 4;
-const LOGO_GAP_PX = 6;
-// Reserve space around the foreignObject so it does not clip the shadow.
-const BLEED_PX = SHADOW_Y_PX + SHADOW_BLUR_PX;
-const BLOCK_PX = 238;
-// Initial content height: one title line and one metadata line.
-const MIN_BLOCK_PX = Math.round(
-  TITLE_PX * LEADING + LINE_GAP_PX + META_PX * LEADING,
-);
+// How close to the card's top or bottom end the mark may stand once the card
+// slides along a side to clear a neighbour: past the corner's curve, so the
+// mark is still beside the card's body.
+const SLIDE_INSET_PX = 16;
+
+// The least the plate's own labels keep in from its edge, in user units.
+const FRAME_MARGIN = 2;
 
 // Limit scaling so labels stay legible without covering the map.
 const MIN_UNITS_PER_PX = 0.26;
 const MAX_UNITS_PER_PX = 0.6;
-
-// Rendered title size takes precedence over the unit clamp on small maps.
-const MIN_TITLE_PX = 11;
 
 const MAX_BLOCK_SHARE = 0.55;
 
 /** Initial pixels per SVG unit, used until ShelterMap measures the map. */
 export const DEFAULT_PLATE_SCALE = 2.2;
 
-/** Callout dimensions in SVG units for a map rendered at `scale` pixels per unit. */
+/** The plate's type and the card's box, for a map rendered at `scale` pixels
+ *  per user unit. `unit` is user units per card pixel: what the card is
+ *  scaled onto the plate by, and what the plate's own type is multiplied by. */
 export function calloutType(scale: number) {
   const px = scale > 0 ? scale : DEFAULT_PLATE_SCALE;
   const clamped = Math.min(
     Math.max(1 / px, MIN_UNITS_PER_PX),
     MAX_UNITS_PER_PX,
   );
-  const unit = Math.max(clamped, MIN_TITLE_PX / (TITLE_PX * px));
+  // The smallest line's rendered size takes precedence over the clamp on
+  // small maps.
+  const unit = Math.max(clamped, MIN_TEXT_PX / (CARD_META_PX * px));
+  // The widest the card may be, in its own pixels: its cap, or the share of
+  // the country it may cover, whichever is less.
+  const columnPx = Math.min(CARD_WIDTH_PX, (MAP_WIDTH * MAX_BLOCK_SHARE) / unit);
   return {
     unit,
-    title: TITLE_PX * unit,
-    metadata: META_PX * unit,
+    plateText: PLATE_TEXT_PX * unit,
     halo: HALO_PX * unit,
-    /** Reserve the full column for layout; short labels can render narrower. */
-    width: Math.min(BLOCK_PX * unit, MAP_WIDTH * MAX_BLOCK_SHARE),
-    floor: MIN_BLOCK_PX * unit,
-    leading: LEADING,
-    padX: PAD_X_PX * unit,
-    padY: PAD_Y_PX * unit,
-    padYTight: PAD_Y_TIGHT_PX * unit,
-    lineGap: LINE_GAP_PX * unit,
-    speciesGap: SPECIES_GAP_PX * unit,
-    radius: RADIUS_PX * unit,
-    ring: RING_PX * unit,
-    shadowY: SHADOW_Y_PX * unit,
-    shadowBlur: SHADOW_BLUR_PX * unit,
-    bleed: BLEED_PX * unit,
+    columnPx,
+    /** The column in user units. A card can render narrower. */
+    width: columnPx * unit,
+    /** The chip's height in user units until it has been measured. */
+    floor: CARD_FLOOR_PX * unit,
+    bleed: CARD_BLEED_PX * unit,
+    /** How far in from the plate's edge the chip keeps, so its shadow is
+     *  not cut off there. */
+    margin: Math.max(FRAME_MARGIN, SHADOW_REACH_PX * unit),
     labelGap: LABEL_GAP_PX * unit,
     leaderGap: LEADER_GAP_PX * unit,
-    logoChip: LOGO_CHIP_PX * unit,
-    logoGap: LOGO_GAP_PX * unit,
+    slideInset: SLIDE_INSET_PX * unit,
   };
 }
 
 // Do not draw a leader for minor adjustments at the map edge.
 const LEADER_SLACK = 3;
 const LEADER_WIDTH = 0.5;
-const FRAME_MARGIN = 2;
 
-/** Marker or region label, with a leader when displaced from its natural position. */
+// The card arrives from its mark's side, whichever side that is.
+const SLIDE_FROM: Record<CalloutSide, string> = {
+  right: "slide-in-from-left-0.5",
+  left: "slide-in-from-right-0.5",
+  above: "slide-in-from-bottom-0.5",
+  below: "slide-in-from-top-0.5",
+};
+
+const TAB_ORDER: readonly SpeciesTab[] = ["dog", "cat", "other"];
+
+const NO_RECTS: readonly CalloutRect[] = [];
+
+/** The boxes of whatever the page marks data-map-overlay and draws over
+ *  `plate`, in the plate's user units, read off its screen transform. */
+function overlaysOver(plate: SVGSVGElement | null): readonly CalloutRect[] {
+  const ctm = plate?.getScreenCTM?.();
+  if (!plate || !ctm || !ctm.a || !ctm.d) return NO_RECTS;
+  const found: CalloutRect[] = [];
+  for (const node of document.querySelectorAll("[data-map-overlay]")) {
+    const box = node.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) continue;
+    found.push({
+      x: (box.left - ctm.e) / ctm.a,
+      y: (box.top - ctm.f) / ctm.d,
+      width: box.width / ctm.a,
+      height: box.height / ctm.d,
+    });
+  }
+  return found.length ? found : NO_RECTS;
+}
+
+function sameRects(a: readonly CalloutRect[], b: readonly CalloutRect[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (rect, index) =>
+        Math.abs(rect.x - b[index].x) < 0.01 &&
+        Math.abs(rect.y - b[index].y) < 0.01 &&
+        Math.abs(rect.width - b[index].width) < 0.01 &&
+        Math.abs(rect.height - b[index].height) < 0.01,
+    )
+  );
+}
+
+/** A shelter's species counted by the tabs the site filters by, in the tabs'
+ *  order: a rabbit counts under "other", which wears the rabbit. The card
+ *  drew a glyph per species once, and a rabbit beside a paw print at twelve
+ *  pixels read as two marks nobody could tell apart, for a split the tabs
+ *  above the grid do not make. */
+export function speciesByTab(
+  species: readonly { species: Species; count: number }[],
+): { tab: SpeciesTab; count: number }[] {
+  const counts = new Map<SpeciesTab, number>();
+  for (const kind of SPECIES_ORDER) {
+    const count = species.find((entry) => entry.species === kind)?.count ?? 0;
+    if (count > 0) {
+      const tab = TAB_OF_SPECIES[kind];
+      counts.set(tab, (counts.get(tab) ?? 0) + count);
+    }
+  }
+  return TAB_ORDER.flatMap((tab) => {
+    const count = counts.get(tab);
+    return count ? [{ tab, count }] : [];
+  });
+}
+
+/** A card naming a marker or a region, standing beside it, with a leader
+ *  when it had to stand away from it. */
 export function MapCallout({
   x,
   y,
   reach,
   title,
+  place,
   metadata,
   note,
   species,
-  logo,
   action,
   scale = DEFAULT_PLATE_SCALE,
   avoid,
@@ -130,15 +201,15 @@ export function MapCallout({
   y: number;
   reach: number;
   title: string;
-  /** Omit metadata, note, species and action for a compact title-only label. */
+  /** Where it is, under the name: its town, the distance, or both. */
+  place?: string;
+  /** Omit place, metadata, note, species and action for a compact
+   *  title-only label. */
   metadata?: string;
   /** Optional second metadata line, such as the shelters covering an empty region. */
   note?: string;
-  /** Species counts for an individual shelter. */
-  species?: { species: Species; count: number }[];
-  /** The shelter's own mark, over the title, when the card is about one
-   *  shelter. Recognising a mark is quicker than reading a name. */
-  logo?: ShelterLogo;
+  /** Species counts for an individual shelter, drawn by species tab. */
+  species?: readonly { species: Species; count: number }[];
   /** An explicit touch choice; passive hover annotations omit it. */
   action?: {
     label: string;
@@ -147,7 +218,8 @@ export function MapCallout({
   };
   /** Pixels per SVG unit, measured by ShelterMap. */
   scale?: number;
-  /** Marker rectangles to avoid when choosing a side. Staying inside the map takes priority. */
+  /** Marks to keep off. The card takes the spot beside its own mark that
+   *  covers the least of them; staying inside the map takes priority. */
   avoid?: readonly CalloutRect[];
   /** Stable identifier for the map to track simultaneous callouts. */
   rectKey?: string;
@@ -157,76 +229,96 @@ export function MapCallout({
    * stable while each label measures and reports its actual height. */
   earlierCallouts?: readonly CalloutRect[];
 }) {
-  const contentRef = useRef<HTMLDivElement>(null);
+  const chipRef = useRef<HTMLDivElement>(null);
   const type = calloutType(scale);
-  const [height, setHeight] = useState(type.floor);
-
-  // Measure the unconstrained content so labels can shrink as well as grow.
-  // Measuring the h-full wrapper would prevent shrinking.
-  // Use a content key for species because callers may recreate the array.
-  const speciesKey = species
-    ?.map((entry) => `${entry.species}:${entry.count}`)
-    .join(",");
-  useLayoutEffect(() => {
-    const node = contentRef.current;
-    if (!node) return;
-    const needed = Math.max(node.scrollHeight, type.floor);
-    if (needed !== height) setHeight(needed);
-  }, [title, metadata, note, speciesKey, logo?.url, action?.label, type.floor, height]);
-
-  const dense = !metadata && !note && !species?.length && !logo && !action;
-  const padY = dense ? type.padYTight : type.padY;
-
-  // Use the same padded box for placement, leader endpoints and overlap reports.
-  const boxWidth = type.width;
-  const boxHeight = height + padY * 2;
-  const { labelGap, leaderGap } = type;
-
-  // Choose a side that fits the frame, then prefer less overlap with markers.
-  // Ties go right.
-  const rightX = x + reach + labelGap;
-  const leftX = x - reach - labelGap - boxWidth;
-  const naturalY = y - boxHeight / 2;
-  const clampX = (value: number) =>
-    Math.min(Math.max(value, FRAME_MARGIN), MAP_WIDTH - boxWidth - FRAME_MARGIN);
-  const boundedY = Math.min(
-    Math.max(naturalY, FRAME_MARGIN),
-    MAP_HEIGHT - boxHeight - FRAME_MARGIN,
+  const { unit, columnPx } = type;
+  // The chip's drawn size in its own pixels, once it has been laid out. Until
+  // then, and where nothing is laid out at all (tests), the column's width and
+  // the floor stand in for it.
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null,
   );
-  const rightFits = rightX + boxWidth <= MAP_WIDTH - FRAME_MARGIN;
-  const leftFits = leftX >= FRAME_MARGIN;
-  // Compare overlap at the actual, clamped positions.
-  const hides = (boxX: number) =>
-    coveredArea(
-      { x: clampX(boxX), y: boundedY, width: boxWidth, height: boxHeight },
-      avoid ?? [],
-    );
-  const onRight = rightFits && (!leftFits || hides(rightX) <= hides(leftX));
-  const naturalX = onRight ? rightX : leftX;
-  const blockX = clampX(naturalX);
-  // Preserve the quieter side, then separate persistent labels vertically.
-  // Only earlier labels reserve space, so reports cannot move one another
-  // back and forth as their rendered heights settle.
+  // What the page paints over the plate, in user units: the map credit in
+  // the plate's corner, whose links would otherwise be drawn across the
+  // card's last lines. Marked data-map-overlay where they are drawn.
+  const [overlays, setOverlays] = useState<readonly CalloutRect[]>(NO_RECTS);
+
+  const tabs = species ? speciesByTab(species) : [];
+  // A content key, because callers may recreate the array.
+  const speciesKey = tabs.map((entry) => `${entry.tab}:${entry.count}`).join(",");
+
+  // Read the chip before paint whenever what it says or how wide it may be
+  // changes, so it is placed by the size it is drawn at. The chip is w-fit in
+  // a column that is always columnPx wide, so its size depends on its words
+  // and never on where it stands: placing it cannot feed back into measuring
+  // it. The observer catches what changes the words' size behind React's
+  // back, such as a web font arriving after the card.
+  useLayoutEffect(() => {
+    const chip = chipRef.current;
+    if (!chip) return;
+    const read = () => {
+      const width = chip.offsetWidth;
+      const height = chip.offsetHeight;
+      setSize((current) =>
+        !width || !height
+          ? null
+          : current?.width === width && current.height === height
+            ? current
+            : { width, height },
+      );
+    };
+    read();
+    const found = overlaysOver(chip.closest("svg"));
+    setOverlays((current) => (sameRects(current, found) ? current : found));
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(read);
+    observer.observe(chip);
+    return () => observer.disconnect();
+  }, [title, place, metadata, note, speciesKey, action?.label, columnPx]);
+
+  const dense = !place && !metadata && !note && tabs.length === 0 && !action;
+  const heightPx = size?.height ?? CARD_FLOOR_PX;
+
+  // One box, in user units, for placement, the leader and the report.
+  const boxWidth = (size?.width ?? columnPx) * unit;
+  const boxHeight = heightPx * unit;
+  const { labelGap, leaderGap, bleed } = type;
+
+  // Beside the mark where that is clear, else slid along a side, over it or
+  // under it: whichever spot keeps off the other marks and stays in the
+  // frame. See placeCallout for the order.
+  const placement = placeCallout(
+    { x, y, reach },
+    { width: boxWidth, height: boxHeight },
+    {
+      gap: labelGap,
+      inset: type.slideInset,
+      frame: { width: MAP_WIDTH, height: MAP_HEIGHT, margin: type.margin },
+      avoid: overlays.length ? [...(avoid ?? []), ...overlays] : avoid ?? NO_RECTS,
+      farther: FARTHER_PX.map((px) => px * unit),
+    },
+  );
+  const blockX = placement.x;
+  // Separate persistent labels vertically. Only earlier labels reserve space,
+  // so reports cannot move one another back and forth as their rendered
+  // heights settle.
   const blockY = earlierCallouts?.length
-    ? avoidCalloutOverlap(
-        { x: blockX, y: boundedY, width: boxWidth, height: boxHeight },
-        earlierCallouts,
-        { height: MAP_HEIGHT, margin: FRAME_MARGIN, gap: type.unit * 8 },
-      ).y
-    : boundedY;
+    ? avoidCalloutOverlap(placement, earlierCallouts, {
+        height: MAP_HEIGHT,
+        margin: type.margin,
+        gap: unit * 8,
+      }).y
+    : placement.y;
 
-  const pad = type.bleed;
-
-  const displaced =
-    Math.hypot(blockX - naturalX, blockY - naturalY) > LEADER_SLACK;
-  // Stop the leader just outside the edge facing the marker.
-  const leaderX = onRight
-    ? blockX - leaderGap
-    : blockX + boxWidth + leaderGap;
-  const leaderY = blockY + boxHeight / 2;
-  const dx = leaderX - x;
-  const dy = leaderY - y;
+  // The point of the chip nearest the mark. A leader is drawn only when that
+  // point is further off the mark than the gap a card beside it keeps: a card
+  // the frame or an earlier card has pushed away from the thing it names.
+  const nearX = Math.min(Math.max(x, blockX), blockX + boxWidth);
+  const nearY = Math.min(Math.max(y, blockY), blockY + boxHeight);
+  const dx = nearX - x;
+  const dy = nearY - y;
   const span = Math.hypot(dx, dy) || 1;
+  const displaced = span - reach > labelGap + LEADER_SLACK;
 
   // Report position separately from content measurement: a label can move
   // without changing its text. Layout effects update the reserved area before paint.
@@ -241,81 +333,78 @@ export function MapCallout({
     <g
       aria-hidden={action ? undefined : true}
       data-map-callout
+      data-callout-side={placement.side}
       className={cn(
         // Use duration-0 for reduced motion; see ui/dialog.tsx for the animation override.
         "pointer-events-none animate-in fade-in duration-150 motion-reduce:duration-0",
-        onRight ? "slide-in-from-left-0.5" : "slide-in-from-right-0.5",
+        SLIDE_FROM[placement.side],
       )}
     >
       {displaced && (
         <line
           data-map-leader
-          // From the marker's own edge, so the mark is never drawn through.
+          // From the marker's own edge, so the mark is never drawn through,
+          // to just short of the chip's.
           x1={x + (dx / span) * reach}
           y1={y + (dy / span) * reach}
-          x2={leaderX}
-          y2={leaderY}
+          x2={nearX - (dx / span) * leaderGap}
+          y2={nearY - (dy / span) * leaderGap}
           strokeWidth={LEADER_WIDTH}
           strokeLinecap="round"
           className="stroke-foreground opacity-55"
         />
       )}
-      <foreignObject
-        x={blockX - pad}
-        y={blockY - pad}
-        width={boxWidth + pad * 2}
-        height={boxHeight + pad * 2}
-      >
-        {/* Align the chip with its leader while leaving room for the shadow. */}
-        <div
-          className={cn("flex h-full w-full", !onRight && "justify-end")}
-          style={{ padding: pad }}
+      {/* The card in its own pixels. The object is the whole column wide
+          wherever the chip stands, so the chip is laid out at one width and
+          measured at it; what lies past the chip is empty. The margin all
+          round holds the shadow. */}
+      <g transform={`translate(${blockX - bleed} ${blockY - bleed}) scale(${unit})`}>
+        <foreignObject
+          width={columnPx + CARD_BLEED_PX * 2}
+          height={heightPx + CARD_BLEED_PX * 2}
         >
           <div
-            data-callout-chip
-            className={cn(
-              "flex flex-col justify-center",
-              // An opaque surface keeps contrast independent of the terrain underneath.
-              "rounded-ui bg-popover text-popover-foreground",
-              // Keep the outline in both themes; omit the drop shadow in dark mode.
-              "shadow-[var(--callout-ring),var(--callout-lift)] dark:shadow-[var(--callout-ring)]",
-              "w-fit max-w-full",
-              !onRight && "text-right",
-            )}
-            style={
-              {
-                borderRadius: type.radius,
-                paddingBlock: padY,
-                paddingInline: type.padX,
-                "--callout-ring": `0 0 0 ${type.ring.toFixed(3)}px var(--border)`,
-                "--callout-lift": `0 ${type.shadowY.toFixed(3)}px ${type.shadowBlur.toFixed(3)}px rgb(0 0 0 / ${SHADOW_ALPHA})`,
-              } as CSSProperties
-            }
+            className="flex h-full w-full items-start"
+            style={{ padding: CARD_BLEED_PX }}
           >
-            <div ref={contentRef} className="w-full">
-              {logo && (
-                // The same chip rule the shelter cards follow: a mark whose
-                // ink fails on this surface gets a plate of the other tone,
-                // and the negative margin keeps the mark itself flush with the
-                // title whether a chip is drawn or not.
-                <CalloutLogo logo={logo} type={type} alignEnd={!onRight} />
+            <div
+              ref={chipRef}
+              data-callout-chip
+              className={cn(
+                "flex w-fit max-w-full flex-col px-3",
+                // A name alone is a tooltip, and a card's air over one word
+                // is a plaque.
+                dense ? "py-1.5" : "py-2.5",
+                // An opaque surface keeps contrast independent of the terrain
+                // underneath. The site's popover, as Select and the menus draw
+                // it: a ring for its edge in both themes, and a lift in light.
+                "rounded-ui bg-popover text-popover-foreground",
+                "shadow-md ring-1 ring-foreground/10 dark:shadow-none",
+                // An armed card is the one thing the finger meant, so its body
+                // takes a tap and does nothing with it. Passed through, a tap
+                // on the card landed on whatever coin it covered and armed
+                // that instead.
+                action && "pointer-events-auto",
               )}
+            >
               <span
                 data-callout-title
-                className="block w-full break-words font-semibold"
-                style={{ fontSize: type.title, lineHeight: type.leading }}
+                className="block text-sm leading-snug font-semibold break-words text-balance"
               >
                 {title}
               </span>
+              {place && (
+                <span
+                  data-callout-place
+                  className="mt-0.5 block text-xs leading-4 break-words text-muted-foreground"
+                >
+                  {place}
+                </span>
+              )}
               {metadata && (
                 <span
                   data-callout-metadata
-                  className="block w-full break-words text-muted-foreground"
-                  style={{
-                    fontSize: type.metadata,
-                    lineHeight: type.leading,
-                    marginTop: type.lineGap,
-                  }}
+                  className="mt-1.5 block text-xs leading-4 break-words text-muted-foreground"
                 >
                   {metadata}
                 </span>
@@ -323,45 +412,32 @@ export function MapCallout({
               {note && (
                 <span
                   data-callout-note
-                  className="block w-full break-words text-muted-foreground"
-                  style={{
-                    fontSize: type.metadata,
-                    lineHeight: type.leading,
-                    marginTop: type.lineGap,
-                  }}
+                  className="mt-0.5 block text-xs leading-4 break-words text-muted-foreground"
                 >
                   {note}
                 </span>
               )}
-              {species && species.length > 0 && (
+              {/* Who lives there, which adds up to the number on the coin, so
+                  it is the count and no line of words says it again. The
+                  glyphs are the species tabs' own. */}
+              {tabs.length > 0 && (
                 <span
                   data-callout-species
-                  className={cn(
-                    "flex w-full flex-wrap items-center text-muted-foreground tabular-nums",
-                    !onRight && "justify-end",
-                  )}
-                  style={{
-                    fontSize: type.metadata,
-                    lineHeight: type.leading,
-                    marginTop: type.speciesGap,
-                    columnGap: type.metadata * 0.9,
-                    rowGap: type.metadata * 0.35,
-                  }}
+                  className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-4 tabular-nums"
                 >
-                  {species.map((entry) => {
-                    const Icon = SPECIES_ICONS[entry.species];
-                    return (
-                      <span
-                        key={entry.species}
-                        data-callout-species-entry={entry.species}
-                        className="inline-flex shrink-0 items-center"
-                        style={{ gap: type.metadata * 0.35 }}
-                      >
-                        <Icon size={type.metadata} aria-hidden />
-                        {entry.count}
-                      </span>
-                    );
-                  })}
+                  {tabs.map(({ tab, count }) => (
+                    <span
+                      key={tab}
+                      data-callout-species-entry={tab}
+                      className="inline-flex shrink-0 items-center gap-1"
+                    >
+                      <SpeciesGlyphIcon
+                        tab={tab}
+                        className="size-3.5 text-muted-foreground"
+                      />
+                      <span className="font-medium text-foreground">{count}</span>
+                    </span>
+                  ))}
                 </span>
               )}
               {/* Last, under every fact the card carries. It stood between the
@@ -377,16 +453,18 @@ export function MapCallout({
                   onClick={action.onClick}
                   onFocus={() => action.onFocusChange?.(true)}
                   onBlur={() => action.onFocusChange?.(false)}
-                  className="pointer-events-auto mt-2 block w-full rounded-ui bg-primary px-2 text-center font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
-                  style={{ minHeight: 44 / scale, fontSize: type.metadata, lineHeight: type.leading }}
+                  className="pointer-events-auto mt-2.5 flex w-full items-center justify-center rounded-ui bg-primary px-3 text-sm font-medium text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
+                  // 44 pixels on screen, which is 44 of the card's own
+                  // wherever the plate lets the card be drawn at its size.
+                  style={{ minHeight: Math.max(TARGET_PX, TARGET_PX / (unit * scale)) }}
                 >
                   {action.label}
                 </button>
               )}
             </div>
           </div>
-        </div>
-      </foreignObject>
+        </foreignObject>
+      </g>
     </g>
   );
 }
@@ -417,52 +495,6 @@ export function Origin({ at }: { at: LatLon }) {
       />
       <circle cx={x} cy={y} r={ORIGIN_DOT_RADIUS} className="fill-foreground" />
     </g>
-  );
-}
-
-
-/** A shelter's mark over a card's title, sized in the units the card is set
- *  in so it is the same size on screen at every plate width, as the type is.
- *  markBox is the pixel box the shelter cards draw the mark in. */
-function CalloutLogo({
-  logo,
-  type,
-  alignEnd,
-}: {
-  logo: ShelterLogo;
-  type: ReturnType<typeof calloutType>;
-  alignEnd: boolean;
-}) {
-  const box = markBox(logo, "sm");
-  const radius = type.radius * 0.6;
-  return (
-    <span
-      data-callout-logo
-      className={cn("flex w-fit", alignEnd && "ml-auto", logoChipClassName(logo))}
-      style={{
-        padding: type.logoChip,
-        marginTop: -type.logoChip,
-        marginInline: -type.logoChip,
-        marginBottom: type.logoGap - type.logoChip,
-        borderRadius: radius,
-      }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={logo.url}
-        srcSet={logo.srcSet}
-        sizes={logo.srcSet ? `${box.width}px` : undefined}
-        alt=""
-        decoding="async"
-        width={logo.width}
-        height={logo.height}
-        style={{
-          width: box.width * type.unit,
-          height: box.height * type.unit,
-          borderRadius: logo.opaque ? radius : undefined,
-        }}
-      />
-    </span>
   );
 }
 
@@ -530,7 +562,7 @@ export function originNameAt(
     x,
     y,
     ORIGIN_REACH + ORIGIN_NAME_GAP_PX * type.unit,
-    type.metadata,
+    type.plateText,
     avoid,
     FRAME_MARGIN,
   );
@@ -553,7 +585,7 @@ export function OriginName({
       x={x}
       y={y}
       anchor={anchor}
-      size={type.metadata}
+      size={type.plateText}
       halo={type.halo}
       className="fill-foreground font-semibold"
     >
@@ -597,7 +629,7 @@ export function DistanceRing({
       y: y + r * Math.sin(radians),
       anchor: "middle",
     };
-  }).find((candidate) => outsideFrame(labelBox(candidate, type.metadata), FRAME_MARGIN) === 0);
+  }).find((candidate) => outsideFrame(labelBox(candidate, type.plateText), FRAME_MARGIN) === 0);
   return (
     <>
       <circle
@@ -616,7 +648,7 @@ export function DistanceRing({
           x={spot.x}
           y={spot.y}
           anchor="middle"
-          size={type.metadata}
+          size={type.plateText}
           halo={type.halo}
           className="fill-brand-strong font-semibold"
         >

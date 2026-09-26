@@ -6,7 +6,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useI18n } from "@/components/i18n-context";
-import { filteredAnimalCount, shelterCount } from "@/lib/labels";
+import type { Locale } from "@/lib/i18n";
+import { filteredAnimalCount, shelterChipLabel, shelterCount } from "@/lib/labels";
 import {
   DENSITY_STEPS,
   mapStateName,
@@ -28,6 +29,7 @@ import type { MapPick, RegionMoveKey } from "./shelter-map-contracts";
 export function coveredByLine(
   names: string[] | undefined,
   t: ReturnType<typeof useI18n>["t"],
+  locale: Locale,
 ): string | undefined {
   if (!names?.length) return undefined;
   // The verb agrees with how many shelters are named, and Slovenian counts a
@@ -39,8 +41,15 @@ export function coveredByLine(
       : names.length === 2
         ? "regionCoveredByTwo"
         : "regionCoveredByMany";
-  // The same middot the map's other metadata pairs are joined by.
-  return t(key, { shelters: names.join(" · ") });
+  // A sentence, so its list is joined the way the language joins one ("A, B
+  // in C"): joined by middots, a wrapped card left a middot hanging at the end
+  // of a line. Each name as the picker's rows print it (shelterChipLabel), so
+  // the sentence names the rows the visitor can see beside the map, and the
+  // card carrying it stays small enough to find room among the coins.
+  const list = new Intl.ListFormat(locale, { type: "conjunction" }).format(
+    names.map(shelterChipLabel),
+  );
+  return t(key, { shelters: list });
 }
 
 // The stroke is what draws the country. It runs on inert regions too, so an
@@ -222,7 +231,7 @@ export const Region = memo(function Region({
     // The same sentence the annotation carries, from the same function: a
     // hover and a screen reader must not learn different things about the
     // same region.
-    const covered = coveredByLine(coveredBy, t);
+    const covered = coveredByLine(coveredBy, t, locale);
     return (
       <path
         d={d}

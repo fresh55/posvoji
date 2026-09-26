@@ -59,8 +59,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  BandDivider,
+  BandOffer,
+  BandShowButton,
+  withBandDivider,
+} from "./unanswered-band";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 import { useIncrementalGrid } from "./use-incremental-grid";
+import { useUnansweredBand } from "./use-unanswered-band";
 
 // Load the dialog separately from the grid. The static export has no open
 // animal, so skip SSR and render no placeholder. The idle mount below prepares
@@ -115,6 +122,15 @@ const CARD_ENTRANCE =
 // grid just settled rather than stood still.
 const CARD_SETTLE =
   "animate-in slide-in-from-bottom-1 duration-150 motion-reduce:animate-none";
+
+/** A card's place in the entrance stagger: its place in the list, or in the
+ *  band for a card of the band, which arrives at a press of its own and plays
+ *  the same entrance from its own first card. */
+function arrivalOrdinal(ordinal: number, bandStart: number | undefined): number {
+  return bandStart !== undefined && ordinal >= bandStart
+    ? ordinal - bandStart
+    : ordinal;
+}
 
 // Two columns is the narrowest the grid draws at normal text size (CARD_GRID),
 // so it is what an unmeasurable grid is charged for: a miss makes the step
@@ -420,6 +436,21 @@ export function AnimalGrid({
   // from the one function that decides it rather than restating the fallback.
   const order = effectiveSort(sort, nearby?.at);
 
+  // The animals the filters hide only for want of an answer, offered under
+  // the last match and drawn after the matches once asked for. band.list is
+  // what the grid draws and the dialog steps through: the matches, and the
+  // band after them while it is shown. Every count on the page stays the
+  // matches' own.
+  const band = useUnansweredBand({
+    animals,
+    filters: shownFilters,
+    reference,
+    sorted,
+    sort,
+    locale,
+    origin: nearby?.at,
+  });
+
   // What the dialog steps through is what the visitor is looking at: the list
   // as filtered and sorted on screen, in that order. Read here, above the
   // chunking, because the step below is one of the things that asks whether a
@@ -442,7 +473,7 @@ export function AnimalGrid({
     close,
   } = useAnimalDialogHost({
     animals,
-    shown: sorted,
+    shown: band.list,
     basePath: locale === "sl" ? "/" : "/en",
   });
 
@@ -458,8 +489,28 @@ export function AnimalGrid({
   const [dialogMounted, setDialogMounted] = useState(false);
   if (selected && !dialogMounted) setDialogMounted(true);
 
-  const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
-    useIncrementalGrid(sorted, selected !== undefined);
+  // Counted against the matches alone, so the band arriving or going at a
+  // press carries on from the cards already drawn.
+  const {
+    page,
+    drawn,
+    hasMore,
+    settled,
+    gridRef,
+    watchSentinel,
+    showMore,
+    showFrom,
+  } = useIncrementalGrid(band.list, selected !== undefined, sorted);
+
+  // The band's press: shown, with its first card drawn and focused, since the
+  // button that asked for it goes as it arrives.
+  const { show: openBand } = band;
+  const showBand = useCallback(() => {
+    openBand();
+    showFrom(sorted.length);
+  }, [openBand, showFrom, sorted.length]);
+  // Where the band's cards start among the drawn ones, while it is shown.
+  const bandStart = band.shown ? sorted.length : undefined;
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
@@ -705,7 +756,7 @@ export function AnimalGrid({
                 {messages.animalsComingSoon}
               </p>
             </EmptyState>
-          ) : visible.length === 0 ? (
+          ) : visible.length === 0 && !band.shown ? (
             <EmptyState>
               <div className="space-y-1">
                 <p className="text-sm font-medium">
@@ -728,6 +779,16 @@ export function AnimalGrid({
                   </p>
                 )}
               </div>
+              {/* The one way out that keeps every filter as it is: the
+                  animals nobody answered the picks for. */}
+              {band.count > 0 && (
+                <BandShowButton
+                  count={band.count}
+                  species={shownFilters.species}
+                  onShow={showBand}
+                  buttonRef={band.offerRef}
+                />
+              )}
               {shelterOnlyEmpty && (
                 <Button
                   variant="outline"
@@ -766,74 +827,101 @@ export function AnimalGrid({
               onTouchStart={() => { void prefetchAnimalDescriptions(); }}
               className={CARD_GRID}
             >
-              {page.map((animal, ordinal) => (
-                <AnimalCard
-                  key={animal.id}
-                  animal={animal}
-                  reference={reference}
-                  // The order this list is actually in, which the card
-                  // reads to decide whether the long-stay mark would be
-                  // repeating it. The order the list is in and not the one
-                  // picked: nearest with no origin is sorted as the default
-                  // (effectiveSort).
-                  order={order}
-                  // The entrance: a short fade and rise, staggered across the
-                  // first dozen cards so a filter change reads as the grid
-                  // answering rather than the page blinking. Keyed by id, so a
-                  // card that survives the filter keeps its DOM node and does
-                  // not re-run this; only arriving cards do. fill-mode-backwards
-                  // holds a delayed card invisible until its turn -- except on
-                  // a widening, where that card is not arriving but coming
-                  // back, and CARD_SETTLE takes over so it is never the one
-                  // sitting invisible next to the survivors.
-                  //
-                  // The first dozen and no further. Vse used to render all 503
-                  // matches at once, so animating every one of them started 503
-                  // compositor animations inside a 330ms window, during
-                  // hydration, while 500 images were decoding. The cap outlives
-                  // the chunking above: ordinal counts within the whole sorted
-                  // list, so a card arriving with a later step is past it by
-                  // definition and arrives settled, which is what a card nobody
-                  // asked to see should do.
-                  //
-                  // card-paint is the other half of the same problem: what is
-                  // drawn is now bounded, and this bounds what is painted, so a
-                  // card scrolled past costs nothing until it comes back.
-                  className={cn(
-                    "card-paint",
-                    ordinal < STAGGERED_CARDS &&
-                      (widening ? CARD_SETTLE : CARD_ENTRANCE),
-                  )}
-                  // Past the twelfth there is no delay written, and the index
-                  // is undefined there, which is what a settled card wants.
-                  // None written for a widening either: every card in it lands
-                  // on the same instant, so there is no per-card wait to spell.
-                  style={widening ? undefined : STAGGER_STYLE[ordinal]}
-                  // The tab already named the species, so the card's one fact
-                  // line does not have to spend itself saying it again.
-                  species={shownFilters.species}
-                  // The first row, which is the largest image on the screen and
-                  // was queueing behind the bundle like the other 499.
-                  eager={ordinal < 4}
-                  onOpen={handleOpen}
-                  isDialogReady={isDialogReady}
-                  // A shelter's own page renders these same cards and leaves
-                  // this off, because there the line would be the page linking
-                  // to itself under every animal on it.
-                  showShelter
-                />
-              ))}
+              {withBandDivider(
+                page.map((animal, ordinal) => (
+                  <AnimalCard
+                    key={animal.id}
+                    animal={animal}
+                    reference={reference}
+                    // The order this list is actually in, which the card
+                    // reads to decide whether the long-stay mark would be
+                    // repeating it. The order the list is in and not the one
+                    // picked: nearest with no origin is sorted as the default
+                    // (effectiveSort).
+                    order={order}
+                    // The entrance: a short fade and rise, staggered across the
+                    // first dozen cards so a filter change reads as the grid
+                    // answering rather than the page blinking. Keyed by id, so a
+                    // card that survives the filter keeps its DOM node and does
+                    // not re-run this; only arriving cards do. fill-mode-backwards
+                    // holds a delayed card invisible until its turn -- except on
+                    // a widening, where that card is not arriving but coming
+                    // back, and CARD_SETTLE takes over so it is never the one
+                    // sitting invisible next to the survivors.
+                    //
+                    // The first dozen and no further. Vse used to render all 503
+                    // matches at once, so animating every one of them started 503
+                    // compositor animations inside a 330ms window, during
+                    // hydration, while 500 images were decoding. The cap outlives
+                    // the chunking above: ordinal counts within the whole sorted
+                    // list, so a card arriving with a later step is past it by
+                    // definition and arrives settled, which is what a card nobody
+                    // asked to see should do. The band's first dozen count from
+                    // the band's own start, since they arrive at a press of
+                    // their own (arrivalOrdinal).
+                    //
+                    // card-paint is the other half of the same problem: what is
+                    // drawn is now bounded, and this bounds what is painted, so a
+                    // card scrolled past costs nothing until it comes back.
+                    className={cn(
+                      "card-paint",
+                      arrivalOrdinal(ordinal, bandStart) < STAGGERED_CARDS &&
+                        (widening ? CARD_SETTLE : CARD_ENTRANCE),
+                    )}
+                    // Past the twelfth there is no delay written, and the index
+                    // is undefined there, which is what a settled card wants.
+                    // None written for a widening either: every card in it lands
+                    // on the same instant, so there is no per-card wait to spell.
+                    style={
+                      widening
+                        ? undefined
+                        : STAGGER_STYLE[arrivalOrdinal(ordinal, bandStart)]
+                    }
+                    // The tab already named the species, so the card's one fact
+                    // line does not have to spend itself saying it again.
+                    species={shownFilters.species}
+                    // The first row, which is the largest image on the screen and
+                    // was queueing behind the bundle like the other 499.
+                    eager={ordinal < 4}
+                    onOpen={handleOpen}
+                    isDialogReady={isDialogReady}
+                    // A shelter's own page renders these same cards and leaves
+                    // this off, because there the line would be the page linking
+                    // to itself under every animal on it.
+                    showShelter
+                  />
+                )),
+                bandStart,
+                <BandDivider
+                  key="band-divider"
+                  missing={band.missing}
+                  onHide={band.hide}
+                />,
+              )}
               {/* The sentinel the step watches, then the button that replaces
                   it once the budget is spent: grid-load-more.tsx, which the
-                  shelter grid draws too. */}
+                  shelter grid draws too. It counts the band with the matches
+                  while the band is drawn under them. */}
               <GridLoadMore
                 hasMore={hasMore}
                 settled={settled}
                 watchSentinel={watchSentinel}
                 showMore={showMore}
                 drawn={drawn}
-                total={sorted.length}
+                total={band.list.length}
               />
+              {/* The offer, once every match is drawn and the list has run
+                  out: never in the middle of the matches, and never on the
+                  server, whose render has no filters to hide anything. */}
+              {!band.shown && band.count > 0 && drawn >= sorted.length && (
+                <BandOffer
+                  count={band.count}
+                  missing={band.missing}
+                  species={shownFilters.species}
+                  onShow={showBand}
+                  buttonRef={band.offerRef}
+                />
+              )}
             </div>
           )}
           {/* The grid grows by an IntersectionObserver and a button, and both

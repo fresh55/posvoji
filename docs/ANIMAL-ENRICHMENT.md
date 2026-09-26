@@ -131,6 +131,17 @@ means no confirmed matching records, not proof that no animal has that property.
 Species-specific rules remain: feline tests apply to cats, and cat size does not
 become an available filter just to fill the panel.
 
+Matching stays strict: every count, tab and chip counts confirmed matches only.
+Under the last match, and in place of an empty result, the grid offers the
+animals a pick hid only because the picked question has no answer for them, and
+draws them below a divider when the visitor asks (`unansweredBand` in
+`apps/web/lib/filters/engine.ts`). A recorded answer that contradicts a pick
+keeps an animal out of that band too: a "no", a positive test, a known size, age
+or wait that differs. Only a question left unanswered for a tenth or more of the
+animals in view (the species tab, the shelters picked and the needs offered) is
+relaxed, the share that puts a "Brez podatka" line under a filter section. On
+Vse, Psi and Mačke that keeps Spol, Barva and Dolžina dlake strict.
+
 Use the normal committed-code production promotion procedure in
 [PRODUCTION-OPERATIONS.md](PRODUCTION-OPERATIONS.md). The production host should
 export from its own current input authority after promotion; do not replace it

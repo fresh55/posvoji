@@ -348,6 +348,37 @@ const sl = {
   knownTopicCats: "Odnos do mačk",
   knownTopicFiv: "Izvid FIV",
   knownTopicFelv: "Izvid FeLV",
+  // The grid's offer of the animals a pick hides only for want of an answer
+  // (unansweredBand in lib/filters/engine.ts), under the last match. Built
+  // around "ni" so that only the noun agrees with the count: {count} comes
+  // from tabCountAt, in the locative "pri" takes, and {topic} is one of the
+  // bandTopic* below, in the genitive "ni" takes.
+  bandLine: "Pri {count} ni {topic}.",
+  // When the band lacks more than one of the answers picked.
+  bandLineSeveral: "Pri {count} manjka kateri od izbranih podatkov.",
+  // The offer's button. {them} is ga, jo, ju or jih (tabPronoun).
+  bandShow: "Pokaži {them}",
+  // The empty state's offer, which has no line before it to say how many.
+  // {count} is the accusative after "Pokaži" (tabCountShown).
+  bandShowCount: "Pokaži {count} brez podatka",
+  // The row over the band once it is shown, and the way to put it away.
+  bandLabel: "Brez {topic}",
+  bandLabelSeveral: "Brez nekaterih izbranih podatkov",
+  bandHide: "Skrij",
+  // The phrase the dialog's pill states on each of these animals ("Ni
+  // podatka o otrocih"), so the band and the animal use the same words.
+  bandTopicSex: "podatka o spolu",
+  bandTopicAge: "podatka o starosti",
+  bandTopicSize: "podatka o velikosti",
+  bandTopicEnergy: "podatka o energiji",
+  bandTopicCoatColor: "podatka o barvi",
+  bandTopicCoatLength: "podatka o dolžini dlake",
+  bandTopicWaiting: "datuma sprejema",
+  bandTopicKids: "podatka o otrocih",
+  bandTopicDogs: "podatka o psih",
+  bandTopicCats: "podatka o mačkah",
+  bandTopicFiv: "podatka o FIV",
+  bandTopicFelv: "podatka o FeLV",
   ageRangeYoung: "manj kot 1 leto",
   ageRangeAdult: "1–8 let",
   ageRangeSenior: "8 let ali več",
@@ -874,6 +905,25 @@ const en: Messages = {
   knownTopicCats: "how they are with cats",
   knownTopicFiv: "the FIV result",
   knownTopicFelv: "the FeLV result",
+  bandLine: "No {topic} for {count}.",
+  bandLineSeveral: "Some of the chosen data is missing for {count}.",
+  bandShow: "Show {them}",
+  bandShowCount: "Show {count} with no data",
+  bandLabel: "No {topic}",
+  bandLabelSeveral: "Some chosen data missing",
+  bandHide: "Hide",
+  bandTopicSex: "data on sex",
+  bandTopicAge: "data on age",
+  bandTopicSize: "data on size",
+  bandTopicEnergy: "data on energy",
+  bandTopicCoatColor: "data on colour",
+  bandTopicCoatLength: "data on coat length",
+  bandTopicWaiting: "intake date",
+  bandTopicKids: "data on kids",
+  bandTopicDogs: "data on dogs",
+  bandTopicCats: "data on cats",
+  bandTopicFiv: "data on FIV",
+  bandTopicFelv: "data on FeLV",
   ageRangeYoung: "under 1 year",
   ageRangeAdult: "1–8 years",
   ageRangeSenior: "8 years or older",

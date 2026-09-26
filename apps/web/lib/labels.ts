@@ -289,6 +289,70 @@ export function speciesScopeLabel(
   return SPECIES_SCOPE[locale][species];
 }
 
+// The tab's animals counted in the two cases the grid's band of unanswered
+// animals puts them in (components/unanswered-band.tsx): after "pri", the
+// locative, whose dual and plural are one form, and after "Pokaži", the
+// accusative, which takes the genitive plural from five up.
+const TAB_AT: Record<SpeciesFilter, [string, string, string, string]> = {
+  all: ["živali", "živalih", "živalih", "živalih"],
+  dog: ["psu", "psih", "psih", "psih"],
+  cat: ["mački", "mačkah", "mačkah", "mačkah"],
+  other: ["drugi živali", "drugih živalih", "drugih živalih", "drugih živalih"],
+};
+
+const TAB_SHOWN: Record<SpeciesFilter, [string, string, string, string]> = {
+  all: ["žival", "živali", "živali", "živali"],
+  dog: ["psa", "psa", "pse", "psov"],
+  cat: ["mačko", "mački", "mačke", "mačk"],
+  other: ["drugo žival", "drugi živali", "druge živali", "drugih živali"],
+};
+
+const TAB_NOUN_EN: Record<SpeciesFilter, [string, string]> = {
+  all: ["animal", "animals"],
+  dog: ["dog", "dogs"],
+  cat: ["cat", "cats"],
+  other: ["other animal", "other animals"],
+};
+
+function tabCountEn(n: number, species: SpeciesFilter): string {
+  return `${n} ${TAB_NOUN_EN[species][n === 1 ? 0 : 1]}`;
+}
+
+/** "pri 121 psih", "pri 1 mački": the count after "pri". */
+export function tabCountAt(
+  n: number,
+  species: SpeciesFilter,
+  locale: Locale,
+): string {
+  return locale === "sl" ? plural(n, TAB_AT[species]) : tabCountEn(n, species);
+}
+
+/** "Pokaži 119 psov", "Pokaži 2 mački": the count after "Pokaži". */
+export function tabCountShown(
+  n: number,
+  species: SpeciesFilter,
+  locale: Locale,
+): string {
+  return locale === "sl"
+    ? plural(n, TAB_SHOWN[species])
+    : tabCountEn(n, species);
+}
+
+/** The same animals as the object of "Pokaži": ga or jo, ju, jih. By the
+ *  number itself rather than the numeral's form, since the pronoun stands for
+ *  the animals and not for the word: 101 dogs are "jih", though the numeral
+ *  takes the singular ("pri 101 psu"). Pes is masculine; mačka and žival,
+ *  which the other tabs count in, are feminine. */
+export function tabPronoun(
+  n: number,
+  species: SpeciesFilter,
+  locale: Locale,
+): string {
+  if (locale === "en") return n === 1 ? "it" : "them";
+  if (n === 1) return species === "dog" ? "ga" : "jo";
+  return n === 2 ? "ju" : "jih";
+}
+
 /** The line under an animal's name: the species, then the breed where the
  *  shelter gave one. The dialog and the animal's own page both print it, and
  *  they used to answer differently: the dialog as this sentence, the page as

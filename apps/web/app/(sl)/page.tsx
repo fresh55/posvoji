@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { SitePage } from "@/components/site-page";
+import { withFeedLinks } from "@/lib/feeds";
 import { getMessages } from "@/lib/i18n";
 import { HOME_PATHS } from "@/lib/shelter-path";
 import { siteJsonLd } from "@/lib/shelter-jsonld";
@@ -17,15 +18,23 @@ import { staticPageMetadata } from "@/lib/site-metadata";
 // Both are read from the catalogue rather than typed again here, so the head
 // and the page cannot end up saying different things. The full stop comes off:
 // the catalogue writes the hero as a sentence, and a <title> is not one.
-export const metadata: Metadata = staticPageMetadata({
-  locale: "sl",
-  paths: HOME_PATHS,
-  title: getMessages("sl").heroTitle.replace(/\.$/, ""),
-  description: getMessages("sl").metadataDescription,
-  // This page sits beside the root layout, so the title template cannot reach
-  // it. See staticPageMetadata.
-  besideTheRootLayout: true,
-});
+//
+// The head also names the feeds of new listings (lib/feeds.ts), which a
+// reader finds from the page's address. It is the only place they are named:
+// the results page is what they are a copy of, and nothing in the page itself
+// has to say that a feed exists.
+export const metadata: Metadata = withFeedLinks(
+  staticPageMetadata({
+    locale: "sl",
+    paths: HOME_PATHS,
+    title: getMessages("sl").heroTitle.replace(/\.$/, ""),
+    description: getMessages("sl").metadataDescription,
+    // This page sits beside the root layout, so the title template cannot
+    // reach it. See staticPageMetadata.
+    besideTheRootLayout: true,
+  }),
+  "sl",
+);
 
 export default function Home() {
   return (

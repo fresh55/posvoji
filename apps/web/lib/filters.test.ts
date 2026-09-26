@@ -3,6 +3,7 @@ import { lifeStageOf, type Animal, type Species, type TestResult } from "@posvoj
 import {
   activeFilterCount,
   ageGroup,
+  ageStage,
   applyFilters,
   bySpecies,
   careCounts,
@@ -21,6 +22,7 @@ import {
   TOGGLES,
   togglesAskedOf,
   toggleValues,
+  unansweredCounts,
   visibleCare,
   visibleGoodWith,
   visibleGroups,
@@ -527,10 +529,10 @@ describe("pruneHiddenFilters", () => {
   it("keeps every selected age visible instead of silently clearing it", () => {
     const pruned = pruneHiddenFilters({
       ...EMPTY_FILTERS,
-      age: ["mladicek", "odrasel", "senior"],
+      age: ["mladicek", "mlad", "odrasel", "senior"],
     });
 
-    expect(pruned.age).toEqual(["mladicek", "odrasel", "senior"]);
+    expect(pruned.age).toEqual(["mladicek", "mlad", "odrasel", "senior"]);
   });
 
   it("keeps a meaningful two-age selection", () => {
@@ -630,13 +632,29 @@ describe("togglesAskedOf", () => {
 
 describe("URL codec", () => {
   it("round-trips an explicit all-age selection", () => {
-    const filters = parseFilters("starost=mladicek,odrasel,senior");
+    const filters = parseFilters("starost=mladicek,mlad,odrasel,senior");
 
-    expect(filters.age).toEqual(["mladicek", "odrasel", "senior"]);
-    expect(activeFilterCount(filters)).toBe(3);
+    expect(filters.age).toEqual(["mladicek", "mlad", "odrasel", "senior"]);
+    expect(activeFilterCount(filters)).toBe(4);
     expect(serializeFilters(filters)).toBe(
-      "starost=mladicek,odrasel,senior",
+      "starost=mladicek,mlad,odrasel,senior",
     );
+  });
+
+  // Mlad is its own slug, and Odrasel keeps the one it had: a link shared
+  // before Mlad existed still opens, now asking for three to eight years.
+  it("reads and writes the young stage as mlad", () => {
+    expect(parseFilters("starost=mlad").age).toEqual(["mlad"]);
+    expect(serializeFilters({ ...EMPTY_FILTERS, age: ["mlad"] })).toBe(
+      "starost=mlad",
+    );
+    expect(parseFilters("starost=odrasel").age).toEqual(["odrasel"]);
+    expect(parseFilters("starost=mlad,odrasel").age).toEqual([
+      "mlad",
+      "odrasel",
+    ]);
+    // Neither half of the slug is a stage on its own.
+    expect(parseFilters("starost=mladi,mla").age).toEqual([]);
   });
 
   it("round-trips the cat-only toggles", () => {
@@ -895,48 +913,105 @@ describe("multi-select behavior", () => {
     ).toEqual([female]);
   });
 
-  it("uses OR for choices within age and keeps all three selected", () => {
-    const young = animal("dog", { approximateAgeMonths: 6 });
-    const adult = animal("dog", { approximateAgeMonths: 36 });
+  it("uses OR for choices within age and keeps all four selected", () => {
+    const baby = animal("dog", { approximateAgeMonths: 6 });
+    const young = animal("dog", { approximateAgeMonths: 20 });
+    const adult = animal("dog", { approximateAgeMonths: 60 });
     const senior = animal("dog", { approximateAgeMonths: 120 });
     const unknown = animal("dog");
 
     expect(
       applyFilters(
-        [young, adult, senior, unknown],
+        [baby, young, adult, senior, unknown],
         {
           ...EMPTY_FILTERS,
-          age: ["mladicek", "odrasel", "senior"],
+          age: ["mladicek", "mlad", "odrasel", "senior"],
         },
         NOW,
       ),
-    ).toEqual([young, adult, senior]);
+    ).toEqual([baby, young, adult, senior]);
+  });
+
+  // Three years is the filter's own line: 35 months is still Mlad and 36 is
+  // Odrasel, whether the age was stated or worked out from a birth date.
+  it("splits the young from the adults at three years", () => {
+    expect(ageGroup(12)).toBe("mlad");
+    expect(ageGroup(35)).toBe("mlad");
+    expect(ageGroup(36)).toBe("odrasel");
+    expect(ageGroup(95)).toBe("odrasel");
+
+    const stated35 = animal("dog", { approximateAgeMonths: 35 });
+    const stated36 = animal("dog", { approximateAgeMonths: 36 });
+    // NOW is 2026-08-15: born September 2023 is 35 months, August 2023 36.
+    const born35 = animal("cat", { birthDate: "2023-09-10" });
+    const born36 = animal("cat", { birthDate: "2023-08-20" });
+    const all = [stated35, stated36, born35, born36];
+    const only = (age: Filters["age"]) =>
+      applyFilters(all, { ...EMPTY_FILTERS, age }, NOW);
+
+    expect(only(["mlad"])).toEqual([stated35, born35]);
+    expect(only(["odrasel"])).toEqual([stated36, born36]);
   });
 
   it("files a stated stage where no age is known, and lets an age win", () => {
     const kitten = animal("cat", { lifeStage: "young" });
     const oldDog = animal("dog", { lifeStage: "senior" });
     const aged = animal("dog", { lifeStage: "senior", approximateAgeMonths: 36 });
+    const youngAged = animal("cat", { lifeStage: "adult", approximateAgeMonths: 20 });
     const unknown = animal("dog");
-    const all = [kitten, oldDog, aged, unknown];
+    const all = [kitten, oldDog, aged, youngAged, unknown];
     const only = (age: Filters["age"]) =>
       applyFilters(all, { ...EMPTY_FILTERS, age }, NOW);
 
     expect(only(["mladicek"])).toEqual([kitten]);
     expect(only(["senior"])).toEqual([oldDog]);
     expect(only(["odrasel"])).toEqual([aged]);
+    expect(only(["mlad"])).toEqual([youngAged]);
     expect(Object.fromEntries(facetCounts(all, EMPTY_FILTERS, NOW).age)).toEqual({
       mladicek: 1,
+      mlad: 1,
       odrasel: 1,
       senior: 1,
     });
   });
 
+  // The schema's adult is one to eight years, which is Mlad or Odrasel.
+  // Filed under either, a two-year-old could turn up under three to eight,
+  // so it is left unanswered instead, with the animals that have no age.
+  it("files a stated adult under no stage and counts it unanswered", () => {
+    const statedAdult = animal("cat", { lifeStage: "adult" });
+    const kitten = animal("cat", { lifeStage: "young" });
+    const all = [statedAdult, kitten];
+    const only = (age: Filters["age"]) =>
+      applyFilters(all, { ...EMPTY_FILTERS, age }, NOW);
+
+    expect(ageStage(statedAdult, NOW)).toBeUndefined();
+    expect(ageStage(kitten, NOW)).toBe("mladicek");
+    expect(only(["mlad"])).toEqual([]);
+    expect(only(["odrasel"])).toEqual([]);
+    expect(only(["mlad", "odrasel"])).toEqual([]);
+    // The kitten is the only animal any stage counts.
+    expect(Object.fromEntries(facetCounts(all, EMPTY_FILTERS, NOW).age)).toEqual({
+      mladicek: 1,
+    });
+    expect(unansweredCounts(all, EMPTY_FILTERS, NOW).groups.age).toEqual({
+      asked: 2,
+      unanswered: 1,
+    });
+  });
+
+  // Mlad is the filter's own: the schema's stages have no young adult, so
+  // the line between Mlad and Odrasel is checked on its own above, and the
+  // two are one stage here.
   it("draws the stage lines where the schema draws them", () => {
+    const schemaStage = {
+      mladicek: "young",
+      mlad: "adult",
+      odrasel: "adult",
+      senior: "senior",
+    } as const;
     for (let months = 0; months <= 200; months += 1) {
-      expect(ageGroup(months)).toBe(
-        { young: "mladicek", adult: "odrasel", senior: "senior" }[lifeStageOf(months)],
-      );
+      expect(schemaStage[ageGroup(months)]).toBe(lifeStageOf(months));
     }
   });
 

@@ -31,27 +31,10 @@ import "@/test/picker-chunks";
  * `selected` is testing a picker no page renders.
  */
 
-/**
- * The matchMedia jsdom does not ship, answering no to everything, or yes to
- * whatever `answers` names.
- *
- * The picker asks whether it is standing on a desktop to decide which body to
- * mount, and a suite that stubs nothing renders neither. No to everything is
- * the phone, which is where the sheet and its view switch live. A suite that
- * has to watch the answer change (the responsive session) brings its own live
- * one instead; this is for the three that only need the question answered.
- */
-export function stubMatchMedia(answers: (media: string) => boolean = () => false) {
-  Object.defineProperty(window, "matchMedia", {
-    configurable: true,
-    value: vi.fn().mockImplementation((media: string) => ({
-      matches: answers(media),
-      media,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })),
-  });
-}
+// No to everything is the phone, which is where the sheet and its view switch
+// live. A suite that has to watch the answer change (the responsive session)
+// brings its own live one instead.
+export { stubMatchMedia } from "./grid-stubs";
 
 // Maribor, so a fix from here sorts Sever first and any typed Ljubljana has to
 // visibly take the sort back.

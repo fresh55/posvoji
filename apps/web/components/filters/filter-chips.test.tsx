@@ -109,16 +109,17 @@ describe("the active filters row", () => {
   it("draws the row in the panel's order, so two visitors with one filter state see one row", () => {
     // Ordering by when each chip appeared would have made the row a private
     // history: the same filters, a different row, depending on the path taken
-    // to them. The panel's order is the one already learned from the panel.
+    // to them. The panel's order is the one already learned from the panel,
+    // and the model hands the chips over in it (FILTER_FACETS).
     renderChips([
-      chip({ key: "sex:a", facet: "sex", label: "Samec" }),
       chip({ key: "age:b", facet: "age", label: "Mlad" }),
+      chip({ key: "sex:a", facet: "sex", label: "Samec" }),
       chip({ key: "care:c", facet: "care", label: "Potrpežljiv dom" }),
     ]);
 
     expect([...pills()].map((button) => button.textContent?.trim())).toEqual([
-      "Samec",
       "Mlad",
+      "Samec",
       "Potrpežljiv dom",
       "Clear filters",
     ]);

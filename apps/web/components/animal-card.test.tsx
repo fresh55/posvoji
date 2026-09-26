@@ -17,10 +17,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
+import { resetLastVisitStore } from "@/hooks/use-last-visit";
+import {
+  resetNearbyOriginStore,
+  usePublishNearbyOrigin,
+} from "@/hooks/use-nearby-origin";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { animalsForClient } from "@/lib/dataset";
+import { cityAt, distanceKm, formatKm } from "@/lib/geo";
 import { LONG_STAY_MONTHS } from "@/lib/labels";
+import { LAST_VISIT_KEY } from "@/lib/last-visit";
 import { PHOTO_TRANSITION_NAME } from "@/lib/photo-morph";
 import { pointer } from "@/test/pointer";
 import { stubViewTransition } from "@/test/view-transition";
@@ -332,11 +339,14 @@ describe("AnimalCard element placement", () => {
     expect(badges[0].closest('[data-slot="photo-frame"]')).toBeNull();
     // Positioned against the article, which is the element that holds both the
     // frame and the text: the pill is laid on the photo without being inside
-    // the photo's own box.
+    // the photo's own box. It is the row of marks that is positioned, so the
+    // pill sits in that row and the row is a child of the article.
     const article = badges[0].closest("article");
     expect(article?.querySelector('[data-slot="photo-frame"]')).toBeTruthy();
     expect(article?.className).toContain("relative");
-    expect(badges[0].className).toContain("absolute");
+    const marks = badges[0].closest('[data-slot="photo-marks"]');
+    expect(marks?.parentElement).toBe(article);
+    expect(marks?.className).toContain("absolute");
     // And it is not inside the card's link, competing with the name.
     expect(badges[0].closest("a")).toBeNull();
   });
@@ -460,6 +470,205 @@ describe("AnimalCard shelter line", () => {
     expect(
       screen.getByRole("link", { name: "Test" }).getAttribute("href"),
     ).toBe("/en/shelters/test-shelter");
+  });
+});
+
+// The writer, standing in for the location picker: it draws nothing and
+// publishes the point a typed place resolves to, which is the whole of what
+// the picker hands the rest of the page.
+function GrantOrigin({ city }: { city: string }) {
+  usePublishNearbyOrigin({ at: cityAt(city)!, source: "typed", label: city });
+  return null;
+}
+
+describe("AnimalCard distance", () => {
+  beforeEach(() => resetNearbyOriginStore());
+  afterEach(() => resetNearbyOriginStore());
+
+  // The fixture's shelter is in Ljubljana, which is under a kilometre from a
+  // visitor who typed Ljubljana; Maribor is the far one.
+  const inMaribor = () =>
+    animal({
+      shelter: { id: "test-shelter", name: "Zavetišče Test", city: "Maribor" },
+    });
+
+  it("draws no distance while nobody has given a place", () => {
+    render(
+      <I18nProvider locale="sl">
+        <AnimalCard
+          animal={inMaribor()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: "Test" })).toBeTruthy();
+    expect(document.querySelector('[data-slot="shelter-km"]')).toBeNull();
+  });
+
+  it("puts the distance to the shelter's town after its name", () => {
+    render(
+      <I18nProvider locale="sl">
+        <GrantOrigin city="Ljubljana" />
+        <AnimalCard
+          animal={inMaribor()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    // The measure Najbližje sorts by: the town, in a straight line.
+    const km = formatKm(distanceKm(cityAt("Ljubljana")!, cityAt("Maribor")!));
+    expect(km).toMatch(/^\d+ km$/);
+    // Part of the link's own text, so the name a screen reader hears is the
+    // line the eye reads. \s because the spaces around the middot are held
+    // ones, and the name computation keeps one of the two.
+    expect(
+      screen
+        .getByRole("link", { name: new RegExp(`^Test\\s·\\s${km}$`) })
+        .getAttribute("href"),
+    ).toBe("/zavetisca/test-shelter");
+  });
+
+  it("says less than a kilometre in the page's own words", () => {
+    render(
+      <I18nProvider locale="sl">
+        <GrantOrigin city="Ljubljana" />
+        <AnimalCard
+          animal={animal()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    expect(
+      document.querySelector('[data-slot="shelter-km"]')?.textContent,
+    ).toBe("\u00a0·\u00a0manj kot 1 km");
+  });
+
+  // The name is the half that gives way on a narrow card; the distance is a
+  // box of its own that does not shrink or wrap. jsdom lays nothing out, so
+  // this pins the two boxes the layout rests on, and the 320px screenshots
+  // are the measurement.
+  it("keeps the distance whole and lets the name truncate", () => {
+    render(
+      <I18nProvider locale="sl">
+        <GrantOrigin city="Ljubljana" />
+        <AnimalCard
+          animal={inMaribor()}
+          reference={NOW}
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+
+    const km = document.querySelector('[data-slot="shelter-km"]')!;
+    expect(km.className).toContain("shrink-0");
+    expect(km.className).toContain("whitespace-nowrap");
+    expect(km.previousElementSibling?.className).toContain("truncate");
+  });
+});
+
+describe("AnimalCard Novo mark", () => {
+  const LISTED = "2025-12-28T10:00:00.000Z";
+  const listedOn = (firstSeenAt: string) =>
+    animal({
+      source: { ...schemaAnimal().source, firstSeenAt },
+    });
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetLastVisitStore();
+  });
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetLastVisitStore();
+  });
+
+  function renderCard(subject: ClientAnimal, locale: "sl" | "en" = "sl") {
+    return render(
+      <I18nProvider locale={locale}>
+        <AnimalCard
+          animal={subject}
+          reference={NOW}
+          order="name"
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it("marks an animal listed since the visitor's last visit", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
+    renderCard(listedOn(LISTED));
+
+    expect(screen.getByText("Novo").dataset.variant).toBe("overlay-quiet");
+  });
+
+  it("marks nothing on a first visit, and writes this one down", () => {
+    renderCard(listedOn(LISTED));
+
+    expect(screen.queryByText("Novo")).toBeNull();
+    // The time of the list on screen, which is the dataset's and not the
+    // visitor's clock.
+    expect(localStorage.getItem(LAST_VISIT_KEY)).toBe(NOW.toISOString());
+  });
+
+  it("marks nothing listed before the last visit", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-30T00:00:00.000Z");
+    renderCard(listedOn(LISTED));
+
+    expect(screen.queryByText("Novo")).toBeNull();
+  });
+
+  it("says New on the English pages", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
+    renderCard(listedOn(LISTED), "en");
+
+    expect(screen.getByText("New")).toBeTruthy();
+  });
+
+  // The mark shares the photo with the wait and, in a row that wraps, can meet
+  // neither the wait nor the status: the status reads first, the wait keeps
+  // its corner last, and all of them come after the animal's name. A listing
+  // that cannot be adopted now wears its status and not Novo
+  // (isNewsToVisitor in hooks/use-last-visit.ts).
+  it("draws Novo before the wait, after the name, and not on a held animal", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
+    const { unmount } = renderCard({
+      ...listedOn(LISTED),
+      status: "hold",
+    });
+
+    const held = document.querySelector('[data-slot="photo-marks"]');
+    expect(Array.from(held!.children, (mark) => mark.textContent)).toEqual([
+      "trenutno ni na voljo",
+    ]);
+    unmount();
+
+    renderCard({
+      ...listedOn(LISTED),
+      intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS),
+    });
+    const waiting = document.querySelector('[data-slot="photo-marks"]');
+    expect(Array.from(waiting!.children, (mark) => mark.textContent)).toEqual([
+      "Novo",
+      "Čaka 3 leta",
+    ]);
+    expect(
+      screen.getByText("Rex").compareDocumentPosition(screen.getByText("Novo")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 

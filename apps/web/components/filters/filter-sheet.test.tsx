@@ -91,8 +91,8 @@ async function openSheet(
   return screen.findByRole("dialog");
 }
 
-/** Spol and Velikost, one option each: the first opens by default and the
- *  second does not, which is what the fold tests below read. */
+/** Spol and Velikost, one option each: on Vse neither opens by default, and
+ *  on Psi Velikost does, which is what the fold tests below read. */
 const SEX_AND_SIZE: Partial<ComponentProps<typeof FilterSheet>> = {
   groups: [
     { group: "sex", options: [{ value: "male", label: "Samec" }] },
@@ -146,15 +146,17 @@ describe("FilterSheet sort caption", () => {
   it("scrolls away with the sections instead of standing over them", async () => {
     // Pinned in the header, the caption and the control took 78px from the
     // sections for as long as the sheet was open: 388px of them were left at
-    // 390x844, 189 at 320x568. At the top of the body they are what opens
-    // the sheet and what the first scroll takes away.
+    // 390x844, 189 at 320x568. At the top of the body, under the search that
+    // leads it, they are what opens the sheet and what the first scroll takes
+    // away.
     const dialog = await openSheet(SEX_AND_SIZE);
 
     const header = dialog.querySelector('[data-slot="filter-sheet-header"]');
     const body = dialog.querySelector(".overflow-y-auto");
     const block = dialog.querySelector('[data-slot="sheet-sort"]');
     expect(header?.contains(block)).toBe(false);
-    expect(body?.firstElementChild).toBe(block);
+    expect(body?.firstElementChild?.getAttribute("role")).toBe("search");
+    expect(body?.children[1]).toBe(block);
     expect(
       block?.compareDocumentPosition(
         within(dialog).getByRole("button", { name: /^Spol/ }),
@@ -185,14 +187,14 @@ describe("FilterSheet section folds", () => {
     // The sheet used to expand every section into whatever a phone had left:
     // 1586px of body in a 388px window at 390x844, 1649px in 189px at
     // 320x568, six to eight section names never seen. It folds on the same
-    // defaults the panel uses, so Spol is open and Velikost is not.
+    // defaults the panel uses, so on Vse neither Spol nor Velikost is open.
     const dialog = await openSheet(SEX_AND_SIZE);
 
     const sex = within(dialog).getByRole("button", { name: /^Spol/ });
-    expect(sex.getAttribute("aria-expanded")).toBe("true");
+    expect(sex.getAttribute("aria-expanded")).toBe("false");
     expect(
-      within(dialog).getByRole("button", { name: /^Samec/ }),
-    ).toBeTruthy();
+      within(dialog).queryByRole("button", { name: /^Samec/ }),
+    ).toBeNull();
 
     const size = within(dialog).getByRole("button", { name: /^Velikost/ });
     expect(size.getAttribute("aria-expanded")).toBe("false");
@@ -202,6 +204,22 @@ describe("FilterSheet section folds", () => {
     // And the header says what a closed section holds, so a body under the
     // fold is the only thing hidden.
     expect(size.getAttribute("aria-controls")).toBeTruthy();
+  });
+
+  it("opens Velikost by default on Psi, as the panel does", async () => {
+    const dialog = await openSheet({
+      ...SEX_AND_SIZE,
+      filters: { ...EMPTY_FILTERS, species: "dog" },
+    });
+
+    const size = within(dialog).getByRole("button", { name: /^Velikost/ });
+    expect(size.getAttribute("aria-expanded")).toBe("true");
+    expect(
+      within(dialog).getByRole("button", { name: /^Majhna/ }),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("button", { name: /^Spol/ }).getAttribute("aria-expanded"),
+    ).toBe("false");
   });
 
   it("opens a folded section from its header", async () => {

@@ -24,11 +24,23 @@ import {
 import { agePathTransition } from "./age-stage-icon";
 import { AGE_STAGE_PATHS, type AgeStage } from "./age-stage-paths";
 
+// Motion's own hook, because a matchMedia stub never reaches it: Motion asks
+// once per module and latches the answer (reduced-motion tests elsewhere
+// passed with the reduced branch throwing). Off unless a test turns it on.
+const motion = vi.hoisted(() => ({ reduced: false }));
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => motion.reduced,
+}));
+
 const options = groupOptions("age", [], "sl");
 const counts = new Map(options.map(({ value }) => [value, 3]));
-const STAGES: AgeStage[] = ["mladicek", "odrasel", "senior"];
+const STAGES: AgeStage[] = ["mladicek", "mlad", "odrasel", "senior"];
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  motion.reduced = false;
+});
 
 function ageControl(
   selected: string[] = [],
@@ -122,7 +134,7 @@ describe("AgeGrowthControl", () => {
   it("treats the empty filter as all age stages active", () => {
     const html = renderAgeControl();
 
-    expect(html.match(/data-stage-active="true"/g)).toHaveLength(3);
+    expect(html.match(/data-stage-active="true"/g)).toHaveLength(4);
     expect(html).not.toContain('data-stage-active="false"');
   });
 
@@ -130,7 +142,7 @@ describe("AgeGrowthControl", () => {
     const html = renderAgeControl(["odrasel"]);
 
     expect(html.match(/data-stage-active="true"/g)).toHaveLength(1);
-    expect(html.match(/data-stage-active="false"/g)).toHaveLength(2);
+    expect(html.match(/data-stage-active="false"/g)).toHaveLength(3);
   });
 
   it("keeps the decorative lifecycle out of the accessibility tree", () => {
@@ -138,7 +150,26 @@ describe("AgeGrowthControl", () => {
 
     expect(html).toContain('aria-hidden="true" data-age-view="grove"');
     expect(html).toContain('aria-label="Starost"');
-    expect(html).toContain("mladič do 1 leta, odrasla žival od 1 do manj kot 8 let");
+    expect(html).toContain(
+      "mladič do 1 leta, mlada žival od 1 do manj kot 3 let, odrasla žival od 3 do manj kot 8 let",
+    );
+  });
+
+  // Every row names its range for a screen reader, which hears nothing of
+  // the grove's captions.
+  it("names each stage's range on its row", () => {
+    render(ageControl());
+
+    expect(
+      screen
+        .getAllByRole("button", { pressed: false })
+        .map((row) => row.getAttribute("aria-label")),
+    ).toEqual([
+      "Mladiček, manj kot 1 leto, 3 živali",
+      "Mlad, 1–3 leta, 3 živali",
+      "Odrasel, 3–8 let, 3 živali",
+      "Senior, 8 let ali več, 3 živali",
+    ]);
   });
 
   // inert is what takes it out of the tab order, not a tabIndex={-1} written
@@ -167,7 +198,37 @@ describe("AgeGrowthControl grove", () => {
       [...grove(container).querySelectorAll("[data-age-stage]")].map(
         (column) => column.textContent,
       ),
-    ).toEqual(["do 1 leta", "1–8 let", "8 let ali več"]);
+    ).toEqual(["do 1 leta", "1–3 leta", "3–8 let", "od 8 let"]);
+  });
+
+  // Sprout, sapling, shrub, tree: each drawn a size up from the one before,
+  // so the row climbs the way the ages do.
+  it("grows the sapling between the sprout and the shrub", () => {
+    const { container } = render(ageControl());
+
+    const sizes = [...grove(container).querySelectorAll("[data-age-icon]")].map(
+      (plant) =>
+        (plant.getAttribute("class") ?? "")
+          .split(" ")
+          .find((name) => name.startsWith("size-")),
+    );
+    expect(sizes).toEqual(["size-7", "size-7.5", "size-9", "size-11"]);
+    expect(
+      [...grove(container).querySelectorAll("[data-age-stage]")].map(
+        (column) => column.getAttribute("data-age-stage"),
+      ),
+    ).toEqual(STAGES);
+  });
+
+  it("presses the sapling when it is clicked in the grove", () => {
+    const onToggle = vi.fn();
+    const { container } = render(ageControl([], "sidebar", onToggle));
+
+    fireEvent.click(
+      grove(container).querySelector<HTMLElement>('[data-age-stage="mlad"]')!,
+    );
+
+    expect(onToggle).toHaveBeenCalledWith("mlad");
   });
 
   it("presses a stage when its plant is clicked", () => {
@@ -191,6 +252,7 @@ describe("AgeGrowthControl grove", () => {
         onToggle,
         new Map([
           ["mladicek", 3],
+          ["mlad", 3],
           ["odrasel", 3],
           ["senior", 0],
         ]),
@@ -248,6 +310,22 @@ describe("AgeGrowthControl grove", () => {
         path.getAttribute("class"),
       ),
     ).toEqual(["text-grove-wood", null, null]);
+
+    // The sapling's stem and both twigs are wood, its three leaves leaf.
+    const sapling = grove(container).querySelector('[data-age-icon="mlad"]');
+    expect(sapling?.getAttribute("class")).toContain("text-grove-leaf");
+    expect(
+      [...(sapling?.querySelectorAll("path") ?? [])].map((path) =>
+        path.getAttribute("class"),
+      ),
+    ).toEqual([
+      "text-grove-wood",
+      "text-grove-wood",
+      null,
+      "text-grove-wood",
+      null,
+      null,
+    ]);
   });
 });
 
@@ -255,7 +333,7 @@ describe("plantMotion", () => {
   const cue = (overrides: Partial<PlantCue>): PlantCue => ({
     stage: "mladicek",
     index: 0,
-    lastIndex: 2,
+    lastIndex: 3,
     reduceMotion: false,
     growing: false,
     leaving: false,
@@ -283,7 +361,7 @@ describe("plantMotion", () => {
   it("wilts an unpicked sprout and shivers an unpicked shrub", () => {
     const sprout = plantMotion(cue({ leaving: true })).animate;
     const shrub = plantMotion(
-      cue({ stage: "odrasel", index: 1, leaving: true }),
+      cue({ stage: "odrasel", index: 2, leaving: true }),
     ).animate;
 
     expect(Math.min(...numbers(sprout.scaleY))).toBeLessThan(0.95);
@@ -294,9 +372,44 @@ describe("plantMotion", () => {
     expect(peak(turns.map(Math.abs))).toBeLessThan(2);
   });
 
+  // A whip: bent over fast, it springs back past upright and every swing
+  // after that is smaller and slower than the one before. It neither wilts
+  // like the sprout nor only shivers like the shrub.
+  it("whips an unpicked sapling over and lets it spring back", () => {
+    const { animate, transition } = plantMotion(
+      cue({ stage: "mlad", index: 1, leaving: true }),
+    );
+    // The first keyframe is wherever the plant is, which at rest is upright.
+    const track = [0, ...numbers(animate.rotate)];
+    const turns = track.slice(1, -1);
+    const { times, duration } = rotateTrack(transition);
+    const speeds = track
+      .slice(1)
+      .map(
+        (degrees, index) =>
+          Math.abs(degrees - track[index]) /
+          ((times[index + 1] - times[index]) * duration),
+      );
+
+    // Over, back past upright, over again: the sign flips at every swing.
+    turns.forEach((degrees, index) =>
+      expect(Math.sign(degrees)).toBe(index % 2 === 0 ? 1 : -1),
+    );
+    const sizes = turns.map(Math.abs);
+    expect(sizes).toEqual([...sizes].sort((a, b) => b - a));
+    // The bend is over sooner than the spring back, which is the fastest
+    // swing; each one after it loses speed.
+    expect(times[1] - times[0]).toBeLessThan(times[2] - times[1]);
+    expect(speeds.slice(1)).toEqual([...speeds.slice(1)].sort((a, b) => b - a));
+    // Further than the shrub's shiver, not as far as the sprout's wilt.
+    expect(sizes[0]).toBeGreaterThan(2);
+    expect(sizes[0]).toBeLessThan(7);
+    expect(numbers(animate.scaleY).every((scale) => scale === 1)).toBe(true);
+  });
+
   it("blows a reset's gust through the grove from the left", () => {
-    const moves = (["mladicek", "odrasel", "senior"] as const).map(
-      (stage, index) => plantMotion(cue({ stage, index, gusting: true })),
+    const moves = STAGES.map((stage, index) =>
+      plantMotion(cue({ stage, index, gusting: true })),
     );
     const bends = moves.map(({ animate }) => peak(animate.rotate));
     const bentAt = moves.map(({ animate, transition }) => {
@@ -306,7 +419,7 @@ describe("plantMotion", () => {
 
     // Every plant bends the same way, downwind, one after another.
     expect(bentAt).toEqual([...bentAt].sort((a, b) => a - b));
-    expect(new Set(bentAt).size).toBe(3);
+    expect(new Set(bentAt).size).toBe(4);
     expect(bends.every((degrees) => degrees > 0)).toBe(true);
     // The sprout bends furthest and the tree least.
     expect(bends).toEqual([...bends].sort((a, b) => b - a));
@@ -341,7 +454,7 @@ describe("plantMotion", () => {
   it("lets a neighbour come upright over the whole wait before it leans", () => {
     const { animate, transition } = plantMotion(
       cue({
-        stage: "odrasel",
+        stage: "mlad",
         index: 1,
         grown: { stage: "mladicek", index: 0 },
       }),
@@ -358,25 +471,31 @@ describe("plantMotion", () => {
 
   // Why: the gust branch of plantMotion.
   it("carries each plant into the gust from where it is, or upright first when its turn allows", () => {
-    const [first, second, third] = STAGES.map((stage, index) =>
+    const [first, second, third, fourth] = STAGES.map((stage, index) =>
       plantMotion(cue({ stage, index, gusting: true })),
     );
 
     // No turn to wait for: the gust's first push takes it from where it is.
     expect(first.animate.rotate).toHaveLength(5);
     expect(rotateAt(first.transition, 1)).toBeCloseTo(0.3 * 0.7);
-    // One stagger: it holds where it is, then the gust takes it.
+    // One stagger: it holds where it is, then the gust takes the sapling
+    // over by its own 8 degrees, between the sprout's 10 and the shrub's 6.
     expect(keyframes(second.animate.rotate).slice(0, 3)).toEqual([
-      null, null, 6,
+      null, null, 8,
     ]);
     expect(rotateAt(second.transition, 1)).toBeCloseTo(0.09);
-    // Two: upright over the whole turn, on a linear settle.
-    expect(keyframes(third.animate.rotate).slice(0, 3)).toEqual([
-      null, 0, 0,
-    ]);
-    expect(rotateAt(third.transition, 1)).toBeCloseTo(0.18);
-    expect(rotateAt(third.transition, 2)).toBeCloseTo(0.18);
-    expect(rotateTrack(third.transition).ease[0]).toBe("linear");
+    // Two and three: upright over the whole turn, on a linear settle.
+    for (const [plant, turn] of [
+      [third, 0.18],
+      [fourth, 0.27],
+    ] as const) {
+      expect(keyframes(plant.animate.rotate).slice(0, 3)).toEqual([
+        null, 0, 0,
+      ]);
+      expect(rotateAt(plant.transition, 1)).toBeCloseTo(turn);
+      expect(rotateAt(plant.transition, 2)).toBeCloseTo(turn);
+      expect(rotateTrack(plant.transition).ease[0]).toBe("linear");
+    }
   });
 
   it("says goodbye on the click, or once a plant still moving is upright", () => {
@@ -406,17 +525,64 @@ describe("plantMotion", () => {
   });
 
   it("leaves every plant at rest when reduced motion is requested", () => {
-    for (const overrides of [
-      { growing: true },
-      { leaving: true },
-      { gusting: true },
-      { grown: { stage: "senior" as const, index: 2 } },
-    ]) {
-      const { animate, transition } = plantMotion(
-        cue({ ...overrides, reduceMotion: true }),
+    for (const stage of STAGES) {
+      for (const overrides of [
+        { growing: true },
+        { leaving: true },
+        { gusting: true },
+        { grown: { stage: "senior" as const, index: 3 } },
+      ]) {
+        const { animate, transition } = plantMotion(
+          cue({ ...overrides, stage, reduceMotion: true }),
+        );
+        expect(animate).toEqual({ rotate: 0, x: 0, scaleX: 1, scaleY: 1 });
+        expect(transition).toEqual({ duration: 0 });
+      }
+    }
+  });
+});
+
+// The grove as a page draws it, with Motion's own reduced-motion answer
+// mocked (see the top of the file), so the branch that leaves the motion out
+// is the one that runs. Each case is checked against the same render with
+// motion on, so what is missing under reduced motion is known to be there
+// otherwise.
+describe("the sapling under reduced motion", () => {
+  const row = (name: string) =>
+    screen.getByRole("button", { name: new RegExp(`^${name}, `) });
+  const burstUnder = (container: HTMLElement, stage: AgeStage) =>
+    grove(container).querySelector(
+      `[data-age-stage="${stage}"] .rounded-full.bg-grove-ground`,
+    );
+
+  it("grows the sapling with a burst at its foot only while motion is on", () => {
+    for (const reduced of [false, true]) {
+      motion.reduced = reduced;
+      const { container } = render(<StatefulAgeControl />);
+
+      fireEvent.click(row("Mlad"));
+
+      expect(row("Mlad").getAttribute("aria-pressed")).toBe("true");
+      expect(burstUnder(container, "mlad") !== null).toBe(!reduced);
+      // Picked, the row's plant takes the grove's colours either way.
+      expect(rowPlant(container, "mlad").getAttribute("class")).toContain(
+        "text-grove-leaf",
       );
-      expect(animate).toEqual({ rotate: 0, x: 0, scaleX: 1, scaleY: 1 });
-      expect(transition).toEqual({ duration: 0 });
+      cleanup();
+    }
+  });
+
+  it("leans the sapling's row toward a mouse only while motion is on", () => {
+    for (const reduced of [false, true]) {
+      motion.reduced = reduced;
+      render(ageControl());
+
+      pointerOnto(row("Mlad"), "mouse");
+
+      expect(row("Mlad").querySelector("[data-leaning]") !== null).toBe(
+        !reduced,
+      );
+      cleanup();
     }
   });
 });
@@ -428,7 +594,7 @@ describe("AgeGrowthControl keyboard model", () => {
   it("makes every stage its own tab stop", () => {
     const tags = stageTags(renderAgeControl());
 
-    expect(tags).toHaveLength(3);
+    expect(tags).toHaveLength(4);
     for (const tag of tags) {
       expect(tag).not.toContain('tabindex="-1"');
     }
@@ -468,6 +634,25 @@ describe("AgeGrowthControl sheet tiles", () => {
     expect(html).not.toContain("text-3xs");
     expect(html).toContain("text-2xs");
   });
+
+  // Four across at 320px put the tree and the shrub into their tiles' check
+  // boxes, so the tiles take two rows until the screen is 22.5rem wide. The
+  // sidebar's rows stay one column.
+  it("lays four tiles out two by two until the screen takes four across", () => {
+    const tiles = (layout: "sidebar" | "sheet") => {
+      const { container } = render(ageControl([], layout));
+      const group = container.querySelector('[data-slot="toggle-group"]');
+      const classes = (group?.getAttribute("class") ?? "").split(" ");
+      cleanup();
+      return classes;
+    };
+
+    expect(tiles("sheet")).toEqual(
+      expect.arrayContaining(["grid", "grid-cols-2", "min-[22.5rem]:grid-cols-4"]),
+    );
+    expect(tiles("sidebar")).not.toContain("grid");
+    expect(tiles("sidebar")).toContain("data-vertical:flex-col");
+  });
 });
 
 describe("AgeGrowthControl row plants", () => {
@@ -501,7 +686,9 @@ describe("AgeGrowthControl row plants", () => {
         }
       }
     }
-    // A shrub and a tree have trunks, so both kinds of path were checked.
+    // A sapling, a shrub and a tree have wood, so both kinds of path were
+    // checked.
+    expect(inks(rowPlant(container, "mlad"), "mlad").wood).toHaveLength(3);
     expect(inks(rowPlant(container, "odrasel"), "odrasel").wood).toHaveLength(2);
     expect(inks(rowPlant(container, "senior"), "senior").wood).toHaveLength(1);
   });
@@ -514,22 +701,25 @@ describe("AgeGrowthControl row plants", () => {
         undefined,
         new Map([
           ["mladicek", 0],
+          ["mlad", 0],
           ["odrasel", 3],
           ["senior", 3],
         ]),
       ),
     );
 
-    expect(rowPlant(container, "mladicek").getAttribute("class")).toContain(
-      "text-muted-foreground",
-    );
+    for (const stage of ["mladicek", "mlad"] as const) {
+      expect(rowPlant(container, stage).getAttribute("class")).toContain(
+        "text-muted-foreground",
+      );
+    }
   });
 
   it("keeps the grove's colours whatever is picked", () => {
-    for (const selected of [[], ["odrasel"], ["mladicek", "senior"]]) {
+    for (const selected of [[], ["mlad"], ["mladicek", "senior"]]) {
       const { container } = render(ageControl(selected));
       const plants = grove(container).querySelectorAll("[data-age-icon]");
-      expect(plants).toHaveLength(3);
+      expect(plants).toHaveLength(4);
       for (const plant of plants) {
         expect(plant.getAttribute("class")).toContain("text-grove-leaf");
       }
@@ -553,9 +743,7 @@ describe("AgeGrowthControl row plants", () => {
 
   // Why: the reset stagger has to reach the glyph, not just its halo.
   it("gives the colour back in each row's turn on a reset", () => {
-    const { container } = render(
-      <StatefulAgeControl initial={["mladicek", "odrasel", "senior"]} />,
-    );
+    const { container } = render(<StatefulAgeControl initial={STAGES} />);
     for (const stage of STAGES) {
       expect(rowPlant(container, stage).getAttribute("class")).toContain(
         "text-grove-leaf",
@@ -566,9 +754,12 @@ describe("AgeGrowthControl row plants", () => {
       screen.getByRole("button", { name: "Ponastavi filter starosti" }),
     );
 
-    expect(
-      STAGES.map((stage) => rowPlant(container, stage).style.transitionDelay),
-    ).toEqual(["", "0.045s", "0.09s"]);
+    const delays = STAGES.map((stage) =>
+      parseFloat(rowPlant(container, stage).style.transitionDelay || "0"),
+    );
+    [0, 0.045, 0.09, 0.135].forEach((delay, index) =>
+      expect(delays[index]).toBeCloseTo(delay),
+    );
     for (const stage of STAGES) {
       expect(rowPlant(container, stage).getAttribute("class")).toContain(
         "text-muted-foreground",
@@ -590,8 +781,9 @@ describe("AgeGrowthControl row plants", () => {
 
     expect(captions.map((caption) => caption.textContent)).toEqual([
       "do 1 leta",
-      "1–8 let",
-      "8 let ali več",
+      "1–3 leta",
+      "3–8 let",
+      "od 8 let",
     ]);
     for (const caption of captions) {
       const classes = (caption.getAttribute("class") ?? "").split(" ");
@@ -619,7 +811,7 @@ describe("AgeGrowthControl row plants", () => {
     expect(classes[0].split(" ")).toEqual(
       expect.arrayContaining(["h-6", "items-end"]),
     );
-    // h-6 is the tree's own size-6, the tallest of the three.
+    // h-6 is the tree's own size-6, the tallest of the four.
     expect(rowPlant(container, "senior").getAttribute("class")).toContain(
       "size-6",
     );
@@ -793,9 +985,11 @@ describe("rowPlantPose", () => {
 
 describe("isAgeStageActive", () => {
   it("maps the URL-friendly empty selection to every visible stage", () => {
-    expect(isAgeStageActive([], "mladicek")).toBe(true);
-    expect(isAgeStageActive([], "odrasel")).toBe(true);
-    expect(isAgeStageActive([], "senior")).toBe(true);
+    for (const stage of STAGES) {
+      expect(isAgeStageActive([], stage)).toBe(true);
+    }
+    expect(isAgeStageActive(["mlad"], "mlad")).toBe(true);
+    expect(isAgeStageActive(["mlad"], "odrasel")).toBe(false);
   });
 });
 
@@ -837,6 +1031,54 @@ describe("age path motion", () => {
       expect(canopy[0].delay).toBe(canopy[1].delay);
       expect(startOf(canopy[0].d).x).toBe(12);
     }
+  });
+
+  // The sapling grows the way the others do: the stem from the ground, each
+  // twig off the stem while the stem is still rising, and each leaf off the
+  // end of what carries it once that has finished drawing.
+  it("grows the sapling's twigs off its stem and its leaves off their twigs", () => {
+    const paths = AGE_STAGE_PATHS.mlad;
+    // Where a stem or twig ends: the paths are written as "M x y" and then
+    // "V y" or "l dx dy".
+    const endOf = (d: string) => {
+      const n = (d.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+      return d.includes("V")
+        ? { x: n[0], y: n[2] }
+        : { x: n[0] + n[2], y: n[1] + n[3] };
+    };
+    const [stem, ...twigs] = paths.filter((path) => path.wood);
+    const leaves = paths.filter((path) => !path.wood);
+    const tip = endOf(stem.d);
+
+    expect(startOf(stem.d)).toEqual({ x: 12, y: 22 });
+    expect(twigs).toHaveLength(2);
+    expect(leaves).toHaveLength(3);
+    for (const twig of twigs) {
+      const from = startOf(twig.d);
+      expect(from.x).toBe(12);
+      expect(from.y).toBeLessThan(22);
+      expect(from.y).toBeGreaterThan(tip.y);
+      expect(twig.delay).toBeGreaterThan(stem.delay);
+      expect(twig.delay).toBeLessThan(stem.delay + stem.duration);
+    }
+    const carriers = leaves.map((leaf) => {
+      const from = startOf(leaf.d);
+      const carrier = [...twigs, stem].find((path) => {
+        const end = endOf(path.d);
+        return (
+          Math.abs(end.x - from.x) < 1e-6 && Math.abs(end.y - from.y) < 1e-6
+        );
+      });
+      expect(carrier).toBeDefined();
+      expect(leaf.delay).toBeGreaterThanOrEqual(
+        carrier!.delay + carrier!.duration - 1e-9,
+      );
+      return carrier;
+    });
+    // One leaf on each twig and one at the tip.
+    expect(new Set(carriers).size).toBe(3);
+    // Every path is a sapling's: no soil of its own, no fold.
+    expect(paths.every((path) => !path.soil && !path.fold)).toBe(true);
   });
 
   // A wilting leaf folds down about the point where it meets the stem, so

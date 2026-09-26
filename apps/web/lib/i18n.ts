@@ -285,7 +285,7 @@ const sl = {
   resetEnergyFilters: "Ponastavi filter energije",
   resetHealthFilters: "Ponastavi zdravstvene filtre",
   resetShelterFilters: "Ponastavi izbor zavetišč",
-  ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, odrasla žival od 1 do manj kot 8 let, starejša žival od 8 let naprej.",
+  ageFilterHint: "Izberi eno ali več starosti: mladič do 1 leta, mlada žival od 1 do manj kot 3 let, odrasla žival od 3 do manj kot 8 let, starejša žival od 8 let naprej.",
   // Where the answer comes from, and nothing else: how many animals have no
   // answer is said under the rows, where a mouse can read it too.
   energyFilterHint: "Po presoji zavetišča.",
@@ -348,14 +348,49 @@ const sl = {
   knownTopicCats: "Odnos do mačk",
   knownTopicFiv: "Izvid FIV",
   knownTopicFelv: "Izvid FeLV",
-  ageRangeYoung: "manj kot 1 leto",
-  ageRangeAdult: "1–8 let",
+  // The grid's offer of the animals a pick hides only for want of an answer
+  // (unansweredBand in lib/filters/engine.ts), under the last match. Built
+  // around "ni" so that only the noun agrees with the count: {count} comes
+  // from tabCountAt, in the locative "pri" takes, and {topic} is one of the
+  // bandTopic* below, in the genitive "ni" takes.
+  bandLine: "Pri {count} ni {topic}.",
+  // When the band lacks more than one of the answers picked.
+  bandLineSeveral: "Pri {count} manjka kateri od izbranih podatkov.",
+  // The offer's button. {them} is ga, jo, ju or jih (tabPronoun).
+  bandShow: "Pokaži {them}",
+  // The empty state's offer, which has no line before it to say how many.
+  // {count} is the accusative after "Pokaži" (tabCountShown).
+  bandShowCount: "Pokaži {count} brez podatka",
+  // The row over the band once it is shown, and the way to put it away.
+  bandLabel: "Brez {topic}",
+  bandLabelSeveral: "Brez nekaterih izbranih podatkov",
+  bandHide: "Skrij",
+  // The phrase the dialog's pill states on each of these animals ("Ni
+  // podatka o otrocih"), so the band and the animal use the same words.
+  bandTopicSex: "podatka o spolu",
+  bandTopicAge: "podatka o starosti",
+  bandTopicSize: "podatka o velikosti",
+  bandTopicEnergy: "podatka o energiji",
+  bandTopicCoatColor: "podatka o barvi",
+  bandTopicCoatLength: "podatka o dolžini dlake",
+  bandTopicWaiting: "datuma sprejema",
+  bandTopicKids: "podatka o otrocih",
+  bandTopicDogs: "podatka o psih",
+  bandTopicCats: "podatka o mačkah",
+  bandTopicFiv: "podatka o FIV",
+  bandTopicFelv: "podatka o FeLV",
+  ageRangeBaby: "manj kot 1 leto",
+  ageRangeYoung: "1–3 leta",
+  ageRangeAdult: "3–8 let",
   ageRangeSenior: "8 let ali več",
-  // The same ranges printed under the grove's three plants, where a column
-  // is about 72px wide in the sidebar. "do 1 leta" is the hint's own wording.
-  ageCaptionYoung: "do 1 leta",
-  ageCaptionAdult: "1–8 let",
-  ageCaptionSenior: "8 let ali več",
+  // The same ranges printed under the grove's four plants, where a column is
+  // 51.5px wide in the narrowest sidebar (214px). "do 1 leta" is the hint's
+  // own wording. "8 let ali več" measures 58.8px at 11px and no longer fits a
+  // quarter; "od 8 let" does, and closes the row the way "do 1 leta" opens it.
+  ageCaptionBaby: "do 1 leta",
+  ageCaptionYoung: "1–3 leta",
+  ageCaptionAdult: "3–8 let",
+  ageCaptionSenior: "od 8 let",
   filters: "Filtri",
   // Selected values, not sections. The chips row counts the same things, and
   // two numbers on one screen that both read as "how many filters" have to
@@ -395,6 +430,19 @@ const sl = {
   // picker opened from this sheet carries: one flow, one word.
   show: "Pokaži",
   removeFilter: "Odstrani filter {label}",
+  // The search at the head of both filter panels. It reads the name, the
+  // breed and the shelter's description, so the placeholder names all three:
+  // a field that looked like a name box would never be asked "mirna". The
+  // accessible name says what the field does, the placeholder what it takes.
+  searchAnimals: "Išči živali",
+  searchPlaceholder: "Ime, pasma ali opis",
+  // The pill in the active filters row: the visitor's own words, in the
+  // quotation marks Slovenian sets them in.
+  searchChip: "„{query}“",
+  noSearchResults: "Za „{query}“ ni zadetkov.",
+  // Nothing has matched by name or breed and the descriptions are still on
+  // their way, which is not yet "no results".
+  searchingDescriptions: "Iščem po opisih…",
   health: "Zdravje",
   // The scope row's heading, in the panels and in the sheet. One word, because
   // the row under it already names the answer ("Vsa Slovenija", "3 od 17
@@ -725,6 +773,25 @@ const sl = {
   // The row's words as the animal's need, so the pill a visitor reads on the
   // animal is the row they ticked.
   specialNeedsLabel: "Potrebuje veliko potrpežljivosti",
+
+  // What is new since a visitor's last visit, and the order that shows it.
+  // "Objava" is the listing, as in "Odpri objavo pri zavetišču", and the order
+  // reads the day this site first listed the animal, which is not its arrival:
+  // that order is sortNewestArrivals.
+  sortNewlyListed: "Nove objave",
+  // The mark on the photo of a card listed since the visitor's last visit.
+  newListingMark: "Novo",
+  // The line above the cards. Slovenian's count ladder (pick in
+  // lib/labels.ts): 1 nova objava, 2 novi objavi, 3 in 4 nove objave, from 5
+  // novih objav. One line at 320px with a three-digit count, which the
+  // notice's held place depends on (new-listings-notice.tsx).
+  newListingsOne: "{count} nova objava od zadnjega obiska.",
+  newListingsTwo: "{count} novi objavi od zadnjega obiska.",
+  newListingsFew: "{count} nove objave od zadnjega obiska.",
+  newListingsMany: "{count} novih objav od zadnjega obiska.",
+  // Its one button. {them} is tabPronoun's (lib/labels.ts): jo for one, the
+  // dual ju for two, jih for more, 101 included.
+  showNewListingsFirst: "Pokaži {them} najprej",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -845,7 +912,7 @@ const en: Messages = {
   resetEnergyFilters: "Reset energy filters",
   resetHealthFilters: "Reset health filters",
   resetShelterFilters: "Reset the shelter selection",
-  ageFilterHint: "Choose one or more ages: young under 1 year, adult from 1 to under 8 years, senior from 8 years.",
+  ageFilterHint: "Choose one or more ages: baby under 1 year, young from 1 to under 3 years, adult from 3 to under 8 years, senior from 8 years.",
   energyFilterHint: "As judged by the shelter.",
   healthFilterHint: "An animal has to have every trait you pick.",
   healthLead:
@@ -874,12 +941,36 @@ const en: Messages = {
   knownTopicCats: "how they are with cats",
   knownTopicFiv: "the FIV result",
   knownTopicFelv: "the FeLV result",
-  ageRangeYoung: "under 1 year",
-  ageRangeAdult: "1–8 years",
+  bandLine: "No {topic} for {count}.",
+  bandLineSeveral: "Some of the chosen data is missing for {count}.",
+  bandShow: "Show {them}",
+  bandShowCount: "Show {count} with no data",
+  bandLabel: "No {topic}",
+  bandLabelSeveral: "Some chosen data missing",
+  bandHide: "Hide",
+  bandTopicSex: "data on sex",
+  bandTopicAge: "data on age",
+  bandTopicSize: "data on size",
+  bandTopicEnergy: "data on energy",
+  bandTopicCoatColor: "data on colour",
+  bandTopicCoatLength: "data on coat length",
+  bandTopicWaiting: "intake date",
+  bandTopicKids: "data on kids",
+  bandTopicDogs: "data on dogs",
+  bandTopicCats: "data on cats",
+  bandTopicFiv: "data on FIV",
+  bandTopicFelv: "data on FeLV",
+  ageRangeBaby: "under 1 year",
+  ageRangeYoung: "1–3 years",
+  ageRangeAdult: "3–8 years",
   ageRangeSenior: "8 years or older",
-  ageCaptionYoung: "under 1 year",
-  ageCaptionAdult: "1–8 years",
-  ageCaptionSenior: "8+ years",
+  // Abbreviated to fit a 51.5px column with room between neighbours: at 11px
+  // "under 1 year" measures 66.1px, and "1–3 years" (51.3px) beside
+  // "3–8 years" left under a pixel between them, which read as one run.
+  ageCaptionBaby: "0–1 yr",
+  ageCaptionYoung: "1–3 yrs",
+  ageCaptionAdult: "3–8 yrs",
+  ageCaptionSenior: "8+ yrs",
   filters: "Filters",
   filtersWithCount: "Filters, {count} active",
   activeFilters: "Active filters",
@@ -902,6 +993,13 @@ const en: Messages = {
   originFrom: "From {place}",
   show: "Show",
   removeFilter: "Remove filter {label}",
+  searchAnimals: "Search animals",
+  // Without the "or": with it the words run 7px past the field in the 224px
+  // rail at 14px.
+  searchPlaceholder: "Name, breed, description",
+  searchChip: "“{query}”",
+  noSearchResults: "No results for “{query}”.",
+  searchingDescriptions: "Searching descriptions…",
   health: "Health",
   where: "Where",
   whereMapInvite: "Pick shelters",
@@ -1054,6 +1152,14 @@ const en: Messages = {
     "Showing animals that need what you can offer: {count} of {total}.",
   careLead: "Show animals that need:",
   specialNeedsLabel: "Needs a lot of patience",
+
+  sortNewlyListed: "Newly listed",
+  newListingMark: "New",
+  newListingsOne: "{count} new listing since your last visit.",
+  newListingsTwo: "{count} new listings since your last visit.",
+  newListingsFew: "{count} new listings since your last visit.",
+  newListingsMany: "{count} new listings since your last visit.",
+  showNewListingsFirst: "Show {them} first",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

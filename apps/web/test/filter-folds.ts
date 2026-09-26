@@ -5,7 +5,7 @@ import { resetFilterSectionsStore } from "@/components/filters/use-filter-sectio
 /**
  * The seams every suite that renders a filter list needs.
  *
- * The sections fold, and all but Spol and Starost start closed
+ * The sections fold, and all but Starost, and Velikost on Psi, start closed
  * (use-filter-sections.ts): the options a test is about are not in the
  * document until the section holding them is opened, and opening one runs a
  * reveal and a height measurement that jsdom has neither of.

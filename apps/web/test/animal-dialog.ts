@@ -14,7 +14,6 @@
 
 import type { Animal } from "@posvoji/schema";
 import { act } from "@testing-library/react";
-import { vi } from "vitest";
 // The dialog's chunk, loaded with this module so a suite collects it rather
 // than paying for it inside the first test that waits in dialogOnPage below.
 // Under the full suite that load took seconds of a five-second test.
@@ -71,28 +70,9 @@ export function animal(
   };
 }
 
-/**
- * The matchMedia jsdom does not ship.
- *
- * The fan reads the viewport to pick which geometry to mount and MotionConfig
- * reads it again to resolve reducedMotion="user", so a suite that stubs
- * nothing renders neither. `answers` says which queries match: a suite that
- * wants the desktop fan answers the fan's own query, and one that does not
- * care leaves it saying no to everything.
- */
-export function stubMatchMedia(
-  answers: (media: string) => boolean = () => false,
-) {
-  Object.defineProperty(window, "matchMedia", {
-    configurable: true,
-    value: vi.fn().mockImplementation((media: string) => ({
-      matches: answers(media),
-      media,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })),
-  });
-}
+// A suite that wants the desktop fan answers the fan's own query; one that
+// does not care leaves it saying no to everything.
+export { stubMatchMedia } from "./grid-stubs";
 
 /**
  * Waits for the grid's idle mount of the dialog, and for the lazy chunk it

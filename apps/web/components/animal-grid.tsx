@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
+import { useAnimalSearch } from "@/hooks/use-animal-search";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
+import { NewListings } from "@/components/new-listings-notice";
 import type { ClientAnimal } from "@/lib/animal";
 import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
 import {
@@ -30,12 +32,10 @@ import {
   type Coverage,
   type FilterOption,
   type Filters,
-  type GoodWithKey,
-  type MultiGroup,
   type SpeciesFilter,
-  type ToggleKey,
 } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
+import { questionTopic } from "@/lib/labels";
 import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
 import { getSearchSnapshot } from "@/lib/location-search";
 import type { LookupEntry } from "@/lib/municipality-coverage";
@@ -59,8 +59,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  BandDivider,
+  BandOffer,
+  BandShowButton,
+  withBandDivider,
+} from "./unanswered-band";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 import { useIncrementalGrid } from "./use-incremental-grid";
+import { useUnansweredBand } from "./use-unanswered-band";
 
 // Load the dialog separately from the grid. The static export has no open
 // animal, so skip SSR and render no placeholder. The idle mount below prepares
@@ -116,6 +123,15 @@ const CARD_ENTRANCE =
 const CARD_SETTLE =
   "animate-in slide-in-from-bottom-1 duration-150 motion-reduce:animate-none";
 
+/** A card's place in the entrance stagger: its place in the list, or in the
+ *  band for a card of the band, which arrives at a press of its own and plays
+ *  the same entrance from its own first card. */
+function arrivalOrdinal(ordinal: number, bandStart: number | undefined): number {
+  return bandStart !== undefined && ordinal >= bandStart
+    ? ordinal - bandStart
+    : ordinal;
+}
+
 // Two columns is the narrowest the grid draws at normal text size (CARD_GRID),
 // so it is what an unmeasurable grid is charged for: a miss makes the step
 // short rather than drawing rows nobody asked for. At 200% text a phone draws
@@ -132,40 +148,11 @@ const SPECIES_ABSENCE_KEY: Record<SpeciesFilter, TranslationKey> = {
   other: "speciesAbsenceOther",
 };
 
-// The question the empty state names when a thin answer is the likeliest
-// reason nothing matched (thinnestAnswer in lib/filters). Keyed by facet so
-// a new one fails to compile here rather than going unexplained. Only the
-// toggles the panel still offers can be answered, so only they have words.
-const GROUP_TOPIC_KEY: Record<Exclude<MultiGroup, "shelter">, TranslationKey> = {
-  sex: "knownTopicSex",
-  age: "knownTopicAge",
-  size: "knownTopicSize",
-  energy: "knownTopicEnergy",
-  coatColor: "knownTopicCoatColor",
-  coatLength: "knownTopicCoatLength",
-  waiting: "knownTopicWaiting",
-};
-
-const GOOD_WITH_TOPIC_KEY: Record<GoodWithKey, TranslationKey> = {
-  kids: "knownTopicKids",
-  dogs: "knownTopicDogs",
-  cats: "knownTopicCats",
-};
-
-const TOGGLE_TOPIC_KEY: Partial<Record<ToggleKey, TranslationKey>> = {
-  "brez-fiv": "knownTopicFiv",
-  "brez-felv": "knownTopicFelv",
-};
-
+// The words for the question the empty state names when a thin answer is the
+// likeliest reason nothing matched (thinnestAnswer in lib/filters).
 function topicKey(coverage: Coverage): TranslationKey | undefined {
-  switch (coverage.facet) {
-    case "goodWith":
-      return GOOD_WITH_TOPIC_KEY[coverage.key];
-    case "toggles":
-      return TOGGLE_TOPIC_KEY[coverage.key];
-    default:
-      return GROUP_TOPIC_KEY[coverage.facet];
-  }
+  const topic = questionTopic(coverage);
+  return topic && (`knownTopic${topic}` as const);
 }
 
 // Which of the three shelter-absence sentences a selection takes. The verb
@@ -284,7 +271,7 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
       className={cn("min-h-[100dvh]", hasSidebar && RESULTS_COLUMNS)}
     >
       {/* The cards go in the second track and the rail's is left empty: what is
-          promised here is where the animals will be, and an empty 224px is a
+          promised here is where the animals will be, and an empty rail is a
           truer promise than a grey panel about to become a list of controls.
           The track rather than an empty element to hold the column open, and
           the same constant the block itself wears (lib/card-grid.ts). */}
@@ -320,7 +307,9 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
 }
 
 export function AnimalGrid({
-  animals,
+  // The whole dataset. What the page counts and draws is what the search
+  // finds in it (`animals` below); the dialog and the rosters read this.
+  animals: dataset,
   logos,
   referenceDate,
   municipalities,
@@ -357,6 +346,7 @@ export function AnimalGrid({
     toggleManyGoodWith,
     toggleCare,
     toggleManyCare,
+    setQuery,
     setSort,
     clearAll,
     restore,
@@ -381,6 +371,14 @@ export function AnimalGrid({
   // section's pick gesture plays. Measured on the built site, colour picks
   // on Vse and Psi.
   const shownFilters = useDeferredValue(filters);
+  // Before every other filter, so the tabs, the counts, the chips and the
+  // empty state all describe what the search found. The dataset itself when
+  // nothing is searched for.
+  const {
+    animals,
+    rank,
+    pending: searchPending,
+  } = useAnimalSearch(dataset, shownFilters.query);
   const visible = useMemo(
     () => applyFilters(animals, shownFilters, reference),
     [animals, shownFilters, reference],
@@ -411,14 +409,33 @@ export function AnimalGrid({
   // sortAnimals puts the list in the default order (effectiveSort), including
   // for a shared link that arrived carrying ?razvrsti=najblizje.
   const nearby = useNearbyOrigin();
-  const sorted = useMemo(
-    () => sortAnimals(visible, sort, locale, reference, nearby?.at),
-    [visible, sort, locale, reference, nearby],
+  // A search puts what it found by name first, then by breed, then by
+  // description, each in the chosen order (rankBySearch in
+  // lib/filters/search.ts). The band below is put in the same order.
+  const arrange = useCallback(
+    (list: ClientAnimal[]) =>
+      rank(sortAnimals(list, sort, locale, reference, nearby?.at)),
+    [sort, locale, reference, nearby, rank],
   );
+  const sorted = useMemo(() => arrange(visible), [arrange, visible]);
   // The order the cards are in, which is what the long-stay mark below asks
   // about. sortAnimals resolves the same thing for itself, so this reads it
   // from the one function that decides it rather than restating the fallback.
   const order = effectiveSort(sort, nearby?.at);
+
+  // The animals the filters hide only for want of an answer, offered under
+  // the last match and drawn after the matches once asked for. band.list is
+  // what the grid draws and the dialog steps through: the matches, and the
+  // band after them while it is shown. Every count on the page stays the
+  // matches' own.
+  const band = useUnansweredBand({
+    animals,
+    dataset,
+    filters: shownFilters,
+    reference,
+    sorted,
+    arrange,
+  });
 
   // What the dialog steps through is what the visitor is looking at: the list
   // as filtered and sorted on screen, in that order. Read here, above the
@@ -441,8 +458,9 @@ export function AnimalGrid({
     handleNavigate,
     close,
   } = useAnimalDialogHost({
-    animals,
-    shown: sorted,
+    // The whole dataset: a link names an animal whatever the search finds.
+    animals: dataset,
+    shown: band.list,
     basePath: locale === "sl" ? "/" : "/en",
   });
 
@@ -458,8 +476,37 @@ export function AnimalGrid({
   const [dialogMounted, setDialogMounted] = useState(false);
   if (selected && !dialogMounted) setDialogMounted(true);
 
-  const { page, drawn, hasMore, settled, gridRef, watchSentinel, showMore } =
-    useIncrementalGrid(sorted, selected !== undefined);
+  // Counted against the matches alone, so the band arriving or going at a
+  // press carries on from the cards already drawn.
+  const {
+    page,
+    drawn,
+    hasMore,
+    settled,
+    gridRef,
+    watchSentinel,
+    showMore,
+    showFrom,
+    focusOnDraw,
+  } = useIncrementalGrid(band.list, selected !== undefined, sorted);
+
+  // The band's press: shown, with its first card drawn and focused, since the
+  // button that asked for it goes as it arrives.
+  const { show: openBand } = band;
+  const showBand = useCallback(() => {
+    openBand();
+    showFrom(sorted.length);
+  }, [openBand, showFrom, sorted.length]);
+  // Where the band's cards start among the drawn ones, while it is shown.
+  const bandStart = band.shown ? sorted.length : undefined;
+
+  // The new-listings notice's press. The notice goes as the order it offers
+  // arrives, so the first card of that order takes focus once it is drawn:
+  // the new listing the visitor came for.
+  const showNewFirst = useCallback(() => {
+    focusOnDraw(0);
+    setSort("newly-listed");
+  }, [focusOnDraw, setSort]);
 
   // A static export has no server to read the query with, so the prerendered
   // HTML every filtered link lands on is the unfiltered grid, and it stands
@@ -483,7 +530,7 @@ export function AnimalGrid({
   // Mount the empty dialog on idle to avoid a Suspense delay on first open.
   // Descriptions stay deferred until grid interaction.
   useEffect(() => {
-    if (animals.length === 0) return;
+    if (dataset.length === 0) return;
     const onIdle = () => {
       setDialogMounted(true);
     };
@@ -495,9 +542,9 @@ export function AnimalGrid({
     // behind hydration and the first cards' photos.
     const timer = window.setTimeout(onIdle, IDLE_FALLBACK_MS);
     return () => window.clearTimeout(timer);
-  }, [animals.length]);
+  }, [dataset.length]);
 
-  const isEmpty = animals.length === 0;
+  const isEmpty = dataset.length === 0;
 
   // Reachable zero state: every other facet is pre-guarded by isDeadOption
   // disabling, but for a row the sidebar keeps at 0 once its pick comes off
@@ -582,6 +629,7 @@ export function AnimalGrid({
     unanswered,
   } = useAnimalFilterModel({
     animals,
+    dataset,
     logos,
     reference,
     locale,
@@ -638,7 +686,7 @@ export function AnimalGrid({
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
         // The rail and the grid beside it, from lib/card-grid.ts, which owns
-        // the 224px the photo bands are derived from and the minmax(0,...)
+        // the rail's track the photo bands are derived from and the minmax(0,...)
         // floor that keeps the column shrinkable. The stand-in above wears the
         // same string; what happens when the two disagree is written there.
         className={cn(hasSidebar && RESULTS_COLUMNS)}
@@ -699,13 +747,48 @@ export function AnimalGrid({
             unanswered={unanswered}
           />
 
+          {/* How many of the matches were listed since this visitor's last
+              visit, and the press that puts them first. */}
+          <NewListings
+            animals={visible}
+            reference={reference}
+            hidden={order === "newly-listed"}
+            onShowFirst={showNewFirst}
+          />
+
           {isEmpty ? (
             <EmptyState>
               <p className="text-sm text-muted-foreground">
                 {messages.animalsComingSoon}
               </p>
             </EmptyState>
-          ) : visible.length === 0 ? (
+          ) : animals.length === 0 ? (
+            // Not one animal answers the query, so no filter is the reason
+            // and the lines about filters below would point the wrong way.
+            // Until the descriptions are in, that is not known yet.
+            <EmptyState>
+              <p
+                className={cn(
+                  "text-sm",
+                  searchPending ? "text-muted-foreground" : "font-medium",
+                )}
+              >
+                {searchPending
+                  ? messages.searchingDescriptions
+                  : t("noSearchResults", { query: shownFilters.query })}
+              </p>
+              {!searchPending && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={COARSE_ACTION}
+                  onClick={() => setQuery("")}
+                >
+                  {messages.clearSearch}
+                </Button>
+              )}
+            </EmptyState>
+          ) : visible.length === 0 && !band.shown ? (
             <EmptyState>
               <div className="space-y-1">
                 <p className="text-sm font-medium">
@@ -728,6 +811,16 @@ export function AnimalGrid({
                   </p>
                 )}
               </div>
+              {/* The one way out that keeps every filter as it is: the
+                  animals nobody answered the picks for. */}
+              {band.count > 0 && (
+                <BandShowButton
+                  count={band.count}
+                  species={shownFilters.species}
+                  onShow={showBand}
+                  buttonRef={band.offerRef}
+                />
+              )}
               {shelterOnlyEmpty && (
                 <Button
                   variant="outline"
@@ -766,74 +859,101 @@ export function AnimalGrid({
               onTouchStart={() => { void prefetchAnimalDescriptions(); }}
               className={CARD_GRID}
             >
-              {page.map((animal, ordinal) => (
-                <AnimalCard
-                  key={animal.id}
-                  animal={animal}
-                  reference={reference}
-                  // The order this list is actually in, which the card
-                  // reads to decide whether the long-stay mark would be
-                  // repeating it. The order the list is in and not the one
-                  // picked: nearest with no origin is sorted as the default
-                  // (effectiveSort).
-                  order={order}
-                  // The entrance: a short fade and rise, staggered across the
-                  // first dozen cards so a filter change reads as the grid
-                  // answering rather than the page blinking. Keyed by id, so a
-                  // card that survives the filter keeps its DOM node and does
-                  // not re-run this; only arriving cards do. fill-mode-backwards
-                  // holds a delayed card invisible until its turn -- except on
-                  // a widening, where that card is not arriving but coming
-                  // back, and CARD_SETTLE takes over so it is never the one
-                  // sitting invisible next to the survivors.
-                  //
-                  // The first dozen and no further. Vse used to render all 503
-                  // matches at once, so animating every one of them started 503
-                  // compositor animations inside a 330ms window, during
-                  // hydration, while 500 images were decoding. The cap outlives
-                  // the chunking above: ordinal counts within the whole sorted
-                  // list, so a card arriving with a later step is past it by
-                  // definition and arrives settled, which is what a card nobody
-                  // asked to see should do.
-                  //
-                  // card-paint is the other half of the same problem: what is
-                  // drawn is now bounded, and this bounds what is painted, so a
-                  // card scrolled past costs nothing until it comes back.
-                  className={cn(
-                    "card-paint",
-                    ordinal < STAGGERED_CARDS &&
-                      (widening ? CARD_SETTLE : CARD_ENTRANCE),
-                  )}
-                  // Past the twelfth there is no delay written, and the index
-                  // is undefined there, which is what a settled card wants.
-                  // None written for a widening either: every card in it lands
-                  // on the same instant, so there is no per-card wait to spell.
-                  style={widening ? undefined : STAGGER_STYLE[ordinal]}
-                  // The tab already named the species, so the card's one fact
-                  // line does not have to spend itself saying it again.
-                  species={shownFilters.species}
-                  // The first row, which is the largest image on the screen and
-                  // was queueing behind the bundle like the other 499.
-                  eager={ordinal < 4}
-                  onOpen={handleOpen}
-                  isDialogReady={isDialogReady}
-                  // A shelter's own page renders these same cards and leaves
-                  // this off, because there the line would be the page linking
-                  // to itself under every animal on it.
-                  showShelter
-                />
-              ))}
+              {withBandDivider(
+                page.map((animal, ordinal) => (
+                  <AnimalCard
+                    key={animal.id}
+                    animal={animal}
+                    reference={reference}
+                    // The order this list is actually in, which the card
+                    // reads to decide whether the long-stay mark would be
+                    // repeating it. The order the list is in and not the one
+                    // picked: nearest with no origin is sorted as the default
+                    // (effectiveSort).
+                    order={order}
+                    // The entrance: a short fade and rise, staggered across the
+                    // first dozen cards so a filter change reads as the grid
+                    // answering rather than the page blinking. Keyed by id, so a
+                    // card that survives the filter keeps its DOM node and does
+                    // not re-run this; only arriving cards do. fill-mode-backwards
+                    // holds a delayed card invisible until its turn -- except on
+                    // a widening, where that card is not arriving but coming
+                    // back, and CARD_SETTLE takes over so it is never the one
+                    // sitting invisible next to the survivors.
+                    //
+                    // The first dozen and no further. Vse used to render all 503
+                    // matches at once, so animating every one of them started 503
+                    // compositor animations inside a 330ms window, during
+                    // hydration, while 500 images were decoding. The cap outlives
+                    // the chunking above: ordinal counts within the whole sorted
+                    // list, so a card arriving with a later step is past it by
+                    // definition and arrives settled, which is what a card nobody
+                    // asked to see should do. The band's first dozen count from
+                    // the band's own start, since they arrive at a press of
+                    // their own (arrivalOrdinal).
+                    //
+                    // card-paint is the other half of the same problem: what is
+                    // drawn is now bounded, and this bounds what is painted, so a
+                    // card scrolled past costs nothing until it comes back.
+                    className={cn(
+                      "card-paint",
+                      arrivalOrdinal(ordinal, bandStart) < STAGGERED_CARDS &&
+                        (widening ? CARD_SETTLE : CARD_ENTRANCE),
+                    )}
+                    // Past the twelfth there is no delay written, and the index
+                    // is undefined there, which is what a settled card wants.
+                    // None written for a widening either: every card in it lands
+                    // on the same instant, so there is no per-card wait to spell.
+                    style={
+                      widening
+                        ? undefined
+                        : STAGGER_STYLE[arrivalOrdinal(ordinal, bandStart)]
+                    }
+                    // The tab already named the species, so the card's one fact
+                    // line does not have to spend itself saying it again.
+                    species={shownFilters.species}
+                    // The first row, which is the largest image on the screen and
+                    // was queueing behind the bundle like the other 499.
+                    eager={ordinal < 4}
+                    onOpen={handleOpen}
+                    isDialogReady={isDialogReady}
+                    // A shelter's own page renders these same cards and leaves
+                    // this off, because there the line would be the page linking
+                    // to itself under every animal on it.
+                    showShelter
+                  />
+                )),
+                bandStart,
+                <BandDivider
+                  key="band-divider"
+                  missing={band.missing}
+                  onHide={band.hide}
+                />,
+              )}
               {/* The sentinel the step watches, then the button that replaces
                   it once the budget is spent: grid-load-more.tsx, which the
-                  shelter grid draws too. */}
+                  shelter grid draws too. It counts the band with the matches
+                  while the band is drawn under them. */}
               <GridLoadMore
                 hasMore={hasMore}
                 settled={settled}
                 watchSentinel={watchSentinel}
                 showMore={showMore}
                 drawn={drawn}
-                total={sorted.length}
+                total={band.list.length}
               />
+              {/* The offer, once every match is drawn and the list has run
+                  out: never in the middle of the matches, and never on the
+                  server, whose render has no filters to hide anything. */}
+              {!band.shown && band.count > 0 && drawn >= sorted.length && (
+                <BandOffer
+                  count={band.count}
+                  missing={band.missing}
+                  species={shownFilters.species}
+                  onShow={showBand}
+                  buttonRef={band.offerRef}
+                />
+              )}
             </div>
           )}
           {/* The grid grows by an IntersectionObserver and a button, and both

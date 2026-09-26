@@ -1,4 +1,4 @@
-export type AgeStage = "mladicek" | "odrasel" | "senior";
+export type AgeStage = "mladicek" | "mlad" | "odrasel" | "senior";
 
 export type AgeStagePath = {
   d: string;
@@ -11,7 +11,7 @@ export type AgeStagePath = {
    *  draws the mark in one colour and ignores this. */
   wood?: true;
   /** The sprout's own strip of soil. The grove leaves it out, because the
-   *  grove draws one ground line under all three plants. */
+   *  grove draws one ground line under all its plants. */
   soil?: true;
   /** How a leaf folds down when the sprout wilts: the pivot where it meets
    *  the stem, as a fraction of the path's own box, and the degrees it
@@ -20,12 +20,14 @@ export type AgeStagePath = {
 };
 
 /**
- * The three age marks as plain geometry, in a module that imports nothing.
+ * The four age marks as plain geometry, in a module that imports nothing.
  *
- * The paths are adapted from Lucide's Sprout, Shrub and TreeDeciduous icons
- * (lucide-react, ISC license). Keeping the geometry local lets Motion draw the
- * stem and the canopy separately instead of moving the whole icon as one rigid
- * shape, which is why the filter panel has its own copy of them at all.
+ * Three of the paths are adapted from Lucide's Sprout, Shrub and
+ * TreeDeciduous icons (lucide-react, ISC license). Keeping the geometry local
+ * lets Motion draw the stem and the canopy separately instead of moving the
+ * whole icon as one rigid shape, which is why the filter panel has its own
+ * copy of them at all. Lucide has no young tree, so the sapling between the
+ * sprout and the shrub is drawn here in their stroke and their leaf.
  *
  * They live here, apart from age-stage-icon.tsx, because that file is a "use
  * client" component built on Motion and the poster is server-rendered onto
@@ -63,6 +65,36 @@ export const AGE_STAGE_PATHS: Record<AgeStage, AgeStagePath[]> = {
       delay: 0.2,
       duration: 0.16,
       fold: { originX: 1, originY: 0.833, rotate: -35 },
+    },
+  ],
+  // A thin stem from the ground, two short twigs off it and three small
+  // leaves, one on each twig and one at the tip. Each leaf is a lens of two
+  // arcs of one radius, as the sprout's left leaf is, at about two thirds of
+  // its length, so the sapling reads as the sprout grown on. Measured with
+  // their strokes, the grove draws it 27px tall between the sprout's 23 and
+  // the shrub's 31, and a row 18px between 16.4 and 19, so both climb sprout,
+  // sapling, shrub, tree. With no canopy it is the lighter of the middle two:
+  // 74px of stroke in the grove against the shrub's 98. The twigs leave the
+  // stem as its pen passes them (46% and 69% of the way up on its easeOut),
+  // and each leaf waits for what carries it.
+  mlad: [
+    { d: "M12 22V7.6", delay: 0, duration: 0.24, wood: true },
+    { d: "M12 15.4l-2-1.7", delay: 0.08, duration: 0.08, wood: true },
+    {
+      d: "M10 13.7a3.6 3.6 0 0 1-5.2-2.4 3.6 3.6 0 0 1 5.2 2.4",
+      delay: 0.16,
+      duration: 0.15,
+    },
+    { d: "M12 12l2-1.7", delay: 0.12, duration: 0.08, wood: true },
+    {
+      d: "M14 10.3a3.6 3.6 0 0 1 5.2-2.4 3.6 3.6 0 0 1-5.2 2.4",
+      delay: 0.2,
+      duration: 0.15,
+    },
+    {
+      d: "M12 7.6a3.6 3.6 0 0 1 1.1-5.5 3.6 3.6 0 0 1-1.1 5.5",
+      delay: 0.24,
+      duration: 0.15,
     },
   ],
   odrasel: [

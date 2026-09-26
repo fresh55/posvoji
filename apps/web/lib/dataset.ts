@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Animal, Dataset } from "@posvoji/schema";
-import type { ClientAnimal } from "@/lib/animal";
+import { listedAtOf, type ClientAnimal } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { displayName } from "@/lib/animal-name";
 import { INITIAL_CARDS } from "@/components/grid-rendering";
@@ -136,6 +136,10 @@ export function shelterAnimals(shelterId: string): Animal[] {
  * Blur is kept only for the first photo of each initially rendered card.
  * Grids can defer the remaining photos to a generated gallery payload;
  * standalone animal pages resolve their full gallery on the server.
+ *
+ * Of the source block only its first-seen time crosses, as listedAt: the grid
+ * orders by it (Nove objave) and marks what is new since a visitor's last
+ * visit, and both happen on the client with no request to make first.
  */
 export function animalsForClient(
   animals: Animal[],
@@ -151,6 +155,9 @@ export function animalsForClient(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
     ({ source, shortDescription, ...animal }) => ({
       ...animal,
+      // Spread rather than assigned, so an unparsable time ships no key at
+      // all: React writes an undefined value as "$undefined".
+      ...listedAtEntry(source.firstSeenAt),
       images: permittedPhotos(animal.images).map((photo, index) => {
         if (
           (index === 0 && initiallyDrawn.has(animal.id)) ||
@@ -173,4 +180,9 @@ export function animalsForClient(
       gallery: { url, count },
     };
   });
+}
+
+function listedAtEntry(firstSeenAt: string): { listedAt?: number } {
+  const listedAt = listedAtOf(firstSeenAt);
+  return listedAt === undefined ? {} : { listedAt };
 }

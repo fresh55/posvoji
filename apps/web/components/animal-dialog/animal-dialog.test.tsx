@@ -616,9 +616,9 @@ describe("animal dialog", () => {
     renderGrid();
 
     const dialog = await screen.findByRole("dialog");
-    // Rex is 24 months old, an adult, so the age badge carries the same
-    // shrub the age filter draws for that stage.
-    expect(dialog.querySelector('[data-age-icon="odrasel"]')).toBeTruthy();
+    // Rex is 24 months old, a young dog (Mlad), so the age badge carries
+    // the same sapling the age filter draws for that stage.
+    expect(dialog.querySelector('[data-age-icon="mlad"]')).toBeTruthy();
 
     // The badge answers with a popover rather than a hover tooltip, so a
     // thumb can ask too. The bubble lands in a portal outside the dialog.

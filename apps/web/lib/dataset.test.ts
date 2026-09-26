@@ -167,6 +167,7 @@ describe("animalsForClient", () => {
       "id",
       "images",
       "intakeDate",
+      "listedAt",
       "medical",
       "name",
       "originMunicipality",
@@ -178,9 +179,14 @@ describe("animalsForClient", () => {
       "status",
     ]);
 
-    // The shelter's own listing, which the dialog and the shelter block link
-    // to, and none of the crawl's bookkeeping.
+    // Nothing of the source block but the day this site first listed the
+    // animal, which the Nove objave order and the Novo mark read on the
+    // client. The listing link and the check time are fetched when a dialog
+    // opens (useAnimalSource in shelter-block.tsx), and the crawl's
+    // bookkeeping never crosses.
     expect(projected!.source).toBeUndefined();
+    // 2026-07-02T00:00Z in whole minutes since 1970.
+    expect(projected!.listedAt).toBe(Date.UTC(2026, 6, 2) / 60_000);
 
     // Dropped, not blanked: an explicit undefined still ships as a key.
     // AnimalFacts fetches the shelter's words when a dialog opens.
@@ -225,10 +231,27 @@ describe("animalsForClient", () => {
       "attribution",
       "id",
       "images",
+      "listedAt",
       "shelter",
       "species",
       "status",
     ]);
+  });
+
+  it("floors the listing time to the minute", () => {
+    const [projected] = animalsForClient([
+      {
+        ...animal([]),
+        source: {
+          ...animal([]).source,
+          firstSeenAt: "2026-09-05T18:50:59.999Z",
+        },
+      },
+    ]);
+
+    expect(projected!.listedAt).toBe(
+      Date.UTC(2026, 8, 5, 18, 50) / 60_000,
+    );
   });
 
   it("keeps the placeholder on the photo a card and a dialog open on", () => {

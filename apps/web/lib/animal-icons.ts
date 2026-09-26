@@ -30,9 +30,11 @@ import {
   WavesHorizontal,
   WavesVertical,
   Zap,
+  createLucideIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { AnimalSize, EnergyLevel, Sex, Species } from "@posvoji/schema";
+import { AGE_STAGE_PATHS } from "@/components/filters/age-stage-paths";
 import type {
   AgeGroup,
   CareKey,
@@ -129,8 +131,17 @@ const SEX_ICONS: Record<Sex, LucideIcon> = {
   unknown: VenusAndMars,
 };
 
+// Lucide has no young tree, so the sapling's chip is the grove's own drawing
+// (age-stage-paths.ts) wrapped as a lucide icon: it takes the chip's size and
+// stroke the way the three lucide plants beside it do.
+const Sapling = createLucideIcon({
+  name: "sapling",
+  node: AGE_STAGE_PATHS.mlad.map(({ d }) => ["path", { d, key: d }]),
+});
+
 const AGE_ICONS: Record<AgeGroup, LucideIcon> = {
   mladicek: Sprout,
+  mlad: Sapling,
   odrasel: Shrub,
   senior: TreeDeciduous,
 };

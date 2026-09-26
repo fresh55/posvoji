@@ -9,17 +9,139 @@ import {
   facetCounts,
   goodWithOptions,
   groupOptions,
+  toggleLabel,
   TOGGLES,
+  type Filters,
 } from "@/lib/filters";
 import {
   installFilterFoldSeams,
   openAllFilterSections,
+  sectionLabels,
 } from "@/test/filter-folds";
-import { drawnOptions, FilterGroupList } from "./filter-groups";
+import {
+  drawnOptions,
+  FilterGroupList,
+  type CardGroup,
+} from "./filter-groups";
 
 installFilterFoldSeams();
 class NoopResizeObserver { observe() {} unobserve() {} disconnect() {} }
 globalThis.ResizeObserver ??= NoopResizeObserver as unknown as typeof ResizeObserver;
+
+const NOOP = () => undefined;
+
+/** Every section the panel has, each with its options, on the given tab. */
+function renderEverySection(
+  layout: "sidebar" | "sheet",
+  filters: Filters = EMPTY_FILTERS,
+  groups: CardGroup[] = [
+    "sex", "age", "size", "energy", "waiting", "coatColor", "coatLength",
+  ],
+) {
+  const counts = facetCounts([], EMPTY_FILTERS, new Date("2026-01-01"));
+  for (const group of groups) {
+    for (const { value } of groupOptions(group, [], "sl")) {
+      counts[group].set(value, 3);
+    }
+  }
+  return render(
+    <I18nProvider locale="sl">
+      <FilterGroupList
+        layout={layout}
+        filters={filters}
+        // In GROUPS order, the order the page hands them over in, which is
+        // the URL's and not the panel's.
+        groups={groups.map((group) => ({
+          group,
+          options: groupOptions(group, [], "sl"),
+        }))}
+        counts={counts}
+        toggles={TOGGLES.filter(({ species }) => species === "cat").map(
+          (toggle) => ({ ...toggle, label: toggleLabel(toggle.key, "sl") }),
+        )}
+        toggleTally={new Map([["brez-fiv", 3], ["brez-felv", 3]])}
+        goodWith={{
+          options: goodWithOptions("sl"),
+          counts: new Map([["kids", 3], ["dogs", 3], ["cats", 3]]),
+          resultCount: 3,
+          total: 3,
+          onToggle: NOOP,
+          onToggleMany: NOOP,
+        }}
+        care={{
+          options: careOptions("sl"),
+          counts: new Map([["patient", 3]]),
+          resultCount: 3,
+          total: 3,
+          onToggle: NOOP,
+          onToggleMany: NOOP,
+        }}
+        onToggle={NOOP}
+        onToggleMany={NOOP}
+        onToggleProperty={NOOP}
+        onToggleManyProperties={NOOP}
+      />
+    </I18nProvider>,
+  );
+}
+
+/** The open sections, by heading. */
+function openSections(): (string | undefined)[] {
+  return [
+    ...document.querySelectorAll<HTMLButtonElement>(
+      'h3 button[aria-expanded="true"]',
+    ),
+  ].map((button) => button.firstElementChild?.textContent?.trim());
+}
+
+// FILTER_FACETS in lib/filters/contracts.ts says where the order comes from.
+describe("the order the panel asks in", () => {
+  it.each(["sidebar", "sheet"] as const)(
+    "reads age, size, the home, health, temperament, sex, looks, then the two that close it in the %s",
+    (layout) => {
+      renderEverySection(layout);
+
+      expect(sectionLabels()).toEqual([
+        "Starost",
+        "Velikost",
+        "Doma imam",
+        "Zdravje",
+        "Energija",
+        "Spol",
+        "Videz",
+        "Lahko ponudim",
+        "Čaka na dom",
+      ]);
+    },
+  );
+});
+
+describe("the sections open on an address that asks nothing", () => {
+  it.each(["sidebar", "sheet"] as const)("open Starost alone on Vse in the %s", (layout) => {
+    renderEverySection(layout);
+    expect(openSections()).toEqual(["Starost"]);
+  });
+
+  it.each(["sidebar", "sheet"] as const)("open Velikost too on Psi in the %s", (layout) => {
+    renderEverySection(layout, { ...EMPTY_FILTERS, species: "dog" });
+    expect(openSections()).toEqual(["Starost", "Velikost"]);
+  });
+
+  // Mačke draws no Velikost (groupFitsSpecies in lib/filters/engine.ts), and
+  // the tab of other animals keeps it folded like Vse.
+  it("open Starost alone on Mačke and on the other animals", () => {
+    const { unmount } = renderEverySection(
+      "sidebar",
+      { ...EMPTY_FILTERS, species: "cat" },
+      ["sex", "age", "energy", "waiting", "coatColor", "coatLength"],
+    );
+    expect(openSections()).toEqual(["Starost"]);
+    unmount();
+
+    renderEverySection("sidebar", { ...EMPTY_FILTERS, species: "other" });
+    expect(openSections()).toEqual(["Starost"]);
+  });
+});
 
 describe("the options a filter list draws", () => {
   // The sidebar draws the live options only: a row that answers nothing pushed

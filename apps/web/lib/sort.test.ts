@@ -137,6 +137,74 @@ describe("sortAnimals", () => {
   });
 });
 
+describe("sortAnimals by listing date", () => {
+  // listedAt as the grid's projection carries it (lib/animal.ts), which the
+  // dataset's own animals do not.
+  function listed(id: string, listedAt?: number, intakeDate?: string) {
+    return { ...animal(id, intakeDate), listedAt };
+  }
+
+  it("sits right after the default in the list of orders", () => {
+    expect(ANIMAL_SORTS.slice(0, 3)).toEqual([
+      DEFAULT_ANIMAL_SORT,
+      "newly-listed",
+      "newest-arrivals",
+    ]);
+  });
+
+  it("puts the animal this site listed last first, whatever its arrival", () => {
+    const spread = [
+      // Came in years ago and was listed this week: a shelter the site has
+      // just started reading.
+      listed("arrived-long-ago", 29_300_000, "2021-03-12"),
+      listed("arrived-last-week", 29_200_000, "2026-08-10"),
+      listed("in-between", 29_250_000, "2024-01-01"),
+    ];
+
+    expect(sortAnimals(spread, "newly-listed").map(({ id }) => id)).toEqual([
+      "arrived-long-ago",
+      "in-between",
+      "arrived-last-week",
+    ]);
+    // The arrival order is the other question, and it is left as it was.
+    expect(sortAnimals(spread, "newest-arrivals").map(({ id }) => id)).toEqual([
+      "arrived-last-week",
+      "in-between",
+      "arrived-long-ago",
+    ]);
+  });
+
+  it("keeps an animal with no listing time last and breaks ties by id", () => {
+    const tied = [
+      listed("unknown"),
+      listed("b", 29_300_000),
+      listed("a", 29_300_000),
+      listed("older", 29_000_000),
+    ];
+
+    expect(sortAnimals(tied, "newly-listed").map(({ id }) => id)).toEqual([
+      "a",
+      "b",
+      "older",
+      "unknown",
+    ]);
+  });
+
+  it("orders after the status rank, like every order", () => {
+    const mixed = [
+      { ...listed("held-newest", 29_400_000), status: "hold" as const },
+      listed("free-older", 29_000_000),
+      listed("free-newer", 29_300_000),
+    ];
+
+    expect(sortAnimals(mixed, "newly-listed").map(({ id }) => id)).toEqual([
+      "free-newer",
+      "free-older",
+      "held-newest",
+    ]);
+  });
+});
+
 describe("sortAnimals by distance", () => {
   // A shelter's town is the whole of its position, so an animal is placed by
   // overwriting the helper's default Celje.
@@ -254,6 +322,7 @@ describe("sort URL codec", () => {
   it("still parses the default's own slug back to the default", () => {
     const slugs: Record<AnimalSort, string> = {
       "longest-in-shelter": "cakajoci",
+      "newly-listed": "objave",
       "newest-arrivals": "novi",
       youngest: "najmlajsi",
       oldest: "najstarejsi",

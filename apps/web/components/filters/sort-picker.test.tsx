@@ -123,6 +123,18 @@ describe("SortPicker nearest option", () => {
     });
   }
 
+  // The order a returning visitor asks for, so it is the first one after the
+  // default rather than one to look for further down.
+  it("offers Nove objave right after the default", () => {
+    mount(NOTHING);
+
+    expect(openList().slice(0, 3)).toEqual([
+      sl.sortLongestInShelter,
+      sl.sortNewlyListed,
+      sl.sortNewestArrivals,
+    ]);
+  });
+
   it("keeps every other order on offer either way", () => {
     const { unmount } = mount(NOTHING);
     const without = openList();

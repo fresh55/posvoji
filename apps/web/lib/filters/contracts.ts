@@ -4,7 +4,7 @@ import type {
 import type { SpeciesTab } from "@/lib/species";
 
 export type SpeciesFilter = "all" | SpeciesTab;
-export type AgeGroup = "mladicek" | "odrasel" | "senior";
+export type AgeGroup = "mladicek" | "mlad" | "odrasel" | "senior";
 export type WaitingGroup = "over-6-months" | "over-1-year" | "over-3-years";
 
 /** Colours with a paired swatch. Review categories are stored directly. */
@@ -69,6 +69,11 @@ export type CareKey = (typeof CARE_KEYS)[number];
 
 export type Filters = {
   species: SpeciesFilter;
+  /** Words to find in the name, breed or description, as the address holds
+   *  them (tidyQuery in lib/filters/search.ts), "" for none. Not a facet: it
+   *  narrows the list before any facet is counted (use-animal-search.ts), so
+   *  nothing that walks FILTER_FACETS reads it. */
+  query: string;
   sex: Sex[];
   age: AgeGroup[];
   size: AnimalSize[];
@@ -84,6 +89,7 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   species: "all",
+  query: "",
   sex: [],
   age: [],
   size: [],
@@ -110,11 +116,27 @@ export const GROUPS: MultiGroup[] = [
 /** All filter categories, used to group and label active chips. */
 export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
 
-/** The order the panel asks its questions in, and the order of the active
- *  filters row. */
+/**
+ * The order the panel asks its questions in, top to bottom, in the sidebar and
+ * the sheet alike (SECTION_ORDER in components/filters/filter-groups.tsx reads
+ * it by section), and the order of the active filters row. Kje comes first.
+ *
+ * It is the order adopters decide in rather than the order an animal's record
+ * reads in. In the ASPCA's study of 1,491 adopters, behaviour with people and
+ * age mattered to about two thirds or more and sex to about a third, and UK
+ * rescues ask where, then what the home already holds, then age, and do not
+ * offer sex at all. So age and size first, then what the home already holds
+ * (Doma imam) and the lab answer a household with a cat needs beside it
+ * (Zdravje: FIV and FeLV), then temperament, then sex and looks. The two
+ * sections about what the visitor can give and how long an animal has waited
+ * close the list.
+ *
+ * Čaka na dom stays last, and never beside Starost: the same months and years
+ * beside the age rows read as an age.
+ */
 export const FILTER_FACETS = [
-  "sex", "age", "size", "energy", "coatColor", "coatLength", "shelter",
-  "toggles", "goodWith", "care", "waiting",
+  "shelter", "age", "size", "goodWith", "toggles", "energy", "sex",
+  "coatColor", "coatLength", "care", "waiting",
 ] as const satisfies readonly FilterFacet[];
 
 // A facet missing from FILTER_FACETS fails to compile here.

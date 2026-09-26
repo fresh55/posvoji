@@ -142,12 +142,14 @@ export function posterTiles(
       // across a room on paper.
       label: translate(locale, "factAgeValue", { age: ageLabel(months, locale) }),
       tone: "identity",
-      // The same sprout, shrub or tree the age filter buckets by.
+      // The same sprout, sapling, shrub or tree the age filter buckets by.
       glyph: { kind: "age", stage: ageGroup(months) },
     });
   }
   // A stage the shelter stated without a number, worded as the filter's own
-  // choice: "Starost: odrasel".
+  // choice: "Starost: senior". A stated adult gets no tile, as it gets no
+  // stage in the filter or the dialog: one to eight years is two of the
+  // filter's stages, and the sheet would be naming one of them.
   const statedStage =
     months === undefined ? ageStage(animal, reference) : undefined;
   if (!severalAnimals && statedStage !== undefined) {

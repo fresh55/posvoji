@@ -127,16 +127,22 @@ describe("the filter card's two surfaces", () => {
   });
 
   // Two facts about the size, in one place because they are one decision: the
-  // sheet prints a step above the sidebar, and each layout keeps its own size
-  // whether the card is chosen or not. 11px is a 224px column's size and not a
-  // phone's, where the count sat under the 12px label it belongs to; and a
-  // chosen card is recoloured, not resized, which the sheet's tile got wrong
-  // for a release because the class was hand-copied there.
+  // count is a step under its label in each layout, and each layout keeps its
+  // own size whether the card is chosen or not. 11px is the 224px rail's size
+  // and not a phone's, where the count sat under the 12px label it belongs
+  // to, and from xl the rail's labels are 14px and its counts 12px; a chosen
+  // card is recoloured, not resized, which the sheet's tile got wrong for a
+  // release because the class was hand-copied there.
   it("keeps each layout's count size in both states", () => {
     for (const checked of [true, false]) {
-      expect(countClass("sheet", checked)).toContain("text-xs");
-      expect(countClass("sheet", checked)).not.toContain("text-2xs");
-      expect(countClass("sidebar", checked)).toContain("text-2xs");
+      const sheet = countClass("sheet", checked).split(" ");
+      expect(sheet).toContain("text-xs");
+      expect(sheet).not.toContain("text-2xs");
+      expect(sheet.filter((name) => name.startsWith("xl:"))).toEqual([]);
+
+      const sidebar = countClass("sidebar", checked).split(" ");
+      expect(sidebar).toContain("text-2xs");
+      expect(sidebar).toContain("xl:text-xs");
     }
   });
 
@@ -458,5 +464,77 @@ describe("the card's tail", () => {
 
     rerender(tail());
     expect(container.querySelector("[data-count]")).toBe(count);
+  });
+
+  function tailOf(
+    layout: "sidebar" | "sheet",
+    checked: boolean,
+    description?: string,
+  ) {
+    const { container } = render(
+      <FilterCardTail
+        layout={layout}
+        label="Otroke"
+        checked={checked}
+        description={description}
+        renderCount={(className) => (
+          <span data-count className={className}>
+            3
+          </span>
+        )}
+      />,
+    );
+    const label = [...container.querySelectorAll("span")].find(
+      (span) => span.textContent === "Otroke",
+    );
+    const said = [...container.querySelectorAll("span")].find(
+      (span) => span.textContent === description,
+    );
+    return {
+      label: [...(label?.classList ?? [])],
+      description: [...(said?.classList ?? [])],
+      count: [...(container.querySelector("[data-count]")?.classList ?? [])],
+    };
+  }
+
+  // The classes and not a computed size: jsdom evaluates no media query. From
+  // xl the rail is a card column (lib/card-grid.ts) and its labels step up to
+  // the 14px of the card facts beside it; at lg it is 224px and keeps 12px.
+  it("sets a sidebar label at 12px in the 224px rail and 14px from xl", () => {
+    for (const checked of [true, false]) {
+      const { label } = tailOf("sidebar", checked);
+      expect(label).toContain("text-xs");
+      expect(label).toContain("xl:text-sm");
+    }
+  });
+
+  // The label rests in the foreground now, a step darker than the grey its
+  // count keeps, so a row reads label first. Chosen, it takes the fill's ink
+  // from the row, and a dead row steps back to the grey.
+  it("rests a sidebar label in the foreground and leaves the chosen ink to the row", () => {
+    const rest = tailOf("sidebar", false);
+    expect(rest.label).toContain("text-foreground");
+    expect(rest.label).toContain("group-disabled:text-muted-foreground");
+    expect(rest.count).toContain("text-muted-foreground");
+    cleanup();
+
+    const chosen = tailOf("sidebar", true);
+    expect(chosen.label).toContain("font-medium");
+    expect(chosen.label.filter((name) => /^text-(foreground|muted)/.test(name))).toEqual([]);
+  });
+
+  it("keeps a row's description one step under its label", () => {
+    const { description } = tailOf("sidebar", false, "Plahe ali občutljive živali");
+    expect(description).toContain("text-2xs");
+    expect(description).toContain("xl:text-xs");
+  });
+
+  // The phone sheet does not change: its label is 12px and in the tile's own
+  // grey, and nothing in it steps at xl, where the sheet is never drawn.
+  it("leaves the sheet's tile type as it was", () => {
+    const { label, count } = tailOf("sheet", false);
+    expect(label).toContain("text-xs");
+    expect(label).not.toContain("text-foreground");
+    expect([...label, ...count].filter((name) => name.startsWith("xl:"))).toEqual([]);
   });
 });

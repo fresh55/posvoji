@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactElement } from "react";
+import { Fragment, useId, type ReactElement, type ReactNode } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { CareCards } from "@/components/filters/care-cards";
 import {
@@ -31,10 +31,12 @@ import { WaitingCards } from "@/components/filters/waiting-cards";
 import { useResetStagger } from "@/components/filters/use-filter-motion";
 import {
   answeredSections,
+  SECTION_OF_FACET,
   useFilterSections,
   type FilterSectionKey,
 } from "@/components/filters/use-filter-sections";
 import {
+  FILTER_FACETS,
   groupLabel,
   namesUnanswered,
   picksEverySex,
@@ -89,7 +91,16 @@ export type KeptPicks = Partial<Record<FilterFacet, readonly string[]>>;
 
 const NOTHING_KEPT: readonly string[] = [];
 
-/** The two groups Videz owns, and so the ones the flat list skips. */
+/**
+ * The order the panel's sections are drawn in: FILTER_FACETS' order
+ * (lib/filters/contracts.ts says why), by the section that holds each facet.
+ * Kje comes before all of it, drawn by each surface itself.
+ */
+export const SECTION_ORDER: readonly FilterSectionKey[] = [
+  ...new Set(FILTER_FACETS.flatMap((facet) => SECTION_OF_FACET[facet] ?? [])),
+];
+
+/** The two groups Videz owns. */
 const isAppearance = (
   group: MultiGroup,
 ): group is "coatColor" | "coatLength" =>
@@ -307,8 +318,8 @@ function FilterGroup({ group, ...rest }: GroupProps): ReactElement {
  *
  * A dead option explains itself on the sheet, where there is a tile with a 0
  * in it and a page to scroll. In the sidebar it costs the panel its fold: the
- * column is 224px of rows in a 720px window with nine sections in it, and a
- * row that answers nothing pushes a section that does below the fold. So the
+ * column is one list of rows in a 720px window with nine sections in it, and
+ * a row that answers nothing pushes a section that does below the fold. So the
  * sidebar draws the live options only, the same rule PR #231 applied one level
  * up when it stopped drawing a section the pool answers nothing of.
  *
@@ -393,6 +404,7 @@ export function FilterGroupList({
   const { isOpen, toggleSection } = useFilterSections({
     layout,
     active: answeredSections(filters),
+    species: filters.species,
   });
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
@@ -439,8 +451,8 @@ export function FilterGroupList({
   };
 
   // The card groups' own, keyed on `value`. Two keep every option in both
-  // layouts. Starost's three stages are one drawing: the grove above the rows
-  // is a three-column grid whose plants stand over the rows they belong to.
+  // layouts. Starost's four stages are one drawing: the grove above the rows
+  // is a four-column grid whose plants stand over the rows they belong to.
   // Barva draws as a palette, and a dropped swatch reflowed the rest, each
   // solid colour splitting from its two-toned twin; a dead swatch is drawn
   // disabled in its own cell instead. An option the species pool never
@@ -485,10 +497,12 @@ export function FilterGroupList({
     ),
   );
 
-  const cardGroup = (
+  // A card group's section, or nothing where this pool leaves the group out.
+  const cardSection = (
     group: Exclude<CardGroup, "coatColor" | "coatLength">,
-    options: FilterOption[],
   ) => {
+    const options = groups.find((entry) => entry.group === group)?.options;
+    if (!options) return null;
     // Read once and widened to string[]: indexed by a union of groups,
     // filters[group] is a union of arrays, and .includes on one of those
     // takes the intersection of their element types, which is never.
@@ -497,7 +511,6 @@ export function FilterGroupList({
 
     return (
       <FilterGroup
-        key={group}
         group={group}
         layout={layout}
         options={drawnByValue(group, options)}
@@ -518,137 +531,130 @@ export function FilterGroupList({
       />
     );
   };
-  const waiting = groups.find(({ group }) => group === "waiting");
+
+  // Every section by its key, drawn in SECTION_ORDER below. A record and not a
+  // list, so a section with no entry here fails to compile, and the order is
+  // stated in one place only: it used to be the groups in URL order and then
+  // five sections placed by hand after them.
+  const sections: Record<FilterSectionKey, ReactNode> = {
+    age: cardSection("age"),
+    size: cardSection("size"),
+    goodWith: goodWith && goodWith.options.length > 0 && (
+      <GoodWithCards
+        options={drawnByKey("goodWith", goodWith.options, goodWith.counts)}
+        sectionKeys={goodWith.options.map(({ key }) => key)}
+        counts={goodWith.counts}
+        selected={filters.goodWith}
+        kept={keptOf("goodWith")}
+        resultCount={goodWith.resultCount}
+        total={goodWith.total}
+        onToggle={goodWith.onToggle}
+        onToggleMany={goodWith.onToggleMany}
+        unanswered={unanswered?.goodWith}
+        layout={layout}
+        collapse={collapseFor(
+          "goodWith",
+          selectionSummary(
+            filters.goodWith,
+            (value) =>
+              goodWith.options.find((option) => option.key === value)?.label,
+          ),
+        )}
+      />
+    ),
+    health: toggles.length > 0 && (
+      <HealthToggleCards
+        toggles={drawnByKey("toggles", toggles, toggleTally)}
+        sectionKeys={toggles.map(({ key }) => key)}
+        counts={toggleTally}
+        selected={filters.toggles}
+        kept={keptOf("toggles")}
+        onToggle={onToggleProperty}
+        onToggleMany={onToggleManyProperties}
+        layout={layout}
+        unanswered={unanswered?.toggles}
+        collapse={collapseFor(
+          "health",
+          selectionSummary(
+            filters.toggles,
+            (value) => toggles.find((toggle) => toggle.key === value)?.label,
+          ),
+        )}
+      />
+    ),
+    energy: cardSection("energy"),
+    sex: cardSection("sex"),
+    appearance: appearanceGroups.length > 0 && (
+      <section>
+        <FilterSectionHeader
+          label={locale === "sl" ? "Videz" : "Appearance"}
+          active={appearanceSelected.length > 0}
+          collapse={appearanceCollapse}
+        />
+        <CollapsibleBody collapse={appearanceCollapse}>
+          <div className="space-y-4 pt-2">
+            {appearanceGroups.map(({ group, options }) => {
+              const selected: string[] = filters[group];
+              const groupCounts = counts[group];
+              const props = {
+                layout,
+                options: drawnByValue(group, options),
+                counts: groupCounts,
+                selected,
+                onToggle: (value: string) => onToggle(group, value),
+                onToggleMany: (values: string[]) => onToggleMany(group, values),
+                unanswered: unanswered?.groups[group],
+              };
+
+              return group === "coatColor" ? (
+                <CoatColorCards
+                  key={group}
+                  {...props}
+                  species={filters.species}
+                  longCoat={filters.coatLength.includes("long")}
+                />
+              ) : (
+                <FilterGroup
+                  key={group}
+                  group={group}
+                  {...props}
+                  kept={keptOf(group)}
+                />
+              );
+            })}
+          </div>
+        </CollapsibleBody>
+      </section>
+    ),
+    care: care && care.options.length > 0 && (
+      <CareCards
+        options={drawnByKey("care", care.options, care.counts)}
+        counts={care.counts}
+        selected={filters.care}
+        kept={keptOf("care")}
+        resultCount={care.resultCount}
+        total={care.total}
+        onToggle={care.onToggle}
+        onToggleMany={care.onToggleMany}
+        layout={layout}
+        collapse={collapseFor(
+          "care",
+          selectionSummary(
+            filters.care,
+            (value) =>
+              care.options.find((option) => option.key === value)?.label,
+          ),
+        )}
+      />
+    ),
+    waiting: cardSection("waiting"),
+  };
 
   return (
     <>
-      {groups.map(({ group, options }) =>
-        // Videz draws these two itself, below, and Čaka na dom closes the
-        // list. Skipped here rather than filtered out of the list first,
-        // because only control flow narrows `group` for the call.
-        isAppearance(group) || group === "waiting"
-          ? null
-          : cardGroup(group, options),
-      )}
-
-      {appearanceGroups.length > 0 && (
-        <section>
-          <FilterSectionHeader
-            label={locale === "sl" ? "Videz" : "Appearance"}
-            active={appearanceSelected.length > 0}
-            collapse={appearanceCollapse}
-          />
-          <CollapsibleBody collapse={appearanceCollapse}>
-            <div className="space-y-4 pt-2">
-              {appearanceGroups.map(({ group, options }) => {
-                const selected: string[] = filters[group];
-                const groupCounts = counts[group];
-                const props = {
-                  layout,
-                  options: drawnByValue(group, options),
-                  counts: groupCounts,
-                  selected,
-                  onToggle: (value: string) => onToggle(group, value),
-                  onToggleMany: (values: string[]) => onToggleMany(group, values),
-                  unanswered: unanswered?.groups[group],
-                };
-
-                return group === "coatColor" ? (
-                  <CoatColorCards
-                    key={group}
-                    {...props}
-                    species={filters.species}
-                    longCoat={filters.coatLength.includes("long")}
-                  />
-                ) : (
-                  <FilterGroup
-                    key={group}
-                    group={group}
-                    {...props}
-                    kept={keptOf(group)}
-                  />
-                );
-              })}
-            </div>
-          </CollapsibleBody>
-        </section>
-      )}
-
-      {toggles.length > 0 && (
-        <HealthToggleCards
-          toggles={drawnByKey("toggles", toggles, toggleTally)}
-          sectionKeys={toggles.map(({ key }) => key)}
-          counts={toggleTally}
-          selected={filters.toggles}
-          kept={keptOf("toggles")}
-          onToggle={onToggleProperty}
-          onToggleMany={onToggleManyProperties}
-          layout={layout}
-          unanswered={unanswered?.toggles}
-          collapse={collapseFor(
-            "health",
-            selectionSummary(
-              filters.toggles,
-              (value) => toggles.find((toggle) => toggle.key === value)?.label,
-            ),
-          )}
-        />
-      )}
-
-      {goodWith && goodWith.options.length > 0 && (
-        <GoodWithCards
-          options={drawnByKey("goodWith", goodWith.options, goodWith.counts)}
-          sectionKeys={goodWith.options.map(({ key }) => key)}
-          counts={goodWith.counts}
-          selected={filters.goodWith}
-          kept={keptOf("goodWith")}
-          resultCount={goodWith.resultCount}
-          total={goodWith.total}
-          onToggle={goodWith.onToggle}
-          onToggleMany={goodWith.onToggleMany}
-          unanswered={unanswered?.goodWith}
-          layout={layout}
-          collapse={collapseFor(
-            "goodWith",
-            selectionSummary(
-              filters.goodWith,
-              (value) =>
-                goodWith.options.find((option) => option.key === value)?.label,
-            ),
-          )}
-        />
-      )}
-
-      {/* Lahko ponudim comes after the animal's own traits: it is the one
-          section that asks what the visitor can give rather than what they
-          are looking for. */}
-      {care && care.options.length > 0 && (
-        <CareCards
-          options={drawnByKey("care", care.options, care.counts)}
-          counts={care.counts}
-          selected={filters.care}
-          kept={keptOf("care")}
-          resultCount={care.resultCount}
-          total={care.total}
-          onToggle={care.onToggle}
-          onToggleMany={care.onToggleMany}
-          layout={layout}
-          collapse={collapseFor(
-            "care",
-            selectionSummary(
-              filters.care,
-              (value) =>
-                care.options.find((option) => option.key === value)?.label,
-            ),
-          )}
-        />
-      )}
-
-      {/* Čaka na dom closes the list. How long an animal has waited is a
-          fact about its stay and not one of its traits, so it stands apart
-          from them, and above all away from Starost: the same months and
-          years beside the age rows read as an age. */}
-      {waiting && cardGroup("waiting", waiting.options)}
+      {SECTION_ORDER.map((key) => (
+        <Fragment key={key}>{sections[key]}</Fragment>
+      ))}
     </>
   );
 }

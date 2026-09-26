@@ -812,10 +812,13 @@ describe("the sheet's surfaces", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     const dialog = await screen.findByRole("dialog");
 
-    // Size folds by default in here now, the way it does in the panel
+    // Sex folds by default in here, the way it does in the panel
     // (use-filter-sections.ts), so its tiles are asked for before they are
-    // read. Sex is open already.
-    fireEvent.click(within(dialog).getByRole("button", { name: /^Size/ }));
+    // read. Size opens itself: it holds the answer.
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Sex/ }));
+    expect(
+      within(dialog).getByRole("button", { name: /^Size/ }).getAttribute("aria-expanded"),
+    ).toBe("true");
 
     for (const name of [/^Male, /, /^Small, /]) {
       const option = within(dialog).getByRole("button", { name });

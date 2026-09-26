@@ -3,10 +3,34 @@
  * IntersectionObserver to fire by hand, and a column count the grid can read
  * off its own element. Shared by the home grid's suite and the shelter grid's,
  * which draw through the same hook (use-incremental-grid.ts) and must be
- * measured the same way.
+ * measured the same way. With them the environment the grid's other suites
+ * stub: matchMedia and an idle callback.
  *
  * Not a `.test.` file, so vitest does not collect it.
  */
+
+import { vi } from "vitest";
+
+/**
+ * The matchMedia jsdom does not ship, answering no to everything, or yes to
+ * whatever `answers` names. The dialog's fan and the location picker read the
+ * viewport to pick which geometry or body to mount, and MotionConfig reads it
+ * to resolve reducedMotion="user", so a suite that stubs nothing renders
+ * neither. No to everything is the phone.
+ */
+export function stubMatchMedia(
+  answers: (media: string) => boolean = () => false,
+) {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: vi.fn().mockImplementation((media: string) => ({
+      matches: answers(media),
+      media,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })),
+  });
+}
 
 // jsdom has no IntersectionObserver, which is the branch the grid falls back on
 // by rendering everything. The chunking itself only exists where there is one,

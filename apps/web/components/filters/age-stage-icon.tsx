@@ -103,7 +103,7 @@ export function ageDrawSeconds(stage: AgeStage, reduceMotion: boolean): number {
 
 // Memoised because its props are a stage, colour classes, flags and a delay, and
 // the grove above it is redrawn on every filter press for the counts beside
-// it. Each icon is up to four motion paths, and they were most of the motion
+// it. Each icon is up to six motion paths, and they were most of the motion
 // work a press spent in the age section while no stage had changed at all.
 // A caller that passes a style passes it only while it matters, so the memo
 // still holds at rest.

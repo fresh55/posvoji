@@ -379,11 +379,12 @@ describe("parseHouseholdNotes", () => {
   });
 
   it("keeps young children apart from children in general", () => {
-    expect(notes("– ni primeren za domove z zelo majhnimi otroci")).toEqual({ noYoungKids: true });
+    const young = { adoptionRequirements: { noYoungKids: true } };
+    expect(notes("– ni primeren za domove z zelo majhnimi otroci")).toEqual(young);
     // Beside it a yes to children is a qualified one.
     expect(
       notes("– primeren za sobivanje z otroci", "– ni primeren za domove z zelo majhnimi otroci"),
-    ).toEqual({ noYoungKids: true });
+    ).toEqual(young);
     // A no to all children already says it.
     expect(
       notes("– ni primerna za sobivanje z otroci", "– ni primerna za domove z majhnimi otroci"),

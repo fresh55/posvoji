@@ -378,14 +378,10 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
 // cepljenimi mucami", "s samozavestnimi mucami"), one about the adopter ("za
 // osebe, ki nimajo izkušenj z mucami") and a question the list answers both
 // ways all map to nothing.
-type HouseholdKey = keyof AnimalGoodWith | "noYoungKids";
-const HOUSEHOLD_LINES: ReadonlyArray<
-  readonly [RegExp, Partial<Record<HouseholdKey, "yes" | "no">>]
-> = [
+const HOUSEHOLD_LINES: ReadonlyArray<readonly [RegExp, AnimalGoodWith]> = [
   [/^(?:primeren|primerna) za sobivanje z otro(?:ci|ki)$/, { kids: "yes" }],
   [/^vajena? družbe otrok$/, { kids: "yes" }],
   [/^ni (?:primeren|primerna) za sobivanje z otro(?:ci|ki)$/, { kids: "no" }],
-  [/^ni (?:primeren|primerna) za domove z (?:zelo )?majhnimi otro(?:ci|ki)$/, { noYoungKids: "yes" }],
   // "..., zaželeno je, da v novem domu že bivajo muce" asks for more cats.
   [/^razume se z (?:vsemi |ostalimi |drugimi )?mucami(?:, zaželeno je, da .*)?$/, { cats: "yes" }],
   [/^(?:primeren|primerna) za sobivanje z (?:drugimi )?mucami$/, { cats: "yes" }],
@@ -394,37 +390,34 @@ const HOUSEHOLD_LINES: ReadonlyArray<
   [/^razume se z vsemi psi$/, { dogs: "yes" }],
   [/^vajena? sobivanja s psi$/, { dogs: "yes" }],
 ];
+const NO_YOUNG_KIDS_LINE = /^ni (?:primeren|primerna) za domove z (?:zelo )?majhnimi otro(?:ci|ki)$/;
 
-export function parseHouseholdNotes(description: string | undefined): {
-  goodWith?: AnimalGoodWith;
-  noYoungKids?: true;
-} {
+export function parseHouseholdNotes(
+  description: string | undefined,
+): Pick<DetailFacts, "goodWith" | "adoptionRequirements"> {
   const start = description?.search(/posebnosti\s*:/i) ?? -1;
   if (description === undefined || start < 0) return {};
-  const found: Partial<Record<HouseholdKey, "yes" | "no">> = {};
-  const contradicted = new Set<HouseholdKey>();
-  for (const raw of description.slice(start).split("\n").slice(1)) {
-    const line = raw
-      .normalize("NFC")
-      .trim()
-      .replace(/^[–•*-]\s*/, "")
-      .replace(/[\s,.;]+$/, "")
-      .toLowerCase();
-    const facts = HOUSEHOLD_LINES.find(([pattern]) => pattern.test(line))?.[1];
-    for (const [key, value] of Object.entries(facts ?? {}) as [HouseholdKey, "yes" | "no"][]) {
-      if (found[key] !== undefined && found[key] !== value) contradicted.add(key);
-      found[key] = value;
+  const goodWith: AnimalGoodWith = {};
+  const contradicted = new Set<keyof AnimalGoodWith>();
+  let noYoungKids = false;
+  const lines = description.slice(start).normalize("NFC").toLowerCase().split("\n").slice(1);
+  for (const raw of lines) {
+    const line = raw.trim().replace(/^[–•*-]\s*/, "").replace(/[\s,.;]+$/, "");
+    if (NO_YOUNG_KIDS_LINE.test(line)) noYoungKids = true;
+    const facts = HOUSEHOLD_LINES.find(([pattern]) => pattern.test(line))?.[1] ?? {};
+    for (const [key, value] of Object.entries(facts) as [keyof AnimalGoodWith, Compatibility][]) {
+      if (goodWith[key] !== undefined && goodWith[key] !== value) contradicted.add(key);
+      goodWith[key] = value;
     }
   }
-  for (const key of contradicted) delete found[key];
-  const { noYoungKids, ...goodWith } = found;
+  for (const key of contradicted) delete goodWith[key];
   // A no to children already covers young ones. A yes beside "not with very
   // young children" is a qualified yes, which a yes/no answer cannot hold.
-  const young = noYoungKids !== undefined && goodWith.kids !== "no";
-  if (young) delete goodWith.kids;
+  if (goodWith.kids === "no") noYoungKids = false;
+  else if (noYoungKids) delete goodWith.kids;
   return {
     goodWith: Object.keys(goodWith).length > 0 ? goodWith : undefined,
-    noYoungKids: young ? true : undefined,
+    adoptionRequirements: noYoungKids ? { noYoungKids: true } : undefined,
   };
 }
 
@@ -550,7 +543,7 @@ export function parseDetail(html: string): DetailFacts {
     medical: parseMedical($),
     goodWith: Object.keys(goodWith).length > 0 ? goodWith : undefined,
     energy: parsedFeatureValue(features, "character", parseEnergy),
-    adoptionRequirements: notes.noYoungKids ? { noYoungKids: true } : undefined,
+    adoptionRequirements: notes.adoptionRequirements,
     imageUrls,
   };
 }

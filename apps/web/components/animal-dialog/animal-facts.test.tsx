@@ -361,8 +361,8 @@ describe("the družba row", () => {
     expect(within(row).getByText("Ni podatka o psih")).toBeTruthy();
   });
 
-  it("draws no row for the condition alone", () => {
-    renderFacts({ adoptionRequirements: { noYoungKids: true } });
+  it("draws no row when the condition is the only answer about children", () => {
+    renderFacts({ goodWith: { kids: "unknown" }, adoptionRequirements: { noYoungKids: true } });
     expect(screen.queryByRole("list", { name: "Družba" })).toBeNull();
   });
 

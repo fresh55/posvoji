@@ -34,6 +34,7 @@ import {
   ageInMonths,
   ageStage,
   careMatches,
+  goodWithAnswer,
   GOOD_WITH_KEYS,
   groupLabel,
   optionLabel,
@@ -508,8 +509,7 @@ export function AnimalFacts({
   // podatka o otrocih" beside it would say there is no answer.
   const goodWithKeys =
     animal.adoptionRequirements?.noYoungKids === true &&
-    animal.goodWith?.kids !== "yes" &&
-    animal.goodWith?.kids !== "no"
+    goodWithAnswer(animal, "kids") === undefined
       ? GOOD_WITH_KEYS.filter((key) => key !== "kids")
       : GOOD_WITH_KEYS;
   // One answered question is enough to show the row, and the row then answers

@@ -146,15 +146,17 @@ describe("FilterSheet sort caption", () => {
   it("scrolls away with the sections instead of standing over them", async () => {
     // Pinned in the header, the caption and the control took 78px from the
     // sections for as long as the sheet was open: 388px of them were left at
-    // 390x844, 189 at 320x568. At the top of the body they are what opens
-    // the sheet and what the first scroll takes away.
+    // 390x844, 189 at 320x568. At the top of the body, under the search that
+    // leads it, they are what opens the sheet and what the first scroll takes
+    // away.
     const dialog = await openSheet(SEX_AND_SIZE);
 
     const header = dialog.querySelector('[data-slot="filter-sheet-header"]');
     const body = dialog.querySelector(".overflow-y-auto");
     const block = dialog.querySelector('[data-slot="sheet-sort"]');
     expect(header?.contains(block)).toBe(false);
-    expect(body?.firstElementChild).toBe(block);
+    expect(body?.firstElementChild?.getAttribute("role")).toBe("search");
+    expect(body?.children[1]).toBe(block);
     expect(
       block?.compareDocumentPosition(
         within(dialog).getByRole("button", { name: /^Spol/ }),

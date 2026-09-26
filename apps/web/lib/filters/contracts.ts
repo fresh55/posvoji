@@ -69,6 +69,11 @@ export type CareKey = (typeof CARE_KEYS)[number];
 
 export type Filters = {
   species: SpeciesFilter;
+  /** Words to find in the name, breed or description, as the address holds
+   *  them (tidyQuery in lib/filters/search.ts), "" for none. Not a facet: it
+   *  narrows the list before any facet is counted (use-animal-search.ts), so
+   *  nothing that walks FILTER_FACETS reads it. */
+  query: string;
   sex: Sex[];
   age: AgeGroup[];
   size: AnimalSize[];
@@ -84,6 +89,7 @@ export type Filters = {
 
 export const EMPTY_FILTERS: Filters = {
   species: "all",
+  query: "",
   sex: [],
   age: [],
   size: [],

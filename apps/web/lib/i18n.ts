@@ -426,6 +426,19 @@ const sl = {
   // picker opened from this sheet carries: one flow, one word.
   show: "Pokaži",
   removeFilter: "Odstrani filter {label}",
+  // The search at the head of both filter panels. It reads the name, the
+  // breed and the shelter's description, so the placeholder names all three:
+  // a field that looked like a name box would never be asked "mirna". The
+  // accessible name says what the field does, the placeholder what it takes.
+  searchAnimals: "Išči živali",
+  searchPlaceholder: "Ime, pasma ali opis",
+  // The pill in the active filters row: the visitor's own words, in the
+  // quotation marks Slovenian sets them in.
+  searchChip: "„{query}“",
+  noSearchResults: "Za „{query}“ ni zadetkov.",
+  // Nothing has matched by name or breed and the descriptions are still on
+  // their way, which is not yet "no results".
+  searchingDescriptions: "Iščem po opisih…",
   health: "Zdravje",
   // The scope row's heading, in the panels and in the sheet. One word, because
   // the row under it already names the answer ("Vsa Slovenija", "3 od 17
@@ -952,6 +965,13 @@ const en: Messages = {
   originFrom: "From {place}",
   show: "Show",
   removeFilter: "Remove filter {label}",
+  searchAnimals: "Search animals",
+  // Without the "or": with it the words run 7px past the field in the 224px
+  // rail at 14px.
+  searchPlaceholder: "Name, breed, description",
+  searchChip: "“{query}”",
+  noSearchResults: "No results for “{query}”.",
+  searchingDescriptions: "Searching descriptions…",
   health: "Health",
   where: "Where",
   whereMapInvite: "Pick shelters",

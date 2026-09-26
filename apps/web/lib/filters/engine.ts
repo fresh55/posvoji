@@ -32,9 +32,13 @@ import {
 /** Every value the filter state holds, zavetišče included. The panels used to
  *  count a narrower set: shelter had no section in either of them, so a badge
  *  counting it promised a control the sheet did not hold. Both panels open
- *  with a Kje row now, so there is one count again and it is this one. */
+ *  with a Kje row now, so there is one count again and it is this one.
+ *
+ *  A search counts as one, however many words it holds: it is one pill in the
+ *  chips row and one field in the panel. */
 export function activeFilterCount(filters: Filters): number {
   return (
+    (filters.query === "" ? 0 : 1) +
     GROUPS.reduce((sum, group) => sum + filters[group].length, 0) +
     filters.toggles.length +
     filters.goodWith.length +
@@ -1542,6 +1546,8 @@ export function pruneHiddenFilters(filters: Filters): Filters {
   const keep = (group: MultiGroup) => groupFitsSpecies(group, filters.species);
   return {
     species: filters.species,
+    // The search field is on every tab.
+    query: filters.query,
     sex: keep("sex") ? filters.sex : [],
     age: keep("age") ? filters.age : [],
     size: keep("size") ? filters.size : [],

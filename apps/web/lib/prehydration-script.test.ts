@@ -41,6 +41,11 @@ describe("the pre-hydration filter script", () => {
     expect(marks("?razvrsti=najmlajsi")).toBe(true);
   });
 
+  it("marks a search, which narrows the same first screen", () => {
+    expect(marks("?isci=taras")).toBe(true);
+    expect(marks("?isci=ov%C4%8Dar&vrsta=pes")).toBe(true);
+  });
+
   it("leaves every other address alone", () => {
     expect(marks("")).toBe(false);
     expect(marks("?")).toBe(false);

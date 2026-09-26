@@ -534,6 +534,7 @@ function states(): Filters[] {
       species: (["all", "all", "dog", "cat", "other"] as SpeciesFilter[])[
         Math.floor(next() * 5)
       ],
+      query: "",
       sex: some(SEXES, 0.35),
       age: some(AGES, 0.3),
       size: some(SIZES, 0.3),

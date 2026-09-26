@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
+import { useAnimalSearch } from "@/hooks/use-animal-search";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import type { ClientAnimal } from "@/lib/animal";
 import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
@@ -336,7 +337,9 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
 }
 
 export function AnimalGrid({
-  animals,
+  // The whole dataset. What the page counts and draws is what the search
+  // finds in it (`animals` below); the dialog and the rosters read this.
+  animals: dataset,
   logos,
   referenceDate,
   municipalities,
@@ -373,6 +376,7 @@ export function AnimalGrid({
     toggleManyGoodWith,
     toggleCare,
     toggleManyCare,
+    setQuery,
     setSort,
     clearAll,
     restore,
@@ -397,6 +401,14 @@ export function AnimalGrid({
   // section's pick gesture plays. Measured on the built site, colour picks
   // on Vse and Psi.
   const shownFilters = useDeferredValue(filters);
+  // Before every other filter, so the tabs, the counts, the chips and the
+  // empty state all describe what the search found. The dataset itself when
+  // nothing is searched for.
+  const {
+    animals,
+    rank,
+    pending: searchPending,
+  } = useAnimalSearch(dataset, shownFilters.query);
   const visible = useMemo(
     () => applyFilters(animals, shownFilters, reference),
     [animals, shownFilters, reference],
@@ -427,9 +439,12 @@ export function AnimalGrid({
   // sortAnimals puts the list in the default order (effectiveSort), including
   // for a shared link that arrived carrying ?razvrsti=najblizje.
   const nearby = useNearbyOrigin();
+  // A search puts what it found by name first, then by breed, then by
+  // description, each in the chosen order (rankBySearch in
+  // lib/filters/search.ts).
   const sorted = useMemo(
-    () => sortAnimals(visible, sort, locale, reference, nearby?.at),
-    [visible, sort, locale, reference, nearby],
+    () => rank(sortAnimals(visible, sort, locale, reference, nearby?.at)),
+    [visible, sort, locale, reference, nearby, rank],
   );
   // The order the cards are in, which is what the long-stay mark below asks
   // about. sortAnimals resolves the same thing for itself, so this reads it
@@ -449,6 +464,7 @@ export function AnimalGrid({
     sort,
     locale,
     origin: nearby?.at,
+    rank,
   });
 
   // What the dialog steps through is what the visitor is looking at: the list
@@ -472,7 +488,8 @@ export function AnimalGrid({
     handleNavigate,
     close,
   } = useAnimalDialogHost({
-    animals,
+    // The whole dataset: a link names an animal whatever the search finds.
+    animals: dataset,
     shown: band.list,
     basePath: locale === "sl" ? "/" : "/en",
   });
@@ -534,7 +551,7 @@ export function AnimalGrid({
   // Mount the empty dialog on idle to avoid a Suspense delay on first open.
   // Descriptions stay deferred until grid interaction.
   useEffect(() => {
-    if (animals.length === 0) return;
+    if (dataset.length === 0) return;
     const onIdle = () => {
       setDialogMounted(true);
     };
@@ -546,9 +563,9 @@ export function AnimalGrid({
     // behind hydration and the first cards' photos.
     const timer = window.setTimeout(onIdle, IDLE_FALLBACK_MS);
     return () => window.clearTimeout(timer);
-  }, [animals.length]);
+  }, [dataset.length]);
 
-  const isEmpty = animals.length === 0;
+  const isEmpty = dataset.length === 0;
 
   // Reachable zero state: every other facet is pre-guarded by isDeadOption
   // disabling, but for a row the sidebar keeps at 0 once its pick comes off
@@ -633,6 +650,7 @@ export function AnimalGrid({
     unanswered,
   } = useAnimalFilterModel({
     animals,
+    dataset,
     logos,
     reference,
     locale,
@@ -755,6 +773,32 @@ export function AnimalGrid({
               <p className="text-sm text-muted-foreground">
                 {messages.animalsComingSoon}
               </p>
+            </EmptyState>
+          ) : animals.length === 0 ? (
+            // Not one animal answers the query, so no filter is the reason
+            // and the lines about filters below would point the wrong way.
+            // Until the descriptions are in, that is not known yet.
+            <EmptyState>
+              <p
+                className={cn(
+                  "text-sm",
+                  searchPending ? "text-muted-foreground" : "font-medium",
+                )}
+              >
+                {searchPending
+                  ? messages.searchingDescriptions
+                  : t("noSearchResults", { query: shownFilters.query })}
+              </p>
+              {!searchPending && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={COARSE_ACTION}
+                  onClick={() => setQuery("")}
+                >
+                  {messages.clearSearch}
+                </Button>
+              )}
             </EmptyState>
           ) : visible.length === 0 && !band.shown ? (
             <EmptyState>

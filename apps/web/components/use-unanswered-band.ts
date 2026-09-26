@@ -6,6 +6,7 @@ import { sortAnimals, type AnimalSort } from "@/lib/sort";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const NONE: ClientAnimal[] = [];
+const unranked = (list: ClientAnimal[]) => list;
 
 /**
  * The home grid's band: the animals the filters hide only for want of an
@@ -25,6 +26,7 @@ export function useUnansweredBand({
   sort,
   locale,
   origin,
+  rank = unranked,
 }: {
   animals: ClientAnimal[];
   /** The filters the matches were drawn with, the deferred ones. */
@@ -35,6 +37,9 @@ export function useUnansweredBand({
   sort: AnimalSort;
   locale: Locale;
   origin?: LatLon;
+  /** The search's own order over the sorted list (useAnimalSearch), which the
+   *  band keeps the way the matches do: what a query found by name first. */
+  rank?: (list: ClientAnimal[]) => ClientAnimal[];
 }) {
   const band = useMemo(
     () => unansweredBand(animals, filters, reference),
@@ -50,9 +55,9 @@ export function useUnansweredBand({
   const bandSorted = useMemo(
     () =>
       shown
-        ? sortAnimals(band.animals, sort, locale, reference, origin)
+        ? rank(sortAnimals(band.animals, sort, locale, reference, origin))
         : NONE,
-    [band.animals, locale, origin, reference, shown, sort],
+    [band.animals, locale, origin, rank, reference, shown, sort],
   );
   // What the grid draws and the dialog steps through.
   const list = useMemo(

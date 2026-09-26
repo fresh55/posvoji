@@ -26,6 +26,7 @@ import {
   TOGGLES,
   type FilterValueDefinition,
 } from "./metadata";
+import { tidyQuery } from "./search";
 
 // URL codecs. Slovenian, ASCII-only params: ?vrsta=pes&spol=samica&starost=mladicek
 // The tab slugs live in lib/species.ts, which imports nothing but a type, so
@@ -50,6 +51,11 @@ const VALUE_PARAM_NAMES: Record<ValueGroup, string> = {
   goodWith: "druzba",
   care: "skrb",
 };
+
+// The search's param. Its value is the visitor's own words and not a slug, so
+// it is the one param that travels percent-encoded: ?isci=ov%C4%8Dar. A link
+// typed without the accents, ?isci=ovcar, finds the same animals.
+const QUERY_PARAM = "isci";
 
 // Sections that are gone, with params still owned so a link shared from then
 // loses them on the next write rather than carrying a dead one around for
@@ -85,6 +91,7 @@ function fromSlug(group: MultiGroup, slug: string): string | undefined {
 // the grid back until the filter has been applied.
 export const FILTER_PARAM_NAMES: readonly string[] = [
   "vrsta",
+  QUERY_PARAM,
   ...Object.values(PARAM_NAMES),
   "lastnosti",
   ...Object.values(VALUE_PARAM_NAMES),
@@ -102,6 +109,9 @@ export const OWNED_PARAM_NAMES: readonly string[] = [
 
 export function serializeFilters(filters: Filters): string {
   const params = new URLSearchParams();
+  // First, because it narrows the list before anything else does, and a link
+  // shared out of a search reads as the search: ?isci=taras&vrsta=pes.
+  if (filters.query !== "") params.set(QUERY_PARAM, filters.query);
   if (filters.species !== "all") {
     params.set("vrsta", SPECIES_TAB_SLUGS[filters.species]);
   }
@@ -222,6 +232,8 @@ export function parseFilters(search: string): Filters {
       .filter((value): value is string => value !== undefined);
   return pruneHiddenFilters({
     species,
+    // Repeats read as one query, the way the lists above join theirs.
+    query: tidyQuery(params.getAll(QUERY_PARAM).join(" ")),
     sex: values("sex") as Sex[],
     age: values("age") as AgeGroup[],
     size: values("size") as AnimalSize[],

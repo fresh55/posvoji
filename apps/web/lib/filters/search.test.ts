@@ -2,6 +2,14 @@ import type { Animal } from "@posvoji/schema";
 import { describe, expect, it } from "vitest";
 import { animalFields, type AnimalFields } from "@/lib/animal";
 import {
+  activeFilterCount,
+  EMPTY_FILTERS,
+  FILTER_PARAM_NAMES,
+  parseFilters,
+  pruneHiddenFilters,
+  serializeFilters,
+} from "@/lib/filters";
+import {
   foldText,
   MAX_QUERY_LENGTH,
   rankBySearch,
@@ -247,5 +255,61 @@ describe("rankBySearch", () => {
   it("leaves the list as it is without a query", () => {
     const sorted = [animal("a"), animal("b")];
     expect(rankBySearch(sorted, new Map())).toBe(sorted);
+  });
+});
+
+describe("the search in the address", () => {
+  it("writes the query first, under isci", () => {
+    expect(serializeFilters({ ...EMPTY_FILTERS, query: "taras" })).toBe(
+      "isci=taras",
+    );
+    expect(
+      serializeFilters({ ...EMPTY_FILTERS, query: "taras", species: "dog" }),
+    ).toBe("isci=taras&vrsta=pes");
+  });
+
+  it("encodes the visitor's own words, accents and spaces included", () => {
+    expect(serializeFilters({ ...EMPTY_FILTERS, query: "nemški ovčar" })).toBe(
+      "isci=nem%C5%A1ki+ov%C4%8Dar",
+    );
+  });
+
+  it("round-trips a query", () => {
+    const filters = { ...EMPTY_FILTERS, query: "nemški ovčar", sex: ["male" as const] };
+    expect(parseFilters(`?${serializeFilters(filters)}`)).toEqual(filters);
+  });
+
+  it("reads a hand-written query tidied and capped", () => {
+    expect(parseFilters("?isci=%20%20Taras%20%20%20mirna%20").query).toBe(
+      "Taras mirna",
+    );
+    expect(parseFilters(`?isci=${"a".repeat(200)}`).query).toHaveLength(
+      MAX_QUERY_LENGTH,
+    );
+    expect(parseFilters("?isci=").query).toBe("");
+    expect(parseFilters("?vrsta=pes").query).toBe("");
+  });
+
+  it("reads a repeated param as one query", () => {
+    expect(parseFilters("?isci=taras&isci=mirna").query).toBe("taras mirna");
+  });
+
+  it("is a param the pre-hydration script watches", () => {
+    expect(FILTER_PARAM_NAMES).toContain("isci");
+  });
+
+  it("counts as one active filter, however many words it holds", () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, query: "taras mirna" })).toBe(1);
+    expect(
+      activeFilterCount({ ...EMPTY_FILTERS, query: "taras", sex: ["male"] }),
+    ).toBe(2);
+    expect(activeFilterCount(EMPTY_FILTERS)).toBe(0);
+  });
+
+  it("stays through a change of species tab", () => {
+    expect(
+      pruneHiddenFilters({ ...EMPTY_FILTERS, species: "cat", query: "muri" })
+        .query,
+    ).toBe("muri");
   });
 });

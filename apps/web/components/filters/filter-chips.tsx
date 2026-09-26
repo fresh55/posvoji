@@ -1,6 +1,6 @@
 "use client";
 
-import { ListFilter, PawPrint, Undo2, X } from "lucide-react";
+import { ListFilter, PawPrint, Search, Undo2, X } from "lucide-react";
 import {
   AnimatePresence,
   domMax,
@@ -39,11 +39,15 @@ import {
 } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
 
+/** What can set a pill: one of the panel's questions, or the search, which is
+ *  no facet (lib/filters/contracts.ts) and only ever sets the one pill. */
+export type ChipFacet = FilterFacet | "query";
+
 export type Chip = {
   key: string;
-  /** Which of the nine questions set this. Drives the grouping, and the icon
-   *  wherever the answer has no mark of its own. */
-  facet: FilterFacet;
+  /** Which of the nine questions set this, or the search. Drives the
+   *  grouping, and the icon wherever the answer has no mark of its own. */
+  facet: ChipFacet;
   /** The answer itself, as the filter stores it. Carried apart from the key
    *  because it is what picks the glyph: Samec and Samica are one facet and
    *  two symbols, and a row that drew the facet gave them one. */
@@ -190,7 +194,7 @@ const PILL_ROW = "flex items-center gap-1.5 pointer-coarse:gap-2";
  *  clear button's own words on its way there. */
 const CHIP_MOVE = { duration: 0.18, ease: "easeOut" } as const;
 
-type Run = { facet: FilterFacet; chips: Chip[] };
+type Run = { facet: ChipFacet; chips: Chip[] };
 
 type Item =
   | { id: string; kind: "chip"; chip: Chip }
@@ -289,7 +293,7 @@ export function FilterChips({
   const scrollRef = useScrollEdgeFadesX<HTMLDivElement>();
   const toolbarRef = useRef<HTMLElement>(null);
 
-  const [expanded, setExpanded] = useState<FilterFacet[]>([]);
+  const [expanded, setExpanded] = useState<ChipFacet[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
 
@@ -833,15 +837,19 @@ function ChipGlyph({
   value,
   values,
 }: {
-  facet: FilterFacet;
+  facet: ChipFacet;
   value?: string;
   /** Every value a folded run stands for, which only colour draws. */
   values?: readonly string[];
 }) {
+  // The search's pill wears the field's own magnifier: the words in it are
+  // the visitor's, and no facet's mark would say where they came from.
   const { Icon, className } =
-    value === undefined
-      ? { Icon: FACET_ICONS[facet], className: undefined }
-      : filterValueGlyph(facet, value);
+    facet === "query"
+      ? { Icon: Search, className: undefined }
+      : value === undefined
+        ? { Icon: FACET_ICONS[facet], className: undefined }
+        : filterValueGlyph(facet, value);
   return (
     <span className="grid size-[1.125rem] shrink-0 place-items-center text-brand-strong">
       {/* A colour chip shows the colour, and a folded run of colours shows
@@ -870,10 +878,16 @@ function ChipGlyph({
 }
 
 function facetLabel(
-  facet: FilterFacet,
+  facet: ChipFacet,
   locale: "sl" | "en",
-  messages: { health: string; goodWith: string; care: string },
+  messages: {
+    health: string;
+    goodWith: string;
+    care: string;
+    searchAnimals: string;
+  },
 ): string {
+  if (facet === "query") return messages.searchAnimals;
   if (facet === "toggles") return messages.health;
   if (facet === "goodWith") return messages.goodWith;
   if (facet === "care") return messages.care;

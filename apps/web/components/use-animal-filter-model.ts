@@ -3,7 +3,7 @@ import type {
   CardGroup,
   KeptPicks,
 } from "@/components/filters/filter-groups";
-import { useAnimalFilters } from "@/hooks/use-animal-filters";
+import { commitQuery, useAnimalFilters } from "@/hooks/use-animal-filters";
 import type { ClientAnimal } from "@/lib/animal";
 import {
   bySpecies,
@@ -32,7 +32,7 @@ import {
   type FilterFacet,
   type Filters,
 } from "@/lib/filters";
-import type { Locale } from "@/lib/i18n";
+import { translate, type Locale } from "@/lib/i18n";
 import {
   byShelterName,
   goodWithChipLabel,
@@ -102,13 +102,21 @@ function keptByFacet(picked: readonly string[]): KeptPicks {
 /** Facet options, counts and recovery chips all describe the same result set. */
 export function useAnimalFilterModel({
   animals,
+  dataset = animals,
   logos,
   reference,
   locale,
   resultCount,
   actions,
 }: {
+  /** What the counts are taken over: the dataset, or what a search found in
+   *  it (hooks/use-animal-search.ts). */
   animals: ClientAnimal[];
+  /** The whole dataset, which decides what the panel offers: the tabs, the
+   *  shelters and each section's options. A search narrows the counts beside
+   *  them and never the panel itself, or the tabs and the sections would come
+   *  and go under the field with every word typed. */
+  dataset?: ClientAnimal[];
   logos: ShelterLogos;
   reference: Date;
   locale: Locale;
@@ -129,7 +137,7 @@ export function useAnimalFilterModel({
   // of them except species. See speciesFacetCounts in lib/filters.ts for why
   // the tab counts stopped being the raw dataset, and species-tabs.tsx for
   // why the roster could not follow them.
-  const speciesRoster = useMemo(() => speciesCounts(animals), [animals]);
+  const speciesRoster = useMemo(() => speciesCounts(dataset), [dataset]);
   const speciesTally = useMemo(
     () => speciesFacetCounts(animals, filters, reference),
     [animals, filters, reference],
@@ -147,13 +155,13 @@ export function useAnimalFilterModel({
   // never found a logo for is simply left for ShelterAvatar's initial-letter
   // fallback to answer.
   const shelterSummaries = useMemo(() => {
-    const summaries = summarizeShelters(animals, locale, reference);
+    const summaries = summarizeShelters(dataset, locale, reference);
     for (const [id, summary] of summaries) {
       const logo = logos[id];
       if (logo) summary.logo = logo;
     }
     return summaries;
-  }, [animals, locale, logos, reference]);
+  }, [dataset, locale, logos, reference]);
   const counts = useMemo(
     () => facetCounts(animals, filters, reference),
     [animals, filters, reference],
@@ -182,8 +190,15 @@ export function useAnimalFilterModel({
   // no unknown to explain, only disabled zeros, so it goes whole until the
   // dataset carries the field.
   const pool = useMemo(
-    () => bySpecies(animals, filters.species),
-    [animals, filters.species],
+    () => bySpecies(dataset, filters.species),
+    [dataset, filters.species],
+  );
+  // The tab as a search leaves it, which is what "{count} od {total}" under
+  // Družba and Lahko ponudim counts against: the count beside it is the
+  // search's result.
+  const searchedPool = useMemo(
+    () => (animals === dataset ? pool : bySpecies(animals, filters.species)),
+    [animals, dataset, filters.species, pool],
   );
   // Zavetisce is split off from the rest. The others are short runs of options
   // you weigh against each other and belong in a column of small controls;
@@ -287,9 +302,9 @@ export function useAnimalFilterModel({
   // shelters are available to choose.
   // In the order a picker row reads (byShelterName).
   const shelters = useMemo(() => {
-    const options = groupOptions("shelter", animals, locale).sort(byShelterName);
+    const options = groupOptions("shelter", dataset, locale).sort(byShelterName);
     return options.length > 0 ? options : undefined;
-  }, [animals, locale]);
+  }, [dataset, locale]);
   // Their names, by id. The chips row used to ask optionLabel for each one,
   // and optionLabel rebuilds the whole roster from every animal to answer,
   // so a row of shelter chips walked the dataset once per pill on every
@@ -324,7 +339,7 @@ export function useAnimalFilterModel({
       ),
       counts: goodWithTally,
       resultCount: resultCount,
-      total: pool.length,
+      total: searchedPool.length,
       onToggle: toggleGoodWith,
       onToggleMany: toggleManyGoodWith,
     };
@@ -334,6 +349,7 @@ export function useAnimalFilterModel({
     locale,
     pool,
     resultCount,
+    searchedPool.length,
     toggleGoodWith,
     toggleManyGoodWith,
   ]);
@@ -348,7 +364,7 @@ export function useAnimalFilterModel({
       ),
       counts: careTally,
       resultCount: resultCount,
-      total: pool.length,
+      total: searchedPool.length,
       onToggle: toggleCare,
       onToggleMany: toggleManyCare,
     };
@@ -359,6 +375,7 @@ export function useAnimalFilterModel({
     locale,
     pool,
     resultCount,
+    searchedPool.length,
     toggleCare,
     toggleManyCare,
   ]);
@@ -438,7 +455,26 @@ export function useAnimalFilterModel({
         }));
     }
   };
-  const chips = FILTER_FACETS.flatMap(chipsOf);
+  // The search first: it narrows the list before any facet does. One key
+  // whatever it holds, so a query that changes as it is typed relabels its
+  // pill in place rather than trading one pill for another. No gain: the
+  // row's way out when nothing matches is a facet to drop, never the search
+  // the visitor came with, and the empty state has its own clear for a
+  // query that finds nothing at all (animal-grid.tsx).
+  const chips: Chip[] = [
+    ...(filters.query === ""
+      ? []
+      : [
+          {
+            key: "query",
+            facet: "query" as const,
+            value: filters.query,
+            label: translate(locale, "searchChip", { query: filters.query }),
+            onRemove: () => commitQuery(""),
+          },
+        ]),
+    ...FILTER_FACETS.flatMap(chipsOf),
+  ];
 
   const hasSidebar =
     groups.length > 0 ||

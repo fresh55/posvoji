@@ -243,11 +243,13 @@ describe("Kje scope row in the filter sheet", () => {
     renderSheet();
     const dialog = await openSheet();
 
-    // Under the order only, which opens the body (filter-sheet-content.tsx).
+    // Under the search and the order only, which open the body
+    // (filter-sheet-content.tsx).
     const body = dialog.querySelector(".overflow-y-auto") as HTMLElement;
-    const [first, second] = [...body.children];
-    expect(first.getAttribute("data-slot")).toBe("sheet-sort");
-    expect(second.getAttribute("data-slot")).toBe("location-scope-row");
+    const [search, sort, scope] = [...body.children];
+    expect(search.getAttribute("role")).toBe("search");
+    expect(sort.getAttribute("data-slot")).toBe("sheet-sort");
+    expect(scope.getAttribute("data-slot")).toBe("location-scope-row");
   });
 
   it("closes the drawer before asking for the map, and waits for its entry", async () => {

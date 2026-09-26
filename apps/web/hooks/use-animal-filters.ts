@@ -22,6 +22,7 @@ import {
   type SpeciesFilter,
   type ToggleKey,
 } from "@/lib/filters";
+import { tidyQuery } from "@/lib/filters/search";
 import {
   commitSearch,
   getSearchSnapshot,
@@ -214,6 +215,24 @@ function writeFilters(
   scrollToResults();
 }
 
+/**
+ * Writes the search query, with a replace like every other filter.
+ *
+ * The rest of the state is read from the address at the moment of writing and
+ * not from a render. The field writes a quarter second after the last key
+ * (animal-search-field.tsx), and a filter picked inside that wait would be
+ * undone by a write carrying the filters the typing started from.
+ *
+ * A write that would leave the query as it is does nothing, so a space added
+ * at the end neither rewrites the address nor takes the page to the results.
+ */
+export function commitQuery(raw: string): void {
+  const current = parseFilters(getSearchSnapshot());
+  const query = tidyQuery(raw);
+  if (query === current.query) return;
+  writeFilters({ ...current, query });
+}
+
 function writeSort(sort: AnimalSort): void {
   commitSearch(
     mergeOwnedParams(getSearchSnapshot(), [SORT_PARAM], serializeSort(sort)),
@@ -385,6 +404,8 @@ export function useAnimalFilters() {
     toggleManyGoodWith,
     toggleCare,
     toggleManyCare,
+    // At once: a clear is not typing (the field debounces its own keys).
+    setQuery: commitQuery,
     setSort,
     clearAll,
     restore,

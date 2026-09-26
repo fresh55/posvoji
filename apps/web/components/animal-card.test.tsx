@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalCard } from "@/components/animal-card";
 import { cardPhoto } from "@/components/grid-rendering";
 import { I18nProvider } from "@/components/i18n-provider";
+import { LAST_VISIT_KEY, resetLastVisitStore } from "@/hooks/use-last-visit";
 import {
   resetNearbyOriginStore,
   usePublishNearbyOrigin,
@@ -337,11 +338,14 @@ describe("AnimalCard element placement", () => {
     expect(badges[0].closest('[data-slot="photo-frame"]')).toBeNull();
     // Positioned against the article, which is the element that holds both the
     // frame and the text: the pill is laid on the photo without being inside
-    // the photo's own box.
+    // the photo's own box. It is the row of marks that is positioned, so the
+    // pill sits in that row and the row is a child of the article.
     const article = badges[0].closest("article");
     expect(article?.querySelector('[data-slot="photo-frame"]')).toBeTruthy();
     expect(article?.className).toContain("relative");
-    expect(badges[0].className).toContain("absolute");
+    const marks = badges[0].closest('[data-slot="photo-marks"]');
+    expect(marks?.parentElement).toBe(article);
+    expect(marks?.className).toContain("absolute");
     // And it is not inside the card's link, competing with the name.
     expect(badges[0].closest("a")).toBeNull();
   });
@@ -568,6 +572,101 @@ describe("AnimalCard distance", () => {
     expect(km.className).toContain("shrink-0");
     expect(km.className).toContain("whitespace-nowrap");
     expect(km.previousElementSibling?.className).toContain("truncate");
+  });
+});
+
+describe("AnimalCard Novo mark", () => {
+  const LISTED = "2025-12-28T10:00:00.000Z";
+  const listedOn = (firstSeenAt: string) =>
+    animal({
+      source: { ...schemaAnimal().source, firstSeenAt },
+    });
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetLastVisitStore();
+  });
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    resetLastVisitStore();
+  });
+
+  function renderCard(subject: ClientAnimal, locale: "sl" | "en" = "sl") {
+    return render(
+      <I18nProvider locale={locale}>
+        <AnimalCard
+          animal={subject}
+          reference={NOW}
+          order="name"
+          onOpen={() => undefined}
+          showShelter
+        />
+      </I18nProvider>,
+    );
+  }
+
+  it("marks an animal listed since the visitor's last visit", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
+    renderCard(listedOn(LISTED));
+
+    expect(screen.getByText("Novo").dataset.variant).toBe("overlay-quiet");
+  });
+
+  it("marks nothing on a first visit, and writes this one down", () => {
+    renderCard(listedOn(LISTED));
+
+    expect(screen.queryByText("Novo")).toBeNull();
+    // The time of the list on screen, which is the dataset's and not the
+    // visitor's clock.
+    expect(localStorage.getItem(LAST_VISIT_KEY)).toBe(NOW.toISOString());
+  });
+
+  it("marks nothing listed before the last visit", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-30T00:00:00.000Z");
+    renderCard(listedOn(LISTED));
+
+    expect(screen.queryByText("Novo")).toBeNull();
+  });
+
+  it("says New on the English pages", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
+    renderCard(listedOn(LISTED), "en");
+
+    expect(screen.getByText("New")).toBeTruthy();
+  });
+
+  // The mark has to share the photo with either of the other two, and in a
+  // row that wraps it can meet neither: the status reads first, the wait
+  // keeps its corner last, and all three come after the animal's name.
+  it("draws Novo between the status and the wait, after the name", () => {
+    localStorage.setItem(LAST_VISIT_KEY, "2025-12-20T00:00:00.000Z");
+    const { unmount } = renderCard({
+      ...listedOn(LISTED),
+      status: "hold",
+    });
+
+    const held = document.querySelector('[data-slot="photo-marks"]');
+    expect(Array.from(held!.children, (mark) => mark.textContent)).toEqual([
+      "trenutno ni na voljo",
+      "Novo",
+    ]);
+    unmount();
+
+    renderCard({
+      ...listedOn(LISTED),
+      intakeDate: intakeMonthsAgo(LONG_STAY_MONTHS),
+    });
+    const waiting = document.querySelector('[data-slot="photo-marks"]');
+    expect(Array.from(waiting!.children, (mark) => mark.textContent)).toEqual([
+      "Novo",
+      "Čaka 3 leta",
+    ]);
+    expect(
+      screen.getByText("Rex").compareDocumentPosition(screen.getByText("Novo")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 

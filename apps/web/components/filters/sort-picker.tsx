@@ -3,6 +3,7 @@
 import {
   ArrowDownAZ,
   ArrowDownNarrowWide,
+  CalendarPlus,
   DoorOpen,
   Hourglass,
   Navigation,
@@ -33,9 +34,13 @@ import { cn } from "@/lib/utils";
 // senior paths from these exact two icons, so "youngest first" and "oldest
 // first" are marked with the plants the sidebar already grows. Navigation is
 // the crosshair the location picker's own "Najbližje prvo" control wears, so
-// the order and the control that grants it carry the same mark.
+// the order and the control that grants it carry the same mark. CalendarPlus
+// is the day this site added the animal, a date with a plus on it, and was
+// free: DoorOpen is the other date, the arrival at the shelter, and
+// CalendarClock is the dialog's quiet stay line.
 const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
   "longest-in-shelter": Hourglass,
+  "newly-listed": CalendarPlus,
   "newest-arrivals": DoorOpen,
   youngest: Sprout,
   oldest: TreeDeciduous,
@@ -127,6 +132,7 @@ export const SortPicker = memo(function SortPicker({
   const { messages } = useI18n();
   const labels: Record<AnimalSort, string> = {
     "longest-in-shelter": messages.sortLongestInShelter,
+    "newly-listed": messages.sortNewlyListed,
     "newest-arrivals": messages.sortNewestArrivals,
     youngest: messages.sortYoungest,
     oldest: messages.sortOldest,

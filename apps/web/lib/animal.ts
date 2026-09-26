@@ -40,7 +40,35 @@ export type ClientAnimalSource = Pick<AnimalSource, "sourceUrl"> &
  *  does. */
 export type AnimalFields = Omit<Animal, "images" | "source"> & {
   source?: ClientAnimalSource;
+  /** When Posvoji.si first listed the animal, in LISTED_AT_UNIT_MS since
+   *  1970: source.firstSeenAt, carried by the grid's projection
+   *  (animalsForClient in lib/dataset.ts) for the Nove objave order and the
+   *  Novo mark. Absent on the dataset's own animals and on older fixtures,
+   *  where both read it as unknown. */
+  listedAt?: number;
 };
+
+/** One unit of listedAt. Minutes, because the question it answers is whether
+ *  an animal was listed after the list a visitor last saw was published
+ *  (hooks/use-last-visit.ts), and an hour cannot tell a listing a shelter
+ *  entered in the portal at 8:30 from an export at 8:11. Seconds would answer
+ *  nothing more at twice the cost: over the 491 animals of the 25 Sep
+ *  dataset they added 1,977 bytes to the gzipped grid payload, and minutes
+ *  925. */
+export const LISTED_AT_UNIT_MS = 60_000;
+
+/** listedAt from a source.firstSeenAt, or undefined where it will not parse. */
+export function listedAtOf(firstSeenAt: string): number | undefined {
+  const time = Date.parse(firstSeenAt);
+  return Number.isFinite(time)
+    ? Math.floor(time / LISTED_AT_UNIT_MS)
+    : undefined;
+}
+
+/** A listedAt back as milliseconds since 1970, the unit Date works in. */
+export function listedAtTime(listedAt: number): number {
+  return listedAt * LISTED_AT_UNIT_MS;
+}
 
 /** Whether a visitor can act on this animal now: available, or an unknown
  *  that the shelter's own listing still carries. An allowlist and not a

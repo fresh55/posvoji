@@ -19,6 +19,7 @@ import { PhotoGallery } from "@/components/photo-gallery";
 import { ShelterDistance } from "@/components/shelter-distance";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { useIsNewListing } from "@/hooks/use-last-visit";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { FAN_PHOTO_SIZES, FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
@@ -652,8 +653,8 @@ export const AnimalCard = memo(function AnimalCard({
         // the card's bottom padding instead.
         <div className="mt-auto pb-3" />
       )}
-      {/* The two marks on the photograph, drawn last and positioned against
-          the article (relative, above).
+      {/* The marks on the photograph, drawn last and positioned against the
+          article (relative, above).
 
           Last because this is the order they are read in. They used to sit
           in the photo's wrapper, before the animal's name, so a screen
@@ -661,73 +662,122 @@ export const AnimalCard = memo(function AnimalCard({
           only then whose card it was. Drawn after the shelter line they are
           the card's footnotes in the tree and its corners on the screen: the
           frame's top edge is the article's top edge and the article carries
-          no padding, so left-2 / right-2 top-2 land on the pixels they
-          landed on before. Nothing moves, and the aria-labelledby on the
-          article still puts the name first for anyone who enters it as a
-          whole.
+          no padding, so a row at inset-x-2 top-2 starts on the pixels the
+          marks were drawn on. The aria-labelledby on the article still puts
+          the name first for anyone who enters it as a whole.
 
-          They stay over the photo by tree order: both are positioned with no
-          z-index of their own and come after the frame, and the only layer
-          above them is the frame's own ::after, which is a 1px hairline and a
+          One wrapping row and not a mark pinned to each corner, because there
+          are three marks now and pairs of them can meet. The status and the
+          wait never can, since the wait is drawn only for an animal still
+          waiting, but Novo goes with either, and "trenutno ni na voljo" is
+          most of a 320px card on its own. Pinned to the corners, two marks on
+          a narrow card would be drawn over each other; in a row the second
+          wraps under the first. The wait keeps its corner with ml-auto, on
+          whichever line it ends up, so every card that carries one mark
+          draws it where it always was.
+
+          pointer-events-none, so the row is no strip of dead photo: a press
+          on it, or on a mark, reaches the photo's link under it.
+
+          They stay over the photo by tree order: the row is positioned with
+          no z-index of its own and comes after the frame, and the only layer
+          above it is the frame's own ::after, which is a 1px hairline and a
           3px focus ring at the frame's edge, four pixels short of an 8px
           inset. */}
-      {/* One copy, on the photo, at every width. A status disqualifies the
-          whole card, so it belongs on the thing it disqualifies rather
-          than queueing for space beside the name. It used to be two DOM
-          copies swapped by a breakpoint, which also left the phone copy
-          orphaned between the two links, inside neither. */}
-      {/* 8px in from the corner, which the 14px radius asks for: at 6px
-          the pill's own corner sat on the photo's curve. */}
-      {/* "trenutno ni na voljo" is 128px at the badge's own 12px, and a
-          card at 320px is 136px wide, so below 360px the pill gives up 2px
-          of padding a side rather than a pixel of type (status-badge.tsx
-          says why the size is one tier everywhere) and keeps 4px clear of
-          the photo's far edge. */}
-      <StatusBadge
-        status={animal.status}
-        locale={locale}
-        overlay
-        className="absolute left-2 top-2 max-[359px]:px-1.5"
-      />
-      {showWaitMark && wait !== undefined && (
-        // On the photo, opposite the counter, for the same reason the
-        // status is: it is a flag about the animal's situation, not one of
-        // the animal's own facts. Off the text block it stops competing
-        // with the shelter for a line that three of the registry's
-        // seventeen names cannot fit even on their own.
-        //
-        // One string, seen and spoken. It used to be three: the duration
-        // alone for the eye, an hourglass to say what kind of duration it
-        // was, and the full phrase again for a screen reader and a hover.
-        // The eye's copy was "3 leta" over a meta line reading
-        // "Mačka · samec · 3 leta", which is the same number twice, told
-        // apart by a 12px icon; 54 of the 101 cards carrying the mark are
-        // that case, because an animal that grew up in the shelter has
-        // waited exactly as long as it has been alive. The verb settles it
-        // in four characters and pays for them with the icon.
-        //
-        // One quiet tier, and not amber. A solid warm pill on every photo
-        // is an alarm ringing so often it stops being one, and the filled
-        // warm treatment stays with the status badge, which really does
-        // disqualify a card. A second, louder tier for the longest waits
-        // does not work either: the default sort is longest in shelter, so
-        // every card above the fold would wear it.
-        //
-        // Which is also the rule the order prop carries. A mark on every
-        // card in a list already ordered by the wait says nothing the order
-        // has not said: under the default sort the first hundred cards all
-        // wore it, and the shelter page sorts the same way. So both grids
-        // hand over the order they sorted by and the mark stays off there,
-        // while every other order and every caller with no order of its own
-        // draws it. The animal's own page says how long it has been waiting
-        // either way.
-        //
-        // Top right, opposite the status. The bottom edge belongs to the
-        // gallery dots now, and on a phone card the two met in the middle.
-        <Badge variant="overlay-quiet" className="absolute right-2 top-2">
-          {t("longStayMark", { duration: stayDuration(wait, locale) })}
-        </Badge>
-      )}
+      <div
+        data-slot="photo-marks"
+        className="pointer-events-none absolute inset-x-2 top-2 flex flex-wrap items-start gap-1.5"
+      >
+        {/* One copy, on the photo, at every width. A status disqualifies the
+            whole card, so it belongs on the thing it disqualifies rather
+            than queueing for space beside the name. It used to be two DOM
+            copies swapped by a breakpoint, which also left the phone copy
+            orphaned between the two links, inside neither. */}
+        {/* 8px in from the corner, which the 14px radius asks for: at 6px
+            the pill's own corner sat on the photo's curve. */}
+        {/* "trenutno ni na voljo" is 128px at the badge's own 12px, and a
+            card at 320px is 136px wide, so below 360px the pill gives up 2px
+            of padding a side rather than a pixel of type (status-badge.tsx
+            says why the size is one tier everywhere) and keeps 4px clear of
+            the photo's far edge. That is 4px past the row's own edge, which
+            the row lets it overhang: nothing in it clips. */}
+        <StatusBadge
+          status={animal.status}
+          locale={locale}
+          overlay
+          className="max-[359px]:px-1.5"
+        />
+        <NewListingMark listedAt={animal.listedAt} reference={reference} />
+        {showWaitMark && wait !== undefined && (
+          // On the photo, opposite the counter, for the same reason the
+          // status is: it is a flag about the animal's situation, not one of
+          // the animal's own facts. Off the text block it stops competing
+          // with the shelter for a line that three of the registry's
+          // seventeen names cannot fit even on their own.
+          //
+          // One string, seen and spoken. It used to be three: the duration
+          // alone for the eye, an hourglass to say what kind of duration it
+          // was, and the full phrase again for a screen reader and a hover.
+          // The eye's copy was "3 leta" over a meta line reading
+          // "Mačka · samec · 3 leta", which is the same number twice, told
+          // apart by a 12px icon; 54 of the 101 cards carrying the mark are
+          // that case, because an animal that grew up in the shelter has
+          // waited exactly as long as it has been alive. The verb settles it
+          // in four characters and pays for them with the icon.
+          //
+          // One quiet tier, and not amber. A solid warm pill on every photo
+          // is an alarm ringing so often it stops being one, and the filled
+          // warm treatment stays with the status badge, which really does
+          // disqualify a card. A second, louder tier for the longest waits
+          // does not work either: the default sort is longest in shelter, so
+          // every card above the fold would wear it.
+          //
+          // Which is also the rule the order prop carries. A mark on every
+          // card in a list already ordered by the wait says nothing the order
+          // has not said: under the default sort the first hundred cards all
+          // wore it, and the shelter page sorts the same way. So both grids
+          // hand over the order they sorted by and the mark stays off there,
+          // while every other order and every caller with no order of its own
+          // draws it. The animal's own page says how long it has been waiting
+          // either way.
+          //
+          // Top right, opposite the status, where ml-auto keeps it in the
+          // row. The bottom edge belongs to the gallery dots now, and on a
+          // phone card the two met in the middle.
+          <Badge variant="overlay-quiet" className="ml-auto">
+            {t("longStayMark", { duration: stayDuration(wait, locale) })}
+          </Badge>
+        )}
+      </div>
     </article>
   );
 });
+
+/**
+ * "Novo", on the photo of a card listed since the visitor's last visit
+ * (hooks/use-last-visit.ts), and nothing for anyone else: a first visit has
+ * seen nothing, so nothing on it is new.
+ *
+ * The wait's quiet tier and not a colour of its own. It is a flag about what
+ * this visitor has seen, the same kind of fact the wait is about the animal,
+ * and green already says a shelter shares its data, a chosen answer and the
+ * health record. Beside the wait it reads as the second of two quiet marks
+ * rather than as a louder one.
+ *
+ * Its own component for the reason ShelterDistance is one: the threshold
+ * arrives after hydration, from the visitor's own storage, and it is this
+ * mark that renders again then, on the cards whose answer changed, and not
+ * the memoised card around it.
+ */
+function NewListingMark({
+  listedAt,
+  reference,
+}: {
+  listedAt: number | undefined;
+  reference: Date;
+}) {
+  const { messages } = useI18n();
+  const isNew = useIsNewListing(listedAt, reference);
+  if (!isNew) return null;
+  return <Badge variant="overlay-quiet">{messages.newListingMark}</Badge>;
+}

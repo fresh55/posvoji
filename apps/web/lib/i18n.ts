@@ -773,6 +773,27 @@ const sl = {
   // The row's words as the animal's need, so the pill a visitor reads on the
   // animal is the row they ticked.
   specialNeedsLabel: "Potrebuje veliko potrpežljivosti",
+
+  // What is new since a visitor's last visit, and the order that shows it.
+  // "Objava" is the listing, as in "Odpri objavo pri zavetišču", and the order
+  // reads the day this site first listed the animal, which is not its arrival:
+  // that order is sortNewestArrivals.
+  sortNewlyListed: "Nove objave",
+  // The mark on the photo of a card listed since the visitor's last visit.
+  newListingMark: "Novo",
+  // The line above the cards. Slovenian's count ladder (pick in
+  // lib/labels.ts): 1 nova objava, 2 novi objavi, 3 in 4 nove objave, from 5
+  // novih objav.
+  newListingsOne: "{count} nova objava od tvojega zadnjega obiska.",
+  newListingsTwo: "{count} novi objavi od tvojega zadnjega obiska.",
+  newListingsFew: "{count} nove objave od tvojega zadnjega obiska.",
+  newListingsMany: "{count} novih objav od tvojega zadnjega obiska.",
+  // Its one button. The pronoun follows how many listings there are and not
+  // the numeral's grammar: jo for one, the dual ju for two, jih for more, 101
+  // included.
+  showNewListingsFirstOne: "Pokaži jo najprej",
+  showNewListingsFirstTwo: "Pokaži ju najprej",
+  showNewListingsFirstMany: "Pokaži jih najprej",
 } as const;
 
 export type Messages = { [Key in keyof typeof sl]: string };
@@ -1133,6 +1154,16 @@ const en: Messages = {
     "Showing animals that need what you can offer: {count} of {total}.",
   careLead: "Show animals that need:",
   specialNeedsLabel: "Needs a lot of patience",
+
+  sortNewlyListed: "Newly listed",
+  newListingMark: "New",
+  newListingsOne: "{count} new listing since your last visit.",
+  newListingsTwo: "{count} new listings since your last visit.",
+  newListingsFew: "{count} new listings since your last visit.",
+  newListingsMany: "{count} new listings since your last visit.",
+  showNewListingsFirstOne: "Show it first",
+  showNewListingsFirstTwo: "Show them first",
+  showNewListingsFirstMany: "Show them first",
 };
 
 const messages: Record<Locale, Messages> = { sl, en };

@@ -105,6 +105,13 @@ export type DialogOrigin = {
 // landscape bug nothing would catch. PHONE_SHELL below is the same boundary
 // for the places that have to ask rather than style.
 //
+// The scroll padding at the foot of the phone shell is for the sticky call to
+// action. The shell is the scrollport there, and a control Tab brings in from
+// below was scrolled to the bottom edge, which is under the bar: in a 1280x500
+// window, the phone shell by height, the health pill stood 19px of its 26
+// under it. 5.5rem is the bar's 77px and some air, and the inset is the one
+// the bar adds on a phone with a home indicator.
+//
 // morph-still carries nothing of its own. It is the hook the one rule scoped
 // to a running morph is keyed on (globals.css): Blink builds the invalidation
 // set for `[data-photo-morph] X` from X alone, and that rule used to name
@@ -113,7 +120,7 @@ export type DialogOrigin = {
 // inside the transition's own capture. A class only this box wears is a set of
 // one. It is not the content's own styling class and nothing else may use it.
 const CONTENT_CLASS =
-  "morph-still fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
+  "morph-still fixed inset-0 z-50 flex flex-col text-sm text-popover-foreground outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 motion-reduce:duration-0 phone-shell:h-dvh phone-shell:overflow-x-hidden phone-shell:overflow-y-auto phone-shell:overscroll-contain phone-shell:scroll-pb-[calc(5.5rem+env(safe-area-inset-bottom))] phone-shell:bg-popover phone-shell:data-open:slide-in-from-bottom-4 phone-shell:data-closed:slide-out-to-bottom-4 desktop-box:inset-auto desktop-box:top-1/2 desktop-box:left-1/2 desktop-box:max-h-[92dvh] desktop-box:w-[calc(100vw-3rem)] desktop-box:max-w-3xl desktop-box:-translate-x-1/2 desktop-box:-translate-y-1/2 desktop-box:pt-2 desktop-box:data-open:zoom-in-95 desktop-box:data-closed:zoom-out-95";
 
 // The card carries what used to be the dialog's own frame. The pull up under
 // the photos is on the wrapper around it (CARD_FRAME_CLASS), so that the edge

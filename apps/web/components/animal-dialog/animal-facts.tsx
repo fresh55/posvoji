@@ -851,12 +851,18 @@ export function AnimalFacts({
             ))}
           </div>
           {clampDescription && (
+            // pointer-coarse:tap-target because a thumb got the 16px of its
+            // line and nothing more, the one control in the card under the
+            // 44px floor. The overlay reaches 14px up into the last clamped
+            // line, which is a press on the text it opens, and 14px down,
+            // short of the shelter's box: 24px below it in the dialog and 20px
+            // on the animal's page.
             <button
               type="button"
               aria-expanded={showFullDescription}
               aria-controls={descriptionId}
               onClick={() => setShowFullDescription((open) => !open)}
-              className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              className="cursor-pointer text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground pointer-coarse:tap-target"
             >
               {showFullDescription ? messages.showLess : messages.readMore}
             </button>

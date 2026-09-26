@@ -28,16 +28,16 @@
     "@posvoji/provider-turk": "workspace:*",
     "@posvoji/provider-zonzani": "workspace:*",
     "@posvoji/schema": "workspace:*",
-    "onnxruntime-node": "1.29.0",
+    "onnxruntime-node": "1.30.0",
     "sharp": "^0.35.4",
     "tsx": "^4.23.13",
     "yaml": "^2.9.1",
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "fast-check": "^4.10.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   }
 }

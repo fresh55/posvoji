@@ -35,14 +35,11 @@ import {
   useAddressedShelter,
   usePortal,
 } from "@/components/portal/portal-provider";
-import {
-  fill,
-  fillOneOrMany,
-  portalText,
-} from "@/components/portal/portal-text";
+import { fill, portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
 import {
   UNKNOWN,
+  fillOneOrMany,
   isAnswer,
   needsAnswers,
   nextOpen,

@@ -1,8 +1,9 @@
 import { MessageCircleQuestionMark } from "lucide-react";
 import Link from "next/link";
 import { LIST_BANNER } from "@/components/portal/notice";
-import { fillOneOrMany, portalText } from "@/components/portal/portal-text";
+import { portalText } from "@/components/portal/portal-text";
 import { Button } from "@/components/portal/portal-button";
+import { fillOneOrMany } from "@/components/portal/quick-answers";
 import { portalAnswersPath } from "@/hooks/use-portal-session";
 import { cn } from "@/lib/utils";
 

@@ -2,11 +2,9 @@
 // here rather than in lib/i18n.ts, which carries the bilingual public site.
 // The placeholder syntax is shared with it.
 
-import { interpolate } from "@/lib/i18n";
-import { pick } from "@/lib/labels";
 import { CONTACT_EMAIL } from "@/lib/site";
 
-export { interpolate as fill };
+export { interpolate as fill } from "@/lib/i18n";
 
 export const portalText = {
   brand: "Portal za zavetišča",
@@ -412,17 +410,3 @@ export const portalText = {
   listingArchiveCancel: "Obdrži objavo",
   listingArchiveError: "Objave ni bilo mogoče odstraniti. Poskusite znova.",
 } as const;
-
-/**
- * One of a pair of sentences, with the count filled in: `one` for the counts
- * pick() reads as one, `many` for the other three of its forms. The quick
- * answers' "Pri {count} živali" is such a pair, because the locative after
- * "pri" is "živalih" for every count but those.
- */
-export function fillOneOrMany(
-  count: number,
-  one: string,
-  many: string,
-): string {
-  return interpolate(pick(count, [one, many, many, many]), { count });
-}

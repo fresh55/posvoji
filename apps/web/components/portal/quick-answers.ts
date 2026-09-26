@@ -11,14 +11,31 @@ import {
   SIZE_META,
   type ChoiceMeta,
 } from "@/components/portal/portal-fields";
-import { portalText } from "@/components/portal/portal-text";
+import { fill, portalText } from "@/components/portal/portal-text";
 import { FACET_ICONS, GOOD_WITH_ICONS } from "@/lib/animal-icons";
+import { pick } from "@/lib/labels";
 import {
   PORTAL_COMPATIBILITIES,
   PORTAL_ENERGIES,
   PORTAL_SIZES,
   type PortalAnimalPatch,
 } from "@/lib/portal-api";
+
+/**
+ * One of a pair of sentences, with the count filled in: `one` for the counts
+ * pick() reads as one, `many` for the other three of its forms. The quick
+ * answers' "Pri {count} živali" is such a pair, because the locative after
+ * "pri" is "živalih" for every count but those. Here and not in
+ * portal-text.ts, which every portal page loads, login included: pick() comes
+ * with the filter engine.
+ */
+export function fillOneOrMany(
+  count: number,
+  one: string,
+  many: string,
+): string {
+  return fill(pick(count, [one, many, many, many]), { count });
+}
 
 /** The five answers, in the order the page asks for them. */
 export const QUICK_FIELDS = [

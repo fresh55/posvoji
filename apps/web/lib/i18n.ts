@@ -133,12 +133,14 @@ const sl = {
   animalDetails: "Podrobnosti o živali",
   factAge: "Starost",
   factBreed: "Pasma",
-  factSize: "Velikost",
   factTimeInShelter: "V zavetišču",
   // The label and its value as one string, so the punctuation between them is
   // something a translator can see and change. A bare "2 leti" beside a box
   // whose first line is a wait was read as the wait.
   factAgeValue: "Starost: {age}",
+  // The same for the size. "Srednja" alone was also the coat's answer, and the
+  // growing paw beside it did not say which of the two it was.
+  factSizeValue: "Velikost: {size}",
   // The same fact as the card prints it: lowercase and without the colon, so
   // it sits in the middot list beside the species. A bare "5 mesecev" under a
   // grid whose default order is the longest wait first was read as the wait,
@@ -791,9 +793,9 @@ const en: Messages = {
   animalDetails: "Animal details",
   factAge: "Age",
   factBreed: "Breed",
-  factSize: "Size",
   factTimeInShelter: "In the shelter",
   factAgeValue: "Age: {age}",
+  factSizeValue: "Size: {size}",
 
 
 

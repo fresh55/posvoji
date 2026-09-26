@@ -16,29 +16,24 @@ const NONE: ClientAnimal[] = [];
  */
 export function useUnansweredBand({
   animals,
-  dataset,
   filters,
   reference,
   sorted,
   arrange,
 }: {
   animals: ClientAnimal[];
-  /** The whole dataset, which is `animals` until a search narrows it: which
-   *  questions may relax is measured over the tab and not over what a query
-   *  found (unansweredBand in lib/filters/engine.ts). */
-  dataset: ClientAnimal[];
   /** The filters the matches were drawn with, the deferred ones. */
   filters: Filters;
   reference: Date;
   /** The matches, in the order the grid shows them. */
   sorted: ClientAnimal[];
-  /** What put the matches in that order, the chosen sort and a search's own
-   *  ranking after it, which the band is put in too. */
+  /** What put the matches in that order, the chosen sort, which the band is
+   *  put in too. */
   arrange: (list: ClientAnimal[]) => ClientAnimal[];
 }) {
   const band = useMemo(
-    () => unansweredBand(animals, filters, reference, dataset),
-    [animals, dataset, filters, reference],
+    () => unansweredBand(animals, filters, reference),
+    [animals, filters, reference],
   );
   const [open, setOpen] = useState(false);
   // Adjusted while rendering, as AnimalGrid adjusts its arrival: from an

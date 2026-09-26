@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
-import { useAnimalSearch } from "@/hooks/use-animal-search";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
 import { NewListings } from "@/components/new-listings-notice";
 import type { ClientAnimal } from "@/lib/animal";
@@ -307,8 +306,6 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
 }
 
 export function AnimalGrid({
-  // The whole dataset. What the page counts and draws is what the search
-  // finds in it (`animals` below); the dialog and the rosters read this.
   animals: dataset,
   logos,
   referenceDate,
@@ -346,7 +343,6 @@ export function AnimalGrid({
     toggleManyGoodWith,
     toggleCare,
     toggleManyCare,
-    setQuery,
     setSort,
     clearAll,
     restore,
@@ -371,17 +367,9 @@ export function AnimalGrid({
   // section's pick gesture plays. Measured on the built site, colour picks
   // on Vse and Psi.
   const shownFilters = useDeferredValue(filters);
-  // Before every other filter, so the tabs, the counts, the chips and the
-  // empty state all describe what the search found. The dataset itself when
-  // nothing is searched for.
-  const {
-    animals,
-    rank,
-    pending: searchPending,
-  } = useAnimalSearch(dataset, shownFilters.query);
   const visible = useMemo(
-    () => applyFilters(animals, shownFilters, reference),
-    [animals, shownFilters, reference],
+    () => applyFilters(dataset, shownFilters, reference),
+    [dataset, shownFilters, reference],
   );
   // Whether this render is answering a widening: unpick, clear and "Pokaži
   // vse vrste" all raise this count, and that is the direction CARD_SETTLE
@@ -409,13 +397,11 @@ export function AnimalGrid({
   // sortAnimals puts the list in the default order (effectiveSort), including
   // for a shared link that arrived carrying ?razvrsti=najblizje.
   const nearby = useNearbyOrigin();
-  // A search puts what it found by name first, then by breed, then by
-  // description, each in the chosen order (rankBySearch in
-  // lib/filters/search.ts). The band below is put in the same order.
+  // The band below is put in the same order.
   const arrange = useCallback(
     (list: ClientAnimal[]) =>
-      rank(sortAnimals(list, sort, locale, reference, nearby?.at)),
-    [sort, locale, reference, nearby, rank],
+      sortAnimals(list, sort, locale, reference, nearby?.at),
+    [sort, locale, reference, nearby],
   );
   const sorted = useMemo(() => arrange(visible), [arrange, visible]);
   // The order the cards are in, which is what the long-stay mark below asks
@@ -429,8 +415,7 @@ export function AnimalGrid({
   // band after them while it is shown. Every count on the page stays the
   // matches' own.
   const band = useUnansweredBand({
-    animals,
-    dataset,
+    animals: dataset,
     filters: shownFilters,
     reference,
     sorted,
@@ -559,8 +544,8 @@ export function AnimalGrid({
     () =>
       visible.length === 0 &&
       shownFilters.shelter.length > 0 &&
-      applyFilters(animals, { ...shownFilters, shelter: [] }, reference).length > 0,
-    [animals, shownFilters, reference, visible.length],
+      applyFilters(dataset, { ...shownFilters, shelter: [] }, reference).length > 0,
+    [dataset, shownFilters, reference, visible.length],
   );
   // The other reason an empty list can have, for the same list: the question
   // the visitor answered that the shelters answered least (thinnestAnswer).
@@ -569,9 +554,9 @@ export function AnimalGrid({
   const thinnest = useMemo(
     () =>
       visible.length === 0
-        ? thinnestAnswer(animals, shownFilters, reference)
+        ? thinnestAnswer(dataset, shownFilters, reference)
         : undefined,
-    [animals, shownFilters, reference, visible.length],
+    [dataset, shownFilters, reference, visible.length],
   );
 
   const handleClearAll = useCallback(() => {
@@ -628,8 +613,7 @@ export function AnimalGrid({
     hasSidebar,
     unanswered,
   } = useAnimalFilterModel({
-    animals,
-    dataset,
+    animals: dataset,
     logos,
     reference,
     locale,
@@ -761,32 +745,6 @@ export function AnimalGrid({
               <p className="text-sm text-muted-foreground">
                 {messages.animalsComingSoon}
               </p>
-            </EmptyState>
-          ) : animals.length === 0 ? (
-            // Not one animal answers the query, so no filter is the reason
-            // and the lines about filters below would point the wrong way.
-            // Until the descriptions are in, that is not known yet.
-            <EmptyState>
-              <p
-                className={cn(
-                  "text-sm",
-                  searchPending ? "text-muted-foreground" : "font-medium",
-                )}
-              >
-                {searchPending
-                  ? messages.searchingDescriptions
-                  : t("noSearchResults", { query: shownFilters.query })}
-              </p>
-              {!searchPending && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={COARSE_ACTION}
-                  onClick={() => setQuery("")}
-                >
-                  {messages.clearSearch}
-                </Button>
-              )}
             </EmptyState>
           ) : visible.length === 0 && !band.shown ? (
             <EmptyState>

@@ -157,7 +157,7 @@ keeps an animal out of that band too: a "no", a positive test, a known size, age
 or wait that differs, `noYoungKids` under Otroke, and a stated "adult" under a
 Mladiček or Senior pick. Only
 a question left unanswered for a tenth or more of the animals in view (the
-species tab, the shelters picked and the needs offered, before any search) is
+species tab, the shelters picked and the needs offered) is
 relaxed, the share that puts a "Brez podatka" line under a filter section. On
 Vse, Psi and Mačke that keeps Spol, Barva and Dolžina dlake strict.
 

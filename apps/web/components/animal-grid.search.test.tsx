@@ -12,6 +12,7 @@ import {
 import type { Animal, Species } from "@posvoji/schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AnimalGrid, INITIAL_CARDS } from "./animal-grid";
+import { resetFilterSectionsStore } from "@/components/filters/use-filter-sections";
 import { I18nProvider } from "@/components/i18n-provider";
 import {
   prefetchAnimalDescriptions,
@@ -210,15 +211,28 @@ describe("the search over the grid", () => {
   });
 
   it("counts the facets over what it found", async () => {
-    window.history.replaceState(null, "", "/?isci=ov%C4%8D");
-    renderGrid();
-    await waitFor(() => expect(cardNames()).toHaveLength(4));
+    // Spol starts folded (use-filter-sections.ts). A stored fold opens it
+    // without the press, whose reveal jsdom has no layout for.
+    window.localStorage.setItem(
+      "posvoji:filter-sections",
+      JSON.stringify({ sex: true }),
+    );
+    resetFilterSectionsStore();
+    try {
+      window.history.replaceState(null, "", "/?isci=ov%C4%8D");
+      renderGrid();
+      await waitFor(() => expect(cardNames()).toHaveLength(4));
 
-    const rail = screen.getByRole("complementary");
-    // Rex and Bor are male, Ovčka and Ajda female; Muri, a male, is not found.
-    expect(
-      within(rail).getByRole("button", { name: /^Samec/ }).textContent,
-    ).toContain("2");
+      const rail = screen.getByRole("complementary");
+      // Rex and Bor are male, Ovčka and Ajda female; Muri, a male, is not
+      // found.
+      expect(
+        within(rail).getByRole("button", { name: /^Samec/ }).textContent,
+      ).toContain("2");
+    } finally {
+      window.localStorage.removeItem("posvoji:filter-sections");
+      resetFilterSectionsStore();
+    }
   });
 
   it("leads the chips row with the query, and its pill takes the search off", async () => {

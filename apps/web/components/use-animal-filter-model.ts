@@ -54,7 +54,7 @@ type FilterActions = Pick<
 >;
 
 /** The sections an option can drop out of: every one but Kje, which is a
- *  picker, and Starost, whose three stages are one drawing. */
+ *  picker, and Starost, whose four stages are one drawing. */
 const DROPPING_FACETS = [
   "sex",
   "size",
@@ -282,7 +282,7 @@ export function useAnimalFilterModel({
         const options = groupOptions(group, pool, locale);
         // Age keeps every stage regardless (drawnByValue in filter-groups.tsx
         // carries the same exemption): the grove above the rows is one
-        // drawing of all three stages, not a list an option can drop out of.
+        // drawing of all four stages, not a list an option can drop out of.
         if (group === "age") return { group, options };
         // What was picked here at 0 on this tab counts as picked, which
         // covers every current pick the pool does not answer.

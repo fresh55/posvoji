@@ -480,8 +480,8 @@ export function FilterGroupList({
   };
 
   // The card groups' own, keyed on `value`. Two keep every option in both
-  // layouts. Starost's three stages are one drawing: the grove above the rows
-  // is a three-column grid whose plants stand over the rows they belong to.
+  // layouts. Starost's four stages are one drawing: the grove above the rows
+  // is a four-column grid whose plants stand over the rows they belong to.
   // Barva draws as a palette, and a dropped swatch reflowed the rest, each
   // solid colour splitting from its two-toned twin; a dead swatch is drawn
   // disabled in its own cell instead. An option the species pool never

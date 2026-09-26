@@ -23,6 +23,7 @@ import {
   FilterCardMark,
   FilterCardTail,
   SIDEBAR_LABEL_CLASS,
+  SIDEBAR_LABEL_REST,
   countClass,
   filterCardVariants,
 } from "@/components/filters/filter-card";
@@ -1092,8 +1093,10 @@ export function AgeGrowthControl({
                       11px: words nobody could read, saying what the faded,
                       shrunken plant above them already says. Below lg, in the
                       phone's sheet, they are a step up, at the 12px its tiles
-                      print their labels and counts in. */}
-                  <span className="mt-1 text-xs leading-none whitespace-nowrap text-muted-foreground tabular-nums lg:text-2xs">
+                      print their labels and counts in, and so they are again
+                      from xl, where the rail is a card column wide and its
+                      counts are 12px too. */}
+                  <span className="mt-1 text-xs leading-none whitespace-nowrap text-muted-foreground tabular-nums lg:text-2xs xl:text-xs">
                     {messages[stage.captionKey]}
                   </span>
                 </span>
@@ -1260,7 +1263,7 @@ export function AgeGrowthControl({
                         className={cn(
                           "min-w-0",
                           SIDEBAR_LABEL_CLASS,
-                          checked && "font-medium",
+                          checked ? "font-medium" : SIDEBAR_LABEL_REST,
                         )}
                       >
                         {label}

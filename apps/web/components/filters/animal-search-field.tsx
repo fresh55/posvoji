@@ -167,8 +167,8 @@ export function AnimalSearchField({
           "h-10 pl-9 text-base shadow-none md:text-base lg:text-sm",
           // Chrome and Safari draw a clear of their own; this one is ours.
           "[&::-webkit-search-cancel-button]:appearance-none",
-          // Room for the clear only while it is there: the rail is 224px, and
-          // the English placeholder needs most of it.
+          // Room for the clear only while it is there: at lg the rail is
+          // 224px, and the English placeholder needs most of it.
           active
             ? "border-brand-border pr-10 pointer-coarse:pr-11"
             : "pr-3",

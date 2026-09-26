@@ -301,7 +301,7 @@ function ResultsPending({ hasSidebar }: { hasSidebar: boolean }) {
       className={cn("min-h-[100dvh]", hasSidebar && RESULTS_COLUMNS)}
     >
       {/* The cards go in the second track and the rail's is left empty: what is
-          promised here is where the animals will be, and an empty 224px is a
+          promised here is where the animals will be, and an empty rail is a
           truer promise than a grey panel about to become a list of controls.
           The track rather than an empty element to hold the column open, and
           the same constant the block itself wears (lib/card-grid.ts). */}
@@ -707,7 +707,7 @@ export function AnimalGrid({
         // only stacked a second, empty one on top - a hole between the
         // load-more count and the footer the height of both.
         // The rail and the grid beside it, from lib/card-grid.ts, which owns
-        // the 224px the photo bands are derived from and the minmax(0,...)
+        // the rail's track the photo bands are derived from and the minmax(0,...)
         // floor that keeps the column shrinkable. The stand-in above wears the
         // same string; what happens when the two disagree is written there.
         className={cn(hasSidebar && RESULTS_COLUMNS)}

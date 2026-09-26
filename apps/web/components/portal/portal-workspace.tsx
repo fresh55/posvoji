@@ -26,6 +26,11 @@ import { NEW_DRAFT_ID } from "@/components/portal/listing-draft";
 import { PortalNotice, SessionError } from "@/components/portal/notice";
 import { usePortal } from "@/components/portal/portal-provider";
 import { fill, portalText } from "@/components/portal/portal-text";
+import {
+  needsAnswers,
+  type QuickRecord,
+} from "@/components/portal/quick-answers";
+import { QuickAnswersNotice } from "@/components/portal/quick-answers-notice";
 import { ReviewBanner } from "@/components/portal/review-banner";
 import { ShelterSwitcher } from "@/components/portal/shelter-switcher";
 import { Button } from "@/components/portal/portal-button";
@@ -158,6 +163,14 @@ export function PortalWorkspace() {
     () => filterPortalAnimals(listings, query, status),
     [listings, query, status],
   );
+  // The animals the quick answers round would ask something, counted with
+  // the round's own rule and over the whole list, for the reason the chips
+  // count the whole list: a count that moved with the filter would say
+  // nothing about the work left.
+  const quickCount = useMemo(() => {
+    const records: readonly QuickRecord[] = manual ? listings : animals;
+    return records.filter(needsAnswers).length;
+  }, [animals, listings, manual]);
   const visible = manual ? visibleListings : visibleAnimals;
   const visibleCount = visible.length;
 
@@ -385,6 +398,13 @@ export function PortalWorkspace() {
                 bulk={bulk}
                 onConfirmAll={() => void confirmStatuses()}
               />
+            )}
+
+            {/* The way into the quick answers, for both kinds of shelter: a
+                crawled shelter's answers are overrides, a manual one's are
+                its listings' own fields. Gone once nothing is left to ask. */}
+            {listState.status === "ready" && active && (
+              <QuickAnswersNotice count={quickCount} shelter={active} />
             )}
 
             {/* The save went through, but the animal no longer matches what

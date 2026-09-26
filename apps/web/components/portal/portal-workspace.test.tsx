@@ -862,3 +862,84 @@ describe("a listing save that the current filter hides", () => {
     expect(screen.queryByText(/trenutni filter skrije/)).toBeNull();
   });
 });
+
+describe("the way into the quick answers", () => {
+  /** The five answers a dog is asked, all given. */
+  const ANSWERED: Partial<PortalAnimal> = {
+    goodWithKids: "yes",
+    goodWithDogs: "no",
+    goodWithCats: "unknown",
+    size: "medium",
+    energy: "calm",
+  };
+
+  function quickLink(): HTMLElement | null {
+    return screen.queryByRole("link", { name: portalText.quickNoticeAction });
+  }
+
+  it("counts the animals still missing an answer and opens the round", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", species: "dog", name: "Rex" }),
+      // Only the size is missing, and a dog is asked its size.
+      animal({ id: "ljubljana:2", species: "dog", name: "Bor", ...ANSWERED, size: null }),
+      animal({ id: "ljubljana:3", species: "dog", name: "Luka", ...ANSWERED }),
+    ]);
+    renderWorkspace();
+
+    await waitFor(() => expect(quickLink()).toBeTruthy());
+    expect(
+      screen.getByText(fill(portalText.quickNoticeMany, { count: 2 })),
+    ).toBeTruthy();
+    expect(quickLink()?.getAttribute("href")).toBe(
+      "/portal/odgovori?zavetisce=ljubljana",
+    );
+  });
+
+  // A cat is never asked its size, on the public site or here, and an animal
+  // that has gone home can no longer be found by anyone searching.
+  it("leaves out a cat's size and an adopted animal", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", species: "cat", name: "Muri", ...ANSWERED, size: null }),
+      animal({ id: "ljubljana:2", species: "dog", name: "Rex", status: "adopted" }),
+      animal({ id: "ljubljana:3", species: "dog", name: "Bor" }),
+    ]);
+    renderWorkspace();
+
+    await waitFor(() => expect(quickLink()).toBeTruthy());
+    expect(
+      screen.getByText(fill(portalText.quickNoticeOne, { count: 1 })),
+    ).toBeTruthy();
+  });
+
+  it("is gone once every animal has its answers", async () => {
+    signIn(CRAWLED);
+    vi.mocked(fetchAnimals).mockResolvedValue([
+      animal({ id: "ljubljana:1", species: "dog", name: "Rex", ...ANSWERED }),
+    ]);
+    renderWorkspace();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Rex" })).toBeTruthy();
+    });
+    expect(quickLink()).toBeNull();
+  });
+
+  it("asks a shelter that writes its own listings the same questions", async () => {
+    signIn(MANUAL);
+    vi.mocked(fetchListings).mockResolvedValue([
+      LISTING,
+      { ...LISTING, id: "b2c3", name: "Mica", goodWithKids: "yes", goodWithDogs: "yes", goodWithCats: "yes", energy: "lively" },
+    ]);
+    renderWorkspace();
+
+    await waitFor(() => expect(quickLink()).toBeTruthy());
+    expect(
+      screen.getByText(fill(portalText.quickNoticeOne, { count: 1 })),
+    ).toBeTruthy();
+    expect(quickLink()?.getAttribute("href")).toBe(
+      "/portal/odgovori?zavetisce=johanca",
+    );
+  });
+});

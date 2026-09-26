@@ -1,6 +1,12 @@
 "use client";
 
-import { useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { ChevronRight, LoaderCircle, RotateCcw, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { portalText } from "@/components/portal/portal-text";
@@ -79,6 +85,33 @@ export function EditorBreadcrumb({
 }
 
 /**
+ * The room a bar pinned to the bottom of a phone screen needs after the
+ * footer. PortalShell pads by --portal-save-bar-height whenever the page holds
+ * a [data-save-bar], and this keeps that height measured: a wrapped error line
+ * and the phone's safe area both make the bar taller than its buttons.
+ */
+export function useSaveBarClearance(barRef: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const shell = bar?.closest<HTMLElement>("[data-portal-shell]");
+    if (!bar || !shell) return;
+    const measure = () => {
+      const height = bar.getBoundingClientRect().height;
+      if (height > 0) shell.style.setProperty("--portal-save-bar-height", `${height}px`);
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(bar);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+      shell.style.removeProperty("--portal-save-bar-height");
+    };
+  }, [barRef]);
+}
+
+/**
  * One bar, in two places. Beside the form on a wide screen, where the summary
  * is sticky and it rides along; pinned to the bottom of the window below that,
  * where the summary is at the top of a page the shelter has scrolled away
@@ -114,26 +147,7 @@ export function EditorSaveBar({
   const hintId = useId();
   const notice = hint ?? (!saving && dirty ? portalText.unsavedChanges : null);
   const barRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const bar = barRef.current;
-    const shell = bar?.closest<HTMLElement>("[data-portal-shell]");
-    if (!bar || !shell) return;
-    // The clearance belongs after the footer, and includes a wrapped error
-    // message and the phone's safe area, not just the buttons' normal height.
-    const measure = () => {
-      const height = bar.getBoundingClientRect().height;
-      if (height > 0) shell.style.setProperty("--portal-save-bar-height", `${height}px`);
-    };
-    measure();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
-    observer?.observe(bar);
-    window.addEventListener("resize", measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", measure);
-      shell.style.removeProperty("--portal-save-bar-height");
-    };
-  }, []);
+  useSaveBarClearance(barRef);
 
   return (
     <div

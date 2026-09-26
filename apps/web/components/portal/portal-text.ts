@@ -302,6 +302,51 @@ export const portalText = {
   revertField: "Povrni {field} na podatek z vaše strani",
   revertHint: "Povrne podatek, kot je zapisan na vaši spletni strani.",
 
+  // Quick answers: the five questions adopters filter by, one animal at a
+  // time, each answer saved on the tap. The notice above the list is the way
+  // in. "Pri" takes the locative, which is "živali" for one and "živalih" for
+  // every other count, so the pair covers all four of pick()'s forms.
+  quickNoticeOne:
+    "Pri {count} živali manjkajo podatki, po katerih posvojitelji najpogosteje iščejo.",
+  quickNoticeMany:
+    "Pri {count} živalih manjkajo podatki, po katerih posvojitelji najpogosteje iščejo.",
+  quickNoticeAction: "Odgovori na vprašanja",
+  quickTitle: "Hitri odgovori",
+  // There is no Shrani on this page, so the one line under the title says
+  // what a tap does instead, and when adopters see it.
+  quickLead:
+    "Odgovor se shrani takoj, ko ga izberete. Na javni strani je viden najpozneje v 12 urah.",
+  quickProgress: "{index} od {count}",
+  quickPrevious: "Nazaj",
+  quickNext: "Naprej",
+  // Naprej on the last animal still missing an answer, where it leads to the
+  // end of the round rather than to another animal.
+  quickFinish: "Končaj",
+  quickKids: "Se razume z otroki?",
+  quickDogs: "Se razume s psi?",
+  quickCats: "Se razume z mačkami?",
+  quickUnknown: "Ne vem",
+  // Under a question after Ne vem. Ne vem stores nothing (answerPatch in
+  // quick-answers.ts says why), so the answer stays empty and the animal
+  // keeps its place among those still missing one.
+  quickUnknownOpen: "Ostane brez odgovora. Ko boste vedeli, ga izberite.",
+  // The same tap on a value the crawl read off the shelter's own page, which
+  // the portal can replace but not empty.
+  quickUnknownSite:
+    "Ta odgovor smo prebrali z vaše spletne strani, zato ostane. Če ne drži, izberite pravega.",
+  quickDoneTitle: "Vse živali imajo odgovore",
+  quickDoneLead: "Na javni strani bodo vidni najpozneje v 12 urah.",
+  // The round is over but some animals were skipped or left on Ne vem. The
+  // same locative pair as the notice.
+  quickEndTitle: "Prišli ste do konca",
+  quickEndOne:
+    "Pri {count} živali odgovori še manjkajo. Dopolnite jih, ko jih boste poznali.",
+  quickEndMany:
+    "Pri {count} živalih odgovori še manjkajo. Dopolnite jih, ko jih boste poznali.",
+  quickNotFoundTitle: "Te strani ni mogoče odpreti",
+  quickNotFoundLead:
+    "Povezava vodi do zavetišča, do katerega nimate dostopa. Odprite seznam in začnite tam.",
+
   // Listings
   //
   // A shelter with no catalogue of its own writes its animals here, so for

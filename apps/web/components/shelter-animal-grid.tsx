@@ -61,7 +61,7 @@ export function ShelterAnimalGrid({
   const {
     selected,
     origin,
-    shownIds,
+    siblings,
     handleOpen,
     isDialogReady,
     handleDialogReady,
@@ -168,7 +168,7 @@ export function ShelterAnimalGrid({
           animal={selected}
           logos={logos}
           origin={origin}
-          siblingIds={shownIds}
+          siblings={siblings}
           reference={reference}
           onNavigate={handleNavigate}
           onClose={close}

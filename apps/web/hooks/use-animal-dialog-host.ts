@@ -58,8 +58,6 @@ export function useAnimalDialogHost<T extends AnimalFields>({
     [open],
   );
 
-  const shownIds = useMemo(() => shown.map((animal) => animal.id), [shown]);
-
   // Whether the dialog has arrived, which the cards ask before they carry a
   // photograph into it (animal-card.tsx). A ref and an accessor rather than
   // state and a value: readiness is one fact about the page, it flips once,
@@ -79,11 +77,13 @@ export function useAnimalDialogHost<T extends AnimalFields>({
   const origin = zoomFrom?.id === openId ? zoomFrom.at : undefined;
 
   // A step is a swap of the address and nothing more, so the hook's own
-  // callback is the handler.
+  // callback is the handler. What it steps through is the list as shown,
+  // handed on whole: the phone's steps name the animal either side and show
+  // its photo.
   return {
     selected,
     origin,
-    shownIds,
+    siblings: shown,
     handleOpen,
     isDialogReady,
     handleDialogReady,

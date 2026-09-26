@@ -434,7 +434,7 @@ export function AnimalGrid({
   const {
     selected,
     origin,
-    shownIds,
+    siblings,
     handleOpen,
     isDialogReady,
     handleDialogReady,
@@ -950,7 +950,7 @@ export function AnimalGrid({
             animal={selected}
             logos={logos}
             origin={origin}
-            siblingIds={shownIds}
+            siblings={siblings}
             reference={reference}
             onReady={handleDialogReady}
             onNavigate={handleNavigate}

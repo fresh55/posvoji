@@ -74,7 +74,7 @@ function renderDialog() {
       <AnimalDialog
         animal={client}
         logos={{}}
-        siblingIds={[]}
+        siblings={[]}
         reference={new Date(REFERENCE)}
         onNavigate={() => {}}
         onClose={onClose}

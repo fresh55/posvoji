@@ -25,8 +25,8 @@ const MOBILE_SPECS = [
   // desktop browser narrowed to 412px draws the same markup and never
   // exercises either.
   "photo-fan-mobile.spec.ts",
-  // The dialog's own phone chrome: the animal arrows the title row carries
-  // below sm, which a desktop browser never draws.
+  // The dialog's own phone chrome: the steps to the animals either side that
+  // the card ends with below sm, which a desktop browser never draws.
   "animal-dialog-mobile.spec.ts",
   // Pinch, pan and the pull-down that closes the lightbox all arrive as touch
   // pointers, two of them at once for the pinch.

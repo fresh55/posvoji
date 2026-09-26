@@ -274,22 +274,19 @@ function animalDialog() {
   return screen.getAllByRole("dialog")[0] as HTMLElement;
 }
 
-// The same two steps are drawn twice: as arrows at the edges of the dialog for
-// a pointer, and as a pair on the title row for a thumb. Each layout hides the
-// other one by breakpoint, and jsdom applies no Tailwind, so both are in the
-// tree here and a label on its own matches two buttons. Each is asked for by
-// what names it instead.
+// The same two steps are drawn twice: as arrows at the edges of the box for a
+// pointer, and as two links naming the animal at the end of the card for a
+// thumb. Each layout hides the other one by breakpoint, and jsdom applies no
+// Tailwind, so both are in the tree here. Each is asked for by what it is.
 function edgeNav(dialog: HTMLElement, label: string) {
-  const found = dialog.querySelector(
-    `button[aria-label="${label}"]:not([data-slot="animal-nav-phone"])`,
-  );
+  const found = dialog.querySelector(`button[aria-label="${label}"]`);
   if (!(found instanceof HTMLElement)) throw new Error(`no edge ${label}`);
   return found;
 }
 
-function phoneNav(dialog: HTMLElement, direction: "previous" | "next") {
+function stepLink(dialog: HTMLElement, direction: "previous" | "next") {
   const found = dialog.querySelector(
-    `[data-slot="animal-nav-phone"][data-direction="${direction}"]`,
+    `a[data-slot="animal-step"][data-direction="${direction}"]`,
   );
   return found instanceof HTMLElement ? found : null;
 }
@@ -297,7 +294,7 @@ function phoneNav(dialog: HTMLElement, direction: "previous" | "next") {
 // One animal open with a list stated by hand, for the cases where which
 // neighbours it has is the whole point. The grid renders the same dialog off
 // its own sort, which cannot be asked for a middle of a list of two.
-function renderDialog(target: Animal, siblingIds: string[]) {
+function renderDialog(target: Animal, siblings: Animal[]) {
   const onNavigate = vi.fn();
   const [client] = animalsForClient([target]);
   render(
@@ -305,7 +302,7 @@ function renderDialog(target: Animal, siblingIds: string[]) {
       <AnimalDialog
         animal={client}
         logos={{}}
-        siblingIds={siblingIds}
+        siblings={animalsForClient(siblings)}
         reference={new Date(REFERENCE)}
         onNavigate={onNavigate}
         onClose={() => {}}
@@ -2389,33 +2386,70 @@ describe("animal dialog", () => {
   });
 
   // The edge arrows start at sm and the page keys they double for need a
-  // keyboard, so a phone had one way to the next animal: close the dialog and
-  // find the next card. The same two steps ride the title row below sm.
+  // keyboard, so a phone gets the same two steps as links. They used to be two
+  // round chevrons on the title row, under the fan's "Foto 1 / 13", where they
+  // were read as the next photo. They stand at the end of the card now and
+  // name the animal they lead to.
   //
   // jsdom draws no Tailwind, so which of the two pairs is on screen is pinned
   // in the browser suite (e2e/animal-dialog-mobile.spec.ts). What is pinned
-  // here is that they are rendered, what they are labelled and where they go.
-  it("puts both animal steps on the title row for a thumb", async () => {
-    renderDialog(MURI, [REX.id, MURI.id, ADOPTED.id]);
+  // here is that they are rendered, what they say and where they go.
+  it("names the neighbours at the end of the card for a thumb", async () => {
+    renderDialog(MURI, [REX, MURI, ADOPTED]);
     const dialog = await screen.findByRole("dialog");
 
-    const previous = phoneNav(dialog, "previous");
-    const next = phoneNav(dialog, "next");
-    expect(previous?.getAttribute("aria-label")).toBe("Prejšnja žival");
-    expect(next?.getAttribute("aria-label")).toBe("Naslednja žival");
+    const previous = stepLink(dialog, "previous");
+    const next = stepLink(dialog, "next");
+    expect(previous?.getAttribute("aria-label")).toBe("Prejšnja žival: Rex");
+    expect(next?.getAttribute("aria-label")).toBe("Naslednja žival: Lucky");
+    // On screen, the short word over the name.
+    expect(within(previous!).getByText("Prejšnja")).toBeTruthy();
+    expect(within(previous!).getByText("Rex")).toBeTruthy();
+    expect(within(next!).getByText("Naslednja")).toBeTruthy();
+    // A real address, the one the card links to, for a press that asks for a
+    // new tab.
+    expect(previous?.getAttribute("href")).toBe(animalPath(REX, "sl"));
+    expect(next?.getAttribute("href")).toBe(animalPath(ADOPTED, "sl"));
 
-    // Inside the title row's own group of controls and ahead of the share
-    // button, so a row that wraps takes all of them to the next line together.
-    const group = previous!.parentElement!;
-    expect(group.contains(next)).toBe(true);
-    const share = within(dialog).getByRole("button", { name: "Deli" });
-    expect(group.contains(share)).toBe(true);
-    const order = Array.from(group.children);
-    expect(order.indexOf(previous!)).toBe(0);
-    expect(order.indexOf(next!)).toBe(1);
-    expect(group.parentElement?.contains(slot(dialog, "dialog-title"))).toBe(
-      true,
-    );
+    // One named group, after the shelter's box, and nothing of it left on the
+    // title row.
+    const steps = within(dialog).getByRole("navigation", {
+      name: "Druge živali",
+    });
+    expect(steps.contains(previous)).toBe(true);
+    const listing = within(dialog).getAllByRole("link", {
+      name: /Odpri objavo pri zavetišču/,
+    })[0];
+    expect(
+      listing.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The title and its badge, then the row's own controls: share, and the
+    // close the wider layout draws there.
+    const titleRow = slot(dialog, "dialog-title").parentElement!.parentElement!;
+    expect(titleRow.querySelector("a, [data-direction]")).toBeNull();
+    const controls = within(titleRow).getAllByRole("button");
+    expect(controls).toHaveLength(2);
+    expect(controls[0]).toBe(within(dialog).getByRole("button", { name: "Deli" }));
+    expect(controls[1]).toBe(slot(dialog, "dialog-close-card"));
+  });
+
+  // A photo where the neighbour has one, the species where it has none.
+  it("shows the neighbour's first photo beside its name", async () => {
+    renderDialog(MURI, [REX, MURI]);
+    const dialog = await screen.findByRole("dialog");
+
+    const photo = stepLink(dialog, "previous")!.querySelector("img");
+    expect(photo?.getAttribute("src")).toBe("/media/animals/rex-1.webp");
+    expect(photo?.getAttribute("alt")).toBe("");
+  });
+
+  it("draws the species for a neighbour with no photo", async () => {
+    renderDialog(REX, [REX, MURI]);
+    const dialog = await screen.findByRole("dialog");
+
+    const next = stepLink(dialog, "next")!;
+    expect(next.querySelector("img")).toBeNull();
+    expect(next.querySelector("svg.lucide-cat")).toBeTruthy();
   });
 
   // The edge arrows are drawn at the edges but written last. Standing first,
@@ -2425,7 +2459,7 @@ describe("animal dialog", () => {
   // of the photos, which is deliberate and is hidden from sm up, where these
   // arrows are the ones on screen.
   it("writes the animal steps after the animal itself", async () => {
-    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
 
     const previous = edgeNav(dialog, "Prejšnja žival");
@@ -2450,7 +2484,7 @@ describe("animal dialog", () => {
   // the button's own name, so the description Radix hangs on a trigger is
   // dropped rather than announcing "Prejšnja žival" a second time.
   it("says what the edge arrows step to before they are clicked", async () => {
-    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
 
     for (const label of ["Prejšnja žival", "Naslednja žival"]) {
@@ -2476,7 +2510,7 @@ describe("animal dialog", () => {
   // offsets subtract it. Written as a custom property and not as state, so a
   // scroll renders nothing.
   it("lifts the edge arrows with the name as the title bar pins", async () => {
-    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
     const frame = slot(dialog, "animal-dialog-frame");
     const card = slot(dialog, "animal-dialog-card");
@@ -2500,7 +2534,7 @@ describe("animal dialog", () => {
   // and Radix would open on it. The front print is the animal, so the open
   // lands there, and the arrow keys walk the fan from the first key.
   it("opens on the front print", async () => {
-    renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
     const front = dialog.querySelector(
       'button[data-print][aria-current="true"]',
@@ -2510,41 +2544,125 @@ describe("animal dialog", () => {
   });
 
   it("offers the first animal the next step and nothing before it", async () => {
-    renderDialog(REX, [REX.id, MURI.id]);
+    renderDialog(REX, [REX, MURI]);
     const dialog = await screen.findByRole("dialog");
 
-    expect(phoneNav(dialog, "previous")).toBeNull();
-    expect(phoneNav(dialog, "next")).toBeTruthy();
+    expect(stepLink(dialog, "previous")).toBeNull();
+    expect(stepLink(dialog, "next")).toBeTruthy();
   });
 
   it("offers the last animal the previous step and nothing after it", async () => {
-    renderDialog(MURI, [REX.id, MURI.id]);
+    renderDialog(MURI, [REX, MURI]);
     const dialog = await screen.findByRole("dialog");
 
-    expect(phoneNav(dialog, "previous")).toBeTruthy();
-    expect(phoneNav(dialog, "next")).toBeNull();
+    expect(stepLink(dialog, "previous")).toBeTruthy();
+    expect(stepLink(dialog, "next")).toBeNull();
   });
 
   // A link to an animal the filters hide arrives with no list to step through,
-  // the same as the edge arrows: no step is drawn rather than a dead one.
+  // the same as the edge arrows: no step is drawn rather than a dead one, and
+  // no empty group is left to be announced.
   it("drops both steps for an animal that is not on the list", async () => {
-    renderDialog(MURI, [REX.id, ADOPTED.id]);
+    renderDialog(MURI, [REX, ADOPTED]);
     const dialog = await screen.findByRole("dialog");
 
-    expect(phoneNav(dialog, "previous")).toBeNull();
-    expect(phoneNav(dialog, "next")).toBeNull();
+    expect(stepLink(dialog, "previous")).toBeNull();
+    expect(stepLink(dialog, "next")).toBeNull();
+    expect(within(dialog).queryByRole("navigation")).toBeNull();
   });
 
-  it("steps to the neighbour the title row's button names", async () => {
-    const onNavigate = renderDialog(MURI, [REX.id, MURI.id, ADOPTED.id]);
+  it("steps to the neighbour the link names", async () => {
+    const onNavigate = renderDialog(MURI, [REX, MURI, ADOPTED]);
     const dialog = await screen.findByRole("dialog");
 
-    fireEvent.click(phoneNav(dialog, "next")!);
+    const press = createEvent.click(stepLink(dialog, "next")!);
+    fireEvent(stepLink(dialog, "next")!, press);
     expect(onNavigate).toHaveBeenLastCalledWith(ADOPTED.id);
+    // Stepped in place, not followed to the animal's own page.
+    expect(press.defaultPrevented).toBe(true);
 
-    fireEvent.click(phoneNav(dialog, "previous")!);
+    fireEvent.click(stepLink(dialog, "previous")!);
     expect(onNavigate).toHaveBeenLastCalledWith(REX.id);
     expect(onNavigate).toHaveBeenCalledTimes(2);
+  });
+
+  // A press that asks for a new tab is the browser's, and the address it
+  // follows is the animal's own page.
+  it("leaves a modified press to the browser", async () => {
+    const onNavigate = renderDialog(MURI, [REX, MURI, ADOPTED]);
+    const dialog = await screen.findByRole("dialog");
+    // Read after React has answered, and then stopped, so jsdom does not try
+    // to navigate a document it cannot.
+    let prevented: boolean | undefined;
+    const record = (event: Event) => {
+      prevented = event.defaultPrevented;
+      event.preventDefault();
+    };
+    window.addEventListener("click", record);
+    try {
+      fireEvent.click(stepLink(dialog, "next")!, { ctrlKey: true });
+    } finally {
+      window.removeEventListener("click", record);
+    }
+    expect(prevented).toBe(false);
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  // The steps stand at the end of what was just read, and the phone scrolls
+  // the whole shell. The next animal opens at its top, with focus on it rather
+  // than left at the bottom on a link that now names someone else.
+  it("opens the animal it steps to at the top, with focus on it", async () => {
+    window.history.replaceState(null, "", "/?zival=muri");
+    renderGrid();
+    const dialog = await screen.findByRole("dialog");
+    dialog.scrollTop = 900;
+
+    fireEvent.click(stepLink(dialog, "previous")!);
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(REX, "sl")),
+    );
+    expect(animalDialog().scrollTop).toBe(0);
+    // Rex has photos, so it lands where an open does: on the front print.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        animalDialog().querySelector('button[data-print][aria-current="true"]'),
+      ),
+    );
+
+    // Muri has none, so it lands on the name.
+    fireEvent.click(stepLink(animalDialog(), "next")!);
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(MURI, "sl")),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(slot(animalDialog(), "dialog-title")),
+    );
+  });
+
+  // The arrows and the page keys are pressed again and again, so they keep
+  // focus where it was. Only a step from the end of the card moves it. Four
+  // animals, so the step from the second lands on one that still has an arrow
+  // on each side, and the pressed one stays in the tree.
+  it("leaves focus on the edge arrow a step was taken with", async () => {
+    const queue = ["2023-01-01", "2023-06-01", "2024-01-01", "2024-06-01"].map(
+      (intakeDate, index) =>
+        animal(`queue-${index}`, ["Ena", "Dva", "Tri", "Štiri"][index], {
+          intakeDate,
+        }),
+    );
+    window.history.replaceState(null, "", `/?zival=${queue[1].id}`);
+    renderGrid(queue);
+    const dialog = await screen.findByRole("dialog");
+    const arrow = edgeNav(dialog, "Naslednja žival");
+    arrow.focus();
+
+    fireEvent.click(arrow);
+
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(animalPath(queue[2], "sl")),
+    );
+    expect(document.activeElement).toBe(arrow);
   });
 
   // React bubbles a portal's keys up the component tree, so every layer the
@@ -2552,7 +2670,7 @@ describe("animal dialog", () => {
   // key in the share sheet's link field stepped to the next animal and took
   // the sheet down with it.
   it("leaves the page keys alone inside the layers it opens", async () => {
-    const onNavigate = renderDialog(TRIO, [REX.id, TRIO.id, MURI.id]);
+    const onNavigate = renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
 
     await act(async () => {

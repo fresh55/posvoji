@@ -22,6 +22,7 @@ import {
 } from "motion/react";
 import { LazyMotion } from "@/components/motion-scope";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import { AnimalSteps } from "@/components/animal-dialog/animal-steps";
 import {
   cardArrivesLate,
   cardRevealTransition,
@@ -176,8 +177,9 @@ const CARD_FRAME_CLASS =
 // the outline variant's own fill (dark:bg-input/30) is translucent too.
 //
 // pointer-coarse:size-11 for the tablet. iPad portrait is 768px, which is the
-// sm layout, where these arrows are the only way to the next animal: the title
-// row's pair is hidden from sm up and the page keys need a keyboard. A finger
+// sm layout, where these arrows are the only way to the next animal: the
+// phone's steps at the end of the card are hidden from sm up and the page keys
+// need a keyboard. A finger
 // gets the 44px floor; a mouse keeps the smaller circle, and each size takes
 // half of itself off the row's own middle so both stay centred on it.
 //
@@ -202,32 +204,12 @@ const ANIMAL_NAV_CLASS =
 // further, so the arrows stop with it.
 const NAV_SHIFT_MAX = 24;
 
-// The same two steps for a phone, which has neither the edge arrows above nor
-// the PageUp and PageDown keys they double for: without these the only way to
-// the next animal is to close the dialog and find the next card. They ride the
-// title row beside the share button rather than the edges of the screen, where
-// the fan's own chevrons and the close button already are. No backdrop blur:
-// they sit on the card's own ground, not over a photograph. size-11 is the
-// 44px floor every other control on the phone layout is held to (the share
-// button beside them does the same); icon-sm alone would be 32px.
-//
-// The plate is stated for dark as well, for the reason GALLERY_BUTTON_CLASS
-// gives in photo-gallery.tsx: the outline variant carries its own dark fill
-// and it outranks an unprefixed one from here. PHONE_SHARE_CLASS below already
-// did this, by lending the variant's own dark pair rather than repeating the
-// background; either way the point is that the dark half has to be written.
-const PHONE_NAV_CLASS =
-  "size-11 rounded-full bg-background/80 shadow-xs hover:bg-background dark:bg-background/80 dark:hover:bg-background desktop-box:hidden";
-
-// The share button stands third in that row, and on the phone it was the only
-// one of the three drawn as a bare glyph: two outlined circles and then an
-// icon on nothing, which reads as a different kind of control rather than the
-// third step of the same one. This lends it the arrows' dress below sm, where
-// they are on screen; from sm the arrows are gone and the button keeps the
-// quiet ghost it wears beside the close. The dark pair is the outline
-// variant's own, because on dark that variant fills with input rather than
-// with background, and half a shade in the wrong direction is what would give
-// the row away.
+// On the phone the share button is the title row's one control, and a bare
+// glyph beside a 24px name reads as part of the heading rather than as
+// something to press, so there it wears a round outlined plate; from sm it
+// keeps the quiet ghost it wears beside the close. The dark pair is the
+// outline variant's own, because on dark that variant fills with input rather
+// than with background, and an unprefixed fill from here would lose to it.
 const PHONE_SHARE_CLASS =
   "phone-shell:rounded-full phone-shell:border-border phone-shell:bg-background/80 phone-shell:shadow-xs phone-shell:hover:bg-background phone-shell:dark:border-input phone-shell:dark:bg-input/30 phone-shell:dark:hover:bg-input/50 ";
 
@@ -318,8 +300,9 @@ type AnimalDialogProps = {
   logos: ShelterLogos;
   origin?: DialogOrigin;
   /** What the dialog steps through: the list as filtered and sorted, whole
-   *  rather than the page of it the grid has drawn so far. */
-  siblingIds: string[];
+   *  rather than the page of it the grid has drawn so far. The animals and not
+   *  their ids, because the phone's steps name the animal and show its photo. */
+  siblings: readonly ClientAnimal[];
   /** The dataset's build time, shared with the cards behind the dialog. */
   reference: Date;
   /** Told once, as soon as this dialog is on the page and could take an open.
@@ -367,7 +350,7 @@ function OpenAnimalDialog({
   first,
   logos,
   origin,
-  siblingIds,
+  siblings,
   reference,
   onNavigate,
   onClose,
@@ -438,9 +421,27 @@ function OpenAnimalDialog({
 
   // The reused card starts each animal at its heading, even when both
   // descriptions overflow a short desktop viewport.
+  //
+  // The phone scrolls the whole shell rather than the card, and nothing put
+  // that back: a step taken halfway down one animal opened the next one
+  // halfway down. It mattered little while the steps sat on the title row,
+  // which is at the top, and it matters now that they stand at the end of the
+  // card. Only for an animal arriving, not for the close, where the shell is
+  // still fading out and a jump to the top would show.
+  const focusAfterStep = useRef(false);
   useEffect(() => {
     if (cardRef.current) cardRef.current.scrollTop = 0;
     syncNavShift(0);
+    if (!animal) return;
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+    if (!focusAfterStep.current) return;
+    focusAfterStep.current = false;
+    // Where an open lands, which is the animal: its front print, or its name
+    // when it has no photo to put in front.
+    const target =
+      frontPrintOf(contentRef.current) ??
+      contentRef.current?.querySelector<HTMLElement>('[data-slot="dialog-title"]');
+    target?.focus({ preventScroll: true });
   }, [animal, syncNavShift]);
 
   // Radix hands focus back to a trigger, and a dialog driven by the URL has
@@ -606,12 +607,25 @@ function OpenAnimalDialog({
   // An animal the current filters hide is still reachable by link, and then
   // there is no list to step through, so the arrows stay away. Closing counts
   // as nothing open, so they leave with the dialog.
-  const place = animal ? siblingIds.indexOf(animal.id) : -1;
-  const previousId = place > 0 ? siblingIds[place - 1] : undefined;
-  const nextId =
-    place >= 0 && place < siblingIds.length - 1
-      ? siblingIds[place + 1]
+  const place = animal
+    ? siblings.findIndex((sibling) => sibling.id === animal.id)
+    : -1;
+  const previous = place > 0 ? siblings[place - 1] : undefined;
+  const next =
+    place >= 0 && place < siblings.length - 1
+      ? siblings[place + 1]
       : undefined;
+  const previousId = previous?.id;
+  const nextId = next?.id;
+
+  // A step from the end of the card, where the phone's two steps stand. The
+  // arrows and the page keys keep focus where it was, so they can be pressed
+  // again; these are at the bottom of what was just read, and the next animal
+  // starts at the top.
+  function stepFromEnd(id: string) {
+    focusAfterStep.current = true;
+    onNavigate(id);
+  }
 
   // Page keys scroll the detail card first, including when focus is on the
   // photo above it. Only a key at the card's end steps to another animal.
@@ -990,8 +1004,8 @@ function OpenAnimalDialog({
                   <div className="desktop-box:sticky desktop-box:-top-12 desktop-box:z-20 desktop-box:-mx-6 desktop-box:-mt-6 desktop-box:bg-popover desktop-box:px-6 desktop-box:pt-6 desktop-box:pb-3 desktop-box:shadow-[inset_0_-1px_0_0_var(--popover)]">
                     <div className="flex flex-wrap items-center gap-2">
                       {/* The name is what gives way, not the controls. On a
-                          360px phone "brezrepa tritačka Luna" pushed all three
-                          round buttons to a second line. flex-1 from a zero
+                          360px phone "brezrepa tritačka Luna" pushed the round
+                          buttons beside it to a second line. flex-1 from a zero
                           basis hands the name whatever the row has left over,
                           and below sm it wraps inside that width and stops at
                           two lines. */}
@@ -1002,7 +1016,13 @@ function OpenAnimalDialog({
                             32px, which is what the icon-sm controls beside it
                             already stood at, so the bar and the arrows' offset
                             are measured from the same row as before. */}
-                        <DialogTitle className="min-w-0 break-words font-semibold text-2xl tracking-tight phone-shell:line-clamp-2 ">
+                        {/* tabIndex so a step from the end of the card can
+                            land on the name of an animal with no photo to
+                            focus instead; see stepFromEnd. */}
+                        <DialogTitle
+                          tabIndex={-1}
+                          className="min-w-0 break-words font-semibold text-2xl tracking-tight outline-none phone-shell:line-clamp-2"
+                        >
                           {name}
                         </DialogTitle>
                         <StatusBadge
@@ -1016,34 +1036,11 @@ function OpenAnimalDialog({
                           it. shrink-0 so the name is measured against what
                           they leave rather than squeezing them. */}
                       <span className="ms-auto flex shrink-0 items-center gap-1">
-                        {previousId && (
-                          <Button
-                            type="button"
-                            data-slot="animal-nav-phone"
-                            data-direction="previous"
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => onNavigate(previousId)}
-                            aria-label={messages.previousAnimal}
-                            className={PHONE_NAV_CLASS}
-                          >
-                            <ChevronLeft className="size-4" aria-hidden />
-                          </Button>
-                        )}
-                        {nextId && (
-                          <Button
-                            type="button"
-                            data-slot="animal-nav-phone"
-                            data-direction="next"
-                            variant="outline"
-                            size="icon-sm"
-                            onClick={() => onNavigate(nextId)}
-                            aria-label={messages.nextAnimal}
-                            className={PHONE_NAV_CLASS}
-                          >
-                            <ChevronRight className="size-4" aria-hidden />
-                          </Button>
-                        )}
+                        {/* No steps to other animals here. On the phone a
+                            round chevron under the fan's count was read as the
+                            next photo; the steps stand at the end of the card
+                            instead (AnimalSteps), and from sm up at the edges
+                            of the box. */}
                         <DialogShareButton
                           path={href}
                           name={name}
@@ -1109,6 +1106,15 @@ function OpenAnimalDialog({
                           ctaMirrored
                         />
                       </div>
+
+                      {/* After the shelter, where the reading of this animal
+                          ends, and before the sticky bar, which stays the one
+                          action at the foot of the screen. */}
+                      <AnimalSteps
+                        previous={previous}
+                        next={next}
+                        onStep={stepFromEnd}
+                      />
                     </>
                   )}
                 </m.div>

@@ -17,6 +17,7 @@ import {
   ageInMonths,
   ageStage,
   GOOD_WITH_KEYS,
+  goodWithMatches,
   optionLabel,
   TOGGLES,
   toggleLabel,
@@ -186,8 +187,10 @@ export function posterTiles(
     });
   }
 
+  // The filters' yes, so an animal that has to be the only pet prints no dog
+  // or cat tile, whatever else its record says.
   for (const key of GOOD_WITH_KEYS) {
-    if (animal.goodWith?.[key] !== "yes") continue;
+    if (!goodWithMatches(animal, key)) continue;
     tiles.push({
       key: `goodWith-${key}`,
       label: messages[GOOD_WITH_YES[key]],

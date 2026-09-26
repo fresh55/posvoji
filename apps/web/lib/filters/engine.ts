@@ -100,6 +100,18 @@ export function goodWithMatches(animal: AnimalFields, key: GoodWithKey): boolean
   return goodWithAnswer(animal, key) === "yes";
 }
 
+/** Whether the shelter said anything to one household question. A home
+ *  without young children is not a no to children, since older ones may fit,
+ *  but it is what the shelter said about them, and the dialog shows it in
+ *  place of "Ni podatka o otrocih". Such an animal is not missing that answer:
+ *  "Brez podatka" does not count it and the band does not offer it. */
+function answersGoodWith(animal: AnimalFields, key: GoodWithKey): boolean {
+  return (
+    goodWithAnswer(animal, key) !== undefined ||
+    (key === "kids" && animal.adoptionRequirements?.noYoungKids === true)
+  );
+}
+
 // An animal is asked what its own tab asks (groupFitsSpecies below), in a
 // list that mixes species too. Velikost sorts dogs, but for cats it is a
 // distinction nobody shops on, so a size a cat's listing happens to carry is
@@ -373,9 +385,8 @@ function buildIndex(animals: readonly AnimalFields[]): FilterIndex {
       maskOf(TOGGLES.length, (bit) => TOGGLES[bit].answered(animal)),
     );
     goodWithAnswered.push(
-      maskOf(
-        GOOD_WITH_KEYS.length,
-        (bit) => goodWithAnswer(animal, GOOD_WITH_KEYS[bit]) !== undefined,
+      maskOf(GOOD_WITH_KEYS.length, (bit) =>
+        answersGoodWith(animal, GOOD_WITH_KEYS[bit]),
       ),
     );
   }
@@ -991,7 +1002,9 @@ type Relaxed = { groups: number; goodWith: number; toggles: number };
  * among them.
  *
  * An answer that contradicts a pick keeps the animal out: a no, a positive
- * test, a known size, age or wait that differs. The species tab, Kje and
+ * test, a known size, age or wait that differs. A home without young children
+ * keeps it out of Otroke as well: not a no, but an answer (answersGoodWith).
+ * The species tab, Kje and
  * Lahko ponudim keep out whoever they keep out of the result. Every animal
  * answers the first two, and one with no need stated is not missing an answer
  * to the third: it has no need for the visitor's offer to meet.
@@ -1049,9 +1062,9 @@ export function unansweredBand<T extends AnimalFields>(
     const species = index.species[slot];
     // Each key of an AND section the animal does not answer yes to has to be
     // one the band relaxes and one the record leaves blank: a no is an
-    // answer, and so is onlyPet for the two animal questions
-    // (goodWithAnswer). Every household question is asked of every animal, a
-    // test of cats alone (TOGGLES_ASKED).
+    // answer, and so are onlyPet for the two animal questions and noYoungKids
+    // for the children's (answersGoodWith). Every household question is asked
+    // of every animal, a test of cats alone (TOGGLES_ASKED).
     const goodWith = andFailedAt(pass, slot, "goodWith");
     const blankGoodWith = relaxed.goodWith & ~index.goodWithAnswered[slot];
     if ((goodWith & ~blankGoodWith) !== 0) continue;

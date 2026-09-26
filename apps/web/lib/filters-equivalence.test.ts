@@ -93,6 +93,7 @@ function dataset(count: number): Animal[] {
       bondedPair: flag(),
       experiencedCarer: flag(),
       ongoingCare: flag(),
+      noYoungKids: flag(),
     };
     animals.push({
       id: `a${at}`,
@@ -450,6 +451,7 @@ function slowUnanswered(animals: Animal[], filters: Filters) {
         () => true,
         (animal) =>
           (key !== "kids" && animal.adoptionRequirements?.onlyPet === true) ||
+          (key === "kids" && animal.adoptionRequirements?.noYoungKids === true) ||
           animal.goodWith?.[key] === "yes" ||
           animal.goodWith?.[key] === "no",
       ),

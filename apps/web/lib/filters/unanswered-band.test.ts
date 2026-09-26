@@ -95,6 +95,17 @@ describe("unansweredBand on the household questions", () => {
       ids([onlyPet, silent]),
     );
   });
+
+  it("reads a home without young children as an answer about children alone", () => {
+    const noYoungKids = animal("dog", { adoptionRequirements: { noYoungKids: true } });
+    const silent = animal("dog");
+    const pool = [noYoungKids, silent];
+    expect(applyFilters(pool, only({ goodWith: ["kids"] }), now)).toEqual([]);
+    expect(ids(band(pool, only({ goodWith: ["kids"] })).animals)).toEqual(ids([silent]));
+    expect(ids(band(pool, only({ goodWith: ["cats"] })).animals)).toEqual(
+      ids([noYoungKids, silent]),
+    );
+  });
 });
 
 describe("unansweredBand on the test results", () => {

@@ -783,11 +783,12 @@ const sl = {
   newListingMark: "Novo",
   // The line above the cards. Slovenian's count ladder (pick in
   // lib/labels.ts): 1 nova objava, 2 novi objavi, 3 in 4 nove objave, from 5
-  // novih objav.
-  newListingsOne: "{count} nova objava od tvojega zadnjega obiska.",
-  newListingsTwo: "{count} novi objavi od tvojega zadnjega obiska.",
-  newListingsFew: "{count} nove objave od tvojega zadnjega obiska.",
-  newListingsMany: "{count} novih objav od tvojega zadnjega obiska.",
+  // novih objav. One line at 320px with a three-digit count, which the
+  // notice's held place depends on (new-listings-notice.tsx).
+  newListingsOne: "{count} nova objava od zadnjega obiska.",
+  newListingsTwo: "{count} novi objavi od zadnjega obiska.",
+  newListingsFew: "{count} nove objave od zadnjega obiska.",
+  newListingsMany: "{count} novih objav od zadnjega obiska.",
   // Its one button. The pronoun follows how many listings there are and not
   // the numeral's grammar: jo for one, the dual ju for two, jih for more, 101
   // included.

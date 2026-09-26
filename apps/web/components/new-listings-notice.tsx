@@ -44,9 +44,13 @@ function buttonKey(count: number): TranslationKey {
  * caller hides it under the Nove objave order itself, where the new listings
  * are already first and the button would do nothing.
  *
- * Which means that where it is drawn, it arrives after hydration and moves
- * whatever is under it down by its own height, once per page: 32px on a
- * desktop row, 60px on a phone, where the button wraps under the sentence.
+ * It arrives after hydration, into a place the blocking script before the
+ * grid has held since the first paint (lib/last-visit.ts, the rule in
+ * app/globals.css), so its height is fixed and the rule states it: two lines
+ * on a phone, the sentence over its button, 60px, and one 32px row from sm.
+ * The sentence is short enough for one line at 320px with a three-digit count
+ * (239px of the 288 there); "od tvojega zadnjega obiska" was 292px and
+ * wrapped.
  */
 export function NewListingsNotice({
   count,
@@ -65,15 +69,14 @@ export function NewListingsNotice({
     <div
       data-slot="new-listings-notice"
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-2 text-sm",
+        "flex flex-col items-start gap-2 text-sm sm:flex-row sm:items-center sm:gap-3",
         className,
       )}
     >
       <p>{t(sentenceKey(count, locale), { count })}</p>
       {/* 32px drawn and 44px to a thumb through tap-target's overlay, rather
-          than a 44px box: on a phone the button wraps under the sentence,
-          and every pixel of this line is a pixel the first row of cards
-          moves down. */}
+          than a 44px box: the rule in app/globals.css holds this line's
+          place at the height drawn here. */}
       <Button
         variant="outline"
         size="sm"

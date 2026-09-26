@@ -14,7 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAnimalDialogHost } from "@/hooks/use-animal-dialog-host";
 import { useAnimalFilters } from "@/hooks/use-animal-filters";
 import { useAnimalSearch } from "@/hooks/use-animal-search";
+import { useNewListingCount, useVisitRead } from "@/hooks/use-last-visit";
 import { useNearbyOrigin } from "@/hooks/use-nearby-origin";
+import { NewListingsNotice } from "@/components/new-listings-notice";
+import { NEW_LISTINGS_DATASET_KEY, NEW_LISTINGS_SLOT } from "@/lib/last-visit";
 import type { ClientAnimal } from "@/lib/animal";
 import { prefetchAnimalDescriptions } from "@/lib/animal-descriptions";
 import {
@@ -451,6 +454,22 @@ export function AnimalGrid({
   // from the one function that decides it rather than restating the fallback.
   const order = effectiveSort(sort, nearby?.at);
 
+  // How many of the matches were listed since this visitor's last visit, for
+  // the notice above the cards, and the press that puts them first. Zero on a
+  // first visit, on the server and through hydration.
+  const newListings = useNewListingCount(visible, reference);
+  const showNewFirst = useCallback(() => setSort("newly-listed"), [setSort]);
+  // The blocking script before the grid held the notice's place from the
+  // first paint (lib/last-visit.ts); the place goes back to the layout once
+  // the visit has been read, which is the same commit that draws the notice
+  // or finds nothing to draw. After it, so the notice is already standing in
+  // the place it takes over.
+  const visitRead = useVisitRead(reference);
+  useEffect(() => {
+    if (!visitRead) return;
+    delete document.documentElement.dataset[NEW_LISTINGS_DATASET_KEY];
+  }, [visitRead]);
+
   // The animals the filters hide only for want of an answer, offered under
   // the last match and drawn after the matches once asked for. band.list is
   // what the grid draws and the dialog steps through: the matches, and the
@@ -767,6 +786,16 @@ export function AnimalGrid({
             onSortChange={setSort}
             unanswered={unanswered}
           />
+
+          {/* Held open before the first paint while the script before the grid
+              expects a notice (lib/last-visit.ts, the rule in app/globals.css),
+              and out of the column's gap whenever it is empty. Under the Nove
+              objave order the new listings are already first. */}
+          <div data-slot={NEW_LISTINGS_SLOT}>
+            {order !== "newly-listed" && (
+              <NewListingsNotice count={newListings} onShowFirst={showNewFirst} />
+            )}
+          </div>
 
           {isEmpty ? (
             <EmptyState>

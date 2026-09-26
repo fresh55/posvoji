@@ -32,7 +32,7 @@ describe("NewListingsNotice", () => {
     const onShowFirst = notice(12);
 
     expect(drawn()?.querySelector("p")?.textContent).toBe(
-      "12 novih objav od tvojega zadnjega obiska.",
+      "12 novih objav od zadnjega obiska.",
     );
     fireEvent.click(screen.getByRole("button", { name: "Pokaži jih najprej" }));
     expect(onShowFirst).toHaveBeenCalledTimes(1);
@@ -42,13 +42,13 @@ describe("NewListingsNotice", () => {
   // rest of the site counts with; the button's pronoun with how many there
   // are.
   it.each([
-    [1, "1 nova objava od tvojega zadnjega obiska.", "Pokaži jo najprej"],
-    [2, "2 novi objavi od tvojega zadnjega obiska.", "Pokaži ju najprej"],
-    [3, "3 nove objave od tvojega zadnjega obiska.", "Pokaži jih najprej"],
-    [4, "4 nove objave od tvojega zadnjega obiska.", "Pokaži jih najprej"],
-    [5, "5 novih objav od tvojega zadnjega obiska.", "Pokaži jih najprej"],
-    [101, "101 nova objava od tvojega zadnjega obiska.", "Pokaži jih najprej"],
-    [102, "102 novi objavi od tvojega zadnjega obiska.", "Pokaži jih najprej"],
+    [1, "1 nova objava od zadnjega obiska.", "Pokaži jo najprej"],
+    [2, "2 novi objavi od zadnjega obiska.", "Pokaži ju najprej"],
+    [3, "3 nove objave od zadnjega obiska.", "Pokaži jih najprej"],
+    [4, "4 nove objave od zadnjega obiska.", "Pokaži jih najprej"],
+    [5, "5 novih objav od zadnjega obiska.", "Pokaži jih najprej"],
+    [101, "101 nova objava od zadnjega obiska.", "Pokaži jih najprej"],
+    [102, "102 novi objavi od zadnjega obiska.", "Pokaži jih najprej"],
   ])("says %i in Slovenian", (count, sentence, button) => {
     notice(count);
 

@@ -982,6 +982,29 @@
   display: none;
 }
 
+/* The new-listings notice's place (components/new-listings-notice.tsx). Empty,
+   it stays out of the results column and out of its gap, which is every first
+   visit and every visit with nothing new. The blocking script before the grid
+   sets data-new-listings when the newest listing on the page is newer than the
+   visitor's last visit (lib/last-visit.ts), and then the empty place is held at
+   the notice's own height from the first paint: two fixed lines on a phone, the
+   sentence over its button, and one 32px row from sm. The grid takes the mark
+   off in the commit that draws the notice, so nothing under it moves. */
+[data-slot="new-listings"]:empty {
+  display: none;
+}
+
+:root[data-new-listings] [data-slot="new-listings"]:empty {
+  display: block;
+  min-height: 3.75rem;
+}
+
+@media (width >= 40rem) {
+  :root[data-new-listings] [data-slot="new-listings"]:empty {
+    min-height: 2rem;
+  }
+}
+
 /* The border colour a dashed box opts into. A dashed container that names no
    colour inherits `* { border-border }` from the base layer, and on dark
    --border is white at 10%: 1.32:1 against --card whole, and a dashed line

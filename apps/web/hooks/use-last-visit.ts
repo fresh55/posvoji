@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { listedAtTime, type AnimalFields } from "@/lib/animal";
+import { LAST_VISIT_KEY, VISIT_SINCE_KEY } from "@/lib/last-visit";
 
 // What a returning visitor has not seen yet, worked out in their own browser.
 // Nothing here leaves it: two keys, one time each, and no request.
@@ -23,8 +24,10 @@ import { listedAtTime, type AnimalFields } from "@/lib/animal";
 // sessionStorage belongs to one tab, so a new tab, a card's shelter opened
 // with a middle click among them, starts a session of its own and finds this
 // visit already written down: its cards carry no marks, which errs quiet.
-export const LAST_VISIT_KEY = "posvoji:last-visit";
-export const VISIT_SINCE_KEY = "posvoji:visit-since";
+//
+// Both keys live in lib/last-visit.ts, beside the blocking script that reads
+// them before the results are painted and has to agree with beginVisit below.
+export { LAST_VISIT_KEY, VISIT_SINCE_KEY };
 
 const listeners = new Set<() => void>();
 // Null for a first visit, and on the server, and until a page with cards on
@@ -115,6 +118,20 @@ export function useVisitSince(reference: Date): number | null {
     useVisitSubscription(reference),
     () => since,
     noThreshold,
+  );
+}
+
+const notBegun = () => false;
+
+/** Whether this page has read the visit yet: false on the server and through
+ *  hydration, true from the commit that has the threshold, whatever it is. The
+ *  grid waits for it before it gives back the place the blocking script held
+ *  for the notice (lib/last-visit.ts). */
+export function useVisitRead(reference: Date): boolean {
+  return useSyncExternalStore(
+    useVisitSubscription(reference),
+    () => begun,
+    notBegun,
   );
 }
 

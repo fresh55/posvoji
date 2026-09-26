@@ -9,6 +9,7 @@ import provider, {
   parseCompatibility,
   parseDetail,
   parseEnergy,
+  parseHouseholdNotes,
   parseList,
   parseSlovenianDate,
   resolveAgeMonths,
@@ -345,6 +346,78 @@ describe("parseDetail", () => {
     expect(() =>
       parseDetail("<!doctype html><html><body><h1>Vzdrževanje</h1></body></html>"),
     ).toThrow("detail page has no project article");
+  });
+});
+
+describe("parseHouseholdNotes", () => {
+  const notes = (...lines: string[]) =>
+    parseHouseholdNotes(["Mici je prijazna muca.", "POSEBNOSTI:", ...lines].join("\n\n"));
+
+  it("reads the list's fixed lines about children, cats and dogs", () => {
+    expect(
+      notes("– primeren za sobivanje z otroci", "– razume se z vsemi mucami", "• vajen sobivanja s psi"),
+    ).toEqual({ goodWith: { kids: "yes", cats: "yes", dogs: "yes" } });
+    expect(notes("– primerna za sobivanje z mucami in psi.")).toEqual({
+      goodWith: { cats: "yes", dogs: "yes" },
+    });
+  });
+
+  it("reads the line that asks for more cats in the new home", () => {
+    expect(
+      notes("– razume se z mucami, zaželeno je, da v novem domu že bivajo muce ali pa mačjo družbo pripelje s seboj"),
+    ).toEqual({ goodWith: { cats: "yes" } });
+  });
+
+  it("leaves qualified lines and lines about the adopter alone", () => {
+    expect(
+      notes(
+        "– primeren za osebe, ki nimajo izkušenj z mucami",
+        "– FeLV pozitiven (lahko sobiva s cepljenimi mucami)",
+        "– primeren za sobivanje s samozavestnimi mucami",
+      ),
+    ).toEqual({});
+  });
+
+  it("keeps young children apart from children in general", () => {
+    const young = { adoptionRequirements: { noYoungKids: true } };
+    expect(notes("– ni primeren za domove z zelo majhnimi otroci")).toEqual(young);
+    // Beside it a yes to children is a qualified one.
+    expect(
+      notes("– primeren za sobivanje z otroci", "– ni primeren za domove z zelo majhnimi otroci"),
+    ).toEqual(young);
+    // A no to all children already says it.
+    expect(
+      notes("– ni primerna za sobivanje z otroci", "– ni primerna za domove z majhnimi otroci"),
+    ).toEqual({ goodWith: { kids: "no" } });
+  });
+
+  it("drops a question the list answers both ways", () => {
+    expect(
+      notes("– primeren za sobivanje z otroci", "– ni primeren za sobivanje z otroci", "– razume se z vsemi psi"),
+    ).toEqual({ goodWith: { dogs: "yes" } });
+  });
+
+  it("reads nothing outside the list", () => {
+    expect(parseHouseholdNotes("Razume se z vsemi mucami")).toEqual({});
+    expect(parseHouseholdNotes(undefined)).toEqual({});
+  });
+
+  it("reaches the animal through parseDetail, under the sidebar rows", () => {
+    const html = `
+      <article class="project pj-categs-isce-dom pj-categs-macke">
+        <div class="cmsms_project_content">
+          <p><strong>POSEBNOSTI:</strong><br />
+          &#8211; razume se z vsemi mucami<br />
+          &#8211; ni primeren za domove z zelo majhnimi otroci</p>
+        </div>
+        <div class="project_features_item">
+          <div class="project_features_item_title">Mačja družba</div>
+          <div class="project_features_item_desc">ne</div>
+        </div>
+      </article>`;
+    const facts = parseDetail(html);
+    expect(facts.goodWith).toEqual({ cats: "no" });
+    expect(facts.adoptionRequirements).toEqual({ noYoungKids: true });
   });
 });
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-25T10:34:09.815Z",
+  "reviewedAt": "2026-09-26T09:40:43.887Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -2723,6 +2723,58 @@
             "/root/energy_review_a",
             "/root/energy_review_b"
           ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 208,
+            "end": 263,
+            "sha256": "877167bf9ed89d68fb1745113bdfcceaf4417c8526a48cc887b88e9b216c715f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 208,
+            "end": 263,
+            "sha256": "877167bf9ed89d68fb1745113bdfcceaf4417c8526a48cc887b88e9b216c715f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 208,
+            "end": 263,
+            "sha256": "877167bf9ed89d68fb1745113bdfcceaf4417c8526a48cc887b88e9b216c715f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 265,
+            "end": 321,
+            "sha256": "7273e2b65937234782e760aa9dadec859d42e9cc3e291c49452db342c36b6db0"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
         }
       ]
     },
@@ -2931,6 +2983,45 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "no",
+          "evidence": {
+            "start": 601,
+            "end": 611,
+            "sha256": "4ab3f7606d9971e48459c3677726ce1fe7dd4d390953fe3377dacce0ab7b69f4"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 579,
+            "end": 597,
+            "sha256": "b13086adbbb7c0b444f384f5d7de51fc63a9c91800bcf035ab58204fc026b685"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 548,
+            "end": 571,
+            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
           ]
         }
       ]
@@ -3162,6 +3253,19 @@
             "/root/review_b",
             "/root/review_c"
           ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 526,
+            "end": 572,
+            "sha256": "a23a79d30509d9cf582b5786c4165ff597d5ae6ce9430ffa27577a54793cb3bb"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
         }
       ]
     },
@@ -3182,6 +3286,58 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "no",
+          "evidence": {
+            "start": 555,
+            "end": 588,
+            "sha256": "43e9966caa30d4ce80ec44212322a6278aa8f92177f6115d82ff2bea532cda68"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 589,
+            "end": 646,
+            "sha256": "72ef7782133e11e7d5c7d7dbf9b45676cd984a703f7052ae1463bb313ede47ca"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 589,
+            "end": 646,
+            "sha256": "72ef7782133e11e7d5c7d7dbf9b45676cd984a703f7052ae1463bb313ede47ca"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 615,
+            "end": 646,
+            "sha256": "898457637239d030a32109db88a3bd1ba68a0fa1422e62feb771feb6a22baff9"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
           ]
         }
       ]
@@ -3862,6 +4018,19 @@
           "reviewedBy": [
             "/root/review_b",
             "/root/review_c"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 149,
+            "end": 189,
+            "sha256": "91a9155f855738359cf1af1481cee74451fac7e4ed710c7b114a977c22821c4e"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
           ]
         }
       ]
@@ -5832,6 +6001,19 @@
             "/root/review_c",
             "/root/review_a"
           ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 124,
+            "end": 161,
+            "sha256": "f4ea629e2d70680ea745aa8d86e1c7a410006a2bbef15f48aa6e77a1f9177b2c"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
         }
       ]
     },
@@ -6292,6 +6474,19 @@
             "/root/review_c",
             "/root/review_a"
           ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 377,
+            "end": 403,
+            "sha256": "08fd52dd7f853b48c289242ec6a8f5c47c932100d303d285e545d5f0e298abcb"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
         }
       ]
     },
@@ -6440,6 +6635,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 96,
+            "end": 133,
+            "sha256": "ee806c54b4acd766d908c6b1fb47afe3cc05eede208e0ff4f792933f8c1b4aa5"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
           ]
         }
       ]
@@ -10404,6 +10612,19 @@
           "reviewedBy": [
             "/root/review_c",
             "/root"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 166,
+            "end": 192,
+            "sha256": "b5fb03820085d0481cc6c3f5e58cab00b091cd84a9009e124667e12eaa9e381c"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
           ]
         }
       ]
@@ -16620,6 +16841,58 @@
             "/root/energy_review_a",
             "/root/energy_review_b"
           ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "yes",
+          "evidence": {
+            "start": 328,
+            "end": 345,
+            "sha256": "fc8fbfb8a1a233db33bde521e5e35edfeb06a4e6f3b5103047d188e099bebadd"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 703,
+            "end": 735,
+            "sha256": "851b7c7b0b5419e5a0a679ecb3f993a575e33aae48f0b2974f067ed1c4e9e175"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 703,
+            "end": 735,
+            "sha256": "851b7c7b0b5419e5a0a679ecb3f993a575e33aae48f0b2974f067ed1c4e9e175"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 742,
+            "end": 789,
+            "sha256": "6986f29e06bae03ea3e6d0b1c82fbdf620d4fedd5cdb01eb7e1be4eb747f190f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
         }
       ]
     },
@@ -16640,6 +16913,66 @@
           "reviewedBy": [
             "/root/energy_review_a",
             "/root/energy_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 117,
+            "end": 142,
+            "sha256": "fd81ab79838e1dc232efc535509c52a45c99dfd21bf7c1fac81769a955b79166"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:62f57890-4989-463b-924b-8d73581250c2",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/goldi-23010056",
+      "descriptionSha256": "d325806817f2ad77edb498af8f5d9ddbb6d34bbf3777d8506c8e2c7ab9f57fb0",
+      "claims": [
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 627,
+            "end": 663,
+            "sha256": "7224712afbc9f8dd3518924dd7772f076b463cbf319b013fa13da1a2191b997f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 627,
+            "end": 663,
+            "sha256": "7224712afbc9f8dd3518924dd7772f076b463cbf319b013fa13da1a2191b997f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 627,
+            "end": 663,
+            "sha256": "7224712afbc9f8dd3518924dd7772f076b463cbf319b013fa13da1a2191b997f"
+          },
+          "reviewedBy": [
+            "/root/household_review_a",
+            "/root/household_review_b"
           ]
         }
       ]

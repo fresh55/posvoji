@@ -53,6 +53,8 @@ describe("Animal", () => {
     expect(Animal.parse(validAnimal).adoptionRequirements).toBeUndefined();
     expect(Animal.parse({ ...validAnimal, adoptionRequirements: { indoorOnly: true, ongoingCare: false } })
       .adoptionRequirements).toEqual({ indoorOnly: true, ongoingCare: false });
+    expect(Animal.parse({ ...validAnimal, adoptionRequirements: { noYoungKids: true } })
+      .adoptionRequirements).toEqual({ noYoungKids: true });
     expect(Animal.safeParse({ ...validAnimal, adoptionRequirements: { indoorOnly: "yes" } }).success).toBe(false);
     expect(Animal.safeParse({ ...validAnimal, adoptionRequirements: { unreviewedTrait: true } }).success).toBe(false);
   });

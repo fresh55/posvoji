@@ -59,6 +59,7 @@ export {
   picksEverySex,
   thinnestAnswer,
   unansweredCounts,
+  goodWithAnswer,
   goodWithCounts,
   goodWithMatches,
   isDrop,

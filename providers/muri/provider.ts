@@ -6,6 +6,7 @@ import {
 } from "@posvoji/provider-sdk";
 import type {
   AdoptionStatus,
+  AnimalAdoptionRequirements,
   AnimalGoodWith,
   AnimalMedical,
   Compatibility,
@@ -37,6 +38,7 @@ export interface DetailFacts {
   medical?: AnimalMedical;
   goodWith?: AnimalGoodWith;
   energy?: EnergyLevel;
+  adoptionRequirements?: AnimalAdoptionRequirements;
   imageUrls: string[];
 }
 
@@ -108,8 +110,9 @@ const FEATURE_LABELS = {
   intakeAge: ["starost ob sprejemu"],
   intakeDate: ["datum sprejema", "datum oddaje s strani lastnikov"],
   foundPlace: ["kraj najdbe"],
-  // Sidebar rows currently dormant on the live site (last seen 19 Aug 2026),
-  // kept as insurance in case the block returns. No row exists for kids.
+  // Sidebar rows left on one older listing (Archie, still there 26 Sep 2026).
+  // Newer listings answer in their POSEBNOSTI list instead, which
+  // parseHouseholdNotes reads. No row exists for kids.
   goodWithCats: ["mačja družba"],
   goodWithDogs: ["pasja družba"],
   // Free-form adjectives, only some of which describe energy at all. See
@@ -370,6 +373,54 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
   return text || undefined;
 }
 
+// Most listings close with a "POSEBNOSTI:" list written from a handful of
+// fixed lines. Only those exact lines map. A qualified line ("lahko sobiva s
+// cepljenimi mucami", "s samozavestnimi mucami"), one about the adopter ("za
+// osebe, ki nimajo izkušenj z mucami") and a question the list answers both
+// ways all map to nothing.
+const HOUSEHOLD_LINES: ReadonlyArray<readonly [RegExp, AnimalGoodWith]> = [
+  [/^(?:primeren|primerna) za sobivanje z otro(?:ci|ki)$/, { kids: "yes" }],
+  [/^vajena? družbe otrok$/, { kids: "yes" }],
+  [/^ni (?:primeren|primerna) za sobivanje z otro(?:ci|ki)$/, { kids: "no" }],
+  // "..., zaželeno je, da v novem domu že bivajo muce" asks for more cats.
+  [/^razume se z (?:vsemi |ostalimi |drugimi )?mucami(?:, zaželeno je, da .*)?$/, { cats: "yes" }],
+  [/^(?:primeren|primerna) za sobivanje z (?:drugimi )?mucami$/, { cats: "yes" }],
+  [/^(?:primeren|primerna) za sobivanje z mucami in psi$/, { cats: "yes", dogs: "yes" }],
+  [/^združljiva? z drugimi mucami$/, { cats: "yes" }],
+  [/^razume se z vsemi psi$/, { dogs: "yes" }],
+  [/^vajena? sobivanja s psi$/, { dogs: "yes" }],
+];
+const NO_YOUNG_KIDS_LINE = /^ni (?:primeren|primerna) za domove z (?:zelo )?majhnimi otro(?:ci|ki)$/;
+
+export function parseHouseholdNotes(
+  description: string | undefined,
+): Pick<DetailFacts, "goodWith" | "adoptionRequirements"> {
+  const start = description?.search(/posebnosti\s*:/i) ?? -1;
+  if (description === undefined || start < 0) return {};
+  const goodWith: AnimalGoodWith = {};
+  const contradicted = new Set<keyof AnimalGoodWith>();
+  let noYoungKids = false;
+  const lines = description.slice(start).normalize("NFC").toLowerCase().split("\n").slice(1);
+  for (const raw of lines) {
+    const line = raw.trim().replace(/^[–•*-]\s*/, "").replace(/[\s,.;]+$/, "");
+    if (NO_YOUNG_KIDS_LINE.test(line)) noYoungKids = true;
+    const facts = HOUSEHOLD_LINES.find(([pattern]) => pattern.test(line))?.[1] ?? {};
+    for (const [key, value] of Object.entries(facts) as [keyof AnimalGoodWith, Compatibility][]) {
+      if (goodWith[key] !== undefined && goodWith[key] !== value) contradicted.add(key);
+      goodWith[key] = value;
+    }
+  }
+  for (const key of contradicted) delete goodWith[key];
+  // A no to children already covers young ones. A yes beside "not with very
+  // young children" is a qualified yes, which a yes/no answer cannot hold.
+  if (goodWith.kids === "no") noYoungKids = false;
+  else if (noYoungKids) delete goodWith.kids;
+  return {
+    goodWith: Object.keys(goodWith).length > 0 ? goodWith : undefined,
+    adoptionRequirements: noYoungKids ? { noYoungKids: true } : undefined,
+  };
+}
+
 // WordPress names every derived size "<file>-<width>x<height>.<ext>", so the
 // candidate without that suffix is the original. Only URLs the page itself
 // lists are weighed: rebuilding one by stripping a thumbnail's suffix would
@@ -464,9 +515,12 @@ export function parseDetail(html: string): DetailFacts {
     parseSlovenianDate,
   );
 
+  const description = parseDescription($);
+  const notes = parseHouseholdNotes(description);
   const goodWithCats = parsedFeatureValue(features, "goodWithCats", parseCompatibility);
   const goodWithDogs = parsedFeatureValue(features, "goodWithDogs", parseCompatibility);
-  const goodWith: AnimalGoodWith = {};
+  // The sidebar rows, where a page still carries them, outrank the list.
+  const goodWith: AnimalGoodWith = { ...notes.goodWith };
   if (goodWithCats !== undefined) goodWith.cats = goodWithCats;
   if (goodWithDogs !== undefined) goodWith.dogs = goodWithDogs;
 
@@ -485,10 +539,11 @@ export function parseDetail(html: string): DetailFacts {
     intakeAgeMonths,
     intakeDate,
     foundPlace: featureValue(features, "foundPlace"),
-    description: parseDescription($),
+    description,
     medical: parseMedical($),
     goodWith: Object.keys(goodWith).length > 0 ? goodWith : undefined,
     energy: parsedFeatureValue(features, "character", parseEnergy),
+    adoptionRequirements: notes.adoptionRequirements,
     imageUrls,
   };
 }
@@ -581,6 +636,7 @@ const provider: AdoptionProvider = {
       medical: facts.medical,
       goodWith: facts.goodWith,
       energy: facts.energy,
+      adoptionRequirements: facts.adoptionRequirements,
       status: facts.status,
       images:
         rights === null

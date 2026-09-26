@@ -110,7 +110,8 @@ function normalizeTerm(value: string): string {
 // unqualified terms below are unambiguous; everything else, including terms
 // that merely contain one of these words, maps to nothing. Exact-term lookup
 // only, never substring matching: "verjetno tudi psi" contains "psi" but is
-// not the same claim.
+// not the same claim. The row also names the same company with "z"/"s"
+// ("z nevsiljivimi ljudmi, z mačkami"), and those forms count the same.
 const GOOD_WITH_TERMS: Record<
   string,
   { facet: keyof AnimalGoodWith; value: Compatibility }
@@ -118,7 +119,9 @@ const GOOD_WITH_TERMS: Record<
   "brez mačk": { facet: "cats", value: "no" },
   mačke: { facet: "cats", value: "yes" },
   mački: { facet: "cats", value: "yes" },
+  "z mačkami": { facet: "cats", value: "yes" },
   psi: { facet: "dogs", value: "yes" },
+  "s psi": { facet: "dogs", value: "yes" },
 };
 
 function parseGoodWith($: cheerio.CheerioAPI): AnimalGoodWith | undefined {

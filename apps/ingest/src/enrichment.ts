@@ -50,6 +50,7 @@ const fields = {
   "adoptionRequirements.experiencedCarer": z.literal(true),
   "adoptionRequirements.ongoingCare": z.literal(true),
   "adoptionRequirements.onlyPet": z.literal(true),
+  "adoptionRequirements.noYoungKids": z.literal(true),
 } as const;
 
 export const EnrichmentClaim = z.strictObject({

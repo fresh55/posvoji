@@ -80,7 +80,7 @@ export function toggleValues(
  *  An animal that has to be the only pet answers the two animal questions
  *  with a no, whatever its goodWith says: "Doma imam: Mačko" is the question
  *  such a visitor asks, and it has to rule the animal out on its own. */
-function goodWithAnswer(
+export function goodWithAnswer(
   animal: AnimalFields,
   key: GoodWithKey,
 ): "yes" | "no" | undefined {

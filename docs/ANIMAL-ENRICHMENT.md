@@ -52,6 +52,12 @@ this expanded strict schema before consuming an enriched dataset.
    the applied-field report marks these removals with `operation: "clear"`.
 5. Cache media, validate and publish using the existing export transaction.
 
+The portal shows shelters the crawl from before this enrichment (step 2), so a
+reviewed answer is invisible there. For that reason the portal's quick answers
+page never sends an `unknown` for its Ne vem card: a correction suppresses the
+enrichment of its field, and an `unknown` sent by someone who did not know the
+animal would replace a reviewed answer they could not see.
+
 The manifest is loaded and validated once per export. A malformed or missing
 manifest stops the export. A removed animal never gets recreated. Revoked
 permission or a changed description prevents the addition from shipping.

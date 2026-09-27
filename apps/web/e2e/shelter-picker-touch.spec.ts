@@ -1,5 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { openPicker, pickerTrigger, region } from "./picker";
+import { touch } from "./touch";
 
 // The map's two-tap contract, on the projects that actually have a finger.
 //
@@ -171,4 +172,115 @@ test("forgets an arming the finger has dragged away from", async ({ page }) => {
   // The tap after the drag is a fresh first tap, so nothing is committed.
   expect(await scopeLabel(page)).toBe(before);
   expect(pageErrors).toEqual([]);
+});
+
+// An empty region has nothing to pick, so a tap on it arms nothing. It still
+// has a card: what the ground holds and who answers for it. A mouse raises
+// that card by resting on the region, and a finger's leave comes with its
+// lift, before the rest is up, so on a phone a tap raised nothing at all.
+
+/** An empty region, and a point on it a finger can land on. Which regions are
+ *  empty is a fact about the dataset, so the plate is asked rather than a name
+ *  written down. The point is inside the fill and on top there, because a
+ *  region is not a rectangle and the middle of its box is often a neighbour. */
+async function emptyRegion(
+  dialog: Locator,
+): Promise<{ name: string; label: string; x: number; y: number }> {
+  const found = await dialog.locator('svg[role="group"]').evaluate((plate) => {
+    const steps = 16;
+    for (const path of plate.querySelectorAll<SVGPathElement>(
+      'path[data-region-state="inert"]',
+    )) {
+      const box = path.getBBox();
+      const matrix = path.getScreenCTM();
+      if (!matrix) continue;
+      for (let row = 1; row < steps; row += 1) {
+        for (let column = 1; column < steps; column += 1) {
+          const local = new DOMPoint(
+            box.x + (box.width * column) / steps,
+            box.y + (box.height * row) / steps,
+          );
+          if (!path.isPointInFill(local)) continue;
+          const screen = local.matrixTransform(matrix);
+          // A finger lands on a whole pixel, so that pixel is what is tested.
+          const x = Math.round(screen.x);
+          const y = Math.round(screen.y);
+          if (document.elementFromPoint(x, y) !== path) continue;
+          const label = path.getAttribute("aria-label") ?? "";
+          return { name: label.split(":")[0], label, x, y };
+        }
+      }
+    }
+    return null;
+  });
+  expect(found, "no empty region a finger can reach").not.toBeNull();
+  return found!;
+}
+
+test("names an empty region on a tap and keeps its card up", async ({
+  page,
+}) => {
+  const dialog = await openPicker(page);
+  await dialog.locator("[data-picker-show-map]").click();
+  const before = await scopeLabel(page);
+  const empty = await emptyRegion(dialog);
+
+  await page.touchscreen.tap(empty.x, empty.y);
+
+  const card = dialog.locator("[data-map-callout]");
+  await expect(card.locator("[data-callout-title]")).toHaveText(empty.name);
+  // The card says what the region's label says, in the same words: the name,
+  // what the ground holds, and who answers for it where the coverage table
+  // knows. Read off the label, so the dataset decides the words.
+  const said = await card
+    .locator("[data-callout-title], [data-callout-metadata], [data-callout-note]")
+    .allTextContents();
+  expect(`${said[0]}: ${said.slice(1).join(". ")}`).toBe(empty.label);
+  // Nothing on it to press: there is no pick here for a button to make.
+  await expect(dialog.locator("[data-map-action]")).toHaveCount(0);
+
+  // Still up well after the lift and past the dwell, which is where it used to
+  // go. A fixed wait, because what is asserted is that nothing happens.
+  await page.waitForTimeout(600);
+  await expect(card.locator("[data-callout-title]")).toHaveText(empty.name);
+  expect(await scopeLabel(page)).toBe(before);
+
+  // The next tap elsewhere takes it down. A live region's arming stands in
+  // its place, and still nothing is picked.
+  await region(dialog, CENTRE).tap();
+  await expect(card.locator("[data-callout-title]")).toHaveText(CENTRE);
+  expect(await scopeLabel(page)).toBe(before);
+});
+
+test.describe("under real touch points", () => {
+  // Dispatched over a CDP session, which only Chromium speaks.
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "the touch points are dispatched over a CDP session, which is Chromium only",
+  );
+
+  test("keeps the card a held finger raised through the lift", async ({
+    page,
+  }) => {
+    const dialog = await openPicker(page);
+    await dialog.locator("[data-picker-show-map]").click();
+    const empty = await emptyRegion(dialog);
+    const card = dialog.locator("[data-map-callout]");
+    const cdp = await page.context().newCDPSession(page);
+
+    await touch(cdp, "touchStart", [{ x: empty.x, y: empty.y, id: 1 }]);
+    // Held past the dwell, so the card comes up under the finger.
+    await expect(card.locator("[data-callout-title]")).toHaveText(empty.name);
+    // Marked by hand, which React does not manage: a card taken down and
+    // drawn again comes back as a new node without the mark.
+    await card.evaluate((node) => node.setAttribute("data-held", ""));
+    // A longer press is where the card blinked: the lift's leave took it down
+    // and the click after it put it back up.
+    await page.waitForTimeout(500);
+    await touch(cdp, "touchEnd", []);
+
+    await page.waitForTimeout(600);
+    await expect(dialog.locator("[data-map-callout][data-held]")).toHaveCount(1);
+    await expect(card.locator("[data-callout-title]")).toHaveText(empty.name);
+  });
 });

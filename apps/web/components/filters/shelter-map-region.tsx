@@ -161,6 +161,7 @@ export const Region = memo(function Region({
   onMoveFocus,
   onPointerEnter,
   onPointerMove,
+  onPointerUp,
   onPointerLeave,
   highlighted,
   coveredBy,
@@ -198,6 +199,14 @@ export const Region = memo(function Region({
   onPointerMove: (
     regionId: number,
     stats: RegionStats,
+    event: ReactPointerEvent<SVGPathElement>,
+  ) => void;
+  /** A finger lifting off an empty region, where the plate keeps the card a
+   *  held finger raised; see handleRegionPointerUp in shelter-map.tsx. Only
+   *  the inert branch wires it: the tap a live region's lift ends in is what
+   *  arms it. */
+  onPointerUp: (
+    regionId: number,
     event: ReactPointerEvent<SVGPathElement>,
   ) => void;
   onPointerLeave: (regionId: number, stats: RegionStats) => void;
@@ -251,11 +260,16 @@ export const Region = memo(function Region({
             : undefined
         }
         data-region-state="inert"
-        // Pointer events are back on so the region can name itself, but only
-        // hover is wired: no onClick, no keyboard. On touch a tap fires
-        // pointerenter and the card appears, the same way it already does for
-        // a live region, and the next tap elsewhere fires pointerleave and
-        // takes it away. Nothing here is bespoke to touch.
+        // What the plate finds this region by when a finger taps it. Not a
+        // commit key: there is nothing here to commit, and a key would let a
+        // tap arm a press that does not exist (see commitKey).
+        data-region-id={interactive ? region.id : undefined}
+        // Pointer events are back on so the region can name itself, but
+        // nothing here presses: no onClick, no keyboard. A mouse names it by
+        // resting on it and takes the name back by leaving. A finger's leave
+        // comes with its lift, so on a pointer that cannot hover the tap names
+        // it instead, and the lift of a finger held here keeps the card up
+        // (tappedRegion in shelter-map.tsx).
         onPointerEnter={
           interactive ? () => onPointerEnter(region.id, stats) : undefined
         }
@@ -263,6 +277,9 @@ export const Region = memo(function Region({
           interactive
             ? (event) => onPointerMove(region.id, stats, event)
             : undefined
+        }
+        onPointerUp={
+          interactive ? (event) => onPointerUp(region.id, event) : undefined
         }
         onPointerLeave={
           interactive ? () => onPointerLeave(region.id, stats) : undefined

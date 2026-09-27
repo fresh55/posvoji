@@ -3838,8 +3838,8 @@ describe("ShelterMap without hover", () => {
     ]);
 
     // An empty region has no click to hold back. It carries no commit key at
-    // all, so both taps below reach the handlers it always had, which is to
-    // say nothing happens either time.
+    // all, so a tap names it (see "an empty region's card" below) and neither
+    // tap can arm it: there is no press here to half make.
     const inert = map.region("Goriška");
     expect(inert.getAttribute("data-map-commit")).toBeNull();
 
@@ -3847,6 +3847,254 @@ describe("ShelterMap without hover", () => {
     tap(inert);
 
     expect(map.onPick).not.toHaveBeenCalled();
+    expect(document.querySelector("[data-map-action]")).toBeNull();
+  });
+
+  // A mouse names an empty region by resting on it for the dwell. A finger
+  // cannot rest: its pointerleave arrives the moment it lifts, which cancelled
+  // the dwell the tap had started, so a quick tap raised nothing and a held
+  // one lost its card on the lift. The tap names the region instead, and the
+  // card stands as an armed card does, with nothing on it to press.
+  describe("an empty region's card", () => {
+    const GORISKA = REGION_SHAPES.find((region) => region.name === "Goriška")!.id;
+
+    function renderEmpty(unlistedRegionIds?: ReadonlySet<number>) {
+      const onPick = vi.fn();
+      const { container } = render(
+        <I18nProvider locale="sl">
+          <ShelterMap
+            pins={[pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5)]}
+            selected={[]}
+            onPick={onPick}
+            regionShelterNames={
+              new Map([[GORISKA, ["Zavetišče Nova Gorica", "Zavetišče Ajdovščina"]]])
+            }
+            unlistedRegionIds={unlistedRegionIds}
+          />
+        </I18nProvider>,
+      );
+      const text = (selector: string) =>
+        container.querySelector(selector)?.textContent;
+      return {
+        onPick,
+        plate: container.querySelector("svg")!,
+        empty: container.querySelector<SVGPathElement>('[aria-label^="Goriška"]')!,
+        live: container.querySelector<SVGPathElement>(
+          '[aria-label^="Osrednjeslovenska"]',
+        )!,
+        callout: () => container.querySelector("[data-map-callout]"),
+        title: () => text("[data-callout-title]"),
+        metadata: () => text("[data-callout-metadata]"),
+        note: () => text("[data-callout-note]"),
+        action: () => container.querySelector("[data-map-action]"),
+      };
+    }
+
+    /** A finger's whole tap, in the order a phone delivers it: over, down,
+     *  up, then the leave a finger gives the moment it lifts, and only then
+     *  the click. The leave is what cancelled the dwell, so a test of this
+     *  card has to deliver it. */
+    function fingerTap(node: Element) {
+      pointer(node, "pointerover", { x: 0, y: 0 });
+      pointer(node, "pointerdown", { x: 0, y: 0 });
+      pointer(node, "pointerup", { x: 0, y: 0 });
+      pointer(node, "pointerout", { x: 0, y: 0 });
+      fireEvent.click(node, { detail: 1 });
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it("raises the card on a quick tap, with nothing on it to press", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+
+      expect(map.title()).toBe("Goriška");
+      expect(map.metadata()).toBe("Ni zavetišč v tej regiji");
+      expect(map.note()).toBe("Zanje skrbita Nova Gorica in Ajdovščina");
+      expect(map.action()).toBeNull();
+      expect(map.onPick).not.toHaveBeenCalled();
+      // Named, and still not a control: no key a later tap could arm.
+      expect(map.empty.getAttribute("data-map-commit")).toBeNull();
+    });
+
+    it("says nothing is listed where the region's shelters list nothing", () => {
+      onATouchscreen();
+      const map = renderEmpty(new Set([GORISKA]));
+
+      fingerTap(map.empty);
+
+      expect(map.metadata()).toBe("Trenutno brez objavljenih živali");
+      expect(map.note()).toBe("Zanje skrbita Nova Gorica in Ajdovščina");
+    });
+
+    it("keeps the card up after the lift, past the dwell a mouse waits", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      act(() => vi.advanceTimersByTime(REGION_DWELL_MS * 3));
+
+      expect(map.title()).toBe("Goriška");
+    });
+
+    it("keeps the card a held finger raised through the lift, never redrawn", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderEmpty();
+
+      pointer(map.empty, "pointerover", { x: 0, y: 0 });
+      pointer(map.empty, "pointerdown", { x: 0, y: 0 });
+      act(() => vi.advanceTimersByTime(REGION_DWELL_MS));
+      const held = map.callout();
+      expect(held).not.toBeNull();
+
+      // The lift delivers its leave before any click. The card came down
+      // there and went back up at the click, which a phone showed as a blink,
+      // and a press too long to end in a click at all lost the card for good.
+      pointer(map.empty, "pointerup", { x: 0, y: 0 });
+      pointer(map.empty, "pointerout", { x: 0, y: 0 });
+      expect(map.callout()).toBe(held);
+
+      fireEvent.click(map.empty, { detail: 1 });
+      expect(map.callout()).toBe(held);
+      expect(map.title()).toBe("Goriška");
+    });
+
+    it("lets a mouse take the card back by leaving, on a touchscreen too", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderEmpty();
+
+      // A mouse plugged into a tablet can hover, so it keeps the dwell's own
+      // rule: the name lasts as long as the pointer stays.
+      pointer(map.empty, "pointerover", { x: 0, y: 0, pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(REGION_DWELL_MS));
+      expect(map.callout()).not.toBeNull();
+
+      pointer(map.empty, "pointerup", { x: 0, y: 0, pointerType: "mouse" });
+      pointer(map.empty, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
+      expect(map.callout()).toBeNull();
+    });
+
+    it("takes the card down on the clock an arming keeps", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      act(() => vi.advanceTimersByTime(ARMED_TTL_MS - 1));
+      expect(map.callout()).not.toBeNull();
+
+      act(() => vi.advanceTimersByTime(1));
+      expect(map.callout()).toBeNull();
+    });
+
+    it("starts the clock over when the same region is tapped again", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      act(() => vi.advanceTimersByTime(ARMED_TTL_MS - 1000));
+      // The same ground is not somewhere else, so the card stays, and the
+      // question asked again gets a whole clock of its own.
+      fingerTap(map.empty);
+      act(() => vi.advanceTimersByTime(ARMED_TTL_MS - 1000));
+      expect(map.title()).toBe("Goriška");
+
+      act(() => vi.advanceTimersByTime(1000));
+      expect(map.callout()).toBeNull();
+    });
+
+    it("takes the card down when a finger goes down anywhere else", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      expect(map.callout()).not.toBeNull();
+      // Off the plate altogether: the list beside it, or the footer under it.
+      pointer(document.body, "pointerdown", { x: 0, y: 0 });
+
+      expect(map.callout()).toBeNull();
+    });
+
+    it("takes the card down on a tap on the plate around the country", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      expect(map.callout()).not.toBeNull();
+      fingerTap(map.plate);
+
+      expect(map.callout()).toBeNull();
+    });
+
+    it("gives way to a live region, which the next tap arms as before", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      expect(map.title()).toBe("Goriška");
+      fingerTap(map.live);
+
+      expect(map.title()).toBe("Osrednjeslovenska");
+      expect(map.action()).not.toBeNull();
+      expect(map.onPick).not.toHaveBeenCalled();
+    });
+
+    it("withdraws an arming, so the tap after it names rather than picks", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+
+      fingerTap(map.live);
+      fingerTap(map.empty);
+      // One thing named at a time. Left armed under the empty region's card,
+      // the live region would have been picked by a tap nothing had named.
+      expect(map.title()).toBe("Goriška");
+      expect(map.action()).toBeNull();
+
+      fingerTap(map.live);
+      expect(map.onPick).not.toHaveBeenCalled();
+      expect(map.title()).toBe("Osrednjeslovenska");
+    });
+
+    it("takes the card down when the finger drags across the plate", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+
+      fingerTap(map.empty);
+      expect(map.callout()).not.toBeNull();
+      fireEvent.touchMove(map.plate);
+
+      expect(map.callout()).toBeNull();
+    });
+
+    it("takes the card down when a scroll moves the plate", () => {
+      onATouchscreen();
+      const map = renderEmpty();
+      let top = 0;
+      map.plate.getBoundingClientRect = () => ({ x: 0, y: top }) as DOMRect;
+
+      fingerTap(map.empty);
+      expect(map.callout()).not.toBeNull();
+      top = -120;
+      fireEvent.scroll(document.body);
+
+      expect(map.callout()).toBeNull();
+    });
+
+    it("leaves a pointer that hovers to the dwell, click or no click", () => {
+      // The ordinary desktop stub: a click names nothing here, because the
+      // rest a mouse can give is already what names the region.
+      const map = renderEmpty();
+
+      fireEvent.click(map.empty, { detail: 1 });
+
+      expect(map.callout()).toBeNull();
+    });
   });
 
   // An arming is a hover a finger cannot end by leaving, so the three things

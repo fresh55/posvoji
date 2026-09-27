@@ -119,7 +119,8 @@ export const REGION_DWELL_MS = 200;
  *  a name, a shelter count and an animal count, and short enough that the next
  *  tap is a fresh question rather than the second half of a forgotten one. The
  *  annotation goes with the arming, so nothing is left on screen implying a
- *  press is still half made.
+ *  press is still half made. The card a tap raises over an empty region keeps
+ *  the same clock, with nothing armed under it.
  *
  *  Exported so a test advances by exactly this rather than by a number that
  *  could drift from it. */
@@ -400,6 +401,24 @@ export function ShelterMap({
    *  where the first click is still the pick: see handlePlateClickCapture. */
   const [armed, setArmed] = useState<string | null>(null);
   const [armedActionFocused, setArmedActionFocused] = useState(false);
+  /** The empty region a tap has named on a pointer that cannot hover, which
+   *  is as far as a tap on one goes.
+   *
+   *  A mouse gets an empty region's card by resting on it for the dwell. A
+   *  finger cannot rest: its pointerleave arrives the moment it lifts, so a
+   *  quick tap cancelled the dwell before it ran and raised nothing, and a
+   *  finger held past the dwell lost the card on the lift. The tap names the
+   *  region instead, the way it names a live one, and arms nothing, because
+   *  there is nothing on this ground to pick. A held finger's lift keeps the
+   *  card it raised (handleRegionPointerUp). The card stands until what takes
+   *  down an arming takes it down (see withdrawArmed), or until a finger goes
+   *  down anywhere else.
+   *
+   *  An object and not the id, so a second tap on the same region is a new
+   *  value and the clock starts over for the question asked again. */
+  const [tappedRegion, setTappedRegion] = useState<{ id: number } | null>(
+    null,
+  );
   /** The region the roving tabindex remembers as the plate's one tab stop.
    *  Kept past a blur, unlike namedRegionId above, which is about what the
    *  plate is saying rather than about where the tab order resumes. */
@@ -469,18 +488,23 @@ export function ShelterMap({
   // scroll this very act caused. Rounded to the pixel, because a scroller
   // settling can report fractions of one.
   //
-  // Only ever reached while something is armed, which only happens on a
-  // pointer that cannot hover, so a mouse hover is never what this clears.
+  // The card a tap raises over an empty region goes the same way, for the same
+  // reasons (see tappedRegion). It is the same hover a finger cannot end by
+  // leaving, only with nothing half pressed under it.
+  //
+  // Only ever reached on a pointer that cannot hover, so a mouse hover is
+  // never what this clears.
   const withdrawArmed = useCallback(() => {
     setArmed(null);
     setArmedActionFocused(false);
+    setTappedRegion(null);
     setHoveredTownKey(null);
     setHoveredShelterValue(null);
     onHoverShelters?.(null);
   }, [onHoverShelters]);
 
   useEffect(() => {
-    if (!armed) return;
+    if (!armed && !tappedRegion) return;
     const corner = () => {
       const box = plateRef.current?.getBoundingClientRect();
       return box ? `${Math.round(box.x)},${Math.round(box.y)}` : "";
@@ -500,7 +524,41 @@ export function ShelterMap({
       clearTimeout(timer);
       window.removeEventListener("scroll", withdrawIfMoved, { capture: true });
     };
-  }, [armed, armedActionFocused, withdrawArmed]);
+  }, [armed, armedActionFocused, tappedRegion, withdrawArmed]);
+
+  // The other thing that takes an empty region's card down: a finger going
+  // down anywhere else, on the plate or off it. Another region, the ground
+  // around the country and the list beside the map all count. Asked on the way
+  // down rather than at the click, so a finger that goes on to scroll has
+  // already taken the card with it. A finger going down on the same region
+  // leaves the card standing, and the click after it starts the clock over.
+  useEffect(() => {
+    if (!tappedRegion) return;
+    const elsewhere = (event: PointerEvent) => {
+      const on =
+        event.target instanceof Element
+          ? event.target
+              .closest("[data-region-id]")
+              ?.getAttribute("data-region-id")
+          : undefined;
+      if (on !== String(tappedRegion.id)) setTappedRegion(null);
+    };
+    document.addEventListener("pointerdown", elsewhere, true);
+    return () => document.removeEventListener("pointerdown", elsewhere, true);
+  }, [tappedRegion]);
+
+  /** What a finger on an empty region does, whichever event brings it: the
+   *  region is named, and whatever a tap had armed is withdrawn. The plate
+   *  names one thing at a time and the finger has moved on from it. Left
+   *  armed, the live region would keep its card over this one, and the next
+   *  tap on it would pick it. */
+  const nameEmptyRegion = useCallback(
+    (regionId: number) => {
+      withdrawArmed();
+      setTappedRegion({ id: regionId });
+    },
+    [withdrawArmed],
+  );
 
   /** Where each annotation on the plate has put its block of type, keyed by
    *  the site that drew it. A table and not a single rectangle because more
@@ -814,11 +872,13 @@ export function ShelterMap({
       // there for good.
       //
       // Not asked of a coarse pointer at all. A finger has no resting
-      // position: on a coarse pointer the tap is the hover, so an enter that
-      // waited for a move would swallow the empty region's card with it. This
-      // is the looser of the plate's two gates, and the only one that decides
-      // what the plate says. What it looks like is decided by the stricter
-      // one, which no finger ever opens; see handleRegionPointerMove.
+      // position, so on a coarse pointer the enter is the question: a finger
+      // held on a region is named once the dwell is up, as a resting mouse
+      // is. A quick tap lifts before the dwell has run and is named by the
+      // tap itself instead; see handlePlateClickCapture. This is the looser
+      // of the plate's two gates, and the only one that decides what the
+      // plate says. What it looks like is decided by the stricter one, which
+      // no finger ever opens; see handleRegionPointerMove.
       if (!pointerAsked.current && !window.matchMedia?.(NO_HOVER).matches) {
         return;
       }
@@ -895,6 +955,23 @@ export function ShelterMap({
       if (stats.live) onHoverShelters?.(null);
     },
     [onHoverShelters],
+  );
+
+  // A finger lifting off an empty region it held on until the dwell named it.
+  // The card is up already, and the lift keeps it up as a tap does. Handed
+  // over here rather than left to the tap's click, because the leave that
+  // comes with the lift arrives first: the card came down there and went back
+  // up at the click, a blink on every longer press. A quicker finger has
+  // raised nothing yet, and its click names the region like any tap.
+  const handleRegionPointerUp = useCallback(
+    (regionId: number, event: ReactPointerEvent<SVGPathElement>) => {
+      if (event.pointerType !== "touch") return;
+      if (!window.matchMedia?.(NO_HOVER).matches) return;
+      // Still waiting: the finger was quicker than the dwell.
+      if (regionDwellRef.current !== null) return;
+      nameEmptyRegion(regionId);
+    },
+    [nameEmptyRegion],
   );
 
   const handleTownPointerEnter = useCallback(
@@ -1005,9 +1082,10 @@ export function ShelterMap({
    *  apart, and would have made the keyboard press twice for everything.
    *
    *  It reads data-map-commit, which is written on the element that carries
-   *  the click and on no other; see commitKey in map-marker.tsx. So an empty
-   *  region, an off-site mark and a coin whose own marks answer for themselves
-   *  are all invisible here, and go on doing what they did. */
+   *  the click and on no other; see commitKey in map-marker.tsx. So an
+   *  off-site mark and a coin whose own marks answer for themselves are
+   *  invisible here, and go on doing what they did. An empty region carries
+   *  no key either, and a tap on it only names it; see tappedRegion. */
   const handlePlateClickCapture = (event: ReactMouseEvent<SVGSVGElement>) => {
     if (!window.matchMedia?.(NO_HOVER).matches) return;
     // A click no pointer made. detail counts the presses one made, and a
@@ -1015,11 +1093,24 @@ export function ShelterMap({
     // they were standing on before they pressed, because the label said so,
     // and this gate exists only for the eye that has no label to read.
     if (event.detail === 0) return;
-    const key = (event.target as Element)
+    const target = event.target as Element;
+    const key = target
       .closest("[data-map-commit]")
       ?.getAttribute("data-map-commit");
-    // Nothing under the finger picks anything. It answers as it always has.
-    if (!key) return;
+    if (!key) {
+      // An empty region is named by the tap alone, with no click on it to
+      // hold back; see nameEmptyRegion.
+      const id = target
+        .closest("[data-region-id]")
+        ?.getAttribute("data-region-id");
+      const empty = regions.find(
+        ({ region, stats }) => !stats.live && String(region.id) === id,
+      );
+      if (empty) nameEmptyRegion(empty.region.id);
+      // Anything else under the finger picks nothing. It answers as it
+      // always has.
+      return;
+    }
     if (key === armed) {
       // The tap that commits, which is this handler's only job here: stand
       // aside and let the mark's own onClick run. Disarmed first, so picking
@@ -1053,6 +1144,9 @@ export function ShelterMap({
     // queue, so stopping it here stops the handler on the mark below.
     event.stopPropagation();
     setArmed(key);
+    // The plate names one thing at a time, so an empty region's card a tap
+    // left standing comes down with it.
+    setTappedRegion(null);
 
     if (region) {
       // The region names itself through `armed` alone; see armedRegion below.
@@ -1163,6 +1257,15 @@ export function ShelterMap({
         )}`
       : undefined;
 
+  /** The empty region a tap has named, for as long as it is still empty. A
+   *  filter that puts something on it takes the card down, and the next tap
+   *  arms it like any live region. */
+  const tappedEmptyRegion = tappedRegion
+    ? regions.find(
+        ({ region, stats }) => region.id === tappedRegion.id && !stats.live,
+      )
+    : undefined;
+
   // A marker sits on top of its region, so both would report a hover. The
   // marker is the more precise answer and wins.
   //
@@ -1170,9 +1273,12 @@ export function ShelterMap({
   // so, whether a rested pointer or keyboard focus put it there; the state's
   // own note says why that is one value and not two. A tap that armed a region
   // outranks it, because on a pointer with no hover the tap is the only way to
-  // ask and its answer has to stand until the next one.
+  // ask and its answer has to stand until the next one. A tap that named an
+  // empty region stands the same way. The two never stand together, since
+  // either tap withdraws the other.
   const hoveredRegion =
     armedRegion ??
+    tappedEmptyRegion ??
     (activeTown
       ? undefined
       : regions.find(({ region }) => region.id === namedRegionId));
@@ -1315,7 +1421,7 @@ export function ShelterMap({
       onTouchMove={
         interactive
           ? () => {
-              if (armed) withdrawArmed();
+              if (armed || tappedRegion) withdrawArmed();
             }
           : undefined
       }
@@ -1383,6 +1489,7 @@ export function ShelterMap({
           onMoveFocus={handleRegionMoveFocus}
           onPointerEnter={handleRegionPointerEnter}
           onPointerMove={handleRegionPointerMove}
+          onPointerUp={handleRegionPointerUp}
           onPointerLeave={handleRegionPointerLeave}
           highlighted={region.id === highlightedRegionId}
           // Read straight off the map the picker memoizes, so every region is

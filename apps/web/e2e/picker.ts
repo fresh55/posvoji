@@ -55,8 +55,10 @@ export function region(dialog: Locator, name: string): Locator {
   );
 }
 
-export async function openPicker(page: Page): Promise<Locator> {
-  await page.goto("/");
+/** `path` is the page to open it on, for a spec that needs the filters set
+ *  from the address first. */
+export async function openPicker(page: Page, path = "/"): Promise<Locator> {
+  await page.goto(path);
   await pickerTrigger(page).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();

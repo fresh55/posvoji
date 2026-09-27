@@ -181,16 +181,28 @@ test("forgets an arming the finger has dragged away from", async ({ page }) => {
 
 /** An empty region, and a point on it a finger can land on. Which regions are
  *  empty is a fact about the dataset, so the plate is asked rather than a name
- *  written down. The point is inside the fill and on top there, because a
- *  region is not a rectangle and the middle of its box is often a neighbour. */
-async function emptyRegion(
+ *  written down. */
+function emptyRegion(dialog: Locator) {
+  return regionPoint(
+    dialog,
+    'path[data-region-state="inert"]',
+    "no empty region a finger can reach",
+  );
+}
+
+/** The first region the selector finds with a point on it a finger can land
+ *  on, and that point. The point is inside the fill and on top there, because
+ *  a region is not a rectangle and the middle of its box is often a
+ *  neighbour. */
+async function regionPoint(
   dialog: Locator,
+  selector: string,
+  missing: string,
 ): Promise<{ name: string; label: string; x: number; y: number }> {
-  const found = await dialog.locator('svg[role="group"]').evaluate((plate) => {
+  const plate = dialog.locator('svg[role="group"]');
+  const found = await plate.evaluate((svg, selector) => {
     const steps = 16;
-    for (const path of plate.querySelectorAll<SVGPathElement>(
-      'path[data-region-state="inert"]',
-    )) {
+    for (const path of svg.querySelectorAll<SVGPathElement>(selector)) {
       const box = path.getBBox();
       const matrix = path.getScreenCTM();
       if (!matrix) continue;
@@ -212,8 +224,8 @@ async function emptyRegion(
       }
     }
     return null;
-  });
-  expect(found, "no empty region a finger can reach").not.toBeNull();
+  }, selector);
+  expect(found, missing).not.toBeNull();
   return found!;
 }
 
@@ -282,5 +294,123 @@ test.describe("under real touch points", () => {
     await page.waitForTimeout(600);
     await expect(dialog.locator("[data-map-callout][data-held]")).toHaveCount(1);
     await expect(card.locator("[data-callout-title]")).toHaveText(empty.name);
+  });
+
+  // A live region blinked the same way, and could not be handed over the way
+  // an empty one is: the click after the lift would find the region armed and
+  // pick it. The lift arms it and its click is spent, so the next tap picks.
+  test("keeps a live region's card up through a held finger's lift", async ({
+    page,
+  }) => {
+    const dialog = await openPicker(page);
+    await dialog.locator("[data-picker-show-map]").click();
+    const before = await scopeLabel(page);
+    const centre = await regionPoint(
+      dialog,
+      `path[data-map-commit^="region:"][aria-label^="${CENTRE}"]`,
+      `no point on ${CENTRE} a finger can reach`,
+    );
+    const card = dialog.locator("[data-map-callout]");
+    const cdp = await page.context().newCDPSession(page);
+
+    await touch(cdp, "touchStart", [{ x: centre.x, y: centre.y, id: 1 }]);
+    await expect(card.locator("[data-callout-title]")).toHaveText(CENTRE);
+    await card.evaluate((node) => node.setAttribute("data-held", ""));
+    await page.waitForTimeout(500);
+    await touch(cdp, "touchEnd", []);
+
+    await page.waitForTimeout(600);
+    await expect(dialog.locator("[data-map-callout][data-held]")).toHaveCount(1);
+    // Armed, and nothing picked: the lift's own click was spent.
+    await expect(dialog.locator("[data-map-action]")).toBeVisible();
+    expect(await scopeLabel(page)).toBe(before);
+
+    // The tap after it is the second tap, and the pick.
+    await region(dialog, CENTRE).tap();
+    await expect
+      .poll(() => scopeLabel(page), { timeout: 5000 })
+      .not.toBe(before);
+  });
+
+  test.describe("on a plate big enough for coins", () => {
+    // A tablet's width, where the plate draws its coins. A phone's plate is
+    // too small for them; see markersVisible in shelter-map.tsx.
+    test.use({ viewport: { width: 712, height: 1138 } });
+
+    /** The first coin the selector finds that a finger can land on, and the
+     *  middle of it, where a finger aims. */
+    async function coinPoint(
+      dialog: Locator,
+      selector: string,
+    ): Promise<{ label: string; x: number; y: number }> {
+      const found = await dialog
+        .locator('svg[role="group"]')
+        .evaluate((plate, selector) => {
+          for (const coin of plate.querySelectorAll(selector)) {
+            const box = coin.getBoundingClientRect();
+            const x = Math.round(box.x + box.width / 2);
+            const y = Math.round(box.y + box.height / 2);
+            const hit = document.elementFromPoint(x, y);
+            if (hit?.closest("[data-marker-key]") !== coin) continue;
+            return { label: coin.getAttribute("aria-label") ?? "", x, y };
+          }
+          return null;
+        }, selector);
+      expect(found, `no coin a finger can reach: ${selector}`).not.toBeNull();
+      return found!;
+    }
+
+    // A coin answers a finger on contact, and the lift took the card down
+    // again. A coin with nothing to pick had no click to bring it back, so
+    // its card lasted exactly as long as the finger.
+    test("keeps the card of a coin with nothing to pick after a tap", async ({
+      page,
+    }) => {
+      // Small animals are few, so this filter leaves most shelters with none
+      // to show and their coins with nothing to pick.
+      const dialog = await openPicker(page, "/?velikost=majhna");
+      await dialog.locator("[data-picker-show-map]").click();
+      const coin = await coinPoint(
+        dialog,
+        '[data-marker-info][data-marker-kind="single"]',
+      );
+      const card = dialog.locator("[data-map-callout]");
+      const cdp = await page.context().newCDPSession(page);
+
+      await touch(cdp, "touchStart", [{ x: coin.x, y: coin.y, id: 1 }]);
+      await expect(card).toHaveCount(1);
+      await card.evaluate((node) => node.setAttribute("data-held", ""));
+      await touch(cdp, "touchEnd", []);
+
+      await page.waitForTimeout(600);
+      await expect(dialog.locator("[data-map-callout][data-held]")).toHaveCount(1);
+      // Why there is nothing to pick, in the words the coin's label uses.
+      await expect(card.locator("[data-callout-metadata]")).toHaveText(
+        coin.label.slice(coin.label.indexOf(": ") + 2),
+      );
+      await expect(dialog.locator("[data-map-action]")).toHaveCount(0);
+    });
+
+    test("keeps a live coin's card up through a held finger's lift", async ({
+      page,
+    }) => {
+      const dialog = await openPicker(page);
+      await dialog.locator("[data-picker-show-map]").click();
+      const before = await scopeLabel(page);
+      const coin = await coinPoint(dialog, '[data-map-commit^="town:"]');
+      const card = dialog.locator("[data-map-callout]");
+      const cdp = await page.context().newCDPSession(page);
+
+      await touch(cdp, "touchStart", [{ x: coin.x, y: coin.y, id: 1 }]);
+      await expect(card).toHaveCount(1);
+      await card.evaluate((node) => node.setAttribute("data-held", ""));
+      await page.waitForTimeout(700);
+      await touch(cdp, "touchEnd", []);
+
+      await page.waitForTimeout(600);
+      await expect(dialog.locator("[data-map-callout][data-held]")).toHaveCount(1);
+      await expect(dialog.locator("[data-map-action]")).toBeVisible();
+      expect(await scopeLabel(page)).toBe(before);
+    });
   });
 });

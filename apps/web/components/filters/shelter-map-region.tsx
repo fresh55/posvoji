@@ -161,7 +161,6 @@ export const Region = memo(function Region({
   onMoveFocus,
   onPointerEnter,
   onPointerMove,
-  onPointerUp,
   onPointerLeave,
   highlighted,
   coveredBy,
@@ -199,14 +198,6 @@ export const Region = memo(function Region({
   onPointerMove: (
     regionId: number,
     stats: RegionStats,
-    event: ReactPointerEvent<SVGPathElement>,
-  ) => void;
-  /** A finger lifting off an empty region, where the plate keeps the card a
-   *  held finger raised; see handleRegionPointerUp in shelter-map.tsx. Only
-   *  the inert branch wires it: the tap a live region's lift ends in is what
-   *  arms it. */
-  onPointerUp: (
-    regionId: number,
     event: ReactPointerEvent<SVGPathElement>,
   ) => void;
   onPointerLeave: (regionId: number, stats: RegionStats) => void;
@@ -269,7 +260,7 @@ export const Region = memo(function Region({
         // resting on it and takes the name back by leaving. A finger's leave
         // comes with its lift, so on a pointer that cannot hover the tap names
         // it instead, and the lift of a finger held here keeps the card up
-        // (tappedRegion in shelter-map.tsx).
+        // (tapped and handlePlatePointerUp in shelter-map.tsx).
         onPointerEnter={
           interactive ? () => onPointerEnter(region.id, stats) : undefined
         }
@@ -277,9 +268,6 @@ export const Region = memo(function Region({
           interactive
             ? (event) => onPointerMove(region.id, stats, event)
             : undefined
-        }
-        onPointerUp={
-          interactive ? (event) => onPointerUp(region.id, event) : undefined
         }
         onPointerLeave={
           interactive ? () => onPointerLeave(region.id, stats) : undefined

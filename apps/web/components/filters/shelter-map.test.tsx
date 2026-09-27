@@ -3505,6 +3505,33 @@ describe("ShelterMap without hover", () => {
 
   const tap = (node: Element) => fireEvent.click(node, { detail: 1 });
 
+  /** A finger's whole tap, in the order a phone delivers it: over, down,
+   *  up, then the leave a finger gives the moment it lifts, and only then
+   *  the click. The leave is what cancelled the dwell, so a test of this
+   *  card has to deliver it. */
+  function fingerTap(node: Element) {
+    pointer(node, "pointerover", { x: 0, y: 0 });
+    pointer(node, "pointerdown", { x: 0, y: 0 });
+    pointer(node, "pointerup", { x: 0, y: 0 });
+    pointer(node, "pointerout", { x: 0, y: 0 });
+    fireEvent.click(node, { detail: 1 });
+  }
+
+  /** A finger that comes down on a mark and stays past the dwell, so a
+   *  region has named itself under it by now. Under fake timers. */
+  function fingerHold(node: Element) {
+    pointer(node, "pointerover", { x: 0, y: 0 });
+    pointer(node, "pointerdown", { x: 0, y: 0 });
+    act(() => vi.advanceTimersByTime(REGION_DWELL_MS));
+  }
+
+  /** The same finger lifting: pointerup, and the leave straight after it.
+   *  The click comes later, and after a long press it may not come at all. */
+  function fingerLift(node: Element) {
+    pointer(node, "pointerup", { x: 0, y: 0 });
+    pointer(node, "pointerout", { x: 0, y: 0 });
+  }
+
   it("offers an accessible action after identifying a region", () => {
     onATouchscreen();
     const map = renderPlate();
@@ -3890,18 +3917,6 @@ describe("ShelterMap without hover", () => {
       };
     }
 
-    /** A finger's whole tap, in the order a phone delivers it: over, down,
-     *  up, then the leave a finger gives the moment it lifts, and only then
-     *  the click. The leave is what cancelled the dwell, so a test of this
-     *  card has to deliver it. */
-    function fingerTap(node: Element) {
-      pointer(node, "pointerover", { x: 0, y: 0 });
-      pointer(node, "pointerdown", { x: 0, y: 0 });
-      pointer(node, "pointerup", { x: 0, y: 0 });
-      pointer(node, "pointerout", { x: 0, y: 0 });
-      fireEvent.click(node, { detail: 1 });
-    }
-
     afterEach(() => vi.useRealTimers());
 
     it("raises the card on a quick tap, with nothing on it to press", () => {
@@ -4094,6 +4109,317 @@ describe("ShelterMap without hover", () => {
       fireEvent.click(map.empty, { detail: 1 });
 
       expect(map.callout()).toBeNull();
+    });
+  });
+
+  // A finger held on a live region past the dwell has its card up before it
+  // lifts. The lift delivers its leave ahead of the click, and the leave took
+  // the card down; the click then armed the region and drew the card again,
+  // which a phone showed as a blink. The lift now arms the region itself, and
+  // the click after it is spent, so the second tap is still the pick.
+  describe("a finger held on a live region", () => {
+    const callout = () => document.querySelector("[data-map-callout]");
+    const action = () =>
+      document.querySelector<HTMLButtonElement>("[data-map-action]");
+
+    afterEach(() => vi.useRealTimers());
+
+    it("keeps the card up through the lift and arms the region there", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      fingerHold(centre);
+      const held = callout();
+      expect(held).not.toBeNull();
+      // Named by the dwell, as a resting mouse would be, and not armed yet.
+      expect(action()).toBeNull();
+
+      fingerLift(centre);
+      // The same node: the card was never taken down and drawn again.
+      expect(callout()).toBe(held);
+      expect(action()?.textContent).toBe("Izberi");
+
+      fireEvent.click(centre, { detail: 1 });
+      expect(callout()).toBe(held);
+      expect(map.onPick).not.toHaveBeenCalled();
+    });
+
+    it("spends the lift's click, so the tap after it is the pick", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      fingerHold(centre);
+      fingerLift(centre);
+      fireEvent.click(centre, { detail: 1 });
+      expect(map.onPick).not.toHaveBeenCalled();
+
+      fingerTap(centre);
+      expect(map.onPick).toHaveBeenCalledTimes(1);
+      expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+        kind: "group",
+        label: "Osrednjeslovenska",
+        values: ["ljubljana"],
+      });
+    });
+
+    it("arms on a lift that ends in no click, and the next tap picks", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      // A long press on a phone often ends with no click at all. The lift has
+      // armed the region by then, and the finger that next goes down is a new
+      // tap, not the tail of the old one.
+      fingerHold(centre);
+      fingerLift(centre);
+      expect(action()).not.toBeNull();
+
+      fingerTap(centre);
+      expect(map.onPick).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not let the lift's click press the button its own arming drew", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      fingerHold(centre);
+      fingerLift(centre);
+      const button = action()!;
+      // The press and the click a browser adds to a tap land wherever the
+      // finger was, and the armed card can be standing there by then. The
+      // press would focus the button, which holds the arming past its clock,
+      // and the click would pick.
+      expect(fireEvent.mouseDown(button)).toBe(false);
+      fireEvent.click(button, { detail: 1 });
+
+      expect(map.onPick).not.toHaveBeenCalled();
+      expect(action()).not.toBeNull();
+    });
+
+    it("leaves the pick to the second tap's click, however long it is held", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      tap(centre);
+      expect(action()).not.toBeNull();
+      fingerHold(centre);
+      fingerLift(centre);
+      fireEvent.click(centre, { detail: 1 });
+
+      expect(map.onPick).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the list's tint through the lift", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const onHoverShelters = vi.fn();
+      const { container } = render(
+        <I18nProvider locale="sl">
+          <ShelterMap
+            pins={pins}
+            selected={[]}
+            onPick={vi.fn()}
+            onHoverShelters={onHoverShelters}
+          />
+        </I18nProvider>,
+      );
+      const centre = container.querySelector('[aria-label^="Osrednjeslovenska"]')!;
+
+      fingerHold(centre);
+      onHoverShelters.mockClear();
+      fingerLift(centre);
+      fireEvent.click(centre, { detail: 1 });
+
+      // The rows the arming is about stay tinted, as a tap's arming has always
+      // left them; the lift's leave used to clear them until the click put
+      // them back.
+      expect(onHoverShelters).not.toHaveBeenCalledWith(null);
+      expect(onHoverShelters).toHaveBeenLastCalledWith(["ljubljana"]);
+    });
+
+    it("leaves a quicker finger's naming to its click", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      // Lifted before the dwell ran, so there is no card to keep yet.
+      pointer(centre, "pointerover", { x: 0, y: 0 });
+      pointer(centre, "pointerdown", { x: 0, y: 0 });
+      fingerLift(centre);
+      expect(callout()).toBeNull();
+
+      fireEvent.click(centre, { detail: 1 });
+      expect(action()).not.toBeNull();
+      expect(map.onPick).not.toHaveBeenCalled();
+    });
+
+    it("lets a mouse on a touchscreen take the name back by leaving", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderPlate();
+      const centre = map.region("Osrednjeslovenska");
+
+      pointer(centre, "pointerover", { x: 0, y: 0, pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(REGION_DWELL_MS));
+      expect(callout()).not.toBeNull();
+
+      pointer(centre, "pointerup", { x: 0, y: 0, pointerType: "mouse" });
+      pointer(centre, "pointerout", { x: 0, y: 0, pointerType: "mouse" });
+      expect(callout()).toBeNull();
+      expect(action()).toBeNull();
+    });
+  });
+
+  // A coin answers a finger on contact, so its card is up the moment the
+  // finger lands, and the same lift took it down. A live coin's click drew it
+  // again, armed, which blinked it on a longer press. A coin with nothing to
+  // pick has no click to answer, so its card lasted exactly as long as the
+  // finger did. Both now keep the card through the lift.
+  describe("a coin's card under a finger", () => {
+    function renderCoins(
+      renderPins: ShelterPin[] = [
+        pin("ljubljana", "Zavetišče Ljubljana", "Ljubljana", 5),
+        // Filtered down to nothing: a coin that only informs.
+        pin("maribor", "Zavetišče Maribor", "Maribor", 0),
+      ],
+    ) {
+      const onPick = vi.fn();
+      const { container } = render(
+        <I18nProvider locale="sl">
+          <ShelterMap pins={renderPins} selected={[]} onPick={onPick} />
+        </I18nProvider>,
+      );
+      const text = (selector: string) =>
+        container.querySelector(selector)?.textContent;
+      return {
+        onPick,
+        coin: (key: string) =>
+          container.querySelector<SVGGElement>(`[data-marker-key="${key}"]`)!,
+        callout: () => container.querySelector("[data-map-callout]"),
+        title: () => text("[data-callout-title]"),
+        metadata: () => text("[data-callout-metadata]"),
+        action: () => container.querySelector("[data-map-action]"),
+      };
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it("keeps the card of a coin with nothing to pick after the lift", () => {
+      onATouchscreen();
+      const map = renderCoins();
+      const coin = map.coin("maribor");
+      expect(coin.getAttribute("data-map-commit")).toBeNull();
+
+      pointer(coin, "pointerover", { x: 0, y: 0 });
+      pointer(coin, "pointerdown", { x: 0, y: 0 });
+      const held = map.callout();
+      expect(held).not.toBeNull();
+      fingerLift(coin);
+      fireEvent.click(coin, { detail: 1 });
+
+      expect(map.callout()).toBe(held);
+      expect(map.title()).toBe("Maribor");
+      expect(map.metadata()).toBe("Ni živali, ki ustrezajo filtrom");
+      // Nothing on it to press: there is no pick here for a button to make.
+      expect(map.action()).toBeNull();
+      expect(map.onPick).not.toHaveBeenCalled();
+    });
+
+    it("takes that card down on the clock an arming keeps", () => {
+      onATouchscreen();
+      vi.useFakeTimers();
+      const map = renderCoins();
+
+      fingerTap(map.coin("maribor"));
+      act(() => vi.advanceTimersByTime(ARMED_TTL_MS - 1));
+      expect(map.title()).toBe("Maribor");
+
+      act(() => vi.advanceTimersByTime(1));
+      expect(map.callout()).toBeNull();
+    });
+
+    it("takes that card down when a finger goes down anywhere else", () => {
+      onATouchscreen();
+      const map = renderCoins();
+
+      fingerTap(map.coin("maribor"));
+      // A finger going down on the same coin leaves it up.
+      pointer(map.coin("maribor"), "pointerdown", { x: 0, y: 0 });
+      expect(map.title()).toBe("Maribor");
+
+      pointer(document.body, "pointerdown", { x: 0, y: 0 });
+      expect(map.callout()).toBeNull();
+    });
+
+    it("gives way to another coin, which the lift then arms", () => {
+      onATouchscreen();
+      const map = renderCoins();
+      const ljubljana = map.coin("ljubljana");
+
+      fingerTap(map.coin("maribor"));
+      // The finger is over the next coin before it is down, so the card is
+      // that coin's by the time the old one lets go.
+      pointer(ljubljana, "pointerover", { x: 0, y: 0 });
+      pointer(ljubljana, "pointerdown", { x: 0, y: 0 });
+      expect(map.title()).toBe("Ljubljana");
+      fingerLift(ljubljana);
+      fireEvent.click(ljubljana, { detail: 1 });
+
+      expect(map.title()).toBe("Ljubljana");
+      expect(map.action()).not.toBeNull();
+      expect(map.onPick).not.toHaveBeenCalled();
+    });
+
+    it("keeps the card of one such mark inside a coin", () => {
+      onATouchscreen();
+      const map = renderCoins([
+        pin("vzhod", "Zavetišče Vzhod", "Celje", 60),
+        pin("zahod", "Zavetišče Zahod", "Celje", 0),
+      ]);
+      const mark = document.querySelector('[data-disc-shelter="zahod"]')!;
+      expect(mark.getAttribute("data-map-commit")).toBeNull();
+
+      fingerTap(mark);
+
+      // The mark, and not the town it shares a coin with.
+      expect(map.title()).toBe("Zahod");
+      expect(map.metadata()).toBe("Ni živali, ki ustrezajo filtrom");
+      expect(map.action()).toBeNull();
+    });
+
+    it("hands a live coin's card over at the lift, never redrawn", () => {
+      onATouchscreen();
+      const map = renderCoins();
+      const coin = map.coin("ljubljana");
+
+      pointer(coin, "pointerover", { x: 0, y: 0 });
+      pointer(coin, "pointerdown", { x: 0, y: 0 });
+      const held = map.callout();
+      expect(held).not.toBeNull();
+      expect(map.action()).toBeNull();
+
+      fingerLift(coin);
+      expect(map.callout()).toBe(held);
+      expect(map.action()).not.toBeNull();
+      fireEvent.click(coin, { detail: 1 });
+      expect(map.callout()).toBe(held);
+      expect(map.onPick).not.toHaveBeenCalled();
+
+      fingerTap(coin);
+      expect(map.onPick).toHaveBeenCalledWith(["ljubljana"], {
+        kind: "shelter",
+        value: "ljubljana",
+      });
     });
   });
 

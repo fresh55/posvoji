@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-26T09:40:43.887Z",
+  "reviewedAt": "2026-09-30T18:54:43.221Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -16973,6 +16973,69 @@
           "reviewedBy": [
             "/root/household_review_a",
             "/root/household_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:8db5a442-83b5-4e10-a4b5-6da10ed663ca",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/teodor-26021292",
+      "descriptionSha256": "8cbf7e241b25dd4fb8240ffc1574a6fbbf4f4fdc224648fe7e330ba82951f061",
+      "claims": [
+        {
+          "field": "adoptionRequirements.indoorOnly",
+          "value": true,
+          "evidence": {
+            "start": 9,
+            "end": 41,
+            "sha256": "d5675583e5155db65352bbbb7a082a26b04f9ee1ea0cfbb43f32d6499f3c7e4e"
+          },
+          "reviewedBy": [
+            "/root/newcat_review_a",
+            "/root/newcat_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4993",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4993",
+      "descriptionSha256": "4d607050d2c9fda16846a23d2c7b1e71ae678c884e2c05042cab6bf6fdaacef4",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 151,
+            "end": 169,
+            "sha256": "0d0252e9a6d2f7e38eb16d340d106e8d4e96620290c4aa56e3d3ab65a67e30b9"
+          },
+          "reviewedBy": [
+            "/root/newcat_review_a",
+            "/root/newcat_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "muri:18411",
+      "providerId": "muri",
+      "sourceUrl": "https://zavodmuri.si/Project/olivia-2",
+      "descriptionSha256": "0f3dd3fd07a296138dc4ca5f994617a67f30b8a3bd9015dd48c68ea95f50832e",
+      "claims": [
+        {
+          "field": "adoptionRequirements.indoorOnly",
+          "value": true,
+          "evidence": {
+            "start": 249,
+            "end": 327,
+            "sha256": "66c0401b43da0a3cab36bf4d37cabe45c7034ce07df5d8d916a9b1f8b3422a57"
+          },
+          "reviewedBy": [
+            "/root/newcat_review_a",
+            "/root/newcat_review_b"
           ]
         }
       ]

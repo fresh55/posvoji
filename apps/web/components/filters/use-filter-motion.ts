@@ -238,7 +238,7 @@ export const SETTLE_GRACE_MS = 80;
 // hoveredValue, so that a card unticked under the mouse does not play that
 // preview the moment its pick comes off: Barva's ear tips, Velikost's paw
 // tipped onto its heel (a landing has to take the weight flat), Energija's
-// nod, swell and twitch, Starost's lean, Doma imam's ears and smile,
+// nod, swell and twitch, Starost's lean, Se razume's ears and smile,
 // Zdravje's tube and Čaka na dom's glass.
 export function useFilterCardHover<T extends string = string>(): {
   hoveredValue: T | null;

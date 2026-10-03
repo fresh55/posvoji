@@ -154,7 +154,7 @@ animals a pick hid only because the picked question has no answer for them, and
 draws them below a divider when the visitor asks (`unansweredBand` in
 `apps/web/lib/filters/engine.ts`). A recorded answer that contradicts a pick
 keeps an animal out of that band too: a "no", a positive test, a known size, age
-or wait that differs, `noYoungKids` under Otroke, and a stated "adult" under a
+or wait that differs, `noYoungKids` under z otroki, and a stated "adult" under a
 Mladiček or Senior pick. Only
 a question left unanswered for a tenth or more of the animals in view (the
 species tab, the shelters picked and the needs offered) is

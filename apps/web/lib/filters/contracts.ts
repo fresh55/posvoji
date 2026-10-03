@@ -56,7 +56,7 @@ export type GoodWithKey = (typeof GOOD_WITH_KEYS)[number];
 // few can, so a visitor reads down until a row stops being about them.
 //
 // Household facts are not here. Whether the animal has to be the only pet is
-// answered by Doma imam (goodWithMatches), and indoor-only is a shelter's
+// answered by Se razume (goodWithMatches), and indoor-only is a shelter's
 // house rule far more often than an animal's own need; both stay on the
 // animal as facts.
 export const CARE_KEYS = [
@@ -120,7 +120,7 @@ export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
  * age mattered to about two thirds or more and sex to about a third, and UK
  * rescues ask where, then what the home already holds, then age, and do not
  * offer sex at all. So age and size first, then what the home already holds
- * (Doma imam) and the lab answer a household with a cat needs beside it
+ * (Se razume) and the lab answer a household with a cat needs beside it
  * (Zdravje: FIV and FeLV), then temperament, then sex and looks. The two
  * sections about what the visitor can give and how long an animal has waited
  * close the list.

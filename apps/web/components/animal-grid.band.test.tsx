@@ -136,14 +136,14 @@ describe("the offer under the matches", () => {
     renderGrid([...matches, ...silent]);
 
     expect(screen.getAllByRole("article")).toHaveLength(INITIAL_CARDS);
-    expect(screen.queryByText(/ni podatka o otrocih/)).toBeNull();
+    expect(screen.queryByText(/ni podatka/)).toBeNull();
 
     act(() => {
       for (const callback of callbacks) callback([{ isIntersecting: true }]);
     });
 
     expect(screen.getAllByRole("article")).toHaveLength(matches.length);
-    expect(screen.getByText("Pri 5 psih ni podatka o otrocih.")).toBeTruthy();
+    expect(screen.getByText(/^Pri 5 psih ni podatka\. Morda se razumejo z\sotroki, preveri pri zavetišču\.$/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pokaži jih" })).toBeTruthy();
   });
 
@@ -155,7 +155,9 @@ describe("the offer under the matches", () => {
     const offer = screen.getByRole("button", { name: "Pokaži jih" });
     // The sentence is the button's description, for whoever reaches it by Tab.
     const sentence = document.getElementById(offer.getAttribute("aria-describedby")!);
-    expect(sentence?.textContent).toBe("Pri 3 psih ni podatka o otrocih.");
+    expect(sentence?.textContent).toBe(
+      "Pri 3 psih ni podatka. Morda se razumejo z otroki, preveri pri zavetišču.",
+    );
     expect(divider()).toBeNull();
     // The toolbar's count is the matches'.
     expect(screen.getAllByText("2 živali").length).toBeGreaterThan(0);
@@ -231,7 +233,7 @@ describe("the band once it is shown", () => {
     );
     // Every count stays the matches'.
     expect(screen.getAllByText("2 živali").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Pri 3 psih ni podatka o otrocih.")).toBeNull();
+    expect(screen.queryByText(/^Pri 3 psih ni podatka/)).toBeNull();
   });
 
   it("plays the entrance from the band's own first card", () => {
@@ -479,10 +481,47 @@ describe("the band's words", () => {
     expect(screen.getByRole("button", { name: "Pokaži jo" })).toBeTruthy();
   });
 
+  // No answer under Se razume is not a no, so the offer says the animals may
+  // get along and who knows. The verb follows the number of animals, and the
+  // list of who is the one the section's own outcome line joins.
+  it("says a household gap may still be a yes, in the number's own verb", () => {
+    const sentence = () =>
+      document.getElementById(
+        screen
+          .getByRole("button", { name: /^Pokaži / })
+          .getAttribute("aria-describedby")!,
+      )?.textContent;
+    const cat = (id: string, cats?: "yes") =>
+      animal(id, "cat", cats && { goodWith: { cats, dogs: cats } });
+
+    at("?vrsta=macka&druzba=macke");
+    renderGrid([cat("cat-yes", "yes"), cat("cat-a")]);
+    expect(sentence()).toBe(
+      "Pri 1 mački ni podatka. Morda se razume z mačkami, preveri pri zavetišču.",
+    );
+    cleanup();
+
+    renderGrid([cat("cat-yes", "yes"), cat("cat-a"), cat("cat-b")]);
+    expect(sentence()).toBe(
+      "Pri 2 mačkah ni podatka. Morda se razumeta z mačkami, preveri pri zavetišču.",
+    );
+    cleanup();
+
+    at("?vrsta=macka&druzba=psi,macke");
+    renderGrid([cat("cat-yes", "yes"), cat("cat-a"), cat("cat-b"), cat("cat-c")]);
+    expect(sentence()).toBe(
+      "Pri 3 mačkah ni podatka. Morda se razumejo s psi in mačkami, preveri pri zavetišču.",
+    );
+  });
+
   it("speaks English on the English page", () => {
     at("?vrsta=pes&druzba=otroci");
     renderGrid(HOUSEHOLD, "en");
-    expect(screen.getByText("No data on kids for 3 dogs.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "No data for 3 dogs. They may get along with kids; check with the shelter.",
+      ),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Show them" }));
     expect(screen.getByRole("heading", { name: "No data on kids" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hide" })).toBeTruthy();

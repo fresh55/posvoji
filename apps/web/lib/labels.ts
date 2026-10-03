@@ -728,9 +728,9 @@ export function sexLabel(
   );
 }
 
-// A chip names the household, not the card. The card label answers the section
-// heading ("Doma imam: Psa"), but a chip stands on its own in a row next to the
-// species chips, where "Psa" would read as a list of dogs.
+// A chip says the whole sentence. The card label finishes the section heading
+// ("Se razume: s psi"), but a chip stands on its own in a row next to the
+// species chips, where "s psi" alone would say nothing.
 const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, LabelKey> = {
   kids: "goodWithChipKids",
   dogs: "goodWithChipDogs",

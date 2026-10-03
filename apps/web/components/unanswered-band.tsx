@@ -2,8 +2,9 @@
 
 import { useId, type ReactNode, type Ref } from "react";
 import { useI18n } from "@/components/i18n-context";
+import { goodWithPhrase } from "@/components/filters/good-with-phrase";
 import { Button } from "@/components/ui/button";
-import type { Question, SpeciesFilter } from "@/lib/filters";
+import type { GoodWithKey, Question, SpeciesFilter } from "@/lib/filters";
 import type { TranslationKey } from "@/lib/i18n";
 import {
   questionTopic,
@@ -21,6 +22,25 @@ function topicOf(missing: readonly Question[]): TranslationKey | undefined {
   if (missing.length !== 1) return undefined;
   const topic = questionTopic(missing[0]);
   return topic && (`bandTopic${topic}` as const);
+}
+
+/** Who the band's animals may get along with, when that is all they leave
+ *  unanswered: the Se razume picks nobody answered for them. Undefined when
+ *  they lack anything else, which the plain lines cover. */
+function unansweredGoodWith(
+  missing: readonly Question[],
+): GoodWithKey[] | undefined {
+  const keys = missing.flatMap((question) =>
+    question.facet === "goodWith" ? [question.key] : [],
+  );
+  return keys.length > 0 && keys.length === missing.length ? keys : undefined;
+}
+
+/** By the number itself, as tabPronoun is: the verb has the animals for its
+ *  subject and not the numeral. */
+function bandMaybe(count: number): TranslationKey {
+  if (count === 1) return "bandMaybeOne";
+  return count === 2 ? "bandMaybeTwo" : "bandMaybeMany";
 }
 
 /**
@@ -46,13 +66,19 @@ export function BandOffer({
   const { locale, t } = useI18n();
   const sentenceId = useId();
   const topic = topicOf(missing);
+  const goodWith = unansweredGoodWith(missing);
   const counted = tabCountAt(count, species, locale);
   return (
     <div className="col-span-full flex flex-wrap items-center justify-center gap-x-3 gap-y-2 py-2 text-center">
       <p id={sentenceId} className="text-sm text-muted-foreground">
-        {topic
-          ? t("bandLine", { count: counted, topic: t(topic) })
-          : t("bandLineSeveral", { count: counted })}
+        {goodWith
+          ? t(bandMaybe(count), {
+              count: counted,
+              with: goodWithPhrase(goodWith, t),
+            })
+          : topic
+            ? t("bandLine", { count: counted, topic: t(topic) })
+            : t("bandLineSeveral", { count: counted })}
       </p>
       {/* The sentence as its description, because "Pokaži jih" alone says
           nothing to someone who reached the button by Tab. */}

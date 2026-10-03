@@ -78,7 +78,7 @@ export function toggleValues(
 
 /** The shelter's answer to one household question, or undefined for none.
  *  An animal that has to be the only pet answers the two animal questions
- *  with a no, whatever its goodWith says: "Doma imam: Mačko" is the question
+ *  with a no, whatever its goodWith says: "Se razume: z mačkami" is the question
  *  such a visitor asks, and it has to rule the animal out on its own. */
 export function goodWithAnswer(
   animal: AnimalFields,
@@ -835,7 +835,7 @@ function zeroTally<Key extends string>(
 /**
  * What each question leaves out for want of an answer: the animals a pick
  * there hides not because they answer otherwise but because nobody said.
- * "Otroke 8" can read as the other 483 not being good with children, when
+ * "z otroki 8" can read as the other 483 not being good with children, when
  * 479 of them simply had no answer, and before a pick the panel said so only
  * in a tooltip a mouse has to find.
  *
@@ -905,8 +905,8 @@ export type Coverage = Question & {
  * Of the questions the visitor has answered, the one the shelters answered
  * for the smallest share of the species tab, when it leaves half the animals
  * asked or more without an answer (EMPTY_REASON_SHARE) and was asked of more
- * than one. The empty state says it, because "Ni zadetkov" under Psi, Otroke
- * and Mačko can read as no dog in the country being fine with children, when
+ * than one. The empty state says it, because "Ni zadetkov" under Psi, z otroki
+ * and z mačkami can read as no dog in the country being fine with children, when
  * 121 of the 124 had no answer at all.
  *
  * Over the tab alone, with nothing else applied: it describes the question
@@ -985,8 +985,8 @@ type Relaxed = { groups: number; goodWith: number; toggles: number };
 /**
  * The animals a pick hides only for want of an answer: they fail the filter,
  * and every question they fail is one they leave unanswered. Everything else
- * holds as it does for applyFilters. "Doma imam: Otroke" is answered for 12
- * of 491 animals, so Psi and Otroke shows 2 of 124 dogs, and for 121 of the
+ * holds as it does for applyFilters. "Se razume: z otroki" is answered for 12
+ * of 491 animals, so Psi and z otroki shows 2 of 124 dogs, and for 121 of the
  * other 122 nobody said. The grid offers these after its matches rather than
  * mixing them in: matching stays strict, and a family that is shown 2 dogs
  * and unticks the filter sees all 124, the one that is not good with children
@@ -994,7 +994,7 @@ type Relaxed = { groups: number; goodWith: number; toggles: number };
  *
  * An answer that contradicts a pick keeps the animal out: a no, a positive
  * test, a known size, age or wait that differs. A home without young children
- * keeps it out of Otroke as well: not a no, but an answer (answersGoodWith).
+ * keeps it out of z otroki as well: not a no, but an answer (answersGoodWith).
  * The species tab, Kje and
  * Lahko ponudim keep out whoever they keep out of the result. Every animal
  * answers the first two, and one with no need stated is not missing an answer

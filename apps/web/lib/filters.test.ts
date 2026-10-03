@@ -1193,7 +1193,7 @@ describe("multi-select behavior", () => {
     expect(counts.get("bonded-pair")).toBe(1);
   });
 
-  // "Doma imam: Mačko" is how a visitor with a cat says so, and an animal that
+  // "Se razume: z mačkami" is how a visitor with a cat says so, and an animal that
   // has to be the only pet is no match for that home whatever else it records.
   it("keeps an only-pet animal out of a home that already has a dog or a cat", () => {
     const onlyPet = animal("cat", {

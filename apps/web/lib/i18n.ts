@@ -362,6 +362,16 @@ const sl = {
   bandLine: "Pri {count} ni {topic}.",
   // When the band lacks more than one of the answers picked.
   bandLineSeveral: "Pri {count} manjka kateri od izbranih podatkov.",
+  // The same offer when all the band lacks is an answer under Se razume. No
+  // answer is not a no, and the shelter is who knows, so the line says both.
+  // The verb follows the number itself (bandMaybe in unanswered-band.tsx) and
+  // {with} is the goodWithLead* list the section's own outcome line joins.
+  bandMaybeOne:
+    "Pri {count} ni podatka. Morda se razume {with}, preveri pri zavetišču.",
+  bandMaybeTwo:
+    "Pri {count} ni podatka. Morda se razumeta {with}, preveri pri zavetišču.",
+  bandMaybeMany:
+    "Pri {count} ni podatka. Morda se razumejo {with}, preveri pri zavetišču.",
   // The offer's button. {them} is ga, jo, ju or jih (tabPronoun).
   bandShow: "Pokaži {them}",
   // The empty state's offer, which has no line before it to say how many.
@@ -698,15 +708,17 @@ const sl = {
   geolocationUnavailable: "Lokacije ni bilo mogoče določiti.",
   geolocationTimeout: "Iskanje lokacije je trajalo predolgo.",
   geolocationUnsupported: "Brskalnik ne pozna lokacije.",
-  // The filter section asks about the visitor's home; the dialog row states
-  // what the shelter answered about the animal. Two questions, two labels.
-  goodWith: "Doma imam",
+  // The heading and its rows read as the sentence the dialog states on the
+  // animal ("Se razume z otroki"), so a visitor knows a pick is about the
+  // animal and not a description of their household. It was "Doma imam", which
+  // left that open.
+  goodWith: "Se razume",
   goodWithFacts: "Družba",
-  resetGoodWithFilters: "Ponastavi, kdo živi pri tebi",
+  resetGoodWithFilters: "Ponastavi, s kom se razume",
   // What happens to the animals nobody answered for is said under the rows
   // (goodWithUnansweredLine), where a mouse reads it too; this hint is a
   // tooltip there.
-  goodWithFilterHint: "Označi, kdo že živi pri tebi.",
+  goodWithFilterHint: "Označi, s kom naj se žival razume.",
   goodWithUnansweredRow: "Brez\u00a0podatka: {count}",
   goodWithUnansweredLine:
     "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
@@ -750,7 +762,7 @@ const sl = {
   hintApartmentOk: "Zavetišče presoja, da lahko {name} živi v stanovanju.",
   // The section is an invitation, not a warning: it exists for the visitor who
   // came to help, so the words never describe the animal as a problem. Its
-  // heading is the visitor speaking, the way "Doma imam" is, and each row
+  // heading is the visitor speaking, and each row
   // finishes the sentence.
   care: "Lahko ponudim",
   resetCareFilters: "Ponastavi, kar lahko ponudim",
@@ -939,6 +951,12 @@ const en: Messages = {
   knownTopicFelv: "the FeLV result",
   bandLine: "No {topic} for {count}.",
   bandLineSeveral: "Some of the chosen data is missing for {count}.",
+  bandMaybeOne:
+    "No data for {count}. It may get along with {with}; check with the shelter.",
+  bandMaybeTwo:
+    "No data for {count}. They may get along with {with}; check with the shelter.",
+  bandMaybeMany:
+    "No data for {count}. They may get along with {with}; check with the shelter.",
   bandShow: "Show {them}",
   bandShowCount: "Show {count} with no data",
   bandLabel: "No {topic}",
@@ -1097,10 +1115,10 @@ const en: Messages = {
   geolocationUnavailable: "Your location could not be determined.",
   geolocationTimeout: "Finding your location took too long.",
   geolocationUnsupported: "Location is not available in this browser.",
-  goodWith: "At home I have",
+  goodWith: "Good with",
   goodWithFacts: "Good with",
-  resetGoodWithFilters: "Reset who lives with you",
-  goodWithFilterHint: "Tell us who already lives with you.",
+  resetGoodWithFilters: "Reset who it is good with",
+  goodWithFilterHint: "Pick who the animal should get along with.",
   goodWithUnansweredRow: "No\u00a0answer: {count}",
   goodWithUnansweredLine:
     "Picking one shows only animals the shelter answered for.",

@@ -998,7 +998,7 @@ export function FilterCardTail({
   /** On a tile, draw the line under the count rather than over it. For a
    *  line that carries a number of its own ("Brez podatka: 121"): over the
    *  count it put two bare numbers one above the other, and a tile read
-   *  "Otroke, 121, 2". The sidebar keeps the count on the label's line, so
+   *  "z otroki, 121, 2". The sidebar keeps the count on the label's line, so
    *  there the order is the same either way. */
   descriptionAfterCount?: boolean;
 }) {
@@ -1036,7 +1036,7 @@ export function FilterCardTail({
 
   // One shape whether a description is drawn or not. The line used to come
   // back bare without one and wrapped with one, and a row's description
-  // comes and goes with the other filters (Zdravje and Doma imam name their
+  // comes and goes with the other filters (Zdravje and Se razume name their
   // unanswered animals only while there are enough of them), so each change
   // put the count in a new parent and remounted it: the number swapped in one
   // frame instead of rolling. The column holding a lone line lays out as the

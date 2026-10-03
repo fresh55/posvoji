@@ -117,7 +117,7 @@ export function CollapsibleBody({
   // Said on the body, and not as the presence's initial={false}. Motion hands
   // that to every motion element under the fold, and PresenceChild memoises it
   // for as long as the body stays, so anything mounted in the section later
-  // (the pick ripple, Doma imam's faces, the count roll) counted as present at
+  // (the pick ripple, Se razume's faces, the count roll) counted as present at
   // first paint too and was written straight to the end of its mount
   // animation. initial={false} on the body reaches the body and nothing under
   // it.

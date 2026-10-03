@@ -360,10 +360,10 @@ describe("filter flow interactions", () => {
 
   it("combines household answers with AND and says so on screen", () => {
     renderFilters();
-    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^z otroki, / }));
     expect(matchingIds()).toBe("male-young,female-adult");
 
-    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^s psi, / }));
     expect(matchingIds()).toBe("male-young");
     expect(
       screen.getByText(
@@ -374,22 +374,22 @@ describe("filter flow interactions", () => {
 
   it("keeps the household slugs a shared link already carries", () => {
     renderFilters();
-    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
-    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^z otroki, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^s psi, / }));
 
     expect(query()).toBe("?druzba=otroci,psi");
   });
 
-  it("names the household on its chips, not the species", () => {
+  it("says the whole sentence on its chips", () => {
     renderFilters();
-    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
-    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^z otroki, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^s psi, / }));
 
-    expect(screen.getByText("Doma: otroci")).toBeTruthy();
-    expect(screen.getByText("Doma: pes")).toBeTruthy();
+    expect(screen.getByText("Se razume z otroki")).toBeTruthy();
+    expect(screen.getByText("Se razume s psi")).toBeTruthy();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Odstrani filter Doma: pes" }),
+      screen.getByRole("button", { name: /^Odstrani filter Se razume s\spsi$/ }),
     );
     expect(query()).toBe("?druzba=otroci");
   });

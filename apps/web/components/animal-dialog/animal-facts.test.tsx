@@ -410,7 +410,7 @@ describe("the družba row", () => {
     expect(buttons[0].textContent).toContain("Se razume z otroki");
   });
 
-  // Meli's Tomi "nima težav z mačkami" but has to live alone. Doma imam: Mačko
+  // Meli's Tomi "nima težav z mačkami" but has to live alone. Se razume: z mačkami
   // leaves him out, and a "Se razume z mačkami" beside "Mora biti edina žival
   // pri hiši" told the visitor the opposite.
   it("answers dogs and cats no for an animal that has to be the only pet", () => {

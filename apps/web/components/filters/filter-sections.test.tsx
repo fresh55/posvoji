@@ -347,14 +347,14 @@ describe("collapsible filter sections", () => {
     expect(folds()).toEqual([
       ["Starost", "true"],
       ["Velikost", "false"],
-      ["Doma imam", "false"],
+      ["Se razume", "false"],
       ["Energija", "false"],
       ["Spol", "false"],
     ]);
     expect(card(/^Majhna/)).toBeNull();
     expect(card(/^Samec/)).toBeNull();
     expect(card(/^Miren/)).toBeNull();
-    expect(card(/^Otroke/)).toBeNull();
+    expect(card(/^z otroki/)).toBeNull();
     // No health section on Vse: FIV and FeLV are cat questions, and the three
     // a dog could be asked are facts on the animal, not filters.
     expect(screen.queryByRole("button", { name: /^Zdravje/ })).toBeNull();
@@ -561,17 +561,17 @@ describe("collapsible filter sections", () => {
   it("brings a freshly unfolded section into view, and a folded one never", async () => {
     renderSidebar();
 
-    fireEvent.click(header("Doma imam"));
+    fireEvent.click(header("Se razume"));
     await waitFor(() => expect(broughtIntoView).toHaveBeenCalledTimes(1));
     expect(broughtIntoView.mock.calls[0]?.[0]).toBe(
-      header("Doma imam").closest("section"),
+      header("Se razume").closest("section"),
     );
     // Never scrollIntoView: it takes the page with it, which for a panel
     // sticky under the page title is the site's own heading scrolled away
     // (lib/scroll-strip.ts).
     expect(scrollIntoView).not.toHaveBeenCalled();
 
-    fireEvent.click(header("Doma imam"));
+    fireEvent.click(header("Se razume"));
     await new Promise((resolve) => window.setTimeout(resolve, 500));
     expect(broughtIntoView).toHaveBeenCalledTimes(1);
   });
@@ -592,9 +592,9 @@ describe("collapsible filter sections", () => {
     expect(document.activeElement).toBe(header("Energija"));
 
     fireEvent.keyDown(header("Energija"), { key: "ArrowUp" });
-    expect(document.activeElement).toBe(header("Doma imam"));
+    expect(document.activeElement).toBe(header("Se razume"));
 
-    fireEvent.keyDown(header("Doma imam"), { key: "Home" });
+    fireEvent.keyDown(header("Se razume"), { key: "Home" });
     expect(document.activeElement).toBe(header("Starost"));
   });
 

@@ -274,13 +274,13 @@ function animalDialog() {
   return screen.getAllByRole("dialog")[0] as HTMLElement;
 }
 
-// The same two steps are drawn twice: as arrows at the edges of the box for a
+// The same two steps are drawn twice: as arrows beside the card for a
 // pointer, and as two links naming the animal at the end of the card for a
 // thumb. Each layout hides the other one by breakpoint, and jsdom applies no
 // Tailwind, so both are in the tree here. Each is asked for by what it is.
-function edgeNav(dialog: HTMLElement, label: string) {
-  const found = dialog.querySelector(`button[aria-label="${label}"]`);
-  if (!(found instanceof HTMLElement)) throw new Error(`no edge ${label}`);
+function edgeNav(dialog: HTMLElement, direction: "previous" | "next") {
+  const found = dialog.querySelector(`button[data-direction="${direction}"]`);
+  if (!(found instanceof HTMLElement)) throw new Error(`no edge ${direction}`);
   return found;
 }
 
@@ -498,10 +498,10 @@ describe("animal dialog", () => {
     expect(dialog).toBeTruthy();
     // With the animal off the list there is nothing to step through.
     expect(
-      within(dialog).queryByRole("button", { name: "Prejšnja žival" }),
+      within(dialog).queryByRole("button", { name: /^Prejšnja žival/ }),
     ).toBeNull();
     expect(
-      within(dialog).queryByRole("button", { name: "Naslednja žival" }),
+      within(dialog).queryByRole("button", { name: /^Naslednja žival/ }),
     ).toBeNull();
   });
 
@@ -2227,7 +2227,7 @@ describe("animal dialog", () => {
     const dialog = await screen.findByRole("dialog");
     const entries = window.history.length;
 
-    fireEvent.click(edgeNav(dialog, "Naslednja žival"));
+    fireEvent.click(edgeNav(dialog, "next"));
 
     await waitFor(() =>
       expect(window.location.pathname).toBe(animalPath(MURI, "sl")),
@@ -2258,7 +2258,7 @@ describe("animal dialog", () => {
 
     expect(slot(dialog, "animal-announcement").textContent).toBe("");
 
-    fireEvent.click(edgeNav(dialog, "Naslednja žival"));
+    fireEvent.click(edgeNav(dialog, "next"));
     await waitFor(() =>
       expect(slot(animalDialog(), "animal-announcement").textContent).toBe(
         "Muri",
@@ -2306,7 +2306,7 @@ describe("animal dialog", () => {
     await waitFor(() => expect(window.location.pathname).toBe(animalPath(REX, "sl")));
   });
 
-  it("resets the reused card and navigation offset when the next animal also overflows", async () => {
+  it("resets the reused card when the next animal also overflows", async () => {
     renderGrid();
     openCard("Rex");
     const dialog = await screen.findByRole("dialog");
@@ -2317,12 +2317,10 @@ describe("animal dialog", () => {
     });
     card.scrollTop = 250;
     fireEvent.scroll(card);
-    fireEvent.click(edgeNav(dialog, "Naslednja žival"));
+    fireEvent.click(edgeNav(dialog, "next"));
     await waitFor(() => expect(window.location.pathname).toBe(animalPath(MURI, "sl")));
     expect(slot(animalDialog(), "animal-dialog-card")).toBe(card);
     expect(card.scrollTop).toBe(0);
-    expect(slot(animalDialog(), "animal-dialog-frame").style.getPropertyValue("--nav-shift"))
-      .toBe("0px");
   });
 
   it.each([false, true])(
@@ -2362,7 +2360,7 @@ describe("animal dialog", () => {
 
     // Rex is first in the sorted list, so there is nothing before it.
     expect(
-      within(dialog).queryByRole("button", { name: "Prejšnja žival" }),
+      within(dialog).queryByRole("button", { name: /^Prejšnja žival/ }),
     ).toBeNull();
 
     const walk = createEvent.keyDown(dialog, { key: "PageDown" });
@@ -2440,7 +2438,7 @@ describe("animal dialog", () => {
     expect(controls[1]).toBe(slot(dialog, "dialog-close-card"));
   });
 
-  // The edge arrows are drawn at the edges but written last. Standing first,
+  // The edge arrows are drawn beside the card but written last. Standing first,
   // they were the first focusable child, which is what Radix hands the open
   // to: the dialog announced itself as the way out of the animal, and the
   // first Tab step led away from it. The phone's close button is still ahead
@@ -2450,8 +2448,8 @@ describe("animal dialog", () => {
     renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
 
-    const previous = edgeNav(dialog, "Prejšnja žival");
-    const next = edgeNav(dialog, "Naslednja žival");
+    const previous = edgeNav(dialog, "previous");
+    const next = edgeNav(dialog, "next");
     const print = photoButton(dialog, "photo-spread", 1);
 
     expect(
@@ -2466,56 +2464,33 @@ describe("animal dialog", () => {
     expect(buttons[0]).not.toBe(previous);
   });
 
-  // A round chevron drawn half outside the dialog, beside a fan that counts
-  // its photos, is the lightbox idiom: clicked for the next picture, it hands
-  // over a different animal. The label is what says so first, and it prints
-  // the button's own name, so the description Radix hangs on a trigger is
-  // dropped rather than announcing "Prejšnja žival" a second time.
-  it("says what the edge arrows step to before they are clicked", async () => {
+  // A round chevron beside a fan that counts its photos is the lightbox
+  // idiom: clicked for the next picture, it hands over a different animal.
+  // The tooltip says so first, and names the animal with its photo, the way
+  // the phone's steps do. The button's name says the same, so the
+  // description Radix hangs on a trigger is dropped rather than announcing it
+  // a second time.
+  it("says which animal the edge arrows step to before they are clicked", async () => {
     renderDialog(TRIO, [REX, TRIO, MURI]);
     const dialog = await screen.findByRole("dialog");
 
-    for (const label of ["Prejšnja žival", "Naslednja žival"]) {
-      const arrow = edgeNav(dialog, label);
+    for (const [direction, label, name] of [
+      ["previous", "Prejšnja žival", "Rex"],
+      ["next", "Naslednja žival", "Muri"],
+    ] as const) {
+      const arrow = edgeNav(dialog, direction);
+      expect(arrow.getAttribute("aria-label")).toBe(`${label}: ${name}`);
       // Focus, not hover: a keyboard is owed the same answer, and Radix opens
       // on focus without the delay a pointer pays. The bubble lands in a
       // portal outside the dialog, like the health badge's popover above.
       fireEvent.focus(arrow);
       const bubble = await screen.findByRole("tooltip");
-      expect(bubble.textContent).toBe(label);
+      expect(bubble.textContent).toBe(`${label}${name}`);
       expect(arrow.getAttribute("aria-describedby")).toBeNull();
 
       fireEvent.blur(arrow);
       await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
     }
-  });
-
-  // The arrows are level with the name, and from sm up the name rides a sticky
-  // bar: at rest its centre is 64px under the card's top, pinned it is 40px.
-  // The arrows are absolute against the frame, which does not scroll, so they
-  // stayed at 64px and straddled the pinned bar's edge. The card hands the
-  // frame its own scroll, capped at the 24px the bar travels, and the two top
-  // offsets subtract it. Written as a custom property and not as state, so a
-  // scroll renders nothing.
-  it("lifts the edge arrows with the name as the title bar pins", async () => {
-    renderDialog(TRIO, [REX, TRIO, MURI]);
-    const dialog = await screen.findByRole("dialog");
-    const frame = slot(dialog, "animal-dialog-frame");
-    const card = slot(dialog, "animal-dialog-card");
-
-    // Well past the cap: the bar has stopped moving and so have they.
-    card.scrollTop = 120;
-    fireEvent.scroll(card);
-    expect(frame.style.getPropertyValue("--nav-shift")).toBe("24px");
-
-    // Mid-travel, where the shift is the scroll itself.
-    card.scrollTop = 10;
-    fireEvent.scroll(card);
-    expect(frame.style.getPropertyValue("--nav-shift")).toBe("10px");
-
-    card.scrollTop = 0;
-    fireEvent.scroll(card);
-    expect(frame.style.getPropertyValue("--nav-shift")).toBe("0px");
   });
 
   // With the arrows last, the first focusable child is the leftmost print,
@@ -2640,7 +2615,7 @@ describe("animal dialog", () => {
     window.history.replaceState(null, "", `/?zival=${queue[1].id}`);
     renderGrid(queue);
     const dialog = await screen.findByRole("dialog");
-    const arrow = edgeNav(dialog, "Naslednja žival");
+    const arrow = edgeNav(dialog, "next");
     arrow.focus();
 
     fireEvent.click(arrow);

@@ -5,7 +5,7 @@ import { touch } from "./touch";
 
 // The way to the next animal on a device with a finger.
 //
-// The dialog has always carried two steps at the edges of the box and the same
+// The dialog has always carried two steps beside the card and the same
 // two on PageUp and PageDown. Both start at sm: below it the arrows are not
 // drawn and a phone has no page keys, so the only way to the animal after this
 // one was to close the dialog and find the next card. The phone gets the pair
@@ -26,9 +26,9 @@ function stepLink(page: Page, direction: "previous" | "next") {
   );
 }
 
-// The pair the wider layout draws at the edges of the box.
-function edgeNav(page: Page, label: string) {
-  return dialog(page).locator(`button[aria-label="${label}"]`);
+// The pair the wider layout draws beside the card.
+function edgeNav(page: Page, direction: "previous" | "next") {
+  return dialog(page).locator(`button[data-direction="${direction}"]`);
 }
 
 // The phone scrolls the whole shell, which is the dialog's own box.
@@ -115,7 +115,7 @@ test("leaves the edge arrows to the wider layout", async ({ page }) => {
 
   // Rendered and not drawn, which is the same thing the sm-only close button
   // on the title row does: one markup, two layouts.
-  const edge = edgeNav(page, "Naslednja žival");
+  const edge = edgeNav(page, "next");
   await expect(edge).toHaveCount(1);
   await expect(edge).toBeHidden();
   await expect(stepLink(page, "next")).toBeVisible();

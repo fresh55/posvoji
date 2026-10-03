@@ -97,7 +97,7 @@ export type ShelterCardText = {
 //
 // So the row is drawn at 44px for a coarse pointer, and the question is asked
 // of the pointer rather than of the viewport, which is the idiom
-// components/animal-dialog/animal-dialog.tsx already uses for its nav arrows.
+// components/animal-dialog/animal-dialog.tsx already uses for its close button.
 // The argument for asking it that way, and the list of call sites still asking
 // about width instead, are with the tap-target utility in globals.css, where
 // the rest of this rule lives.

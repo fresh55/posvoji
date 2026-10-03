@@ -67,9 +67,10 @@ import type { AnimalSort } from "@/lib/sort";
 // so the picker fills the row on its own and one rule splits the plate at
 // every width.
 //
-// The edges follow env(safe-area-inset-*) with the 0px
-// fallbacks globals.css documents, so the plate clears a notch or a curved
-// corner instead of running under it.
+// The side edges follow env(safe-area-inset-left/right) with the 0px
+// fallbacks globals.css documents, and the bottom edge follows --dock-inset,
+// so the plate clears a notch, a curved corner or the home indicator instead
+// of running under it.
 //
 // Edge to edge is a phone's shape, not a tablet's. Pinned to both edges at
 // every width below lg, a tablet stretched two short controls across the page:
@@ -78,9 +79,10 @@ import type { AnimalSort } from "@/lib/sort";
 // 28rem and centred instead, near the width it has on the phone it was drawn
 // for; a landscape phone at 844px lands on the same 28rem. min() is what keeps
 // 28rem a cap rather than a floor if either that number or the breakpoint
-// moves. Only the horizontal edges move: the bottom keeps the safe-area inset
-// the footer's docked padding is measured against, and BackToTop is positioned
-// on its own and stays at the viewport's right edge.
+// moves. Only the horizontal edges move: the bottom keeps the inset the
+// footer's docked padding is measured against, and BackToTop is positioned
+// on its own and stays at the viewport's right edge. Why the bottom reads
+// --dock-inset and not the live safe-area inset is in globals.css.
 //
 // z-30, under the sticky toolbar band (z-40) and above the page. The two only
 // ever meet at 200% text, where the band lands at y 687-792 on a 390x844
@@ -93,7 +95,7 @@ import type { AnimalSort } from "@/lib/sort";
 // covered, since the plate is fixed and the band pins. Nothing above it below
 // lg but BackToTop (z-40), which stands 5.5rem up and never overlaps it.
 const DOCK_CLASS =
-  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-30 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
+  "fixed left-[max(1rem,env(safe-area-inset-left,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] bottom-[calc(1rem+var(--dock-inset))] z-30 flex items-stretch gap-1.5 rounded-ui border bg-background p-1.5 shadow-lg sm:left-1/2 sm:right-auto sm:w-[min(28rem,calc(100vw-2rem))] sm:-translate-x-1/2 lg:hidden [&>*]:min-w-0 [&>*]:only:grow";
 
 /** The band the toolbar draws itself in: full width below lg, the frame's own
  *  column from lg, with the rule under it that the grid starts below.
@@ -337,12 +339,13 @@ export function AnimalFilters({
           the way back up; the sidebar beside this bar already stays, so the
           bar scrolling away left half the controls behind.
 
-          Opaque at lg rather than blurred. backdrop-filter re-samples and
-          re-blurs whatever is behind it on every scrolled frame, and on
-          desktop what is behind it is the widest part of a 503-card grid.
-          A phone's bar is narrow and short enough to be worth the effect;
-          a full-width desktop rail is not, and an opaque ground pins just
-          as well. */}
+          Opaque at every width rather than blurred. backdrop-filter
+          re-samples and re-blurs whatever is behind it on every scrolled
+          frame, and what is behind this bar is a grid of photos. Below lg it
+          used to be bg-background/95 over a blur: 5% of show-through that
+          nobody could see at rest, paid for on each frame of a phone's
+          scroll, on the one element that has to hold still while the page
+          moves. An opaque ground pins just as well. */}
       {/* py-rail-pad and not a plain length: the filter panel across the
           gutter pins to the same edge and carries the same amount as top
           padding, so the two columns start their content on one line. The
@@ -356,7 +359,7 @@ export function AnimalFilters({
           while the dock is fixed to the bottom and comes clear of it the
           moment the page moves at all. Nothing changes at 100% text, where
           the two never meet. */}
-      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-40 bg-background/95 backdrop-blur-sm short:static lg:bg-background lg:backdrop-blur-none")}>
+      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-40 bg-background short:static")}>
         {/* --toolbar-row states the row's height rather than leaving it to
             whichever control happens to be tallest: the sort trigger stands
             down at zero results, and the row would otherwise fall to the tabs'

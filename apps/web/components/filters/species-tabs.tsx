@@ -460,6 +460,15 @@ export function SpeciesTabs({
           // overlays are cut back to the height of the pills. The matching
           // negative margin keeps the row occupying its old height.
           //
+          // The room is 10px a side at the small step, because the pill there
+          // is 24px and its overlay still 44. With 8px the box was 40 tall
+          // around 42 of content, so it scrolled 2px vertically: measured at
+          // 375 and 320, a page scroll that started on the bar moved the tabs
+          // 2px inside it and the page not at all, since the strip had taken
+          // the gesture. overflow-y-hidden holds the same line at any size a
+          // later change brings, where auto would hand the strip the gesture
+          // again for a fraction of a pixel.
+          //
           // Ungated, and it used to be gated twice: max-lg for the row's
           // height on a phone, pointer-coarse for the overlay's room on a
           // touch tablet. What neither gate covered is the case both were
@@ -470,7 +479,8 @@ export function SpeciesTabs({
           // because the padding and the margin cancel there as well.
           //
           // What that costs a caller: the padding and the margin cancel, so
-          // this box draws 44px and measures 28px from outside.
+          // this box draws 44px and measures the pill's height from outside,
+          // 28px (24 at the small step).
           // A block parent the margins collapse through stands at 44; a flex
           // parent measures the 28 and the row loses 16px. The below-lg
           // toolbar turns flex only from md for exactly this reason
@@ -490,7 +500,7 @@ export function SpeciesTabs({
           // gets the same from the fade-scroll-x utility; this one masks by
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
-          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain py-2 no-scrollbar max-[384px]:gap-0.5",
+          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 no-scrollbar max-[384px]:-my-2.5 max-[384px]:gap-0.5 max-[384px]:py-2.5",
           fullWidth && "w-full",
         )}
       >

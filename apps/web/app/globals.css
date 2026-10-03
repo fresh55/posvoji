@@ -155,17 +155,33 @@
      A new fixed or sticky thing belongs on a rung that already exists. If it
      needs one between two of these, the pair it lands between is the argument
      to write down, not the number. */
+  /* What the two things fixed to the bottom of a scrolling page keep clear of
+     the home indicator: the phone filter dock and the control above it.
+
+     The max inset first, because where a browser has it the plain inset is
+     not a constant: Chrome on Android changes it as its own bars hide and
+     show, so anything positioned by it moved every time the scroll changed
+     direction. Filmed on 2026-09-29, the dock stood about 40px higher with the
+     address bar showing than with it hidden and snapped between the two in
+     one frame. The max inset is the largest the plain one gets and does not
+     move. A browser without it, Safari on an iPhone among them, falls back to
+     the plain inset and keeps the home-indicator clearance it always had.
+
+     Surfaces that do not ride a scrolling page (the sheets, the picker, the
+     dialog) keep the plain inset. */
+  --dock-inset: env(safe-area-max-inset-bottom, env(safe-area-inset-bottom, 0px));
   /* Where the back-to-top control sits, and the one place that distance is
      written. The dock is 1rem in and about 3.5rem tall, so this clears it with
      a gap above, and the footer's docked run-off is derived from it rather
      than restating the same arithmetic (site-footer.tsx). Retuned at lg,
      below, where there is no dock left to clear.
 
-     The 0px fallback for the reason --gutter states above, and this is the one
-     token where dropping the declaration would take more than its own element
-     with it: the docked footer reserves calc(this + 3rem), so an invalid value
-     here leaves the footer with no run-off and puts the button back on the
-     links, which is the regression site-footer.tsx records having measured.
+     The 0px at the end of --dock-inset's fallbacks is for the reason --gutter
+     states above, and this is the one token where an invalid value would take
+     more than its own element with it: the docked footer reserves
+     calc(this + 3rem), so an invalid value here leaves the footer with no
+     run-off and puts the button back on the links, which is the regression
+     site-footer.tsx records having measured.
 
      The derived distance stays on the footer and is not hoisted into a
      clearance token declared here. A custom property substitutes its own var()
@@ -173,8 +189,9 @@
      resolve this one against :root and freeze; a page overriding the input on
      its own wrapper would not reach back into it, and its footer would reserve
      a strip for a button parked somewhere else. Same rule as the fade mask
-     below. */
-  --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+     below. --dock-inset is not such an input: it is the device's, and no page
+     overrides it, so this token may be derived from it here. */
+  --back-to-top-bottom: calc(5.5rem + var(--dock-inset));
   /* The other half of the same corner, beside the distance it pairs with
      rather than spelled into a class string. viewport-fit=cover puts the
      sensor housing over a long edge in landscape, and a control pinned at a

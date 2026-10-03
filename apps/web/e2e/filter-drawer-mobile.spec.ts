@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { pickerTrigger } from "./picker";
+import { dragTouch } from "./touch";
 
 // The drawer this file exercises is FilterSheet's, opened from the "Filtri"
 // button in the mobile dock (animal-filters.tsx). It is the only Drawer this
@@ -393,4 +394,37 @@ test("hands the Kje row over to the map with focus inside it", async ({ page }) 
 
   await expect(picker).toBeHidden();
   await expect(pickerTrigger(page)).toBeFocused();
+});
+
+test.describe("a scroll that starts on the pinned species bar", () => {
+  // Up to 384px the tabs take their small step, and the strip around them was
+  // 40px tall around 42 of tap overlay. That made it a vertical scroller with
+  // 2px to give: a finger that started on the bar moved the tabs 2px inside
+  // it and the page stayed where it was, because the strip had the gesture.
+  test.use({ viewport: { width: 375, height: 812 } });
+  test.skip(
+    ({ browserName }) => browserName !== "chromium",
+    "the touch points are dispatched over a CDP session, which is Chromium only",
+  );
+
+  test("moves the page and leaves the tabs where they are", async ({ page }) => {
+    await page.goto("/");
+    const strip = page.locator('[data-slot="mobile-toolbar"] [data-scroll-strip]');
+    await expect(strip).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 1200));
+
+    const box = (await strip.boundingBox())!;
+    const cdp = await page.context().newCDPSession(page);
+    const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await dragTouch(page, cdp, from, { x: from.x, y: from.y - 120 });
+
+    await expect
+      .poll(() => page.evaluate(() => Math.round(window.scrollY)))
+      .toBeGreaterThan(1200);
+    // No vertical range at all, which is also what keeps every tab's 44px
+    // overlay whole inside the strip's padding.
+    expect(
+      await strip.evaluate((el) => el.scrollHeight - el.clientHeight),
+    ).toBe(0);
+  });
 });

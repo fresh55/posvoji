@@ -589,6 +589,18 @@ describe("animal dialog", () => {
     expect(cta.getAttribute("rel")).toBe("noreferrer");
   });
 
+  it("offers the animal's poster in a tab of its own", async () => {
+    window.history.replaceState(null, "", "/?zival=rex");
+    renderGrid();
+
+    const dialog = await screen.findByRole("dialog");
+    const poster = within(dialog).getByRole("link", { name: "Natisni plakat" });
+    // The sheet hangs off the animal's own address, and opening it beside the
+    // list keeps the visitor's place in it.
+    expect(poster.getAttribute("href")).toMatch(/^\/zival\/rex-.+\/plakat$/);
+    expect(poster.getAttribute("target")).toBe("_blank");
+  });
+
   it("puts the species and breed in the subtitle, not the badges", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();

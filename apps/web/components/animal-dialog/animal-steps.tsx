@@ -3,6 +3,13 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimalPhoto } from "@/components/animal-photo";
 import { useI18n } from "@/components/i18n-context";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { thumbnailUrl } from "@/lib/animal-images";
@@ -11,6 +18,22 @@ import { opensElsewhere } from "@/lib/opens-elsewhere";
 import { cn } from "@/lib/utils";
 
 type Direction = "previous" | "next";
+
+// What both kinds of step say about the animal they lead to, so the phone's
+// link and the edge arrow are named in the same words.
+function useStepWords(animal: ClientAnimal, direction: Direction) {
+  const { messages, t } = useI18n();
+  const name = animal.name ?? messages.unnamed;
+  const onward = direction === "next";
+  const step = onward ? messages.nextAnimal : messages.previousAnimal;
+  return {
+    name,
+    onward,
+    step,
+    label: t("animalStepNamed", { step, name }),
+    Chevron: onward ? ChevronRight : ChevronLeft,
+  };
+}
 
 /**
  * The phone's way to the animals either side of this one in the list, drawn
@@ -23,8 +46,9 @@ type Direction = "previous" | "next";
  * name the animal they lead to and show its photo, and they stand where the
  * reading of this one ends rather than beside its name.
  *
- * Phone shell only. From sm up the dialog keeps its edge arrows, which say
- * what they walk in a tooltip, and the page keys.
+ * Phone shell only. From sm up the dialog keeps its edge arrows
+ * (AnimalEdgeSteps below), which name the animal in a tooltip, and the page
+ * keys.
  */
 export function AnimalSteps({
   previous,
@@ -63,18 +87,8 @@ function AnimalStep({
   direction: Direction;
   onStep: (id: string) => void;
 }) {
-  const { locale, messages, t } = useI18n();
-  const name = animal.name ?? messages.unnamed;
-  // The photo its card leads with, as the 112px copy ingest cuts beside every
-  // cached one. It is the file the stage's wash draws for that photo, so the
-  // animal just stepped from is already in the cache and the one ahead has
-  // its wash fetched early. The width ladder's smallest rung is 320px, eight
-  // times this box.
-  const lead = animal.images[0];
-  const photo = lead && { ...lead, src: thumbnailUrl(lead.src), widths: undefined };
-  const SpeciesMark = SPECIES_ICONS[animal.species];
-  const onward = direction === "next";
-  const Chevron = onward ? ChevronRight : ChevronLeft;
+  const { locale, messages } = useI18n();
+  const { name, onward, label, Chevron } = useStepWords(animal, direction);
   return (
     <a
       // A real address, the one the card for this animal links to, so a
@@ -92,10 +106,7 @@ function AnimalStep({
       // The caption on screen is the short one, because a 320px screen gives
       // each half 140px. The name a reader hears is whole, and it starts with
       // what is printed.
-      aria-label={t("animalStepNamed", {
-        step: onward ? messages.nextAnimal : messages.previousAnimal,
-        name,
-      })}
+      aria-label={label}
       onClick={(event) => {
         if (opensElsewhere(event)) return;
         event.preventDefault();
@@ -108,23 +119,7 @@ function AnimalStep({
         onward && "col-start-2 flex-row-reverse text-end",
       )}
     >
-      <span className="relative size-10 shrink-0 overflow-hidden rounded-md bg-muted">
-        {photo ? (
-          <AnimalPhoto
-            photo={photo}
-            alt=""
-            sizes="40px"
-            frame={1}
-            className="object-cover"
-          />
-        ) : (
-          <SpeciesMark
-            className="absolute inset-0 m-auto size-5 text-muted-foreground"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-        )}
-      </span>
+      <StepThumb animal={animal} className="bg-muted text-muted-foreground" />
       <span className="min-w-0">
         <span
           className={cn(
@@ -138,5 +133,158 @@ function AnimalStep({
         <span className="block truncate text-sm font-medium">{name}</span>
       </span>
     </a>
+  );
+}
+
+/**
+ * The two round arrows beside the card from sm up, the wider layout's way to
+ * the animals either side of this one.
+ *
+ * They stand in the gutter outside the card, at the dialog's vertical middle.
+ * Pinned to the name row, they moved with every step: the dialog is centred
+ * in the window, so a longer listing raised the card's top and the arrows
+ * with it, by up to 48px at 1440x900, and the pointer had to find them again
+ * after each press. The card's own middle moves too, by about 33px between an
+ * animal with one photo and one with several, because a lone photo is drawn
+ * taller. The dialog's middle is the window's middle whatever it holds, so an
+ * arrow there stays under a resting pointer for as long as it is pressed.
+ * Outside the card they also stop reading as part of the title row's share
+ * and close buttons, which one of them used to stand beside, and they cannot
+ * land on the animal's text, which is what kept them off the middle before.
+ *
+ * The tooltip names the animal the arrow leads to and shows its photo, the
+ * way the phone's steps do, so the arrow says before a press that it walks
+ * the animals and not the photos.
+ */
+export function AnimalEdgeSteps({
+  previous,
+  next,
+  onStep,
+}: {
+  previous?: ClientAnimal;
+  next?: ClientAnimal;
+  onStep: (id: string) => void;
+}) {
+  // The provider draws no element of its own, so the two buttons are still
+  // the last two in the dialog.
+  return (
+    <TooltipProvider>
+      {previous && (
+        <EdgeStep animal={previous} direction="previous" onStep={onStep} />
+      )}
+      {next && <EdgeStep animal={next} direction="next" onStep={onStep} />}
+    </TooltipProvider>
+  );
+}
+
+// Absolute against the dialog's body, centred on its height with
+// inset-y-0 my-auto the way the gallery and lightbox chevrons are, and on the
+// --edge-gutter the dialog leaves either side of the card (CONTENT_CLASS). No
+// translate, because the button's press animation writes the translate
+// variable. 48px for every pointer, so a finger on the tablet gets more than
+// the 44px floor and a mouse gets a target it does not have to aim for.
+//
+// Opaque, in the card's own ground: on the dimmed page it reads as a piece of
+// the card. The outline variant's dark fill is translucent, hence the dark
+// overrides.
+const EDGE_STEP_CLASS =
+  "absolute inset-y-0 z-40 my-auto hidden size-12 rounded-full bg-popover shadow-md desktop-box:inline-flex dark:bg-popover dark:hover:bg-muted";
+
+function EdgeStep({
+  animal,
+  direction,
+  onStep,
+}: {
+  animal: ClientAnimal;
+  direction: Direction;
+  onStep: (id: string) => void;
+}) {
+  const { name, onward, step, label, Chevron } = useStepWords(animal, direction);
+  return (
+    // aria-describedby={undefined} because the bubble says what the name
+    // already says: described by it, the button is announced twice over.
+    // Radix spreads the trigger's own props over the attribute it sets, so
+    // this drops it.
+    <Tooltip>
+      <TooltipTrigger asChild aria-describedby={undefined}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => onStep(animal.id)}
+          aria-label={label}
+          data-direction={direction}
+          className={cn(
+            EDGE_STEP_CLASS,
+            onward
+              ? "left-[calc(100%+(var(--edge-gutter)-3rem)/2)]"
+              : "right-[calc(100%+(var(--edge-gutter)-3rem)/2)]",
+          )}
+        >
+          <Chevron className="size-6" aria-hidden />
+        </Button>
+      </TooltipTrigger>
+      {/* The site's tooltip, so it carries the shared 350ms and never opens
+          for a touch. It closes on the press and stays closed until the
+          pointer leaves, so a run of presses is not interrupted by it. */}
+      <TooltipContent side="bottom" sideOffset={8} className="gap-2.5 p-1.5 pe-3">
+        {/* Eager: the bubble mounts only when it opens, so it is already on
+            screen and a lazy check would only hold the fetch back. */}
+        <StepThumb
+          animal={animal}
+          loading="eager"
+          className="bg-background/15 text-background/70"
+        />
+        <span className="min-w-0">
+          <span className="block opacity-70">{step}</span>
+          <span className="block truncate text-sm font-medium">{name}</span>
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// The photo the animal's card leads with, or its species mark when it has
+// none, in the colours the step stands on. The photo is the 112px copy ingest
+// cuts beside every cached one. It is the file the stage's wash draws for that photo, so the
+// animal just stepped from is already in the cache and the one ahead has its
+// wash fetched early. The width ladder's smallest rung is 320px, eight times
+// this box.
+function StepThumb({
+  animal,
+  loading,
+  className,
+}: {
+  animal: ClientAnimal;
+  loading?: "eager" | "lazy";
+  className?: string;
+}) {
+  const lead = animal.images[0];
+  const photo = lead && { ...lead, src: thumbnailUrl(lead.src), widths: undefined };
+  const SpeciesMark = SPECIES_ICONS[animal.species];
+  return (
+    <span
+      className={cn(
+        "relative size-10 shrink-0 overflow-hidden rounded-md",
+        className,
+      )}
+    >
+      {photo ? (
+        <AnimalPhoto
+          photo={photo}
+          alt=""
+          sizes="40px"
+          frame={1}
+          loading={loading}
+          className="object-cover"
+        />
+      ) : (
+        <SpeciesMark
+          className="absolute inset-0 m-auto size-5"
+          strokeWidth={1.75}
+          aria-hidden
+        />
+      )}
+    </span>
   );
 }

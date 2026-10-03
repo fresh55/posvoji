@@ -315,9 +315,9 @@ describe("the band once it is shown", () => {
     expect(within(dialog).getAllByText("dog-cene").length).toBeGreaterThan(0);
 
     // Back to the last match, and on through the band.
-    expect(within(dialog).getAllByRole("button", { name: "Prejšnja žival" }).length).toBeGreaterThan(0);
+    expect(within(dialog).getAllByRole("button", { name: /^Prejšnja žival/ }).length).toBeGreaterThan(0);
     await act(async () => {
-      fireEvent.click(within(dialog).getAllByRole("button", { name: "Naslednja žival" })[0]);
+      fireEvent.click(within(dialog).getAllByRole("button", { name: /^Naslednja žival/ })[0]);
     });
     expect(
       within(await screen.findByRole("dialog")).getAllByText("dog-dora").length,

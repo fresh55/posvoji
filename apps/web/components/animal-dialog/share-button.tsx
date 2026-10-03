@@ -275,8 +275,8 @@ export function ShareButton({
   // last, so a row can dress this button without losing the floor.
   //
   // pointer-coarse:size-11 carries that floor past sm, where a 768px tablet
-  // is all thumb and was getting the 32px disc a mouse gets. The nav arrows
-  // beside it ask the same question (ANIMAL_NAV_CLASS).
+  // is all thumb and was getting the 32px disc a mouse gets. The dialog's
+  // close button beside it asks the same question.
   const trigger = (
     <Button
       type="button"

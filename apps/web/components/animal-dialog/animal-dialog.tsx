@@ -36,6 +36,7 @@ import { PhotoStage } from "@/components/animal-dialog/photo-stage";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-context";
+import { PosterLink } from "@/components/poster-link";
 import { useAnimalSource } from "@/lib/animal-descriptions";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
 import { PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
@@ -1024,6 +1025,26 @@ function OpenAnimalDialog({
                         ctaMirrored
                       />
                     </div>
+
+                    {/* The A4 sheet, which only the animal's own page used to
+                        offer, and that page is reached by a shared address:
+                        a visitor browsing the list never saw it. Not for an
+                        adopted animal, whose sheet would ask for a home it
+                        already has. */}
+                    {lastAnimal.status !== "adopted" && (
+                      // A document of its own, so it opens beside the list:
+                      // leaving in this tab would lose the visitor's place,
+                      // and the way back would land on the animal's page.
+                      // self-start keeps the link its own width in the card's
+                      // column.
+                      <PosterLink
+                        animal={lastAnimal}
+                        locale={locale}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="self-start"
+                      />
+                    )}
 
                     {/* After the shelter, where the reading of this animal
                         ends, and before the sticky bar, which stays the one

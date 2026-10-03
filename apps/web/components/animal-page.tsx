@@ -1,6 +1,8 @@
-import { ArrowRight, Printer } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { AnimalFacts } from "@/components/animal-dialog/animal-facts";
+import { AnimalNeighbours } from "@/components/animal-neighbours";
+import { PosterLink } from "@/components/poster-link";
 import {
   AnimalPagePhotoProvider,
   AnimalPageShareButton,
@@ -13,28 +15,23 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { animalFields } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
-import { animalPath, findAnimalBySlug, posterPath } from "@/lib/animal-path";
-import { loadDataset } from "@/lib/dataset";
+import { shelterNeighbours } from "@/lib/animal-neighbours";
+import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
+import { loadDataset, shelterAnimals } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { homePath, shelterPath } from "@/lib/shelter-path";
 import { animalSubtitle } from "@/lib/labels";
-import { PAGE_TITLE } from "@/lib/link-styles";
+import { PAGE_TITLE, WAY_ON_LINK } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 
 /** The wider list, reached without reopening the animal being left. */
 const pageText = {
   sl: {
     viewAll: (count: number) => `Poglej vse živali (${count})`,
-    /** The A4 sheet, for a notice board or a vet's waiting room. Drawn like
-     *  the link above it and placed beside it, because it is the same kind of
-     *  quiet way on: something a visitor may want after reading the page, not
-     *  a second thing the page is asking them to do. */
-    printPoster: "Natisni plakat",
   },
   en: {
     viewAll: (count: number) => `View all animals (${count})`,
-    printPoster: "Print poster",
   },
 } satisfies Record<Locale, Record<string, string | ((count: number) => string)>>;
 
@@ -60,6 +57,8 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
   // its rights and its placeholder into this page's flight payload. See
   // animalFields in lib/animal.ts.
   const fields = animalFields(animal);
+  const shelterList = shelterAnimals(animal.shelter.id);
+  const neighbours = shelterNeighbours(shelterList, animal);
 
   return (
     <SiteShell
@@ -207,6 +206,16 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
         </AnimalPagePhotoProvider>
       </div>
 
+      {neighbours.length > 0 && (
+        <AnimalNeighbours
+          neighbours={neighbours}
+          shelterId={animal.shelter.id}
+          shelterCount={shelterList.length}
+          locale={locale}
+          reference={reference}
+        />
+      )}
+
       {/* A link, not an outline button. The page has one call to
           action, on the shelter block above, and a second bordered
           control under it asked the visitor to choose between leaving
@@ -219,27 +228,17 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <a
             href={indexHref}
-            className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
+            className={WAY_ON_LINK}
           >
             {text.viewAll(dataset.animals.length)}
             <ArrowRight className="size-4 shrink-0" aria-hidden />
           </a>
 
-          {/* The same classes as the link beside it, down to the focus
-              ring and the tap target: this is the second quiet way on,
-              not a second call to action, and the page still has exactly
-              one of those on the shelter block above.
-              The mark leads rather than trails. The arrow next door points
-              at where that link goes, which is the whole of what it says;
-              a printer is the subject of this one, and it is what tells
-              the two links apart at a glance in a row. */}
-          <a
-            href={posterPath(animal, locale)}
-            className="inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target"
-          >
-            <Printer className="size-4 shrink-0" aria-hidden />
-            {text.printPoster}
-          </a>
+          {/* The same classes as the link beside it (WAY_ON_LINK): this is
+              the second quiet way on, not a second call to action, and the
+              page still has exactly one of those on the shelter block
+              above. The dialog draws the same link; see PosterLink. */}
+          <PosterLink animal={fields} locale={locale} />
       </div>
     </SiteShell>
   );

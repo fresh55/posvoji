@@ -16,6 +16,19 @@ export const MUTED_LINK =
   "inline-flex pointer-coarse:tap-target text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline";
 
 /**
+ * A quiet way on from an animal: to the whole list, to the shelter's animals,
+ * to the printable sheet. A muted line with a mark beside the words, drawn the
+ * same on the animal's page and in the dialog so none of them reads as a
+ * second call to action beside the shelter box's one.
+ *
+ * MUTED_LINK above is the plain text version: it has no focus ring and takes
+ * its finger-sized box from the pointer, where this one takes it from the
+ * width (max-lg), as the animal page's links always did.
+ */
+export const WAY_ON_LINK =
+  "inline-flex items-center gap-1.5 rounded-ui text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring max-lg:tap-target";
+
+/**
  * A link that carries its own weight in a sentence: the source credit under a
  * map, the law behind a duty, the register a count came from. Foreground ink
  * and a standing underline offset, because it is the thing the sentence is

@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { AnimalFields } from "@/lib/animal";
-import { animalPathParts, posterPath } from "@/lib/animal-path";
+import { animalPath, animalPathParts, posterPath } from "@/lib/animal-path";
 import { AnimalPage } from "./animal-page";
 
 Object.defineProperty(window, "matchMedia", {
@@ -89,11 +89,18 @@ const { ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO } = vi.hoisted(() => 
 // The dataset and the logo manifest are both read from disk in production;
 // mocked here so the test names exactly the animals it renders rather than
 // depending on whatever happens to be checked out in data/dist.
+const FIXTURE_ANIMALS = vi.hoisted(() => [
+  ANIMAL_NO_PHOTO,
+  ANIMAL_UNNAMED,
+  ANIMAL_WITH_PHOTO,
+]);
 vi.mock("@/lib/dataset", () => ({
   loadDataset: () => ({
-    animals: [ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO],
+    animals: FIXTURE_ANIMALS,
     generatedAt: "2026-01-01T00:00:00.000Z",
   }),
+  shelterAnimals: (shelterId: string) =>
+    FIXTURE_ANIMALS.filter((animal) => animal.shelter.id === shelterId),
 }));
 vi.mock("@/lib/shelter-logos", () => ({
   getShelterLogos: () => ({}),
@@ -174,8 +181,10 @@ describe("the animal page's hero", () => {
     // empty half.
     const grid = heroGrid(container);
     expect(grid.className).not.toContain("sm:grid-cols-2");
-    // No gallery mounts at all: there is nothing for it to show.
-    expect(container.querySelector("img")).toBeNull();
+    // No gallery mounts at all: there is nothing for it to show. Asked of
+    // the hero, because the row of the shelter's other animals under it
+    // draws their photos.
+    expect(grid.querySelector("img")).toBeNull();
     // But the absence is named, in the words the card uses for it.
     expect(screen.getByText("Fotografija na strani zavetišča")).toBeTruthy();
   });
@@ -304,6 +313,32 @@ describe("the animal page's onward links", () => {
     // action. The one call to action is on the shelter block above.
     const collection = screen.getByRole("link", { name: /Poglej vse živali/ });
     expect(poster.className).toBe(collection.className);
+  });
+});
+
+describe("the animal page's row of the shelter's other animals", () => {
+  it("links to each of them by its own page, and to the shelter's list", () => {
+    const { container } = render(
+      <AnimalPage locale="sl" slug={animalPathParts(ANIMAL_NO_PHOTO).animal} />,
+    );
+
+    const row = container.querySelector('[data-slot="animal-neighbours"]');
+    expect(row?.querySelector("h2")?.textContent).toBe("Še iz tega zavetišča");
+    // The other two of the fixture's three, read on from this animal's place,
+    // and never the animal the page is about.
+    expect(
+      [...(row?.querySelectorAll("li a") ?? [])].map((link) =>
+        link.getAttribute("href"),
+      ),
+    ).toEqual([
+      animalPath(ANIMAL_UNNAMED, "sl"),
+      animalPath(ANIMAL_WITH_PHOTO, "sl"),
+    ]);
+    expect(
+      screen
+        .getByRole("link", { name: "Vse živali zavetišča (3)" })
+        .getAttribute("href"),
+    ).toBe("/zavetisca/zonzani");
   });
 });
 

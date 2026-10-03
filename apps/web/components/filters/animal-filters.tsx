@@ -67,9 +67,10 @@ import type { AnimalSort } from "@/lib/sort";
 // so the picker fills the row on its own and one rule splits the plate at
 // every width.
 //
-// The edges follow env(safe-area-inset-*) with the 0px
-// fallbacks globals.css documents, so the plate clears a notch or a curved
-// corner instead of running under it.
+// The side edges follow env(safe-area-inset-left/right) with the 0px
+// fallbacks globals.css documents, and the bottom edge follows --dock-inset,
+// so the plate clears a notch, a curved corner or the home indicator instead
+// of running under it.
 //
 // Edge to edge is a phone's shape, not a tablet's. Pinned to both edges at
 // every width below lg, a tablet stretched two short controls across the page:
@@ -80,10 +81,8 @@ import type { AnimalSort } from "@/lib/sort";
 // 28rem a cap rather than a floor if either that number or the breakpoint
 // moves. Only the horizontal edges move: the bottom keeps the inset the
 // footer's docked padding is measured against, and BackToTop is positioned
-// on its own and stays at the viewport's right edge. That inset is
-// --dock-inset, a constant, and not the live safe-area inset, which a phone
-// browser changes as its bars hide and show and which moved this plate on
-// every change of scroll direction (globals.css).
+// on its own and stays at the viewport's right edge. Why the bottom reads
+// --dock-inset and not the live safe-area inset is in globals.css.
 //
 // z-30, under the sticky toolbar band (z-40) and above the page. The two only
 // ever meet at 200% text, where the band lands at y 687-792 on a 390x844

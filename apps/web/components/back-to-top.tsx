@@ -164,7 +164,13 @@ export function BackToTop() {
         // light photo at 1280 and 2.00:1 at 390, against 8.9:1 on the page
         // ground (2026-09-17 audit). From 1024 to 1279 the button overlaps the
         // last card column by 36px, which is how it comes to stand on photos.
-        "size-11 rounded-full bg-background/90 shadow-lg backdrop-blur-sm transition-opacity duration-200 hover:bg-background dark:bg-background/90 dark:hover:bg-background",
+        //
+        // Opaque, and it was 90% over a backdrop blur. The blur re-samples
+        // what is behind it on every scrolled frame, and this disc is only
+        // shown while the grid scrolls under it; the toolbar band dropped
+        // its blur for the same reason (animal-filters.tsx). Opaque is also
+        // the page-ground contrast the audit measured.
+        "size-11 rounded-full bg-background shadow-lg transition-opacity duration-200 hover:bg-background dark:bg-background dark:hover:bg-background",
         shown ? "opacity-100" : "pointer-events-none opacity-0",
       )}
     >

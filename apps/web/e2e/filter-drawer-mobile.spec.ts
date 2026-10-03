@@ -421,7 +421,8 @@ test.describe("a scroll that starts on the pinned species bar", () => {
     await expect
       .poll(() => page.evaluate(() => Math.round(window.scrollY)))
       .toBeGreaterThan(1200);
-    expect(await strip.evaluate((el) => el.scrollTop)).toBe(0);
+    // No vertical range at all, which is also what keeps every tab's 44px
+    // overlay whole inside the strip's padding.
     expect(
       await strip.evaluate((el) => el.scrollHeight - el.clientHeight),
     ).toBe(0);

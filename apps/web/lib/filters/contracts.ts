@@ -119,8 +119,8 @@ export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
  * reads in. In the ASPCA's study of 1,491 adopters, behaviour with people and
  * age mattered to about two thirds or more and sex to about a third, and UK
  * rescues ask where, then what the home already holds, then age, and do not
- * offer sex at all. So age and size first, then what the home already holds
- * (Se razume) and the lab answer a household with a cat needs beside it
+ * offer sex at all. So age and size first, then who the animal has to get
+ * along with (Se razume) and the lab answer a household with a cat needs beside it
  * (Zdravje: FIV and FeLV), then temperament, then sex and looks. The two
  * sections about what the visitor can give and how long an animal has waited
  * close the list.

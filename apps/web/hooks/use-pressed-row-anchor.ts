@@ -115,7 +115,7 @@ type Room = {
  *
  * At the end of the panel a pick can also take away more below the row than
  * any scroll can make up: measured at 1440x900 with the sidebar scrolled to
- * its end, z otroki in Se razume dropped 108px of dead rows from Lahko ponudim
+ * its end, Se razume's z otroki dropped 108px of dead rows from Lahko ponudim
  * under it and the row went 92px down, leaving the pointer on the VIDEZ
  * heading. There the box grows room under its content, as much as the row
  * needs, and gives it back when the pointer leaves the panel, where the shift

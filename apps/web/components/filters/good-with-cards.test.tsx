@@ -108,7 +108,7 @@ describe("GoodWithCards sheet columns", () => {
 });
 
 describe("GoodWithCards", () => {
-  it("asks about the household rather than naming species", () => {
+  it("asks who the animal gets along with", () => {
     renderCards();
 
     expect(screen.getByRole("heading", { name: "Se razume" })).toBeTruthy();
@@ -389,7 +389,7 @@ describe("the outcome sentence", () => {
       resultCount: 12,
     });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids, dogs and cats: 12 of 489. Animals with no answer stay hidden.",
+      "Showing animals that get on with kids, dogs, and cats: 12 of 489. Animals with no answer stay hidden.",
     );
   });
 });

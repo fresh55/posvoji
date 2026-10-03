@@ -402,8 +402,8 @@ export function useAnimalFilterModel({
           gain: chipGain.get(chipKey("toggles", key)),
           onRemove: () => toggleProperty(key),
         }));
-      // Not the card label: on a row of chips "Psi" would read as the species
-      // tab, so these name the household instead.
+      // Not the card label: on a row of chips "s psi" alone says nothing, so
+      // the chip says the whole sentence.
       case "goodWith":
         return filters.goodWith.map((key) => ({
           key: chipKey("goodWith", key),

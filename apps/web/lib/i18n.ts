@@ -364,8 +364,8 @@ const sl = {
   bandLineSeveral: "Pri {count} manjka kateri od izbranih podatkov.",
   // The same offer when all the band lacks is an answer under Se razume. No
   // answer is not a no, and the shelter is who knows, so the line says both.
-  // The verb follows the number itself (bandMaybe in unanswered-band.tsx) and
-  // {with} is the goodWithLead* list the section's own outcome line joins.
+  // The verb follows the number itself (numberForm in lib/labels.ts) and
+  // {with} is goodWithPhrase's list, the one the section's outcome line uses.
   bandMaybeOne:
     "Pri {count} ni podatka. Morda se razume {with}, preveri pri zavetišču.",
   bandMaybeTwo:
@@ -711,7 +711,8 @@ const sl = {
   // The heading and its rows read as the sentence the dialog states on the
   // animal ("Se razume z otroki"), so a visitor knows a pick is about the
   // animal and not a description of their household. It was "Doma imam", which
-  // left that open.
+  // left that open. Družba is the dialog's row of answers about one animal;
+  // English names both "Good with".
   goodWith: "Se razume",
   goodWithFacts: "Družba",
   resetGoodWithFilters: "Ponastavi, s kom se razume",
@@ -724,8 +725,8 @@ const sl = {
     "Izbira pokaže le živali, za katere je zavetišče odgovorilo.",
   goodWithUnansweredNone:
     "Za nobeno od teh živali zavetišče ni odgovorilo.",
-  // The section reads as one sentence, so the phrases are whole and translated,
-  // never assembled from parts in the component.
+  // The section reads as one sentence; {list} is goodWithPhrase in
+  // lib/labels.ts, joined the way the language joins a list.
   goodWithOutcome:
     "Prikazane so živali, ki se razumejo {list}: {count} od {total}. Živali brez podatka so skrite.",
   // Lead carries the preposition, which in Slovenian depends on the word that
@@ -736,7 +737,6 @@ const sl = {
   goodWithTailKids: "otroki",
   goodWithTailDogs: "psi",
   goodWithTailCats: "mačkami",
-  goodWithJoiner: "in",
 
 
 
@@ -762,8 +762,7 @@ const sl = {
   hintApartmentOk: "Zavetišče presoja, da lahko {name} živi v stanovanju.",
   // The section is an invitation, not a warning: it exists for the visitor who
   // came to help, so the words never describe the animal as a problem. Its
-  // heading is the visitor speaking, and each row
-  // finishes the sentence.
+  // heading is the visitor speaking, and each row finishes the sentence.
   care: "Lahko ponudim",
   resetCareFilters: "Ponastavi, kar lahko ponudim",
   careOutcome:
@@ -1132,7 +1131,6 @@ const en: Messages = {
   goodWithTailKids: "kids",
   goodWithTailDogs: "dogs",
   goodWithTailCats: "cats",
-  goodWithJoiner: "and",
 
 
 

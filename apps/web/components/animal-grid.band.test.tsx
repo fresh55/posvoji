@@ -156,7 +156,7 @@ describe("the offer under the matches", () => {
     // The sentence is the button's description, for whoever reaches it by Tab.
     const sentence = document.getElementById(offer.getAttribute("aria-describedby")!);
     expect(sentence?.textContent).toBe(
-      "Pri 3 psih ni podatka. Morda se razumejo z otroki, preveri pri zavetišču.",
+      "Pri 3 psih ni podatka. Morda se razumejo z\u00a0otroki, preveri pri zavetišču.",
     );
     expect(divider()).toBeNull();
     // The toolbar's count is the matches'.
@@ -497,20 +497,20 @@ describe("the band's words", () => {
     at("?vrsta=macka&druzba=macke");
     renderGrid([cat("cat-yes", "yes"), cat("cat-a")]);
     expect(sentence()).toBe(
-      "Pri 1 mački ni podatka. Morda se razume z mačkami, preveri pri zavetišču.",
+      "Pri 1 mački ni podatka. Morda se razume z\u00a0mačkami, preveri pri zavetišču.",
     );
     cleanup();
 
     renderGrid([cat("cat-yes", "yes"), cat("cat-a"), cat("cat-b")]);
     expect(sentence()).toBe(
-      "Pri 2 mačkah ni podatka. Morda se razumeta z mačkami, preveri pri zavetišču.",
+      "Pri 2 mačkah ni podatka. Morda se razumeta z\u00a0mačkami, preveri pri zavetišču.",
     );
     cleanup();
 
     at("?vrsta=macka&druzba=psi,macke");
     renderGrid([cat("cat-yes", "yes"), cat("cat-a"), cat("cat-b"), cat("cat-c")]);
     expect(sentence()).toBe(
-      "Pri 3 mačkah ni podatka. Morda se razumejo s psi in mačkami, preveri pri zavetišču.",
+      "Pri 3 mačkah ni podatka. Morda se razumejo s\u00a0psi in mačkami, preveri pri zavetišču.",
     );
   });
 

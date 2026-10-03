@@ -20,7 +20,6 @@ import {
   SectionNote,
   type SectionCollapse,
 } from "@/components/filters/filter-section-header";
-import { goodWithPhrase } from "@/components/filters/good-with-phrase";
 import {
   GoodWithGlyph,
   LONGEST_GOOD_WITH_GESTURE_MS,
@@ -34,7 +33,7 @@ import {
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
 import type { GoodWithKey, Unanswered } from "@/lib/filters";
-import { animalCount } from "@/lib/labels";
+import { animalCount, goodWithPhrase } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 export type GoodWithOption = { key: GoodWithKey; label: string };
@@ -108,7 +107,7 @@ export function GoodWithCards({
     selected.length === 0
       ? null
       : t("goodWithOutcome", {
-          list: goodWithPhrase(selected, t),
+          list: goodWithPhrase(selected, t, locale),
           count: resultCount,
           total,
         });

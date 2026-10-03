@@ -216,7 +216,7 @@ describe("usePressedRowAnchor", () => {
 
 describe("usePressedRowAnchor at the end of the panel", () => {
   it("holds the row through the browser pulling the scroll back to a shorter end", () => {
-    // Lahko ponudim's Dom za dva at the sidebar's end: Doma imam above it lost
+    // Lahko ponudim's Dom za dva at the sidebar's end: Se razume above it lost
     // 53px, the section itself grew 38 under it, and the end came 16px
     // closer. The pull to the new end read as somebody scrolling and ended
     // the hold, so the row went 38px up and the next click pressed Dnevno
@@ -233,7 +233,7 @@ describe("usePressedRowAnchor at the end of the panel", () => {
   });
 
   it("grows room under the rows for a row no scroll inside the range can hold", () => {
-    // Doma imam's Otroke: 108px of dead rows went from Lahko ponudim below it,
+    // Se razume's z otroki: 108px of dead rows went from Lahko ponudim below it,
     // the end came 92px closer, and the row went 92px down under a pointer
     // that stayed where it was.
     const box = renderPanel({ grows: 0, content: [1000, 940], start: 600 });

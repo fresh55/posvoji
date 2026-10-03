@@ -3,9 +3,11 @@
 import { useId, type ReactNode, type Ref } from "react";
 import { useI18n } from "@/components/i18n-context";
 import { Button } from "@/components/ui/button";
-import type { Question, SpeciesFilter } from "@/lib/filters";
-import type { TranslationKey } from "@/lib/i18n";
+import type { GoodWithKey, Question, SpeciesFilter } from "@/lib/filters";
+import type { Locale, TranslationKey } from "@/lib/i18n";
 import {
+  goodWithPhrase,
+  numberForm,
   questionTopic,
   tabCountAt,
   tabCountShown,
@@ -21,6 +23,37 @@ function topicOf(missing: readonly Question[]): TranslationKey | undefined {
   if (missing.length !== 1) return undefined;
   const topic = questionTopic(missing[0]);
   return topic && (`bandTopic${topic}` as const);
+}
+
+type GoodWithQuestion = Extract<Question, { facet: "goodWith" }>;
+
+function isGoodWith(question: Question): question is GoodWithQuestion {
+  return question.facet === "goodWith";
+}
+
+/** The offer's sentence. Where all the band lacks is a Se razume answer, it
+ *  says the animals may still get along and who knows (bandMaybe*): no answer
+ *  is not a no. Otherwise the one missing question by name, or a line that
+ *  covers several. */
+function bandSentence(
+  missing: readonly Question[],
+  count: number,
+  species: SpeciesFilter,
+  locale: Locale,
+  t: (key: TranslationKey, values?: Record<string, string | number>) => string,
+): string {
+  const counted = tabCountAt(count, species, locale);
+  if (missing.length > 0 && missing.every(isGoodWith)) {
+    const keys: GoodWithKey[] = missing.map(({ key }) => key);
+    return t(`bandMaybe${numberForm(count)}`, {
+      count: counted,
+      with: goodWithPhrase(keys, t, locale),
+    });
+  }
+  const topic = topicOf(missing);
+  return topic
+    ? t("bandLine", { count: counted, topic: t(topic) })
+    : t("bandLineSeveral", { count: counted });
 }
 
 /**
@@ -45,14 +78,10 @@ export function BandOffer({
 }) {
   const { locale, t } = useI18n();
   const sentenceId = useId();
-  const topic = topicOf(missing);
-  const counted = tabCountAt(count, species, locale);
   return (
     <div className="col-span-full flex flex-wrap items-center justify-center gap-x-3 gap-y-2 py-2 text-center">
       <p id={sentenceId} className="text-sm text-muted-foreground">
-        {topic
-          ? t("bandLine", { count: counted, topic: t(topic) })
-          : t("bandLineSeveral", { count: counted })}
+        {bandSentence(missing, count, species, locale, t)}
       </p>
       {/* The sentence as its description, because "Pokaži jih" alone says
           nothing to someone who reached the button by Tab. */}

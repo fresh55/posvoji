@@ -439,14 +439,14 @@ describe("the count roll", () => {
 });
 
 describe("the card's tail", () => {
-  // Zdravje and Doma imam describe a row only while enough of its animals
+  // Zdravje and Se razume describe a row only while enough of its animals
   // have no answer, so the other filters make the line come and go. The count
   // was put in a new parent each time, which remounted it without a roll.
   it("keeps the count's element when a row's description comes and goes", () => {
     const tail = (description?: string) => (
       <FilterCardTail
         layout="sidebar"
-        label="Otroke"
+        label="z otroki"
         checked={false}
         description={description}
         renderCount={(className) => (
@@ -474,7 +474,7 @@ describe("the card's tail", () => {
     const { container } = render(
       <FilterCardTail
         layout={layout}
-        label="Otroke"
+        label="z otroki"
         checked={checked}
         description={description}
         renderCount={(className) => (
@@ -485,7 +485,7 @@ describe("the card's tail", () => {
       />,
     );
     const label = [...container.querySelectorAll("span")].find(
-      (span) => span.textContent === "Otroke",
+      (span) => span.textContent === "z otroki",
     );
     const said = [...container.querySelectorAll("span")].find(
       (span) => span.textContent === description,

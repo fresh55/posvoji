@@ -108,11 +108,11 @@ describe("GoodWithCards sheet columns", () => {
 });
 
 describe("GoodWithCards", () => {
-  it("asks about the household rather than naming species", () => {
+  it("asks who the animal gets along with", () => {
     renderCards();
 
-    expect(screen.getByRole("heading", { name: "Doma imam" })).toBeTruthy();
-    expect(screen.getByText("Označi, kdo že živi pri tebi.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Se razume" })).toBeTruthy();
+    expect(screen.getByText("Označi, s kom naj se žival razume.")).toBeTruthy();
   });
 
   // Per question, because each has its own answers: on the live dataset 12
@@ -126,7 +126,7 @@ describe("GoodWithCards", () => {
         cats: { asked: 124, unanswered: 5 },
       },
     });
-    const kids = screen.getByRole("button", { name: /^Otroke, / });
+    const kids = screen.getByRole("button", { name: /^z otroki, / });
     // A no-break space between the two words and a plain one after the
     // colon, so a tile a third of a phone wide breaks at the colon and never
     // leaves "Brez" alone on its line.
@@ -136,10 +136,10 @@ describe("GoodWithCards", () => {
         ?.textContent,
     ).toBe("Brez\u00a0podatka: 121");
     expect(
-      screen.getByRole("button", { name: /^Psa, / }).textContent,
+      screen.getByRole("button", { name: /^s psi, / }).textContent,
     ).toContain("Brez\u00a0podatka: 102");
     // Five of 124 is under the tenth the panel bothers saying.
-    const cats = screen.getByRole("button", { name: /^Mačko, / });
+    const cats = screen.getByRole("button", { name: /^z mačkami, / });
     expect(cats.textContent).not.toContain("Brez\u00a0podatka");
     expect(cats.getAttribute("aria-describedby")).toBeNull();
     // What a pick does with them, said once under the rows before any pick.
@@ -186,7 +186,7 @@ describe("GoodWithCards", () => {
   });
 
   // On a tile the line went between the label and the count, and at a third
-  // of a phone it wrapped, so a tile read "Otroke, Brez podatka:, 121, 2":
+  // of a phone it wrapped, so a tile read "z otroki, Brez podatka:, 121, 2":
   // two bare numbers one above the other.
   it("puts the count before the line on a phone tile", () => {
     renderCards({
@@ -199,8 +199,8 @@ describe("GoodWithCards", () => {
       },
     });
     expect(
-      screen.getByRole("button", { name: /^Otroke, / }).textContent,
-    ).toBe("Otroke7Brez\u00a0podatka: 121");
+      screen.getByRole("button", { name: /^z otroki, / }).textContent,
+    ).toBe("z otroki7Brez\u00a0podatka: 121");
   });
 
   it("hands that sentence to the outcome once something is picked", () => {
@@ -226,14 +226,14 @@ describe("GoodWithCards", () => {
     renderCards();
 
     expect(options.map(({ label }) => label)).toEqual([
-      "Otroke",
-      "Psa",
-      "Mačko",
+      "z otroki",
+      "s psi",
+      "z mačkami",
     ]);
     expect(goodWithOptions("en").map(({ label }) => label)).toEqual([
       "Kids",
-      "A dog",
-      "A cat",
+      "Dogs",
+      "Cats",
     ]);
   });
 
@@ -314,7 +314,7 @@ describe("GoodWithCards", () => {
     const { onToggleMany } = renderCards({ selected: ["kids", "cats"] });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Ponastavi, kdo živi pri tebi" }),
+      screen.getByRole("button", { name: "Ponastavi, s kom se razume" }),
     );
     expect(onToggleMany).toHaveBeenCalledWith(["kids", "cats"]);
   });
@@ -389,7 +389,7 @@ describe("the outcome sentence", () => {
       resultCount: 12,
     });
     expect(sentence()).toBe(
-      "Showing animals that get on with kids, dogs and cats: 12 of 489. Animals with no answer stay hidden.",
+      "Showing animals that get on with kids, dogs, and cats: 12 of 489. Animals with no answer stay hidden.",
     );
   });
 });
@@ -402,11 +402,11 @@ describe("interrupted gestures", () => {
   it("keeps the same glyph element when another facet's pick interrupts its gesture", () => {
     renderStateful();
 
-    fireEvent.click(screen.getByRole("button", { name: /^Otroke, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^z otroki, / }));
     const before = document.querySelector('svg[data-good-with-glyph="kids"]');
     expect(before).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: /^Psa, / }));
+    fireEvent.click(screen.getByRole("button", { name: /^s psi, / }));
     const after = document.querySelector('svg[data-good-with-glyph="kids"]');
     expect(after).toBe(before);
   });
@@ -415,7 +415,7 @@ describe("interrupted gestures", () => {
 describe("hover preview", () => {
   it("previews the gesture for a real mouse and not for a touch", () => {
     renderCards();
-    const dogs = screen.getByRole("button", { name: /^Psa, / });
+    const dogs = screen.getByRole("button", { name: /^s psi, / });
 
     pointerOnto(dogs, "touch");
     expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
@@ -426,7 +426,7 @@ describe("hover preview", () => {
 
   it("does not preview a card that is already picked", () => {
     renderCards({ selected: ["dogs"] });
-    const dogs = screen.getByRole("button", { name: /^Psa, / });
+    const dogs = screen.getByRole("button", { name: /^s psi, / });
 
     pointerOnto(dogs, "mouse");
     expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBeNull();
@@ -437,7 +437,7 @@ describe("hover preview", () => {
   // Energija.
   it("settles after a click so an untick under the pointer does not replay it", async () => {
     renderStateful();
-    const dogs = screen.getByRole("button", { name: /^Psa, / });
+    const dogs = screen.getByRole("button", { name: /^s psi, / });
 
     pointerOnto(dogs, "mouse");
     expect(dogs.querySelector("svg[data-good-with-glyph]")?.getAttribute("data-preview")).toBe("true");
@@ -458,7 +458,7 @@ describe("the dead posture", () => {
   it("closes a dead option's eyes and dims it, rather than leaving it upright", () => {
     renderCards({ counts: new Map([["kids", 0], ["dogs", 2], ["cats", 2]]) });
 
-    const dead = screen.getByRole("button", { name: /^Otroke, / });
+    const dead = screen.getByRole("button", { name: /^z otroki, / });
     const svg = dead.querySelector("svg[data-good-with-glyph]");
     expect(svg?.getAttribute("class")).toContain("opacity-60");
     const eyes = [...(svg?.querySelectorAll("path") ?? [])];
@@ -468,7 +468,7 @@ describe("the dead posture", () => {
   it("leaves a live option's face alone", () => {
     renderCards({ counts: new Map([["kids", 0], ["dogs", 2], ["cats", 2]]) });
 
-    const live = screen.getByRole("button", { name: /^Psa, / });
+    const live = screen.getByRole("button", { name: /^s psi, / });
     const svg = live.querySelector("svg[data-good-with-glyph]");
     expect(svg?.getAttribute("class")).not.toContain("opacity-60");
     const eyes = [...(svg?.querySelectorAll("path") ?? [])];
@@ -490,7 +490,7 @@ describe("the unanswered line after a pick", () => {
       },
     });
 
-    const kids = screen.getByRole("button", { name: /^Otroke, / });
+    const kids = screen.getByRole("button", { name: /^z otroki, / });
     expect(kids.textContent).not.toContain("Brez\u00a0podatka");
     expect(kids.getAttribute("aria-describedby")).toBeNull();
   });
@@ -527,7 +527,7 @@ describe("FilterGroupList", () => {
 
   it("leaves the section out while no facet has data", () => {
     renderList(undefined);
-    expect(screen.queryByRole("heading", { name: "Doma imam" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Se razume" })).toBeNull();
   });
 
   it("shows only the facets that can narrow anything", () => {
@@ -540,8 +540,8 @@ describe("FilterGroupList", () => {
       onToggleMany: () => undefined,
     });
 
-    expect(screen.getByRole("heading", { name: "Doma imam" })).toBeTruthy();
-    openFilterSection("Doma imam");
+    expect(screen.getByRole("heading", { name: "Se razume" })).toBeTruthy();
+    openFilterSection("Se razume");
     expect(
       screen.getAllByRole("button").filter((b) => b.getAttribute("aria-pressed")),
     ).toHaveLength(1);

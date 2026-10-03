@@ -226,7 +226,8 @@ export function CareCards({
       // not. The info mark also pushed this heading 3.7px into Ponastavi.
       //
       // The lead says which way the section runs before the first press.
-      // Doma imam narrows to animals that fit the visitor's home; this narrows
+      // Se razume narrows to animals that get along with who the visitor
+      // names; this narrows
       // to animals that need what the visitor offers, and the outcome line
       // below said so only after the list had already gone from 491 to 14.
       lead={messages.careLead}

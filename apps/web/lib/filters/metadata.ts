@@ -307,16 +307,16 @@ export const FILTER_METADATA = {
       labels: { sl: "Živahen", en: "Lively" },
     },
   ],
-  // The labels answer the section's question ("Doma imam: Psa"), so they do not
-  // collide with the species tabs, which say "Psi" for a list of dogs. The
-  // slugs stay as they were: shared links have to keep working.
+  // The labels finish the section's heading ("Se razume: z otroki"), and the
+  // preposition keeps "s psi" apart from the species tab's "Psi". The slugs
+  // stay as they were: shared links have to keep working.
   goodWith: [
-    { value: "kids", slug: "otroci", labels: { sl: "Otroke", en: "Kids" } },
-    { value: "dogs", slug: "psi", labels: { sl: "Psa", en: "A dog" } },
-    { value: "cats", slug: "macke", labels: { sl: "Mačko", en: "A cat" } },
+    { value: "kids", slug: "otroci", labels: { sl: "z otroki", en: "Kids" } },
+    { value: "dogs", slug: "psi", labels: { sl: "s psi", en: "Dogs" } },
+    { value: "cats", slug: "macke", labels: { sl: "z mačkami", en: "Cats" } },
   ],
   // Each label finishes the section's heading, "Lahko ponudim: dnevno nego",
-  // the way Družba's finish "Doma imam". Short enough for the sidebar's 96px
+  // the way Se razume's finish theirs. Short enough for the sidebar's 96px
   // label slot beside the count, measured: "Vsakodnevno nego" was 110px and
   // "Dom za dve živali" 100px, and both broke over two lines. The line under
   // each label ("Gredo samo v paru") is what says "dva" means two animals,

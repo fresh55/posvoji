@@ -104,7 +104,7 @@ describe("the order the panel asks in", () => {
       expect(sectionLabels()).toEqual([
         "Starost",
         "Velikost",
-        "Doma imam",
+        "Se razume",
         "Zdravje",
         "Energija",
         "Spol",
@@ -236,7 +236,7 @@ describe("a pick the sidebar keeps once it comes off", () => {
       "Dolga",
       "Nad 3 leta",
       "Brez FeLV",
-      "Mačko",
+      "z mačkami",
       "Dom za dva",
     ]) {
       expect(row(label)?.disabled, label).toBe(false);
@@ -248,7 +248,7 @@ describe("a pick the sidebar keeps once it comes off", () => {
       "Uravnotežen",
       "Brez dlake",
       "Nad 1 leto",
-      "Psa",
+      "s psi",
       "Dnevno nego",
       "Izkušeno roko",
     ]) {

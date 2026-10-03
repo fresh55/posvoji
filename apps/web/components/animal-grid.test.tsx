@@ -342,7 +342,7 @@ describe("animal grid empty state", () => {
   });
 
   it("names the thin answer when it is the likeliest reason nothing matched", () => {
-    // Psi, Otroke and Mačko on the live dataset can read as no dog being fine
+    // Psi, z otroki and z mačkami on the live dataset can read as no dog being fine
     // with children, when 121 of the 124 had no answer about children at all.
     window.history.replaceState(null, "", "/?vrsta=pes&druzba=otroci");
     renderGrid([

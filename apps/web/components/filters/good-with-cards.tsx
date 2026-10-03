@@ -32,13 +32,8 @@ import {
   useResetStagger,
 } from "@/components/filters/use-filter-motion";
 import { useI18n } from "@/components/i18n-context";
-import {
-  GOOD_WITH_KEYS,
-  type GoodWithKey,
-  type Unanswered,
-} from "@/lib/filters";
-import type { TranslationKey } from "@/lib/i18n";
-import { animalCount } from "@/lib/labels";
+import type { GoodWithKey, Unanswered } from "@/lib/filters";
+import { animalCount, goodWithPhrase } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 export type GoodWithOption = { key: GoodWithKey; label: string };
@@ -51,23 +46,6 @@ const GESTURE_CHECK_DELAY = 0.2;
 const RIPPLE_OPACITY = 0.5;
 const RIPPLE_SCALE = 1.35;
 const RIPPLE_DURATION = 0.35;
-
-const LEAD_KEYS: Record<GoodWithKey, TranslationKey> = {
-  kids: "goodWithLeadKids",
-  dogs: "goodWithLeadDogs",
-  cats: "goodWithLeadCats",
-};
-
-const TAIL_KEYS: Record<GoodWithKey, TranslationKey> = {
-  kids: "goodWithTailKids",
-  dogs: "goodWithTailDogs",
-  cats: "goodWithTailCats",
-};
-
-/** Fixed facet order, so the sentence does not reshuffle as you pick. */
-function orderedSelection(selected: GoodWithKey[]): GoodWithKey[] {
-  return GOOD_WITH_KEYS.filter((key) => selected.includes(key));
-}
 
 export function GoodWithCards({
   options,
@@ -125,18 +103,11 @@ export function GoodWithCards({
     handlers: hoverHandlers,
   } = useFilterCardHover<GoodWithKey>();
 
-  const chosen = orderedSelection(selected);
-
   const outcome =
-    chosen.length === 0
+    selected.length === 0
       ? null
       : t("goodWithOutcome", {
-          list: joinPhrases(
-            chosen.map((key, index) =>
-              index === 0 ? t(LEAD_KEYS[key]) : t(TAIL_KEYS[key]),
-            ),
-            messages.goodWithJoiner,
-          ),
+          list: goodWithPhrase(selected, t, locale),
           count: resultCount,
           total,
         });
@@ -285,11 +256,4 @@ export function GoodWithCards({
       })}
     </FilterCardSection>
   );
-}
-
-// Commas and the joining word are the sentence's own punctuation; the words
-// being joined all come from the message catalogue.
-function joinPhrases(phrases: string[], joiner: string): string {
-  if (phrases.length < 2) return phrases[0] ?? "";
-  return `${phrases.slice(0, -1).join(", ")} ${joiner} ${phrases[phrases.length - 1]}`;
 }

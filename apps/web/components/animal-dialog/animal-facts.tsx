@@ -63,7 +63,7 @@ const REQUIREMENT_KEYS = Object.keys(ADOPTION_REQUIREMENT_LABELS) as
 
 // A requirement a Lahko ponudim row finds wears that row's mark. The two the
 // filters leave to the animal, indoor-only and only-pet, draw the home they
-// ask for. Young children wear Doma imam's mark for children, the question
+// ask for. Young children wear Se razume's mark for children, the question
 // the requirement answers.
 const REQUIREMENT_ICONS: Record<(typeof REQUIREMENT_KEYS)[number], LucideIcon> = {
   indoorOnly: Building2,
@@ -771,7 +771,7 @@ export function AnimalFacts({
             >
               {goodWithKeys.map((key) => {
                 // The filters' answer, so an animal that has to be the only
-                // pet says no to dogs and cats here as it does under Doma imam.
+                // pet says no to dogs and cats here as it does under Se razume.
                 const answer = goodWithAnswer(animal, key) ?? "unknown";
                 return (
                   <GoodWithFact

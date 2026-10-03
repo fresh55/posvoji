@@ -79,7 +79,7 @@ describe("the fold's first render", () => {
     expect(body().style.overflow).toBe("visible");
   });
 
-  // The ripple, Doma imam's faces and the count roll are all mounts. Under a
+  // The ripple, Se razume's faces and the count roll are all mounts. Under a
   // presence that said initial={false}, a body open at mount wrote everything
   // mounted in it later straight to its end state, which is opacity 1 here.
   it("still runs what mounts in it later from its initial", () => {

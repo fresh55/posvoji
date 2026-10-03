@@ -757,8 +757,8 @@ export function AnimalGrid({
                     : messages.noResults}
                 </p>
                 {/* Why, before what to do about it, when a thin answer is the
-                    likeliest reason: "Ni zadetkov" under Psi, Otroke and
-                    Mačko can read as no dog being fine with children, when 121
+                    likeliest reason: "Ni zadetkov" under Psi, z otroki and
+                    z mačkami can read as no dog being fine with children, when 121
                     of the 124 had no answer. */}
                 {!shelterOnlyEmpty && emptyReason && (
                   <p className="text-sm text-muted-foreground">{emptyReason}</p>

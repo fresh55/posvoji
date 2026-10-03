@@ -2,11 +2,12 @@ import type { LabelKey } from "@/lib/label-messages";
 import type { AdoptionStatus, AnimalSize, Sex, Species } from "@posvoji/schema";
 import { adoptableNow, stayStart, type AnimalFields } from "@/lib/animal";
 import { namesSeveralAnimals } from "@/lib/animal-name";
-import type { Locale } from "@/lib/i18n";
+import type { Locale, TranslationKey } from "@/lib/i18n";
 import { translateLabel as translate } from "@/lib/label-messages";
 import {
   ageInMonths,
   FILTER_METADATA,
+  GOOD_WITH_KEYS,
   type GoodWithKey,
   type MultiGroup,
   type Question,
@@ -339,19 +340,28 @@ export function tabCountShown(
     : tabCountEn(n, species);
 }
 
-/** The same animals as the object of "Pokaži": ga or jo, ju, jih. By the
- *  number itself rather than the numeral's form, since the pronoun stands for
- *  the animals and not for the word: 101 dogs are "jih", though the numeral
- *  takes the singular ("pri 101 psu"). Pes is masculine; mačka and žival,
- *  which the other tabs count in, are feminine. */
+/** Which form a word takes when the animals themselves are its subject or
+ *  object: by the number itself rather than the numeral's form, since the
+ *  word stands for the animals and not for the numeral. 101 dogs are "jih"
+ *  and "se razumejo", though the numeral takes the singular ("pri 101 psu"),
+ *  which pick() follows. */
+export function numberForm(n: number): "One" | "Two" | "Many" {
+  if (n === 1) return "One";
+  return n === 2 ? "Two" : "Many";
+}
+
+/** The same animals as the object of "Pokaži": ga or jo, ju, jih
+ *  (numberForm). Pes is masculine; mačka and žival, which the other tabs
+ *  count in, are feminine. */
 export function tabPronoun(
   n: number,
   species: SpeciesFilter,
   locale: Locale,
 ): string {
-  if (locale === "en") return n === 1 ? "it" : "them";
-  if (n === 1) return species === "dog" ? "ga" : "jo";
-  return n === 2 ? "ju" : "jih";
+  const form = numberForm(n);
+  if (locale === "en") return form === "One" ? "it" : "them";
+  if (form === "One") return species === "dog" ? "ga" : "jo";
+  return form === "Two" ? "ju" : "jih";
 }
 
 type QuestionTopic =
@@ -728,9 +738,9 @@ export function sexLabel(
   );
 }
 
-// A chip names the household, not the card. The card label answers the section
-// heading ("Doma imam: Psa"), but a chip stands on its own in a row next to the
-// species chips, where "Psa" would read as a list of dogs.
+// A chip says the whole sentence. The card label finishes the section heading
+// ("Se razume: s psi"), but a chip stands on its own in a row next to the
+// species chips, where "s psi" alone would say nothing.
 const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, LabelKey> = {
   kids: "goodWithChipKids",
   dogs: "goodWithChipDogs",
@@ -739,6 +749,35 @@ const GOOD_WITH_CHIP_KEYS: Record<GoodWithKey, LabelKey> = {
 
 export function goodWithChipLabel(key: GoodWithKey, locale: Locale): string {
   return translate(locale, GOOD_WITH_CHIP_KEYS[key]);
+}
+
+const GOOD_WITH_LEAD: Record<GoodWithKey, TranslationKey> = {
+  kids: "goodWithLeadKids",
+  dogs: "goodWithLeadDogs",
+  cats: "goodWithLeadCats",
+};
+
+const GOOD_WITH_TAIL: Record<GoodWithKey, TranslationKey> = {
+  kids: "goodWithTailKids",
+  dogs: "goodWithTailDogs",
+  cats: "goodWithTailCats",
+};
+
+/** "z otroki, psi in mačkami": who the animal gets along with, as the words
+ *  after "se razume". In the fixed facet order, so the sentence does not
+ *  reshuffle as picks are made. The first phrase carries the preposition,
+ *  which in Slovenian depends on the word after it, and the rest go without.
+ *  Takes the page's `t`, which this module does not load. */
+export function goodWithPhrase(
+  keys: readonly GoodWithKey[],
+  t: (key: TranslationKey) => string,
+  locale: Locale,
+): string {
+  return new Intl.ListFormat(locale, { type: "conjunction" }).format(
+    GOOD_WITH_KEYS.filter((key) => keys.includes(key)).map((key, index) =>
+      t(index === 0 ? GOOD_WITH_LEAD[key] : GOOD_WITH_TAIL[key]),
+    ),
+  );
 }
 
 // "Zavetišče" as a leading or trailing word in a shelter's own name, with
@@ -781,8 +820,7 @@ export function shelterListLabel(name: string): string {
  *  On a 390px phone "Zavetišče Mala hiša" is 180px, half the row, and five of
  *  the registry's shelters open with that same word: a truncating pill would
  *  cut away the half that says which shelter and keep the half that says what
- *  every shelter is. The pin on the chip already carries the noun, the same
- *  way the household chips drop theirs (goodWithChipLabel above). The
+ *  every shelter is. The pin on the chip already carries the noun. The
  *  parenthetical goes for the same reason: it is what pushed three of the
  *  registry's names onto a second line without saying which shelter.
  *

@@ -72,7 +72,11 @@ export function EditorBreadcrumb({
 
 /**
  * The frame of a bar pinned to the bottom of a phone screen and in the flow
- * of the page from lg. The bottom padding carries the phone's home indicator.
+ * of the page from lg. The bottom padding carries the phone's home indicator
+ * through --dock-inset and not the live safe-area inset: the editor scrolls
+ * the whole document, a phone browser changes the live inset as its bars hide
+ * and show, and the bar would jump and change height on every change of scroll
+ * direction (globals.css).
  *
  * PortalShell pads by --portal-save-bar-height after the footer whenever the
  * page holds a [data-save-bar], so its links stay reachable too, and the frame
@@ -112,7 +116,7 @@ export function PinnedBar({
       data-save-bar
       className={cn(
         className,
-        "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:pt-2",
+        "max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-30 max-lg:border-t max-lg:bg-background max-lg:px-gutter max-lg:pt-3 max-lg:pb-[calc(0.75rem+var(--dock-inset))] lg:pt-2",
       )}
     >
       {children}

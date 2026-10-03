@@ -163,6 +163,23 @@ describe("the shelter page's contacts", () => {
     );
   });
 
+  // The site link has no copy: its address is one click away, and the number
+  // and the address are the two values a visitor carries somewhere else.
+  it("offers a copy beside the number and the address, not the site", () => {
+    const { container } = render(
+      <ShelterDetailPage locale="sl" slug={SHELTER.id} />,
+    );
+
+    const copies = [...container.querySelectorAll("[data-contact-copy]")];
+    expect(copies.map((b) => b.getAttribute("aria-label"))).toEqual([
+      `${messages.copyContact}: ${SHELTER.phone}`,
+      `${messages.copyContact}: ${SHELTER.email}`,
+    ]);
+    expect(
+      copies.map((b) => b.previousElementSibling?.getAttribute("data-contact")),
+    ).toEqual(["phone", "email"]);
+  });
+
   it("says the site opens in a new window, to everyone", () => {
     const { container } = render(
       <ShelterDetailPage locale="sl" slug={SHELTER.id} />,

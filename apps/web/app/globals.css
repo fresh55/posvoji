@@ -174,7 +174,21 @@
      its own wrapper would not reach back into it, and its footer would reserve
      a strip for a button parked somewhere else. Same rule as the fade mask
      below. */
-  --back-to-top-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  /* What the two things fixed to the bottom of a scrolling page keep clear of
+     the home indicator: the phone filter dock and the control above it.
+     safe-area-max-inset-bottom and not safe-area-inset-bottom, because the
+     plain inset is not a constant. A phone browser changes it as its own bars
+     hide and show, so anything positioned by it moves every time the scroll
+     changes direction: filmed on 2026-09-29, the dock stood about 40px higher
+     with the address bar showing than with it hidden and snapped between the
+     two in one frame. The max inset is the largest the plain one gets and does
+     not move. A browser without it takes the 0px fallback and a flat 1rem,
+     which on an iPhone leaves the dock's edge above the home indicator's
+     bar rather than above the whole strip reserved for it. Surfaces that do
+     not ride a scrolling page (the sheets, the picker, the dialog) keep the
+     plain inset. */
+  --dock-inset: env(safe-area-max-inset-bottom, 0px);
+  --back-to-top-bottom: calc(5.5rem + var(--dock-inset));
   /* The other half of the same corner, beside the distance it pairs with
      rather than spelled into a class string. viewport-fit=cover puts the
      sensor housing over a long edge in landscape, and a control pinned at a

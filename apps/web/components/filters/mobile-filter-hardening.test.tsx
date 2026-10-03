@@ -180,9 +180,11 @@ describe("mobile filter hardening", () => {
     expect(dock?.className).toContain("sm:-translate-x-1/2");
     // The bottom edge is not part of the cap. The footer measures its docked
     // padding against this inset, so only the horizontal edges may move.
-    expect(dock?.className).toContain(
-      "bottom-[calc(1rem+env(safe-area-inset-bottom,0px))]",
-    );
+    // And it reads the constant inset, never the live one: a browser changes
+    // env(safe-area-inset-bottom) as its bars hide and show, and the dock
+    // jumped with it on every change of scroll direction.
+    expect(dock?.className).toContain("bottom-[calc(1rem+var(--dock-inset))]");
+    expect(dock?.className).not.toContain("env(safe-area-inset-bottom");
   });
 
   it("puts the sticky toolbar band over the dock", () => {

@@ -490,7 +490,16 @@ export function SpeciesTabs({
           // gets the same from the fade-scroll-x utility; this one masks by
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
-          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overscroll-x-contain py-2 no-scrollbar max-[384px]:gap-0.5",
+          //
+          // The room is 10px a side at the small step, because the pill there
+          // is 24px and its overlay still 44. With 8px the box was 40 tall
+          // around 42 of content, so it scrolled 2px vertically: measured at
+          // 375 and 320, a page scroll that started on the bar moved the tabs
+          // 2px inside it and the page not at all, since the strip had taken
+          // the gesture. overflow-y-hidden holds the same line at any size a
+          // later change brings, where auto would hand the strip the gesture
+          // again for a fraction of a pixel.
+          "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 no-scrollbar max-[384px]:-my-2.5 max-[384px]:gap-0.5 max-[384px]:py-2.5",
           fullWidth && "w-full",
         )}
       >

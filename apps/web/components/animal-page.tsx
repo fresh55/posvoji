@@ -17,7 +17,7 @@ import { animalFields } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { shelterNeighbours } from "@/lib/animal-neighbours";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
-import { loadDataset } from "@/lib/dataset";
+import { loadDataset, shelterAnimals } from "@/lib/dataset";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { homePath, shelterPath } from "@/lib/shelter-path";
@@ -57,7 +57,8 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
   // its rights and its placeholder into this page's flight payload. See
   // animalFields in lib/animal.ts.
   const fields = animalFields(animal);
-  const neighbours = shelterNeighbours(dataset.animals, animal);
+  const shelterList = shelterAnimals(animal.shelter.id);
+  const neighbours = shelterNeighbours(shelterList, animal);
 
   return (
     <SiteShell
@@ -208,12 +209,8 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
       {neighbours.length > 0 && (
         <AnimalNeighbours
           neighbours={neighbours}
-          shelter={animal.shelter}
-          shelterCount={
-            dataset.animals.filter(
-              (other) => other.shelter.id === animal.shelter.id,
-            ).length
-          }
+          shelterId={animal.shelter.id}
+          shelterCount={shelterList.length}
           locale={locale}
           reference={reference}
         />

@@ -1,4 +1,5 @@
 import { Printer } from "lucide-react";
+import type { ComponentProps } from "react";
 import type { AnimalFields } from "@/lib/animal";
 import { posterPath } from "@/lib/animal-path";
 import type { Locale } from "@/lib/i18n";
@@ -24,23 +25,17 @@ const posterText = {
 export function PosterLink({
   animal,
   locale,
-  newTab = false,
   className,
+  ...anchor
 }: {
   animal: AnimalFields;
   locale: Locale;
-  /** Set by the dialog. The sheet is a document of its own, and leaving for
-   *  it in the same tab would lose the visitor's place in the list: the way
-   *  back lands on the animal's page, not on the dialog over the grid. */
-  newTab?: boolean;
-  className?: string;
-}) {
+} & Omit<ComponentProps<"a">, "href" | "children">) {
   return (
     <a
+      {...anchor}
       href={posterPath(animal, locale)}
       data-slot="poster-link"
-      target={newTab ? "_blank" : undefined}
-      rel={newTab ? "noreferrer" : undefined}
       className={cn(WAY_ON_LINK, className)}
     >
       <Printer className="size-4 shrink-0" aria-hidden />

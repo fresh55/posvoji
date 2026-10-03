@@ -24,6 +24,7 @@ import type { ClientAnimal } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { FAN_PHOTO_SIZES, FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
+import { MetaParts } from "@/components/meta-parts";
 import { opensElsewhere } from "@/lib/opens-elsewhere";
 import {
   CARD_PHOTO_ASPECT,
@@ -35,8 +36,6 @@ import type { SpeciesFilter } from "@/lib/filters";
 import {
   animalMetaParts,
   longStay,
-  META_DOT_CLASS,
-  META_SEPARATOR,
   shelterChipLabel,
   stayDuration,
 } from "@/lib/labels";
@@ -525,17 +524,9 @@ export const AnimalCard = memo(function AnimalCard({
               own comment in labels.ts. The parts come from there already
               separate, so nothing here has to know how the joined form is
               glued together. */}
-          {animalMetaParts(animal, locale, reference, species).flatMap(
-            (part, i) =>
-              i === 0
-                ? [part]
-                : [
-                    <span key={i} className={META_DOT_CLASS}>
-                      {META_SEPARATOR}
-                    </span>,
-                    part,
-                  ],
-          )}
+          <MetaParts
+            parts={animalMetaParts(animal, locale, reference, species)}
+          />
         </p>
       </a>
 

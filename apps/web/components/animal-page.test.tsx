@@ -89,11 +89,18 @@ const { ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO } = vi.hoisted(() => 
 // The dataset and the logo manifest are both read from disk in production;
 // mocked here so the test names exactly the animals it renders rather than
 // depending on whatever happens to be checked out in data/dist.
+const FIXTURE_ANIMALS = vi.hoisted(() => [
+  ANIMAL_NO_PHOTO,
+  ANIMAL_UNNAMED,
+  ANIMAL_WITH_PHOTO,
+]);
 vi.mock("@/lib/dataset", () => ({
   loadDataset: () => ({
-    animals: [ANIMAL_NO_PHOTO, ANIMAL_UNNAMED, ANIMAL_WITH_PHOTO],
+    animals: FIXTURE_ANIMALS,
     generatedAt: "2026-01-01T00:00:00.000Z",
   }),
+  shelterAnimals: (shelterId: string) =>
+    FIXTURE_ANIMALS.filter((animal) => animal.shelter.id === shelterId),
 }));
 vi.mock("@/lib/shelter-logos", () => ({
   getShelterLogos: () => ({}),

@@ -1032,9 +1032,18 @@ function OpenAnimalDialog({
                         adopted animal, whose sheet would ask for a home it
                         already has. */}
                     {lastAnimal.status !== "adopted" && (
-                      <div className="flex">
-                        <PosterLink animal={lastAnimal} locale={locale} newTab />
-                      </div>
+                      // A document of its own, so it opens beside the list:
+                      // leaving in this tab would lose the visitor's place,
+                      // and the way back would land on the animal's page.
+                      // self-start keeps the link its own width in the card's
+                      // column.
+                      <PosterLink
+                        animal={lastAnimal}
+                        locale={locale}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="self-start"
+                      />
                     )}
 
                     {/* After the shelter, where the reading of this animal

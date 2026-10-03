@@ -1,9 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import type { Animal } from "@posvoji/schema";
 import { AnimalPhoto } from "@/components/animal-photo";
+import { MetaParts } from "@/components/meta-parts";
 import { animalFields } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
-import { permittedPhotos } from "@/lib/animal-images";
+import { permittedPhotos, type PermittedPhoto } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import {
   CARD_PHOTO_ASPECT,
@@ -11,11 +12,7 @@ import {
   CARD_PHOTO_RATIO,
 } from "@/lib/card-grid";
 import { getMessages, type Locale } from "@/lib/i18n";
-import {
-  animalMetaParts,
-  META_DOT_CLASS,
-  META_SEPARATOR,
-} from "@/lib/labels";
+import { animalMetaParts } from "@/lib/labels";
 import { SECTION_TITLE, WAY_ON_LINK } from "@/lib/link-styles";
 import { shelterPath } from "@/lib/shelter-path";
 import { cn } from "@/lib/utils";
@@ -31,11 +28,21 @@ const neighbourText = {
   },
 } satisfies Record<Locale, Record<string, string | ((count: number) => string)>>;
 
-// Four to a row inside the page's max-w-5xl from sm up, two on a phone. The
-// box is square, so from sm the width asked for is 4/3 of the tile, for the
-// reason CARD_PHOTO_SIZES gives; the phone band is the grid card's own.
+// How wide a tile draws: two to a row on a phone, four inside the page's
+// 1024px frame from sm up, where a tile is at most 244px. From sm the sizes
+// state 4/3 of that, 325px, because a square box over a wider photo needs a
+// file that wide; see CARD_PHOTO_SIZES.
 const NEIGHBOUR_PHOTO_SIZES =
-  "(max-width: 639px) calc(50vw - 24px), (max-width: 1023px) 33vw, 304px";
+  "(max-width: 639px) calc(50vw - 24px), (max-width: 1023px) 33vw, 325px";
+
+/** The photo with its placeholder left behind: AnimalPhoto would draw it, and
+ *  the page would carry it as base64 for a row below the fold. A key set to
+ *  undefined would still be written out, so it is removed, not blanked. */
+function withoutBlur(photo: PermittedPhoto): PermittedPhoto {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- pulled out only to leave it behind
+  const { blurDataURL, ...rest } = photo;
+  return rest;
+}
 
 /**
  * Other animals at the same shelter, under the animal a shared link opened.
@@ -54,14 +61,14 @@ const NEIGHBOUR_PHOTO_SIZES =
  */
 export function AnimalNeighbours({
   neighbours,
-  shelter,
+  shelterId,
   shelterCount,
   locale,
   reference,
 }: {
   /** At least one; see shelterNeighbours in lib/animal-neighbours.ts. */
   neighbours: readonly Animal[];
-  shelter: Animal["shelter"];
+  shelterId: string;
   /** Every animal the shelter's own page lists, this one included. */
   shelterCount: number;
   locale: Locale;
@@ -80,18 +87,15 @@ export function AnimalNeighbours({
         <h2 id="animal-neighbours" className={SECTION_TITLE}>
           {text.title}
         </h2>
-        <a href={shelterPath(shelter.id, locale)} className={WAY_ON_LINK}>
+        <a href={shelterPath(shelterId, locale)} className={WAY_ON_LINK}>
           {text.viewShelter(shelterCount)}
           <ArrowRight className="size-4 shrink-0" aria-hidden />
         </a>
       </div>
       <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4">
         {neighbours.map((neighbour) => {
-          // The lead photo without its placeholder: the row is below the
-          // fold, and four base64 blurs in this page's payload would be read
-          // by nobody.
           const lead = permittedPhotos(neighbour.images)[0];
-          const photo = lead && { ...lead, blurDataURL: undefined };
+          const photo = lead && withoutBlur(lead);
           const SpeciesMark = SPECIES_ICONS[neighbour.species];
           const fields = animalFields(neighbour);
           return (
@@ -104,9 +108,13 @@ export function AnimalNeighbours({
                   "focus-visible:ring-3 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background",
                 )}
               >
+                {/* The card's frame, with its hairline: studio photos on a
+                    white ground need the edge to keep their corners
+                    (PHOTO_FRAME in animal-card.tsx). */}
                 <span
                   className={cn(
                     "relative block overflow-hidden bg-muted text-muted-foreground",
+                    "after:pointer-events-none after:absolute after:inset-0 after:rounded-2xl after:shadow-[inset_0_0_0_1px_var(--card-photo-edge)]",
                     CARD_PHOTO_ASPECT,
                     CARD_PHOTO_RADIUS,
                   )}
@@ -117,7 +125,6 @@ export function AnimalNeighbours({
                       alt=""
                       sizes={NEIGHBOUR_PHOTO_SIZES}
                       frame={CARD_PHOTO_RATIO}
-                      blur={false}
                       className="object-cover"
                     />
                   ) : (
@@ -133,17 +140,9 @@ export function AnimalNeighbours({
                     {neighbour.name ?? messages.unnamed}
                   </span>
                   <span className="block text-pretty text-sm tabular-nums">
-                    {animalMetaParts(fields, locale, reference).flatMap(
-                      (part, index) =>
-                        index === 0
-                          ? [part]
-                          : [
-                              <span key={index} className={META_DOT_CLASS}>
-                                {META_SEPARATOR}
-                              </span>,
-                              part,
-                            ],
-                    )}
+                    <MetaParts
+                      parts={animalMetaParts(fields, locale, reference)}
+                    />
                   </span>
                 </span>
               </a>

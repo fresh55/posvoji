@@ -5,24 +5,23 @@ type Row = Parameters<typeof shelterNeighbours>[1];
 
 function row(
   id: string,
-  shelter = "horjul",
   species: Row["species"] = "cat",
   status: Row["status"] = "available",
 ): Row {
-  return { id, species, status, shelter: { id: shelter } };
+  return { id, species, status };
 }
 
 const ids = (rows: Row[]) => rows.map((entry) => entry.id);
 
 describe("shelterNeighbours", () => {
-  it("offers the same shelter's animals and never the animal itself", () => {
-    const animals = [row("a"), row("b", "meli"), row("c"), row("d")];
-    expect(ids(shelterNeighbours(animals, animals[0]!))).toEqual(["c", "d"]);
+  it("never offers the animal itself", () => {
+    const shelter = [row("a"), row("b"), row("c")];
+    expect(ids(shelterNeighbours(shelter, shelter[0]!))).toEqual(["b", "c"]);
   });
 
   it("reads on from the animal's own place and wraps round", () => {
-    const animals = ["a", "b", "c", "d", "e", "f"].map((id) => row(id));
-    expect(ids(shelterNeighbours(animals, animals[3]!))).toEqual([
+    const shelter = ["a", "b", "c", "d", "e", "f"].map((id) => row(id));
+    expect(ids(shelterNeighbours(shelter, shelter[3]!))).toEqual([
       "e",
       "f",
       "a",
@@ -31,8 +30,8 @@ describe("shelterNeighbours", () => {
   });
 
   it("puts the animal's own species first", () => {
-    const animals = [row("a"), row("dog", "horjul", "dog"), row("b"), row("c")];
-    expect(ids(shelterNeighbours(animals, animals[0]!))).toEqual([
+    const shelter = [row("a"), row("dog", "dog"), row("b"), row("c")];
+    expect(ids(shelterNeighbours(shelter, shelter[0]!))).toEqual([
       "b",
       "c",
       "dog",
@@ -40,17 +39,17 @@ describe("shelterNeighbours", () => {
   });
 
   it("leaves out animals nobody can adopt now", () => {
-    const animals = [
+    const shelter = [
       row("a"),
-      row("gone", "horjul", "cat", "adopted"),
-      row("held", "horjul", "cat", "hold"),
+      row("gone", "cat", "adopted"),
+      row("held", "cat", "hold"),
       row("b"),
     ];
-    expect(ids(shelterNeighbours(animals, animals[0]!))).toEqual(["b"]);
+    expect(ids(shelterNeighbours(shelter, shelter[0]!))).toEqual(["b"]);
   });
 
   it("is empty for a shelter's only animal", () => {
-    const animals = [row("a"), row("b", "meli")];
-    expect(shelterNeighbours(animals, animals[0]!)).toEqual([]);
+    const shelter = [row("a")];
+    expect(shelterNeighbours(shelter, shelter[0]!)).toEqual([]);
   });
 });

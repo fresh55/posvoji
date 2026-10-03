@@ -11,6 +11,7 @@ import {
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { BackToTop } from "@/components/back-to-top";
+import { CopyContactButton } from "@/components/copy-contact-button";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { JsonLd } from "@/components/json-ld";
 import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
@@ -31,6 +32,7 @@ import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
 import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
 import { PAGE_TITLE, SECTION_TITLE } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
@@ -86,6 +88,7 @@ function ContactButton({
   icon: Icon,
   label,
   external = false,
+  copy,
   children,
 }: {
   channel: "phone" | "on-call" | "email" | "website";
@@ -97,10 +100,18 @@ function ContactButton({
    *  name says so and the mark says it to everyone else: a title would leave
    *  the fact to a hover, which a thumb never performs. */
   external?: boolean;
+  /** A value worth carrying away rather than acting on here: a number or an
+   *  address. The site link has none, since its address is one click away. */
+  copy?: { value: string; label: string; copiedLabel: string };
   children: ReactNode;
 }) {
-  return (
-    <Button asChild variant="outline" size="sm" className={CONTACT_BUTTON}>
+  const link = (
+    <Button
+      asChild
+      variant="outline"
+      size="sm"
+      className={cn(CONTACT_BUTTON, copy && "pointer-fine:rounded-r-none!")}
+    >
       <a
         href={href}
         data-contact={channel}
@@ -119,6 +130,20 @@ function ContactButton({
         )}
       </a>
     </Button>
+  );
+  if (!copy) return link;
+
+  // The pair is one item of the contacts row, so a wrap moves the copy
+  // button with the value it copies.
+  return (
+    <div className="flex max-w-full min-w-0">
+      {link}
+      <CopyContactButton
+        value={copy.value}
+        label={contactName(copy.label, copy.value)}
+        copiedLabel={copy.copiedLabel}
+      />
+    </div>
   );
 }
 
@@ -148,6 +173,11 @@ export function ShelterDetailPage({
   // stands. The gate is here so a row added without one cannot print a 20px
   // hole under the name: an empty flex box still takes its gap out of the
   // stack above it.
+  const copyOf = (value: string) => ({
+    value,
+    label: messages.copyContact,
+    copiedLabel: messages.contactCopied,
+  });
   const hasContacts = Boolean(
     shelter.phone || shelter.onCallPhone || shelter.email || shelter.website,
   );
@@ -290,6 +320,7 @@ export function ShelterDetailPage({
                 {shelter.phone && (
                   <ContactButton
                     channel="phone"
+                    copy={copyOf(shelter.phone)}
                     href={telHref(shelter.phone)}
                     icon={Phone}
                     label={contactName(messages.contactPhone, shelter.phone)}
@@ -300,6 +331,7 @@ export function ShelterDetailPage({
                 {shelter.onCallPhone && (
                   <ContactButton
                     channel="on-call"
+                    copy={copyOf(shelter.onCallPhone)}
                     href={telHref(shelter.onCallPhone)}
                     icon={Phone}
                     label={translate(locale, "muniCallOnCall", { phone: shelter.onCallPhone })}
@@ -310,6 +342,7 @@ export function ShelterDetailPage({
                 {shelter.email && (
                   <ContactButton
                     channel="email"
+                    copy={copyOf(shelter.email)}
                     href={mailtoHref(shelter.email)}
                     icon={Mail}
                     label={contactName(messages.contactEmail, shelter.email)}

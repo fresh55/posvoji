@@ -594,6 +594,9 @@ export function AnimalFilters({
               sort={sort}
               onSortChange={onSortChange}
               onSpeciesChange={onSpeciesChange}
+              speciesTally={speciesTally}
+              speciesRoster={speciesRoster}
+              speciesDisabled={isEmpty}
               filters={filters}
               groups={groups}
               counts={counts}

@@ -122,6 +122,8 @@ function renderSheet({
         activeCount={selected.length}
         resultCount={11}
         onSpeciesChange={vi.fn()}
+        speciesTally={{ all: 0, dog: 0, cat: 0, other: 0 }}
+        speciesRoster={{ all: 0, dog: 0, cat: 0, other: 0 }}
         onClearAll={vi.fn()}
         {...filterActions}
       />

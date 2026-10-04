@@ -501,7 +501,8 @@ export function SpeciesTabs({
           // hand (the fill has to be measured against an unmasked box) and so
           // says it here.
           "relative -my-2 flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 no-scrollbar max-[384px]:-my-2.5 max-[384px]:gap-0.5 max-[384px]:py-2.5",
-          fullWidth && "w-full",
+          // The sheet copy: 2px between tabs, see the tab's fullWidth note.
+          fullWidth && "w-full gap-0.5",
         )}
       >
         {/* First, so that every tab is a later positioned sibling and paints
@@ -599,8 +600,14 @@ export function SpeciesTabs({
               // fullWidth tabs need to shrink (and truncate) before the row
               // is allowed to overflow; the fixed toolbar copy never shrinks,
               // since a squeezed icon-only pill there would misread as a
-              // different species.
-              fullWidth ? "flex-1 py-1.5" : "shrink-0",
+              // different species. flex-auto and not flex-1: equal shares cut
+              // "Mačke 363" to "M.." at 390 while "Psi 124" had room to
+              // spare, so each tab starts from its own width and the slack
+              // is what is shared. 6px of padding and a 2px gap because the
+              // four measured 360px at full size against the sheet's 348 at
+              // 390; that brings them to 338 and the full step holds down to
+              // the 384 one.
+              fullWidth ? "flex-auto px-1.5 py-1.5" : "shrink-0",
               // The colours are timed against the fill, and a transition is
               // read off the state being moved to, so each state carries its
               // own rather than sharing one above. Arriving, the label waits

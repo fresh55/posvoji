@@ -417,7 +417,7 @@ const sl = {
   filtersWithCount: "Filtri, aktivnih: {count}",
   activeFilters: "Aktivni filtri",
   activeFiltersCount: "Aktivni filtri: {count}",
-  speciesScope: "Vrsta: {label}. Pokaži vse živali",
+  speciesGroup: "Vrsta",
   // Tooltip on a chip: what pressing it gives back. {count} arrives already
   // formatted by animalCount, so the noun agrees with the number.
   removeShowsMore: "Odstrani, +{count}",
@@ -992,7 +992,7 @@ const en: Messages = {
   filtersWithCount: "Filters, {count} active",
   activeFilters: "Active filters",
   activeFiltersCount: "Active filters: {count}",
-  speciesScope: "Species: {label}. Show all animals",
+  speciesGroup: "Species",
   removeShowsMore: "Remove, +{count}",
   expandFilterGroup: "Show all selected: {label}",
   showMoreFilters: "Show {count} more",

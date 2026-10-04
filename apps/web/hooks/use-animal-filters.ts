@@ -250,9 +250,9 @@ export function useAnimalFilters() {
   // already standing on.
   //
   // Nor on top of an open sheet, for the same reason. The filter sheet
-  // repeats the chosen species as a pill that sets it back to all
-  // (filter-sheet.tsx), and the sheet stands on an entry of its own that its
-  // back gesture pops; a push from inside it would carry the sheet's marker
+  // carries the species tabs under its title (filter-sheet-content.tsx),
+  // and the sheet stands on an entry of its own that its back gesture pops;
+  // a push from inside it would carry the sheet's marker
   // onto a second entry and back would undo the species before closing.
   const setSpecies = useCallback(
     (species: SpeciesFilter) => {
@@ -355,7 +355,7 @@ export function useAnimalFilters() {
   // outside it, and on a phone it did so behind the sheet where the strip
   // cannot be seen. Pressing Mačke, narrowing, and clearing lands on every
   // cat again, not on every animal. The way back to all species is the
-  // strip, or the sheet's own species pill.
+  // strip, on the page or in the sheet.
   const clearAll = useCallback(
     () => writeFilters({ ...EMPTY_FILTERS, species: filters.species }),
     [filters.species],

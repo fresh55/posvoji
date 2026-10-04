@@ -105,9 +105,9 @@ describe("the chips row", () => {
       "goodWith",
       "toggles",
       "energy",
-      "sex",
       "coatColor",
       "coatLength",
+      "sex",
       "care",
       "waiting",
     ]);

@@ -121,7 +121,9 @@ export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
  * rescues ask where, then what the home already holds, then age, and do not
  * offer sex at all. So age and size first, then who the animal has to get
  * along with (Se razume) and the lab answer a household with a cat needs beside it
- * (Zdravje: FIV and FeLV), then temperament, then sex and looks. The two
+ * (Zdravje: FIV and FeLV), then temperament, then looks and sex. Looks come
+ * before sex because appearance was the study's leading reason and sex one of
+ * its weakest; Spol is two options, quick to answer wherever it sits. The two
  * sections about what the visitor can give and how long an animal has waited
  * close the list.
  *
@@ -129,8 +131,8 @@ export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
  * beside the age rows read as an age.
  */
 export const FILTER_FACETS = [
-  "shelter", "age", "size", "goodWith", "toggles", "energy", "sex",
-  "coatColor", "coatLength", "care", "waiting",
+  "shelter", "age", "size", "goodWith", "toggles", "energy", "coatColor",
+  "coatLength", "sex", "care", "waiting",
 ] as const satisfies readonly FilterFacet[];
 
 // A facet missing from FILTER_FACETS fails to compile here.

@@ -97,7 +97,7 @@ function openSections(): (string | undefined)[] {
 // FILTER_FACETS in lib/filters/contracts.ts says where the order comes from.
 describe("the order the panel asks in", () => {
   it.each(["sidebar", "sheet"] as const)(
-    "reads age, size, the home, health, temperament, sex, looks, then the two that close it in the %s",
+    "reads age, size, the home, health, temperament, looks, sex, then the two that close it in the %s",
     (layout) => {
       renderEverySection(layout);
 
@@ -107,8 +107,8 @@ describe("the order the panel asks in", () => {
         "Se razume",
         "Zdravje",
         "Energija",
-        "Spol",
         "Videz",
+        "Spol",
         "Lahko ponudim",
         "Čaka na dom",
       ]);

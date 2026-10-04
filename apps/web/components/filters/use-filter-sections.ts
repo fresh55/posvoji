@@ -27,8 +27,8 @@ const STORAGE_KEY = "posvoji:filter-sections";
 // the Psi tab, a species name meaning open on that tab alone. On Vse a size
 // pick leaves out every cat (groupAsks in lib/filters/engine.ts), so there it
 // folds, and Mačke draws no Velikost at all. Spol opened beside Starost until
-// the panel was put in the order adopters decide in, where it comes sixth
-// (FILTER_FACETS in lib/filters/contracts.ts); it folds with the rest.
+// the panel was put in the order adopters decide in, where it comes after
+// Videz (FILTER_FACETS in lib/filters/contracts.ts); it folds with the rest.
 //
 // On a short desktop everything starts folded (openByDefault). Saved choices
 // always override these defaults, and an answer arriving in the address

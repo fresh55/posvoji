@@ -119,8 +119,8 @@ describe("the waiting section's place in the panel", () => {
     expect(sectionLabels()).toEqual([
       "Starost",
       "Energija",
-      "Spol",
       "Videz",
+      "Spol",
       "Lahko ponudim",
       "Čaka na dom",
     ]);

@@ -155,8 +155,9 @@
      A new fixed or sticky thing belongs on a rung that already exists. If it
      needs one between two of these, the pair it lands between is the argument
      to write down, not the number. */
-  /* What the two things fixed to the bottom of a scrolling page keep clear of
-     the home indicator: the phone filter dock and the control above it.
+  /* What the things fixed to the bottom of a scrolling page keep clear of the
+     home indicator: the phone filter dock, the control above it and the
+     portal editor's save bar.
 
      The max inset first, because where a browser has it the plain inset is
      not a constant: Chrome on Android changes it as its own bars hide and

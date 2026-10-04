@@ -34,7 +34,7 @@ export function PortalShell({
             and the footer band under it. */}
         <div
           data-portal-shell
-          className="flex min-h-dvh flex-col has-[[data-save-bar]]:max-lg:pb-[var(--portal-save-bar-height,calc(4.5rem+env(safe-area-inset-bottom,0px)))]"
+          className="flex min-h-dvh flex-col has-[[data-save-bar]]:max-lg:pb-[var(--portal-save-bar-height,calc(4.5rem+var(--dock-inset)))]"
         >
           <header className="border-b">
           <div className="relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-3 px-gutter py-4">

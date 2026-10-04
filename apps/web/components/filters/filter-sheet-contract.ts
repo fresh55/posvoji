@@ -46,6 +46,12 @@ export type FilterSheetProps = FilterActionContract & {
   sort: AnimalSort;
   onSortChange: (sort: AnimalSort) => void;
   onSpeciesChange: (species: SpeciesFilter) => void;
+  /** The species tabs at the top of the sheet, the same numbers the page's
+   *  strip draws (species-tabs.tsx). */
+  speciesTally: Record<SpeciesFilter, number>;
+  speciesRoster: Record<SpeciesFilter, number>;
+  /** No dataset: the tabs draw, disabled. */
+  speciesDisabled?: boolean;
   onClearAll: () => void;
   undo?: () => void;
   onOpenChange?: (open: boolean) => void;

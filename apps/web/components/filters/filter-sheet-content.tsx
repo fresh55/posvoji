@@ -1,6 +1,6 @@
 "use client";
 
-import { Undo2, X } from "lucide-react";
+import { Undo2 } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import { useId, useRef, useState, type ReactNode } from "react";
 import { ResultCount } from "@/components/filters/result-count";
@@ -18,11 +18,10 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { SortPicker } from "@/components/filters/sort-picker";
-import { SpeciesGlyphIcon } from "@/components/filters/species-glyph";
+import { SpeciesTabs } from "@/components/filters/species-tabs";
 import { layerEntryKey } from "@/hooks/use-picker-history";
 import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
 
-import { speciesScopeLabel } from "@/lib/labels";
 import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
 import { cn } from "@/lib/utils";
 import {
@@ -90,6 +89,9 @@ export function FilterSheetContent({
   sort,
   onSortChange,
   onSpeciesChange,
+  speciesTally,
+  speciesRoster,
+  speciesDisabled = false,
   onToggle,
   onToggleMany,
   onToggleProperty,
@@ -102,15 +104,13 @@ export function FilterSheetContent({
   trigger: ReactNode;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { locale, messages, t } = useI18n();
+  const { locale, messages } = useI18n();
   const [scrolled, setScrolled] = useState(false);
   const reduceMotion = useReducedMotion();
 
   const sortCaptionId = useId();
   const pressedRowAnchor = usePressedRowAnchor();
 
-  // Keep focus in the drawer when a filter removes its own control.
-  const contentRef = useRef<HTMLDivElement>(null);
   // Set while the sheet closes in order to open the map. The sheet's content
   // unmounts at the end of its slide, and Radix then hands focus back to the
   // Filtri trigger, which by then sits behind the open map: measured, focus
@@ -156,7 +156,6 @@ export function FilterSheetContent({
     >
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent
-        ref={contentRef}
         closeLabel={messages.close}
         className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
         onCloseAutoFocus={(event) => {
@@ -176,26 +175,31 @@ export function FilterSheetContent({
               <DrawerTitle className="text-base">
                 {messages.filters}
               </DrawerTitle>
-              {filters.species !== "all" && (
-                <button
-                  type="button"
-                  data-slot="species-scope"
-                  onClick={() => {
-                    contentRef.current?.focus();
-                    onSpeciesChange("all");
-                  }}
-                  aria-label={t("speciesScope", {
-                    label: speciesScopeLabel(filters.species, locale),
-                  })}
-                  className="inline-flex h-8 min-w-0 touch-manipulation select-none items-center gap-1.5 rounded-ui bg-foreground px-2.5 text-sm text-background outline-none focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:tap-target"
-                >
-                  <SpeciesGlyphIcon tab={filters.species} />
-                  <span className="min-w-0 truncate">
-                    {speciesScopeLabel(filters.species, locale)}
-                  </span>
-                  <X aria-hidden className="size-3.5 shrink-0 opacity-70" />
-                </button>
-              )}
+            </div>
+            {/* The page's own species tabs, pinned under the title. Three
+                visitors opened the sheet to change species and found no way
+                to: the strip on the page is under the overlay while the sheet
+                is open, visible and dead. A pill naming the species stood here
+                before, and only once one was picked, so on Vse the sheet said
+                nothing about species at all. The same control as on the page,
+                so it is learnt once; full width, so the four tabs share the
+                row and nothing scrolls. A block parent, because the strip's
+                tap room is a padding its negative margin cancels
+                (species-tabs.tsx). */}
+            <div
+              role="group"
+              aria-label={messages.speciesGroup}
+              data-slot="sheet-species"
+              className="mt-3"
+            >
+              <SpeciesTabs
+                value={filters.species}
+                onChange={onSpeciesChange}
+                counts={speciesTally}
+                roster={speciesRoster}
+                disabled={speciesDisabled}
+                fullWidth
+              />
             </div>
           </div>
         </div>

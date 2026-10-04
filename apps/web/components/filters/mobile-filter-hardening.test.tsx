@@ -69,6 +69,8 @@ function renderSheet(overrides: SheetProps = {}) {
         activeCount={0}
         resultCount={0}
         onSpeciesChange={vi.fn()}
+        speciesTally={{ all: 3, dog: 1, cat: 1, other: 1 }}
+        speciesRoster={{ all: 3, dog: 1, cat: 1, other: 1 }}
         onClearAll={vi.fn()}
         {...filterActions}
         {...props}
@@ -549,37 +551,26 @@ describe("mobile filter hardening", () => {
     expect(block?.className.split(" ")).toContain("md:not-short:hidden");
   });
 
-  it("does not repeat the species tabs inside the sheet", async () => {
-    // The sticky bar behind the trigger already carries them; a second copy
-    // here used to cost the sheet 56px on top of an 85dvh takeover. What the
-    // sheet states instead is the one species chosen, as a pill on its title
-    // line (the tests below).
+  it("carries the species tabs in the header, on every species", async () => {
+    // Three visitors opened the sheet to change species and found nothing:
+    // the page's strip sits under the overlay, visible and dead. The sheet
+    // carries the same tabs under its title, on Vse as much as on a species,
+    // in the header block that never scrolls.
     renderSheet();
 
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).queryByRole("button", { name: "All" })).toBeNull();
+    const group = within(dialog).getByRole("group", { name: "Species" });
+    expect(group.closest('[data-slot="filter-sheet-header"]')).not.toBeNull();
+    const all = within(group).getByRole("button", { name: /^All/ });
+    expect(all.getAttribute("aria-pressed")).toBe("true");
+    for (const name of [/^Dogs/, /^Cats/, /^Other/]) {
+      expect(within(group).getByRole("button", { name })).toBeTruthy();
+    }
   });
 
-  it("draws no species pill while every species is shown", async () => {
-    // On Vse every count in the sheet means what it says and there is no
-    // scope to state, so the sheet is exactly what it was.
-    renderSheet();
-
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
-
-    const dialog = await screen.findByRole("dialog");
-    expect(dialog.querySelector('[data-slot="species-scope"]')).toBeNull();
-  });
-
-  it("names the chosen species on the title line and sets it back to all", async () => {
-    // A visitor who chose Ostale and opened the sheet found "Samica 0" with
-    // nothing on screen saying the 0 was counted among two rabbits: the strip
-    // behind the trigger is under the sheet at the top of the page and under
-    // the overlay's blur once scrolled. The pill is the sheet's own statement
-    // of its scope, in the pressed tab's token, and the x on it is the one
-    // species action wanted from in here.
+  it("changes species from inside the sheet", async () => {
     const onSpeciesChange = vi.fn();
     renderSheet({
       filters: { ...EMPTY_FILTERS, species: "other" },
@@ -589,27 +580,27 @@ describe("mobile filter hardening", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     const dialog = await screen.findByRole("dialog");
-    const pill = within(dialog).getByRole("button", {
-      name: "Species: Other animals. Show all animals",
-    });
-    // The pill lives in the header block, which never scrolls, not in the
-    // body under it: the step the report fails on is the sheet body scrolled
-    // to a section whose counts make no sense without the species.
+    const group = within(dialog).getByRole("group", { name: "Species" });
     expect(
-      pill.closest('[data-slot="filter-sheet-header"]'),
-    ).not.toBeNull();
-    expect(pill.textContent).toBe("Other animals");
-    expect(pill.querySelector("svg")).not.toBeNull();
+      within(group)
+        .getByRole("button", { name: /^Other/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
 
-    fireEvent.click(pill);
+    fireEvent.click(within(group).getByRole("button", { name: /^Cats/ }));
+    expect(onSpeciesChange).toHaveBeenLastCalledWith("cat");
 
-    expect(onSpeciesChange).toHaveBeenCalledWith("all");
+    fireEvent.click(within(group).getByRole("button", { name: /^All/ }));
+    expect(onSpeciesChange).toHaveBeenLastCalledWith("all");
+    // A tab is never its own casualty, so the dialog keeps focus without
+    // the hand-off the old pill needed.
+    expect(screen.getByRole("dialog")).toBe(dialog);
   });
 
   it("clears filters, in the footer's own words", async () => {
-    // "Clear filters" and not "Clear all": the species pill survives the
-    // press (use-animal-filters.ts), and a button that says everything while
-    // a dark pill beside it stays put is a button that lies.
+    // "Clear filters" and not "Clear all": the pressed species tab survives
+    // the press (use-animal-filters.ts), and a button that says everything
+    // while a dark tab above it stays put is a button that lies.
     renderSheet({
       filters: { ...EMPTY_FILTERS, species: "cat" },
       activeCount: 1,
@@ -619,8 +610,12 @@ describe("mobile filter hardening", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Filters, 1 active" }));
 
     const dialog = await screen.findByRole("dialog");
-    // The premise: the pill is on screen beside the footer being argued about.
-    expect(dialog.querySelector('[data-slot="species-scope"]')).not.toBeNull();
+    // The premise: the pressed species is on screen beside the footer.
+    expect(
+      within(dialog)
+        .getByRole("button", { name: /^Cats/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(
       within(dialog).getByRole("button", { name: "Clear filters" }),
     ).toBeTruthy();
@@ -779,7 +774,7 @@ describe("mobile filter hardening", () => {
     );
 
     const otherTab = screen.getByRole("button", { name: /^Other/ });
-    expect(otherTab.className).toContain("flex-1");
+    expect(otherTab.className).toContain("flex-auto");
     expect(otherTab.className).not.toContain("shrink-0");
     expect(otherTab.querySelector("span")?.className).toContain("truncate");
     // The row itself keeps a scroll escape hatch rather than spilling past

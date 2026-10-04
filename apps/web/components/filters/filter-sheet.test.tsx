@@ -62,6 +62,8 @@ function renderSheet(
         activeCount={0}
         resultCount={3}
         onSpeciesChange={vi.fn()}
+        speciesTally={{ all: 0, dog: 0, cat: 0, other: 0 }}
+        speciesRoster={{ all: 0, dog: 0, cat: 0, other: 0 }}
         onClearAll={vi.fn()}
         onToggle={vi.fn()}
         onToggleMany={vi.fn()}

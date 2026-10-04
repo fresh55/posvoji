@@ -3820,19 +3820,6 @@
             "/root/review_b",
             "/root/review_c"
           ]
-        },
-        {
-          "field": "size",
-          "value": "large",
-          "evidence": {
-            "start": 13,
-            "end": 24,
-            "sha256": "69cdf403b1965710c8d975219e771f8a2d5e03f26d6c2c6c9ff8536daab23bfd"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
         }
       ]
     },
@@ -4008,19 +3995,6 @@
           ]
         },
         {
-          "field": "size",
-          "value": "large",
-          "evidence": {
-            "start": 8,
-            "end": 19,
-            "sha256": "aa8e30db1624fe8e62eccb795888bfc972dac678cd769ca70c61aab1fbe57c9a"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
           "field": "adoptionRequirements.noYoungKids",
           "value": true,
           "evidence": {
@@ -4048,27 +4022,6 @@
             "start": 283,
             "end": 350,
             "sha256": "d03f1679c757dc316824dbce051e395e62620b7f7ea8dc7eabfe403ffc14df82"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "maribor:25",
-      "providerId": "maribor",
-      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=25",
-      "descriptionSha256": "4d6da22ce810d7624b0d29546decd82f444a567f49fa64f7f4b49749ada7a196",
-      "claims": [
-        {
-          "field": "size",
-          "value": "large",
-          "evidence": {
-            "start": 60,
-            "end": 72,
-            "sha256": "86ed215eb5bdf5963d607da6193e402cb9faeb2ac22f4506b05749015602b2ad"
           },
           "reviewedBy": [
             "/root/review_b",

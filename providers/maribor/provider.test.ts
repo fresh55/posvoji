@@ -74,11 +74,26 @@ describe("detail facts", () => {
     ["1,5 leta", 18],
     ["2.5 leti", 30],
     ["1,5 meseca", 2],
+    // The live Starost field abbreviates months.
+    ["6 mes", 6],
+    ["9 mes", 9],
+    ["3-6 mes", undefined],
+    ["3 mesta", undefined],
     // A number with no unit is not an age.
     ["10,5", undefined],
     ["mlad", undefined],
   ])("maps age %s to months", (value, expected) => {
     expect(parseApproximateAgeMonths(value)).toBe(expected);
+  });
+
+  it.each([
+    ["Srednja", "medium"],
+    ["Velik", "large"],
+    ["Mali", "small"],
+    ["Ogromna", undefined],
+  ])("reads Velikost %s in either gender", (value, expected) => {
+    const html = catHtml.replace(">Srednji<", `>${value}<`);
+    expect(parseDetail(html).size).toBe(expected);
   });
 
   it("reads the cat page without inventing a breed", () => {

@@ -123,7 +123,7 @@ export type FilterFacet = MultiGroup | "toggles" | "goodWith" | "care";
  * along with (Se razume) and the lab answer a household with a cat needs beside it
  * (Zdravje: FIV and FeLV), then temperament, then looks and sex. Looks come
  * before sex because appearance was the study's leading reason and sex one of
- * its weakest; Spol is two options, quick to answer wherever it sits. The two
+ * its weakest. The two
  * sections about what the visitor can give and how long an animal has waited
  * close the list.
  *

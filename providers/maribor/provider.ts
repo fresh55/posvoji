@@ -92,12 +92,13 @@ const AGE_COUNT = "(?<![\\d,.])(\\d+(?:[.,]\\d+)?)";
 const AGE_YEARS_PATTERN = new RegExp(
   `${AGE_COUNT}\\s*(?:leto|leti|leta|let)\\b`, "i",
 );
+// The Starost field abbreviates months to "6 mes", so the bare stem counts.
 const AGE_MONTHS_PATTERN = new RegExp(
-  `${AGE_COUNT}\\s*(?:mesec|meseca|mesece|mesecev)\\b`, "i",
+  `${AGE_COUNT}\\s*mes(?:ec|eca|ece|ecev)?\\b`, "i",
 );
 // A range is not a single age, including decimal endpoints.
 const AGE_RANGE =
-  /\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mesec(?:a|e|ev)?|let(?:o|i|a)?)\b/iu;
+  /\b\d+(?:[.,]\d+)?\s*[–—-]\s*\d+(?:[.,]\d+)?\s*(?:mes(?:ec(?:a|e|ev)?)?|let(?:o|i|a)?)\b/iu;
 
 function ageCount(raw: string | undefined): number {
   return Number((raw ?? "").replace(",", "."));
@@ -123,12 +124,17 @@ function parseSex(value: string | undefined): Sex | undefined {
   return normalized ? "unknown" : undefined;
 }
 
+// Velikost agrees with the animal's gender: "Srednja" for a female,
+// "Srednji" and "Velik" for a male.
+const SIZES: Record<string, AnimalSize> = {
+  mala: "small", majhna: "small", mali: "small", majhen: "small",
+  srednja: "medium", srednji: "medium",
+  velika: "large", velik: "large", veliki: "large",
+};
+
 function parseSize(value: string | undefined): AnimalSize | undefined {
   const normalized = value?.toLocaleLowerCase("sl");
-  if (normalized === "mala") return "small";
-  if (normalized === "srednja") return "medium";
-  if (normalized === "velika") return "large";
-  return undefined;
+  return normalized ? SIZES[normalized] : undefined;
 }
 
 function parseSpecies($: cheerio.CheerioAPI): Species {

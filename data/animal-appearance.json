@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-30T18:54:43.221Z",
+  "reviewedAt": "2026-10-04T08:30:14.020Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -20900,6 +20900,9 @@
       "providerId": "maribor",
       "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=154",
       "species": "cat",
+      "coatColors": [
+        "brown"
+      ],
       "coatColor": "brown",
       "coatColorReviewedBy": [
         "/root/newcat_review_a",
@@ -20913,8 +20916,33 @@
         }
       ],
       "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
+        "/root/maribor_review_a",
+        "/root/maribor_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:155",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=155",
+      "species": "dog",
+      "coatColors": [
+        "black",
+        "brown"
+      ],
+      "coatColor": "black",
+      "coatColorReviewedBy": [
+        "/root/maribor_review_a",
+        "/root/maribor_review_b"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/09/att.Al3qFmifvffAsMIRWplRDm9r1YngHT5uILY4349BqK8-768x1024.jpg",
+          "sha256": "7333f5e2915963aa00d17112526a6159967e8166ee10e4878d2bd8b022589d9e"
+        }
+      ],
+      "reviewedBy": [
+        "/root/maribor_review_a",
+        "/root/maribor_review_b"
       ]
     },
     {

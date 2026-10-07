@@ -13,17 +13,91 @@
     "goodWithDogs",
     "goodWithCats",
     "apartmentOk",
-    "specialNeeds"
+    "specialNeeds",
+    "species",
+    "coatColors",
+    "coatColor",
+    "coatLength",
+    "lifeStage",
+    "intakeDate",
+    "intakeBy",
+    "foundDate",
+    "medical",
+    "adoptionRequirements"
   ],
   "enumValues": {
-    "status": ["available", "reserved", "adopted", "hold"],
-    "sex": ["male", "female", "unknown"],
-    "size": ["small", "medium", "large"],
-    "energy": ["calm", "balanced", "lively"],
-    "goodWithKids": ["yes", "no", "unknown"],
-    "goodWithDogs": ["yes", "no", "unknown"],
-    "goodWithCats": ["yes", "no", "unknown"],
-    "apartmentOk": ["yes", "no", "unknown"]
+    "status": [
+      "available",
+      "reserved",
+      "adopted",
+      "hold"
+    ],
+    "sex": [
+      "male",
+      "female",
+      "unknown"
+    ],
+    "size": [
+      "small",
+      "medium",
+      "large"
+    ],
+    "energy": [
+      "calm",
+      "balanced",
+      "lively"
+    ],
+    "goodWithKids": [
+      "yes",
+      "no",
+      "unknown"
+    ],
+    "goodWithDogs": [
+      "yes",
+      "no",
+      "unknown"
+    ],
+    "goodWithCats": [
+      "yes",
+      "no",
+      "unknown"
+    ],
+    "apartmentOk": [
+      "yes",
+      "no",
+      "unknown"
+    ],
+    "species": [
+      "dog",
+      "cat",
+      "rabbit",
+      "other"
+    ],
+    "coatColor": [
+      "black",
+      "white",
+      "grey",
+      "brown",
+      "orange",
+      "cream",
+      "black-white",
+      "brown-white",
+      "grey-white",
+      "orange-white",
+      "cream-white",
+      "multicolour"
+    ],
+    "coatLength": [
+      "short",
+      "medium",
+      "long",
+      "hairless"
+    ],
+    "lifeStage": [
+      "young",
+      "adult",
+      "senior"
+    ]
   },
   "export": {
     "generatedAt": "2026-08-30T12:00:00Z",
@@ -45,7 +119,24 @@
           "goodWithDogs": "yes",
           "goodWithCats": "yes",
           "apartmentOk": "yes",
-          "specialNeeds": false
+          "specialNeeds": false,
+          "species": "dog",
+          "coatColors": [
+            "black",
+            "white"
+          ],
+          "coatColor": "black",
+          "coatLength": "short",
+          "lifeStage": "young",
+          "intakeDate": "2026-08-01",
+          "intakeBy": "2026-07-31",
+          "foundDate": "2026-07-20",
+          "medical": {
+            "neutered": true
+          },
+          "adoptionRequirements": {
+            "indoorOnly": true
+          }
         },
         "baseline": {
           "name": null,
@@ -61,7 +152,17 @@
           "goodWithDogs": null,
           "goodWithCats": null,
           "apartmentOk": null,
-          "specialNeeds": null
+          "specialNeeds": null,
+          "species": null,
+          "coatColors": null,
+          "coatColor": null,
+          "coatLength": null,
+          "lifeStage": null,
+          "intakeDate": null,
+          "intakeBy": null,
+          "foundDate": null,
+          "medical": null,
+          "adoptionRequirements": null
         },
         "recordedAt": "2026-08-29T12:00:00Z"
       },
@@ -114,6 +215,91 @@
         "animalId": "contract:04",
         "fields": {
           "status": "hold"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-1",
+        "fields": {
+          "species": "cat",
+          "coatColor": "white",
+          "coatLength": "medium",
+          "lifeStage": "adult"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-10",
+        "fields": {
+          "coatColor": "cream-white"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-11",
+        "fields": {
+          "coatColor": "multicolour"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-2",
+        "fields": {
+          "species": "rabbit",
+          "coatColor": "grey",
+          "coatLength": "long",
+          "lifeStage": "senior"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-3",
+        "fields": {
+          "species": "other",
+          "coatColor": "brown",
+          "coatLength": "hairless"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-4",
+        "fields": {
+          "coatColor": "orange"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-5",
+        "fields": {
+          "coatColor": "cream"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-6",
+        "fields": {
+          "coatColor": "black-white"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-7",
+        "fields": {
+          "coatColor": "brown-white"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-8",
+        "fields": {
+          "coatColor": "grey-white"
+        }
+      },
+      {
+        "providerId": "contract-shelter",
+        "animalId": "contract:profile-9",
+        "fields": {
+          "coatColor": "orange-white"
         }
       }
     ]

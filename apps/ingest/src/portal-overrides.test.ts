@@ -54,6 +54,52 @@ describe("age corrections replace the crawl's other age answer", () => {
 });
 
 describe("PortalExportPayload", () => {
+  it("merges admin profile answers and compares structured baselines by value", () => {
+    const original = animal({
+      id: "macja-hisa:profile", coatColor: "brown", coatLength: "long",
+      medical: { vaccinated: true, neutered: false, fiv: "negative" },
+      adoptionRequirements: { experiencedCarer: true, indoorOnly: false },
+    });
+    const result = applyOverrides([original], payload([{
+      providerId: "macja-hisa", animalId: original.id,
+      fields: {
+        coatColor: "black-white", coatColors: ["black", "white"], coatLength: "short",
+        medical: { neutered: true }, adoptionRequirements: { indoorOnly: true },
+      },
+      baseline: { medical: { fiv: "negative", neutered: false, vaccinated: true } },
+    }]));
+    expect(result.animals[0]).toMatchObject({
+      coatColor: "black-white", coatLength: "short",
+      medical: { vaccinated: true, neutered: true, fiv: "negative" },
+      adoptionRequirements: { experiencedCarer: true, indoorOnly: true },
+    });
+    expect(result.conflicts).toEqual([]);
+    expect(original.coatColor).toBe("brown");
+    expect(original.medical?.neutered).toBe(false);
+    expect(applyOverrides([original], payload([])).animals[0]).toEqual(original);
+  });
+
+  it("corrects species without retaining feline tests", () => {
+    const original = animal({ id: "macja-hisa:profile", medical: { neutered: true, fiv: "negative" } });
+    const result = applyOverrides([original], payload([{
+      providerId: "macja-hisa", animalId: original.id, fields: { species: "rabbit" },
+    }]));
+    expect(result.animals[0]?.species).toBe("rabbit");
+    expect(result.animals[0]?.medical).toEqual({ neutered: true });
+  });
+
+  it("replaces competing stage and intake representations", () => {
+    const original = animal({ id: "macja-hisa:profile", birthDate: "2020-01-01", approximateAgeMonths: 72, intakeDate: "2024-01-01" });
+    const result = applyOverrides([original], payload([{
+      providerId: "macja-hisa", animalId: original.id,
+      fields: { lifeStage: "senior", intakeBy: "2023-12-31" },
+    }]));
+    expect(result.animals[0]).toMatchObject({ lifeStage: "senior", intakeBy: "2023-12-31" });
+    expect(result.animals[0]?.birthDate).toBeUndefined();
+    expect(result.animals[0]?.approximateAgeMonths).toBeUndefined();
+    expect(result.animals[0]?.intakeDate).toBeUndefined();
+  });
+
   it("accepts a valid payload", () => {
     const result = PortalExportPayload.safeParse(
       payload([

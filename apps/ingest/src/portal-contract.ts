@@ -1,10 +1,17 @@
 import { z } from "zod";
 import {
   AdoptionStatus,
+  AnimalAdoptionRequirements,
+  AnimalMedical,
   AnimalSize,
+  CoatColorCategory,
+  CoatColors,
+  CoatLength,
   Compatibility,
   EnergyLevel,
+  LifeStage,
   Sex,
+  Species,
 } from "@posvoji/schema";
 
 // The Django shelter portal (apps/portal) lets a shelter correct fields on
@@ -29,6 +36,16 @@ export const OverrideFields = z.strictObject({
   goodWithCats: Compatibility.optional(),
   apartmentOk: Compatibility.optional(),
   specialNeeds: z.boolean().optional(),
+  species: Species.optional(),
+  coatColors: CoatColors.optional(),
+  coatColor: CoatColorCategory.optional(),
+  coatLength: CoatLength.optional(),
+  lifeStage: LifeStage.optional(),
+  intakeDate: z.iso.date().optional(),
+  intakeBy: z.iso.date().optional(),
+  foundDate: z.iso.date().optional(),
+  medical: AnimalMedical.refine((value) => Object.keys(value).length > 0).optional(),
+  adoptionRequirements: AnimalAdoptionRequirements.refine((value) => Object.keys(value).length > 0).optional(),
 });
 export type OverrideFields = z.infer<typeof OverrideFields>;
 

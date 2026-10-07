@@ -6,6 +6,15 @@ from typing import Any
 from django.conf import settings
 from django.db import models
 
+from .profile_validators import (
+    COAT_CATEGORIES,
+    COAT_LENGTHS,
+    LIFE_STAGES,
+    validate_coat_colors,
+    validate_medical,
+    validate_requirements,
+)
+
 # Every control character except tab, newline and carriage return: the C0
 # range, DEL and the C1 range. Nothing a shelter types on purpose, and a NUL
 # in a name has reached the public dataset through here before.
@@ -70,6 +79,16 @@ OVERRIDE_FIELDS: tuple[tuple[str, str], ...] = (
     ("good_with_cats", "goodWithCats"),
     ("apartment_ok", "apartmentOk"),
     ("special_needs", "specialNeeds"),
+    ("species", "species"),
+    ("coat_colors", "coatColors"),
+    ("coat_color", "coatColor"),
+    ("coat_length", "coatLength"),
+    ("life_stage", "lifeStage"),
+    ("intake_date", "intakeDate"),
+    ("intake_by", "intakeBy"),
+    ("found_date", "foundDate"),
+    ("medical", "medical"),
+    ("adoption_requirements", "adoptionRequirements"),
 )
 
 COLUMN_BY_JSON_KEY: dict[str, str] = {key: column for column, key in OVERRIDE_FIELDS}
@@ -103,7 +122,9 @@ LISTING_COLUMN_BY_JSON_KEY: dict[str, str] = {
 
 # Columns that hold a date. Both the JSON API and the ingest contract carry
 # one as a string, so a column named here is serialised before it goes out.
-DATE_COLUMNS: frozenset[str] = frozenset({"birth_date"})
+DATE_COLUMNS: frozenset[str] = frozenset(
+    {"birth_date", "intake_date", "intake_by", "found_date"}
+)
 
 
 def stated_values(
@@ -285,6 +306,31 @@ class AnimalOverride(models.Model):
     )
     animal_id = models.CharField(max_length=200)
 
+    # Maintainer-reviewed filters. The shelter API retains its existing
+    # editing vocabulary; these corrections are entered through /admin.
+    species = models.CharField(
+        max_length=16, choices=ListingSpecies.choices, null=True, blank=True
+    )
+    coat_colors = models.JSONField(
+        null=True, blank=True, validators=[validate_coat_colors]
+    )
+    coat_color = models.CharField(
+        max_length=16, choices=[(v, v) for v in COAT_CATEGORIES], null=True, blank=True
+    )
+    coat_length = models.CharField(
+        max_length=16, choices=[(v, v) for v in COAT_LENGTHS], null=True, blank=True
+    )
+    life_stage = models.CharField(
+        max_length=16, choices=[(v, v) for v in LIFE_STAGES], null=True, blank=True
+    )
+    intake_date = models.DateField(null=True, blank=True)
+    intake_by = models.DateField(null=True, blank=True)
+    found_date = models.DateField(null=True, blank=True)
+    medical = models.JSONField(null=True, blank=True, validators=[validate_medical])
+    adoption_requirements = models.JSONField(
+        null=True, blank=True, validators=[validate_requirements]
+    )
+
     name = models.CharField(max_length=200, null=True, blank=True)
     short_description = models.TextField(null=True, blank=True)
     status = models.CharField(
@@ -376,6 +422,17 @@ class AnimalOverride(models.Model):
     def overridden_fields(self) -> dict[str, object]:
         """The fields this shelter actually changed, keyed camelCase."""
         return stated_values(self, OVERRIDE_FIELDS)
+
+    def clean(self):
+        super().clean()
+        for column, validator in (
+            ("coat_colors", validate_coat_colors),
+            ("medical", validate_medical),
+            ("adoption_requirements", validate_requirements),
+        ):
+            value = getattr(self, column)
+            if value is not None:
+                validator(value)
 
     def is_empty(self) -> bool:
         """Whether this override states nothing, and so does not exist.

@@ -161,7 +161,10 @@ export function applyEnrichment(
       const [top, nested] = claim.field.split(".") as [string, string?];
       const portalField = top === "goodWith" && nested
         ? `goodWith${nested[0]!.toUpperCase()}${nested.slice(1)}` : claim.field;
-      if (correction && portalField in correction.fields) {
+      const nestedCorrection = correction?.fields[top as keyof typeof correction.fields];
+      if (correction && (portalField in correction.fields ||
+        (nested && typeof nestedCorrection === "object" &&
+          nestedCorrection !== null && nested in nestedCorrection))) {
         reject("shelter-value", claim.field);
         continue;
       }

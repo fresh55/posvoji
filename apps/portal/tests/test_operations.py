@@ -1,7 +1,11 @@
 """Offline checks for host status and private commit promotion."""
 
 import importlib.util
+import json
+import os
+import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -30,6 +34,25 @@ def test_job_failure_recovery_and_degraded_state():
     change(document, "crawl", "start", "2026-09-06T18:00:00Z")
     change(document, "crawl", "finish", "2026-09-06T18:02:00Z")
     assert document["jobs"]["crawl"]["state"] == "success"
+
+
+def test_status_replacement_keeps_the_serving_directory_group(tmp_path, monkeypatch):
+    operations = module("operations-status")
+    if sys.platform == "win32":
+        monkeypatch.setitem(sys.modules, "fcntl", MagicMock())
+        monkeypatch.setattr(operations.os, "fchmod", MagicMock(), raising=False)
+    elif groups := [gid for gid in os.getgroups() if gid != os.getgid()]:
+        os.chown(tmp_path, -1, groups[0])
+    group = tmp_path.stat().st_gid
+    change_group = MagicMock(wraps=getattr(operations.os, "fchown", None))
+    monkeypatch.setattr(operations.os, "fchown", change_group, raising=False)
+    operations.record(tmp_path, "crawl", "start", "success")
+    assert change_group.call_args.args[1:] == (-1, group)
+    assert (tmp_path / "status.json").stat().st_gid == group
+    assert (
+        json.loads((tmp_path / "status.json").read_text())["jobs"]["crawl"]["state"]
+        == "running"
+    )
 
 
 def test_promote_preserves_private_configuration_and_rejects_ambiguity(tmp_path):

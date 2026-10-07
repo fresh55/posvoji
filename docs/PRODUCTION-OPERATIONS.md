@@ -156,6 +156,20 @@ standard-library SMTP sender. A portal unit managed separately can use the
 same `OnFailure` setting in a systemd drop-in. Notices contain the failed unit
 and inspection instructions, never application logs. The alert unit has no
 failure hook of its own, so a mail outage cannot recurse into more alerts.
+Host health notices are grouped into incidents in private
+`/var/lib/posvoji-alerts/health.json`. The first failed check sends a notice;
+later failed checks stay quiet until a successful check sends a recovery notice
+through `posvoji-health-recovery.service`. State survives service and host
+restarts. It changes only after SMTP accepts a notice, so failed delivery is
+retried on the next matching check. Crawl, backup, portal and deliberate test
+notices keep their existing per-failure behavior; external Actions notices are
+also independent of host incident state. Do not delete the incident state to
+silence a problem.
+
+HTTP failures in the health journal identify the method, requested URL and
+status, without reading credentials into logs. The check still fails on the
+same delivery and freshness conditions.
+
 Test the complete route using a deliberate, separate failing unit:
 
 ```bash
@@ -185,6 +199,8 @@ status fields in `/srv/posvoji/operations/status.json`. Systemd passes the job
 result even after a failed start, timeout or OOM kill. A degraded export still
 publishes, then records `degraded` rather than silently becoming clean. No logs,
 credentials, database content or machine paths go into this status document.
+Atomic status replacements use the operations directory's serving group and
+mode `640`, including manual runs using the service user's primary group.
 
 Serve just this file from the existing authenticated site, before its fallback:
 

@@ -17,9 +17,10 @@ for arg in "${args[@]}"; do [[ "$arg" = --fail ]] || not_found_args+=("$arg"); d
 # Headers are dumped on every fetch, so the last one's are always on disk and
 # nothing has to ask for a page twice to read them.
 fetch() {
-  local status
-  status=$(curl "${args[@]}" --output "$2" --dump-header "$scratch/headers" --write-out '%{http_code}' "$1") || return 1
-  [[ "$status" = 200 ]] || { echo "unexpected HTTP status: $status" >&2; return 1; }
+  local status result=0
+  status=$(curl "${args[@]}" --output "$2" --dump-header "$scratch/headers" --write-out '%{http_code}' "$1") || result=$?
+  [[ "$result" = 0 ]] || { echo "GET $1 failed (HTTP ${status:-000}, curl exit $result)" >&2; return 1; }
+  [[ "$status" = 200 ]] || { echo "GET $1: unexpected HTTP status: $status" >&2; return 1; }
 }
 check() {
   fetch https://posvoji.si/_posvoji/status.json "$scratch/status.json" &&
@@ -42,8 +43,8 @@ encoded() {
   grep -qi '^content-encoding:' "$scratch/headers" || { echo "no Content-Encoding for $1" >&2; return 1; }
 }
 # Chunk names are content-hashed per release, so the chunk to ask for is read
-# from the homepage rather than pinned here. head closes the pipe, so the value
-# and not the pipeline's status is what says whether one was found.
+# from the homepage rather than pinned here. sed consumes all matches to avoid
+# the broken-pipe noise from stopping grep after the first match.
 #
 # The homepage is not fetched again. check() above already downloaded it and
 # fetch() already left its headers on disk, and that page is over a megabyte
@@ -53,7 +54,7 @@ encoded() {
 delivery() {
   local chunk
   grep -qi '^content-encoding:' "$scratch/home-headers" || { echo 'no Content-Encoding for the homepage' >&2; return 1; }
-  chunk=$(grep -o '/_next/static/[^"]*\.js' "$scratch/index.html" | head -n 1) || true
+  chunk=$(grep -o '/_next/static/[^"]*\.js' "$scratch/index.html" | sed -n '1p') || true
   [[ -n "$chunk" ]] || { echo 'the homepage links no /_next/static chunk' >&2; return 1; }
   encoded "https://posvoji.si$chunk" /dev/null
 }
@@ -62,8 +63,8 @@ delivery || delivery
 # out/404.html only reaches a visitor if the server is wired to serve it
 # (docs/DEPLOY-HEADERS.md). Assert the status and the page's own words, so the
 # server and the export cannot drift apart unnoticed.
-status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani)
-[[ "$status" = 404 ]] || { echo "unexpected HTTP status for a missing path: $status" >&2; exit 1; }
+status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani) || { echo "GET https://posvoji.si/ni-take-strani failed (HTTP ${status:-000})" >&2; exit 1; }
+[[ "$status" = 404 ]] || { echo "GET https://posvoji.si/ni-take-strani: unexpected HTTP status: $status" >&2; exit 1; }
 grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path did not serve the branded 404' >&2; exit 1; }
 # The 3D cat's model is the one large asset no host compresses by itself:
 # Caddy's encode matches Content-Type and its default list has no model/* entry,
@@ -91,9 +92,10 @@ if [[ "${POSVOJI_MONITOR_MODEL_ENCODING:-}" = 1 ]]; then
   for arg in "${args[@]}"; do [[ "$arg" = --compressed ]] || model_args+=("$arg"); done
   model_args+=(--head --header 'Accept-Encoding: br, gzip')
   model() {
-    local status
-    status=$(curl "${model_args[@]}" --output /dev/null --dump-header "$scratch/model-headers" --write-out '%{http_code}' https://posvoji.si/models/our-cat/cat.glb) || return 1
-    [[ "$status" = 200 ]] || { echo "unexpected HTTP status for the 3D model: $status" >&2; return 1; }
+    local status result=0
+    status=$(curl "${model_args[@]}" --output /dev/null --dump-header "$scratch/model-headers" --write-out '%{http_code}' https://posvoji.si/models/our-cat/cat.glb) || result=$?
+    [[ "$result" = 0 ]] || { echo "HEAD https://posvoji.si/models/our-cat/cat.glb failed (HTTP ${status:-000}, curl exit $result)" >&2; return 1; }
+    [[ "$status" = 200 ]] || { echo "HEAD https://posvoji.si/models/our-cat/cat.glb: unexpected HTTP status: $status" >&2; return 1; }
     grep -qi '^content-encoding:' "$scratch/model-headers" || { echo 'no Content-Encoding for /models/our-cat/cat.glb' >&2; return 1; }
   }
   # A release can switch under it like any other check here. Retry once.

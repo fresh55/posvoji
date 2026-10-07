@@ -7,8 +7,11 @@ import os
 import smtplib
 import ssl
 import sys
+import tempfile
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import formataddr
+from pathlib import Path
 
 UNITS = {
     "posvoji-health.service",
@@ -23,9 +26,11 @@ def enabled(env, name):
     return env.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def notify(unit, env, *, github_actions=False):
+def notify(unit, env, *, github_actions=False, recovered=False):
     if unit not in UNITS:
         raise ValueError("unexpected service")
+    if recovered and (unit != "posvoji-health.service" or github_actions):
+        raise ValueError("recovery notices require the host health check")
     required = (
         "POSVOJI_ALERT_TO",
         "PORTAL_EMAIL_HOST",
@@ -45,7 +50,8 @@ def notify(unit, env, *, github_actions=False):
         raise ValueError("invalid SMTP port or timeout")
     message = EmailMessage()
     test = unit == "posvoji-alert-test.service"
-    message["Subject"] = f"{'[TEST] ' if test else ''}Posvoji.si: {unit} failed"
+    outcome = "recovered" if recovered else "failed"
+    message["Subject"] = f"{'[TEST] ' if test else ''}Posvoji.si: {unit} {outcome}"
     message["From"] = formataddr(
         (env.get("PORTAL_FROM_NAME", "Posvoji.si"), env["PORTAL_FROM_EMAIL"])
     )
@@ -61,7 +67,11 @@ def notify(unit, env, *, github_actions=False):
         )
     else:
         location = (
-            f"Systemd reported a failure in {unit}.\n"
+            (
+                "The production health check is passing again.\n"
+                if recovered
+                else f"Systemd reported a failure in {unit}.\n"
+            )
             + f"Inspect: systemctl status {unit}\n"
             + f"Then: journalctl -u {unit} --since today\n"
         )
@@ -90,10 +100,46 @@ def notify(unit, env, *, github_actions=False):
             raise RuntimeError("SMTP refused an alert recipient")
 
 
+def report_health(directory, env, *, recovered=False):
+    """Send once per host health incident, committing only accepted notices."""
+    import fcntl
+
+    with (directory / ".health.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path = directory / "health.json"
+        state = (
+            json.loads(path.read_text())
+            if path.exists()
+            else {
+                "version": 1,
+                "active": False,
+            }
+        )
+        if state.get("version") != 1 or type(state.get("active")) is not bool:
+            raise ValueError("invalid health incident state")
+        active = not recovered
+        if state["active"] == active:
+            return False
+        notify("posvoji-health.service", env, recovered=recovered)
+        state.update(active=active, changedAt=datetime.now(UTC).isoformat())
+        fd, name = tempfile.mkstemp(prefix=".health-", dir=directory)
+        try:
+            with os.fdopen(fd, "w") as output:
+                json.dump(state, output)
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(name, path)
+        finally:
+            Path(name).unlink(missing_ok=True)
+        return True
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("unit", choices=sorted(UNITS))
     parser.add_argument("--github-actions", action="store_true")
+    parser.add_argument("--recovered", action="store_true")
+    parser.add_argument("--state-directory", type=Path)
     args = parser.parse_args()
     try:
         env = dict(os.environ)
@@ -107,12 +153,28 @@ def main():
             ):
                 raise ValueError("invalid private alert configuration")
             env.update(configuration)
-        notify(args.unit, env, github_actions=args.github_actions)
+        if args.recovered and (
+            not args.state_directory
+            or args.github_actions
+            or args.unit != "posvoji-health.service"
+        ):
+            raise ValueError("recovery requires persistent host health state")
+        if args.state_directory and args.unit == "posvoji-health.service":
+            if args.github_actions:
+                raise ValueError("host incident state cannot be used in Actions")
+            sent = report_health(args.state_directory, env, recovered=args.recovered)
+        else:
+            notify(args.unit, env, github_actions=args.github_actions)
+            sent = True
     except Exception as error:
         # SMTP exceptions can contain recipients or server-supplied details.
-        print(f"Failure notice was not sent ({type(error).__name__}).", file=sys.stderr)
+        print(f"Notice was not sent ({type(error).__name__}).", file=sys.stderr)
         return 1
-    print("SMTP accepted the failure notice.")
+    if sent:
+        outcome = "recovery" if args.recovered else "failure"
+        print(f"SMTP accepted the {outcome} notice.")
+    else:
+        print("Health incident unchanged; no notice sent.")
     return 0
 
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=Email a failure notice for %i
+Description=Email recovery of a reported Posvoji health incident
 Wants=network-online.target
 After=network-online.target
 ConditionPathExists=/etc/posvoji/alerts.env
@@ -10,7 +10,7 @@ User=posvoji
 Group=caddy
 EnvironmentFile=/srv/posvoji/portal.env
 EnvironmentFile=/etc/posvoji/alerts.env
-ExecStart=/usr/bin/python3 /usr/local/lib/posvoji/notify-failure.py %i --state-directory /var/lib/posvoji-alerts
+ExecStart=/usr/bin/python3 /usr/local/lib/posvoji/notify-failure.py posvoji-health.service --recovered --state-directory /var/lib/posvoji-alerts
 StateDirectory=posvoji-alerts
 StateDirectoryMode=0700
 TimeoutStartSec=90s

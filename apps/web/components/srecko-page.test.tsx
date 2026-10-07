@@ -6,7 +6,6 @@ import {
   SRECKO,
   SRECKO_TEXT,
   SRECKO_PATHS,
-  SRECKO_POSTER_PATHS,
   sreckoDateLabel,
   sreckoMilestones,
   sreckoPortrait,
@@ -28,7 +27,7 @@ afterEach(() => {
   SRECKO.photos.splice(0, SRECKO.photos.length, ...recordedPhotos);
 });
 describe("Srečko's memorial", () => {
-  it.each(["sl", "en"] as const)("keeps the memorial first and offers cats after the story (%s)", locale => {
+  it.each(["sl", "en"] as const)("keeps one memorial line, photographs and the cats button (%s)", locale => {
     const { container } = render(<SreckoPage locale={locale} />);
     const header = container.querySelector("main header")!;
     expect(header.textContent).toContain(SRECKO_TEXT[locale].memorial);
@@ -37,21 +36,22 @@ describe("Srečko's memorial", () => {
     const cats = screen.getByRole("link", { name: SRECKO_TEXT[locale].cats });
     expect(cats.getAttribute("href")).toBe(`${locale === "sl" ? "/" : "/en"}?vrsta=macka`);
     expect(container.querySelector("main figure")!.compareDocumentPosition(cats) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText(SRECKO_TEXT[locale].purpose).compareDocumentPosition(cats) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole("link", { name: SRECKO_TEXT[locale].poster }).getAttribute("href")).toBe(SRECKO_POSTER_PATHS[locale]);
+    expect(screen.queryByText(SRECKO_TEXT[locale].purpose)).toBeNull();
+    expect(screen.queryByText(SRECKO_TEXT[locale].posterStory)).toBeNull();
+    expect(screen.queryByText(SRECKO_TEXT[locale].photoCredit)).toBeNull();
+    expect(screen.queryByRole("link", { name: SRECKO_TEXT[locale].poster })).toBeNull();
     expect([...container.querySelectorAll("a")].map(a => a.getAttribute("href"))).toContain(SRECKO_PATHS[locale === "sl" ? "en" : "sl"]);
     expect(container.querySelector("main details")).toBeNull();
     expect(container.querySelector("main time")).toBeNull();
     expect(container.querySelector("main")?.textContent).not.toMatch(/FeLV|Eno oko|One eye|Pomembni trenutki|Milestones/);
-    expect(screen.getByText(SRECKO.memory![locale])).toBeTruthy();
-    expect(header.textContent).toContain(locale === "sl" ? "Mačje hiše" : "Mačja hiša");
+    expect(screen.queryByText(SRECKO.memory![locale])).toBeNull();
     expect(container.textContent).not.toMatch(/ranked|uvrščen|filter skrije/);
   });
   it("uses the prepared photo and removes the model credit", () => {
     render(<SreckoPage locale="en" />);
     expect(screen.getAllByRole("img")).toHaveLength(4);
     expect(decodeURIComponent(screen.getAllByRole("img")[0].getAttribute("src") ?? "")).toContain(sreckoPortrait().src);
-    expect(screen.getByText(SRECKO_TEXT.en.photoCredit)).toBeTruthy();
+    expect(screen.queryByText(SRECKO_TEXT.en.photoCredit)).toBeNull();
     expect(screen.queryByText("Model credit")).toBeNull();
   });
   it("keeps the credited illustration when no photographs are available", () => {

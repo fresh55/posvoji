@@ -1,4 +1,4 @@
-import { Cat, Printer } from "lucide-react";
+import { Cat } from "lucide-react";
 import Image from "next/image";
 import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
@@ -13,7 +13,6 @@ import { ABOUT_PATHS } from "@/lib/site-links";
 import {
   SRECKO,
   SRECKO_PATHS,
-  SRECKO_POSTER_PATHS,
   SRECKO_TEXT,
   sreckoPortrait,
 } from "@/lib/srecko";
@@ -41,20 +40,14 @@ export function SreckoPage({ locale }: { locale: Locale }) {
           trail={[{ label: getMessages(locale).about, href: ABOUT_PATHS[locale] }]}
           current={SRECKO.name}
         />
-        <header className="space-y-5">
-          <div className="space-y-2">
-            <h1 className={PAGE_TITLE}>{SRECKO.name}</h1>
-            <p className="text-sm text-muted-foreground">{text.memorial}</p>
-          </div>
-          <div className="space-y-2 text-base leading-relaxed">
-            <p>{text.posterStory}</p>
-            {SRECKO.memory && <p>{SRECKO.memory[locale]}</p>}
-          </div>
+        <header className="space-y-2">
+          <h1 className={PAGE_TITLE}>{SRECKO.name}</h1>
+          <p className="text-sm text-muted-foreground">{text.memorial}</p>
         </header>
       </div>
 
       {hasPhotos ? (
-        <figure className="mx-auto w-full space-y-3" style={{ maxWidth: portrait.width }}>
+        <figure className="mx-auto w-full" style={{ maxWidth: portrait.width }}>
           <ul className="grid grid-cols-3 gap-3">
             {SRECKO.photos.map((photo, index) => (
               <li key={photo.src} className={index === 0 ? "col-span-3" : ""}>
@@ -72,9 +65,6 @@ export function SreckoPage({ locale }: { locale: Locale }) {
               </li>
             ))}
           </ul>
-          <figcaption className="text-xs text-muted-foreground">
-            {text.photoCredit}
-          </figcaption>
         </figure>
       ) : (
         <div className="relative mx-auto h-64 w-full max-w-sm sm:h-80">
@@ -89,23 +79,13 @@ export function SreckoPage({ locale }: { locale: Locale }) {
         </div>
       )}
 
-      <div className="space-y-4 border-t pt-6">
-        <p className="text-sm leading-relaxed text-muted-foreground">{text.purpose}</p>
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6">
-          <Button asChild variant="outline" size="wrap" className="min-h-11 max-w-full">
-            <a href={catsHref}>
-              <Cat aria-hidden />
-              {text.cats}
-            </a>
-          </Button>
-          <a
-            href={SRECKO_POSTER_PATHS[locale]}
-            className="inline-flex min-h-11 max-w-full items-center gap-2 rounded-ui text-sm text-muted-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
-          >
-            <Printer aria-hidden className="size-4 shrink-0" />
-            {text.poster}
+      <div className="border-t pt-6">
+        <Button asChild variant="outline" size="wrap" className="min-h-11 max-w-full">
+          <a href={catsHref}>
+            <Cat aria-hidden />
+            {text.cats}
           </a>
-        </div>
+        </Button>
       </div>
     </SiteShell>
   );

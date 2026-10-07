@@ -282,6 +282,31 @@ class AnimalOverrideAdmin(admin.ModelAdmin):
     date_hierarchy = "updated_at"
     actions = ("accept_the_crawl", "keep_the_correction")
 
+    def save_model(self, request, obj, form, change):
+        crawled = animal_index(crawled=True).get((obj.shelter.slug, obj.animal_id))
+        values = crawled_values(crawled) if crawled is not None else {}
+        baseline = dict(obj.baseline)
+        fields = obj.overridden_fields()
+        for column in form.changed_data:
+            key = next(
+                (
+                    key
+                    for key, field_column in COLUMN_BY_JSON_KEY.items()
+                    if field_column == column
+                ),
+                None,
+            )
+            if key is None:
+                continue
+            if key in fields and key in values:
+                baseline[key] = values[key]
+            else:
+                baseline.pop(key, None)
+        obj.baseline = baseline
+        obj.baseline_at = timezone.now() if baseline else None
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
     def get_queryset(self, request):
         # The crawl state of every row needs its shelter slug, so the join is
         # worth doing once instead of once per row.

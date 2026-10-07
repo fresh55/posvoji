@@ -4,7 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from core.models import COLUMN_BY_JSON_KEY, OVERRIDE_FIELDS, AnimalOverride, Shelter
+from core.models import (
+    COLUMN_BY_JSON_KEY,
+    DATE_COLUMNS,
+    OVERRIDE_FIELDS,
+    AnimalOverride,
+    Shelter,
+)
 
 CONTRACT_PATH = (
     Path(__file__).parents[2] / "ingest" / "fixtures" / "portal-export.contract.json"
@@ -21,12 +27,17 @@ def field_values(contract: dict) -> dict[str, set[object]]:
     values: dict[str, set[object]] = {}
     for override in contract["export"]["overrides"]:
         for field, value in override["fields"].items():
-            values.setdefault(field, set()).add(value)
+            comparable = (
+                json.dumps(value, sort_keys=True)
+                if isinstance(value, (list, dict))
+                else value
+            )
+            values.setdefault(field, set()).add(comparable)
     return values
 
 
 def to_model_value(column: str, value: object) -> object:
-    if column == "birth_date" and isinstance(value, str):
+    if column in DATE_COLUMNS and isinstance(value, str):
         return date.fromisoformat(value)
     return value
 

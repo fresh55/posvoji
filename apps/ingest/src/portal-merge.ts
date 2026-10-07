@@ -1,4 +1,5 @@
 import { Animal } from "@posvoji/schema";
+import { isDeepStrictEqual } from "node:util";
 import type {
   OverrideFields,
   PortalExportPayload,
@@ -61,12 +62,12 @@ function conflictsFor(
     const key = field as keyof OverrideFields;
     const base = baseline[key] ?? null;
     const crawled = crawledValue(animal, key);
-    if (crawled === base) continue;
+    if (isDeepStrictEqual(crawled, base)) continue;
     conflicts.push({
       providerId: override.providerId,
       animalId: override.animalId,
       field: key,
-      kind: crawled === value ? "caught-up" : "moved",
+      kind: isDeepStrictEqual(crawled, value) ? "caught-up" : "moved",
       baseline: base,
       crawled,
       override: value,
@@ -80,10 +81,34 @@ function mergeFields(animal: Animal, fields: OverrideFields): unknown {
   const { goodWithKids, goodWithDogs, goodWithCats, ...flat } = fields;
   const merged: Record<string, unknown> = { ...animal, ...flat };
 
+  // Nested corrections replace only the stated answers.
+  if (fields.medical !== undefined) {
+    merged["medical"] = { ...animal.medical, ...fields.medical };
+  }
+  if (fields.adoptionRequirements !== undefined) {
+    merged["adoptionRequirements"] = {
+      ...animal.adoptionRequirements, ...fields.adoptionRequirements,
+    };
+  }
+  if (fields.species !== undefined && fields.species !== "cat") {
+    const medical = { ...(merged["medical"] as Animal["medical"]) };
+    delete medical.fiv;
+    delete medical.felv;
+    merged["medical"] = medical;
+  }
+
   // The portal treats exact and approximate age as alternative answers.
   // Do not let the crawl's other representation mask a shelter correction.
   if (fields.birthDate !== undefined) delete merged["approximateAgeMonths"];
   else if (fields.approximateAgeMonths !== undefined) delete merged["birthDate"];
+  if (fields.birthDate !== undefined || fields.approximateAgeMonths !== undefined) {
+    delete merged["lifeStage"];
+  } else if (fields.lifeStage !== undefined) {
+    delete merged["birthDate"];
+    delete merged["approximateAgeMonths"];
+  }
+  if (fields.intakeDate !== undefined) delete merged["intakeBy"];
+  else if (fields.intakeBy !== undefined) delete merged["intakeDate"];
 
   if (
     goodWithKids !== undefined ||

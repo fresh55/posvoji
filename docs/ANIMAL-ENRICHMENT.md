@@ -85,6 +85,16 @@ For newly introduced requirements, a shelter can correct its published
 description through the existing portal; direct requirement editing is not yet
 part of the portal form.
 
+Maintainers can correct every filter in the Django animal override admin,
+including species, coat colors and category, coat length, life stage, intake
+dates, medical answers and adoption requirements. These are attributed admin
+corrections in the portal database; the shelter editor retains its existing
+fields. Admin saves record the editor and the raw crawl baseline. Nested
+medical and requirement corrections replace only stated answers, and clearing
+an admin correction returns that field to the source/review pipeline.
+Photos support visible appearance and species; they do not establish health,
+temperament or household compatibility. Record only supported answers.
+
 ## Life stage
 
 `lifeStage` (young, adult, senior) records a stage the shelter states where

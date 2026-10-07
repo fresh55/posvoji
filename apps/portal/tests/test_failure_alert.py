@@ -1,6 +1,10 @@
 """Exercise SMTP failure notices offline; never send mail from tests."""
 
 import importlib.util
+import json
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -102,3 +106,83 @@ def test_test_notice_uses_implicit_tls(monkeypatch, env):
     assert factory.call_args.args[1] == 465
     assert "context" in factory.call_args.kwargs
     assert connection.send_message.call_args.args[0]["Subject"].startswith("[TEST]")
+
+
+@pytest.fixture
+def host_lock(monkeypatch):
+    # Windows exercises the durable state and SMTP transitions; Linux also
+    # exercises the real host lock.
+    if sys.platform == "win32":
+        monkeypatch.setitem(sys.modules, "fcntl", MagicMock())
+
+
+def test_health_incident_sends_failure_and_recovery_once(
+    monkeypatch, env, tmp_path, host_lock
+):
+    factory = MagicMock()
+    connection = factory.return_value.__enter__.return_value
+    connection.send_message.return_value = {}
+    monkeypatch.setattr(alerts.smtplib, "SMTP", factory)
+    assert not alerts.report_health(tmp_path, env, recovered=True)
+    factory.assert_not_called()
+    assert alerts.report_health(tmp_path, env)
+    assert not alerts.report_health(tmp_path, env)
+    # A fresh module represents the next timer run or a restarted service.
+    spec = importlib.util.spec_from_file_location("restarted_alerts", SCRIPT)
+    restarted = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(restarted)
+    assert not restarted.report_health(tmp_path, env)
+    assert restarted.report_health(tmp_path, env, recovered=True)
+    assert not restarted.report_health(tmp_path, env, recovered=True)
+    messages = [call.args[0] for call in connection.send_message.call_args_list]
+    assert [message["Subject"] for message in messages] == [
+        "Posvoji.si: posvoji-health.service failed",
+        "Posvoji.si: posvoji-health.service recovered",
+    ]
+    assert "passing again" in messages[1].get_content()
+    assert env["PORTAL_EMAIL_PASSWORD"] not in messages[1].as_string()
+    assert json.loads((tmp_path / "health.json").read_text())["active"] is False
+    assert alerts.report_health(tmp_path, env)  # a new incident alerts again
+
+
+def test_failed_delivery_is_retried_without_losing_the_incident(
+    monkeypatch, env, tmp_path, host_lock
+):
+    sender = MagicMock(side_effect=RuntimeError("fixture mail outage"))
+    monkeypatch.setattr(alerts, "notify", sender)
+    with pytest.raises(RuntimeError):
+        alerts.report_health(tmp_path, env)
+    assert not (tmp_path / "health.json").exists()
+    sender.side_effect = None
+    assert alerts.report_health(tmp_path, env)
+    sender.side_effect = RuntimeError("fixture mail outage")
+    with pytest.raises(RuntimeError):
+        alerts.report_health(tmp_path, env, recovered=True)
+    assert json.loads((tmp_path / "health.json").read_text())["active"] is True
+    sender.side_effect = None
+    assert alerts.report_health(tmp_path, env, recovered=True)
+    assert not alerts.report_health(tmp_path, env, recovered=True)
+    assert sender.call_count == 4
+
+
+def test_corrupt_incident_state_fails_without_sending(
+    monkeypatch, env, tmp_path, host_lock
+):
+    sender = MagicMock()
+    monkeypatch.setattr(alerts, "notify", sender)
+    (tmp_path / "health.json").write_text('{"version":1,"active":"false"}')
+    with pytest.raises(ValueError, match="incident state"):
+        alerts.report_health(tmp_path, env)
+    sender.assert_not_called()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="host flock requires Linux")
+def test_concurrent_failures_share_one_incident(monkeypatch, env, tmp_path):
+    sender = MagicMock(side_effect=lambda *args, **kwargs: time.sleep(0.05))
+    monkeypatch.setattr(alerts, "notify", sender)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(lambda _: alerts.report_health(tmp_path, env), range(2))
+        )
+    assert sorted(results) == [False, True]
+    sender.assert_called_once()

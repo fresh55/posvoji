@@ -20,6 +20,7 @@ for (const name of [
   "operation-shell",
   "release-status",
   "verify-release",
+  "monitor-production",
   "prune-retired-locks",
 ]) {
   const run = spawnSync(process.execPath, [`scripts/${name}.test.mjs`], {

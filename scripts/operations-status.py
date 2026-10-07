@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -37,14 +37,17 @@ def record(directory, job, event, result):
         fcntl.flock(lock, fcntl.LOCK_EX)
         path = directory / "status.json"
         document = json.loads(path.read_text()) if path.exists() else {"version": 1}
-        transition(document, job, event, datetime.now(timezone.utc).isoformat(), result)
+        transition(document, job, event, datetime.now(UTC).isoformat(), result)
         fd, name = tempfile.mkstemp(prefix=".status-", dir=directory)
         try:
             with os.fdopen(fd, "w") as output:
                 json.dump(document, output)
                 output.flush()
-                os.fsync(output.fileno())
+                # Manual runs use posvoji's primary group, while systemd uses
+                # caddy. Match the serving directory before publishing either.
+                os.fchown(output.fileno(), -1, directory.stat().st_gid)
                 os.fchmod(output.fileno(), 0o640)
+                os.fsync(output.fileno())
             os.replace(name, path)
         finally:
             Path(name).unlink(missing_ok=True)

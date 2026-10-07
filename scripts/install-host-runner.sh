@@ -25,8 +25,8 @@ install -d -o posvoji -g caddy -m 750 /srv/posvoji/operations
 runuser -u posvoji -- env npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store pnpm --dir "$repo" fetch --frozen-lockfile
 install -d -o root -g root -m 755 /usr/local/lib/posvoji
 install -o root -g root -m 644 "$repo/scripts/notify-failure.py" /usr/local/lib/posvoji/notify-failure.py
-systemd-analyze verify "$repo/scripts/systemd/posvoji-crawl.service" "$repo/scripts/systemd/posvoji-crawl.timer" "$repo/scripts/systemd/posvoji-backup.service" "$repo/scripts/systemd/posvoji-backup.timer" "$repo/scripts/systemd/posvoji-health.service" "$repo/scripts/systemd/posvoji-health.timer" "$repo/scripts/systemd/posvoji-alert@.service"
-for unit in posvoji-crawl.service posvoji-crawl.timer posvoji-backup.service posvoji-backup.timer posvoji-health.service posvoji-health.timer posvoji-alert@.service; do
+systemd-analyze verify "$repo/scripts/systemd/posvoji-crawl.service" "$repo/scripts/systemd/posvoji-crawl.timer" "$repo/scripts/systemd/posvoji-backup.service" "$repo/scripts/systemd/posvoji-backup.timer" "$repo/scripts/systemd/posvoji-health.service" "$repo/scripts/systemd/posvoji-health.timer" "$repo/scripts/systemd/posvoji-alert@.service" "$repo/scripts/systemd/posvoji-health-recovery.service"
+for unit in posvoji-crawl.service posvoji-crawl.timer posvoji-backup.service posvoji-backup.timer posvoji-health.service posvoji-health.timer posvoji-alert@.service posvoji-health-recovery.service; do
   install -o root -g root -m 644 "$repo/scripts/systemd/$unit" "/etc/systemd/system/$unit"
 done
 systemctl daemon-reload

@@ -215,8 +215,7 @@ export const DEAD_OPTION_CLASS = "disabled:opacity-100";
  * sections without cutting off the words needed to choose a filter.
  *
  * Two answers, so they are two strings and not a cn() call per option. There
- * are about 28 options in the list and every one of them asks; below lg the
- * sidebar is mounted beside the sheet, so both lists ask on the same render.
+ * are about 28 options in the list and every one of them asks.
  * DEAD_OPTION_CLASS rides in the literal rather than being merged in, which
  * keeps the dress a dead option wears in one place while the answer stays a
  * constant.
@@ -302,12 +301,10 @@ const CountsDrawn = createContext(true);
 
 /**
  * Lets the counts inside roll only while `query` matches, for a panel that
- * is mounted at every width and drawn at some. The sidebar is display:none
- * below lg, where the phone sheet stands in for it, and its counts rolled
- * there all the same: every pick on a phone started their animations and
- * swapped their numbers for nobody, which with every section open was close
- * to half the rolls a pick set off. Where the query does not match, a number
- * changes in place, as it does under reduced motion.
+ * is mounted at every width and drawn at some. The sidebar header and picker
+ * stay mounted below lg, where the phone sheet takes over; its filter groups
+ * unmount after hydration. Where the query does not match, a number changes
+ * in place, as it does under reduced motion.
  *
  * A media query and not a measurement, because a roll is decided in the
  * render a pick makes and nothing may be read off the page there. A

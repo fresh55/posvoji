@@ -1,13 +1,14 @@
 "use client";
 
+import { memo } from "react";
 import { CountBadge } from "@/components/filters/count-badge";
+import { DesktopFilterGroups } from "@/components/filters/desktop-filter-groups";
 import { CountsRollWhile } from "@/components/filters/filter-card";
-import {
-  FilterGroupList,
-  type CardGroup,
-  type CareSection,
-  type GoodWithSection,
-  type KeptPicks,
+import type {
+  CardGroup,
+  CareSection,
+  GoodWithSection,
+  KeptPicks,
 } from "@/components/filters/filter-groups";
 import type { FilterActionContract } from "@/components/filters/filter-contract";
 import { LocationPicker } from "@/components/filters/location-picker";
@@ -21,6 +22,7 @@ import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
 import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
+import { FILTERS_ID } from "@/lib/skip-link";
 import type {
   FilterOption,
   Filters,
@@ -48,7 +50,7 @@ export type SidebarScope = {
   resultCount: number;
 };
 
-export function FilterSidebar({
+export const FilterSidebar = memo(function FilterSidebar({
   filters,
   groups,
   counts,
@@ -137,10 +139,10 @@ export function FilterSidebar({
         className,
       )}
     >
-      {/* The panel is drawn from lg only (animal-grid.tsx hides it below,
-          where the sheet takes over) and mounted at every width, so its
-          counts roll only where it is drawn: see CountsRollWhile. It renders
-          no element, so the sections are still this box's own children. */}
+      {/* The header and location picker stay mounted at every width to retain
+          the picker's state. The hidden counts do not roll, and the groups
+          below unmount after mobile hydration. Neither wrapper adds an
+          element, so sections remain this box's own children. */}
       <CountsRollWhile query={DESKTOP_QUERY}>
         {/* --toolbar-row to match the results row across the gutter, which is
             built to the same token (globals.css, the sort trigger's own height). The toolbar that
@@ -159,7 +161,11 @@ export function FilterSidebar({
             this head is: every active value draws a pill there except the
             species tab, which undoes itself in a press of its own. Each section
             keeps its Ponastavi for the one facet it holds. */}
-        <h2 className="flex h-toolbar-row items-center gap-2 text-sm font-medium">
+        <h2
+          id={FILTERS_ID}
+          tabIndex={-1}
+          className="flex h-toolbar-row items-center gap-2 text-sm font-medium"
+        >
           {messages.filters}
           {/* The same badge the phone's dock shows next to "Filtri". */}
           <CountBadge count={activeValues} />
@@ -195,7 +201,7 @@ export function FilterSidebar({
           />
         )}
 
-        <FilterGroupList
+        <DesktopFilterGroups
           filters={filters}
           groups={groups}
           counts={counts}
@@ -213,4 +219,4 @@ export function FilterSidebar({
       </CountsRollWhile>
     </aside>
   );
-}
+});

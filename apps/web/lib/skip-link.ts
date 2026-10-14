@@ -25,6 +25,9 @@
 /** The id every page's <main> carries, and what the header's link aims at. */
 export const CONTENT_ID = "vsebina";
 
+/** The desktop filter heading reached from the shortcut before the cards. */
+export const FILTERS_ID = "filtri";
+
 /**
  * A bypass link: nothing until it takes focus, then a legible box over the
  * content it skips.

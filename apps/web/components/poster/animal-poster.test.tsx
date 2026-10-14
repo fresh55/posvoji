@@ -397,6 +397,23 @@ describe("the fact tiles", () => {
 });
 
 describe("a status the sheet has to name", () => {
+  it.each([
+    ["sl", "available", "išče dom", null],
+    ["sl", "unknown", "išče dom", null],
+    ["sl", "hold", null, "trenutno ni na voljo"],
+    ["sl", "reserved", null, "rezervirano"],
+    ["sl", "adopted", null, "posvojeno"],
+    ["en", "available", "is looking for a home", null],
+    ["en", "unknown", "is looking for a home", null],
+    ["en", "hold", null, "not available now"],
+    ["en", "reserved", null, "reserved"],
+    ["en", "adopted", null, "adopted"],
+  ] as const)("prints honest %s wording for %s", (locale, status, seeking, label) => {
+    const { container } = poster({ locale, animal: animal({ status }) });
+    expect(container.querySelector(".poster-seeking")?.textContent ?? null).toBe(seeking);
+    expect(container.querySelector(".poster-status")?.textContent ?? null).toBe(label);
+  });
+
   it("says the site's own word beside the name, in amber", () => {
     const { container } = poster({ animal: animal({ status: "reserved" }) });
     expect(container.querySelector(".poster-status")?.textContent).toBe(

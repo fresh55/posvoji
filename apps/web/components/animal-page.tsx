@@ -13,7 +13,7 @@ import { AnimalPageGallery } from "@/components/animal-page-gallery";
 import { StatusBadge } from "@/components/status-badge";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
-import { animalFields } from "@/lib/animal";
+import { animalFields, seeksHome } from "@/lib/animal";
 import { permittedPhotos } from "@/lib/animal-images";
 import { shelterNeighbours } from "@/lib/animal-neighbours";
 import { animalPath, findAnimalBySlug } from "@/lib/animal-path";
@@ -161,6 +161,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
                   <AnimalPageShareButton
                     path={animalPath(animal, locale)}
                     name={animal.name ?? messages.unnamed}
+                    seeksHome={seeksHome(animal.status)}
                   />
                 </div>
                 {/* The species and the breed as one muted line, which is how the

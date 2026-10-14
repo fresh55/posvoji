@@ -3,7 +3,7 @@ import type { Animal } from "@posvoji/schema";
 import { Logo } from "@/components/logo";
 import { PosterFacts, posterTiles } from "@/components/poster/poster-facts";
 import { QrCode } from "@/components/poster/qr-code";
-import type { AnimalFields } from "@/lib/animal";
+import { seeksHome, type AnimalFields } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { posterPhoto } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
@@ -117,14 +117,10 @@ export function AnimalPoster({
 
   const tiles = posterTiles(animal, locale, reference);
   const plea = pleaLine(animal, locale, reference);
-  // Reserved and held are the two states worth a word beside the name: the
-  // animal is on the shelter's list and is not waiting for this reader's
-  // decision. Available says nothing, the way the site's own badge says
-  // nothing (components/status-badge.tsx).
-  const status =
-    animal.status === "reserved" || animal.status === "hold"
-      ? statusLabel(animal.status, locale)
-      : undefined;
+  const seeking = seeksHome(animal.status);
+  // An unavailable animal gets its recorded status beside the name. The
+  // available and unknown animals on the adoption list keep the invitation.
+  const status = seeking ? undefined : statusLabel(animal.status, locale);
 
   const logo = logos[animal.shelter.id];
   const phone = phones[animal.shelter.id];
@@ -174,7 +170,7 @@ export function AnimalPoster({
           list is not making it. The status word beside the name says what is
           true instead, so the sentence yields to it rather than printing its
           own contradiction under it. */}
-      {!status && <p className="poster-seeking">{text.seeking}</p>}
+      {seeking && <p className="poster-seeking">{text.seeking}</p>}
 
       {plea && <p className="poster-plea">{plea}</p>}
 

@@ -55,10 +55,12 @@ export function useAnimalPagePhoto() {
 export function AnimalPageShareButton({
   path,
   name,
+  seeksHome,
 }: {
   path: string;
   name: string;
+  seeksHome: boolean;
 }) {
   const { index } = useAnimalPagePhoto();
-  return <ShareButton path={path} name={name} photo={index} />;
+  return <ShareButton path={path} name={name} seeksHome={seeksHome} photo={index} />;
 }

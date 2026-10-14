@@ -12,6 +12,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ShareButton } from "@/components/animal-dialog/share-button";
 import { I18nProvider } from "@/components/i18n-provider";
+import type { Locale } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 
 // I18nProvider wraps everything in MotionConfig, which reads matchMedia when
@@ -38,18 +39,24 @@ afterEach(() => {
 const PATH = "/zival/rex-abc123/ljubljana/test-shelter";
 const PAGE = `${SITE_URL}${PATH}`;
 
-function renderButton(photo?: number, className?: string) {
+function renderButton(
+  photo?: number,
+  className?: string,
+  locale: Locale = "sl",
+  seeking = true,
+) {
   render(
-    <I18nProvider locale="sl">
+    <I18nProvider locale={locale}>
       <ShareButton
         path={PATH}
         name="Rex"
+        seeksHome={seeking}
         photo={photo}
         className={className}
       />
     </I18nProvider>,
   );
-  return screen.getByRole("button", { name: "Deli" });
+  return screen.getByRole("button", { name: locale === "sl" ? "Deli" : "Share" });
 }
 
 async function openSheet(photo?: number) {
@@ -100,6 +107,41 @@ describe("the share sheet's link", () => {
     expect(
       panel.getByRole("link", { name: "Facebook" }).getAttribute("target"),
     ).toBe("_blank");
+  });
+});
+
+describe("the invitation the visitor shares", () => {
+  it.each([
+    ["sl", true, "Rex išče dom"],
+    ["sl", false, "Rex na Posvoji.si"],
+    ["en", true, "Rex is looking for a home"],
+    ["en", false, "Rex on Posvoji.si"],
+  ] as const)("uses %s copy with seeking=%s in every target", async (locale, seeking, invite) => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    fireEvent.click(renderButton(2, undefined, locale, seeking));
+    const whatsapp = await screen.findByRole("link", { name: "WhatsApp" });
+    expect(new URL(whatsapp.getAttribute("href")!).searchParams.get("text")).toBe(
+      `${invite} ${PAGE}?foto=3`,
+    );
+    const email = screen.getByRole("link", { name: locale === "sl" ? "E-pošta" : "Email" });
+    const mail = new URL(email.getAttribute("href")!);
+    expect(mail.searchParams.get("subject")).toBe(invite);
+    expect(mail.searchParams.get("body")).toBe(`${invite}\n${PAGE}?foto=3`);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: locale === "sl" ? "Več" : "More" })));
+    expect(share).toHaveBeenCalledWith({ title: invite, text: invite, url: `${PAGE}?foto=3` });
+  });
+
+  it.each([
+    ["sl", "Rex na Posvoji.si"],
+    ["en", "Rex on Posvoji.si"],
+  ] as const)("keeps an unavailable animal's %s native share neutral", async (locale, invite) => {
+    phone = true;
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+    const button = renderButton(2, undefined, locale, false);
+    await act(async () => fireEvent.click(button));
+    expect(share).toHaveBeenCalledWith({ title: invite, text: invite, url: `${PAGE}?foto=3` });
   });
 });
 

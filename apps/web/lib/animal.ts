@@ -79,6 +79,13 @@ export function adoptableNow(status: AdoptionStatus): boolean {
   return status === "available" || status === "unknown";
 }
 
+/** Whether a poster or sharing message may say this animal is seeking a home.
+ *  Unknown still belongs to the shelter's adoption list; holds, reservations
+ *  and completed adoptions must not carry that invitation. */
+export function seeksHome(status: AdoptionStatus): boolean {
+  return adoptableNow(status);
+}
+
 /** When an animal was first listed, in milliseconds since 1970, where it is
  *  news to a returning visitor: listed, and adoptable now. A new intake on
  *  hold (quarantine, mostly) is sorted after every adoptable animal whatever

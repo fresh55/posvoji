@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { saveDataEnabled } from "@/lib/network-preferences";
 
 const requests = new WeakMap<() => Promise<unknown>, Promise<unknown>>();
 const resolved = new WeakMap<() => Promise<unknown>, unknown>();
@@ -33,8 +34,9 @@ export function useDeferredModule<T>(
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!warmOnIdle) return;
+    if (!warmOnIdle || saveDataEnabled()) return;
     const warm = () => {
+      if (saveDataEnabled()) return;
       void preloadModule(load).catch(() => {});
     };
     if (typeof window.requestIdleCallback === "function") {

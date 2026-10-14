@@ -2,13 +2,19 @@
 
 import Image from "next/image";
 import { LoaderCircle } from "lucide-react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import { Badge } from "@/components/ui/badge";
 import type { Locale } from "@/lib/i18n";
 import type { CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
+import { QUIET_DOC_LINK } from "@/lib/link-styles";
+import {
+  getServerConnectionSnapshot,
+  limitedConnectionEnabled,
+  subscribeToConnection,
+} from "@/lib/network-preferences";
 
 // Preload only when start() requests the model, to avoid competing with page content.
 const MODEL = "/models/our-cat/cat.glb?v=29";
@@ -44,6 +50,8 @@ const copy = {
     loading: "Maček se še nalaga …",
     slow: "Nalaganje traja dlje kot običajno …",
     unavailable: "3D-ogled ni uspel. Dotakni se ga za nov poskus.",
+    start: "Zaženi 3D-ogled",
+    retry: "Poskusi znova",
   },
   en: {
     alt: "A white cat with grey patches, an olive left eye and a closed right eye.",
@@ -51,6 +59,8 @@ const copy = {
     loading: "The cat is still loading …",
     slow: "Loading is taking longer than usual …",
     unavailable: "The 3D view couldn’t load. Tap or click to try again.",
+    start: "Start 3D view",
+    retry: "Try again",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -71,6 +81,8 @@ export const CatModel = memo(function CatModel({
   posterMedia,
   framing = CAT_FRAMING,
   startOnReach = false,
+  deferOnLimitedConnection = false,
+  renderCaption,
   onHandle,
 }: {
   locale: Locale;
@@ -85,9 +97,18 @@ export const CatModel = memo(function CatModel({
   framing?: CatFraming;
   /** Wait for pointer entry or parent keyboard focus before loading; otherwise load when visible. */
   startOnReach?: boolean;
+  /** Keep the still on Save-Data and 2G until a press; ordinary visits still start when visible. */
+  deferOnLimitedConnection?: boolean;
+  /** Put the optional Start/Retry action in the page's caption, outside the still. */
+  renderCaption?: (action: ReactNode) => ReactNode;
   onHandle?: (handle: CatModelHandle | null) => void;
 }) {
   const text = copy[locale];
+  const limitedConnection = useSyncExternalStore(
+    subscribeToConnection,
+    limitedConnectionEnabled,
+    getServerConnectionSnapshot,
+  );
   const host = useRef<HTMLDivElement>(null);
   // Observe parent focus so the caption link can trigger model loading.
   const stage = useRef<HTMLDivElement>(null);
@@ -100,6 +121,10 @@ export const CatModel = memo(function CatModel({
     : (status === "failed" ? text.unavailable : "");
   // Keep loading feedback visible after the first interaction until ready.
   const [reached, setReached] = useState(false);
+  // A press starts the idle stage or retries a failure. Once a request starts,
+  // loading feedback owns the stage even if the connection setting changes.
+  const showStartButton = deferOnLimitedConnection && limitedConnection &&
+    (status === "idle" || status === "failed");
   // Replay a touch received while the poster was loading.
   const touched = useRef(false);
   // Update the callback without restarting the WebGL effect.
@@ -114,14 +139,16 @@ export const CatModel = memo(function CatModel({
     if (ready) activate.current();
   }, [ready]);
   // Trigger loading without restarting the effect or replacing the viewer.
-  const wake = useRef(() => {});
+  const wake = useRef<(explicit: boolean) => void>(() => {});
 
   // Hover reveals loading feedback; a touch also queues a reaction.
   const reach = (touch: boolean) => {
     if (status === "ready") return;
+    // Hover can be accidental. On a limited connection only a press opts in.
+    if (deferOnLimitedConnection && limitedConnectionEnabled() && !touch) return;
     setReached(true);
     if (touch) touched.current = true;
-    wake.current();
+    wake.current(touch);
   };
 
   useEffect(() => {
@@ -143,6 +170,7 @@ export const CatModel = memo(function CatModel({
     let slowTimer: ReturnType<typeof setTimeout> | undefined;
     let revealFrame: number | undefined;
     let wanted = !startOnReach;
+    let explicitlyRequested = false;
     const canAnimate = () => ready && visible && !disposed && !document.hidden && !motion.matches;
 
     // The awake routine is continuous; the controller adds reactions and sleep.
@@ -257,6 +285,7 @@ export const CatModel = memo(function CatModel({
     // Import client-side only, when visible and requested; the module accesses browser globals.
     const start = async () => {
       if (!wanted || started || disposed || !visible || document.hidden) return;
+      if (deferOnLimitedConnection && limitedConnectionEnabled() && !explicitlyRequested) return;
       started = true;
       setStatus("loading");
       setSlow(false);
@@ -338,7 +367,9 @@ export const CatModel = memo(function CatModel({
         if (!disposed) onError();
       }
     };
-    const takeReach = () => {
+    const takeReach = (explicit = false) => {
+      if (deferOnLimitedConnection && limitedConnectionEnabled() && !explicit) return;
+      explicitlyRequested ||= explicit;
       wanted = true;
       void start();
     };
@@ -375,6 +406,9 @@ export const CatModel = memo(function CatModel({
     container.addEventListener("transitioncancel", onRevealEnd);
     document.addEventListener("visibilitychange", onVisibilityChange);
     motion.addEventListener("change", onMotionChange);
+    const unsubscribeConnection = deferOnLimitedConnection
+      ? subscribeToConnection(() => { void start(); })
+      : () => {};
     return () => {
       disposed = true;
       wake.current = () => {};
@@ -387,55 +421,65 @@ export const CatModel = memo(function CatModel({
       container.removeEventListener("transitioncancel", onRevealEnd);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       motion.removeEventListener("change", onMotionChange);
+      unsubscribeConnection();
       handOver.current?.(null);
       releaseViewer();
     };
-  }, [locale, text, framing.orbit, framing.target, startOnReach]);
+  }, [locale, text, framing.orbit, framing.target, startOnReach, deferOnLimitedConnection]);
+
+  const startAction = showStartButton ? (
+    <button type="button" className={QUIET_DOC_LINK} onClick={() => reach(true)}>
+      {status === "failed" ? text.retry : text.start}
+    </button>
+  ) : null;
 
   return (
-    <div
-      ref={stage}
-      className={cn("relative", loading && "cursor-progress", className)}
-      onPointerEnter={() => reach(false)}
-      onPointerDown={() => reach(true)}
-    >
-      {/* The transparent fallback prevents downloads outside posterMedia. */}
-      <picture>
-        {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
-        <Image
-          src={posterMedia ? BLANK_PIXEL : framing.poster}
-          alt={ready ? "" : text.alt}
-          fill
-          // Load the still eagerly; only prioritize it when it is the largest visible image.
-          loading="eager"
-          {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
-          sizes={sizes}
-          className={`object-contain ${ready ? "invisible" : ""}`}
-        />
-      </picture>
-      {/* inert removes the loading viewer from tab order; aria-hidden also hides it from assistive technology. */}
+    <>
       <div
-        ref={host}
-        inert={!ready}
-        aria-hidden={!ready}
-        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
-      />
-      {/* Announce loading once requested; show visual feedback after interaction. */}
-      <div
-        data-slot="cat-status"
-        role="status"
-        className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
-          reached && waiting ? "opacity-100" : "opacity-0",
-        )}
+        ref={stage}
+        className={cn("relative", loading && "cursor-progress", className)}
+        onPointerEnter={() => reach(false)}
+        onPointerDown={() => reach(true)}
       >
-        {waiting && (
-          <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
-            {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
-            {waiting}
-          </Badge>
-        )}
+        {/* The transparent fallback prevents downloads outside posterMedia. */}
+        <picture>
+          {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
+          <Image
+            src={posterMedia ? BLANK_PIXEL : framing.poster}
+            alt={ready ? "" : text.alt}
+            fill
+            // Load the still eagerly; only prioritize it when it is the largest visible image.
+            loading="eager"
+            {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
+            sizes={sizes}
+            className={`object-contain ${ready ? "invisible" : ""}`}
+          />
+        </picture>
+        {/* inert removes the loading viewer from tab order; aria-hidden also hides it from assistive technology. */}
+        <div
+          ref={host}
+          inert={!ready}
+          aria-hidden={!ready}
+          className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
+        />
+        {/* Announce loading once requested; show visual feedback after interaction. */}
+        <div
+          data-slot="cat-status"
+          role="status"
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
+            reached && waiting ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {waiting && (
+            <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
+              {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
+              {waiting}
+            </Badge>
+          )}
+        </div>
       </div>
-    </div>
+      {renderCaption ? renderCaption(startAction) : startAction}
+    </>
   );
 });

@@ -41,6 +41,7 @@ import { questionTopic } from "@/lib/labels";
 import { COARSE_ACTION, SOURCE_LINK } from "@/lib/link-styles";
 import { getSearchSnapshot } from "@/lib/location-search";
 import type { LookupEntry } from "@/lib/municipality-coverage";
+import { saveDataEnabled } from "@/lib/network-preferences";
 import {
   PREHYDRATION_DATASET_KEY,
   RESULTS_PENDING_SLOT,
@@ -518,8 +519,9 @@ export function AnimalGrid({
   // Mount the empty dialog on idle to avoid a Suspense delay on first open.
   // Descriptions stay deferred until grid interaction.
   useEffect(() => {
-    if (dataset.length === 0) return;
+    if (dataset.length === 0 || saveDataEnabled()) return;
     const onIdle = () => {
+      if (saveDataEnabled()) return;
       setDialogMounted(true);
     };
     if (typeof window.requestIdleCallback === "function") {

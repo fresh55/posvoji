@@ -378,11 +378,10 @@ export function SiteFooter({
                 className={FOOTER_ACTION_LINK}
               >
                 {/* The same lockup as the header's, from one component, so
-                    the brand is drawn one way on a page: the verb with its
-                    capital (this one starts a phrase), then the tile against
-                    the name in the wordmark's weight. The tile is the one coloured thing
-                    down here, and that is settled above: it is the brand's
-                    mark, and the header already shows it. */}
+                    the brand is drawn one way on a page. The verb keeps its
+                    capital here because it starts a phrase. The tile is the
+                    one coloured thing down here, and that is settled above:
+                    it is the brand's mark, and the header already shows it. */}
                 <PoetivoLockup verb={messages.poweredBy} />
                 <span className="sr-only"> {messages.newWindow}</span>
               </a>

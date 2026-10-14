@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
+import * as pickerHistory from "@/hooks/use-picker-history";
 import {
   resetNearbyOriginStore,
   usePublishNearbyOrigin,
@@ -42,7 +43,10 @@ Object.defineProperty(window, "matchMedia", {
 
 Element.prototype.scrollIntoView = vi.fn();
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const options = [
   { value: "sever", label: "Zavetišče Sever", city: "Maribor" },
@@ -100,7 +104,7 @@ function renderSheet({
   onOpen = vi.fn(),
   onReset = vi.fn(),
 } = {}) {
-  render(
+  return render(
     <I18nProvider locale="sl">
       <FilterSheet
         sort="longest-in-shelter"
@@ -234,6 +238,30 @@ describe("Kje scope row in the sidebar", () => {
 });
 
 describe("Kje scope row in the filter sheet", () => {
+  it.each([
+    ["initial delay", 0],
+    ["history-pop polling", PICKER_HANDOFF_MS + 40],
+  ])("cancels the %s handoff when the sheet owner unmounts", async (_, elapsed) => {
+    // Keep the history pop pending so the second case reaches the chained
+    // polling timer, rather than completing its normal handoff first.
+    vi.spyOn(pickerHistory, "layerEntryKey").mockReturnValue("pending-sheet");
+    const onOpen = vi.fn();
+    const mounted = renderSheet({ onOpen });
+    const dialog = await openSheet();
+    fireEvent.click(within(dialog).getByRole("button", { name: /Zavetišče:/ }));
+    if (elapsed > 0) {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, elapsed));
+      });
+    }
+    expect(onOpen).not.toHaveBeenCalled();
+    mounted.unmount();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1100 - elapsed));
+    });
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it("names a selected shelter in the compact phone row", async () => {
     renderSheet({ selected: ["jug"] });
     const dialog = await openSheet();

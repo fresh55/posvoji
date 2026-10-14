@@ -4,7 +4,14 @@ import { LogoHearts } from "@/components/logo-hearts";
 import logoMotion from "@/components/logo-hearts.module.css";
 import { ShelterLogin, SiteMenu, SiteNav } from "@/components/site-menu";
 import { getMessages, type Locale } from "@/lib/i18n";
+import {
+  POETIVO_INK,
+  POETIVO_MARK,
+  POETIVO_TILE,
+  POETIVO_TILE_RADIUS,
+} from "@/lib/poetivo-mark";
 import { homePath } from "@/lib/shelter-path";
+import { POETIVO_NAME } from "@/lib/site";
 import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 
 type SiteHeaderProps = {
@@ -134,7 +141,53 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
             <Logo className={`h-full w-auto ${logoMotion.blinkable}`} />
             <LogoHearts />
           </span>
-          <span className="truncate">posvoji.si</span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate">posvoji.si</span>
+            {/* Who builds the site, under its name: "poganja" from the
+                catalogue, then Poetivo's mark and its name in the wordmark's
+                weight. Bruno wanted it up here beside the logo and not only
+                in the footer's small print.
+
+                Text inside the home link and not a link of its own, which is
+                the one way it can sit here. A link inside a link is invalid
+                HTML, and a second link 12px under this one could not get a
+                finger-sized target without taking the lower half of the
+                name's presses, which is the collision globals.css records on
+                tap-target. The way to poetivo.si stays the footer's credit,
+                on every page, with the accessible name this link does not
+                carry: aria-label above keeps this link "posvoji.si", so a
+                screen reader hears the home link as the home link and meets
+                Poetivo once, where it can be followed.
+
+                Two lines inside the 40px the logo already draws: the name's
+                24px line and a 12px line holding a 14px mark, 38px in all,
+                so the header is no taller than before. The line resets the
+                link's weight and tracking and takes the name back for the
+                wordmark alone. It never wraps: a second line would push past
+                the logo and move the whole header.
+
+                The tile is the brand's colours and not the theme's, and it is
+                the one coloured thing in this band. That is the brand's own
+                call: the lit window is the mark wherever only a sign fits. */}
+            <span
+              data-poetivo
+              className="inline-flex items-center gap-1 overflow-hidden text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground"
+            >
+              <span className="lowercase">{messages.poweredBy}</span>
+              <svg viewBox="0 0 16 16" aria-hidden className="size-3.5 shrink-0">
+                <rect
+                  width="16"
+                  height="16"
+                  rx={POETIVO_TILE_RADIUS}
+                  fill={POETIVO_TILE}
+                />
+                <path d={POETIVO_MARK} fill={POETIVO_INK} />
+              </svg>
+              <span className="font-semibold tracking-[-0.035em]">
+                {POETIVO_NAME}
+              </span>
+            </span>
+          </span>
         </a>
         <SiteNav paths={languagePaths} />
       </div>

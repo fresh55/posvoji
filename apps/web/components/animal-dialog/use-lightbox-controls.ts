@@ -1,6 +1,7 @@
 import { useWheelStep } from "@/components/animal-dialog/use-wheel-step";
 import { useI18n } from "@/components/i18n-context";
 import type { PermittedPhoto } from "@/lib/animal-images";
+import { preloadPhotos } from "@/lib/preload-photos";
 import {
   MIN_SWIPE_PX,
   SWIPE_DISTANCE_RATIO,
@@ -38,6 +39,13 @@ import {
   ZOOM_SCALE,
   type LightboxView,
 } from "./lightbox-gesture-options";
+
+/** The sizes the photograph on show carries: the full screen, which is what
+ *  puts the top of the ladder on every phone and most desktops. That is the
+ *  right answer here, since this is the view somebody opened to look closely.
+ *  Stated once, because the neighbours are warmed at the same size and a
+ *  preload at any other picks a different file from the one the step draws. */
+export const LIGHTBOX_PHOTO_SIZES = "100vw";
 
 export type PhotoLightboxProps = {
   open: boolean;
@@ -206,6 +214,25 @@ export function useLightboxControls({
     restPhoto();
     return stopRuns;
   }, [open, shown, restPhoto, stopRuns]);
+
+  // The photos either side of the one on show, fetched at this view's own
+  // size as soon as it opens and again after every step. Nothing else asks
+  // for them at that size: the fan behind warms its next tier at a side
+  // seat's width, so every step in here used to be a cold fetch of the top
+  // rung, and a visitor pressing on fast saw each photo arrive late. Low
+  // priority, so the photograph being looked at still goes first, and once
+  // per photo for as long as this lightbox is mounted, which is the set below.
+  //
+  // Not in the contact sheet, where there is no photo on show to have
+  // neighbours and the tiles are what is loading.
+  const warmed = useRef(new Set<string>());
+  useEffect(() => {
+    if (!open || sheet || images.length < 2) return;
+    const beside = [shown + 1, shown - 1]
+      .map((at) => images[(at + images.length) % images.length])
+      .filter((photo): photo is PermittedPhoto => photo !== undefined);
+    preloadPhotos(beside, LIGHTBOX_PHOTO_SIZES, warmed.current);
+  }, [open, sheet, shown, images]);
 
   // A pan is clamped against a box measured when the finger came down, and a
   // phone turned sideways while zoomed leaves the photograph parked outside

@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { PhotoLightbox } from "@/components/animal-dialog/photo-lightbox";
 import { I18nProvider } from "@/components/i18n-provider";
 import type { PermittedPhoto } from "@/lib/animal-images";
-import { GESTURE_T0, pointer, slot } from "@/test/pointer";
+import { GESTURE_T0, capturePreloads, pointer, slot } from "@/test/pointer";
 
 // The wash and the frame both ask whether motion is wanted before they render,
 // and jsdom ships no matchMedia. Nothing here is reduced.
@@ -368,6 +368,80 @@ describe("PhotoLightbox the photograph on show", () => {
 // A finger could already swipe the photo and a cursor could not: the chevrons
 // were all a mouse or a trackpad was offered, and the picture sat there looking
 // draggable. Both gestures run the fan's own numbers.
+describe("PhotoLightbox the photos either side", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // Nothing else asks for the neighbours at this view's size: the fan behind
+  // warms its next tier at a side seat's width, so every step in here was a
+  // cold fetch of the top rung.
+  it("warms the photos either side at the lightbox's own size, each once", () => {
+    const preloads = capturePreloads();
+    const { show } = open();
+    const asked = () => preloads.map((image) => image.src);
+
+    // Photo 1 of six: the one ahead and the one behind, round the end.
+    expect(asked()).toEqual([
+      "/media/animals/pika-2.webp",
+      "/media/animals/pika-6.webp",
+    ]);
+    // The same sizes the photograph on show carries, so the step then draws
+    // the file this fetched rather than a different rung.
+    expect(preloads[0].sizes).toBe("100vw");
+    expect(preloads[0].srcset).toContain("640w");
+    // Behind the photograph being looked at.
+    expect(preloads[0].fetchPriority).toBe("low");
+
+    show(1);
+    show(2);
+    // Each step asks for the two beside it, and a photo already asked for is
+    // not asked for again: 2 was a neighbour of 1 and of 3.
+    expect(asked().filter((src) => src.endsWith("pika-2.webp"))).toHaveLength(1);
+    expect(asked()).toContain("/media/animals/pika-3.webp");
+    expect(asked()).toContain("/media/animals/pika-4.webp");
+  });
+
+  it("leaves the contact sheet to its tiles", () => {
+    const preloads = capturePreloads();
+    const { lightbox } = open({ initialView: "sheet" });
+
+    expect(preloads).toHaveLength(0);
+
+    // Back to a photo, and the ones beside it are warmed from there. The
+    // index is the caller's, so the tile's own number is not what is shown
+    // here: the photo on show is still the first.
+    fireEvent.click(tiles(lightbox)[2]!);
+    expect(preloads.map((image) => image.src)).toEqual([
+      "/media/animals/pika-2.webp",
+      "/media/animals/pika-6.webp",
+    ]);
+  });
+});
+
+describe("PhotoLightbox wash", () => {
+  // The fade used to be a layer per photo, and a burst of steps held every
+  // one of them until the last had faded: nine full-screen blurs for eight
+  // presses. Two layers take turns now, whatever the pace.
+  it("holds two layers through a burst of steps", () => {
+    const { lightbox, show } = open();
+    const wash = slot(lightbox, "photo-lightbox-wash");
+    const layers = () => wash.querySelectorAll(":scope > div");
+
+    expect(layers()).toHaveLength(2);
+    for (const index of [1, 2, 3, 4]) show(index);
+
+    expect(layers()).toHaveLength(2);
+    expect(wash.querySelectorAll("img").length).toBeLessThanOrEqual(2);
+    // The one in front holds the photo on show.
+    expect(
+      wash
+        .querySelector('[data-wash-layer="front"] img')
+        ?.getAttribute("src"),
+    ).toContain("pika-5");
+  });
+});
+
 describe("PhotoLightbox mouse and trackpad", () => {
   it("steps the photo on a mouse drag", () => {
     const { lightbox, onIndexChange } = open();

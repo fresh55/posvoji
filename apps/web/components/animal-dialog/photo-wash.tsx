@@ -9,6 +9,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import type { AdoptionStatus } from "@posvoji/schema";
+import { useState } from "react";
 import { thumbnailUrl } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 
@@ -226,6 +227,13 @@ export function StageWash({
   );
 }
 
+/** The two layers the lightbox wash is drawn with: which one is in front, and
+ *  the photo each is holding, if any. */
+type WashSlots = {
+  front: 0 | 1;
+  sources: [string | undefined, string | undefined];
+};
+
 /**
  * Behind the lightbox photo, on the scrim rather than on the page, crossfading
  * whenever the source changes.
@@ -233,9 +241,47 @@ export function StageWash({
  * One photo at a time. The stage holds the front print and its two neighbours
  * and blends between them instead; this is the lightbox's shape, where the only
  * photo that exists is the one on screen.
+ *
+ * Two layers and never more. The fade used to be an AnimatePresence keyed by
+ * the photo, which mounts a layer per photo and keeps every one that is
+ * leaving until the last of them has faded: a burst of presses held nine of
+ * these full-screen blurs at once, and a held arrow thirteen. Each is the
+ * most expensive thing the lightbox paints. The two layers here are fixed and
+ * take turns: the photo arriving goes into the one at the back, which fades
+ * up, while the one in front fades down. A press that lands mid-fade hands
+ * the back layer a new photo and turns the two round again, and the fades
+ * carry on from wherever their opacity stands.
  */
 export function LightboxWash({ source }: { source: string | undefined }) {
   const shouldReduceMotion = useReducedMotion();
+  // Derived from the prop during the render rather than in an effect, so the
+  // new photo and its fade land in the same paint as the photograph itself.
+  // Setting state in a render is what React offers for exactly this, and the
+  // check makes it idempotent: once the front layer holds the source there is
+  // nothing left to set.
+  const [slots, setSlots] = useState<WashSlots>(() => ({
+    front: 0,
+    sources: [source, undefined],
+  }));
+  if (slots.sources[slots.front] !== source) {
+    const back = slots.front === 0 ? 1 : 0;
+    const sources: WashSlots["sources"] = [...slots.sources];
+    sources[back] = source;
+    setSlots({ front: back, sources });
+  }
+
+  // The layer that has faded out gives up its photo, so a blur nobody can see
+  // is not kept painted behind the one they can. Only if it is still the one
+  // at the back: the fade that finishes may be an old one, from before a press
+  // turned the layers round again.
+  function clearFaded(index: 0 | 1) {
+    setSlots((held) => {
+      if (held.front === index || held.sources[index] === undefined) return held;
+      const sources: WashSlots["sources"] = [...held.sources];
+      sources[index] = undefined;
+      return { ...held, sources };
+    });
+  }
 
   return (
     <div
@@ -245,31 +291,36 @@ export function LightboxWash({ source }: { source: string | undefined }) {
       // no mask over it, unlike the stage's.
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
-      <AnimatePresence>
-        {source && (
-          // Keyed by the photo, not by its place in a list. Two slots that hold
-          // the same file have nothing to fade between.
+      {([0, 1] as const).map((index) => {
+        const held = slots.sources[index];
+        const showing = index === slots.front && held !== undefined;
+        return (
           <m.div
-            key={source}
+            key={index}
+            data-wash-layer={showing ? "front" : "back"}
             className="absolute inset-0"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            animate={{ opacity: showing ? 1 : 0 }}
             transition={shouldReduceMotion ? { duration: 0 } : WASH_FADE}
+            onAnimationComplete={() => {
+              if (!showing) clearFaded(index);
+            }}
           >
             {/* A heavier blur than the stage's blur-2xl: this one is spread
                 over the whole screen, and the same radius on that much ground
                 reads as a photograph rather than a colour. */}
-            <Image
-              src={thumbnailUrl(source)}
-              alt=""
-              fill
-              sizes={WASH_SIZES}
-              className={cn("scale-125 object-cover blur-3xl", LIGHTBOX_TONE)}
-            />
+            {held && (
+              <Image
+                src={thumbnailUrl(held)}
+                alt=""
+                fill
+                sizes={WASH_SIZES}
+                className={cn("scale-125 object-cover blur-3xl", LIGHTBOX_TONE)}
+              />
+            )}
           </m.div>
-        )}
-      </AnimatePresence>
+        );
+      })}
     </div>
   );
 }

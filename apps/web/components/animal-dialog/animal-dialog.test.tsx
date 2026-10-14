@@ -48,6 +48,7 @@ import { stubIdleCallback } from "@/test/grid-stubs";
 import { capturePreloads, pointer, slot } from "@/test/pointer";
 import { stubViewTransition } from "@/test/view-transition";
 import { PHOTO_MORPH_CLASS } from "./fan-photo-styles";
+import { crossesStage } from "./use-fan-controls";
 import { dialogOnPage } from "@/test/animal-dialog";
 import {
   DESKTOP_FAN_QUERY,
@@ -1307,6 +1308,61 @@ describe("animal dialog", () => {
         .toBe("true"),
     );
     expect(region(dialog, "photo-spread").getByText("3 / 7")).toBeTruthy();
+  });
+
+  // A walk is two seats at most, and a third press before it lands used to be
+  // dropped: eight presses on the chevron were three or four photos. Presses
+  // past the walk wait for it and are walked after it, so every press is a
+  // photo.
+  it("carries presses past a two-seat walk into the next one", async () => {
+    window.history.replaceState(null, "", "/?zival=pika");
+    renderGrid([MANY]);
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-spread");
+
+    for (let press = 0; press < 3; press++) {
+      fireEvent.keyDown(fan, { key: "ArrowRight" });
+    }
+
+    // Two walks, one after the other, so this waits for both springs.
+    await waitFor(
+      () =>
+        expect(
+          photoButton(dialog, "photo-spread", 4).getAttribute("aria-current"),
+        ).toBe("true"),
+      { timeout: 4000 },
+    );
+    expect(region(dialog, "photo-spread").getByText("4 / 7")).toBeTruthy();
+  });
+
+  // A press back against the presses still waiting takes one of them away
+  // rather than turning the fan under them: four forward and one back are
+  // three photos.
+  it("takes a press back out of the presses still waiting", async () => {
+    window.history.replaceState(null, "", "/?zival=pika");
+    renderGrid([MANY]);
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-spread");
+
+    for (let press = 0; press < 4; press++) {
+      fireEvent.keyDown(fan, { key: "ArrowRight" });
+    }
+    fireEvent.keyDown(fan, { key: "ArrowLeft" });
+
+    await waitFor(
+      () =>
+        expect(
+          photoButton(dialog, "photo-spread", 4).getAttribute("aria-current"),
+        ).toBe("true"),
+      { timeout: 4000 },
+    );
+    // And the fan is at rest there, with nothing more to walk.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(
+      photoButton(dialog, "photo-spread", 4).getAttribute("aria-current"),
+    ).toBe("true");
   });
 
   // Two photos wrap, so a second arrow the same way targets the photo the
@@ -2919,6 +2975,42 @@ describe("animal dialog", () => {
     expect(window.location.pathname).toBe(animalPath(REX, "sl"));
   });
 
+  // A step in the lightbox jumps the fan's index with no walk under it, and
+  // every print moves one seat. The fan used to read all five as wrapping and
+  // draw five new prints behind the scrim for every press. They keep their
+  // nodes now: only the print that leaves the window goes, and only the one
+  // that enters it arrives.
+  it("keeps the fan's prints seated through steps taken in the lightbox", async () => {
+    window.history.replaceState(null, "", "/?zival=pika");
+    renderGrid([MANY]);
+    const dialog = await screen.findByRole("dialog");
+    const fan = slot(dialog, "photo-spread");
+
+    fireEvent.click(photoButton(dialog, "photo-spread", 1));
+    await waitFor(() => expect(screen.getAllByRole("dialog")).toHaveLength(2));
+    const lightbox = slot(document.body, "photo-lightbox");
+    const next = within(lightbox).getByRole("button", {
+      name: "Naslednja fotografija",
+    });
+    const seated = () =>
+      Array.from(
+        fan.querySelectorAll<HTMLElement>(
+          "button[data-print]:not([data-leaving])",
+        ),
+      ).map((print) => print.dataset.print);
+
+    for (let press = 0; press < 3; press++) fireEvent.click(next);
+
+    expect(within(lightbox).getByText("4 / 7")).toBeTruthy();
+    // Five prints, every one drawn under the photo's own key: a key with a
+    // generation on it is a print the fan has drawn again as a new node.
+    const keys = seated();
+    expect(keys).toHaveLength(5);
+    for (const key of keys) expect(key).toMatch(/^\d+$/);
+    expect(photoButton(dialog, "photo-spread", 4).getAttribute("aria-current"))
+      .toBe("true");
+  });
+
   it("closes on a downward drag from the top of the phone layout", async () => {
     window.history.replaceState(null, "", "/?zival=rex");
     renderGrid();
@@ -3228,6 +3320,33 @@ describe("fan seats", () => {
 // filter reads in. The numbers themselves are a taste call; what is pinned
 // here is the direction, because a table edited later must not quietly leave
 // a calm animal snappier than a lively one.
+// Which prints a commit draws again as new nodes. A wrap is a print crossing
+// the stage, and nothing else is: the lightbox stepping the index with no walk
+// in flight moves every print one seat, and that used to read as five wraps.
+describe("fan wraps", () => {
+  it("reads the trailing print coming round as a wrap", () => {
+    // Three photos, walked one forward: the print at -1 is drawn at -2 once
+    // the walk is taken off it, and the new window seats it at +1.
+    expect(crossesStage(-2, 1)).toBe(true);
+    // Five photos, the same walk: -2 stands at -3 and is seated at +2.
+    expect(crossesStage(-3, 2)).toBe(true);
+    // The lightbox stepping a gallery of three, with no walk: -1 to +1.
+    expect(crossesStage(-1, 1)).toBe(true);
+  });
+
+  it("re-seats a print the walk has carried, and one a jump moves a seat", () => {
+    // Carried by the walk: standing where the new window seats it.
+    expect(crossesStage(-1, -1)).toBe(false);
+    expect(crossesStage(0.001, 0)).toBe(false);
+    // The lightbox's jump: one seat over, same side, or to and from the
+    // front.
+    expect(crossesStage(1, 0)).toBe(false);
+    expect(crossesStage(-1, -2)).toBe(false);
+    expect(crossesStage(0, -1)).toBe(false);
+    expect(crossesStage(2, 1)).toBe(false);
+  });
+});
+
 describe("fan tempo", () => {
   it("keeps an unstated energy on the balanced numbers", () => {
     expect(fanTempo(undefined)).toEqual(fanTempo("balanced"));

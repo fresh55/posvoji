@@ -19,6 +19,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { useRef, type PointerEvent } from "react";
 import { framePose } from "./lightbox-geometry";
 import {
+  LIGHTBOX_PHOTO_SIZES,
   useLightboxControls,
   type PhotoLightboxProps,
 } from "./use-lightbox-controls";
@@ -339,10 +340,9 @@ export function PhotoLightbox(props: PhotoLightboxProps) {
                       current: shown + 1,
                       total: images.length,
                     })}
-                    // The full screen, which is what puts the top of the ladder
-                    // on every phone and most desktops. That is the right answer
-                    // here: this is the view somebody opened to look closely.
-                    sizes="100vw"
+                    // The full screen; see LIGHTBOX_PHOTO_SIZES for why, and
+                    // for the neighbours warmed at the same size.
+                    sizes={LIGHTBOX_PHOTO_SIZES}
                     // The photograph somebody is looking at, so it goes for at
                     // once and at the front of the queue. The fan behind has
                     // only seated five prints, and a step past them opened on a

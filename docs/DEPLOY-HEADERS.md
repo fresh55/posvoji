@@ -78,8 +78,10 @@ A browser always sends `Accept-Encoding`, so a server that has stopped
 compressing looks exactly like one that has not: the page renders, nothing
 errors, and only the transfer size differs. That is why the directive is
 written down here, and why `scripts/monitor-production.sh` asserts
-`Content-Encoding` on the homepage and on one `/_next/static` chunk on every
-run.
+`Content-Encoding` on the homepage, one `/_next/static` chunk and the branded
+404 on every run. The sampled chunk must also carry the one-year public
+immutable cache policy. Both assertions reuse that same chunk request; the
+404 check likewise reads its status, body and headers from one request.
 
 `api.posvoji.si` already carries `encode zstd gzip`; see DEPLOY-PORTAL.md. The
 public site needs the same directive. Caddy's `encode` skips content types that
@@ -102,6 +104,12 @@ The model path is outside `basic_auth`: a plain request with
 reconfirmed on 20 September 2026. It needs no credentials. For gated pages,
 use the monitor's configured credentials and check the response status before
 interpreting compression headers; a `401` describes the gate response.
+
+For production reloads, use `sudo systemctl reload caddy`. Its configured
+`ExecReload` inherits the service environment, including the invitation gate's
+`POSVOJI_DEMO_KEY`. Validation and adaptation must use that same environment:
+an unset `{$POSVOJI_DEMO_KEY}` changes the cookie matcher even when the
+Caddyfile text is unchanged.
 
 Check the homepage's response status as well as its encoding:
 
@@ -345,6 +353,14 @@ passes through more than one proxy.
 
 ## Caddy
 
+These examples require **Caddy 2.8 or later**: the status-code argument in
+`handle_errors 404` was added in the
+[2.8.0 release](https://github.com/caddyserver/caddy/releases/tag/v2.8.0)
+(#5965). The production configuration was validated with **Caddy 2.11.4** on
+14 October 2026. Validate and reload with the configured service environment;
+`sudo systemctl reload caddy` runs the service's `ExecReload` with its existing
+invitation key.
+
 This is a header-only excerpt, not the complete production media configuration:
 
 ```caddy
@@ -352,10 +368,15 @@ posvoji.si {
     encode zstd gzip
 
     root * /srv/posvoji/current/public
+    @htmlDocuments expression `!{path}.startsWith('/_next/') && !{path}.startsWith('/media/') && !{path}.startsWith('/_posvoji/') && ({path}.endsWith('.html') || file({'try_files': [{path} + '.html', {path} + '/index.html']}))`
+    header @htmlDocuments Cache-Control "no-cache" {
+        match status 200 304
+    }
     try_files {path}.html {path} {path}/index.html
     file_server
 
-    handle_errors {
+    handle_errors 404 {
+        encode zstd gzip
         rewrite * /404.html
         file_server
     }
@@ -368,8 +389,10 @@ posvoji.si {
 }
 ```
 
-`handle_errors` keeps the status Caddy produced, so this serves the branded
-body with a real 404.
+`handle_errors 404` keeps the status Caddy produced, so this serves the branded
+body with a real 404. Error handlers run through a separate route: repeat
+`encode` inside that block so the large HTML body is compressed there too.
+Matching only 404 preserves any separate 401 handler used for the demo gate.
 
 Use the complete shared-media example below in production; media is excluded
 from releases and lives under `/srv/posvoji/media`.
@@ -387,9 +410,45 @@ For example, `/_next/static/chunks/30u6sh46bxos5.js` and
 `/_next/static/media/inter-latin.2bn3s6zvc0dyp.woff2` had no cache policy.
 HTML and compressible chunks carried `Content-Encoding: zstd`; the font was
 served as `font/woff2`. HSTS was present with `max-age=300`.
-The immutable policy below still needs to be applied on the host. No production
-configuration was changed during this verification.
+The immutable policy below was still unapplied on the host at that point. No
+production configuration was changed during that verification.
 
+**Applied and verified 14 October 2026 (Europe/Ljubljana).** The production
+configuration now includes the status-qualified static-asset and root-icon
+rules below, plus `encode zstd gzip` inside `handle_errors 404`. Caddy was
+validated and reloaded through its configured service environment at 17:49:41,
+without a restart. The existing invitation gate and other authentication were
+preserved. This rollout changed host configuration; application code was not
+deployed.
+
+Authenticated Chrome verification found all 25 initial `/_next/static/`
+responses, including both fonts, carried
+`Cache-Control: public, max-age=31536000, immutable`. A later warm navigation
+recorded zero `transferSize` for all 31 static resources. The homepage remained
+`200` with zstd, no `Cache-Control`, and both `ETag` and `Last-Modified`.
+`/icon.svg` returned `200` with `Cache-Control: public, max-age=86400`.
+
+The missing-page probe `/ni-take-strani` returned a real `404` with zstd:
+75,578 encoded body bytes against 429,153 decoded body bytes, about 82.4% less
+body data. These figures measure the complete document body.
+A missing `/_next/static/performance-audit-missing.js` likewise returned `404`
+with zstd and no `Cache-Control`, confirming errors do not acquire the
+year-long immutable policy. The repository monitor's new 404 encoding
+assertion checks the existing request's headers alongside its status and
+branded body.
+
+**HTML revalidation applied and verified later on 14 October 2026.** Caddy
+2.11.4 was validated with its existing service environment and reloaded via
+the configured `ExecReload` at 18:44:49 Europe/Ljubljana. The additive document
+rule below preserves the existing routing, invitation key, authentication,
+error handlers and immutable asset policies. It sets `no-cache` only for
+successful `200`/`304` HTML documents, including the homepage and clean URLs.
+Authenticated Chrome exposed the homepage as `200` with `no-cache` and zstd;
+the raw network record confirmed `304` with `no-cache` on ordinary reload.
+Sampled chunks retained immutable freshness and disk-cache reuse, with 52
+request-served-from-cache events observed in the verification session. The
+missing-document probe remained `404` with zstd and no cache policy. This was
+a host configuration change without an application deployment or restart.
 
 `next build` names every file under `/_next/static/` for a hash of its
 contents, the way `apps/ingest` names a processed photo. A rebuilt chunk gets a
@@ -407,8 +466,16 @@ revalidated. The public site navigates with plain anchors rather than
 `next/link`, so that revalidation is paid per click and not once per session,
 and the 12h crawl keeps moving the timestamps the guess reads.
 
-`.html` must keep revalidating. It is served by the `try_files` chain above,
-and a long `max-age` there makes a deploy invisible.
+HTML documents, including `/` and clean URLs, use an explicit
+`Cache-Control: no-cache` on successful `200` and `304` responses. This allows
+stored HTML to be reused after validation while keeping an index or page
+deploy visible on ordinary navigation; see
+[RFC 9111's no-cache directive](https://www.rfc-editor.org/rfc/rfc9111.html#section-5.2.2.4).
+The Caddy matcher below recognizes the exported `.html` document or directory
+index without changing the existing `try_files` routing. It does not depend
+on `Content-Type` remaining present on `304`. Hashed static assets, media and
+operations JSON stay outside this rule; fixed-name JSON, the invitation `401`
+and missing-file `404` do not acquire document freshness or immutable caching.
 
 Check these headers on a successful response from a chunk in the current
 release. If a request returns `401`, use the monitor's configured credentials;
@@ -599,7 +666,13 @@ posvoji.si {
         match status 2xx 304
     }
 
-    handle_errors {
+    @htmlDocuments expression `!{path}.startsWith('/_next/') && !{path}.startsWith('/media/') && !{path}.startsWith('/_posvoji/') && ({path}.endsWith('.html') || file({'try_files': [{path} + '.html', {path} + '/index.html']}))`
+    header @htmlDocuments Cache-Control "no-cache" {
+        match status 200 304
+    }
+
+    handle_errors 404 {
+        encode zstd gzip
         rewrite * /404.html
         file_server
     }
@@ -621,13 +694,14 @@ first breaks clean URLs such as `/en/resources`.
 
 `encode` is a site-wide directive, and Caddy's directive order runs it ahead of
 the handlers that produce a response wherever it is written in the block, so
-one line covers the documents, the chunks and the media block. Its default
-content-type match leaves the already-compressed images alone.
+one line covers the successful documents, the chunks and the media block. Its
+default content-type match leaves the already-compressed images alone. Errors
+have a separate handler chain, so its 404 block repeats `encode zstd gzip`.
 `precompressed` is the opposite: a `file_server` subdirective, so it applies to
 the release's file server alone, and the media block's stays bare because
 nothing under `/media` has a sidecar.
-`handle_errors` catches a missing media file as well as a missing page, which
-sends the HTML body to a request that wanted an image; the status is what a
+`handle_errors 404` catches a missing media file as well as a missing page,
+which sends the HTML body to a request that wanted an image; the status is what a
 crawler reads and the body is never seen. None of this changes what
 `scripts/validate-caddy-layout.cjs` inspects: it follows roots and reachable
 file servers through `routes`, and Caddy adapts `handle_errors` into a separate
@@ -642,14 +716,17 @@ cache skips a parse it would otherwise repeat.
 Measured 19 September 2026 against the live site, signed in past the gate: a
 `pageshow` listener on the home page survived a click to `/zavetisca/obalno`
 and a `history.back()` and reported `persisted: true`. The HTML response
-carries no `Cache-Control` at all, only `ETag`, `Last-Modified`,
+carried no `Cache-Control` at that time, only `ETag`, `Last-Modified`,
 `Vary: Accept-Encoding` and `content-encoding: zstd`.
 
-`no-store` on a document disqualifies it outright. `no-cache` and
-`max-age=0, must-revalidate` both keep it eligible, so the revalidation the
-`.html` paragraph under `/_next/static` cache headers asks for costs nothing
-here. If a document `Cache-Control` is ever added to the `try_files` chain, it
-has to be one of those two.
+The explicit HTML `no-cache` policy permits HTTP-cache storage and requires
+validation before ordinary cached reuse. Back/forward cache is a separate
+page snapshot: a successful restoration can skip a new HTTP request, so this
+header does not guarantee revalidation on every history traversal. Recheck
+`pageshow.persisted` and eligibility in an actual browser after deployment.
+Browser rules also evolve: Chrome now permits some `no-store` pages in
+back/forward cache, so `no-store` is not a universal way to disable it; see
+[Chrome's current guidance](https://developer.chrome.com/docs/web-platform/bfcache-ccns).
 
 Nothing in the exported pages blocks it either. No public page registers an
 `unload` or `beforeunload` handler, opens a `BroadcastChannel` or a WebSocket,

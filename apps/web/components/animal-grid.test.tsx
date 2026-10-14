@@ -36,6 +36,7 @@ import {
   stubIntersectionObserver,
 } from "@/test/grid-stubs";
 import type { FilterOption } from "@/lib/filters";
+import { DESKTOP_QUERY } from "@/lib/viewport-queries";
 // The chunks the grid fetches for the dialog, the filter sheet and the
 // picker, loaded with the file so no test waits for them inside its find or
 // inside settle's act (test/picker-chunks.ts says why). The suite at the end
@@ -81,6 +82,15 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: vi.fn(),
   })),
 });
+
+function stubDesktop(): void {
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({
+    matches: media === DESKTOP_QUERY,
+    media,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })));
+}
 
 // The grid waits for an idle moment to mount the dialog, and jsdom ships no
 // requestIdleCallback: without this the mount waits out the two-second
@@ -692,6 +702,7 @@ describe("a filter with nothing left to narrow", () => {
   });
 
   it("keeps any section a selection alone was holding on the tab", () => {
+    stubDesktop();
     // Energija carried to Mačke, where no cat was rated: the section is there
     // only for its answer, and pressing that off must not take it away.
     window.history.replaceState(null, "", "/?vrsta=macka&energija=miren");
@@ -710,6 +721,7 @@ describe("a filter with nothing left to narrow", () => {
   });
 
   it("keeps a row drawn only for its pick once the pick comes off", () => {
+    stubDesktop();
     // Miren and Živahen, then a size only the lively dog comes in: Miren
     // reads 0 and the sidebar draws it only because it is ticked. Unticking
     // it took the row out in the same render, from under the pointer and
@@ -738,10 +750,50 @@ describe("a filter with nothing left to narrow", () => {
     expect(row.disabled).toBe(false);
     expect(document.activeElement).toBe(row);
   });
+
+  it.each([
+    { param: "druzba", value: "psi", label: "s psi" },
+    { param: "skrb", value: "potrpezljiv", label: "Potrpežljivost" },
+    { param: "barva", value: "crna", label: "Črna" },
+  ])("keeps a zero-count $param control usable until the species changes", ({ param, value, label }) => {
+    stubDesktop();
+    // None of these animals answers the facet. The shared selection alone
+    // keeps the section alive; the model and the rendered control must both
+    // retain it when it comes off, including the colour palette's disabled
+    // state. Testing the list with options supplied by hand misses that step.
+    window.history.replaceState(null, "", `/?vrsta=ostalo&${param}=${value}`);
+    const { container } = renderGrid(ANIMALS);
+    const rail = container.querySelector("aside")!;
+    const name = new RegExp(`^${label}, 0\\s`);
+    const row = within(rail).getByRole<HTMLButtonElement>("button", { name });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(row.disabled).toBe(false);
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(row);
+    expect(new URLSearchParams(query()).has(param)).toBe(false);
+
+    // Keeping the DOM alone is insufficient: the same control must still
+    // restore its choice, even though that choice reads zero.
+    fireEvent.click(row);
+    expect(new URLSearchParams(query()).get(param)).toBe(value);
+    fireEvent.click(row);
+
+    // Retention belongs to this visit to a species tab, not the whole page.
+    const toolbar = within(container.querySelector('[data-slot="desktop-toolbar"]')!);
+    fireEvent.click(toolbar.getByRole("button", { name: /^Psi\b/ }));
+    expect(row.isConnected).toBe(false);
+    fireEvent.click(toolbar.getByRole("button", { name: /^Ostale\b/ }));
+    expect(within(rail).queryByRole("button", { name })).toBeNull();
+  });
 });
 
 describe("a link shared while Samo na voljo was a filter", () => {
   it("stops filtering and loses the param on the next write, keeping the rest", () => {
+    stubDesktop();
     window.history.replaceState(
       null,
       "",
@@ -755,9 +807,7 @@ describe("a link shared while Samo na voljo was a filter", () => {
 
     expect(screen.getByRole("link", { name: /dog-hold/ })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /dog-female/ })).toBeNull();
-    expect(
-      screen.getAllByRole("button", { name: "Filtri, aktivnih: 1" }).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Filtri 1" })).toBeTruthy();
 
     const rail = container.querySelector("aside")!;
     fireEvent.click(within(rail).getByRole("button", { name: /^Samica,/ }));

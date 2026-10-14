@@ -45,6 +45,37 @@ async function expectResetAndStillOpen(page: Page, panel: Locator) {
   ).toHaveAttribute("aria-expanded", "true");
 }
 
+for (const { path, label } of [
+  { path: "/", label: "Na filtre" },
+  { path: "/en/", label: "Jump to filters" },
+]) {
+  test(`reaches the sidebar from ${label} without traversing animal cards`, async ({
+    page,
+  }) => {
+    await page.goto(path);
+    const shortcut = page.getByRole("link", { name: label, exact: true });
+    const sidebar = page.locator("aside");
+    const heading = sidebar.getByRole("heading", { level: 2 });
+
+    await page
+      .locator('[data-slot="desktop-toolbar"]')
+      .getByRole("combobox")
+      .focus();
+    await page.keyboard.press("Tab");
+    await expect(shortcut).toBeFocused();
+    await expect(shortcut).toHaveCSS("position", "fixed");
+    await expect(shortcut).toBeInViewport();
+
+    await page.keyboard.press("Enter");
+    await expect(heading).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(sidebar.getByRole("button").first()).toBeFocused();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(shortcut).toBeHidden();
+  });
+}
+
 test("resets Spol from a mouse press anywhere on its Ponastavi", async ({
   page,
 }) => {

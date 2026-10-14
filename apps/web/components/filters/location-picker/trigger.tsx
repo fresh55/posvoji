@@ -1,4 +1,4 @@
-import { Maximize2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { MiniMap } from "@/components/filters/mini-map";
 import { LocationScopeRow } from "@/components/filters/location-scope-row";
 import { QUIET_TRIGGER_CLASS } from "@/components/filters/toolbar-trigger";
@@ -69,7 +69,7 @@ export function LocationPickerTrigger({
         />
         <span className="truncate">{label}</span>
       </span>
-      <Maximize2 className="size-3.5 opacity-50" aria-hidden />
+      <ChevronRight className="size-3.5 opacity-50" aria-hidden />
     </Button>
   );
 }

@@ -325,11 +325,14 @@ export function useAnimalFilterModel({
   // Every option of a live section stays visible; counts indicate which answers
   // are confirmed. visible* answers only whether the section is live at all,
   // so it returns every key or none (visibleFacet in lib/filters.ts).
+  // A retained zero-count pick keeps its option and section too: when the pool
+  // answers nothing, removing the last pick otherwise takes the focused row
+  // away before the sidebar can apply keptPicks.
   const goodWith = useMemo(() => {
     const keys = visibleGoodWith(pool, filters.goodWith, true);
     return {
       options: goodWithOptions(locale).filter((option) =>
-        keys.includes(option.key),
+        keys.includes(option.key) || keptPicks.goodWith?.includes(option.key),
       ),
       counts: goodWithTally,
       resultCount: resultCount,
@@ -340,6 +343,7 @@ export function useAnimalFilterModel({
   }, [
     filters.goodWith,
     goodWithTally,
+    keptPicks.goodWith,
     locale,
     pool,
     resultCount,
@@ -353,7 +357,7 @@ export function useAnimalFilterModel({
       // The tab decides one description: Izkušeno roko names the dogs it
       // holds, and on Mačke it holds two very frightened cats instead.
       options: careOptions(locale, filters.species).filter((option) =>
-        keys.includes(option.key),
+        keys.includes(option.key) || keptPicks.care?.includes(option.key),
       ),
       counts: careTally,
       resultCount: resultCount,
@@ -365,6 +369,7 @@ export function useAnimalFilterModel({
     careTally,
     filters.care,
     filters.species,
+    keptPicks.care,
     locale,
     pool,
     resultCount,

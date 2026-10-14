@@ -171,18 +171,23 @@ describe("SiteFooter", () => {
       `a[href="${POETIVO_URL}"]`,
     )!;
     expect(credit).not.toBeNull();
-    expect(container.querySelector("nav")?.contains(credit)).not.toBe(true);
     expect(credit.textContent).toContain(messages.poweredBy);
     // Leaves the site, and the accessible name says so the way the
     // repository link's does.
+    expect(credit.getAttribute("target")).toBe("_blank");
     expect(credit.textContent).toContain(messages.newWindow);
 
     cleanup();
 
-    render(<SiteFooter locale="en" />);
-    expect(
-      screen.getByRole("link", { name: /^Powered by Poetivo/ }).getAttribute("href"),
-    ).toBe(POETIVO_URL);
+    // Outside the nav, checked on a render that has one: with every link off
+    // there is no nav to be outside of, and a "not inside" on nothing passes
+    // for free.
+    const en = render(<SiteFooter locale="en" />);
+    const nav = en.container.querySelector("nav")!;
+    expect(nav).not.toBeNull();
+    const link = screen.getByRole("link", { name: /^Powered by Poetivo/ });
+    expect(link.getAttribute("href")).toBe(POETIVO_URL);
+    expect(nav.contains(link)).toBe(false);
   });
 
   // The found-animal page is not about the listings. The provenance sentence
@@ -222,6 +227,7 @@ describe("SiteFooter", () => {
       `a[href="${REPO_URL}"]`,
     )!;
     expect(repo.textContent).toContain(messages.openSource);
+    expect(repo.getAttribute("target")).toBe("_blank");
     expect(repo.textContent?.trimEnd().endsWith(messages.newWindow)).toBe(true);
   });
 

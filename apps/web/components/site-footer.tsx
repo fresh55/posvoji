@@ -43,11 +43,13 @@ const FOOTER_LINK =
  * crowded one. These are crowded twice over. They sit beside each other in a
  * row, and on the about page the model credit follows them wearing an overlay
  * of its own. A 19.5px line under a 44px overlay overhangs 12.25px per side,
- * so the credit was reaching into the row above it and, being later in the DOM
- * with neither carrying a z-index, taking the presses meant for the repository
- * link. The credit beside the repository link would do the same to it from
- * the side if it overlaid, and the row's 24px gap is not what stops that: a
- * drawn box has nothing to reach with.
+ * so the model credit was reaching into the row above it and, being later in
+ * the DOM with neither carrying a z-index, taking the presses meant for the
+ * repository link. The row's own wrap is the same collision in waiting: below
+ * lg the two marked links sit under the address, and an overlay on either
+ * would reach 12.25px up into its box. Sideways there is nothing to reach
+ * with, the overlay being max(100%, 44px) wide on links wider than that, so
+ * the 24px gap along the row is for the eye, not the finger.
  */
 const FOOTER_ACTION = `inline-flex items-center gap-1.5 ${QUIET_UNDERLINE} max-lg:min-h-11`;
 
@@ -277,8 +279,9 @@ export function SiteFooter({
             ))}
           </nav>
         )}
-        {/* The provenance note, then when it was last true, then the two
-            things a reader can do about it. */}
+        {/* The provenance note, then when it was last true, then the three
+            things about the site itself: the address, the code and who
+            builds it. */}
         <div className="max-w-3xl space-y-2">
           {aboutListings && <p>{messages.footer}</p>}
           {/* Publication time is distinct from the source check on each animal. */}
@@ -340,64 +343,64 @@ export function SiteFooter({
               </span>
             )}
             <span className="inline-flex flex-wrap items-center gap-x-6 gap-y-2">
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              // Kept, knowing what it is: a title renders on pointer hover and
-              // nowhere else, so this line reaches a desktop mouse and neither
-              // touch nor the keyboard. A Tooltip would not fix that half and
-              // would put a client boundary at the bottom of every document in
-              // the export, this file being what PortalShell imports.
-              title={messages.githubTitle}
-              className={FOOTER_ACTION_LINK}
-            >
-              <svg
-                viewBox="0 0 16 16"
-                aria-hidden
-                className="size-3.5 shrink-0 fill-current"
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer"
+                // Kept, knowing what it is: a title renders on pointer hover and
+                // nowhere else, so this line reaches a desktop mouse and neither
+                // touch nor the keyboard. A Tooltip would not fix that half and
+                // would put a client boundary at the bottom of every document in
+                // the export, this file being what PortalShell imports.
+                title={messages.githubTitle}
+                className={FOOTER_ACTION_LINK}
               >
-                <path d={GITHUB_MARK} />
-              </svg>
-              {messages.openSource}
-              {/* A link that leaves the site, and target="_blank" says so to
-                  nobody, so the accessible name does. Word for word what the
-                  shelter cards say, from the catalogue rather than another
-                  copy of the sentence. */}
-              <span className="sr-only"> {messages.newWindow}</span>
-            </a>
-            <a
-              href={POETIVO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className={FOOTER_ACTION_LINK}
-            >
-              {/* Poetivo's own mark, the capital P of Inter 600, in the box
-                  the mark above uses so the two draw alike and the text after
-                  each starts at the same offset. lib/poetivo-mark.ts says
-                  where it comes from. */}
-              <svg
-                viewBox="0 0 16 16"
-                aria-hidden
-                className="size-3.5 shrink-0 fill-current"
+                <svg
+                  viewBox="0 0 16 16"
+                  aria-hidden
+                  className="size-3.5 shrink-0 fill-current"
+                >
+                  <path d={GITHUB_MARK} />
+                </svg>
+                {messages.openSource}
+                {/* A link that leaves the site, and target="_blank" says so to
+                    nobody, so the accessible name does. Word for word what the
+                    shelter cards say, from the catalogue rather than another
+                    copy of the sentence. */}
+                <span className="sr-only"> {messages.newWindow}</span>
+              </a>
+              <a
+                href={POETIVO_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={FOOTER_ACTION_LINK}
               >
-                <path d={POETIVO_MARK} />
-              </svg>
-              {messages.poweredBy}
-              <span className="sr-only"> {messages.newWindow}</span>
-            </a>
+                {/* Poetivo's own mark, the capital P of Inter 600, in the box
+                    the mark above uses so the two draw alike and the text after
+                    each starts at the same offset. lib/poetivo-mark.ts says
+                    where it comes from. */}
+                <svg
+                  viewBox="0 0 16 16"
+                  aria-hidden
+                  className="size-3.5 shrink-0 fill-current"
+                >
+                  <path d={POETIVO_MARK} />
+                </svg>
+                {messages.poweredBy}
+                <span className="sr-only"> {messages.newWindow}</span>
+              </a>
             </span>
           </div>
           {/* Room under the row, below lg only, because that is the only width
-              at which the credit draws an overlay. model-credit.tsx wears
-              max-lg:tap-target, which reaches 12.25px above its own 19.5px
-              line, and space-y-2 gives 8px. 16px here puts 24px between them,
-              clear of the overhang.
+              at which the model credit draws an overlay. model-credit.tsx
+              wears max-lg:tap-target, which reaches 12.25px above its own
+              19.5px line, and space-y-2 gives 8px. 16px here puts 24px between
+              them, clear of the overhang.
 
               Room and not a taller credit. Growing that box is the other half
-              of the rule in globals.css, but the credit is now the isolated
-              control the overlay is for, and this footer can fix its own
-              spacing without reaching into a component it only hosts. */}
+              of the rule in globals.css, but the model credit is now the
+              isolated control the overlay is for, and this footer can fix its
+              own spacing without reaching into a component it only hosts. */}
           {children && <div className="max-lg:pt-4">{children}</div>}
         </div>
       </div>

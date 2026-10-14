@@ -11,7 +11,7 @@
  * footer draws both with one svg recipe and the text after each starts at
  * the same offset.
  *
- * One caller, the footer's credit line, at 14px inside a text link. The ink
+ * One caller, the footer's credit, at 14px inside a text link. The ink
  * is the caller's to decide, which is why this is a path and not a drawing.
  */
 export const POETIVO_MARK =

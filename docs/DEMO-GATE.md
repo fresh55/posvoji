@@ -156,15 +156,17 @@ The right cookie reaches the site and a wrong one gets the gate page. With
 the key empty, an empty cookie still gets `401` and the health account still
 gets in.
 
-**Not applied to the host yet**, as of 14 October 2026: SSH was pinned to an
-older address. To apply, back up `/etc/caddy/Caddyfile`, add `/logo.svg` to
-the `@gated` matcher's `not path` list, move `header -WWW-Authenticate` from
-inside `handle @page` to the top of the `handle_errors 401` block, then run
-`caddy validate --config /etc/caddy/Caddyfile` and `systemctl reload caddy`.
-Verify with no cookie that `/logo.svg` is `200` and that `/ni-take-strani`
-with `Accept: image/*` is `401` without a `WWW-Authenticate` header, then
-`systemctl start posvoji-health.service` and check that it passed. The launch
-candidate's `.source.sha256` no longer matches the live file afterwards;
+Applied to production on 14 October 2026, after both firewalls had been
+moved to the operator's new address: `/logo.svg` was added to the host's
+`@gated` matcher and `header -WWW-Authenticate` moved from inside
+`handle @page` to the top of the `handle_errors 401` block. Caddy validated
+and reloaded without a restart. Verified afterwards with no cookie:
+`/logo.svg` is `200`; an image, a `.json` and a page request are `401` with
+no `WWW-Authenticate` header, the page request carrying the gate page. The
+health account still reaches the release status and the branded `404`, and
+`posvoji-health.service` passed. The previous configuration is saved on the
+host at `/etc/caddy/Caddyfile.before-gate-challenge-20261014T105853Z`. The
+launch candidate's `.source.sha256` no longer matches the live file;
 LAUNCH-READINESS.md already says to regenerate the candidate in that case.
 
 `handle_errors 401` sits beside the existing `handle_errors` block for the

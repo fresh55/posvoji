@@ -30,6 +30,7 @@ import {
   valueChipLabel,
   visibleToggles,
   type FilterFacet,
+  type FilterOption,
   type Filters,
 } from "@/lib/filters";
 import type { Locale } from "@/lib/i18n";
@@ -102,6 +103,7 @@ function keptByFacet(picked: readonly string[]): KeptPicks {
 /** Facet options, counts and recovery chips all describe the same result set. */
 export function useAnimalFilterModel({
   animals,
+  offSiteShelters,
   logos,
   reference,
   locale,
@@ -109,6 +111,8 @@ export function useAnimalFilterModel({
   actions,
 }: {
   animals: ClientAnimal[];
+  /** Registry names for shelters that have no published listings. */
+  offSiteShelters?: FilterOption[];
   logos: ShelterLogos;
   reference: Date;
   locale: Locale;
@@ -293,10 +297,15 @@ export function useAnimalFilterModel({
   // Their names, by id. The chips row used to ask optionLabel for each one,
   // and optionLabel rebuilds the whole roster from every animal to answer,
   // so a row of shelter chips walked the dataset once per pill on every
-  // render. The roster above is that same walk, already done.
+  // render. The roster above is that same walk, already done. Registry names
+  // cover a shelter with no listings selected through a shared URL, using
+  // the same client data the picker already has.
   const shelterLabels = useMemo(
-    () => new Map((shelters ?? []).map(({ value, label }) => [value, label])),
-    [shelters],
+    () => new Map(
+      [...(offSiteShelters ?? []), ...(shelters ?? [])]
+        .map(({ value, label }) => [value, label]),
+    ),
+    [offSiteShelters, shelters],
   );
   const toggles = useMemo(
     () =>

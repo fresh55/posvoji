@@ -47,12 +47,18 @@ describe("translations", () => {
     // nimajo. Two is the count a singular/plural pair gets wrong.
     expect(
       translate("sl", "noResultsShelterSingular", { species: "psov" }),
-    ).toBe("Izbrano zavetišče trenutno nima psov.");
+    ).toBe("Izbrano zavetišče trenutno nima objavljenih psov.");
     expect(translate("sl", "noResultsShelterDual", { species: "psov" })).toBe(
-      "Izbrani zavetišči trenutno nimata psov.",
+      "Izbrani zavetišči trenutno nimata objavljenih psov.",
     );
     expect(translate("sl", "noResultsShelterPlural", { species: "psov" })).toBe(
-      "Izbrana zavetišča trenutno nimajo psov.",
+      "Izbrana zavetišča trenutno nimajo objavljenih psov.",
+    );
+    expect(translate("en", "noResultsShelterSingular", { species: "dogs" })).toBe(
+      "The selected shelter has no dogs listed right now.",
+    );
+    expect(translate("en", "noResultsShelterPlural", { species: "dogs" })).toBe(
+      "The selected shelters have no dogs listed right now.",
     );
     // English inflects nothing past one, so the dual reads as the plural
     // rather than as a form of its own.

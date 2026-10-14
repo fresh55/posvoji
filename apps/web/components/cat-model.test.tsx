@@ -132,6 +132,7 @@ describe("the cat model", () => {
     // and the picking chunk is another 51KB behind it.
     expect(hints()).toEqual([]);
     expect(runtime.reads).toBe(0);
+    expect(screen.getByRole("status").textContent).toBe("");
 
     reachFor();
     // In the same tick as the chunk import, rather than after the chunk has
@@ -255,8 +256,12 @@ describe("the cat model", () => {
     reachFor();
     await act(async () => {});
     expect(document.querySelector("model-viewer")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe("");
+    expect(shown()).toBe(false);
     await act(async () => intersect(true));
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    expect(screen.getByRole("status").textContent).toContain("still loading");
+    expect(shown()).toBe(true);
   });
 
   it("takes a Tab into his corner for a reach, and one that stops short for none", async () => {
@@ -524,7 +529,7 @@ describe("the cat model", () => {
     vi.useFakeTimers();
     render(<CatModel sizes="100vw" locale="en" />);
     await act(async () => vi.advanceTimersByTime(20_000));
-    expect(screen.getByRole("status").textContent).toBe("The cat is still loading …");
+    expect(screen.getByRole("status").textContent).toBe("");
     await act(async () => intersect(true));
     const viewer = document.querySelector("model-viewer")!;
     await act(async () => vi.advanceTimersByTime(9_999));
@@ -554,10 +559,11 @@ describe("the cat model", () => {
 
   it("keeps the loading label off screen until someone reaches for him", async () => {
     render(<CatModel sizes="100vw" locale="en" />);
-    // Present for screen readers from the start, drawn only on a reach.
-    expect(screen.getByRole("status").textContent).toContain("still loading");
+    // Empty before a request, then announced while loading; drawn on a reach.
+    expect(screen.getByRole("status").textContent).toBe("");
     expect(shown()).toBe(false);
     await act(async () => intersect(true));
+    expect(screen.getByRole("status").textContent).toContain("still loading");
     expect(shown()).toBe(false);
     reachFor();
     expect(shown()).toBe(true);
@@ -570,12 +576,15 @@ describe("the cat model", () => {
     render(<CatModel sizes="100vw" locale="en" />);
     const spinner = () => document.querySelector(".animate-spin");
     expect(spinner()).toBeNull();
+    act(() => intersect(true));
+    expect(spinner()).toBeNull();
     reachFor();
     expect(spinner()).not.toBeNull();
   });
 
   it("says so at once when the poster is touched, and says why when 3D fails", async () => {
     render(<CatModel sizes="100vw" locale="sl" />);
+    act(() => intersect(true));
     touchPoster();
     expect(shown()).toBe(true);
     expect(screen.getByRole("status").textContent).toContain("nalaga");

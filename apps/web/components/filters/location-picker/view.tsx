@@ -174,8 +174,10 @@ export function LocationPickerView({
             // height can fill: 22rem is 320px of country and the stage's 32px
             // of padding, a little over the 300px the region names need to
             // print (map-region-names.tsx), and the list takes the rest up to
-            // its own 24rem.
-            "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(5rem_+_env(safe-area-inset-bottom,0px))] [--picker-list-w:min(24rem,calc(100%_-_41rem))] short:[--picker-list-w:min(24rem,calc(100%_-_22rem))]",
+            // its own 24rem. Keep a 16rem floor in both layouts so enlarged
+            // text cannot consume the list's entire share; the map can shrink
+            // and use paws when its count circles no longer fit.
+            "relative min-h-0 w-full flex-1 overflow-hidden bg-muted/30 [--picker-footer-h:calc(5rem_+_env(safe-area-inset-bottom,0px))] [--picker-list-w:max(16rem,min(24rem,calc(100%_-_41rem)))] short:[--picker-list-w:max(16rem,min(24rem,calc(100%_-_22rem)))]",
             // A column its two children stand in, rather than a box they are
             // pinned to the edges of. Only where the height comes from them.
             hugMap && "picker-stacked:flex picker-stacked:flex-col",

@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import { LoaderCircle } from "lucide-react";
-import { memo, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
 import type { CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
 import { cn } from "@/lib/utils";
+import { QUIET_DOC_LINK } from "@/lib/link-styles";
 import {
   getServerConnectionSnapshot,
   limitedConnectionEnabled,
@@ -82,6 +82,7 @@ export const CatModel = memo(function CatModel({
   framing = CAT_FRAMING,
   startOnReach = false,
   deferOnLimitedConnection = false,
+  renderCaption,
   onHandle,
 }: {
   locale: Locale;
@@ -98,6 +99,8 @@ export const CatModel = memo(function CatModel({
   startOnReach?: boolean;
   /** Keep the still on Save-Data and 2G until a press; ordinary visits still start when visible. */
   deferOnLimitedConnection?: boolean;
+  /** Put the optional Start/Retry action in the page's caption, outside the still. */
+  renderCaption?: (action: ReactNode) => ReactNode;
   onHandle?: (handle: CatModelHandle | null) => void;
 }) {
   const text = copy[locale];
@@ -424,62 +427,59 @@ export const CatModel = memo(function CatModel({
     };
   }, [locale, text, framing.orbit, framing.target, startOnReach, deferOnLimitedConnection]);
 
+  const startAction = showStartButton ? (
+    <button type="button" className={QUIET_DOC_LINK} onClick={() => reach(true)}>
+      {status === "failed" ? text.retry : text.start}
+    </button>
+  ) : null;
+
   return (
-    <div
-      ref={stage}
-      className={cn("relative", loading && "cursor-progress", className)}
-      onPointerEnter={() => reach(false)}
-      onPointerDown={() => reach(true)}
-    >
-      {/* The transparent fallback prevents downloads outside posterMedia. */}
-      <picture>
-        {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
-        <Image
-          src={posterMedia ? BLANK_PIXEL : framing.poster}
-          alt={ready ? "" : text.alt}
-          fill
-          // Load the still eagerly; only prioritize it when it is the largest visible image.
-          loading="eager"
-          {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
-          sizes={sizes}
-          className={`object-contain ${ready ? "invisible" : ""}`}
-        />
-      </picture>
-      {showStartButton && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="absolute inset-x-0 bottom-2 z-10 mx-auto w-fit"
-          onClick={() => reach(true)}
-        >
-          {status === "failed" ? text.retry : text.start}
-        </Button>
-      )}
-      {/* inert removes the loading viewer from tab order; aria-hidden also hides it from assistive technology. */}
+    <>
       <div
-        ref={host}
-        inert={!ready}
-        aria-hidden={!ready}
-        className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
-      />
-      {/* Announce loading once requested; show visual feedback after interaction. */}
-      <div
-        data-slot="cat-status"
-        role="status"
-        className={cn(
-          "pointer-events-none absolute inset-x-0 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
-          showStartButton && status === "failed" ? "bottom-12" : "bottom-2",
-          reached && waiting ? "opacity-100" : "opacity-0",
-        )}
+        ref={stage}
+        className={cn("relative", loading && "cursor-progress", className)}
+        onPointerEnter={() => reach(false)}
+        onPointerDown={() => reach(true)}
       >
-        {waiting && (
-          <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
-            {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
-            {waiting}
-          </Badge>
-        )}
+        {/* The transparent fallback prevents downloads outside posterMedia. */}
+        <picture>
+          {posterMedia && <source media={posterMedia} srcSet={framing.poster} />}
+          <Image
+            src={posterMedia ? BLANK_PIXEL : framing.poster}
+            alt={ready ? "" : text.alt}
+            fill
+            // Load the still eagerly; only prioritize it when it is the largest visible image.
+            loading="eager"
+            {...(posterPriority ? { priority: true } : { fetchPriority: "low" as const })}
+            sizes={sizes}
+            className={`object-contain ${ready ? "invisible" : ""}`}
+          />
+        </picture>
+        {/* inert removes the loading viewer from tab order; aria-hidden also hides it from assistive technology. */}
+        <div
+          ref={host}
+          inert={!ready}
+          aria-hidden={!ready}
+          className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
+        />
+        {/* Announce loading once requested; show visual feedback after interaction. */}
+        <div
+          data-slot="cat-status"
+          role="status"
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
+            reached && waiting ? "opacity-100" : "opacity-0",
+          )}
+        >
+          {waiting && (
+            <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
+              {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
+              {waiting}
+            </Badge>
+          )}
+        </div>
       </div>
-    </div>
+      {renderCaption ? renderCaption(startAction) : startAction}
+    </>
   );
 });

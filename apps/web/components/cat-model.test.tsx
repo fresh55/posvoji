@@ -3,6 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CatModel } from "./cat-model";
+import { AboutCat } from "./about-cat";
 import { renderToStaticMarkup } from "react-dom/server";
 
 // The picking chunk, and when the stage asks for it. The export is read once
@@ -257,17 +258,21 @@ describe("the cat model", () => {
     { saveData: false, effectiveType: "2g" },
   ])("keeps the About still on a limited connection until a press (%j)", async (connection) => {
     vi.stubGlobal("navigator", { connection });
-    render(<CatModel sizes="100vw" locale="en" deferOnLimitedConnection />);
+    render(<AboutCat locale="en" />);
     await act(async () => intersect(true));
     reachFor();
     await act(async () => {});
     expect(hints()).toEqual([]);
     expect(document.querySelector("model-viewer")).toBeNull();
     const start = screen.getByRole("button", { name: "Start 3D view" });
+    const stage = screen.getByRole("img").closest("picture")!.parentElement!;
+    expect(start.closest("figcaption")).not.toBeNull();
+    expect(stage.contains(start)).toBe(false);
+    expect(start.className).toBe(screen.getByRole("link").className);
     act(() => start.focus());
     expect(hints()).toEqual([]);
     expect(screen.getByRole("status").textContent).toBe("");
-    expect(start.parentElement!.classList.contains("cursor-progress")).toBe(false);
+    expect(stage.classList.contains("cursor-progress")).toBe(false);
     fireEvent.click(start);
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
     expect(hints()).toHaveLength(2);
@@ -286,17 +291,20 @@ describe("the cat model", () => {
 
   it("offers a keyboard-operable retry after limited-connection startup fails", async () => {
     vi.stubGlobal("navigator", { connection: { saveData: true } });
-    render(<CatModel sizes="100vw" locale="en" deferOnLimitedConnection />);
+    render(<AboutCat locale="en" />);
     await act(async () => intersect(true));
     fireEvent.click(screen.getByRole("button", { name: "Start 3D view" }));
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
     const first = document.querySelector("model-viewer")!;
     fireEvent(first, new Event("error"));
     const retry = screen.getByRole("button", { name: "Try again" });
+    const stage = screen.getByRole("img").closest("picture")!.parentElement!;
+    expect(retry.closest("figcaption")).not.toBeNull();
+    expect(stage.contains(retry)).toBe(false);
     act(() => retry.focus());
     expect(document.activeElement).toBe(retry);
     expect(screen.getByRole("status").textContent).toContain("Tap or click to try again");
-    expect(retry.parentElement!.classList.contains("cursor-progress")).toBe(false);
+    expect(stage.classList.contains("cursor-progress")).toBe(false);
     expect(document.querySelector("model-viewer")).toBeNull();
     fireEvent.click(retry);
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());

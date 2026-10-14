@@ -13,6 +13,10 @@ const sl = {
   // same file: the phrases are whole and translated, never put together in
   // the component.
   openSourceInvite: "Odprta koda, pomagaš lahko tudi ti.",
+  // The footer's credit line, the last thing on every page: who builds and
+  // runs the site. One phrase for the reason above. Poetivo is a name and
+  // reads the same in both languages.
+  poweredBy: "Poganja Poetivo",
   // What a link that leaves the site says. Word for word the shelters page's
   // own note, so the site says this one way rather than three.
   newWindow: "(odpre se v novem oknu)",
@@ -808,6 +812,7 @@ const en: Messages = {
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
   openSourceInvite: "Open source, and you can help.",
+  poweredBy: "Powered by Poetivo",
   newWindow: "(opens in a new window)",
   contactPhone: "Phone",
   contactEmail: "Email",

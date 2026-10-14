@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
 
@@ -148,6 +148,41 @@ describe("SiteFooter", () => {
     expect(
       container.querySelector<HTMLAnchorElement>(`a[href="${REPO_URL}"]`),
     ).not.toBeNull();
+  });
+
+  // Who builds the site, on every page and outside the nav for the reason
+  // the two above are: poetivo.si is not a page of this site. Pinned with
+  // every switch off, because the pages that turn the most off (the portal,
+  // the found-animal lookup) are pages too.
+  it("names who builds it, in both locales, whatever the page turns off", () => {
+    const messages = getMessages("sl");
+    const { container } = render(
+      <SiteFooter
+        locale="sl"
+        showSheltersLink={false}
+        showFoundAnimalLink={false}
+        showAboutLink={false}
+        showContact={false}
+        aboutListings={false}
+      />,
+    );
+
+    const credit = container.querySelector<HTMLAnchorElement>(
+      `a[href="${POETIVO_URL}"]`,
+    )!;
+    expect(credit).not.toBeNull();
+    expect(container.querySelector("nav")?.contains(credit)).not.toBe(true);
+    expect(credit.textContent).toContain(messages.poweredBy);
+    // Leaves the site, and the accessible name says so the way the
+    // repository link's does.
+    expect(credit.textContent).toContain(messages.newWindow);
+
+    cleanup();
+
+    render(<SiteFooter locale="en" />);
+    expect(
+      screen.getByRole("link", { name: /^Powered by Poetivo/ }).getAttribute("href"),
+    ).toBe(POETIVO_URL);
   });
 
   // The found-animal page is not about the listings. The provenance sentence

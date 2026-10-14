@@ -3,8 +3,9 @@ import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
 import { QUIET_UNDERLINE } from "@/lib/link-styles";
+import { POETIVO_MARK } from "@/lib/poetivo-mark";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
 
@@ -166,10 +167,11 @@ export function SiteFooter({
   // the shelter login is the header's now, a button from lg and a dropdown
   // item below it.
   //
-  // The two controls under the provenance note are deliberately not roster
+  // The controls under the provenance note are deliberately not roster
   // entries and never will be. The roster holds pages of this site; a mail
-  // composer and a repository on another domain are neither, and putting them
-  // in it would put them in the header's dropdown as well.
+  // composer, a repository and the builder's own site are all on other
+  // domains, and putting them in it would put them in the header's dropdown
+  // as well.
   const shown: Record<SiteLinkKey, boolean> = {
     shelters: showSheltersLink,
     foundAnimal: showFoundAnimalLink,
@@ -358,6 +360,42 @@ export function SiteFooter({
               control the overlay is for, and this footer can fix its own
               spacing without reaching into a component it only hosts. */}
           {children && <div className="max-lg:pt-4">{children}</div>}
+          {/* Who builds and runs the site, last, after whatever credit the
+              page added above: the signature at the end of the small print,
+              on every page including the portal and the 404, because the
+              question it answers is asked of every page alike.
+
+              The repository link's own grammar, mark and all: a line that
+              leaves the site, drawn as a box below lg rather than overlaid.
+              An overlay here would reach 12.25px up into the action row's
+              boxes, which have no overhang to answer with, and being later
+              in the DOM it would take the bottom band of the repository
+              link, the collision FOOTER_ACTION records from the other side.
+
+              The 16px above it exists only under a page credit. That credit
+              is the one overlay down here and reaches 12.25px below its own
+              line; the 8px of space-y-2 is inside that reach and 24px is
+              clear of it, the same room the wrapper above takes for the
+              same overlay from the other direction. Without a credit the
+              row above is drawn boxes and 8px is enough. */}
+          <p className={children ? "max-lg:pt-4" : undefined}>
+            <a
+              href={POETIVO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className={FOOTER_ACTION_LINK}
+            >
+              <svg
+                viewBox="0 0 16 16"
+                aria-hidden
+                className="size-3.5 shrink-0 fill-current"
+              >
+                <path d={POETIVO_MARK} />
+              </svg>
+              {messages.poweredBy}
+              <span className="sr-only"> {messages.newWindow}</span>
+            </a>
+          </p>
         </div>
       </div>
     </footer>

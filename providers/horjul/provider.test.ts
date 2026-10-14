@@ -230,6 +230,17 @@ describe("journal descriptions", () => {
     expect(parseDetail(historyHtml).description).not.toContain("9 tednov");
   });
 
+  it("leaves out a paragraph that is wholly a quoted letter", () => {
+    const html = historyHtml.replace(
+      '<div id="e-n-tab-content-1" role="tabpanel" data-tab-index="1" class="e-active">',
+      '<div id="e-n-tab-content-1" role="tabpanel" data-tab-index="1" class="e-active">' +
+        "<p><em>&#8220;Jaz, ki prebivam drugje, se odpovedujem psički.</em><br /><em>Z spoštovanjem&#8221;</em></p>",
+    );
+    const description = parseDetail(html).description;
+    expect(description).not.toContain("prebivam");
+    expect(description).toContain("Klopka je FeLV in FIV negativna");
+  });
+
   it("has no description when a listing carries no journal", () => {
     expect(parseDetail(dogHtml).description).toBeUndefined();
   });

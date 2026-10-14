@@ -343,6 +343,12 @@ export function parseDetail(html: string): DetailFacts {
 // description with it.
 const QUESTIONNAIRE = /posvojitveni\s+vpra[sš]alnik/i;
 
+// A paragraph that is wholly a quotation is someone else's text pasted into
+// the entry, such as Rozinka's former owner's letter with her town of
+// residence. It is not the shelter's description of the animal, so it is left
+// out.
+const QUOTED_PARAGRAPH = /^[“„"][\s\S]*[”“"]$/u;
+
 function stripQuestionnaire(text: string): string {
   return text
     .split(/(?<=[.!?…])(?:\s+|(?=\p{Lu}))/u)
@@ -364,7 +370,7 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
     // text would repeat every inner paragraph it contains.
     if (node.find("p, div[dir='auto']").length > 0) return;
     const paragraph = stripQuestionnaire(node.text().replace(/\s+/g, " ").trim());
-    if (paragraph) paragraphs.push(paragraph);
+    if (paragraph && !QUOTED_PARAGRAPH.test(paragraph)) paragraphs.push(paragraph);
   });
   return paragraphs.length > 0 ? paragraphs.join("\n\n") : undefined;
 }

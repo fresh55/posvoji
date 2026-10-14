@@ -194,8 +194,8 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
               and a 44px one would reach past the band into the page. Below
               it is the header's own padding, so the overlay takes 2px above
               its line and the rest below. Short touch viewports keep 12px of
-              bottom padding so that target still fits inside the band when
-              the rest of its padding drops to 8px. 32px clears the 24px that
+              bottom padding; any small target overhang beyond the rule falls
+              into the homepage's empty 16px top padding. 32px clears the 24px that
               WCAG 2.5.8 asks of a target this small, and the only other control
               it could have collided with is the one it was built to stay out of.
 

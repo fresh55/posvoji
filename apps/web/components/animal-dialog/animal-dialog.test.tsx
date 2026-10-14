@@ -28,11 +28,13 @@ import {
 import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { AnimalGrid } from "@/components/animal-grid";
 import { I18nProvider } from "@/components/i18n-provider";
+import { getMessages } from "@/lib/i18n";
 import { FAN_SIDE_PHOTO_SIZES } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
 import {
   prefetchAnimalDescriptions,
   resetAnimalDescriptionsStore,
+  ANIMAL_DETAILS_RETRY_COOLDOWN_MS,
 } from "@/lib/animal-descriptions";
 import { animalsForClient as projectAnimals } from "@/lib/dataset";
 
@@ -3235,6 +3237,58 @@ describe("fan tempo", () => {
 
 
 describe("grid source details", () => {
+  it("keeps a failed dialog settled through the cooldown and recovers on a later reopen", async () => {
+    const [client] = projectAnimals([REX]);
+    const fetch = vi.fn().mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ ok: true, json: async () => ({ rex: { description: REX.shortDescription, source: REX.source } }) });
+    vi.stubGlobal("fetch", fetch);
+    const started = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(started);
+    const content = (open: boolean) => (
+      <I18nProvider locale="sl">
+        <AnimalDialog
+          animal={open ? client : undefined}
+          siblings={[client]}
+          logos={{}}
+          reference={new Date(REFERENCE)}
+          onClose={() => {}}
+          onNavigate={() => {}}
+        />
+      </I18nProvider>
+    );
+    try {
+      const view = render(content(true));
+      await act(async () => { await prefetchAnimalDescriptions(); });
+      expect(screen.queryByRole("link", { name: /Odpri objavo pri zavetišču/ })).toBeNull();
+      expect(screen.getAllByRole("link", { name: "Podrobnosti o živali" })[0].getAttribute("href")).toBe(animalPath(REX, "sl"));
+      const unknown = getMessages("sl").sourceVerificationUnknown;
+      expect(view.container.ownerDocument.querySelector('[data-slot="source-freshness"]')?.textContent).toContain(unknown);
+      expect([...view.container.ownerDocument.querySelectorAll('[role="status"]')].map(node => node.textContent).join(" ")).not.toMatch(/nalaganje|nalaga|still loading/i);
+
+      // A reopen during cooldown stays on the usable fallback, not a pending
+      // request. Undefined description/source means nothing to print here.
+      view.rerender(content(false));
+      clock.mockReturnValue(started + ANIMAL_DETAILS_RETRY_COOLDOWN_MS - 1);
+      view.rerender(content(true));
+      await act(async () => { await prefetchAnimalDescriptions(); });
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByRole("link", { name: "Podrobnosti o živali" })[0].getAttribute("href")).toBe(animalPath(REX, "sl"));
+      expect(view.container.ownerDocument.querySelector('[data-slot="source-freshness"]')?.textContent).toContain(unknown);
+      expect([...view.container.ownerDocument.querySelectorAll('[role="status"]')].map(node => node.textContent).join(" ")).not.toMatch(/nalaganje|nalaga|still loading/i);
+
+      view.rerender(content(false));
+      clock.mockReturnValue(started + ANIMAL_DETAILS_RETRY_COOLDOWN_MS + 1);
+      view.rerender(content(true));
+      const links = await screen.findAllByRole("link", { name: /Odpri objavo pri zavetišču/ });
+      expect(links.every(link => link.getAttribute("href") === REX.source.sourceUrl)).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(view.container.ownerDocument.querySelector('[data-slot="source-freshness"]')?.textContent).not.toContain(unknown);
+      expect(view.container.ownerDocument.querySelector('[data-slot="animal-description"]')?.textContent).toContain("Prijazen pes.");
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it("keeps the animal page reachable while loading, then shows the verified original listing", async () => {
     let finish!: (value: unknown) => void;
     const body = new Promise(resolve => {

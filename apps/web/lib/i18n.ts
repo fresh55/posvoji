@@ -7,12 +7,18 @@ const sl = {
   metadataDescription:
     "Odprt indeks živali iz slovenskih zavetišč, ki iščejo dom. Vsaka žival z jasnim virom in povezavo na zavetišče.",
   githubTitle: "Cepljena, sterilizirana, brez znanih napak.",
-  // The footer's link to the repository, as one string. It used to be two
-  // keys printed one after the other, the second of them beginning with a
-  // comma, which is the assembly the goodWith section below refuses in the
-  // same file: the phrases are whole and translated, never put together in
-  // the component.
-  openSourceInvite: "Odprta koda, pomagaš lahko tudi ti.",
+  // The footer's link to the repository. Two words, where it used to add
+  // "pomagaš lahko tudi ti": the invitation went when the row gained the
+  // credit beside it, so that the two links share one line on a phone, and
+  // the people this site addresses are shelters and adopters, to whom a
+  // repository was never an invitation. The link still says what it is, and
+  // githubTitle keeps the wink for a mouse.
+  openSource: "Odprta koda",
+  // The verb of the footer's credit, "Poganja Poetivo". The name is not
+  // here: it is not translated, and the component sets it in the wordmark's
+  // weight, which a catalogue string cannot carry. The one place a phrase
+  // is split, and only at a proper noun.
+  poweredBy: "Poganja",
   // What a link that leaves the site says. Word for word the shelters page's
   // own note, so the site says this one way rather than three.
   newWindow: "(odpre se v novem oknu)",
@@ -807,7 +813,8 @@ const en: Messages = {
   metadataDescription:
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
-  openSourceInvite: "Open source, and you can help.",
+  openSource: "Open source",
+  poweredBy: "Powered by",
   newWindow: "(opens in a new window)",
   contactPhone: "Phone",
   contactEmail: "Email",

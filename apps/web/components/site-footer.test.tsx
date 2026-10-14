@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_NAME, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
 
@@ -150,6 +150,48 @@ describe("SiteFooter", () => {
     ).not.toBeNull();
   });
 
+  // Who builds the site, on every page, in the row with the other two and
+  // outside the nav for the reason they are: poetivo.si is not a page of
+  // this site. Pinned with every switch off, because the pages that turn the
+  // most off (the portal, the found-animal lookup) are pages too.
+  it("names who builds it, in both locales, whatever the page turns off", () => {
+    const messages = getMessages("sl");
+    const { container } = render(
+      <SiteFooter
+        locale="sl"
+        showSheltersLink={false}
+        showFoundAnimalLink={false}
+        showAboutLink={false}
+        showContact={false}
+        aboutListings={false}
+      />,
+    );
+
+    const credit = container.querySelector<HTMLAnchorElement>(
+      `a[href="${POETIVO_URL}"]`,
+    )!;
+    expect(credit).not.toBeNull();
+    // The verb from the catalogue, then the name, in that order and with a
+    // space between: the accessible name is read as one phrase.
+    expect(credit.textContent).toContain(`${messages.poweredBy} ${POETIVO_NAME}`);
+    // Leaves the site, and the accessible name says so the way the
+    // repository link's does.
+    expect(credit.getAttribute("target")).toBe("_blank");
+    expect(credit.textContent).toContain(messages.newWindow);
+
+    cleanup();
+
+    // Outside the nav, checked on a render that has one: with every link off
+    // there is no nav to be outside of, and a "not inside" on nothing passes
+    // for free.
+    const en = render(<SiteFooter locale="en" />);
+    const nav = en.container.querySelector("nav")!;
+    expect(nav).not.toBeNull();
+    const link = screen.getByRole("link", { name: /^Powered by Poetivo/ });
+    expect(link.getAttribute("href")).toBe(POETIVO_URL);
+    expect(nav.contains(link)).toBe(false);
+  });
+
   // The found-animal page is not about the listings. The provenance sentence
   // is about adopting an animal, and the date under it is the animal export's,
   // which below an answer that says the responsible shelter is not verified
@@ -177,8 +219,8 @@ describe("SiteFooter", () => {
     ).not.toBeNull();
   });
 
-  // target="_blank" is silent, and this is the only link in the chrome that
-  // leaves the site.
+  // target="_blank" is silent, and this is one of the two links in the
+  // chrome that leave the site.
   it("says the repository link opens a new window", () => {
     const messages = getMessages("sl");
     const { container } = render(<SiteFooter locale="sl" />);
@@ -186,7 +228,8 @@ describe("SiteFooter", () => {
     const repo = container.querySelector<HTMLAnchorElement>(
       `a[href="${REPO_URL}"]`,
     )!;
-    expect(repo.textContent).toContain(messages.openSourceInvite);
+    expect(repo.textContent).toContain(messages.openSource);
+    expect(repo.getAttribute("target")).toBe("_blank");
     expect(repo.textContent?.trimEnd().endsWith(messages.newWindow)).toBe(true);
   });
 

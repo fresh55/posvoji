@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { mailtoHref } from "@/lib/contact-links";
+import { PoetivoLockup } from "@/components/poetivo-lockup";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
 import { QUIET_UNDERLINE } from "@/lib/link-styles";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
 
@@ -26,8 +27,8 @@ const FOOTER_LINK =
   "rounded-ui underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring";
 
 /**
- * The two things a reader can do about the sentence above them: write to
- * somebody, or open the code.
+ * The three things the small print offers about the site itself: somebody
+ * to write to, the code, and who builds it.
  *
  * Foreground and underlined at rest, which is what found-animal-button.tsx
  * settled on in the hero after the same failure. The quiet-link rule in
@@ -42,9 +43,13 @@ const FOOTER_LINK =
  * crowded one. These are crowded twice over. They sit beside each other in a
  * row, and on the about page the model credit follows them wearing an overlay
  * of its own. A 19.5px line under a 44px overlay overhangs 12.25px per side,
- * so the credit was reaching into the row above it and, being later in the DOM
- * with neither carrying a z-index, taking the presses meant for the repository
- * link.
+ * so the model credit was reaching into the row above it and, being later in
+ * the DOM with neither carrying a z-index, taking the presses meant for the
+ * repository link. The row's own wrap is the same collision in waiting: below
+ * lg the repository link and the credit sit under the address, and an
+ * overlay on either would reach 12.25px up into its box. Sideways there is nothing to reach
+ * with, the overlay being max(100%, 44px) wide on links wider than that, so
+ * the 24px gap along the row is for the eye, not the finger.
  */
 const FOOTER_ACTION = `inline-flex items-center gap-1.5 ${QUIET_UNDERLINE} max-lg:min-h-11`;
 
@@ -166,10 +171,11 @@ export function SiteFooter({
   // the shelter login is the header's now, a button from lg and a dropdown
   // item below it.
   //
-  // The two controls under the provenance note are deliberately not roster
+  // The controls under the provenance note are deliberately not roster
   // entries and never will be. The roster holds pages of this site; a mail
-  // composer and a repository on another domain are neither, and putting them
-  // in it would put them in the header's dropdown as well.
+  // composer, a repository and the builder's own site are all on other
+  // domains, and putting them in it would put them in the header's dropdown
+  // as well.
   const shown: Record<SiteLinkKey, boolean> = {
     shelters: showSheltersLink,
     foundAnimal: showFoundAnimalLink,
@@ -273,8 +279,9 @@ export function SiteFooter({
             ))}
           </nav>
         )}
-        {/* The provenance note, then when it was last true, then the two
-            things a reader can do about it. */}
+        {/* The provenance note, then when it was last true, then the three
+            things about the site itself: the address, the code and who
+            builds it. */}
         <div className="max-w-3xl space-y-2">
           {aboutListings && <p>{messages.footer}</p>}
           {/* Publication time is distinct from the source check on each animal. */}
@@ -294,18 +301,37 @@ export function SiteFooter({
               from their own mail client has to be able to read it off the
               page.
 
-              A row and not a stack, and at phone width it wraps to two lines
-              anyway: at 12px the Slovenian pair comes to about 470px against
-              343px of content at 375. That is the wrap this can afford.
+              A row and not a stack, one line from lg, and at phone width it
+              wraps into two: at 12px the address and its question measure
+              226px against 343px of content at 375, and the repository link
+              and the credit 90px and 112px (93 and 134 in English), so the
+              pair fits a line of its own with room to spare. That is the wrap this can afford,
+              and it is why the repository link says two words: at 221px the
+              old sentence took a line of its own and the three took three.
               Each is a drawn box below lg with no overhang to lend a
               neighbour, so the 8px a wrap leaves between them is enough,
               where two stacked overlays at that distance are the collision
               described on FOOTER_ACTION.
 
-              One mark between them, on the repository link, and none on the
-              address. The mark says which site the link opens, which is a
-              thing a reader cannot read off "odprta koda"; an address says
-              what it is by being one. */}
+              The repository link and the credit are one flex item, so they
+              wrap as a pair.
+              Loose in the row, the repository link would have joined the
+              address on the first line at 375, where 226 + 24 + 90 leaves
+              3px, and left the credit alone on the second; 16px wider, or a
+              different font fallback, and it would not. Which line the credit
+              lands on should not turn on 3px.
+
+              A mark on each link that leaves the site, and none on the
+              address. The repository's says which site the link opens, which
+              a reader cannot read off "odprta koda"; the credit's is
+              Poetivo's own, the same lockup the header draws under the
+              site's name; an address says what it is by being one.
+
+              The credit is the last of the three and not a line of its own:
+              one more line of small print was one too many on a phone, and
+              what it says, who builds the site, is the same kind of fact as
+              where the code is. It is on every page, the portal and the 404
+              included, because every page is asked the same question. */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {showContact && (
               <span className="inline-flex flex-wrap items-center gap-x-1.5">
@@ -318,45 +344,60 @@ export function SiteFooter({
                 </a>
               </span>
             )}
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              // Kept, knowing what it is: a title renders on pointer hover and
-              // nowhere else, so this line reaches a desktop mouse and neither
-              // touch nor the keyboard. A Tooltip would not fix that half and
-              // would put a client boundary at the bottom of every document in
-              // the export, this file being what PortalShell imports.
-              title={messages.githubTitle}
-              className={FOOTER_ACTION_LINK}
-            >
-              <svg
-                viewBox="0 0 16 16"
-                aria-hidden
-                className="size-3.5 shrink-0 fill-current"
+            <span className="inline-flex flex-wrap items-center gap-x-6 gap-y-2">
+              <a
+                href={REPO_URL}
+                target="_blank"
+                rel="noreferrer"
+                // Kept, knowing what it is: a title renders on pointer hover and
+                // nowhere else, so this line reaches a desktop mouse and neither
+                // touch nor the keyboard. A Tooltip would not fix that half and
+                // would put a client boundary at the bottom of every document in
+                // the export, this file being what PortalShell imports.
+                title={messages.githubTitle}
+                className={FOOTER_ACTION_LINK}
               >
-                <path d={GITHUB_MARK} />
-              </svg>
-              {/* One string where this used to be two catalogue keys printed
-                  back to back, the second of them beginning with a comma. */}
-              {messages.openSourceInvite}
-              {/* The one link down here that leaves the site, and
-                  target="_blank" says so to nobody, so the accessible name
-                  does. Word for word what the shelter cards say, from the
-                  catalogue now rather than three copies of the sentence. */}
-              <span className="sr-only"> {messages.newWindow}</span>
-            </a>
+                <svg
+                  viewBox="0 0 16 16"
+                  aria-hidden
+                  className="size-3.5 shrink-0 fill-current"
+                >
+                  <path d={GITHUB_MARK} />
+                </svg>
+                {messages.openSource}
+                {/* A link that leaves the site, and target="_blank" says so to
+                    nobody, so the accessible name does. Word for word what the
+                    shelter cards say, from the catalogue rather than another
+                    copy of the sentence. */}
+                <span className="sr-only"> {messages.newWindow}</span>
+              </a>
+              <a
+                href={POETIVO_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={FOOTER_ACTION_LINK}
+              >
+                {/* The same lockup as the header's, from one component, so
+                    the brand is drawn one way on a page: the tile, the verb
+                    with its capital (this one starts a phrase), the name in
+                    the wordmark's weight. The tile is the one coloured thing
+                    down here, and that is settled above: it is the brand's
+                    mark, and the header already shows it. */}
+                <PoetivoLockup verb={messages.poweredBy} />
+                <span className="sr-only"> {messages.newWindow}</span>
+              </a>
+            </span>
           </div>
           {/* Room under the row, below lg only, because that is the only width
-              at which the credit draws an overlay. model-credit.tsx wears
-              max-lg:tap-target, which reaches 12.25px above its own 19.5px
-              line, and space-y-2 gives 8px. 16px here puts 24px between them,
-              clear of the overhang.
+              at which the model credit draws an overlay. model-credit.tsx
+              wears max-lg:tap-target, which reaches 12.25px above its own
+              19.5px line, and space-y-2 gives 8px. 16px here puts 24px between
+              them, clear of the overhang.
 
               Room and not a taller credit. Growing that box is the other half
-              of the rule in globals.css, but the credit is now the isolated
-              control the overlay is for, and this footer can fix its own
-              spacing without reaching into a component it only hosts. */}
+              of the rule in globals.css, but the model credit is now the
+              isolated control the overlay is for, and this footer can fix its
+              own spacing without reaching into a component it only hosts. */}
           {children && <div className="max-lg:pt-4">{children}</div>}
         </div>
       </div>

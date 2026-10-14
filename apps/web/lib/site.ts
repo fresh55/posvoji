@@ -12,3 +12,12 @@ export const REPO_URL = "https://github.com/fresh55/posvoji";
 // and the portal login offers it, so it is one value rather than two that
 // have to be changed together.
 export const CONTACT_EMAIL = "info@posvoji.si";
+
+// Who builds and runs the site. The footer's credit line is the one place
+// that says so, and the address lives here beside the other two so a move
+// is one line.
+export const POETIVO_URL = "https://poetivo.si";
+// The name as the wordmark spells it, beside the address it opens. The
+// footer sets it in the wordmark's weight, which is why it is not part of
+// the catalogue phrase in front of it.
+export const POETIVO_NAME = "Poetivo";

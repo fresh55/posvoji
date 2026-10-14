@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, type ReactElement, type ReactNode } from "react";
+import { Fragment, memo, useId, useMemo, type ReactElement, type ReactNode } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { CareCards } from "@/components/filters/care-cards";
 import {
@@ -355,24 +355,7 @@ function selectionSummary(
   return selected.length === 1 ? first : `${first} +${selected.length - 1}`;
 }
 
-// The desktop sidebar and the mobile sheet frame these differently but show the
-// same controls, so the list lives here and each frame supplies only its chrome.
-export function FilterGroupList({
-  filters,
-  groups,
-  counts,
-  toggles,
-  toggleTally,
-  goodWith,
-  care,
-  onToggle,
-  onToggleMany,
-  onToggleProperty,
-  onToggleManyProperties,
-  layout = "sidebar",
-  unanswered,
-  kept,
-}: {
+export type FilterGroupListProps = {
   filters: Filters;
   groups: { group: CardGroup; options: FilterOption[] }[];
   counts: Record<MultiGroup, Map<string, number>>;
@@ -389,23 +372,55 @@ export function FilterGroupList({
    *  Without it the sections say nothing about it, which is all a caller
    *  that has no dataset behind it can honestly say. */
   unanswered?: UnansweredTally;
-} & FilterActionContract) {
-  const { locale } = useI18n();
-  const appearanceGroups = groups.filter(({ group }) => isAppearance(group));
-  const appearanceSelected = [...filters.coatColor, ...filters.coatLength];
-  // Both layouts now. This was the sheet's alone, for the pass in which the
-  // sidebar's sections could not be reached by anything but a click inside
-  // them; a shared link carries answers into folded sections on either
-  // surface, and the panel that hid them was the one standing open beside the
-  // grid the whole time. useFilterSections says when a section reveals itself
-  // and what an arriving address does to the sections that are open by
-  // default; answeredSections is the one table saying which section a facet
-  // answers in, read here and by the pills that go back to them.
+} & FilterActionContract;
+
+/** Keep section decisions separate from the controls that draw them. The
+ *  desktop controller stays mounted on mobile, preserving saved folds,
+ *  revealed sections and the original arrival while its hidden controls go. */
+export function useFilterGroupSections(
+  filters: Filters,
+  layout: FilterCardLayout = "sidebar",
+) {
   const { isOpen, toggleSection } = useFilterSections({
     layout,
     active: answeredSections(filters),
     species: filters.species,
   });
+  // An unrelated sidebar render must not invalidate the content's memo.
+  return useMemo(() => ({ isOpen, toggleSection }), [isOpen, toggleSection]);
+}
+
+// The sheet keeps its existing list API and owns the controller for as long
+// as the list is mounted. DesktopFilterGroups gives its controller a longer
+// lifetime than the controls it shows only at desktop widths.
+export const FilterGroupList = memo(function FilterGroupList(props: FilterGroupListProps) {
+  const sections = useFilterGroupSections(props.filters, props.layout);
+  return <FilterGroupsContent {...props} sections={sections} />;
+});
+
+export const FilterGroupsContent = memo(function FilterGroupsContent({
+  filters,
+  groups,
+  counts,
+  toggles,
+  toggleTally,
+  goodWith,
+  care,
+  onToggle,
+  onToggleMany,
+  onToggleProperty,
+  onToggleManyProperties,
+  layout = "sidebar",
+  unanswered,
+  kept,
+  sections: folds,
+}: FilterGroupListProps & {
+  sections: ReturnType<typeof useFilterGroupSections>;
+}) {
+  const { locale } = useI18n();
+  const appearanceGroups = groups.filter(({ group }) => isAppearance(group));
+  const appearanceSelected = [...filters.coatColor, ...filters.coatLength];
+  const { isOpen, toggleSection } = folds;
   // One base per list, so a header and the body it controls agree on an id
   // even with the sidebar and the sheet mounted at once.
   const idBase = useId();
@@ -610,6 +625,7 @@ export function FilterGroupList({
                 <CoatColorCards
                   key={group}
                   {...props}
+                  kept={keptOf(group)}
                   species={filters.species}
                   longCoat={filters.coatLength.includes("long")}
                 />
@@ -657,4 +673,4 @@ export function FilterGroupList({
       ))}
     </>
   );
-}
+});

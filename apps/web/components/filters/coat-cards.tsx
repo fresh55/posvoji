@@ -1603,9 +1603,8 @@ type CoatCardsProps = {
   options: FilterOption[];
   counts: Map<string, number>;
   selected: string[];
-  /** Picks the sidebar keeps drawn once they come off (KeptPicks in
-   *  filter-groups.tsx); never dead. Dolžina dlake's alone: Barva keeps
-   *  every swatch anyway. */
+  /** Picks the sidebar keeps drawn and enabled once they come off
+   *  (KeptPicks in filter-groups.tsx), so their controls retain focus. */
   kept?: readonly string[];
   onToggle: (value: string) => void;
   onToggleMany: (values: string[]) => void;
@@ -1968,6 +1967,7 @@ function CoatColorPalette({
   options,
   counts,
   selected,
+  kept = [],
   onToggle,
   onToggleMany,
   layout,
@@ -2057,9 +2057,9 @@ function CoatColorPalette({
           const checked = selected.includes(value);
           // A dead colour keeps its cell rather than dropping out: the rest
           // closing up behind it split the solid and two-toned pairs across
-          // rows. It is disabled, so no pointer or focus reaches it; the
-          // guard is for a pointer that was already on it when it died.
-          const dead = isDeadOption(count, checked);
+          // rows. A retained pick stays enabled too, so removing a zero-count
+          // selection does not disable the focused swatch under the keyboard.
+          const dead = isDeadOption(count, checked, kept.includes(value));
           const celebrating = celebration?.value === value && checked;
           const hovered = hoveredValue === value && !dead;
           // A colour picked earlier hears the new one land and turns the ear

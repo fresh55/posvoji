@@ -116,7 +116,12 @@ export function slot(root: HTMLElement, name: string) {
  * here reads back as undefined and the assertion passes for the wrong reason.
  */
 export function capturePreloads() {
-  const made: { src: string; srcset: string; sizes: string }[] = [];
+  const made: {
+    src: string;
+    srcset: string;
+    sizes: string;
+    fetchPriority: string;
+  }[] = [];
   class FakeImage {
     src = "";
     srcset = "";

@@ -57,6 +57,22 @@ function printKey(index: number, generation: number) {
   return generation === 0 ? `${index}` : `${index}.${generation}`;
 }
 
+/**
+ * Whether a print drawn at `standing` would cross the stage to reach `seat`:
+ * the two are on opposite sides of the front, and the travel between them is
+ * two seats or more. That is the shape of a wrap, the trailing print of a
+ * short gallery coming round to the leading side, and of nothing else the fan
+ * does. A single seat of travel is a window re-seated with no walk under it,
+ * which is a jump the print makes under its own key.
+ *
+ * The travel is measured against the walk already taken, so a print the walk
+ * has carried to its new seat has none left to make and never reads as
+ * crossing, whichever side it has ended up on.
+ */
+export function crossesStage(standing: number, seat: number) {
+  return standing * seat < 0 && Math.abs(seat - standing) >= 1.5;
+}
+
 export type FanProps = {
   geometry: FanGeometry;
   images: PermittedPhoto[];
@@ -221,6 +237,17 @@ export function useFanControls({
   // agree and nothing reads as wrapping. Calling it twice in one render is the
   // same, because the first call takes the seat away.
   //
+  // What counts as wrapping is crossing the stage: standing on one side of the
+  // front before the commit and on the other side after it, two or more seats
+  // away from where it is drawn. A print that is merely out of step with its
+  // new seat is re-seated under the same key, and the commit jumps it. That
+  // is the lightbox stepping the index with no walk in flight: every print
+  // moves one seat, and the fan used to read all five as wrapping and draw
+  // five new prints behind the scrim for every press, which is what made a
+  // burst of presses in the lightbox stutter. Those prints stay where they
+  // are by one seat, which nobody sees through the scrim and which a visitor
+  // who closes the lightbox finds already in place.
+  //
   // Reduced motion keeps the jump. There is no walk to be out of step with,
   // the whole commit lands in one paint, and a print fading across the stage
   // is motion that was asked not to happen.
@@ -236,7 +263,7 @@ export function useFanControls({
       return printKey(index, generation);
     }
     const standing = held.get() - progress.get();
-    if (Math.abs(standing - offset) <= 0.5) return printKey(index, generation);
+    if (!crossesStage(standing, offset)) return printKey(index, generation);
     // The copy that is leaving is handed to the commit effect below, which
     // freezes it alongside every other print the commit takes off the stage:
     // where it is frozen depends on the record the effect is about to write,
@@ -388,6 +415,42 @@ export function useFanControls({
     washProgress?.jump(0);
   }, [washProgress]);
 
+  // The presses a walk in flight has no room for. A walk is two seats at most,
+  // and a third quick press the same way used to be dropped: eight presses on
+  // the chevron landed three or four photos and the rest went nowhere. They
+  // are kept here instead and walked once the walk in flight has landed, two
+  // seats at a time, so every press is a photo. Signed, so a press back
+  // against them takes one away before it would turn the fan. Whose presses
+  // they are goes with them, because a keyboard's walk hands the keyboard on
+  // and a pointer's does not.
+  //
+  // A gesture that takes the fan takes these too: a finger on the stage, a
+  // trackpad swipe or a spring back decides where the fan goes from here, and
+  // presses it has overtaken have nothing left to add to.
+  const surplus = useRef<{ steps: number; by: FanFocusKind }>({
+    steps: 0,
+    by: "pointer",
+  });
+
+  function dropSurplus() {
+    surplus.current.steps = 0;
+  }
+
+  // What is left to walk once a walk has landed. From the front the fan is
+  // seated on now, which is why it is called from the commit and not from the
+  // landing: the landing hands the new front to React, and the window this
+  // walks from is the one that render seats.
+  function walkSurplus() {
+    const { steps, by } = surplus.current;
+    // Only from a fan at rest. The commit that mounts a two-step walk's own
+    // leading prints runs this too, with that walk a frame old, and walking
+    // the rest from there would take the fan off it.
+    if (steps === 0 || heading.current !== 0) return;
+    const taken = clampWalk(steps);
+    surplus.current.steps = steps - taken;
+    walkBy(taken, by);
+  }
+
   // The walk commits by re-seating the window and zeroing the progress in the
   // same breath. The zero has to wait for the new window to be in the tree, or
   // one frame would draw the old seats at rest; a layout effect runs between
@@ -403,6 +466,11 @@ export function useFanControls({
   // against. The reduced-motion path commits with no walk to zero and needs
   // the same re-seating.
   const pendingReset = useRef(false);
+  // The focus forwarding on every copy that is fading out, by its node, so a
+  // print that comes back before its copy has gone can be let off it. Weak,
+  // because the copies are taken out of the document by their fade and nothing
+  // here hears about it.
+  const abandoned = useRef(new WeakMap<HTMLElement, AbortController>());
   // The window the prints on stage are seated in, which is what says whether a
   // render is a commit: the one that follows a walk hands out the offsets of a
   // new window while every print is still standing in the old one. It says the
@@ -478,7 +546,23 @@ export function useFanControls({
       "button[data-print]",
     ) ?? []) {
       const id = node.dataset.print ?? "";
-      if (drawn.get(Number(id.split(".")[0])) === id) continue;
+      if (drawn.get(Number(id.split(".")[0])) === id) {
+        // A print that has come back while its copy was still fading. The
+        // copy is drawn under the photo's own key, and so is the print coming
+        // back, so AnimatePresence keeps the node rather than mounting a new
+        // one: the marks below are still on it, and React has no hand in them
+        // to take them off. Two quick steps in the lightbox on a gallery of
+        // seven do this, with the print that left at the first step walking
+        // back in at the third.
+        if (node.dataset.leaving) {
+          delete node.dataset.leaving;
+          node.removeAttribute("tabindex");
+          node.style.pointerEvents = "";
+          abandoned.current.get(node)?.abort();
+          abandoned.current.delete(node);
+        }
+        continue;
+      }
       node.dataset.leaving = "true";
       node.tabIndex = -1;
       node.style.pointerEvents = "none";
@@ -494,11 +578,14 @@ export function useFanControls({
       // focus back to it if it is still in the document, which a copy that is
       // still fading is: focus landed on it and then went to the body with it
       // a tenth of a second later, and the dialog's own keys went dead. Once,
-      // because the node is on its way out.
+      // because the node is on its way out, and on a signal, so a print that
+      // comes back can be let off it above.
+      const forwarding = new AbortController();
+      abandoned.current.set(node, forwarding);
       node.addEventListener(
         "focus",
         () => frontPrintOf(stageRef.current)?.focus({ preventScroll: true }),
-        { once: true },
+        { once: true, signal: forwarding.signal },
       );
     }
     // And what the fan is holding now, for the next commit to tell an arriving
@@ -519,6 +606,10 @@ export function useFanControls({
       if (drivenBy.current === "keyboard") focusFrontPrint();
       else if (!isStandingPrint(held)) focusStage();
     }
+    // And the presses the walk that has just landed had no room for, walked
+    // from the window this commit has seated. Last, so the walk starts from a
+    // fan that is at rest and holding the keyboard where the landing put it.
+    walkSurplus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prints, shapes, progress]);
 
@@ -558,6 +649,7 @@ export function useFanControls({
       // does, and for the same reason.
       snap.current?.stop();
       snap.current = null;
+      dropSurplus();
       progress.set(clampToOvershoot(fraction));
     },
     onStep: step,
@@ -619,6 +711,10 @@ export function useFanControls({
       setAhead(NO_PRINTS);
       if (!reseats) {
         progress.jump(0);
+        // No commit follows a walk that went nowhere, so what the commit would
+        // have walked is walked from here, where the front is still the one
+        // this walk started from.
+        walkSurplus();
         return;
       }
       refocus.current = heldPrintOf(stageRef.current);
@@ -720,13 +816,23 @@ export function useFanControls({
   // the fan breaking, so the press is dropped and the walk in flight lands;
   // the next press starts from there. A press that nets to zero is a different
   // thing, the cancel walkBy answers with a spring back, and it goes through.
+  //
+  // A press past the two seats a walk can travel is kept for the walk after
+  // this one (see surplus), and so is every press while any are kept: the
+  // presses land in the order they were made, and a press back takes one of
+  // them away rather than turning the fan under them.
   function step(direction: -1 | 1, by: FanFocusKind = "pointer") {
     if (count < 2) return;
-    const next = clampWalk(heading.current + direction);
-    if (next !== 0 && (activeIndex + next + count) % count === activeIndex) {
+    const wanted = heading.current + direction;
+    if (surplus.current.steps !== 0 || Math.abs(wanted) > 2) {
+      surplus.current.steps += direction;
+      surplus.current.by = by;
       return;
     }
-    walkBy(next, by);
+    if (wanted !== 0 && (activeIndex + wanted + count) % count === activeIndex) {
+      return;
+    }
+    walkBy(wanted, by);
   }
 
   // What a press that turned into nothing hands back. A walk it caught goes
@@ -754,6 +860,9 @@ export function useFanControls({
   // round and commits straight to it: the stack still moves, and it moves the
   // way the photo lies.
   function walkToIndex(target: number, by: FanFocusKind = "pointer") {
+    // Home and End say where the fan is going; presses still waiting their
+    // turn were going somewhere else.
+    dropSurplus();
     if (target === activeIndex) return;
     const forward = (target - activeIndex + count) % count;
     walkTo(walkFor(target, 2 * forward <= count ? 1 : -1), target, by);
@@ -762,6 +871,7 @@ export function useFanControls({
   // Not far, not fast: the fan goes back to where it stood.
   function springBack() {
     heading.current = 0;
+    dropSurplus();
     // A walk that is not going anywhere brings nothing in.
     setAhead(NO_PRINTS);
     // The other half of what walkTo drops, for the walk that turned out to be
@@ -847,8 +957,12 @@ export function useFanControls({
       // Still short of the slop, so it could yet turn out to be a tap.
       if (swipeAxis.current === null) return;
       // The finger has the fan now, and where a caught walk was going is no
-      // longer anyone's business but the finger's.
-      if (swipeAxis.current === "x") heading.current = 0;
+      // longer anyone's business but the finger's. Nor are the presses that
+      // walk was still to take.
+      if (swipeAxis.current === "x") {
+        heading.current = 0;
+        dropSurplus();
+      }
       // The capture waits for the axis, and only a mouse ever gets one. Taken
       // on the press it would retarget the click the browser fires afterwards
       // to this stage, and a plain click on a photo would never reach the

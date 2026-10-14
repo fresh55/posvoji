@@ -383,6 +383,68 @@ test("opens the lightbox on the front print, jumps with a digit, and closes back
   await expectPhoto(fan, 5, KLOPKA_PHOTOS);
 });
 
+// How fast a visitor hammering a chevron or an arrow presses: faster than any
+// walk lands, which is what both bursts below are about.
+const BURST_GAP_MS = 80;
+const BURST_PRESSES = 8;
+
+test("lands every press of a burst on the chevron", async ({ page }) => {
+  const fan = await openFan(page, KLOPKA);
+  await expectPhoto(fan, 1, KLOPKA_PHOTOS);
+  await fan.hover();
+  const next = fan.getByRole("button", { name: "Naslednja fotografija" });
+
+  // A walk is two seats at most, and a third press before it landed used to
+  // vanish: eight of these were three or four photos. Forced, so each press
+  // goes out on the beat rather than after the chevron has stopped moving
+  // with the front print's box.
+  for (let press = 0; press < BURST_PRESSES; press++) {
+    await next.click({ force: true, noWaitAfter: true });
+    await page.waitForTimeout(BURST_GAP_MS);
+  }
+
+  await expectPhoto(fan, 1 + BURST_PRESSES, KLOPKA_PHOTOS);
+  await expect(prints(fan)).toHaveCount(5);
+  await expect(fan.locator("button[data-leaving]")).toHaveCount(0);
+  await expectCentred(fan);
+});
+
+test("keeps the fan seated through a burst of steps in the lightbox", async ({
+  page,
+}) => {
+  const fan = await openFan(page, KLOPKA);
+  await frontPrint(fan).click();
+  const full = lightbox(page);
+  await expect(full).toBeVisible();
+
+  for (let press = 0; press < BURST_PRESSES; press++) {
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(BURST_GAP_MS);
+  }
+  await expect(full.locator('[data-slot="badge"]')).toHaveText(
+    `${1 + BURST_PRESSES} / ${KLOPKA_PHOTOS}`,
+  );
+
+  // Each step moved every print behind the scrim one seat, and the fan used
+  // to draw all five again as new nodes for every one of them. A key with a
+  // generation on it is a print drawn again; none of these has one.
+  const keys = await prints(fan).evaluateAll((nodes) =>
+    nodes.map((node) => (node as HTMLElement).dataset.print ?? ""),
+  );
+  expect(keys).toHaveLength(5);
+  for (const key of keys) expect(key).toMatch(/^\d+$/);
+  // And the wash behind the photo is two layers, however many steps were
+  // taken into it.
+  await expect(
+    full.locator('[data-slot="photo-lightbox-wash"] > div'),
+  ).toHaveCount(2);
+
+  await page.keyboard.press("Escape");
+  await expect(full).toBeHidden();
+  await expectPhoto(fan, 1 + BURST_PRESSES, KLOPKA_PHOTOS);
+  await expectCentred(fan);
+});
+
 test("hands the keyboard back to the fan when the print it came from is gone", async ({
   page,
 }) => {

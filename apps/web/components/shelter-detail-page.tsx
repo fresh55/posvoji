@@ -374,7 +374,12 @@ export function ShelterDetailPage({
 
             {shelter.hours && (
               <ul>
-                <ShelterHours hours={shelter.hours} label={messages.muniHours} />
+                <ShelterHours
+                  hours={shelter.hours}
+                  hoursEn={shelter.hours_en}
+                  locale={locale}
+                  label={messages.muniHours}
+                />
               </ul>
             )}
 

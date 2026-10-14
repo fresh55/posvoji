@@ -36,6 +36,7 @@ const SHELTER = {
   email: "info@zavetisce-malahisa.si",
   phone: "031 732 700",
   hours: "Pon–pet 8.30–12.30",
+  hours_en: "Mon–Fri 8.30–12.30",
 };
 
 // The other end of the register: an entry with no animals on the site and no
@@ -134,11 +135,13 @@ describe("the shelter page's contacts", () => {
     expect(call.getAttribute("href")).toBe("tel:+38631726029");
     expect(call.textContent).toBe(label);
   });
-  it.each(["sl", "en"] as const)("prints recorded hours, in their source language, for %s", (locale) => {
+  it.each(["sl", "en"] as const)("prints recorded hours in the selected language for %s", (locale) => {
     const { container } = render(<ShelterDetailPage locale={locale} slug={SHELTER.id} />);
     const hours = container.querySelector("[data-shelter-hours]");
     expect(hours?.textContent).toContain(getMessages(locale).muniHours);
-    expect(hours?.querySelector('[lang="sl"]')?.textContent).toBe(SHELTER.hours);
+    expect(hours?.querySelector(`[lang="${locale}"]`)?.textContent).toBe(
+      locale === "en" ? SHELTER.hours_en : SHELTER.hours,
+    );
   });
 
   it("puts the channel in front of each value and the site last", () => {

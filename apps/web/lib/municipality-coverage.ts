@@ -18,6 +18,7 @@ export type LookupCoverage = {
   /** When the phone is answered and what to dial when it is not; both from
    *  the register, both optional. See ShelterRegistryEntry. */
   hours?: string;
+  hours_en?: string;
   onCallPhone?: string;
   detailHref: string;
   /** > 0 when the shelter shares a structured animal list on posvoji.si. */
@@ -41,6 +42,7 @@ export type NearbyShelter = {
    *  reason: the shortlist's first call is a call, and when it is made out of
    *  hours the number that is answered then is the one worth offering. */
   hours?: string;
+  hours_en?: string;
   onCallPhone?: string;
   detailHref: string;
   /** Straight-line kilometres from the municipality's centroid to the
@@ -103,6 +105,7 @@ export function buildMunicipalityEntries(
         city: shelter.city,
         phone: shelter.phone,
         hours: shelter.hours,
+        hours_en: shelter.hours_en,
         onCallPhone: shelter.onCallPhone,
         detailHref: `${detailBase}/${shelter.id}`,
         km: Math.round(distance),
@@ -125,6 +128,7 @@ export function buildMunicipalityEntries(
           email: shelter.email,
           website: shelter.website,
           hours: shelter.hours,
+          hours_en: shelter.hours_en,
           onCallPhone: shelter.onCallPhone,
           detailHref: `${detailBase}/${shelter.id}`,
           animals: counts.get(shelter.id) ?? 0,

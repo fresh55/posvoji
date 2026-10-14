@@ -19,6 +19,7 @@ const OBALNO: LookupCoverage = {
   phone: "05 663 37 66",
   onCallPhone: "031 726 029",
   hours: "Pon, sre 12.00–16.00",
+  hours_en: "Mon, Wed 12.00–16.00",
   email: "zavetisce@example.si",
   website: "https://example.si/",
   detailHref: "/zavetisca/obalno",
@@ -39,6 +40,20 @@ function renderCard(coverage: LookupCoverage = OBALNO, locale: Locale = "sl") {
 }
 
 describe("the municipality coverage card", () => {
+  it.each(["sl", "en"] as const)(
+    "shows the recorded hours in the selected language (%s)",
+    (locale) => {
+      const { container } = renderCard(OBALNO, locale);
+      const hours = container.querySelector("[data-shelter-hours]");
+
+      expect(hours?.textContent).toContain(getMessages(locale).muniHours);
+      expect(hours?.querySelector(`[lang="${locale}"]`)?.textContent).toBe(
+        locale === "en" ? OBALNO.hours_en : OBALNO.hours,
+      );
+      expect(hours?.querySelector(`[lang="${locale === "en" ? "sl" : "en"}"]`)).toBeNull();
+    },
+  );
+
   it("draws the dežurna number as the second call, not as a line of detail", () => {
     renderCard();
 
@@ -77,6 +92,27 @@ describe("the municipality coverage card", () => {
 
     expect(screen.getByRole("link", { name: "Pokliči 05 663 37 66" })).toBeTruthy();
     expect(screen.queryByText(/Dežurna/)).toBeNull();
+  });
+
+  it("keeps 24-hour emergency instructions beside the same phone on the English page", () => {
+    const { container } = renderCard(
+      {
+        ...OBALNO,
+        phone: "01 256 02 79",
+        onCallPhone: undefined,
+        hours: "Pon–pet 8.00–14.00 · nujni primeri 24 ur na isti številki (pritisni 1)",
+        hours_en: "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)",
+      },
+      "en",
+    );
+
+    expect(screen.getByRole("link", { name: "Call 01 256 02 79" }).getAttribute("href")).toBe(
+      "tel:+38612560279",
+    );
+    expect(container.querySelector('[data-shelter-hours] [lang="en"]')?.textContent).toContain(
+      "emergencies 24 hours on the same number (press 1)",
+    );
+    expect(container.textContent).not.toContain("pritisni 1");
   });
 
   it("falls back to the dežurna number when it is the only one", () => {

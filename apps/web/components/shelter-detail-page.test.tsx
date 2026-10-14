@@ -36,7 +36,7 @@ const SHELTER = {
   email: "info@zavetisce-malahisa.si",
   phone: "031 732 700",
   hours: "Pon–pet 8.30–12.30",
-  hours_en: "Mon–Fri 8.30–12.30",
+  hoursEn: "Mon–Fri 8.30–12.30",
 };
 
 // The other end of the register: an entry with no animals on the site and no
@@ -140,7 +140,7 @@ describe("the shelter page's contacts", () => {
     const hours = container.querySelector("[data-shelter-hours]");
     expect(hours?.textContent).toContain(getMessages(locale).muniHours);
     expect(hours?.querySelector(`[lang="${locale}"]`)?.textContent).toBe(
-      locale === "en" ? SHELTER.hours_en : SHELTER.hours,
+      locale === "en" ? SHELTER.hoursEn : SHELTER.hours,
     );
   });
 

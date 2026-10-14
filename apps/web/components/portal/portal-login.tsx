@@ -463,7 +463,6 @@ export function PortalLogin() {
                     error?.onField ? "portal-email-error" : undefined
                   }
                   placeholder={portalText.emailPlaceholder}
-                  className="max-lg:h-11"
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value);
@@ -488,12 +487,13 @@ export function PortalLogin() {
                 </p>
               )}
 
-              {/* Keep the field and submit action at 44px on narrow screens,
-                  including phones with a connected mouse or keyboard. */}
+              {/* 36px is the default button, which is a mouse's. Shelter
+                  staff open this card on a phone, and it is the one control
+                  on it. The field above takes its own 44 from ui/input.tsx. */}
               <Button
                 type="submit"
                 disabled={sending}
-                className="w-full max-lg:h-11 pointer-coarse:h-11"
+                className="w-full pointer-coarse:h-11"
               >
                 {sending ? (
                   <LoaderCircle className="animate-spin" aria-hidden />

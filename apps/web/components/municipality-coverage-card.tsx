@@ -123,7 +123,7 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
         {coverage.hours && (
           <ShelterHours
             hours={coverage.hours}
-            hoursEn={coverage.hours_en}
+            hoursEn={coverage.hoursEn}
             locale={locale}
             label={messages.muniHours}
           />

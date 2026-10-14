@@ -64,12 +64,12 @@ describe("shelter registry loader", () => {
       expect(
         shelter.hours !== undefined,
         `shelter ${shelter.id} must have both hours languages or neither`,
-      ).toBe(shelter.hours_en !== undefined);
+      ).toBe(shelter.hoursEn !== undefined);
     }
   });
 
   it("preserves the emergency phone instructions in English", () => {
-    expect(getShelterBySlug("ljubljana")?.hours_en).toBe(
+    expect(getShelterBySlug("ljubljana")?.hoursEn).toBe(
       "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)",
     );
   });
@@ -130,34 +130,34 @@ describe("a registry the loader cannot read", () => {
     expect(load()[0].website).toBeUndefined();
   });
 
-  it.each(["hours", "hours_en"] as const)(
+  it.each(["hours", "hoursEn"] as const)(
     "rejects %s without the other hours language",
     async (field) => {
       const { loadShelters: load } = await registryOf(
         `${GOOD}    ${field}: "8.00–12.00"\n`,
       );
 
-      expect(load).toThrow(/hours and hours_en must be present together/);
+      expect(load).toThrow(/hours and hoursEn must be present together/);
     },
   );
 
   it("loads both hours languages without changing either string", async () => {
     const { loadShelters: load } = await registryOf(
       `${GOOD}    hours: "24 ur (pritisni 1)"\n` +
-        '    hours_en: "24 hours (press 1)"\n',
+        '    hoursEn: "24 hours (press 1)"\n',
     );
 
     expect(load()[0]).toMatchObject({
       hours: "24 ur (pritisni 1)",
-      hours_en: "24 hours (press 1)",
+      hoursEn: "24 hours (press 1)",
     });
   });
 
-  it.each(["hours", "hours_en"] as const)(
+  it.each(["hours", "hoursEn"] as const)(
     "rejects an empty %s translation",
     async (field) => {
       const { loadShelters: load } = await registryOf(
-        `${GOOD}    hours: "24 ur"\n    hours_en: "24 hours"\n`.replace(
+        `${GOOD}    hours: "24 ur"\n    hoursEn: "24 hours"\n`.replace(
           new RegExp(`    ${field}: [^\\n]+`),
           `    ${field}: "   "`,
         ),

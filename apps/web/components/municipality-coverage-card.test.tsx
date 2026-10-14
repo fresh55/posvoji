@@ -19,7 +19,7 @@ const OBALNO: LookupCoverage = {
   phone: "05 663 37 66",
   onCallPhone: "031 726 029",
   hours: "Pon, sre 12.00–16.00",
-  hours_en: "Mon, Wed 12.00–16.00",
+  hoursEn: "Mon, Wed 12.00–16.00",
   email: "zavetisce@example.si",
   website: "https://example.si/",
   detailHref: "/zavetisca/obalno",
@@ -48,7 +48,7 @@ describe("the municipality coverage card", () => {
 
       expect(hours?.textContent).toContain(getMessages(locale).muniHours);
       expect(hours?.querySelector(`[lang="${locale}"]`)?.textContent).toBe(
-        locale === "en" ? OBALNO.hours_en : OBALNO.hours,
+        locale === "en" ? OBALNO.hoursEn : OBALNO.hours,
       );
       expect(hours?.querySelector(`[lang="${locale === "en" ? "sl" : "en"}"]`)).toBeNull();
     },
@@ -101,7 +101,7 @@ describe("the municipality coverage card", () => {
         phone: "01 256 02 79",
         onCallPhone: undefined,
         hours: "Pon–pet 8.00–14.00 · nujni primeri 24 ur na isti številki (pritisni 1)",
-        hours_en: "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)",
+        hoursEn: "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)",
       },
       "en",
     );

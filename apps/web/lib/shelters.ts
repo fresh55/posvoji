@@ -25,7 +25,7 @@ export type ShelterRegistryEntry = {
   hours?: string;
   /** English translation of hours, preserving its schedule and instructions.
    *  Both language fields are present together or both are absent. */
-  hours_en?: string;
+  hoursEn?: string;
   /** The number answered outside those hours for found animals: a 24-hour
    *  on-call line where the shelter runs one, or the line it names for
    *  reporting a found animal. Absent when the site names none. */
@@ -105,7 +105,7 @@ const OPTIONAL_FIELDS = [
   ["email", emailProblem],
   ["phone", phoneProblem],
   ["hours", textProblem],
-  ["hours_en", textProblem],
+  ["hoursEn", textProblem],
   ["onCallPhone", phoneProblem],
 ] as const;
 
@@ -147,8 +147,8 @@ function entryProblems(value: unknown, index: number): string[] {
     if (problem) problems.push(`${named}: ${problem}`);
   }
 
-  if ((entry.hours === undefined) !== (entry.hours_en === undefined)) {
-    problems.push(`${named}: hours and hours_en must be present together`);
+  if ((entry.hours === undefined) !== (entry.hoursEn === undefined)) {
+    problems.push(`${named}: hours and hoursEn must be present together`);
   }
 
   return problems;

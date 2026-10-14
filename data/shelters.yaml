@@ -13,7 +13,7 @@ meta:
   register_date: 2026-02-23
   last_reviewed: 2026-08-20
   # hours and onCallPhone: read off each shelter's own website on the date
-  # below. Free text, kept in the shelter's own words and shortened. hours_en
+  # below. Free text, kept in the shelter's own words and shortened. hoursEn
   # translates the same schedule and instructions. A shelter with no website,
   # or no published hours, has neither hours field.
   hours_checked: 2026-09-06
@@ -26,7 +26,7 @@ shelters:
     email: info@zonzani.si
     phone: "03 749 06 00"
     hours: "Pon–pet 8.00–12.00, obisk po dogovoru"
-    hours_en: "Mon–Fri 8.00–12.00, visits by appointment"
+    hoursEn: "Mon–Fri 8.00–12.00, visits by appointment"
     notes: >-
       Ločena kataloga psov in mačk. Dovoljenje potrjeno 2026-08-18;
       provider zonzani je vklopljen za strukturirana dejstva in oddaljene slike.
@@ -38,7 +38,7 @@ shelters:
     email: zavetisce@marjeticakoper.si
     phone: "05 663 37 66"
     hours: "Pon, sre 12.00–16.00 · tor, čet, pet, sob 10.00–14.00"
-    hours_en: "Mon, Wed 12.00–16.00 · Tue, Thu, Fri, Sat 10.00–14.00"
+    hoursEn: "Mon, Wed 12.00–16.00 · Tue, Thu, Fri, Sat 10.00–14.00"
     onCallPhone: "031 726 029"
     notes: Skupno zavetišče obalnih občin. Dežurna služba 24 ur.
 
@@ -49,7 +49,7 @@ shelters:
     email: info@zavetisce-ljubljana.si
     phone: "01 256 02 79"
     hours: "Pon–pet 8.00–14.00 · nujni primeri 24 ur na isti številki (pritisni 1)"
-    hours_en: "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)"
+    hoursEn: "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)"
     notes: >-
       Pisno dovoljenje je potrdil nosilec projekta 2026-08-18. Provider je
       vklopljen za strukturirana dejstva in oddaljeni prikaz fotografij;
@@ -62,7 +62,7 @@ shelters:
     email: info@zavetisceoskar.si
     phone: "05 307 85 70"
     hours: "Pon–pet 9.00–13.00 · sob 9.00–12.00"
-    hours_en: "Mon–Fri 9.00–13.00 · Sat 9.00–12.00"
+    hoursEn: "Mon–Fri 9.00–13.00 · Sat 9.00–12.00"
 
   - id: horjul
     name: Zavetišče Horjul
@@ -71,7 +71,7 @@ shelters:
     email: info@zavetisce-horjul.net
     phone: "051 304 435"
     hours: "Pon–pet 8.30–12.30"
-    hours_en: "Mon–Fri 8.30–12.30"
+    hoursEn: "Mon–Fri 8.30–12.30"
     notes: >-
       Fotografije so izrecno označene kot delo zavetišča in prostovoljcev.
       Dovoljenje potrjeno 2026-08-18; provider je vklopljen za strukturirana
@@ -94,7 +94,7 @@ shelters:
     email: meli.center.repce@gmail.com
     phone: "07 304 56 16"
     hours: "Pon–pet 10.00–14.00 · sob 8.00–12.00"
-    hours_en: "Mon–Fri 10.00–14.00 · Sat 8.00–12.00"
+    hoursEn: "Mon–Fri 10.00–14.00 · Sat 8.00–12.00"
     # "Dežurni oskrbnik za obvestila o najdenih živalih"; 24-urno dežurstvo
     # za odlov.
     onCallPhone: "031 331 336"
@@ -119,7 +119,7 @@ shelters:
     email: zavetisce.mb@snaga-mb.si
     phone: "02 480 16 60"
     hours: "Pon–pet 8.00–12.00"
-    hours_en: "Mon–Fri 8.00–12.00"
+    hoursEn: "Mon–Fri 8.00–12.00"
     # "Številka za nujne primere" on the site.
     onCallPhone: "031 788 822"
     notes: >-
@@ -141,7 +141,7 @@ shelters:
     phone: "07 816 02 10"
     # The veterinary station's hours; the shelter has no page of its own.
     hours: "Pon–pet 7.00–18.00 · sob 7.00–10.00"
-    hours_en: "Mon–Fri 7.00–18.00 · Sat 7.00–10.00"
+    hoursEn: "Mon–Fri 7.00–18.00 · Sat 7.00–10.00"
     notes: Spletna stran nima stabilnega kataloga; primernejši je partnerski feed.
 
   - id: brezice
@@ -153,7 +153,7 @@ shelters:
     # The veterinary hospital's hours; it states a 24-hour emergency duty on
     # the same numbers.
     hours: "Pon–pet 7.00–19.00 · sob, ned, prazniki 7.00–9.00 · dežurstvo 24 ur"
-    hours_en: "Mon–Fri 7.00–19.00 · Sat, Sun, public holidays 7.00–9.00 · on-call service 24 hours"
+    hoursEn: "Mon–Fri 7.00–19.00 · Sat, Sun, public holidays 7.00–9.00 · on-call service 24 hours"
 
   - id: macja-hisa
     name: Zavetišče Mačja hiša
@@ -172,7 +172,7 @@ shelters:
     email: zavetisce.johanca@gmail.com
     phone: "05 388 48 00"
     hours: "Pon–pet 7.00–18.00 · sob 7.00–12.00 · telefon 24 ur/7 dni"
-    hours_en: "Mon–Fri 7.00–18.00 · Sat 7.00–12.00 · phone 24 hours/7 days"
+    hoursEn: "Mon–Fri 7.00–18.00 · Sat 7.00–12.00 · phone 24 hours/7 days"
     notes: >-
       Dovoljenje potrjeno 2026-08-20. Zavetišče vodi Veterinarska ambulanta
       Tolmin in nima svoje spletne strani; telefon, uradne ure in spletni

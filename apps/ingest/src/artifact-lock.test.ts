@@ -89,7 +89,9 @@ describe("generated artifact lock", () => {
     await expect(
       withArtifactLock("retry", async () => "ok", lock),
     ).resolves.toBe("ok");
-  });
+    // Like the exclusion case above, this exercises real Windows process
+    // probes. Their startup can exceed five seconds in the full offline suite.
+  }, process.platform === "win32" ? 20_000 : 5_000);
 
   it("recovers an abandoned lock only after proving its owner absent", () => {
     const { lock } = temporaryLock();

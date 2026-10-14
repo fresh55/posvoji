@@ -7,7 +7,9 @@ import { SRECKO_PATHS, SRECKO_TEXT } from "@/lib/srecko";
 
 // The model itself is covered by cat-model.test.tsx. What is this page's own
 // is the introduction under it, and that it stays under it.
-vi.mock("./cat-model", () => ({ CatModel: () => <div data-testid="cat" /> }));
+vi.mock("./cat-model", () => ({ CatModel: ({ deferOnLimitedConnection }: { deferOnLimitedConnection?: boolean }) =>
+  <div data-testid="cat" data-limited-connection={deferOnLimitedConnection} />,
+}));
 
 afterEach(cleanup);
 
@@ -18,6 +20,7 @@ describe("the about cat", () => {
     expect(caption.querySelector("p")?.textContent).toBe(SRECKO_TEXT[locale].intro);
     expect(caption.querySelector("a")?.getAttribute("href")).toBe(SRECKO_PATHS[locale]);
     expect(container.querySelector("details")).toBeNull();
+    expect(container.querySelector('[data-testid="cat"]')?.getAttribute("data-limited-connection")).toBe("true");
     expect(
       container.querySelector('[data-testid="cat"]')!.compareDocumentPosition(caption) &
         Node.DOCUMENT_POSITION_FOLLOWING,

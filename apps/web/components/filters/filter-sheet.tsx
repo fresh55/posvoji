@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { DeferredStatus } from "@/components/deferred-status";
 import { useDeferredModule, preloadModule } from "@/hooks/use-deferred-module";
-import { useDesktopBreakpointClose } from "@/hooks/use-desktop-breakpoint-close";
+import {
+  useDesktopBreakpoint,
+  useDesktopBreakpointClose,
+} from "@/hooks/use-desktop-breakpoint-close";
 import { usePickerHistory } from "@/hooks/use-picker-history";
 import { FilterSheetTrigger } from "./filter-sheet-trigger";
 import type { FilterSheetProps } from "./filter-sheet-contract";
@@ -19,6 +22,7 @@ const loadSheet = () => import("./filter-sheet-content");
 
 export function FilterSheet(props: FilterSheetProps) {
   const [open, setOpen] = useState(false);
+  const desktop = useDesktopBreakpoint();
   const {
     module: sheet,
     error,
@@ -47,7 +51,9 @@ export function FilterSheet(props: FilterSheetProps) {
       aria-haspopup="dialog"
       aria-expanded={open}
       aria-busy={(open && !sheet && !error) || undefined}
-      onClick={() => setOpen(true)}
+      onClick={() => {
+        if (!desktop) setOpen(true);
+      }}
       onPointerEnter={() => {
         void preloadModule(loadSheet).catch(() => {});
       }}
@@ -56,7 +62,10 @@ export function FilterSheet(props: FilterSheetProps) {
       }}
     />
   );
-  return sheet ? (
+  // Keep history/breakpoint cleanup above this boundary, but discard the
+  // visited mobile panel on desktop. Returning to mobile starts a fresh panel
+  // that retains its DOM only after another open.
+  return sheet && !desktop ? (
     <sheet.FilterSheetContent
       {...props}
       open={open}
@@ -66,7 +75,7 @@ export function FilterSheet(props: FilterSheetProps) {
   ) : (
     <>
       {trigger}
-      {open && <DeferredStatus error={error} retry={retry} />}
+      {open && !sheet && <DeferredStatus error={error} retry={retry} />}
     </>
   );
 }

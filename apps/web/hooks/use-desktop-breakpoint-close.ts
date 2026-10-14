@@ -1,12 +1,36 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { DESKTOP_QUERY } from "@/lib/viewport-queries";
 
 // Kept here for the callers that already import it with the hook; the string
 // lives in lib/viewport-queries.ts, where the picker's split query is built on
 // it.
 export { DESKTOP_QUERY };
+
+function subscribeToDesktopBreakpoint(listener: () => void): () => void {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
+}
+
+function desktopSnapshot(): boolean {
+  return typeof window !== "undefined" && window.matchMedia(DESKTOP_QUERY).matches;
+}
+
+function serverDesktopSnapshot(): false {
+  return false;
+}
+
+/** A retained mobile panel must release its DOM even if it is already closed
+ *  when the layout becomes desktop. Its history owner can stay mounted. */
+export function useDesktopBreakpoint(): boolean {
+  return useSyncExternalStore(
+    subscribeToDesktopBreakpoint,
+    desktopSnapshot,
+    serverDesktopSnapshot,
+  );
+}
 
 /** Vaul portals a drawer straight to <body>, so a mobile filter drawer stays
  *  open and floating over the page if the viewport crosses into the desktop

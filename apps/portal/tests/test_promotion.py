@@ -56,7 +56,16 @@ elif name == 'install':
     )
     binary = tmp_path / "bin"
     binary.mkdir()
-    for name in ("id", "runuser", "setpriv", "chown", "git", "pnpm", "systemctl", "install"):
+    for name in (
+        "id",
+        "runuser",
+        "setpriv",
+        "chown",
+        "git",
+        "pnpm",
+        "systemctl",
+        "install",
+    ):
         wrapper = binary / name
         wrapper.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{fake}" {name} "$@"\n')
         wrapper.chmod(0o755)

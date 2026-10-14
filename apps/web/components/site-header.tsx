@@ -65,7 +65,7 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
         No loop in it. inline-size containment means this row's width comes
         from the frame above it and never from the nav the query switches, so
         folding the links away cannot widen the row back into holding them. */}
-    <div className="@container/header relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-4 px-gutter py-4">
+    <div className="@container/header relative mx-auto flex w-full max-w-(--page-max) items-center justify-between gap-4 px-gutter py-4 short:py-2 short:pointer-coarse:pb-3">
       {/* The first focusable thing in the document, before the brand. Every
           navigation on this site is a document load, so the chrome's tab
           stops are paid again on every page a keyboard visitor opens rather
@@ -192,11 +192,12 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
               up. Above this line is the name, which belongs to the home link;
               an overlay centred here would take the lower half of its presses
               and a 44px one would reach past the band into the page. Below
-              it is the header's own padding, 16px of nothing, so the overlay
-              takes 2px above its line and the rest below, and stops at the
-              band's edge. 32px clears the 24px that WCAG 2.5.8 asks of a
-              target this small, and the only other control it could have
-              collided with is the one it was built to stay out of.
+              it is the header's own padding, so the overlay takes 2px above
+              its line and the rest below. Short touch viewports keep 12px of
+              bottom padding so that target still fits inside the band when
+              the rest of its padding drops to 8px. 32px clears the 24px that
+              WCAG 2.5.8 asks of a target this small, and the only other control
+              it could have collided with is the one it was built to stay out of.
 
               The tile is the brand's colours and not the theme's, and it is
               the one coloured thing in this band. That is the brand's own

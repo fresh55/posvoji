@@ -248,10 +248,8 @@
    all. 16px is the value the portrait frame already uses, applied on height
    rather than on width.
 
-   Height only. --section-gap stays where it is, because the home page's cat
-   is positioned against it (-bottom-section-gap in home-cat.tsx) and the
-   corner arithmetic in that file is derived from it; retuning it here would
-   move the drawing without moving the numbers that describe it.
+   The homepage reduces its section gap locally in this band, where its cat
+   is hidden. Keep the shared section gap unchanged for the other pages.
 
    After the width blocks rather than before, because they carry the same
    specificity and a short viewport that is also wide has to end up short.

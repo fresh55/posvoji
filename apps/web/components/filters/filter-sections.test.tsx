@@ -23,6 +23,7 @@ import {
   type Filters,
 } from "@/lib/filters";
 import { scrollChildIntoViewY } from "@/lib/scroll-strip";
+import { DESKTOP_QUERY } from "@/lib/viewport-queries";
 import { installFilterFoldSeams } from "@/test/filter-folds";
 import type { CardGroup } from "./filter-groups";
 import { FilterSidebar } from "./filter-sidebar";
@@ -56,6 +57,12 @@ const broughtIntoView = vi.mocked(scrollChildIntoViewY);
 
 beforeEach(() => {
   broughtIntoView.mockClear();
+  vi.stubGlobal("matchMedia", vi.fn((media: string) => ({
+    matches: media === DESKTOP_QUERY,
+    media,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  })));
 });
 
 afterEach(() => {
@@ -261,7 +268,7 @@ function arrive(url: string): void {
  *  use-filter-sections.ts. */
 function stubShortDesktop(): void {
   vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
-    matches: query.includes("49.99rem"), media: query, onchange: null,
+    matches: query === DESKTOP_QUERY || query.includes("49.99rem"), media: query, onchange: null,
     addEventListener: vi.fn(), removeEventListener: vi.fn(),
     addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
   })));
@@ -419,7 +426,7 @@ describe("collapsible filter sections", () => {
     let short = false;
     vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
       get matches() {
-        return query.includes("49.99rem") ? short : false;
+        return query === DESKTOP_QUERY || (query.includes("49.99rem") && short);
       },
       media: query, onchange: null,
       addEventListener: (_: string, listener: () => void) => listeners.add(listener),

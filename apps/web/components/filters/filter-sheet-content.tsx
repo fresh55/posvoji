@@ -161,7 +161,9 @@ export function FilterSheetContent({
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent
         closeLabel={messages.close}
-        className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
+        // Include the drag handle when aligning the close button to the title.
+        // The 32px non-touch button above sm needs 6px more top offset than 44px.
+        className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:top-6 sm:not-pointer-coarse:[&>button]:top-7.5 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
         onCloseAutoFocus={(event) => {
           // The map is taking focus instead (handingOff above).
           if (!handingOff.current) return;

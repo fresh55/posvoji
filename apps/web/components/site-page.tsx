@@ -60,7 +60,9 @@ export function SitePage({ locale }: { locale: Locale }) {
       // having room: at 1920 the page used to draw three cards in a 1280px
       // column and leave 320px of empty page on each side.
       wide
-      mainClassName="flex flex-1 flex-col gap-section-gap py-page-y"
+      // The cat is hidden in short viewports, so its reserved gap can shrink.
+      // Keep this local: other pages share the normal section spacing.
+      mainClassName="flex flex-1 flex-col gap-section-gap py-page-y short:[--section-gap:1rem]"
       // /?najdena, which municipality websites published back when the lookup
       // was a mode of the map dialog. It draws nothing; it sends those
       // visitors on to the page the flow lives on.

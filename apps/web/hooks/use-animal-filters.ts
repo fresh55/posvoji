@@ -228,7 +228,17 @@ export function useAnimalFilters() {
     getSearchSnapshot,
     getServerSearchSnapshot,
   );
-  const filters = useMemo(() => parseFilters(search), [search]);
+  // The grid keeps its drawn count against the filtered list's identity. A
+  // photo link, a sort, or a foreign query parameter changes the address but
+  // not that list's filters. Key them by what the codec actually reads, so
+  // those changes do not rebuild the list and drop its already-drawn cards.
+  // Parsing before serializing also normalizes equivalent query spellings
+  // and ignores retired or invalid values without rewriting the address.
+  const filterSearch = useMemo(
+    () => serializeFilters(parseFilters(search)),
+    [search],
+  );
+  const filters = useMemo(() => parseFilters(filterSearch), [filterSearch]);
   const sort = useMemo(() => parseSort(search), [search]);
 
   // The one filter control that reads as navigation. It sits at the top of the

@@ -616,6 +616,7 @@ export function AnimalGrid({
     unanswered,
   } = useAnimalFilterModel({
     animals: dataset,
+    offSiteShelters,
     logos,
     reference,
     locale,

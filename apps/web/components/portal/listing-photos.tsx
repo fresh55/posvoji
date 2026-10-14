@@ -5,7 +5,7 @@ import { Button } from "@/components/portal/portal-button";
 import { type PortalListingPhoto } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
 import { ImagePlus, LoaderCircle, RefreshCw } from "lucide-react";
-import type { ChangeEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, type ChangeEvent, type MouseEvent } from "react";
 import { ACCEPTED_PHOTO_TYPES, type PendingPhoto } from "./listing-photo-rules";
 
 /** Everything the photo section draws and everything a tap on it reaches. */
@@ -40,6 +40,61 @@ export type PhotoPanel = {
  */
 export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
   const fileId = `${uid}-file`;
+  const picker = useRef<HTMLInputElement>(null);
+  const removeButtons = useRef(new Map<string, HTMLButtonElement>());
+  const removedFocus = useRef<{
+    key: string;
+    index: number;
+    button: HTMLButtonElement;
+  } | null>(null);
+  const photoKeys = useMemo(
+    () => [
+      ...panel.stored.map((photo) => `stored:${photo.id}`),
+      ...panel.pending.map((photo) => `pending:${photo.key}`),
+    ],
+    [panel.stored, panel.pending],
+  );
+
+  // Keep the focused remove control during the request. Once its photo is
+  // gone, continue through the grid rather than restarting at the page top.
+  useLayoutEffect(() => {
+    const removed = removedFocus.current;
+    if (!removed || photoKeys.includes(removed.key) || panel.busy) return;
+    removedFocus.current = null;
+    const { ownerDocument } = removed.button;
+    if (
+      ownerDocument.activeElement !== ownerDocument.body &&
+      ownerDocument.activeElement !== removed.button
+    ) return;
+    const nextKeys = [
+      ...photoKeys.slice(removed.index),
+      ...photoKeys.slice(0, removed.index).reverse(),
+    ];
+    const nextKey = nextKeys.find((key) => removeButtons.current.has(key));
+    const next = nextKey ? removeButtons.current.get(nextKey) : picker.current;
+    next?.focus();
+  }, [photoKeys, panel.busy]);
+
+  function removeControl(key: string, remove: () => void) {
+    return {
+      ref: (button: HTMLButtonElement | null) => {
+        if (button) removeButtons.current.set(key, button);
+        else removeButtons.current.delete(key);
+      },
+      "aria-disabled": panel.busy,
+      onClick: (event: MouseEvent<HTMLButtonElement>) => {
+        if (panel.busy) return;
+        if (event.currentTarget.ownerDocument.activeElement === event.currentTarget) {
+          removedFocus.current = {
+            key,
+            index: photoKeys.indexOf(key),
+            button: event.currentTarget,
+          };
+        }
+        remove();
+      },
+    };
+  }
 
   return (
     <div data-field="photos" className="space-y-1.5">
@@ -70,7 +125,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                   type="button"
                   variant="ghost"
                   size="xs"
-                  disabled={panel.busy}
+                  {...removeControl(`stored:${photo.id}`, () => panel.onRemove(photo.id))}
                   aria-label={
                     confirm
                       ? undefined
@@ -78,9 +133,8 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                           index: index + 1,
                         })
                   }
-                  onClick={() => panel.onRemove(photo.id)}
                   className={cn(
-                    "h-auto w-full whitespace-normal py-1 font-normal text-muted-foreground hover:text-foreground",
+                    "h-auto w-full whitespace-normal py-1 font-normal text-muted-foreground hover:text-foreground aria-disabled:opacity-50",
                     confirm && "text-destructive hover:text-destructive",
                   )}
                 >
@@ -130,9 +184,8 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                       type="button"
                       variant="ghost"
                       size="xs"
-                      disabled={panel.busy}
-                      onClick={() => panel.onDrop(item)}
-                      className="w-full font-normal text-muted-foreground hover:text-foreground"
+                      {...removeControl(`pending:${item.key}`, () => panel.onDrop(item))}
+                      className="w-full font-normal text-muted-foreground hover:text-foreground aria-disabled:opacity-50"
                     >
                       {portalText.photoRemove}
                     </Button>
@@ -147,9 +200,8 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
                   type="button"
                   variant="ghost"
                   size="xs"
-                  disabled={panel.busy}
-                  onClick={() => panel.onDrop(item)}
-                  className="w-full font-normal text-muted-foreground hover:text-foreground"
+                  {...removeControl(`pending:${item.key}`, () => panel.onDrop(item))}
+                  className="w-full font-normal text-muted-foreground hover:text-foreground aria-disabled:opacity-50"
                 >
                   {portalText.photoRemove}
                 </Button>
@@ -173,6 +225,7 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
             <ImagePlus className="size-5" strokeWidth={1.75} aria-hidden />
             <span>{portalText.photoAdd}</span>
             <input
+              ref={picker}
               id={fileId}
               type="file"
               accept={ACCEPTED_PHOTO_TYPES.join(",")}

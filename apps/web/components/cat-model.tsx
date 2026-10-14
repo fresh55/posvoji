@@ -64,7 +64,7 @@ const copy = {
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-type Status = "loading" | "revealing" | "ready" | "failed";
+type Status = "idle" | "loading" | "revealing" | "ready" | "failed";
 
 /** Controls exposed after the model loads. */
 export type CatModelHandle = {
@@ -109,18 +109,19 @@ export const CatModel = memo(function CatModel({
   const host = useRef<HTMLDivElement>(null);
   // Observe parent focus so the caption link can trigger model loading.
   const stage = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<Status>("idle");
   const [slow, setSlow] = useState(false);
   const ready = status === "ready";
+  const loading = status === "loading" || status === "revealing";
+  const waiting = loading
+    ? (slow ? text.slow : text.loading)
+    : (status === "failed" ? text.unavailable : "");
   // Keep loading feedback visible after the first interaction until ready.
   const [reached, setReached] = useState(false);
-  const showStartButton = deferOnLimitedConnection && limitedConnection && !ready &&
-    (!reached || status === "failed");
-  // The connection gate is waiting for permission to start, so neither its
-  // cursor nor its live region should imply a download is already underway.
-  const dormant = showStartButton && status !== "failed";
-  const loading = !dormant && (status === "loading" || status === "revealing");
-  const waiting = ready || dormant ? "" : status === "failed" ? text.unavailable : slow ? text.slow : text.loading;
+  // A press starts the idle stage or retries a failure. Once a request starts,
+  // loading feedback owns the stage even if the connection setting changes.
+  const showStartButton = deferOnLimitedConnection && limitedConnection &&
+    (status === "idle" || status === "failed");
   // Replay a touch received while the poster was loading.
   const touched = useRef(false);
   // Update the callback without restarting the WebGL effect.
@@ -462,7 +463,7 @@ export const CatModel = memo(function CatModel({
         aria-hidden={!ready}
         className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
       />
-      {/* Announce loading status immediately; show visual feedback after interaction. */}
+      {/* Announce loading once requested; show visual feedback after interaction. */}
       <div
         data-slot="cat-status"
         role="status"

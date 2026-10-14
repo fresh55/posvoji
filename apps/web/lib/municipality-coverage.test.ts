@@ -13,6 +13,8 @@ beforeEach(() => {
       name: "Zavetišče Ljubljana",
       city: "Ljubljana",
       phone: "01 256 02 79",
+      hours: "Pon–pet 8.00–14.00 · nujni primeri 24 ur na isti številki (pritisni 1)",
+      hoursEn: "Mon–Fri 8.00–14.00 · emergencies 24 hours on the same number (press 1)",
     },
     { id: "maribor", name: "Zavetišče Maribor", city: "Maribor" },
   ]);
@@ -43,9 +45,42 @@ describe("municipality lookup fallback", () => {
     ]);
     expect(entry.nearest[0]).toMatchObject({
       phone: "01 256 02 79",
+      hours: "Pon–pet 8.00–14.00 · nujni primeri 24 ur na isti številki (pritisni 1)",
       detailHref: "/en/shelters/ljubljana",
     });
+    for (const nearby of entry.nearest) {
+      expect(nearby).not.toHaveProperty("hoursEn");
+    }
   });
+
+  it.each(["sl", "en"] as const)(
+    "carries both hours languages only into verified contacts for %s",
+    (locale) => {
+      vi.mocked(loadMunicipalities).mockReturnValue({
+        municipalities: [
+          {
+            name: "Ljubljana",
+            coverage: [{ shelter: "ljubljana", source: "known-source" }],
+          },
+          { name: "Medvode", coverage: [] },
+        ],
+        sources: {
+          "known-source": { label: "Test", date: "2026-01-01", confirmed: true },
+        },
+      });
+
+      const [verified, unverified] = buildMunicipalityEntries(locale, []);
+      const shelter = loadShelters()[0];
+      const hours = { hours: shelter.hours, hoursEn: shelter.hoursEn };
+
+      expect(verified.coverage[0]).toMatchObject(hours);
+      const nearby = unverified.nearest.find((entry) => entry.shelterId === shelter.id);
+      expect(nearby).toMatchObject({ hours: shelter.hours });
+      for (const entry of unverified.nearest) {
+        expect(entry).not.toHaveProperty("hoursEn");
+      }
+    },
+  );
 
   it("keeps valid responsibility separate from the nearby fallback", () => {
     vi.mocked(loadMunicipalities).mockReturnValue({

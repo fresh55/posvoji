@@ -39,20 +39,17 @@ afterEach(() => {
 const PATH = "/zival/rex-abc123/ljubljana/test-shelter";
 const PAGE = `${SITE_URL}${PATH}`;
 
-function renderButton(
-  photo?: number,
-  className?: string,
-  locale: Locale = "sl",
-  seeking = true,
-) {
+function renderButton({
+  locale = "sl",
+  ...props
+}: Partial<Parameters<typeof ShareButton>[0]> & { locale?: Locale } = {}) {
   render(
     <I18nProvider locale={locale}>
       <ShareButton
         path={PATH}
         name="Rex"
-        seeksHome={seeking}
-        photo={photo}
-        className={className}
+        seeksHome
+        {...props}
       />
     </I18nProvider>,
   );
@@ -60,7 +57,7 @@ function renderButton(
 }
 
 async function openSheet(photo?: number) {
-  const button = renderButton(photo);
+  const button = renderButton({ photo });
   await act(async () => {
     fireEvent.click(button);
   });
@@ -119,7 +116,7 @@ describe("the invitation the visitor shares", () => {
   ] as const)("uses %s copy with seeking=%s in every target", async (locale, seeking, invite) => {
     const share = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", { configurable: true, value: share });
-    fireEvent.click(renderButton(2, undefined, locale, seeking));
+    fireEvent.click(renderButton({ photo: 2, locale, seeksHome: seeking }));
     const whatsapp = await screen.findByRole("link", { name: "WhatsApp" });
     expect(new URL(whatsapp.getAttribute("href")!).searchParams.get("text")).toBe(
       `${invite} ${PAGE}?foto=3`,
@@ -139,7 +136,7 @@ describe("the invitation the visitor shares", () => {
     phone = true;
     const share = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", { configurable: true, value: share });
-    const button = renderButton(2, undefined, locale, false);
+    const button = renderButton({ photo: 2, locale, seeksHome: false });
     await act(async () => fireEvent.click(button));
     expect(share).toHaveBeenCalledWith({ title: invite, text: invite, url: `${PAGE}?foto=3` });
   });
@@ -204,7 +201,7 @@ describe("on a phone", () => {
     });
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
-    const button = renderButton(2);
+    const button = renderButton({ photo: 2 });
     fireEvent.click(button);
     const copy = await screen.findByRole("button", { name: "Kopiraj povezavo" });
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Deljenje ni uspelo"));
@@ -260,7 +257,7 @@ describe("on a phone", () => {
       configurable: true,
       value: share,
     });
-    const button = renderButton(2);
+    const button = renderButton({ photo: 2 });
 
     await act(async () => {
       fireEvent.click(button);
@@ -303,7 +300,7 @@ describe("the classes the caller passes", () => {
       });
     }
 
-    const button = renderButton(undefined, "max-sm:rounded-full");
+    const button = renderButton({ className: "max-sm:rounded-full" });
 
     expect(button.className).toContain("max-sm:rounded-full");
     expect(button.className).toContain("size-11");

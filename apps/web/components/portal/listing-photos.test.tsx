@@ -2,10 +2,20 @@
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PendingPhoto } from "./listing-photo-rules";
 import { Photos, type PhotoPanel } from "./listing-photos";
 import { portalText } from "./portal-text";
 
 afterEach(cleanup);
+
+function preview(key: number, failed = false): PendingPhoto {
+  return {
+    key,
+    file: new File(["preview"], `audit-photo-${key}.png`, { type: "image/png" }),
+    previewUrl: `blob:audit-preview-${key}`,
+    failed,
+  };
+}
 
 function panel(overrides: Partial<PhotoPanel> = {}): PhotoPanel {
   return {
@@ -66,16 +76,34 @@ describe("photo removal focus", () => {
     expect(document.activeElement).toBe(screen.getByLabelText(portalText.photoAdd));
   });
 
+  it("continues to the previous photo when the last photo is removed", () => {
+    const photos = panel();
+    const { rerender } = render(<Photos uid="audit" panel={photos} />);
+    const last = screen.getByRole("button", { name: "Odstrani 2. fotografijo" });
+    last.focus();
+    fireEvent.click(last);
+    const first = screen.getByRole("button", { name: "Odstrani 1. fotografijo" });
+    rerender(<Photos uid="audit" panel={{ ...photos, stored: photos.stored.slice(0, 1) }} />);
+    expect(document.activeElement).toBe(first);
+  });
+
+  it("skips previews awaiting upload when choosing the next remove control", () => {
+    const photos = panel({ pending: [preview(10), preview(11, true)] });
+    photos.stored = photos.stored.slice(0, 1);
+    const { rerender } = render(<Photos uid="audit" panel={photos} />);
+    const stored = screen.getByRole("button", { name: "Odstrani 1. fotografijo" });
+    stored.focus();
+    fireEvent.click(stored);
+    const failed = screen.getByRole("button", { name: portalText.photoRemove });
+    rerender(<Photos uid="audit" panel={{ ...photos, stored: [] }} />);
+    expect(document.activeElement).toBe(failed);
+  });
+
   it("returns to Add photo after dropping the last unsaved preview", () => {
     const photos = panel({
       stored: [],
       storable: false,
-      pending: [{
-        key: 10,
-        file: new File(["preview"], "audit-photo.png", { type: "image/png" }),
-        previewUrl: "blob:audit-preview",
-        failed: false,
-      }],
+      pending: [preview(10)],
     });
     const { rerender } = render(<Photos uid="audit" panel={photos} />);
     const remove = screen.getByRole("button", { name: portalText.photoRemove });

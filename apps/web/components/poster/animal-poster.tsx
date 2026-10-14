@@ -3,7 +3,7 @@ import type { Animal } from "@posvoji/schema";
 import { Logo } from "@/components/logo";
 import { PosterFacts, posterTiles } from "@/components/poster/poster-facts";
 import { QrCode } from "@/components/poster/qr-code";
-import { seeksHome, type AnimalFields } from "@/lib/animal";
+import { adoptableNow, type AnimalFields } from "@/lib/animal";
 import { SPECIES_ICONS } from "@/lib/animal-icons";
 import { posterPhoto } from "@/lib/animal-images";
 import { animalPath } from "@/lib/animal-path";
@@ -117,7 +117,7 @@ export function AnimalPoster({
 
   const tiles = posterTiles(animal, locale, reference);
   const plea = pleaLine(animal, locale, reference);
-  const seeking = seeksHome(animal.status);
+  const seeking = adoptableNow(animal.status);
   // An unavailable animal gets its recorded status beside the name. The
   // available and unknown animals on the adoption list keep the invitation.
   const status = seeking ? undefined : statusLabel(animal.status, locale);

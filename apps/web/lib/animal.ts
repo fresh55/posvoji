@@ -73,17 +73,10 @@ export function listedAtTime(listedAt: number): number {
 /** Whether a visitor can act on this animal now: available, or an unknown
  *  that the shelter's own listing still carries. An allowlist and not a
  *  denylist of the other three, so a status added to the schema is not taken
- *  for adoptable until someone says it is. The long-stay plea (lib/labels.ts)
- *  asks it. */
+ *  for adoptable until someone says it is. Long-stay pleas, posters and
+ *  sharing invitations all read this rule. */
 export function adoptableNow(status: AdoptionStatus): boolean {
   return status === "available" || status === "unknown";
-}
-
-/** Whether a poster or sharing message may say this animal is seeking a home.
- *  Unknown still belongs to the shelter's adoption list; holds, reservations
- *  and completed adoptions must not carry that invitation. */
-export function seeksHome(status: AdoptionStatus): boolean {
-  return adoptableNow(status);
 }
 
 /** When an animal was first listed, in milliseconds since 1970, where it is

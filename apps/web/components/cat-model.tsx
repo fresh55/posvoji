@@ -95,7 +95,9 @@ export const CatModel = memo(function CatModel({
   const [slow, setSlow] = useState(false);
   const ready = status === "ready";
   const loading = status === "loading" || status === "revealing";
-  const waiting = ready || status === "idle" ? "" : status === "failed" ? text.unavailable : slow ? text.slow : text.loading;
+  const waiting = loading
+    ? (slow ? text.slow : text.loading)
+    : (status === "failed" ? text.unavailable : "");
   // Keep loading feedback visible after the first interaction until ready.
   const [reached, setReached] = useState(false);
   // Replay a touch received while the poster was loading.

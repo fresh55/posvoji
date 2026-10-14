@@ -70,8 +70,9 @@ export function Photos({ uid, panel }: { uid: string; panel: PhotoPanel }) {
       ...photoKeys.slice(removed.index),
       ...photoKeys.slice(0, removed.index).reverse(),
     ];
-    const next = nextKeys.map((key) => removeButtons.current.get(key)).find(Boolean);
-    (next ?? picker.current)?.focus();
+    const nextKey = nextKeys.find((key) => removeButtons.current.has(key));
+    const next = nextKey ? removeButtons.current.get(nextKey) : picker.current;
+    next?.focus();
   }, [photoKeys, panel.busy]);
 
   function removeControl(key: string, remove: () => void) {

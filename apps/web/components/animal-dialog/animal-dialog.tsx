@@ -49,7 +49,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { seeksHome, type ClientAnimal } from "@/lib/animal";
+import { adoptableNow, type ClientAnimal } from "@/lib/animal";
 import { animalPath, photoFromSearch } from "@/lib/animal-path";
 import { animalSubtitle } from "@/lib/labels";
 import {
@@ -963,7 +963,7 @@ function OpenAnimalDialog({
                       <DialogShareButton
                         path={href}
                         name={name}
-                        seeksHome={seeksHome(lastAnimal.status)}
+                        seeksHome={adoptableNow(lastAnimal.status)}
                         photo={shownPhoto}
                         className={PHONE_SHARE_CLASS}
                       />

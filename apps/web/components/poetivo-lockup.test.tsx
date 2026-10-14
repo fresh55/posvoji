@@ -9,23 +9,31 @@ import { PoetivoLockup } from "./poetivo-lockup";
 afterEach(cleanup);
 
 describe("PoetivoLockup", () => {
-  // Mark, then the words, in one reading order for both callers; the tile
+  // One span in the text flow, so a caller's underline reaches the words:
+  // the verb, a word space, then the tile pressed against the name. The tile
   // in the brand's own colours, hidden from the accessible name.
-  it("draws the tile first and the name after the verb", () => {
-    const { container } = render(
-      <span>
-        <PoetivoLockup verb="Poganja" />
-      </span>,
-    );
+  it("draws the verb, then the tile against the name", () => {
+    const { container } = render(<PoetivoLockup verb="Poganja" />);
 
-    const row = container.firstElementChild!;
-    expect(row.children).toHaveLength(2);
-    const [svg, words] = Array.from(row.children);
+    expect(container.children).toHaveLength(1);
+    const words = container.firstElementChild!;
+    expect(words.tagName).toBe("SPAN");
+    expect(words.textContent).toBe(`Poganja ${POETIVO_NAME}`);
+
+    const [svg, name] = Array.from(words.children);
     expect(svg.tagName).toBe("svg");
     expect(svg.getAttribute("aria-hidden")).toBe("true");
     expect(svg.querySelector("rect")?.getAttribute("fill")).toBe(POETIVO_TILE);
     expect(svg.querySelector("path")?.getAttribute("fill")).toBe(POETIVO_INK);
-    expect(words.textContent).toBe(`Poganja ${POETIVO_NAME}`);
-    expect(words.querySelector(".font-semibold")?.textContent).toBe(POETIVO_NAME);
+    expect(name.className).toContain("font-semibold");
+    expect(name.textContent).toBe(POETIVO_NAME);
+    // The space is before the tile, never between the tile and the name.
+    // React renders the verb and the space as two text nodes.
+    const beforeTile = Array.from(words.childNodes)
+      .slice(0, Array.from(words.childNodes).indexOf(svg))
+      .map((node) => node.textContent)
+      .join("");
+    expect(beforeTile).toBe("Poganja ");
+    expect(svg.nextSibling).toBe(name);
   });
 });

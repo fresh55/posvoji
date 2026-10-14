@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-09-30T18:54:43.221Z",
+  "reviewedAt": "2026-10-14T14:05:02.324Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -16989,6 +16989,404 @@
           "reviewedBy": [
             "/root/newcat_review_a",
             "/root/newcat_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5016",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5016",
+      "descriptionSha256": "5e1c21ffc0763c4a949f830a79d3c44c1559a5303e021f739309be07d5d88394",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Žalec",
+          "evidence": {
+            "start": 118,
+            "end": 133,
+            "sha256": "4feded633dd15a2da99bce38f6d193b556daf5d982d11d01aca6f72d226fb5d5"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5014",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5014",
+      "descriptionSha256": "326d59c6f4192faa55cc5a90c376397f413e81f4c7b42fc9039c45cec6bb9d80",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 32,
+            "end": 57,
+            "sha256": "7fea17175d0839e35493323e8d0f9412157df312d8e531a0d698e2868ae9546d"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5013",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5013",
+      "descriptionSha256": "3074a8516f6f8cf8a3a9762e4ffb31a896efcb98e565bd319dd07a2f23628f3f",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 9,
+            "end": 16,
+            "sha256": "9f41057322ba32b0380306bd304fe33d7e2b7cdeb985cb901430af4e36ebfcd7"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5011",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5011",
+      "descriptionSha256": "5b08139d2b891e95464000426c1d5832429c8896fb86c497db2aef3e5c07830a",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 28,
+            "end": 42,
+            "sha256": "c8d9cd784cba9badfbf4b0d20affaed08aa102876b0bece55910b8d177fd5c69"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 63,
+            "end": 86,
+            "sha256": "299d6d020fdd7ddbd34b6b1401601d721561d140a212eb4da6e79d4cb2b29f97"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5010",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5010",
+      "descriptionSha256": "0cb0dec02a11fb88bd82c850e9473d9da70c20e31511c2bd26349d240d77f023",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 45,
+            "end": 79,
+            "sha256": "b1826a1eb37d8647ffe22d0c9b153d7a4df908da018f5777a2be20bf59c7cbab"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 82,
+            "end": 103,
+            "sha256": "978b7610d39465b3f9591e6edd82efa6dcdaa8c825a431f6e03507241a6a6d9b"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5009",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5009",
+      "descriptionSha256": "006803ad293e7ceb8caf26b31f0ca1dd40f9e70b981d39e2ccac7fb863cc9a4a",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 41,
+            "end": 67,
+            "sha256": "dc3e3b6aaa7f1d706b4f5b964f6837e3902d94c3481186b3398ac43a0babd3bf"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 70,
+            "end": 84,
+            "sha256": "ff08e9a0f2948a065eb3c7d0562d8bc9bebb61b2ee6103226d854b7978d4d654"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5008",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5008",
+      "descriptionSha256": "b5653e0fa5771a45512e1c2ba32f9727e009a90607ade2ab03fd38f5db4a199e",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 42,
+            "end": 57,
+            "sha256": "8cdd5071bc61755fdc797d396c63ed74ff5fb15cd78765db9c900b40d6d961c6"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5007",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5007",
+      "descriptionSha256": "0435321d77a3b47fae4ac3cd215ce89fe230394f82740faf5cf4291869649b48",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 18,
+            "end": 37,
+            "sha256": "532b5cd721ab98935a27624b239bc38aaeec3b8ff828663baabf18497c03ddea"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 39,
+            "end": 65,
+            "sha256": "b9730e444ac516f23454bb7c72f6016696027e8223ac845629953dbb1e6f0d4e"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 68,
+            "end": 83,
+            "sha256": "8cdd5071bc61755fdc797d396c63ed74ff5fb15cd78765db9c900b40d6d961c6"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5006",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5006",
+      "descriptionSha256": "e195279ddb69268908a1babcb2792189eea7163bf5aa92f9bed8a045152c2986",
+      "claims": [
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 34,
+            "end": 60,
+            "sha256": "90691264946155e29a530c490f370a60ad35a1195b83775fe66e3cf42c6761be"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 206,
+            "end": 221,
+            "sha256": "8cdd5071bc61755fdc797d396c63ed74ff5fb15cd78765db9c900b40d6d961c6"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5005",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5005",
+      "descriptionSha256": "95919e3ca02e363051811c013352661f6363e33fc7f6eae96350e8a262665943",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 212,
+            "end": 227,
+            "sha256": "8cdd5071bc61755fdc797d396c63ed74ff5fb15cd78765db9c900b40d6d961c6"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:164",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=164",
+      "descriptionSha256": "110ccd19e3760d130b3449fc0121035db003c496f675c73beea9379fa042cc73",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 10,
+            "end": 18,
+            "sha256": "65ed6b8758f483bfe2f71e73329683eaf887dd62849c97b45a3fbfde6b63a5cc"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:168",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=168",
+      "descriptionSha256": "f0b3f49255d020852ef71822e40f2f024fcb430c97f8e2dcb1db5a63fc9ebb8d",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 78,
+            "end": 125,
+            "sha256": "928c589e66f6f256f44e7c8813071bc7574765ac14ad49a732064afd7176f199"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 226,
+            "end": 278,
+            "sha256": "a5b012b6e41f5786f5ca1b94e77cecc1a431e5f0512e73a82c4fe4cd2f9fb1b0"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:170",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=170",
+      "descriptionSha256": "bb4bc5d77456ef952275cd54779c45d15334e814f2751033ea346a8e4138247a",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 16,
+            "end": 25,
+            "sha256": "8abc93f3443ccbb359f1fa45b994c35d6bbe7ba2300699c09e75eb63c72c9a17"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "maribor:159",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=159",
+      "descriptionSha256": "555ffe060f03aa641f1dfa5d24758be31ca5de54aa5b8b818dc066c67ff80735",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 90,
+            "end": 110,
+            "sha256": "9a20466c4d74ca72c12a6d988ccff9d2e49adeaae71f5ac2ab22f9985d3c4703"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 495,
+            "end": 527,
+            "sha256": "24341cebb82ec30fdd473179d5584e5603f3b3344e569861359652776f58e299"
+          },
+          "reviewedBy": [
+            "/root/october_review_a",
+            "/root/october_review_b"
           ]
         }
       ]

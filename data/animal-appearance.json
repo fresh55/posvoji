@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-04T08:30:14.020Z",
+  "reviewedAt": "2026-10-14T14:05:02.323Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -18179,11 +18179,11 @@
       "evidence": [
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_8776.jpeg",
-          "sha256": "c199be10a7338357115980391f3a5cd33abd21903118d9a7671826ea23c73839"
+          "sha256": "bb5f6308560606f527c246e91dfc8084a62508bca12aaaccbb4aebd7af7c20c7"
         },
         {
           "sourceUrl": "https://zavodmuri.si/wp-content/uploads/2026/07/IMG_8777.jpeg",
-          "sha256": "4dc8fb3e9ed304dfdb2e7634eefffb8ef276ef3d7cdd86c318c133b8bf99ecf5"
+          "sha256": "2a36d30ae4f221831f4510a8095c60f5be7f94700f9e36ce604c52264dda295f"
         }
       ],
       "reviewedBy": [
@@ -21131,6 +21131,845 @@
       "reviewedBy": [
         "/root/newcat_review_a",
         "/root/newcat_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5016",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5016",
+      "species": "cat",
+      "coatColors": [
+        "white"
+      ],
+      "coatColor": "white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5016__1_large.jpeg",
+          "sha256": "8878e5c9fe46520e41a4500bea7063b98cd322382ffbdbde53c96beb78d69397"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5016__2_large.jpeg",
+          "sha256": "ad273427cd3582fcb844a09b181e065606ba84a911765c33c7b917ad2d69aa82"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5016__3_large.jpeg",
+          "sha256": "b560344eae8c3cb022d87e7cafe93766f070655199b850a6d9d84e209b05e6d9"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5016__4_large.jpeg",
+          "sha256": "2a7b3eab8667779084d6c42fbdab12918a4ebb80139fcc21b1572e6a6a90f008"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5014",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5014",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "white"
+      ],
+      "coatColor": "brown-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5014__1_large.jpeg",
+          "sha256": "570b53965d43ab59a3428b337c52dd1f5fdf3785fd46e0a70fa26a4dace11180"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5014__2_large.jpeg",
+          "sha256": "e2fd222d4ddadb29deada00625836ca635cac6077abf1a1c1e4e8611c88baa76"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5014__3_large.jpeg",
+          "sha256": "76d30d823d9aa511ff01aa2f8f51595d202af9cf0bb09f3503f5b5116d065536"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5014__4_large.jpeg",
+          "sha256": "fc2106a93f5d347bff61b15cadbb8d797ed06ad1448d8d32d25679b5ce8ebf3f"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5013",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5013",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "white"
+      ],
+      "coatColor": "brown",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5013__1_large.jpeg",
+          "sha256": "f276bcee433d59b1fb32deedb7b6b222cc7fe6a5d0500edb65473a23907a898a"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5013__2_large.jpeg",
+          "sha256": "723a3947c5f5645046f65b4276309f12f228484fe8a8175f514ba20942c9379c"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5013__3_large.jpeg",
+          "sha256": "e5c1bbe74d6a1ea5d9f45fd0732e1a63ffcddab6fee49031345cd589bf378734"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5012",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5012",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5012__1_large.jpeg",
+          "sha256": "620138e8dd706b598b7d7aa6e8aad70e5d75dc8a097eae9f092e4bd587ccb94b"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5012__2_large.jpeg",
+          "sha256": "c515e49c7728886bef7a9e1ce34c78ee4c19d932d84b14eadec1413108402d7d"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5012__3_large.jpeg",
+          "sha256": "ded48f405220d902317c35ff7c5d953ae672154d5d38c2745ada2f4c68a007bc"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5011",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5011",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5011__1_large.jpeg",
+          "sha256": "0b171a5a553461206e73a2b1e9755bb55eaf4a6f4c041a5695d55dc0967b4783"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5011__2_large.jpeg",
+          "sha256": "e2ecf8c9d0e017368dbbe4fab7d4ca658ade2d52913b79b1c17757c4df67b48d"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5011__3_large.jpeg",
+          "sha256": "d12024b4587664bf768d7b3a59c381d59217fd4cc08c0dce826be0bd8199fb55"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5011__4_large.jpeg",
+          "sha256": "ba68b8b8841a918e5457e2193940110e02f3a3d49b4cb98f27f4108062496b5f"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5010",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5010",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "white"
+      ],
+      "coatColor": "brown-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5010__1_large.jpeg",
+          "sha256": "b50b3e267b826fd16e4cab1feadaab18baca126befbc14d30b8797d60344c70a"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5010__2_large.jpeg",
+          "sha256": "4c0440a20f0a05e3fcbc9bf3cabfc5acd71d51d9ce55291d6092234cb505325a"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5010__3_large.jpeg",
+          "sha256": "95441f522956be0fa5f84e26ead718d3eddd5e642bab792516c8154465d0fb90"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5009",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5009",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "white"
+      ],
+      "coatColor": "brown-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5009__1_large.jpeg",
+          "sha256": "9fc74559c2acb48452e29d29ae265edae8a077766ed07096ac3923feb0a26f64"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5009__2_large.jpeg",
+          "sha256": "be7e3b4b9d9c1678d61d6722b2b628bb7b9a9746f3312cfaf6f4a2fac1356d1e"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5009__3_large.jpeg",
+          "sha256": "2abb22440e0e98f7628dd5f69a57e63e8b7251e348f4541df881949013b5d608"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5008",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5008",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5008__1_large.jpeg",
+          "sha256": "ff18622c40b78a34ee3baaeb36e97d33b01e23c2de1b31e546005a7458b9cece"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5008__2_large.jpeg",
+          "sha256": "69ccf39e559eefbef4a9841e958c8ef4c54f11291f9f4a0dff87f3a17e4d3ca4"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5007",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5007",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "orange",
+        "white"
+      ],
+      "coatColor": "multicolour",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5007__1_large.jpeg",
+          "sha256": "b9d213d37d18d76fb97ef91fe7c3e779b538732cef79d33399344ae446102f3d"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5007__2_large.jpeg",
+          "sha256": "7556c135ba48f23efef3bf91d46b1c75f7a9d11fffb5b25bb5d858b94dc6b348"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5007__3_large.jpeg",
+          "sha256": "bd9fc91757850f1778659a0bdef7fdec82c1926e7d901fc48de0b466408df247"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5007__4_large.jpeg",
+          "sha256": "8d858f2c3b0ce572fe146c6f0c247a21778b2084e5e1fc7e0fd50873da1ea3e2"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5006",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5006",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black",
+        "orange",
+        "white"
+      ],
+      "coatColor": "multicolour",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5006__1_large.jpeg",
+          "sha256": "8fc85aee174df9bcbf03d5e8fad11e308be29035738c09ba726a504f8f8d9c49"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5006__2_large.jpeg",
+          "sha256": "91ce9e626ff8bc39dac2dac76e939774042a5a5bcda52f5ede7958bb59effb00"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5006__3_large.jpeg",
+          "sha256": "5d6fa686ce1caf512ccfbe515669e34286712e9f3ccd42b6b87992a370a58c3c"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5006__4_large.jpeg",
+          "sha256": "838cf4409b343258474546559e92d238ce3474501567acefa9e16d7921437124"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5005",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5005",
+      "species": "cat",
+      "coatColors": [
+        "orange",
+        "cream"
+      ],
+      "coatColor": "orange",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5005__1_large.jpeg",
+          "sha256": "c372c1e297fe46a932ddc3580bead98ef7e7d668bbec5760117f48a3dcb1f543"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5005__2_large.jpeg",
+          "sha256": "344196ea7700b9934de7a8bebbf3a7157c70c08604c9dc797c41f898937ccac3"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5005__3_large.jpeg",
+          "sha256": "8f6c1083add16af4c2008bb7898293010d8946c9733de44c543b3aff872476c7"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5005__4_large.jpeg",
+          "sha256": "7f33fb5623afcb7c73cf91612d9def1543baef27f35ecb98667d50c1ade57b6e"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:160",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=160",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3608-768x1024.jpeg",
+          "sha256": "d2c51e47faec4a2bf83c8eb9381c164c4e8e9b94b13e0ecd8710d83bf2867ea9"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:161",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=161",
+      "species": "cat",
+      "coatColors": [
+        "white",
+        "grey"
+      ],
+      "coatColor": "white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3583-768x1024.jpeg",
+          "sha256": "673f7299e5a26ec97761e5f95eaf335ea3c7c1613b0318c11b02e522fc56a5b4"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:162",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=162",
+      "species": "cat",
+      "coatColors": [
+        "grey",
+        "white"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3576-768x1024.jpeg",
+          "sha256": "ab07a3dcc057b66f35d2bb5d474df9b4efa7d7f53f3126d858818cd6b8875893"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:163",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=163",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3599-768x1024.jpeg",
+          "sha256": "0b883ab31cbfc954326a8934f47693bf4a85d5eed667bd7e00433f72dfc5f753"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:164",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=164",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3317-768x1024.jpeg",
+          "sha256": "4c867c5e91431bf7d5322bf52fb3387c4192cb54e761ecbdf3510daae05fa276"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:165",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=165",
+      "species": "cat",
+      "coatColors": [
+        "grey",
+        "brown",
+        "orange"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3336-768x1024.jpeg",
+          "sha256": "c1e212d9b06904ccbbf48354892b25179747f5371e02455dd829f3f1c4694537"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:166",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=166",
+      "species": "cat",
+      "coatColors": [
+        "brown"
+      ],
+      "coatColor": "brown",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3320-768x1024.jpeg",
+          "sha256": "6e459a0dee9cd0aa24d64eaffcdc6757b59c1ceb1c1d39e4abf0f3df6cbd9d0a"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:167",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=167",
+      "species": "cat",
+      "coatColors": [
+        "grey",
+        "white"
+      ],
+      "coatColor": "grey-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3364-1-768x1024.jpeg",
+          "sha256": "8208cb590d412862bb55c3a1d95c43ef4c5a08117204a220fad1665294c0a193"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:168",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=168",
+      "species": "dog",
+      "coatColors": [
+        "orange",
+        "cream",
+        "white"
+      ],
+      "coatColor": "orange",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3263-1-768x1024.jpeg",
+          "sha256": "ce700d94e1eac10875ed643320992e9f15e01913d5cdc5db0788d2c62a15666a"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:169",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=169",
+      "species": "dog",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3492-768x1024.jpg",
+          "sha256": "ab17de6552d995180ddb7ddadfe262d901178c130136884ea9496a72895e43f7"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:170",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=170",
+      "species": "dog",
+      "coatColors": [
+        "white",
+        "cream"
+      ],
+      "coatLength": "medium",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3213-1-768x1024.jpeg",
+          "sha256": "fc117a4bf0253146f605bec667be8dd949ca466780f24d732a59d7bc35906863"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:159",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=159",
+      "species": "dog",
+      "coatColors": [
+        "orange",
+        "cream",
+        "grey"
+      ],
+      "coatColor": "orange",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "long",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3541-768x1024.jpeg",
+          "sha256": "b375044759ec6d6086a87e093f537a344b4012e3d48e9ad4e000271805f58181"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "maribor:158",
+      "providerId": "maribor",
+      "sourceUrl": "https://zavetisce-mb.si/zival/?animal_id=158",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce-mb.si/wp-content/uploads/2026/10/IMG_3306-768x1024.jpeg",
+          "sha256": "57be21f8c865ca19d04a5b26f5ee1df2acf39604dda079a46db2bf255e3d54a7"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "ljubljana:afdab9b0-40ba-46f1-b23a-680cba2bae55",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/yuki-26021527",
+      "species": "cat",
+      "coatColors": [
+        "white"
+      ],
+      "coatColor": "white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527-1.jpg",
+          "sha256": "0a0e5e85f3cb06d8be8b0a96274d70ed0925a2a67e76cfa1407facf9c5362011"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527.jpg",
+          "sha256": "10e7eb8a1f8f4ccd7b7c3771e1ffec06b8a56b03722b56f2a73d78621d3c83f2"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "ljubljana:c2c93448-b72e-4e3d-9f00-f36c96d7aeae",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/claudy-26021528",
+      "species": "cat",
+      "coatColors": [
+        "orange",
+        "white"
+      ],
+      "coatColor": "orange",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1811%282%29.jpg",
+          "sha256": "4f80cefcc78c8ca6ca7f1a673dae341c54015272ca490dcc0cd3c72e48937eb6"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021528.jpg",
+          "sha256": "b0c5ee644ece4ad50a116d1f516ce198eed2a6474795a3ae3e4cf5262bacafef"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "horjul:9612",
+      "providerId": "horjul",
+      "sourceUrl": "https://www.zavetisce-horjul.net/rozinka/",
+      "species": "dog",
+      "coatColors": [
+        "white",
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown-white",
+      "coatColorReviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2026/10/RozinkaT.jpg",
+          "sha256": "7b2691c905f3ab0ab7fb4646d7933611601860ab486bd753740c0b09171336ef"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2026/10/Rozinka03.jpg",
+          "sha256": "2351cdbf71d78e6a8b451a6dde9f8c389c2e45d360f681a7ac39e26a324dbbb5"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2026/10/Rozinka02.jpg",
+          "sha256": "ff74c9b61b579085ed369eb25a0115454c5ff22df8b842d93275d006b2243d8e"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2026/10/Rozinka01.jpg",
+          "sha256": "14ed1037c732e42bfdc89d710120ccb40845067ed8ec2e3e91ca7908b665432e"
+        },
+        {
+          "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2026/10/Rozinka04.jpg",
+          "sha256": "e2bde582c9db2d0cb44ad5dfe0cec5698106717931c502088d7e02dd68336441"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "ljubljana:af48cd2d-d437-4336-948c-87f25574a53f",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/franjo-26021207",
+      "species": "cat",
+      "coatColors": [
+        "white",
+        "grey",
+        "brown"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207%281%29.jpg",
+          "sha256": "9a19276c3b7d65f0caeb41a121a819b18e577adcd450c63859f831238282508b"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207.jpg",
+          "sha256": "f8de87375016e9c094779bf443f115a53a64221fda8f2fc25aa02f9ccefb683b"
+        }
+      ],
+      "reviewedBy": [
+        "/root/october_review_a",
+        "/root/october_review_b"
       ]
     }
   ]

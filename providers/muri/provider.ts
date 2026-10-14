@@ -27,11 +27,15 @@ export interface DetailFacts {
   species?: Species;
   status: AdoptionStatus;
   sex?: Sex;
-  // Current age when the page states one ("Starost", or the age tag).
+  // Current age when the sidebar states one ("Starost").
   ageMonths?: number;
   // Newer listings only record the age on arrival ("Starost ob sprejemu");
   // normalize() ages it forward to the crawl date.
   intakeAgeMonths?: number;
+  // The hand-curated age tag ("starost 4 leta"), read only when neither of
+  // the above can answer: Tine's tag said 4 years while his sidebar gave 3
+  // years at intake, and the sidebar is the one the shelter keeps current.
+  tagAgeMonths?: number;
   intakeDate?: string;
   foundPlace?: string;
   description?: string;
@@ -270,9 +274,9 @@ export function parseSlovenianDate(value: string): string | undefined {
   return date.toISOString().slice(0, 10) === iso ? iso : undefined;
 }
 
-// The age tag ("starost 13 let") is the fallback when the sidebar carries no
-// current age; the sidebar wins when both exist because the tags are curated
-// by hand and go stale.
+// The age tag ("starost 13 let") is the last resort when the sidebar carries
+// neither a current age nor an age at intake; the sidebar wins when both exist
+// because the tags are curated by hand and go stale.
 function categoryAgeMonths($: cheerio.CheerioAPI): number | undefined {
   let months: number | undefined;
   $(".cmsms_project_category a[rel='tag']").each((_, el) => {
@@ -535,9 +539,10 @@ export function parseDetail(html: string): DetailFacts {
         : undefined,
     status,
     sex: sexRaw ? (SEX[sexRaw] ?? "unknown") : undefined,
-    ageMonths: ageMonths ?? categoryAgeMonths($),
+    ageMonths,
     intakeAgeMonths,
     intakeDate,
+    tagAgeMonths: categoryAgeMonths($),
     foundPlace: featureValue(features, "foundPlace"),
     description,
     medical: parseMedical($),
@@ -550,13 +555,14 @@ export function parseDetail(html: string): DetailFacts {
 
 // "Starost ob sprejemu" is the age when the animal arrived; it has aged
 // since, so add the full calendar months between intake and this crawl.
+// The age tag answers only when the sidebar gives nothing to count from.
 export function resolveAgeMonths(
-  facts: Pick<DetailFacts, "ageMonths" | "intakeAgeMonths" | "intakeDate">,
+  facts: Pick<DetailFacts, "ageMonths" | "intakeAgeMonths" | "intakeDate" | "tagAgeMonths">,
   fetchedAt: string,
 ): number | undefined {
   if (facts.ageMonths !== undefined) return facts.ageMonths;
   if (facts.intakeAgeMonths === undefined || facts.intakeDate === undefined) {
-    return undefined;
+    return facts.tagAgeMonths;
   }
   const from = new Date(`${facts.intakeDate}T00:00:00Z`);
   const to = new Date(fetchedAt);

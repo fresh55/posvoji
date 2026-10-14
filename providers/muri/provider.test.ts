@@ -184,10 +184,12 @@ describe("parseDetail", () => {
       species: "dog",
       status: "available",
       sex: "male",
-      // The sidebar's current age wins over the stale "starost 13 let" tag.
+      // The sidebar's current age wins over the stale "starost 13 let" tag,
+      // which is still read so a page with no sidebar age can fall back to it.
       ageMonths: 180,
       intakeAgeMonths: undefined,
       intakeDate: "2025-07-21",
+      tagAgeMonths: 156,
       foundPlace: undefined,
       description:
         "Archie je seniorček majhne rasti, ki je zelo aktiven in poskočen.\n\n" +
@@ -229,6 +231,7 @@ describe("parseDetail", () => {
       ageMonths: undefined,
       intakeAgeMonths: 3,
       intakeDate: "2026-07-31",
+      tagAgeMonths: undefined,
       foundPlace: "Vransko",
       description:
         "Mercedes je trimesečna muca, ki je k nam prišla po nenavadnem in nevarnem pripetljaju.\n\n" +
@@ -430,6 +433,12 @@ describe("resolveAgeMonths", () => {
     [{ intakeAgeMonths: 3, intakeDate: "2026-07-31" }, "2026-11-05T06:00:00Z", 6],
     // A crawl date before the intake date clamps instead of de-aging.
     [{ intakeAgeMonths: 3, intakeDate: "2026-07-31" }, "2026-07-01T06:00:00Z", 3],
+    // Tine: "Starost ob sprejemu 3 leta" on 12 June beats the "starost 4
+    // leta" tag, since the sidebar is the field the shelter keeps current.
+    [{ intakeAgeMonths: 36, intakeDate: "2026-06-12", tagAgeMonths: 48 }, "2026-10-14T13:00:00Z", 40],
+    // The tag answers only when the sidebar gives nothing to count from.
+    [{ intakeAgeMonths: 3, tagAgeMonths: 48 }, "2026-08-16T06:00:00Z", 48],
+    [{ tagAgeMonths: 48 }, "2026-08-16T06:00:00Z", 48],
     [{ intakeAgeMonths: 3 }, "2026-08-16T06:00:00Z", undefined],
     [{}, "2026-08-16T06:00:00Z", undefined],
   ])("%o at %s → %s", (facts, fetchedAt, expected) => {

@@ -6,6 +6,7 @@ import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { RetainedLayer } from "@/components/ui/retained-layer"
 
 function Drawer({
   autoFocus = true,
@@ -61,15 +62,21 @@ function DrawerContent({
   children,
   closeLabel = "Close",
   showCloseButton = true,
+  retainWhileClosed,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content> & {
   closeLabel?: string
   showCloseButton?: boolean
+  retainWhileClosed?: { open: boolean }
 }) {
-  return (
-    <DrawerPortal>
-      <DrawerOverlay />
+  const content = (
+    <DrawerPortal forceMount={retainWhileClosed ? true : undefined}>
+      <DrawerOverlay
+        forceMount={retainWhileClosed ? true : undefined}
+        className={retainWhileClosed ? "data-closed:[animation-fill-mode:forwards]" : undefined}
+      />
       <DrawerPrimitive.Content
+        forceMount={retainWhileClosed ? true : undefined}
         data-slot="drawer-content"
         className={cn(
           // The sheet stays full-bleed. A horizontal inset on the frame leaves
@@ -77,6 +84,7 @@ function DrawerContent({
           // it used to be off-screen; the way to clear an inset here is to pad
           // the content, which filter-sheet.tsx already does for the bottom.
           "fixed inset-x-0 bottom-0 z-50 mt-24 flex max-h-[96%] flex-col rounded-ui-top border bg-popover text-popover-foreground shadow-lg",
+          retainWhileClosed && "data-closed:[animation-fill-mode:forwards]",
           className
         )}
         {...props}
@@ -98,6 +106,9 @@ function DrawerContent({
       </DrawerPrimitive.Content>
     </DrawerPortal>
   )
+  return retainWhileClosed ? (
+    <RetainedLayer open={retainWhileClosed.open} exitMs={500}>{content}</RetainedLayer>
+  ) : content
 }
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {

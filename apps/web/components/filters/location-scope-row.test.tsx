@@ -286,11 +286,12 @@ describe("Kje scope row in the filter sheet", () => {
 
   it("leaves focus for the map rather than handing it back to the trigger", async () => {
     // The map opens while the drawer is still leaving, and the drawer's own
-    // focus return comes when its content unmounts: it took focus out of the
+    // focus return comes when its modal effects clean up: it took focus out of the
     // open map for the trigger behind it.
-    const unmounted = () =>
+    const closed = () =>
       waitFor(() =>
-        expect(document.querySelector('[data-slot="drawer-content"]')).toBeNull(),
+        expect(screen.queryByRole("dialog")).toBeNull(),
+        { timeout: 2000 },
       ).then(() => new Promise((resolve) => setTimeout(resolve, 0)));
     const onOpen = vi.fn();
     renderSheet({ onOpen });
@@ -302,13 +303,13 @@ describe("Kje scope row in the filter sheet", () => {
     fireEvent.click(trigger());
     let dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Zapri" }));
-    await unmounted();
+    await closed();
     expect(document.activeElement).toBe(trigger());
 
     fireEvent.click(trigger());
     dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /Zavetišče:/ }));
-    await unmounted();
+    await closed();
     await waitFor(() => expect(onOpen).toHaveBeenCalledTimes(1), {
       timeout: 2000,
     });

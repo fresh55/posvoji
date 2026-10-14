@@ -2,7 +2,7 @@
 
 import { Undo2 } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { memo, useId, useRef, useState, type ReactNode } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-context";
 import { RemovableChips } from "@/components/filters/filter-chips";
@@ -71,6 +71,11 @@ const SHEET_BLOCK_CLASS = "sm:mx-auto sm:w-[min(28rem,100%)]";
 
 const SHEET_BLOCK_CHILDREN_CLASS =
   "[&>*]:sm:mx-auto [&>*]:sm:w-[min(28rem,100%)]";
+
+// Opening the retained sheet changes modal state, not its filter model.
+// Leave the unchanged groups and their decorative tracks out of that render.
+const SheetFilterGroups = memo(FilterGroupList);
+const SheetSpeciesTabs = memo(SpeciesTabs);
 
 export function FilterSheetContent({
   open,
@@ -156,6 +161,7 @@ export function FilterSheetContent({
     >
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent
+        retainWhileClosed={{ open }}
         closeLabel={messages.close}
         className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
         onCloseAutoFocus={(event) => {
@@ -192,7 +198,7 @@ export function FilterSheetContent({
               data-slot="sheet-species"
               className="mt-3"
             >
-              <SpeciesTabs
+              <SheetSpeciesTabs
                 value={filters.species}
                 onChange={onSpeciesChange}
                 counts={speciesTally}
@@ -223,6 +229,9 @@ export function FilterSheetContent({
               {messages.sortCaption}
             </div>
             <SortPicker
+              // The section controls stay mounted, but a nested sort popup
+              // must close with its sheet, including a browser Back close.
+              key={open ? "open" : "closed"}
               value={sort}
               onChange={onSortChange}
               labelledBy={sortCaptionId}
@@ -244,7 +253,7 @@ export function FilterSheetContent({
             </LocationScopeRow>
           )}
 
-          <FilterGroupList
+          <SheetFilterGroups
             filters={filters}
             groups={groups}
             counts={counts}

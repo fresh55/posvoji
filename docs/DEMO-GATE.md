@@ -16,13 +16,22 @@ files that page needs to draw. Guests meet `basic_auth`, so
 through their netrc file, unchanged.
 
 A browser asking for a page gets a 401 whose body is the gate page, served
-at the address the visitor asked for, and without the `WWW-Authenticate`
-header, which is what stops the browser from opening its own prompt. The page
-puts the typed password in the cookie and reloads. If Caddy accepts it, the
-reload is the site. If not, the reload is the gate page again, and the page
-reads the cookie it is still carrying as the answer: it says the password was
-wrong and clears the cookie. A curl with no cookie gets the plain 401 and the
-challenge, as before.
+at the address the visitor asked for. The page puts the typed password in the
+cookie and reloads. If Caddy accepts it, the reload is the site. If not, the
+reload is the gate page again, and the page reads the cookie it is still
+carrying as the answer: it says the password was wrong and clears the cookie.
+
+No 401 carries the `WWW-Authenticate` header, whatever was asked for. That
+header is what makes a browser open its own login dialog, and a browser opens
+it for a same-origin image or script as readily as for a page. The first
+version stripped it from page responses only, which left every asset missing
+from the allow list below as a trigger: on 14 October 2026 the gate page's own
+logo, `/logo.svg`, was not on the list, and Chrome put a basic-auth prompt
+over the password page. A curl with no cookie now gets a 401 with no
+challenge. The health checks are not affected: curl sends the netrc
+credentials with its first request, before any challenge, which is its
+default. `--anyauth` would wait for a challenge that never comes, so the
+scripts must not use it.
 
 The cookie holds the password as typed, for thirty days, `Secure` and
 `SameSite=Lax`. That is fine for a gate whose only job is to keep the demo
@@ -32,8 +41,8 @@ protects no personal data; the portal has its own.
 Everything else stays behind the gate, including `/media/*`. The paths a
 guest may fetch are `/vstop`, `/en/enter`, `/_next/static/*` (the code and
 CSS, which carry no listings; the animal data is in the pages and their RSC
-payloads, which stay gated), `/models/our-cat/*`, the site icons and
-`/manifest.webmanifest`.
+payloads, which stay gated), `/models/our-cat/*`, `/logo.svg` (the gate page
+draws it), the site icons and `/manifest.webmanifest`.
 
 ## Caddy
 
@@ -43,16 +52,16 @@ Keep the account line as it is; the health checks depend on it.
 ```caddy
 @guest {
     expression `{http.request.cookie.posvoji_demo} != "{$POSVOJI_DEMO_KEY}" || "{$POSVOJI_DEMO_KEY}" == ""`
-    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /icon.svg /favicon.ico /apple-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png /manifest.webmanifest /.well-known/security.txt
+    not path /vstop /vstop.html /en/enter /en/enter.html /_next/static/* /models/our-cat/* /logo.svg /icon.svg /favicon.ico /apple-icon.png /icon-192.png /icon-512.png /icon-maskable-512.png /manifest.webmanifest /.well-known/security.txt
 }
 basic_auth @guest {
     health <the existing hash>
 }
 
 handle_errors 401 {
+    header -WWW-Authenticate
     @page header Accept *text/html*
     handle @page {
-        header -WWW-Authenticate
         @en path /en /en.html /en/*
         handle @en {
             rewrite * /en/enter.html
@@ -132,6 +141,33 @@ remain `401`. The existing health credentials still reach the page and release
 status, and the demo cookie still reaches `/o-nas`. The previous configuration
 is saved on the host at
 `/etc/caddy/Caddyfile.before-demo-assets-20260920T184725Z`.
+
+Measured on 14 October 2026 on the live host, with no cookie: `/logo.svg`
+answered `401` with a `WWW-Authenticate` challenge, and Chrome showed its own
+login dialog over the gate page. The block above fixes both halves: the logo
+joins the guest list, and the challenge header is removed from every 401
+instead of only page responses. The block was run the same day in a `caddy:2`
+container with the key set: a guest gets the gate page for `/` and
+`/en/about`; a `401` without a challenge for an image, a script fetch and
+`.json`, its body the branded 404 page that the bare `handle_errors` block
+supplies to any error nothing else answered; and `200` for `/logo.svg`. The
+health account reaches `/`, `/_posvoji/status.json` and the branded `404`.
+The right cookie reaches the site and a wrong one gets the gate page. With
+the key empty, an empty cookie still gets `401` and the health account still
+gets in.
+
+Applied to production on 14 October 2026, after both firewalls had been
+moved to the operator's new address: `/logo.svg` was added to the host's
+`@gated` matcher and `header -WWW-Authenticate` moved from inside
+`handle @page` to the top of the `handle_errors 401` block. Caddy validated
+and reloaded without a restart. Verified afterwards with no cookie:
+`/logo.svg` is `200`; an image, a `.json` and a page request are `401` with
+no `WWW-Authenticate` header, the page request carrying the gate page. The
+health account still reaches the release status and the branded `404`, and
+`posvoji-health.service` passed. The previous configuration is saved on the
+host at `/etc/caddy/Caddyfile.before-gate-challenge-20261014T105853Z`. The
+launch candidate's `.source.sha256` no longer matches the live file;
+LAUNCH-READINESS.md already says to regenerate the candidate in that case.
 
 `handle_errors 401` sits beside the existing `handle_errors` block for the
 404 page; Caddy lets a block claim its status codes and leaves the rest to

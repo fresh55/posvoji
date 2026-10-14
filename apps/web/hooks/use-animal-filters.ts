@@ -239,9 +239,7 @@ export function useAnimalFilters() {
     [search],
   );
   const filters = useMemo(() => parseFilters(filterSearch), [filterSearch]);
-  // Sort is a separate primitive dependency: changing it reorders the grid
-  // without rebuilding the filter object or its faceted counts.
-  const sort = parseSort(search);
+  const sort = useMemo(() => parseSort(search), [search]);
 
   // The one filter control that reads as navigation. It sits at the top of the
   // page, it changes what the page is about, and on a phone it is very often

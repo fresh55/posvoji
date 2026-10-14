@@ -9,6 +9,10 @@ cd "$repo"
 exec 7>/srv/posvoji/.promotion.lock
 flock -n 7 || { echo 'another promotion is active' >&2; exit 1; }
 as_app() { runuser -u posvoji -- env CI=true TMPDIR=/srv/posvoji/tmp npm_config_store_dir=/srv/posvoji/.local/share/pnpm/store "$@"; }
+# The lock helper runs as the app user so the retirement it leaves behind is one
+# the crawl service can prune. It records its parent pid as the holder, and
+# runuser forks, so it goes through setpriv to keep this shell as the holder.
+as_lock() { setpriv --reuid=posvoji --regid=caddy --init-groups -- node "$repo/scripts/artifact-lock.mjs" "$@"; }
 [[ -z $(as_app git -C "$repo" status --porcelain) ]] || { echo 'installed checkout is dirty' >&2; exit 1; }
 as_app git -C "$repo" fetch origin +refs/heads/main:refs/remotes/origin/main
 as_app git -C "$repo" merge-base --is-ancestor "$target" origin/main || { echo 'target must be reachable from origin/main' >&2; exit 1; }
@@ -19,6 +23,7 @@ for timer in posvoji-crawl.timer posvoji-backup.timer posvoji-health.timer; do
 done
 changed=false
 token_file=$(mktemp /srv/posvoji/.promotion-token-XXXXXX)
+chown posvoji:caddy -- "$token_file"
 config_copy=$(mktemp /etc/posvoji/.promotion-config-XXXXXX)
 cp -p -- "$config" "$config_copy"
 cleanup() {
@@ -37,7 +42,7 @@ cleanup() {
     fi
   fi
   if [[ -s "$token_file" ]]; then
-    if ! node "$repo/scripts/artifact-lock.mjs" release "$repo/.artifact-lock" "$(cat "$token_file")"; then
+    if ! as_lock release "$repo/.artifact-lock" "$(cat "$token_file")"; then
       active_timers=(); result=1
     fi
   fi
@@ -58,7 +63,7 @@ done
 exec 8>/srv/posvoji/.crawl-run.lock
 flock -n 8 || { echo 'a manual crawl is active' >&2; exit 1; }
 [[ ! -e /srv/posvoji/.deploy-lock ]] || { echo 'a deployment lock exists; inspect before promoting' >&2; exit 1; }
-node "$repo/scripts/artifact-lock.mjs" acquire "$repo/.artifact-lock" promotion "$token_file"
+as_lock acquire "$repo/.artifact-lock" promotion "$token_file"
 changed=true
 as_app git -C "$repo" checkout --detach "$target"
 install -d -o posvoji -g caddy -m 700 /srv/posvoji/tmp

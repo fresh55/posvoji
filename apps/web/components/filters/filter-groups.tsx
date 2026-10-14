@@ -610,6 +610,7 @@ export const FilterGroupList = memo(function FilterGroupList({
                 <CoatColorCards
                   key={group}
                   {...props}
+                  kept={keptOf(group)}
                   species={filters.species}
                   longCoat={filters.coatLength.includes("long")}
                 />

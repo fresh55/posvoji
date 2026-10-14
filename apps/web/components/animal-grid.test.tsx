@@ -738,6 +738,44 @@ describe("a filter with nothing left to narrow", () => {
     expect(row.disabled).toBe(false);
     expect(document.activeElement).toBe(row);
   });
+
+  it.each([
+    { param: "druzba", value: "psi", label: "s psi" },
+    { param: "skrb", value: "potrpezljiv", label: "Potrpežljivost" },
+    { param: "barva", value: "crna", label: "Črna" },
+  ])("keeps a zero-count $param control usable until the species changes", ({ param, value, label }) => {
+    // None of these animals answers the facet. The shared selection alone
+    // keeps the section alive; the model and the rendered control must both
+    // retain it when it comes off, including the colour palette's disabled
+    // state. Testing the list with options supplied by hand misses that step.
+    window.history.replaceState(null, "", `/?vrsta=ostalo&${param}=${value}`);
+    const { container } = renderGrid(ANIMALS);
+    const rail = container.querySelector("aside")!;
+    const name = new RegExp(`^${label}, 0\\s`);
+    const row = within(rail).getByRole<HTMLButtonElement>("button", { name });
+    row.focus();
+
+    fireEvent.click(row);
+
+    expect(row.isConnected).toBe(true);
+    expect(row.disabled).toBe(false);
+    expect(row.getAttribute("aria-pressed")).toBe("false");
+    expect(document.activeElement).toBe(row);
+    expect(new URLSearchParams(query()).has(param)).toBe(false);
+
+    // Keeping the DOM alone is insufficient: the same control must still
+    // restore its choice, even though that choice reads zero.
+    fireEvent.click(row);
+    expect(new URLSearchParams(query()).get(param)).toBe(value);
+    fireEvent.click(row);
+
+    // Retention belongs to this visit to a species tab, not the whole page.
+    const toolbar = within(container.querySelector('[data-slot="desktop-toolbar"]')!);
+    fireEvent.click(toolbar.getByRole("button", { name: /^Psi\b/ }));
+    expect(row.isConnected).toBe(false);
+    fireEvent.click(toolbar.getByRole("button", { name: /^Ostale\b/ }));
+    expect(within(rail).queryByRole("button", { name })).toBeNull();
+  });
 });
 
 describe("a link shared while Samo na voljo was a filter", () => {

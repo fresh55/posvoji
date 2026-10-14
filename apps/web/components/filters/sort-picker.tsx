@@ -73,8 +73,9 @@ export const SORT_ICONS: Record<AnimalSort, LucideIcon> = {
  *  phone page charge the fold: a line under the species tabs moves the first
  *  card from y=334 to about y=390 on a 390x844 screen, and a third dock button
  *  has to take its width from the shelter trigger, which answers the question
- *  a phone visitor asks first. What a phone visitor is owed instead is the
- *  waiting time on the cards, where it already is.
+ *  a phone visitor asks first. The default order gives the longest waits
+ *  priority; cards suppress the wait mark under that order. The animal's own
+ *  page gives its waiting time either way.
  *
  *  That one dress is a framed control that says "Razvrsti:" before the order.
  *  It wore the toolbar's quiet dress until a visitor was confused by it: quiet

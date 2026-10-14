@@ -56,7 +56,25 @@ delivery() {
   grep -qi '^content-encoding:' "$scratch/home-headers" || { echo 'no Content-Encoding for the homepage' >&2; return 1; }
   chunk=$(grep -o '/_next/static/[^"]*\.js' "$scratch/index.html" | sed -n '1p') || true
   [[ -n "$chunk" ]] || { echo 'the homepage links no /_next/static chunk' >&2; return 1; }
-  encoded "https://posvoji.si$chunk" /dev/null
+  encoded "https://posvoji.si$chunk" /dev/null || return 1
+  # Reuse that chunk request's headers; no additional cache-policy probe.
+  awk '
+    tolower($0) ~ /^cache-control:/ {
+      line = tolower($0)
+      sub(/^[^:]*:[[:space:]]*/, "", line)
+      count = split(line, directives, ",")
+      for (part = 1; part <= count; part++) {
+        value = directives[part]
+        gsub(/[[:space:]]/, "", value)
+        if (value == "public") public = 1
+        if (value == "max-age=31536000") one_year = 1
+        if (value == "immutable") immutable = 1
+        if (value ~ /^(no-cache|no-store|private)(=|$)/ ||
+            (value ~ /^max-age=/ && value != "max-age=31536000")) invalid = 1
+      }
+    }
+    END { exit !(public && one_year && immutable && !invalid) }
+  ' "$scratch/headers" || { echo "no immutable Cache-Control for https://posvoji.si$chunk" >&2; return 1; }
 }
 # The same release switch as above takes the hashed chunk with it. Retry once.
 delivery || delivery

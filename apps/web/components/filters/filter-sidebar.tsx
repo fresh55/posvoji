@@ -22,6 +22,7 @@ import { usePressedRowAnchor } from "@/hooks/use-pressed-row-anchor";
 import { useScrollEdgeFades } from "@/hooks/use-scroll-edge-fades";
 import { activeFilterCount } from "@/lib/filters";
 import { SCROLL_BOX_MARK } from "@/lib/scroll-strip";
+import { FILTERS_ID } from "@/lib/skip-link";
 import type {
   FilterOption,
   Filters,
@@ -160,7 +161,11 @@ export const FilterSidebar = memo(function FilterSidebar({
             this head is: every active value draws a pill there except the
             species tab, which undoes itself in a press of its own. Each section
             keeps its Ponastavi for the one facet it holds. */}
-        <h2 className="flex h-toolbar-row items-center gap-2 text-sm font-medium">
+        <h2
+          id={FILTERS_ID}
+          tabIndex={-1}
+          className="flex h-toolbar-row items-center gap-2 text-sm font-medium"
+        >
           {messages.filters}
           {/* The same badge the phone's dock shows next to "Filtri". */}
           <CountBadge count={activeValues} />

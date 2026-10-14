@@ -233,6 +233,7 @@ const sl = {
   animalsComingSoon: "Tu bodo živali, ko se dogovorimo s prvimi zavetišči.",
   resultsHeading: "Živali",
   skipResults: "Preskoči seznam živali",
+  jumpToFilters: "Na filtre",
   // The same bypass on a shelter's page, where the list is not a result set
   // but everything one shelter has, uncapped: 186 cards at the longest. The
   // label says whose animals they are, because the visitor got here by
@@ -907,6 +908,7 @@ const en: Messages = {
   animalsComingSoon: "Animals will appear here when the first shelters join.",
   resultsHeading: "Animals",
   skipResults: "Skip the list of animals",
+  jumpToFilters: "Jump to filters",
   skipShelterAnimals: "Skip this shelter’s animals",
   noResults: "No results.",
   showMoreAnimals: "Show {n} more",

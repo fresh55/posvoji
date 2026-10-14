@@ -6,6 +6,7 @@ import { ShelterLogin, SiteMenu, SiteNav } from "@/components/site-menu";
 import { PoetivoLockup } from "@/components/poetivo-lockup";
 import { getMessages, type Locale } from "@/lib/i18n";
 import { homePath } from "@/lib/shelter-path";
+import { POETIVO_URL } from "@/lib/site";
 import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 
 type SiteHeaderProps = {
@@ -115,69 +116,102 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
           here draws differently. This is what happens past that point, which
           previously was a horizontal scrollbar. */}
       <div className="flex min-w-0 items-center gap-10">
-        <a
-          href={homePath(locale)}
-          // Named for BackToTop, which sends focus to the top of the document
-          // and picks the target off the DOM (back-to-top.tsx). It used to ask
-          // for the header's first anchor, which is the skip link above since
-          // this header grew one, and focusing that revealed it on every
-          // press. An attribute rather than a position, so the next thing
-          // added to this row cannot take the focus either.
-          data-brand
-          // The primary way home, and the logo drew it 40px tall. The utility
-          // grows the tappable box without moving the drawing. On the pointer,
-          // so a touch tablet past lg gets the box too: it hit-tested 40px
-          // there while a 1024px mouse window got 44.
-          className="flex min-w-0 pointer-coarse:tap-target items-center gap-2 font-medium tracking-tight"
-          aria-label="posvoji.si"
-        >
-          <span className="relative inline-flex h-10 shrink-0">
-            <Logo className={`h-full w-auto ${logoMotion.blinkable}`} />
-            <LogoHearts />
-          </span>
-          <span className="flex min-w-0 flex-col">
-            <span className="truncate">posvoji.si</span>
-            {/* Who builds the site, under its name: Poetivo's mark, then
-                "poganja" from the catalogue and the name in the wordmark's
-                weight, the one lockup the footer's credit draws too. Bruno
-                wanted it up here beside the logo and not only in the
-                footer's small print.
+        {/* The brand is two links drawn as one block: the home link, which
+            is the logo and the name, and under the name the way to the people
+            who build the site. A grid and not a column, because the second
+            link cannot live inside the first (a link inside a link is invalid
+            HTML) and still has to sit under the name and beside the logo,
+            which only the first link holds. So the block is two columns and
+            two rows: the home link spans all four cells and lays its logo and
+            name out on the same tracks through subgrid, and the credit takes
+            the cell under the name. The two overlap on paper and not on
+            screen: the credit is later in the DOM and positioned, so where it
+            draws, it is the thing that is pressed, and everywhere else the
+            press goes home.
 
-                Text inside the home link and not a link of its own, which is
-                the one way it can sit here. A link inside a link is invalid
-                HTML, and a second link 12px under this one could not get a
-                finger-sized target without taking the lower half of the
-                name's presses, which is the collision globals.css records on
-                tap-target. The way to poetivo.si stays the footer's credit,
-                on every page, with the accessible name this link does not
-                carry: aria-label above keeps this link "posvoji.si", so a
-                screen reader hears the home link as the home link and meets
-                Poetivo once, where it can be followed.
+            Row sizes come from the content, the name's 24px line and the
+            credit's 14px one, and the logo, 40px and spanning both, gives
+            the two rows the 2px they lack. The name sits at the bottom of its
+            row and the credit at the top of its, so the pair reads as one
+            block with the logo beside it, 1px of air above and below, the
+            same place it sat when it was one column.
 
-                Two lines inside the 40px the logo already draws: the name's
-                24px line and a 12px line holding a 14px mark, 38px in all,
-                so the header is no taller than before. The line resets the
-                link's weight and tracking and takes the name back for the
-                wordmark alone. It never wraps: a second line would push past
-                the logo and move the whole header. The 6px gap is the
-                footer's, between its marks and their words.
-
-                The verb is lowercased here and nowhere else: this line sits
-                under "posvoji.si", which is lowercase because it is an
-                address, and a capital in the line below it read as the start
-                of a sentence rather than the rest of a name.
-
-                The tile is the brand's colours and not the theme's, and it is
-                the one coloured thing in this band. That is the brand's own
-                call: the lit window is the mark wherever only a sign fits. */}
-            <span
-              data-poetivo
-              className="inline-flex items-center gap-1.5 overflow-hidden text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground"
-            >
-              <PoetivoLockup verb={messages.poweredBy.toLowerCase()} />
+            The outer grid carries min-w-0 and its second column is
+            minmax(0,1fr), so the name can still truncate the way the comment
+            above describes. */}
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_auto] gap-x-2">
+          <a
+            href={homePath(locale)}
+            // Named for BackToTop, which sends focus to the top of the document
+            // and picks the target off the DOM (back-to-top.tsx). It used to ask
+            // for the header's first anchor, which is the skip link above since
+            // this header grew one, and focusing that revealed it on every
+            // press. An attribute rather than a position, so the next thing
+            // added to this row cannot take the focus either.
+            data-brand
+            // The primary way home, and the logo drew it 40px tall. The utility
+            // grows the tappable box without moving the drawing. On the pointer,
+            // so a touch tablet past lg gets the box too: it hit-tested 40px
+            // there while a 1024px mouse window got 44. As a grid container
+            // the overlay is still its absolutely positioned child and still
+            // measures off this box, not a cell. The start cell is named as well
+            // as the span: the credit below takes its cell by name, and an
+            // item placed by name goes first, so a home link left to
+            // auto-placement found its 2x2 area taken and dropped two rows
+            // down, under the credit, with the header 14px taller for it.
+            className="col-start-1 col-span-2 row-start-1 row-span-2 grid min-w-0 grid-cols-subgrid grid-rows-subgrid items-center gap-x-2 pointer-coarse:tap-target font-medium tracking-tight"
+            aria-label="posvoji.si"
+          >
+            <span className="relative row-span-2 inline-flex h-10 shrink-0">
+              <Logo className={`h-full w-auto ${logoMotion.blinkable}`} />
+              <LogoHearts />
             </span>
-          </span>
-        </a>
+            <span className="col-start-2 row-start-1 self-end truncate">
+              posvoji.si
+            </span>
+          </a>
+          {/* Who builds the site, under its name: Poetivo's mark, then
+              "poganja" from the catalogue and the name in the wordmark's
+              weight, the one lockup the footer's credit draws too, and like
+              the footer's a link to poetivo.si that opens a new window and
+              says so in its name. Bruno wanted it up here beside the logo and
+              wanted to be able to press it.
+
+              A 12px line reset from the link's weight and tracking, with the
+              name taken back for the wordmark alone. It never wraps: a second
+              line would push past the logo and move the whole header. The
+              6px gap is the footer's, between its marks and their words.
+
+              The verb is lowercased here and nowhere else: this line sits
+              under "posvoji.si", which is lowercase because it is an address,
+              and a capital in the line below it read as the start of a
+              sentence rather than the rest of a name.
+
+              The pressable area, on a coarse pointer, is 32px tall and not
+              the 44 the rest of the chrome takes, and it reaches down and not
+              up. Above this line is the name, which belongs to the home link;
+              an overlay centred here would take the lower half of its presses
+              and a 44px one would reach past the band into the page. Below
+              it is the header's own padding, 16px of nothing, so the overlay
+              takes 2px above its line and the rest below, and stops at the
+              band's edge. 32px clears the 24px that WCAG 2.5.8 asks of a
+              target this small, and the only other control it could have
+              collided with is the one it was built to stay out of.
+
+              The tile is the brand's colours and not the theme's, and it is
+              the one coloured thing in this band. That is the brand's own
+              call: the lit window is the mark wherever only a sign fits. */}
+          <a
+            href={POETIVO_URL}
+            target="_blank"
+            rel="noreferrer"
+            data-poetivo
+            className="relative col-start-2 row-start-2 inline-flex items-center gap-1.5 self-start rounded-ui text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground underline-offset-4 outline-none touch-manipulation hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-top-0.5 pointer-coarse:after:h-8 pointer-coarse:after:content-['']"
+          >
+            <PoetivoLockup verb={messages.poweredBy.toLowerCase()} />
+            <span className="sr-only"> {messages.newWindow}</span>
+          </a>
+        </div>
         <SiteNav paths={languagePaths} />
       </div>
       {/* Everything on the right is addressed to somebody in particular: the

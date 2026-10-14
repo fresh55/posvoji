@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, type ReactElement, type ReactNode } from "react";
+import { Fragment, memo, useId, type ReactElement, type ReactNode } from "react";
 import { AgeGrowthControl } from "@/components/filters/age-growth-control";
 import { CareCards } from "@/components/filters/care-cards";
 import {
@@ -357,7 +357,7 @@ function selectionSummary(
 
 // The desktop sidebar and the mobile sheet frame these differently but show the
 // same controls, so the list lives here and each frame supplies only its chrome.
-export function FilterGroupList({
+export const FilterGroupList = memo(function FilterGroupList({
   filters,
   groups,
   counts,
@@ -657,4 +657,4 @@ export function FilterGroupList({
       ))}
     </>
   );
-}
+});

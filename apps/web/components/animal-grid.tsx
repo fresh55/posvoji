@@ -6,7 +6,10 @@ import {
   TOOLBAR_BAND,
   TOOLBAR_ROW_HEIGHT,
 } from "@/components/filters/animal-filters";
-import { FilterSidebar } from "@/components/filters/filter-sidebar";
+import {
+  FilterSidebar,
+  type SidebarScope,
+} from "@/components/filters/filter-sidebar";
 import { useI18n } from "@/components/i18n-context";
 import { GridLoadMore } from "@/components/grid-load-more";
 import { Button } from "@/components/ui/button";
@@ -630,6 +633,29 @@ export function AnimalGrid({
     },
   });
 
+  // A stable scope lets the sidebar skip unrelated grid/dialog renders.
+  const sidebarScope = useMemo<SidebarScope | undefined>(
+    () =>
+      shelters && {
+        options: shelters,
+        counts: counts.shelter,
+        municipalities,
+        municipalitiesUrl,
+        offSite: offSiteShelters,
+        summaries: shelterSummaries,
+        resultCount: visible.length,
+      },
+    [
+      shelters,
+      counts.shelter,
+      municipalities,
+      municipalitiesUrl,
+      offSiteShelters,
+      shelterSummaries,
+      visible.length,
+    ],
+  );
+
   const emptyTopic = thinnest && topicKey(thinnest);
   const emptyReason =
     thinnest && emptyTopic
@@ -988,17 +1014,7 @@ export function AnimalGrid({
             care={care}
             // The sheet is not handed these: it draws every option as a tile.
             kept={keptPicks}
-            scope={
-              shelters && {
-                options: shelters,
-                counts: counts.shelter,
-                municipalities,
-                municipalitiesUrl,
-                offSite: offSiteShelters,
-                summaries: shelterSummaries,
-                resultCount: visible.length,
-              }
-            }
+            scope={sidebarScope}
             onToggle={toggle}
             onToggleMany={toggleMany}
             onToggleProperty={toggleProperty}

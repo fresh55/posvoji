@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CountBadge } from "@/components/filters/count-badge";
 import { CountsRollWhile } from "@/components/filters/filter-card";
 import {
@@ -48,7 +49,7 @@ export type SidebarScope = {
   resultCount: number;
 };
 
-export function FilterSidebar({
+export const FilterSidebar = memo(function FilterSidebar({
   filters,
   groups,
   counts,
@@ -213,4 +214,4 @@ export function FilterSidebar({
       </CountsRollWhile>
     </aside>
   );
-}
+});

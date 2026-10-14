@@ -9,6 +9,7 @@ import {
 import {
   activeFilterCount,
   EMPTY_FILTERS,
+  FILTER_PARAM_NAMES,
   OWNED_PARAM_NAMES,
   parseFilters,
   pruneHiddenFilters,
@@ -228,7 +229,18 @@ export function useAnimalFilters() {
     getSearchSnapshot,
     getServerSearchSnapshot,
   );
-  const filters = useMemo(() => parseFilters(search), [search]);
+  // Sort and dialog parameters share this query, but do not change the
+  // filters. Keep their identity (and the facet memos below them) across
+  // those writes. Fixed key order also ignores where foreign pairs sit.
+  const filterSearch = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const selected = new URLSearchParams();
+    for (const name of FILTER_PARAM_NAMES) {
+      for (const value of params.getAll(name)) selected.append(name, value);
+    }
+    return selected.toString();
+  }, [search]);
+  const filters = useMemo(() => parseFilters(filterSearch), [filterSearch]);
   const sort = useMemo(() => parseSort(search), [search]);
 
   // The one filter control that reads as navigation. It sits at the top of the

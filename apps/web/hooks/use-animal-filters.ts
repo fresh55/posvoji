@@ -9,7 +9,6 @@ import {
 import {
   activeFilterCount,
   EMPTY_FILTERS,
-  FILTER_PARAM_NAMES,
   OWNED_PARAM_NAMES,
   parseFilters,
   pruneHiddenFilters,
@@ -229,17 +228,16 @@ export function useAnimalFilters() {
     getSearchSnapshot,
     getServerSearchSnapshot,
   );
-  // Sort and dialog parameters share this query, but do not change the
-  // filters. Keep their identity (and the facet memos below them) across
-  // those writes. Fixed key order also ignores where foreign pairs sit.
-  const filterSearch = useMemo(() => {
-    const params = new URLSearchParams(search);
-    const selected = new URLSearchParams();
-    for (const name of FILTER_PARAM_NAMES) {
-      for (const value of params.getAll(name)) selected.append(name, value);
-    }
-    return selected.toString();
-  }, [search]);
+  // The grid keeps its drawn count against the filtered list's identity. A
+  // photo link, a sort, or a foreign query parameter changes the address but
+  // not that list's filters. Key them by what the codec actually reads, so
+  // those changes do not rebuild the list and drop its already-drawn cards.
+  // Parsing before serializing also normalizes equivalent query spellings
+  // and ignores retired or invalid values without rewriting the address.
+  const filterSearch = useMemo(
+    () => serializeFilters(parseFilters(search)),
+    [search],
+  );
   const filters = useMemo(() => parseFilters(filterSearch), [filterSearch]);
   const sort = useMemo(() => parseSort(search), [search]);
 

@@ -317,6 +317,9 @@ prunes only same-machine retirements older than a day and older than the current
 boot, checking their nonce, checkout identity and file types. Current-boot
 retirements remain small but accumulate until a later reboot; do not delete them
 on an age-only schedule.
+The promotion script takes the lock as the app user so that its retirements
+can be pruned. A retirement the service cannot remove is named in the crawl
+journal and left in place, and the run continues.
 
 The availability overlay and portal worker are deferred until SMTP, shelter
 login and the public-launch decision are resolved. The crawl export credentials

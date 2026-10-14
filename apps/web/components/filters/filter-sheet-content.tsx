@@ -157,6 +157,7 @@ export function FilterSheetContent({
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent
         closeLabel={messages.close}
+        focusCloseOnOpen
         className="flex max-h-[72dvh] flex-col gap-0 pt-1 [&>button]:pointer-coarse:size-11 short:max-h-[calc(100dvh-2rem)]"
         onCloseAutoFocus={(event) => {
           // The map is taking focus instead (handingOff above).

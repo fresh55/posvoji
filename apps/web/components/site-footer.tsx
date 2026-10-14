@@ -3,9 +3,8 @@ import { mailtoHref } from "@/lib/contact-links";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
 import { QUIET_UNDERLINE } from "@/lib/link-styles";
-import { POETIVO_MARK } from "@/lib/poetivo-mark";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_NAME, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +45,8 @@ const FOOTER_LINK =
  * so the model credit was reaching into the row above it and, being later in
  * the DOM with neither carrying a z-index, taking the presses meant for the
  * repository link. The row's own wrap is the same collision in waiting: below
- * lg the two marked links sit under the address, and an overlay on either
- * would reach 12.25px up into its box. Sideways there is nothing to reach
+ * lg the repository link and the credit sit under the address, and an
+ * overlay on either would reach 12.25px up into its box. Sideways there is nothing to reach
  * with, the overlay being max(100%, 44px) wide on links wider than that, so
  * the 24px gap along the row is for the eye, not the finger.
  */
@@ -303,9 +302,9 @@ export function SiteFooter({
 
               A row and not a stack, one line from lg, and at phone width it
               wraps into two: at 12px the address and its question measure
-              226px against 343px of content at 375, and the two marked links
-              90px and 111px (93 and 133 in English), so the pair fits a line
-              of its own with room to spare. That is the wrap this can afford,
+              226px against 343px of content at 375, and the repository link
+              and the credit 90px and 92px (93 and 114 in English), so the
+              pair fits a line of its own with room to spare. That is the wrap this can afford,
               and it is why the repository link says two words: at 221px the
               old sentence took a line of its own and the three took three.
               Each is a drawn box below lg with no overhang to lend a
@@ -313,17 +312,18 @@ export function SiteFooter({
               where two stacked overlays at that distance are the collision
               described on FOOTER_ACTION.
 
-              The two marked links are one flex item, so they wrap as a pair.
+              The repository link and the credit are one flex item, so they
+              wrap as a pair.
               Loose in the row, the repository link would have joined the
               address on the first line at 375, where 226 + 24 + 90 leaves
               3px, and left the credit alone on the second; 16px wider, or a
-              different font fallback, and it would not. Which line a mark
+              different font fallback, and it would not. Which line the credit
               lands on should not turn on 3px.
 
-              A mark on each link that leaves the site, and none on the
-              address. The mark says which site the link opens, which is a
-              thing a reader cannot read off "odprta koda" or a name; an
-              address says what it is by being one.
+              One mark, on the repository link, and none on the other two.
+              The mark says which site the link opens, which a reader cannot
+              read off "odprta koda"; an address says what it is by being
+              one, and the credit's name is the site it opens.
 
               The credit is the last of the three and not a line of its own:
               one more line of small print was one too many on a phone, and
@@ -375,18 +375,20 @@ export function SiteFooter({
                 rel="noreferrer"
                 className={FOOTER_ACTION_LINK}
               >
-                {/* Poetivo's own mark, the capital P of Inter 600, in the box
-                    the mark above uses so the two draw alike and the text after
-                    each starts at the same offset. lib/poetivo-mark.ts says
-                    where it comes from. */}
-                <svg
-                  viewBox="0 0 16 16"
-                  aria-hidden
-                  className="size-3.5 shrink-0 fill-current"
-                >
-                  <path d={POETIVO_MARK} />
-                </svg>
-                {messages.poweredBy}
+                {/* The name wears the wordmark. Poetivo's identity is its
+                    name set in Inter 600 with tight tracking and nothing else
+                    (its design notes, "Plain Poetivo identity"), and this site
+                    ships the same Inter, so the wordmark is two utilities and
+                    not an image. The yellow tile it uses as a favicon is for
+                    places where only a sign fits; here a word fits, and the
+                    tile would be the one coloured thing in the footer and, on
+                    the dark theme, the brightest thing on the page. The verb
+                    is the catalogue's and the name is not, so that the name
+                    alone can carry the weight. */}
+                {messages.poweredBy}{" "}
+                <span className="font-semibold tracking-[-0.035em]">
+                  {POETIVO_NAME}
+                </span>
                 <span className="sr-only"> {messages.newWindow}</span>
               </a>
             </span>

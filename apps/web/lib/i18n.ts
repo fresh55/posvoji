@@ -9,15 +9,16 @@ const sl = {
   githubTitle: "Cepljena, sterilizirana, brez znanih napak.",
   // The footer's link to the repository. Two words, where it used to add
   // "pomagaš lahko tudi ti": the invitation went when the row gained the
-  // credit beside it, so that the two marks share one line on a phone, and
+  // credit beside it, so that the two links share one line on a phone, and
   // the people this site addresses are shelters and adopters, to whom a
   // repository was never an invitation. The link still says what it is, and
   // githubTitle keeps the wink for a mouse.
   openSource: "Odprta koda",
-  // The footer's credit: who builds and runs the site. One phrase, never
-  // assembled in the component. Poetivo is a name and reads the same in
-  // both languages.
-  poweredBy: "Poganja Poetivo",
+  // The verb of the footer's credit, "Poganja Poetivo". The name is not
+  // here: it is not translated, and the component sets it in the wordmark's
+  // weight, which a catalogue string cannot carry. The one place a phrase
+  // is split, and only at a proper noun.
+  poweredBy: "Poganja",
   // What a link that leaves the site says. Word for word the shelters page's
   // own note, so the site says this one way rather than three.
   newWindow: "(odpre se v novem oknu)",
@@ -813,7 +814,7 @@ const en: Messages = {
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
   openSource: "Open source",
-  poweredBy: "Powered by Poetivo",
+  poweredBy: "Powered by",
   newWindow: "(opens in a new window)",
   contactPhone: "Phone",
   contactEmail: "Email",

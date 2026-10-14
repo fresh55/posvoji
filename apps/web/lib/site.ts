@@ -17,3 +17,7 @@ export const CONTACT_EMAIL = "info@posvoji.si";
 // that says so, and the address lives here beside the other two so a move
 // is one line.
 export const POETIVO_URL = "https://poetivo.si";
+// The name as the wordmark spells it, beside the address it opens. The
+// footer sets it in the wordmark's weight, which is why it is not part of
+// the catalogue phrase in front of it.
+export const POETIVO_NAME = "Poetivo";

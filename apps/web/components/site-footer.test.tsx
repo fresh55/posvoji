@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_NAME, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
 
@@ -171,7 +171,9 @@ describe("SiteFooter", () => {
       `a[href="${POETIVO_URL}"]`,
     )!;
     expect(credit).not.toBeNull();
-    expect(credit.textContent).toContain(messages.poweredBy);
+    // The verb from the catalogue, then the name, in that order and with a
+    // space between: the accessible name is read as one phrase.
+    expect(credit.textContent).toContain(`${messages.poweredBy} ${POETIVO_NAME}`);
     // Leaves the site, and the accessible name says so the way the
     // repository link's does.
     expect(credit.getAttribute("target")).toBe("_blank");

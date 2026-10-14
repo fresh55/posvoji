@@ -150,10 +150,10 @@ describe("SiteFooter", () => {
     ).not.toBeNull();
   });
 
-  // Who builds the site, on every page and outside the nav for the reason
-  // the two above are: poetivo.si is not a page of this site. Pinned with
-  // every switch off, because the pages that turn the most off (the portal,
-  // the found-animal lookup) are pages too.
+  // Who builds the site, on every page, in the row with the other two and
+  // outside the nav for the reason they are: poetivo.si is not a page of
+  // this site. Pinned with every switch off, because the pages that turn the
+  // most off (the portal, the found-animal lookup) are pages too.
   it("names who builds it, in both locales, whatever the page turns off", () => {
     const messages = getMessages("sl");
     const { container } = render(
@@ -212,8 +212,8 @@ describe("SiteFooter", () => {
     ).not.toBeNull();
   });
 
-  // target="_blank" is silent, and this is the only link in the chrome that
-  // leaves the site.
+  // target="_blank" is silent, and this is one of the two links in the
+  // chrome that leave the site.
   it("says the repository link opens a new window", () => {
     const messages = getMessages("sl");
     const { container } = render(<SiteFooter locale="sl" />);
@@ -221,7 +221,7 @@ describe("SiteFooter", () => {
     const repo = container.querySelector<HTMLAnchorElement>(
       `a[href="${REPO_URL}"]`,
     )!;
-    expect(repo.textContent).toContain(messages.openSourceInvite);
+    expect(repo.textContent).toContain(messages.openSource);
     expect(repo.textContent?.trimEnd().endsWith(messages.newWindow)).toBe(true);
   });
 

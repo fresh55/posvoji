@@ -27,8 +27,8 @@ const FOOTER_LINK =
   "rounded-ui underline-offset-4 outline-none focus-visible:ring-3 focus-visible:ring-ring";
 
 /**
- * The two things a reader can do about the sentence above them: write to
- * somebody, or open the code.
+ * The three things the small print offers about the site itself: somebody
+ * to write to, the code, and who builds it.
  *
  * Foreground and underlined at rest, which is what found-animal-button.tsx
  * settled on in the hero after the same failure. The quiet-link rule in
@@ -45,7 +45,9 @@ const FOOTER_LINK =
  * of its own. A 19.5px line under a 44px overlay overhangs 12.25px per side,
  * so the credit was reaching into the row above it and, being later in the DOM
  * with neither carrying a z-index, taking the presses meant for the repository
- * link.
+ * link. The credit beside the repository link would do the same to it from
+ * the side if it overlaid, and the row's 24px gap is not what stops that: a
+ * drawn box has nothing to reach with.
  */
 const FOOTER_ACTION = `inline-flex items-center gap-1.5 ${QUIET_UNDERLINE} max-lg:min-h-11`;
 
@@ -296,18 +298,35 @@ export function SiteFooter({
               from their own mail client has to be able to read it off the
               page.
 
-              A row and not a stack, and at phone width it wraps to two lines
-              anyway: at 12px the Slovenian pair comes to about 470px against
-              343px of content at 375. That is the wrap this can afford.
+              A row and not a stack, one line from lg, and at phone width it
+              wraps into two: at 12px the address and its question measure
+              226px against 343px of content at 375, and the two marked links
+              90px and 111px (93 and 133 in English), so the pair fits a line
+              of its own with room to spare. That is the wrap this can afford,
+              and it is why the repository link says two words: at 221px the
+              old sentence took a line of its own and the three took three.
               Each is a drawn box below lg with no overhang to lend a
               neighbour, so the 8px a wrap leaves between them is enough,
               where two stacked overlays at that distance are the collision
               described on FOOTER_ACTION.
 
-              One mark between them, on the repository link, and none on the
+              The two marked links are one flex item, so they wrap as a pair.
+              Loose in the row, the repository link would have joined the
+              address on the first line at 375, where 226 + 24 + 90 leaves
+              3px, and left the credit alone on the second; 16px wider, or a
+              different font fallback, and it would not. Which line a mark
+              lands on should not turn on 3px.
+
+              A mark on each link that leaves the site, and none on the
               address. The mark says which site the link opens, which is a
-              thing a reader cannot read off "odprta koda"; an address says
-              what it is by being one. */}
+              thing a reader cannot read off "odprta koda" or a name; an
+              address says what it is by being one.
+
+              The credit is the last of the three and not a line of its own:
+              one more line of small print was one too many on a phone, and
+              what it says, who builds the site, is the same kind of fact as
+              where the code is. It is on every page, the portal and the 404
+              included, because every page is asked the same question. */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             {showContact && (
               <span className="inline-flex flex-wrap items-center gap-x-1.5">
@@ -320,6 +339,7 @@ export function SiteFooter({
                 </a>
               </span>
             )}
+            <span className="inline-flex flex-wrap items-center gap-x-6 gap-y-2">
             <a
               href={REPO_URL}
               target="_blank"
@@ -339,15 +359,34 @@ export function SiteFooter({
               >
                 <path d={GITHUB_MARK} />
               </svg>
-              {/* One string where this used to be two catalogue keys printed
-                  back to back, the second of them beginning with a comma. */}
-              {messages.openSourceInvite}
-              {/* The one link down here that leaves the site, and
-                  target="_blank" says so to nobody, so the accessible name
-                  does. Word for word what the shelter cards say, from the
-                  catalogue now rather than three copies of the sentence. */}
+              {messages.openSource}
+              {/* A link that leaves the site, and target="_blank" says so to
+                  nobody, so the accessible name does. Word for word what the
+                  shelter cards say, from the catalogue rather than another
+                  copy of the sentence. */}
               <span className="sr-only"> {messages.newWindow}</span>
             </a>
+            <a
+              href={POETIVO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className={FOOTER_ACTION_LINK}
+            >
+              {/* Poetivo's own mark, the capital P of Inter 600, in the box
+                  the mark above uses so the two draw alike and the text after
+                  each starts at the same offset. lib/poetivo-mark.ts says
+                  where it comes from. */}
+              <svg
+                viewBox="0 0 16 16"
+                aria-hidden
+                className="size-3.5 shrink-0 fill-current"
+              >
+                <path d={POETIVO_MARK} />
+              </svg>
+              {messages.poweredBy}
+              <span className="sr-only"> {messages.newWindow}</span>
+            </a>
+            </span>
           </div>
           {/* Room under the row, below lg only, because that is the only width
               at which the credit draws an overlay. model-credit.tsx wears
@@ -360,42 +399,6 @@ export function SiteFooter({
               control the overlay is for, and this footer can fix its own
               spacing without reaching into a component it only hosts. */}
           {children && <div className="max-lg:pt-4">{children}</div>}
-          {/* Who builds and runs the site, last, after whatever credit the
-              page added above: the signature at the end of the small print,
-              on every page including the portal and the 404, because the
-              question it answers is asked of every page alike.
-
-              The repository link's own grammar, mark and all: a line that
-              leaves the site, drawn as a box below lg rather than overlaid.
-              An overlay here would reach 12.25px up into the action row's
-              boxes, which have no overhang to answer with, and being later
-              in the DOM it would take the bottom band of the repository
-              link, the collision FOOTER_ACTION records from the other side.
-
-              The 16px above it exists only under a page credit. That credit
-              is the one overlay down here and reaches 12.25px below its own
-              line; the 8px of space-y-2 is inside that reach and 24px is
-              clear of it, the same room the wrapper above takes for the
-              same overlay from the other direction. Without a credit the
-              row above is drawn boxes and 8px is enough. */}
-          <p className={children ? "max-lg:pt-4" : undefined}>
-            <a
-              href={POETIVO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className={FOOTER_ACTION_LINK}
-            >
-              <svg
-                viewBox="0 0 16 16"
-                aria-hidden
-                className="size-3.5 shrink-0 fill-current"
-              >
-                <path d={POETIVO_MARK} />
-              </svg>
-              {messages.poweredBy}
-              <span className="sr-only"> {messages.newWindow}</span>
-            </a>
-          </p>
         </div>
       </div>
     </footer>

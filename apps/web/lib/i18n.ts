@@ -7,15 +7,16 @@ const sl = {
   metadataDescription:
     "Odprt indeks živali iz slovenskih zavetišč, ki iščejo dom. Vsaka žival z jasnim virom in povezavo na zavetišče.",
   githubTitle: "Cepljena, sterilizirana, brez znanih napak.",
-  // The footer's link to the repository, as one string. It used to be two
-  // keys printed one after the other, the second of them beginning with a
-  // comma, which is the assembly the goodWith section below refuses in the
-  // same file: the phrases are whole and translated, never put together in
-  // the component.
-  openSourceInvite: "Odprta koda, pomagaš lahko tudi ti.",
-  // The footer's credit line, the last thing on every page: who builds and
-  // runs the site. One phrase for the reason above. Poetivo is a name and
-  // reads the same in both languages.
+  // The footer's link to the repository. Two words, where it used to add
+  // "pomagaš lahko tudi ti": the invitation went when the row gained the
+  // credit beside it, so that the two marks share one line on a phone, and
+  // the people this site addresses are shelters and adopters, to whom a
+  // repository was never an invitation. The link still says what it is, and
+  // githubTitle keeps the wink for a mouse.
+  openSource: "Odprta koda",
+  // The footer's credit: who builds and runs the site. One phrase, never
+  // assembled in the component. Poetivo is a name and reads the same in
+  // both languages.
   poweredBy: "Poganja Poetivo",
   // What a link that leaves the site says. Word for word the shelters page's
   // own note, so the site says this one way rather than three.
@@ -811,7 +812,7 @@ const en: Messages = {
   metadataDescription:
     "An open index of animals in Slovenian shelters looking for homes, with a clear source and shelter link for every listing.",
   githubTitle: "Vaccinated, neutered, no known bugs.",
-  openSourceInvite: "Open source, and you can help.",
+  openSource: "Open source",
   poweredBy: "Powered by Poetivo",
   newWindow: "(opens in a new window)",
   contactPhone: "Phone",

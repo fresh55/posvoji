@@ -35,6 +35,7 @@ import {
   stubIdleCallback,
   stubIntersectionObserver,
 } from "@/test/grid-stubs";
+import type { FilterOption } from "@/lib/filters";
 // The chunks the grid fetches for the dialog, the filter sheet and the
 // picker, loaded with the file so no test waits for them inside its find or
 // inside settle's act (test/picker-chunks.ts says why). The suite at the end
@@ -46,7 +47,11 @@ import "@/test/picker-chunks";
 // AnimalGrid renders its own I18nProvider-consuming children, but the
 // component itself does not open one: the page shell normally does that, so
 // the test wraps it the same way the page does.
-function renderGrid(animals: Animal[], locale: "sl" | "en" = "sl") {
+function renderGrid(
+  animals: Animal[],
+  locale: "sl" | "en" = "sl",
+  offSiteShelters?: FilterOption[],
+) {
   return render(
     <I18nProvider locale={locale}>
       <AnimalGrid
@@ -55,6 +60,7 @@ function renderGrid(animals: Animal[], locale: "sl" | "en" = "sl") {
         animals={animalsForClient(animals)}
         logos={{}}
         referenceDate="2026-01-01"
+        offSiteShelters={offSiteShelters}
       />
     </I18nProvider>,
   );
@@ -233,12 +239,25 @@ describe("animal grid renders", () => {
 });
 
 describe("animal grid empty state", () => {
+  it("names a registry-only shelter from a URL and lets its chip restore listings", () => {
+    window.history.replaceState(null, "", "/?zavetisce=brezice");
+    renderGrid(ANIMALS, "en", [{ value: "brezice", label: "Zavetišče Brežice" }]);
+
+    expect(screen.getByText("The selected shelter has no animals listed right now.")).toBeTruthy();
+    const remove = within(phoneRow()).getByRole("button", { name: /Remove filter Brežice/ });
+    expect(within(phoneRow()).queryByRole("button", { name: /Remove filter brezice/ })).toBeNull();
+    fireEvent.click(remove);
+
+    expect(query()).toBe("");
+    expect(screen.getByRole("article", { name: "dog-muri" })).toBeTruthy();
+  });
+
   it("names the shelter-species conflict and offers to drop only the shelter", () => {
     window.history.replaceState(null, "", "/?vrsta=zajcek&zavetisce=muri");
     renderGrid(ANIMALS);
 
     expect(
-      screen.getByText("Izbrano zavetišče trenutno nima drugih živali."),
+      screen.getByText("Izbrano zavetišče trenutno nima objavljenih drugih živali."),
     ).toBeTruthy();
     // The blunt "poskusi z manj filtri" line is only for the generic case.
     expect(screen.queryByText("Poskusi z manj filtri.")).toBeNull();
@@ -266,7 +285,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     expect(
-      screen.getByText("Izbrani zavetišči trenutno nimata drugih živali."),
+      screen.getByText("Izbrani zavetišči trenutno nimata objavljenih drugih živali."),
     ).toBeTruthy();
   });
 
@@ -282,7 +301,7 @@ describe("animal grid empty state", () => {
     renderGrid([...ANIMALS, animal("dog-cetrto", "dog", "cetrto")]);
 
     expect(
-      screen.getByText("Izbrana zavetišča trenutno nimajo drugih živali."),
+      screen.getByText("Izbrana zavetišča trenutno nimajo objavljenih drugih živali."),
     ).toBeTruthy();
   });
 
@@ -574,7 +593,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS, "en");
 
     expect(
-      screen.getByText("The selected shelter currently has no other animals."),
+      screen.getByText("The selected shelter has no other animals listed right now."),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Show from all shelters" }),

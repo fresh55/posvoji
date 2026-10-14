@@ -1532,12 +1532,12 @@ describe("LocationPicker map and list views", () => {
     // sideways (picker-split in globals.css). There was a control that folded
     // the list to a rail, and it bought the map no pixels: the plate is bound
     // by its height there, so a wider column only re-centred it.
-    // One width, set where both read it: the list takes 24rem or less, and
+    // One width, set where both read it: the list takes 16rem to 24rem, and
     // the map everything the list does not. On a short screen the map keeps
-    // only what its height fills.
+    // only what its height fills, with the same floor for enlarged text.
     const body = dialog().querySelector("[data-picker-stage]")!.className;
-    expect(body).toContain("[--picker-list-w:min(24rem,calc(100%_-_41rem))]");
-    expect(body).toContain("short:[--picker-list-w:min(24rem,calc(100%_-_22rem))]");
+    expect(body).toContain("[--picker-list-w:max(16rem,min(24rem,calc(100%_-_41rem)))]");
+    expect(body).toContain("short:[--picker-list-w:max(16rem,min(24rem,calc(100%_-_22rem)))]");
     expect(stage().className).toContain("picker-split:right-(--picker-list-w)");
     expect(panel().className).toContain("picker-split:w-(--picker-list-w)");
     // And the switch that takes turns is gone wherever they stand together.

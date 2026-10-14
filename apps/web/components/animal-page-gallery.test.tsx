@@ -36,7 +36,7 @@ const IMAGES: PermittedPhoto[] = Array.from({ length: 3 }, (_, index) => ({
   widths: [320, 480, 640],
 }));
 
-function gallery() {
+function gallery(seeking = true) {
   return (
     <I18nProvider locale="sl">
       <AnimalPagePhotoProvider count={IMAGES.length}>
@@ -46,7 +46,7 @@ function gallery() {
           sizes="100vw"
           className="relative aspect-[4/3]"
         />
-        <AnimalPageShareButton path="/zival/pika/test/test" name="Pika" />
+        <AnimalPageShareButton path="/zival/pika/test/test" name="Pika" seeksHome={seeking} />
       </AnimalPagePhotoProvider>
     </I18nProvider>
   );
@@ -60,6 +60,16 @@ function position(root: HTMLElement) {
 // is written at build time with no query in it, so a first client render that
 // read one would disagree with what it is hydrating.
 describe("the animal page's gallery and the photo a link names", () => {
+  it("keeps the page's unavailable status when sharing its selected photo", async () => {
+    window.history.replaceState(null, "", "?foto=2");
+    render(gallery(false));
+    fireEvent.click(screen.getByRole("button", { name: "Deli" }));
+    const email = await screen.findByRole("link", { name: "E-pošta" });
+    const mail = new URL(email.getAttribute("href")!);
+    expect(mail.searchParams.get("subject")).toBe("Pika na Posvoji.si");
+    expect(mail.searchParams.get("body")).toBe("Pika na Posvoji.si\nhttps://posvoji.si/zival/pika/test/test?foto=2");
+  });
+
   it("returns focus to the photo after a tap that did not focus the trigger", async () => {
     render(gallery());
     const trigger = screen.getByRole("button", { name: "Odpri fotografijo 1 čez cel zaslon" });

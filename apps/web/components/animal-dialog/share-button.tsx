@@ -45,6 +45,7 @@ const shareText = {
     more: "Več",
     failed: "Deljenje ni uspelo. Povezavo lahko kopirate.",
     invite: (name: string) => `${name} išče dom`,
+    neutral: (name: string) => `${name} na Posvoji.si`,
   },
   en: {
     heading: "Share this animal",
@@ -55,6 +56,7 @@ const shareText = {
     more: "More",
     failed: "Sharing failed. You can copy the link instead.",
     invite: (name: string) => `${name} is looking for a home`,
+    neutral: (name: string) => `${name} on Posvoji.si`,
   },
 } satisfies Record<Locale, Record<string, unknown>>;
 
@@ -175,11 +177,14 @@ function ShareStatus({
 export function ShareButton({
   path,
   name,
+  seeksHome,
   photo,
   className,
 }: {
   path: string;
   name: string;
+  /** Whether the shelter's recorded status permits the adoption invitation. */
+  seeksHome: boolean;
   /** The photo on show, counted from zero. A shared link opens on it, unless
    *  it is the first, which is where the page opens anyway. */
   photo?: number;
@@ -220,7 +225,7 @@ export function ShareButton({
   // of the field is the same link the buttons hand over.
   const shared = pathWithPhoto(path, photo);
   const url = `${SITE_URL}${shared}`;
-  const invite = text.invite(name);
+  const invite = seeksHome ? text.invite(name) : text.neutral(name);
 
   async function copy() {
     // The API is absent on a page served over plain http, and a browser may

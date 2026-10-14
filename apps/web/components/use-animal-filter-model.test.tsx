@@ -4,7 +4,7 @@ import { renderHook } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
 import { describe, expect, it } from "vitest";
 import { animalsForClient } from "@/lib/dataset";
-import { EMPTY_FILTERS, groupOptions, type Filters } from "@/lib/filters";
+import { EMPTY_FILTERS, groupOptions, type FilterOption, type Filters } from "@/lib/filters";
 import { useAnimalFilterModel } from "./use-animal-filter-model";
 
 const NOW = new Date("2026-01-01T00:00:00.000Z");
@@ -49,13 +49,14 @@ const ANIMALS = animalsForClient([
 const DOGS: Filters = { ...EMPTY_FILTERS, species: "dog" };
 
 /** The model as the grid runs it, and how many times it has rendered. */
-function renderModel(filters: Filters) {
+function renderModel(filters: Filters, offSiteShelters?: FilterOption[]) {
   let renders = 0;
   const hook = renderHook(
     ({ filters }: { filters: Filters }) => {
       renders += 1;
       return useAnimalFilterModel({
         animals: ANIMALS,
+        offSiteShelters,
         logos: {},
         reference: NOW,
         locale: "sl",
@@ -77,6 +78,28 @@ function renderModel(filters: Filters) {
 }
 
 describe("the chips row", () => {
+  it("names a URL-selected shelter with no listings from the picker registry", () => {
+    const { result } = renderModel(
+      { ...DOGS, shelter: ["brezice"] },
+      [{ value: "brezice", label: "Zavetišče Brežice" }],
+    );
+
+    expect(result.current.chips[0].label).toBe("Brežice");
+    expect(result.current.chips[0].value).toBe("brezice");
+    // Registry names label a selection; they do not add empty shelters to
+    // the filterable roster or change the available animals.
+    expect(result.current.shelters?.map(({ value }) => value)).toEqual(["test-shelter"]);
+  });
+
+  it("keeps dataset labels and an unknown shelter's id when no registry label exists", () => {
+    const { result } = renderModel({ ...DOGS, shelter: ["test-shelter", "unknown-shelter"] });
+
+    expect(result.current.chips.map(({ label }) => label)).toEqual([
+      "Test shelter",
+      "unknown-shelter",
+    ]);
+  });
+
   // The panel's order, Kje first (FILTER_FACETS in lib/filters/contracts.ts),
   // whatever order the answers were given in or the URL holds them in.
   it("reads every facet's chips in the order the panel asks", () => {

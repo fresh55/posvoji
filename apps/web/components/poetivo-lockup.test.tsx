@@ -28,12 +28,7 @@ describe("PoetivoLockup", () => {
     expect(name.className).toContain("font-semibold");
     expect(name.textContent).toBe(POETIVO_NAME);
     // The space is before the tile, never between the tile and the name.
-    // React renders the verb and the space as two text nodes.
-    const beforeTile = Array.from(words.childNodes)
-      .slice(0, Array.from(words.childNodes).indexOf(svg))
-      .map((node) => node.textContent)
-      .join("");
-    expect(beforeTile).toBe("Poganja ");
+    expect(svg.previousSibling?.textContent).toBe("Poganja ");
     expect(svg.nextSibling).toBe(name);
   });
 });

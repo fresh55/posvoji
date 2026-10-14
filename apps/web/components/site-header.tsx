@@ -170,17 +170,11 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
               posvoji.si
             </span>
           </a>
-          {/* Who builds the site, under its name: "poganja" from the
-              catalogue, then Poetivo's mark pressed against the name in the
-              wordmark's weight, the one lockup the footer's credit draws too,
-              and like the footer's a link to poetivo.si that opens a new
-              window and says so in its name. Bruno wanted it up here beside
-              the logo and wanted to be able to press it.
-
-              The words start under the p of "posvoji.si" and the mark comes
-              last, against the name. The mark led the line once, and a
-              yellow P under the site's initial read as the site's own badge
-              (poetivo-lockup.tsx has the rest of that).
+          {/* Who builds the site, under its name: the lockup the footer's
+              credit draws too (poetivo-lockup.tsx), and like the footer's a
+              link to poetivo.si that opens a new window and says so in its
+              name. Bruno wanted it up here beside the logo and wanted to be
+              able to press it.
 
               A 12px line reset from the link's weight and tracking, with the
               name taken back for the wordmark alone. It never wraps: a second
@@ -211,7 +205,7 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
             target="_blank"
             rel="noreferrer"
             data-poetivo
-            className="relative col-start-2 row-start-2 inline-flex items-center self-start rounded-ui text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground underline-offset-4 outline-none touch-manipulation hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-top-0.5 pointer-coarse:after:h-8 pointer-coarse:after:content-['']"
+            className="relative col-start-2 row-start-2 self-start rounded-ui text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground underline-offset-4 outline-none touch-manipulation hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-top-0.5 pointer-coarse:after:h-8 pointer-coarse:after:content-['']"
           >
             <PoetivoLockup verb={messages.poweredBy.toLowerCase()} />
             <span className="sr-only"> {messages.newWindow}</span>

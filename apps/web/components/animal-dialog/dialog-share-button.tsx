@@ -17,11 +17,13 @@ import { ShareButton } from "@/components/animal-dialog/share-button";
 export function DialogShareButton({
   path,
   name,
+  seeksHome,
   photo,
   className,
 }: {
   path: string;
   name: string;
+  seeksHome: boolean;
   /** Where the fan reports the photo on show, counted from zero. */
   photo: MotionValue<number>;
   /** Passed straight through to the button. */
@@ -38,6 +40,7 @@ export function DialogShareButton({
     <ShareButton
       path={path}
       name={name}
+      seeksHome={seeksHome}
       photo={shown}
       className={className}
     />

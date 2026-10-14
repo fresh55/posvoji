@@ -60,7 +60,7 @@ function ContactRow({
 }
 
 export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
-  const { messages, t } = useI18n();
+  const { locale, messages, t } = useI18n();
   const host = coverage.website ? websiteHost(coverage.website) : undefined;
   return (
     <Card className="min-w-0 space-y-3 p-4">
@@ -121,7 +121,12 @@ export function CoverageCard({ coverage }: { coverage: LookupCoverage }) {
       <ul className="space-y-1.5 text-sm text-muted-foreground">
         <ContactRow icon={MapPin}>{coverage.city}</ContactRow>
         {coverage.hours && (
-          <ShelterHours hours={coverage.hours} label={messages.muniHours} />
+          <ShelterHours
+            hours={coverage.hours}
+            hoursEn={coverage.hoursEn}
+            locale={locale}
+            label={messages.muniHours}
+          />
         )}
         {coverage.email && (
           <ContactRow icon={Mail}>

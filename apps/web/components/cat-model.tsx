@@ -54,7 +54,7 @@ const copy = {
   },
 } satisfies Record<Locale, Record<string, string>>;
 
-type Status = "loading" | "revealing" | "ready" | "failed";
+type Status = "idle" | "loading" | "revealing" | "ready" | "failed";
 
 /** Controls exposed after the model loads. */
 export type CatModelHandle = {
@@ -91,11 +91,13 @@ export const CatModel = memo(function CatModel({
   const host = useRef<HTMLDivElement>(null);
   // Observe parent focus so the caption link can trigger model loading.
   const stage = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<Status>("idle");
   const [slow, setSlow] = useState(false);
   const ready = status === "ready";
   const loading = status === "loading" || status === "revealing";
-  const waiting = ready ? "" : status === "failed" ? text.unavailable : slow ? text.slow : text.loading;
+  const waiting = loading
+    ? (slow ? text.slow : text.loading)
+    : (status === "failed" ? text.unavailable : "");
   // Keep loading feedback visible after the first interaction until ready.
   const [reached, setReached] = useState(false);
   // Replay a touch received while the poster was loading.
@@ -418,7 +420,7 @@ export const CatModel = memo(function CatModel({
         aria-hidden={!ready}
         className={`absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none ${status === "revealing" || ready ? "opacity-100" : "opacity-0"}`}
       />
-      {/* Announce loading status immediately; show visual feedback after interaction. */}
+      {/* Announce loading once requested; show visual feedback after interaction. */}
       <div
         data-slot="cat-status"
         role="status"

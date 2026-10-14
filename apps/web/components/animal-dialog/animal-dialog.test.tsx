@@ -2744,14 +2744,21 @@ describe("animal dialog", () => {
   // so with a share sheet on the platform the button is the share and no
   // popover opens. The popover with its own "Več" target is the wider
   // layout's, and share-button.test.tsx covers it.
-  it("opens the platform's own share sheet straight from the button on a phone", async () => {
+  it.each([
+    ["available", "Rex išče dom"],
+    ["unknown", "Rex išče dom"],
+    ["hold", "Rex na Posvoji.si"],
+    ["reserved", "Rex na Posvoji.si"],
+    ["adopted", "Rex na Posvoji.si"],
+  ] as const)("shares honest wording for a %s animal on a phone", async (status, invite) => {
     const share = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "share", {
       configurable: true,
       value: share,
     });
     window.history.replaceState(null, "", "/?zival=rex");
-    renderGrid();
+    const sharedAnimal = { ...REX, status };
+    renderGrid([sharedAnimal]);
     const dialog = await screen.findByRole("dialog");
 
     await act(async () => {
@@ -2759,9 +2766,9 @@ describe("animal dialog", () => {
     });
 
     expect(share).toHaveBeenCalledWith({
-      title: "Rex išče dom",
-      text: "Rex išče dom",
-      url: `https://posvoji.si${animalPath(REX, "sl")}`,
+      title: invite,
+      text: invite,
+      url: `https://posvoji.si${animalPath(sharedAnimal, "sl")}`,
     });
     expect(screen.queryByText("Deli to žival")).toBeNull();
     Reflect.deleteProperty(navigator, "share");
@@ -2782,6 +2789,11 @@ describe("animal dialog", () => {
         .getAttribute("href"),
     ).toBe("https://example.test/animals/lucky");
     expect(within(dialog).getByText("Foto: Zavetišče Test")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Deli" }));
+    const email = await screen.findByRole("link", { name: "E-pošta" });
+    expect(new URL(email.getAttribute("href")!).searchParams.get("subject")).toBe(
+      "Lucky na Posvoji.si",
+    );
   });
 
   it("still closes through history after a filter write", async () => {

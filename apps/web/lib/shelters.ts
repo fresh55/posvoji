@@ -23,6 +23,9 @@ export type ShelterRegistryEntry = {
   /** When the phone is answered, as the shelter's own site puts it. Free
    *  text, Slovenian. */
   hours?: string;
+  /** English translation of hours, preserving its schedule and instructions.
+   *  Both language fields are present together or both are absent. */
+  hoursEn?: string;
   /** The number answered outside those hours for found animals: a 24-hour
    *  on-call line where the shelter runs one, or the line it names for
    *  reporting a found animal. Absent when the site names none. */
@@ -93,15 +96,13 @@ function textProblem(value: unknown): string | undefined {
   return undefined;
 }
 
-/** The fields an entry may carry beyond the three it must, each with what
- *  makes it usable. A table rather than three hand-written blocks: all three
- *  ask the same two questions, and a fourth field added later should not have
- *  to remember which shape the last one used. */
+/** Optional fields, each with the validation that makes it usable. */
 const OPTIONAL_FIELDS = [
   ["website", websiteProblem],
   ["email", emailProblem],
   ["phone", phoneProblem],
   ["hours", textProblem],
+  ["hoursEn", textProblem],
   ["onCallPhone", phoneProblem],
 ] as const;
 
@@ -135,12 +136,16 @@ function entryProblems(value: unknown, index: number): string[] {
       ? `shelter ${entry.id}`
       : at;
 
-  // Absent is fine for all three: the register holds shelters we have a phone
-  // for and no email, and the card prints what is there.
+  // Contact details and hours may be absent; validate only fields the register
+  // carries. The hours pair is checked below.
   for (const [field, problemWith] of OPTIONAL_FIELDS) {
     if (entry[field] === undefined) continue;
     const problem = problemWith(entry[field]);
     if (problem) problems.push(`${named}: ${problem}`);
+  }
+
+  if ((entry.hours === undefined) !== (entry.hoursEn === undefined)) {
+    problems.push(`${named}: hours and hoursEn must be present together`);
   }
 
   return problems;

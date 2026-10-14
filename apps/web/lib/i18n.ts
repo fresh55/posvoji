@@ -282,9 +282,9 @@ const sl = {
   // are selected and Slovenian's dual is not optional: one zavetišče nima, two
   // zavetišči nimata, three or more zavetišča nimajo. English inflects nothing
   // past one, so its dual and its plural read alike.
-  noResultsShelterSingular: "Izbrano zavetišče trenutno nima {species}.",
-  noResultsShelterDual: "Izbrani zavetišči trenutno nimata {species}.",
-  noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo {species}.",
+  noResultsShelterSingular: "Izbrano zavetišče trenutno nima objavljenih {species}.",
+  noResultsShelterDual: "Izbrani zavetišči trenutno nimata objavljenih {species}.",
+  noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo objavljenih {species}.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
   showAllSpecies: "Pokaži vse živali",
   showAllSpeciesCount: "Pokaži vse vrste ({count})",
@@ -916,9 +916,9 @@ const en: Messages = {
     "Without JavaScript the list stops at the first animals, and filters or sorting from a link are not applied. Every animal of a single shelter is on that shelter’s own page in the register.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
-  noResultsShelterSingular: "The selected shelter currently has no {species}.",
-  noResultsShelterDual: "The selected shelters currently have no {species}.",
-  noResultsShelterPlural: "The selected shelters currently have no {species}.",
+  noResultsShelterSingular: "The selected shelter has no {species} listed right now.",
+  noResultsShelterDual: "The selected shelters have no {species} listed right now.",
+  noResultsShelterPlural: "The selected shelters have no {species} listed right now.",
   showFromAllShelters: "Show from all shelters",
   showAllSpecies: "Show all animals",
   showAllSpeciesCount: "Show all species ({count})",

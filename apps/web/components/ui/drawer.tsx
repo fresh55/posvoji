@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 import { XIcon } from "lucide-react"
+import { Portal } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -30,8 +31,10 @@ function DrawerTrigger({
 
 function DrawerPortal({
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Portal>) {
-  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
+}: React.ComponentProps<typeof Portal.Root>) {
+  // Content and Overlay already own Presence and their exit animations.
+  // Dialog.Portal adds another Presence to each and reads both styles again.
+  return <Portal.Root data-slot="drawer-portal" {...props} />
 }
 
 function DrawerClose({
@@ -61,11 +64,15 @@ function DrawerContent({
   children,
   closeLabel = "Close",
   showCloseButton = true,
+  focusCloseOnOpen = false,
+  onOpenAutoFocus,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Content> & {
   closeLabel?: string
   showCloseButton?: boolean
+  focusCloseOnOpen?: boolean
 }) {
+  const closeRef = React.useRef<HTMLButtonElement>(null)
   return (
     <DrawerPortal>
       <DrawerOverlay />
@@ -80,11 +87,19 @@ function DrawerContent({
           className
         )}
         {...props}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event)
+          if (event.defaultPrevented || !focusCloseOnOpen || !closeRef.current) return
+          // Keep the same initial focus without walking every filter control.
+          closeRef.current.focus({ preventScroll: true })
+          if (document.activeElement === closeRef.current) event.preventDefault()
+        }}
       >
         <div className="mx-auto mt-3 h-1.5 w-12 shrink-0 rounded-full bg-muted" aria-hidden="true" />
         {showCloseButton && (
           <DrawerPrimitive.Close asChild>
             <Button
+              ref={closeRef}
               variant="ghost"
               size="icon-sm"
               className="absolute top-1 right-2 size-11 sm:top-3 sm:right-4 sm:size-8"

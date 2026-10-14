@@ -56,16 +56,35 @@ delivery() {
   grep -qi '^content-encoding:' "$scratch/home-headers" || { echo 'no Content-Encoding for the homepage' >&2; return 1; }
   chunk=$(grep -o '/_next/static/[^"]*\.js' "$scratch/index.html" | sed -n '1p') || true
   [[ -n "$chunk" ]] || { echo 'the homepage links no /_next/static chunk' >&2; return 1; }
-  encoded "https://posvoji.si$chunk" /dev/null
+  encoded "https://posvoji.si$chunk" /dev/null || return 1
+  # Reuse that chunk request's headers; no additional cache-policy probe.
+  awk '
+    tolower($0) ~ /^cache-control:/ {
+      line = tolower($0)
+      sub(/^[^:]*:[[:space:]]*/, "", line)
+      count = split(line, directives, ",")
+      for (part = 1; part <= count; part++) {
+        value = directives[part]
+        gsub(/[[:space:]]/, "", value)
+        if (value == "public") public = 1
+        if (value == "max-age=31536000") one_year = 1
+        if (value == "immutable") immutable = 1
+        if (value ~ /^(no-cache|no-store|private)(=|$)/ ||
+            (value ~ /^max-age=/ && value != "max-age=31536000")) invalid = 1
+      }
+    }
+    END { exit !(public && one_year && immutable && !invalid) }
+  ' "$scratch/headers" || { echo "no immutable Cache-Control for https://posvoji.si$chunk" >&2; return 1; }
 }
 # The same release switch as above takes the hashed chunk with it. Retry once.
 delivery || delivery
 # out/404.html only reaches a visitor if the server is wired to serve it
-# (docs/DEPLOY-HEADERS.md). Assert the status and the page's own words, so the
-# server and the export cannot drift apart unnoticed.
-status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani) || { echo "GET https://posvoji.si/ni-take-strani failed (HTTP ${status:-000})" >&2; exit 1; }
+# (docs/DEPLOY-HEADERS.md). Assert the status, body and compression from this
+# same request: Caddy serves errors through a separate handler chain.
+status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --dump-header "$scratch/headers" --write-out '%{http_code}' https://posvoji.si/ni-take-strani) || { echo "GET https://posvoji.si/ni-take-strani failed (HTTP ${status:-000})" >&2; exit 1; }
 [[ "$status" = 404 ]] || { echo "GET https://posvoji.si/ni-take-strani: unexpected HTTP status: $status" >&2; exit 1; }
 grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path did not serve the branded 404' >&2; exit 1; }
+grep -qi '^content-encoding:' "$scratch/headers" || { echo 'no Content-Encoding for the branded 404' >&2; exit 1; }
 # The 3D cat's model is the one large asset no host compresses by itself:
 # Caddy's encode matches Content-Type and its default list has no model/* entry,
 # so cat.glb ships raw unless the siblings the build writes are served with

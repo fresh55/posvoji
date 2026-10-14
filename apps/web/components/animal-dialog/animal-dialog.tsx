@@ -37,7 +37,7 @@ import { ShelterBlock } from "@/components/animal-dialog/shelter-block";
 import { cardPhoto } from "@/components/grid-rendering";
 import { useI18n } from "@/components/i18n-context";
 import { PosterLink } from "@/components/poster-link";
-import { useAnimalSource } from "@/lib/animal-descriptions";
+import { prefetchAnimalDescriptions, useAnimalSource } from "@/lib/animal-descriptions";
 import { standsOnDialogEntry } from "@/hooks/use-animal-dialog";
 import { PHONE_SHELL_QUERY } from "@/lib/viewport-queries";
 import { StatusBadge } from "@/components/status-badge";
@@ -491,6 +491,12 @@ function OpenAnimalDialog({
   // renders again when the fan turns a photo.
   const shownPhoto = useMotionValue(0);
   const openedId = animal?.id;
+  // Ask on every open, including a reopen of the retained animal. The store
+  // shares successful data and active requests, and bounds retries after a
+  // failure; availability of fields on this particular animal is unrelated.
+  useEffect(() => {
+    if (openedId) void prefetchAnimalDescriptions();
+  }, [openedId]);
   const reportPhoto = useCallback(
     (index: number) => shownPhoto.set(index),
     [shownPhoto],

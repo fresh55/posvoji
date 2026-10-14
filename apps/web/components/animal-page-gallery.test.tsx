@@ -36,12 +36,12 @@ const IMAGES: PermittedPhoto[] = Array.from({ length: 3 }, (_, index) => ({
   widths: [320, 480, 640],
 }));
 
-function gallery(seeking = true) {
+function gallery(images = IMAGES, seeking = true) {
   return (
     <I18nProvider locale="sl">
-      <AnimalPagePhotoProvider count={IMAGES.length}>
+      <AnimalPagePhotoProvider count={images.length}>
         <AnimalPageGallery
-          images={IMAGES}
+          images={images}
           name="Pika"
           sizes="100vw"
           className="relative aspect-[4/3]"
@@ -60,9 +60,19 @@ function position(root: HTMLElement) {
 // is written at build time with no query in it, so a first client render that
 // read one would disagree with what it is hydrating.
 describe("the animal page's gallery and the photo a link names", () => {
+  it("exports one early AVIF hint for the first permitted photo, before the gallery markup", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToString(gallery(IMAGES.map((photo) => ({ ...photo, avif: true }))));
+    const hints = container.querySelectorAll('link[rel="preload"][as="image"]');
+    expect(hints).toHaveLength(1);
+    expect(hints[0].getAttribute("href")).toBe(IMAGES[0].src.replace(".webp", ".avif"));
+    expect(hints[0].getAttribute("type")).toBe("image/avif");
+    expect(hints[0].compareDocumentPosition(container.querySelector("picture")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("keeps the page's unavailable status when sharing its selected photo", async () => {
     window.history.replaceState(null, "", "?foto=2");
-    render(gallery(false));
+    render(gallery(IMAGES, false));
     fireEvent.click(screen.getByRole("button", { name: "Deli" }));
     const email = await screen.findByRole("link", { name: "E-pošta" });
     const mail = new URL(email.getAttribute("href")!);

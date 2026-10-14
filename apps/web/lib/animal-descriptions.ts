@@ -9,11 +9,13 @@ type AnimalDetails = Readonly<Record<string, AnimalDetail>>;
 
 const SOURCE = "/generated/animal-details.json";
 const EMPTY: AnimalDetails = {};
+export const ANIMAL_DETAILS_TIMEOUT_MS = 10_000;
+export const ANIMAL_DETAILS_RETRY_COOLDOWN_MS = 30_000;
 const listeners = new Set<() => void>();
-/** Undefined until the fetch has settled, and a failed fetch settles too, on
- *  an empty map. */
+/** Only successful responses, including a valid empty map, are cached. */
 let current: AnimalDetails | undefined;
 let inFlight: Promise<AnimalDetails> | undefined;
+let retryAfter = 0;
 
 function subscribe(listener: () => void): () => void {
   listeners.add(listener);
@@ -22,29 +24,56 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-async function load(): Promise<AnimalDetails> {
-  try {
-    const response = await fetch(SOURCE);
-    if (!response.ok) return EMPTY;
-    const body: unknown = await response.json();
-    if (typeof body !== "object" || body === null || Array.isArray(body)) {
-      return EMPTY;
+async function load(): Promise<AnimalDetails | undefined> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(undefined);
+    }, ANIMAL_DETAILS_TIMEOUT_MS);
+  });
+  const request = (async () => {
+    try {
+      const response = await fetch(SOURCE, { signal: controller.signal });
+      if (!response.ok) return undefined;
+      const body: unknown = await response.json();
+      if (typeof body !== "object" || body === null || Array.isArray(body)) {
+        return undefined;
+      }
+      return body as AnimalDetails;
+    } catch {
+      return undefined;
     }
-    return body as AnimalDetails;
-  } catch {
-    return EMPTY;
+  })();
+  try {
+    // Also settle if a stalled body or test transport ignores the abort.
+    return await Promise.race([request, deadline]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-/** Share one request for the page lifetime, including failures, to avoid repeated retries. */
+/** Share active requests and successful results. Later opens can retry a
+ *  failure after a cooldown; rapid hover and focus events cannot create a loop. */
 export function prefetchAnimalDescriptions(): Promise<AnimalDetails> {
+  if (current !== undefined) return Promise.resolve(current);
   if (inFlight) return inFlight;
-  inFlight = load().then((details) => {
-    current = details;
+  if (Date.now() < retryAfter) return Promise.resolve(EMPTY);
+  const request = load().then((details) => {
+    // A reset must not let an older response populate the new store.
+    if (inFlight !== request) return details ?? EMPTY;
+    inFlight = undefined;
+    if (details === undefined) retryAfter = Date.now() + ANIMAL_DETAILS_RETRY_COOLDOWN_MS;
+    else {
+      current = details;
+      retryAfter = 0;
+    }
     for (const listener of listeners) listener();
-    return details;
+    return details ?? EMPTY;
   });
-  return inFlight;
+  inFlight = request;
+  return request;
 }
 
 function getServerSnapshot(): undefined {
@@ -78,5 +107,6 @@ export function useAnimalSource(
 export function resetAnimalDescriptionsStore(): void {
   current = undefined;
   inFlight = undefined;
+  retryAfter = 0;
   for (const listener of listeners) listener();
 }

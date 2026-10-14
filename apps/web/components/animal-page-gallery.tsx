@@ -6,6 +6,7 @@ import { useDeferredModule, preloadModule } from "@/hooks/use-deferred-module";
 import { useAnimalPagePhoto } from "@/components/animal-page-photo-state";
 import { useI18n } from "@/components/i18n-context";
 import { PhotoGallery } from "@/components/photo-gallery";
+import { AnimalPhotoPreload } from "@/components/animal-photo-preload";
 import type { PermittedPhoto } from "@/lib/animal-images";
 
 const loadLightbox = () => import("@/components/animal-page-lightbox");
@@ -49,6 +50,7 @@ export function AnimalPageGallery({
         if (event.key === "Escape" && !lightbox) setOpen(false);
       }}
     >
+      <AnimalPhotoPreload photo={images[0]} sizes={sizes} />
       <PhotoGallery
         images={images}
         name={name}

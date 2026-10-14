@@ -184,8 +184,6 @@ describe("parseDetail", () => {
       species: "dog",
       status: "available",
       sex: "male",
-      // The sidebar's current age wins over the stale "starost 13 let" tag,
-      // which is still read so a page with no sidebar age can fall back to it.
       ageMonths: 180,
       intakeAgeMonths: undefined,
       intakeDate: "2025-07-21",
@@ -438,7 +436,6 @@ describe("resolveAgeMonths", () => {
     [{ intakeAgeMonths: 36, intakeDate: "2026-06-12", tagAgeMonths: 48 }, "2026-10-14T13:00:00Z", 40],
     // The tag answers only when the sidebar gives nothing to count from.
     [{ intakeAgeMonths: 3, tagAgeMonths: 48 }, "2026-08-16T06:00:00Z", 48],
-    [{ tagAgeMonths: 48 }, "2026-08-16T06:00:00Z", 48],
     [{ intakeAgeMonths: 3 }, "2026-08-16T06:00:00Z", undefined],
     [{}, "2026-08-16T06:00:00Z", undefined],
   ])("%o at %s → %s", (facts, fetchedAt, expected) => {

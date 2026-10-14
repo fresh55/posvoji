@@ -32,9 +32,7 @@ export interface DetailFacts {
   // Newer listings only record the age on arrival ("Starost ob sprejemu");
   // normalize() ages it forward to the crawl date.
   intakeAgeMonths?: number;
-  // The hand-curated age tag ("starost 4 leta"), read only when neither of
-  // the above can answer: Tine's tag said 4 years while his sidebar gave 3
-  // years at intake, and the sidebar is the one the shelter keeps current.
+  // The hand-curated age tag ("starost 4 leta").
   tagAgeMonths?: number;
   intakeDate?: string;
   foundPlace?: string;
@@ -274,9 +272,7 @@ export function parseSlovenianDate(value: string): string | undefined {
   return date.toISOString().slice(0, 10) === iso ? iso : undefined;
 }
 
-// The age tag ("starost 13 let") is the last resort when the sidebar carries
-// neither a current age nor an age at intake; the sidebar wins when both exist
-// because the tags are curated by hand and go stale.
+// Reads the age tag ("starost 13 let").
 function categoryAgeMonths($: cheerio.CheerioAPI): number | undefined {
   let months: number | undefined;
   $(".cmsms_project_category a[rel='tag']").each((_, el) => {
@@ -555,7 +551,8 @@ export function parseDetail(html: string): DetailFacts {
 
 // "Starost ob sprejemu" is the age when the animal arrived; it has aged
 // since, so add the full calendar months between intake and this crawl.
-// The age tag answers only when the sidebar gives nothing to count from.
+// The age tag answers only when the sidebar gives nothing to count from,
+// because the tags are curated by hand and go stale.
 export function resolveAgeMonths(
   facts: Pick<DetailFacts, "ageMonths" | "intakeAgeMonths" | "intakeDate" | "tagAgeMonths">,
   fetchedAt: string,

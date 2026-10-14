@@ -61,11 +61,12 @@ delivery() {
 # The same release switch as above takes the hashed chunk with it. Retry once.
 delivery || delivery
 # out/404.html only reaches a visitor if the server is wired to serve it
-# (docs/DEPLOY-HEADERS.md). Assert the status and the page's own words, so the
-# server and the export cannot drift apart unnoticed.
-status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --write-out '%{http_code}' https://posvoji.si/ni-take-strani) || { echo "GET https://posvoji.si/ni-take-strani failed (HTTP ${status:-000})" >&2; exit 1; }
+# (docs/DEPLOY-HEADERS.md). Assert the status, body and compression from this
+# same request: Caddy serves errors through a separate handler chain.
+status=$(curl "${not_found_args[@]}" --output "$scratch/not-found.html" --dump-header "$scratch/headers" --write-out '%{http_code}' https://posvoji.si/ni-take-strani) || { echo "GET https://posvoji.si/ni-take-strani failed (HTTP ${status:-000})" >&2; exit 1; }
 [[ "$status" = 404 ]] || { echo "GET https://posvoji.si/ni-take-strani: unexpected HTTP status: $status" >&2; exit 1; }
 grep -q 'Stran ne obstaja' "$scratch/not-found.html" || { echo 'a missing path did not serve the branded 404' >&2; exit 1; }
+grep -qi '^content-encoding:' "$scratch/headers" || { echo 'no Content-Encoding for the branded 404' >&2; exit 1; }
 # The 3D cat's model is the one large asset no host compresses by itself:
 # Caddy's encode matches Content-Type and its default list has no model/* entry,
 # so cat.glb ships raw unless the siblings the build writes are served with

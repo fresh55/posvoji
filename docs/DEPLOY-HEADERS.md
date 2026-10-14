@@ -78,8 +78,9 @@ A browser always sends `Accept-Encoding`, so a server that has stopped
 compressing looks exactly like one that has not: the page renders, nothing
 errors, and only the transfer size differs. That is why the directive is
 written down here, and why `scripts/monitor-production.sh` asserts
-`Content-Encoding` on the homepage and on one `/_next/static` chunk on every
-run.
+`Content-Encoding` on the homepage, one `/_next/static` chunk and the branded
+404 on every run. The 404 check reads its status, body and headers from one
+request.
 
 `api.posvoji.si` already carries `encode zstd gzip`; see DEPLOY-PORTAL.md. The
 public site needs the same directive. Caddy's `encode` skips content types that
@@ -102,6 +103,12 @@ The model path is outside `basic_auth`: a plain request with
 reconfirmed on 20 September 2026. It needs no credentials. For gated pages,
 use the monitor's configured credentials and check the response status before
 interpreting compression headers; a `401` describes the gate response.
+
+For production reloads, use `sudo systemctl reload caddy`. Its configured
+`ExecReload` inherits the service environment, including the invitation gate's
+`POSVOJI_DEMO_KEY`. Validation and adaptation must use that same environment:
+an unset `{$POSVOJI_DEMO_KEY}` changes the cookie matcher even when the
+Caddyfile text is unchanged.
 
 Check the homepage's response status as well as its encoding:
 
@@ -355,7 +362,8 @@ posvoji.si {
     try_files {path}.html {path} {path}/index.html
     file_server
 
-    handle_errors {
+    handle_errors 404 {
+        encode zstd gzip
         rewrite * /404.html
         file_server
     }
@@ -368,8 +376,10 @@ posvoji.si {
 }
 ```
 
-`handle_errors` keeps the status Caddy produced, so this serves the branded
-body with a real 404.
+`handle_errors 404` keeps the status Caddy produced, so this serves the branded
+body with a real 404. Error handlers run through a separate route: repeat
+`encode` inside that block so the large HTML body is compressed there too.
+Matching only 404 preserves any separate 401 handler used for the demo gate.
 
 Use the complete shared-media example below in production; media is excluded
 from releases and lives under `/srv/posvoji/media`.
@@ -387,9 +397,32 @@ For example, `/_next/static/chunks/30u6sh46bxos5.js` and
 `/_next/static/media/inter-latin.2bn3s6zvc0dyp.woff2` had no cache policy.
 HTML and compressible chunks carried `Content-Encoding: zstd`; the font was
 served as `font/woff2`. HSTS was present with `max-age=300`.
-The immutable policy below still needs to be applied on the host. No production
-configuration was changed during this verification.
+The immutable policy below was still unapplied on the host at that point. No
+production configuration was changed during that verification.
 
+**Applied and verified 14 October 2026 (Europe/Ljubljana).** The production
+configuration now includes the status-qualified static-asset and root-icon
+rules below, plus `encode zstd gzip` inside `handle_errors 404`. Caddy was
+validated and reloaded through its configured service environment at 17:49:41,
+without a restart. The existing invitation gate and other authentication were
+preserved. This rollout changed host configuration; application code was not
+deployed.
+
+Authenticated Chrome verification found all 25 initial `/_next/static/`
+responses, including both fonts, carried
+`Cache-Control: public, max-age=31536000, immutable`. A later warm navigation
+recorded zero `transferSize` for all 31 static resources. The homepage remained
+`200` with zstd, no `Cache-Control`, and both `ETag` and `Last-Modified`.
+`/icon.svg` returned `200` with `Cache-Control: public, max-age=86400`.
+
+The missing-page probe `/ni-take-strani` returned a real `404` with zstd:
+75,578 encoded body bytes against 429,153 decoded body bytes, about 82.4% less
+body data. These figures measure the complete document body.
+A missing `/_next/static/performance-audit-missing.js` likewise returned `404`
+with zstd and no `Cache-Control`, confirming errors do not acquire the
+year-long immutable policy. The repository monitor's new 404 encoding
+assertion checks the existing request's headers alongside its status and
+branded body.
 
 `next build` names every file under `/_next/static/` for a hash of its
 contents, the way `apps/ingest` names a processed photo. A rebuilt chunk gets a
@@ -599,7 +632,8 @@ posvoji.si {
         match status 2xx 304
     }
 
-    handle_errors {
+    handle_errors 404 {
+        encode zstd gzip
         rewrite * /404.html
         file_server
     }
@@ -621,13 +655,14 @@ first breaks clean URLs such as `/en/resources`.
 
 `encode` is a site-wide directive, and Caddy's directive order runs it ahead of
 the handlers that produce a response wherever it is written in the block, so
-one line covers the documents, the chunks and the media block. Its default
-content-type match leaves the already-compressed images alone.
+one line covers the successful documents, the chunks and the media block. Its
+default content-type match leaves the already-compressed images alone. Errors
+have a separate handler chain, so its 404 block repeats `encode zstd gzip`.
 `precompressed` is the opposite: a `file_server` subdirective, so it applies to
 the release's file server alone, and the media block's stays bare because
 nothing under `/media` has a sidecar.
-`handle_errors` catches a missing media file as well as a missing page, which
-sends the HTML body to a request that wanted an image; the status is what a
+`handle_errors 404` catches a missing media file as well as a missing page,
+which sends the HTML body to a request that wanted an image; the status is what a
 crawler reads and the body is never seen. None of this changes what
 `scripts/validate-caddy-layout.cjs` inspects: it follows roots and reachable
 file servers through `routes`, and Caddy adapts `handle_errors` into a separate

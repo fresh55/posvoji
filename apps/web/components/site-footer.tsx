@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { mailtoHref } from "@/lib/contact-links";
+import { PoetivoLockup } from "@/components/poetivo-lockup";
 import { GITHUB_MARK } from "@/lib/github-mark";
 import { getMessages, interpolate, type Locale } from "@/lib/i18n";
 import { QUIET_UNDERLINE } from "@/lib/link-styles";
 import { verificationTime } from "@/lib/source-freshness";
-import { CONTACT_EMAIL, POETIVO_NAME, POETIVO_URL, REPO_URL } from "@/lib/site";
+import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
 
@@ -303,7 +304,7 @@ export function SiteFooter({
               A row and not a stack, one line from lg, and at phone width it
               wraps into two: at 12px the address and its question measure
               226px against 343px of content at 375, and the repository link
-              and the credit 90px and 92px (93 and 114 in English), so the
+              and the credit 90px and 112px (93 and 134 in English), so the
               pair fits a line of its own with room to spare. That is the wrap this can afford,
               and it is why the repository link says two words: at 221px the
               old sentence took a line of its own and the three took three.
@@ -320,10 +321,11 @@ export function SiteFooter({
               different font fallback, and it would not. Which line the credit
               lands on should not turn on 3px.
 
-              One mark, on the repository link, and none on the other two.
-              The mark says which site the link opens, which a reader cannot
-              read off "odprta koda"; an address says what it is by being
-              one, and the credit's name is the site it opens.
+              A mark on each link that leaves the site, and none on the
+              address. The repository's says which site the link opens, which
+              a reader cannot read off "odprta koda"; the credit's is
+              Poetivo's own, the same lockup the header draws under the
+              site's name; an address says what it is by being one.
 
               The credit is the last of the three and not a line of its own:
               one more line of small print was one too many on a phone, and
@@ -375,20 +377,13 @@ export function SiteFooter({
                 rel="noreferrer"
                 className={FOOTER_ACTION_LINK}
               >
-                {/* The name wears the wordmark. Poetivo's identity is its
-                    name set in Inter 600 with tight tracking and nothing else
-                    (its design notes, "Plain Poetivo identity"), and this site
-                    ships the same Inter, so the wordmark is two utilities and
-                    not an image. The yellow tile it uses as a favicon is for
-                    places where only a sign fits; here a word fits, and the
-                    tile would be the one coloured thing in the footer and, on
-                    the dark theme, the brightest thing on the page. The verb
-                    is the catalogue's and the name is not, so that the name
-                    alone can carry the weight. */}
-                {messages.poweredBy}{" "}
-                <span className="font-semibold tracking-[-0.035em]">
-                  {POETIVO_NAME}
-                </span>
+                {/* The same lockup as the header's, from one component, so
+                    the brand is drawn one way on a page: the tile, the verb
+                    with its capital (this one starts a phrase), the name in
+                    the wordmark's weight. The tile is the one coloured thing
+                    down here, and that is settled above: it is the brand's
+                    mark, and the header already shows it. */}
+                <PoetivoLockup verb={messages.poweredBy} />
                 <span className="sr-only"> {messages.newWindow}</span>
               </a>
             </span>

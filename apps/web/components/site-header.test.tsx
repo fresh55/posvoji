@@ -57,8 +57,11 @@ describe("the site header", () => {
     const brand = container.querySelector<HTMLAnchorElement>("a[data-brand]")!;
     const lockup = brand.querySelector("[data-poetivo]")!;
     expect(lockup).not.toBeNull();
-    expect(lockup.textContent).toContain(messages.poweredBy);
-    expect(lockup.textContent).toContain(POETIVO_NAME);
+    // Lowercased under the lowercase address above it; the footer keeps the
+    // capital, so the two are checked apart.
+    expect(lockup.textContent).toContain(
+      `${messages.poweredBy.toLowerCase()} ${POETIVO_NAME}`,
+    );
     expect(lockup.querySelector("a")).toBeNull();
     expect(brand.getAttribute("aria-label")).toBe("posvoji.si");
   });

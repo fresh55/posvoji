@@ -3,15 +3,9 @@ import { Logo } from "@/components/logo";
 import { LogoHearts } from "@/components/logo-hearts";
 import logoMotion from "@/components/logo-hearts.module.css";
 import { ShelterLogin, SiteMenu, SiteNav } from "@/components/site-menu";
+import { PoetivoLockup } from "@/components/poetivo-lockup";
 import { getMessages, type Locale } from "@/lib/i18n";
-import {
-  POETIVO_INK,
-  POETIVO_MARK,
-  POETIVO_TILE,
-  POETIVO_TILE_RADIUS,
-} from "@/lib/poetivo-mark";
 import { homePath } from "@/lib/shelter-path";
-import { POETIVO_NAME } from "@/lib/site";
 import { CONTENT_ID, SKIP_LINK_PINNED } from "@/lib/skip-link";
 
 type SiteHeaderProps = {
@@ -143,10 +137,11 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
           </span>
           <span className="flex min-w-0 flex-col">
             <span className="truncate">posvoji.si</span>
-            {/* Who builds the site, under its name: "poganja" from the
-                catalogue, then Poetivo's mark and its name in the wordmark's
-                weight. Bruno wanted it up here beside the logo and not only
-                in the footer's small print.
+            {/* Who builds the site, under its name: Poetivo's mark, then
+                "poganja" from the catalogue and the name in the wordmark's
+                weight, the one lockup the footer's credit draws too. Bruno
+                wanted it up here beside the logo and not only in the
+                footer's small print.
 
                 Text inside the home link and not a link of its own, which is
                 the one way it can sit here. A link inside a link is invalid
@@ -164,28 +159,22 @@ export function SiteHeader({ locale, languagePaths }: SiteHeaderProps) {
                 so the header is no taller than before. The line resets the
                 link's weight and tracking and takes the name back for the
                 wordmark alone. It never wraps: a second line would push past
-                the logo and move the whole header.
+                the logo and move the whole header. The 6px gap is the
+                footer's, between its marks and their words.
+
+                The verb is lowercased here and nowhere else: this line sits
+                under "posvoji.si", which is lowercase because it is an
+                address, and a capital in the line below it read as the start
+                of a sentence rather than the rest of a name.
 
                 The tile is the brand's colours and not the theme's, and it is
                 the one coloured thing in this band. That is the brand's own
                 call: the lit window is the mark wherever only a sign fits. */}
             <span
               data-poetivo
-              className="inline-flex items-center gap-1 overflow-hidden text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground"
+              className="inline-flex items-center gap-1.5 overflow-hidden text-xs leading-none font-normal tracking-normal whitespace-nowrap text-muted-foreground"
             >
-              <span className="lowercase">{messages.poweredBy}</span>
-              <svg viewBox="0 0 16 16" aria-hidden className="size-3.5 shrink-0">
-                <rect
-                  width="16"
-                  height="16"
-                  rx={POETIVO_TILE_RADIUS}
-                  fill={POETIVO_TILE}
-                />
-                <path d={POETIVO_MARK} fill={POETIVO_INK} />
-              </svg>
-              <span className="font-semibold tracking-[-0.035em]">
-                {POETIVO_NAME}
-              </span>
+              <PoetivoLockup verb={messages.poweredBy.toLowerCase()} />
             </span>
           </span>
         </a>

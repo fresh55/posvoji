@@ -2,7 +2,7 @@
 
 import { Undo2 } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ResultCount } from "@/components/filters/result-count";
 import { useI18n } from "@/components/i18n-context";
 import { RemovableChips } from "@/components/filters/filter-chips";
@@ -116,6 +116,8 @@ export function FilterSheetContent({
   // Filtri trigger, which by then sits behind the open map: measured, focus
   // left the map for the trigger and the map's trap pulled it back.
   const handingOff = useRef(false);
+  const handoffTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(handoffTimer.current), []);
 
   const close = () => {
     onOpenChange(false);
@@ -125,6 +127,7 @@ export function FilterSheetContent({
   // Down first, then the map (PICKER_HANDOFF_MS). Under reduced motion the
   // sheet leaves in one frame (globals.css), so only the pop is waited for.
   const openScope = () => {
+    window.clearTimeout(handoffTimer.current);
     handingOff.current = true;
     // The sheet's own entry, the one whose pop the map has to wait out.
     const entry = layerEntryKey();
@@ -136,12 +139,13 @@ export function FilterSheetContent({
         layerEntryKey() === entry &&
         performance.now() - asked < PICKER_HANDOFF_LIMIT_MS
       ) {
-        window.setTimeout(handOff, 20);
+        handoffTimer.current = window.setTimeout(handOff, 20);
         return;
       }
+      handoffTimer.current = undefined;
       scope?.onOpen();
     };
-    window.setTimeout(handOff, reduceMotion ? 0 : PICKER_HANDOFF_MS);
+    handoffTimer.current = window.setTimeout(handOff, reduceMotion ? 0 : PICKER_HANDOFF_MS);
   };
 
   return (

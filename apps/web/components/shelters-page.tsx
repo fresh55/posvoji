@@ -30,7 +30,7 @@ const pageText = {
     // formatter prints, so no case or verb has to agree with it.
     lead: "iz registra, kontakti na enem mestu.",
     permissionNote: "Objave živali dodamo z dovoljenjem zavetišč.",
-    join: "Ste zavetišče in se želite vključiti ali je podatek napačen? Pišite na",
+    join: "Ste zavetišče in se želite vključiti? Je kakšen podatek napačen? Pišite na",
     lookupLink: "Najdena žival? Poišči pomoč po občini",
     censusLabel: "Pregled zavetišč",
     withListings: "z objavami",
@@ -45,7 +45,7 @@ const pageText = {
     title: "Shelters across Slovenia",
     lead: "from the registry, contact details in one place.",
     permissionNote: "Animal listings are published with each shelter’s permission.",
-    join: "Would your shelter like to join, or is a detail incorrect? Email",
+    join: "Would your shelter like to join? Is a detail incorrect? Email",
     lookupLink: "Found an animal? Find help by municipality",
     censusLabel: "Shelter overview",
     withListings: "with listings",
@@ -312,7 +312,8 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             {CONTACT_EMAIL}
           </a>.
         </p>
-        <ShelterRegistrySource locale={locale} />
+        {/* The 8px paragraph gap plus 16px padding clears both touch overlays. */}
+        <ShelterRegistrySource locale={locale} className="pointer-coarse:pt-4" />
       </div>
     </SiteShell>
   );

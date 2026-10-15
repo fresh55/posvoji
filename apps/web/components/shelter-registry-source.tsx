@@ -1,19 +1,19 @@
 import type { Locale } from "@/lib/i18n";
 import { registerDateLabel } from "@/lib/date-label";
 import { MUTED_SENTENCE_LINK } from "@/lib/link-styles";
-import { shelterRegisterDate, shelterRegisterUrl } from "@/lib/shelters";
+import { shelterRegisterDate, shelterRegisterIndexUrl } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
 
 const text = {
   sl: {
     source: "Vir:",
-    register: "register zavetišč UVHVVR (gov.si, DOCX)",
+    register: "register zavetišč UVHVVR (gov.si)",
     edition: "izdaja",
     supplement: "dopolnjeno s spletnimi stranmi zavetišč",
   },
   en: {
     source: "Source:",
-    register: "UVHVVR shelter registry (gov.si, DOCX)",
+    register: "UVHVVR shelter registry (gov.si)",
     edition: "edition",
     supplement: "supplemented with shelters’ websites",
   },
@@ -24,7 +24,7 @@ const text = {
 export function ShelterRegistrySource({ locale, className }: { locale: Locale; className?: string }) {
   const copy = text[locale];
   const date = shelterRegisterDate();
-  const url = shelterRegisterUrl();
+  const url = shelterRegisterIndexUrl();
 
   return (
     <p className={cn("text-xs text-muted-foreground", className)}>

@@ -122,26 +122,30 @@ describe("a registry the loader cannot read", () => {
   });
 
   it("reads the registry source and edition from metadata", async () => {
-    const { shelterRegisterDate, shelterRegisterUrl } = await registryOf(
-      'meta:\n  register_date: 2026-02-23\n  register_url: https://example.test/register.docx\n' + GOOD,
+    const { shelterRegisterDate, shelterRegisterUrl, shelterRegisterIndexUrl } = await registryOf(
+      'meta:\n  register_date: 2026-02-23\n  register_url: https://example.test/register.docx\n  register_index_url: https://example.test/register\n' + GOOD,
     );
     expect(shelterRegisterDate()).toBe("2026-02-23");
     expect(shelterRegisterUrl()).toBe("https://example.test/register.docx");
+    expect(shelterRegisterIndexUrl()).toBe("https://example.test/register");
   });
 
   it("keeps unrecorded registry metadata absent", async () => {
-    const { shelterRegisterDate, shelterRegisterUrl } = await registryOf(GOOD);
+    const { shelterRegisterDate, shelterRegisterUrl, shelterRegisterIndexUrl } = await registryOf(GOOD);
     expect(shelterRegisterDate()).toBeUndefined();
     expect(shelterRegisterUrl()).toBeUndefined();
+    expect(shelterRegisterIndexUrl()).toBeUndefined();
   });
 
-  it.each(["javascript:alert(1)", "data:text/html,example", "not a URL", 42])(
-    "rejects an unusable registry source URL: %s",
-    async (url) => {
+  it.each(["register_url", "register_index_url"].flatMap(field =>
+    ["javascript:alert(1)", "data:text/html,example", "not a URL", 42].map(url => ({ field, url })),
+  ))(
+    "rejects an unusable $field: $url",
+    async ({ field, url }) => {
       const { loadShelters: load } = await registryOf(
-        `meta:\n  register_url: ${JSON.stringify(url)}\n` + GOOD,
+        `meta:\n  ${field}: ${JSON.stringify(url)}\n` + GOOD,
       );
-      expect(load).toThrow(/meta.register_url is unusable/);
+      expect(load).toThrow(`meta.${field} is unusable`);
     },
   );
 

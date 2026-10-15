@@ -17,7 +17,7 @@ const fixtures = vi.hoisted(() => ({
 vi.mock("@/lib/shelters", () => ({
   loadShelters: () => fixtures.shelters,
   shelterRegisterDate: () => "2026-02-23",
-  shelterRegisterUrl: () => "https://example.test/shelter-registry.docx",
+  shelterRegisterIndexUrl: () => "https://example.test/shelter-registry",
 }));
 vi.mock("@/lib/dataset", () => ({ loadDataset: fixtures.loadDataset }));
 vi.mock("@/lib/shelter-logos", () => ({ getShelterLogos: () => ({}) }));
@@ -67,8 +67,8 @@ describe("shelter directory context", () => {
   });
 
   it.each([
-    { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti ali je podatek napačen?", directory: "Zavetišča" },
-    { locale: "en" as const, invitation: "Would your shelter like to join, or is a detail incorrect?", directory: "Shelters" },
+    { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti? Je kakšen podatek napačen?", directory: "Zavetišča" },
+    { locale: "en" as const, invitation: "Would your shelter like to join? Is a detail incorrect?", directory: "Shelters" },
   ])("offers one contact for joining and corrections across the whole page in $locale", ({ locale, invitation, directory }) => {
     render(<SheltersPage locale={locale} />);
     const main = within(screen.getByRole("main"));
@@ -98,7 +98,7 @@ describe("shelter directory context", () => {
     const { container } = render(<SheltersPage locale={locale} />);
     const main = screen.getByRole("main");
     const source = within(main).getByRole("link", { name: /UVHVVR/ });
-    expect(source.getAttribute("href")).toBe("https://example.test/shelter-registry.docx");
+    expect(source.getAttribute("href")).toBe("https://example.test/shelter-registry");
     expect(source.closest("p")?.textContent).toContain(edition);
     expect(source.closest("p")?.textContent).toContain(supplement);
     const publication = verificationTime("2026-10-15T12:00:00.000Z", locale);

@@ -163,12 +163,12 @@ function registerDateOf(meta: unknown): string | undefined {
   return undefined;
 }
 
-function registerUrlOf(meta: unknown): string | undefined {
+function registerUrlOf(meta: unknown, field: "register_url" | "register_index_url"): string | undefined {
   if (!meta || typeof meta !== "object") return undefined;
-  const value = (meta as Record<string, unknown>).register_url;
+  const value = (meta as Record<string, unknown>)[field];
   if (value === undefined) return undefined;
   const problem = websiteProblem(value);
-  if (problem) throw new Error(`The shelter registry meta.register_url is unusable: ${problem}`);
+  if (problem) throw new Error(`The shelter registry meta.${field} is unusable: ${problem}`);
   return value as string;
 }
 
@@ -176,6 +176,7 @@ type Registry = {
   shelters: ShelterRegistryEntry[];
   registerDate: string | undefined;
   registerUrl: string | undefined;
+  registerIndexUrl: string | undefined;
 };
 
 // Read at build time, same as loadDataset. data/shelters.yaml is reference
@@ -258,7 +259,8 @@ function loadRegistry(): Registry {
   cached = {
     shelters: raw as ShelterRegistryEntry[],
     registerDate: registerDateOf(parsed?.meta),
-    registerUrl: registerUrlOf(parsed?.meta),
+    registerUrl: registerUrlOf(parsed?.meta, "register_url"),
+    registerIndexUrl: registerUrlOf(parsed?.meta, "register_index_url"),
   };
   return cached;
 }
@@ -291,6 +293,11 @@ export function shelterRegisterDate(): string | undefined {
 /** The official source for the registry edition, when recorded. */
 export function shelterRegisterUrl(): string | undefined {
   return loadRegistry().registerUrl;
+}
+
+/** The public index lists the registry editions without starting a download. */
+export function shelterRegisterIndexUrl(): string | undefined {
+  return loadRegistry().registerIndexUrl;
 }
 
 export function getShelterBySlug(

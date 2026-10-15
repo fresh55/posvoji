@@ -216,7 +216,7 @@ describe("the cat model", () => {
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
     expect(hints()).toHaveLength(2);
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tap or click to try again"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load."));
     // Half a megabyte nothing is left to read: the links download the model
     // on their own, so a stage that has already failed takes them back.
     expect(hints()).toEqual([]);
@@ -303,7 +303,7 @@ describe("the cat model", () => {
     expect(stage.contains(retry)).toBe(false);
     act(() => retry.focus());
     expect(document.activeElement).toBe(retry);
-    expect(screen.getByRole("status").textContent).toContain("Tap or click to try again");
+    expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load.");
     expect(stage.classList.contains("cursor-progress")).toBe(false);
     expect(document.querySelector("model-viewer")).toBeNull();
     fireEvent.click(retry);
@@ -318,6 +318,45 @@ describe("the cat model", () => {
     expect(screen.queryByRole("button", { name: "Start 3D view" })).toBeNull();
     await loadViewer();
     expect(document.querySelector("model-viewer")).not.toBeNull();
+  });
+
+  it.each([
+    { locale: "en" as const, startOnReach: false, retryLabel: "Try again" },
+    { locale: "sl" as const, startOnReach: true, retryLabel: "Poskusi znova" },
+  ])("keeps retry available while focusing or hovering a failed $locale model", async ({ locale, startOnReach, retryLabel }) => {
+    render(
+      <figure>
+        <CatModel
+          sizes="100vw"
+          locale={locale}
+          startOnReach={startOnReach}
+          renderCaption={(action) => <figcaption><a href="/srecko">Srečko</a>{action}</figcaption>}
+        />
+      </figure>,
+    );
+    await act(async () => intersect(true));
+    reachFor();
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    const first = document.querySelector("model-viewer")!;
+    fireEvent(first, new Event("error"));
+    const retry = screen.getByRole("button", { name: retryLabel });
+
+    act(() => screen.getByRole("link", { name: "Srečko" }).focus());
+    reachFor();
+    act(() => retry.focus());
+    await act(async () => {});
+    expect(document.activeElement).toBe(retry);
+    expect(document.querySelector("model-viewer")).toBeNull();
+    expect(hints()).toEqual([]);
+    expect(screen.getByRole("img")).toBeTruthy();
+
+    fireEvent.click(retry);
+    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    const second = document.querySelector("model-viewer")!;
+    expect(second).not.toBe(first);
+    expect(second.getAttribute("src")).toContain("retry=1");
+    expect(document.querySelectorAll("model-viewer")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: retryLabel })).toBeNull();
   });
 
   it("keeps the homepage's reach behavior under Save-Data", async () => {
@@ -556,12 +595,12 @@ describe("the cat model", () => {
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
     expect(viewer.paused).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("Tap or click to try again");
+    expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load.");
     expect(screen.getByRole("img").getAttribute("alt")).toContain("white cat");
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByRole("button", { name: "Try again" }).tagName).toBe("BUTTON");
   });
 
-  it("retries a failed model only on another reach, with one fresh viewer and matching hints", async () => {
+  it("retries a failed model only on a press, with one fresh viewer and matching hints", async () => {
     render(<CatModel sizes="100vw" locale="en" />);
     const first = await loadViewer(undefined, false);
     const firstUrl = first.getAttribute("src");
@@ -592,13 +631,13 @@ describe("the cat model", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("can retry a renderer setup failure on another reach", async () => {
+  it("can retry a renderer setup failure with the retry button", async () => {
     viewerModule.fails = true;
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tap or click to try again"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load."));
     viewerModule.fails = false;
-    reachFor();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
     expect(screen.getByRole("status").textContent).toContain("still loading");
   });
@@ -618,7 +657,7 @@ describe("the cat model", () => {
     reachFor();
     expect(shown()).toBe(true);
     fireEvent(viewer, new Event("error"));
-    reachFor();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await act(async () => {});
     expect(screen.getByRole("status").textContent).toBe("The cat is still loading …");
   });
@@ -670,14 +709,14 @@ describe("the cat model", () => {
     expect(shown()).toBe(false);
     fireEvent(viewer, new Event("error"));
     expect(shown()).toBe(true);
-    expect(screen.getByRole("status").textContent).toContain("Dotakni se ga za nov poskus");
+    expect(screen.getByRole("status").textContent).toBe("3D-ogled ni uspel.");
   });
 
   it("does not apologise for a failure to someone who never reached for him", async () => {
     render(<CatModel sizes="100vw" locale="sl" />);
     const viewer = await loadViewer();
     fireEvent(viewer, new Event("error"));
-    expect(screen.getByRole("status").textContent).toContain("Dotakni se ga za nov poskus");
+    expect(screen.getByRole("status").textContent).toBe("3D-ogled ni uspel.");
     expect(shown()).toBe(false);
     reachFor();
     expect(shown()).toBe(true);

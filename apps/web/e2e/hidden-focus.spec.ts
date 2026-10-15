@@ -51,30 +51,52 @@ test("offers no unnamed tab stop in the animal dialog", async ({ page }) => {
 // becomes a named image or is gone within a few frames, before a sweep can
 // see it.
 //
-// Once the request fails, the stage removes the viewer and waits for a reach
-// to retry under a fresh URL, because model-viewer caches a failed load. The
-// second sweep reads the failed stage as it is left.
-test("offers no unnamed tab stop on the about page while the cat is missing", async ({
-  page,
-}) => {
-  let fail = () => {};
-  const failed = new Promise<void>((resolve) => {
-    fail = resolve;
+// A failed viewer leaves a named retry button. Tab must reach it without
+// starting another download; Enter and Space must both retry successfully.
+for (const { path, retryLabel, key } of [
+  { path: "/o-nas", retryLabel: "Poskusi znova", key: "Enter" },
+  { path: "/en/about", retryLabel: "Try again", key: "Space" },
+]) {
+  test(`keeps the missing cat accessible and retries with ${key} on ${path}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    let fail = () => {};
+    let allowModel = false;
+    const failed = new Promise<void>((resolve) => {
+      fail = resolve;
+    });
+    await page.route("**/models/our-cat/cat.glb*", async (route) => {
+      if (allowModel) {
+        await route.continue();
+        return;
+      }
+      await failed;
+      await route.abort();
+    });
+    await page.goto(path);
+    const stage = page.locator('img[src*="/models/our-cat/poster.webp"]');
+    await stage.scrollIntoViewIfNeeded();
+    const viewer = page.locator("model-viewer");
+    await expect(viewer).toBeAttached();
+
+    expect(await hiddenFocusables(page)).toEqual([]);
+
+    fail();
+    await expect(viewer).not.toBeAttached();
+
+    expect(await hiddenFocusables(page)).toEqual([]);
+    await expect(stage).toBeVisible();
+    const retry = page.getByRole("button", { name: retryLabel, exact: true });
+    await expect(retry).toBeVisible();
+    await page.locator("figure").getByRole("link").focus();
+    await page.keyboard.press("Tab");
+    await expect(retry).toBeFocused();
+    await expect(viewer).not.toBeAttached();
+
+    allowModel = true;
+    await page.keyboard.press(key);
+    await expect(viewer).toHaveAttribute("src", /[&?]retry=1(?:&|$)/);
+    await expect(viewer.locator("..")).toHaveAttribute("aria-hidden", "false");
+    await expect(retry).not.toBeAttached();
+    expect(await hiddenFocusables(page)).toEqual([]);
   });
-  await page.route("**/models/our-cat/cat.glb*", async (route) => {
-    await failed;
-    await route.abort();
-  });
-  await page.goto("/o-nas");
-  const stage = page.locator('img[src*="/models/our-cat/poster.webp"]');
-  await stage.scrollIntoViewIfNeeded();
-  const viewer = page.locator("model-viewer");
-  await expect(viewer).toBeAttached();
-
-  expect(await hiddenFocusables(page)).toEqual([]);
-
-  fail();
-  await expect(viewer).not.toBeAttached();
-
-  expect(await hiddenFocusables(page)).toEqual([]);
-});
+}

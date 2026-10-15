@@ -32,8 +32,8 @@ describe("the about page", () => {
       "Za posvojitelje", "Za zavetišča", "Kontakt",
     ]);
     expect(screen.getAllByRole("heading", { level: 3 }).map(node => node.textContent)).toEqual([
-      "Kako poteka posvojitev?", "Ali žival še išče dom?", "Brezplačna uporaba",
-      "Zavetišča odločate o svojih vsebinah", "Kako se zavetišče vključi?",
+      "Posvojitev poteka pri zavetišču", "Pred obiskom preveri, ali žival še išče dom", "Brezplačen ogled, brez računa",
+      "Vi odločate o svojih vsebinah", "Kako se vključite?",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
@@ -80,13 +80,12 @@ describe("the about page", () => {
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
   });
 
-  // Two sections built the same way, one heading and its rows each, and
-  // the address after both: a visitor reporting an adopted animal writes to
-  // it as much as a shelter does, so it belongs to neither section.
+  // Shelter participation has its own contact action. The closing address
+  // remains available to visitors reporting a correction.
   it.each([
-    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča" },
-    { locale: "en" as const, adopters: "For adopters", availability: "Is the animal still available?", shelters: "For shelters" },
-  ])("keeps availability with adopters and the address after both sections (%s)", ({ locale, adopters, availability, shelters }) => {
+    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Pred obiskom preveri, ali žival še išče dom", shelters: "Za zavetišča", email: "Pišite na info@posvoji.si", login: "Že imate dostop? Prijava za zavetišča" },
+    { locale: "en" as const, adopters: "For adopters", availability: "Before visiting, check whether the animal still needs a home", shelters: "For shelters", email: "Email info@posvoji.si", login: "Already have access? Shelter login" },
+  ])("keeps each audience's guidance and contact actions together (%s)", ({ locale, adopters, availability, shelters, email, login }) => {
     render(<AboutPage locale={locale} />);
     const adopterSection = screen.getByRole("region", { name: adopters });
     const shelterSection = screen.getByRole("region", { name: shelters });
@@ -95,6 +94,11 @@ describe("the about page", () => {
     expect(within(shelterSection).getAllByRole("heading", { level: 3 })).toHaveLength(2);
     expect(adopterSection.compareDocumentPosition(shelterSection) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
+    const join = within(shelterSection).getByRole("link", { name: email });
+    expect(join.getAttribute("href")).toBe("mailto:info@posvoji.si");
+    expect(join.getAttribute("data-slot")).toBeNull();
+    expect(within(shelterSection).getByRole("link", { name: login }).getAttribute("href"))
+      .toBe("/portal/prijava");
     // Where the address sits, not what it points at: the test below owns the
     // href. queryByRole is the load-bearing half of the pair under it, because
     // compareDocumentPosition reports FOLLOWING for a descendant too, so the
@@ -132,7 +136,7 @@ describe("the about page", () => {
   // The policy is a page of this site, and it used to be a markdown file on
   // github.com: the one link on this page a shelter has a reason to open.
   it.each<[Locale, string, string]>([
-    ["sl", "O vsebinah in dovoljenjih", "/o-nas/vsebine"],
+    ["sl", "Vsebine in dovoljenja", "/o-nas/vsebine"],
     ["en", "Content and permissions", "/en/about/content"],
   ])("links the policy on-site (%s)", (locale, label, href) => {
     render(<AboutPage locale={locale} />);
@@ -149,8 +153,8 @@ describe("the about page", () => {
   // row links stay quiet: a primary action styled like a footnote was the
   // hierarchy fault this pins.
   it.each<[Locale, string, string]>([
-    ["sl", "Poišči žival, ki išče dom", "/"],
-    ["en", "Find an animal looking for a home", "/en"],
+    ["sl", "Poglej živali, ki iščejo dom", "/"],
+    ["en", "Browse animals looking for a home", "/en"],
   ])("draws the adopter's action as a button (%s)", (locale, label, href) => {
     render(<AboutPage locale={locale} />);
 
@@ -158,7 +162,7 @@ describe("the about page", () => {
     expect(action.getAttribute("href")).toBe(href);
     expect(action.getAttribute("data-slot")).toBe("button");
     expect(
-      screen.getByRole("link", { name: /O vsebinah|Content and/ }).getAttribute("data-slot"),
+      screen.getByRole("link", { name: /Vsebine|Content and/ }).getAttribute("data-slot"),
     ).toBeNull();
   });
 

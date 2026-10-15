@@ -92,10 +92,9 @@ export function SiteFooter({
   showAboutLink?: boolean;
   /**
    * The correction route, passed off by a page that already states the address
-   * itself. Same rule as the three flags above, for the same reason: /o-nas
-   * prints it in its contact block and the portal's login prints it under the
-   * form, so on those two a footer copy is the second time the reader is given
-   * the same address on one screen.
+   * itself. /o-nas and the shelter directory print it in their contact blocks,
+   * and the portal's login prints it under the form. On those pages a footer
+   * copy repeats the same address on one screen.
    *
    * The portal has a further reason. Its login card takes the address away once
    * the link is sent, because at that point the way out is the mail already on

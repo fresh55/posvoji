@@ -46,6 +46,37 @@ const REGISTER = "/zavetisca";
 const CARD = 'li[id^="zavetisce-"]';
 const CHANNELS = ["phone", "email", "website"] as const;
 
+test.describe("directory contact touch areas", () => {
+  test.use({ isMobile: true, hasTouch: true });
+
+  for (const route of ["/zavetisca", "/en/shelters"]) {
+    for (const width of [320, 390]) {
+      test(`${route}: email touch area stays clear of the registry link at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 844 });
+        await page.goto(route);
+        const email = page.locator('main a[href="mailto:info@posvoji.si"]');
+        await email.scrollIntoViewIfNeeded();
+        const hits = await email.evaluate(link => {
+          const rect = link.getBoundingClientRect();
+          const height = parseFloat(getComputedStyle(link, "::after").height);
+          const x = rect.x + rect.width / 2;
+          const bottom = rect.y + rect.height / 2 + height / 2;
+          return {
+            coarse: matchMedia("(pointer: coarse)").matches,
+            height,
+            hrefs: [rect.y + rect.height / 2, bottom - 4, bottom - 1].map(y =>
+              document.elementFromPoint(x, y)?.closest("a")?.getAttribute("href"),
+            ),
+          };
+        });
+        expect(hits.coarse).toBe(true);
+        expect(hits.height).toBeGreaterThanOrEqual(44);
+        expect(hits.hrefs).toEqual(Array(3).fill("mailto:info@posvoji.si"));
+      });
+    }
+  }
+});
+
 test.describe("mobile shelter names", () => {
   // A narrow desktop viewport reserves scrollbar space and keeps fine-pointer
   // targets. Exercise the actual phone layout and available content width.
@@ -121,13 +152,21 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
   test(`${indexPath}: one email invitation follows the directory and reflows`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });
     await page.goto(indexPath);
-    const invite = page.locator('main a[href="mailto:info@posvoji.si"]');
+    const invite = page.locator('a[href="mailto:info@posvoji.si"]');
     await expect(invite).toHaveCount(1);
+    await expect(invite.locator("..")).toContainText(
+      indexPath === "/zavetisca" ? "podatek napačen" : "detail incorrect",
+    );
     const inviteBox = await invite.boundingBox();
     const lastCardBox = await page.locator(CARD).last().boundingBox();
     expect(inviteBox!.y).toBeGreaterThan(lastCardBox!.y + lastCardBox!.height);
     await page.evaluate(() => { document.documentElement.style.fontSize = "32px"; });
     expect(await invite.evaluate(el => el.parentElement!.scrollWidth - el.parentElement!.clientWidth)).toBeLessThanOrEqual(1);
+    const source = page.getByRole("link", { name: /UVHVVR/ });
+    await expect(source).toHaveAttribute("href", "https://www.gov.si/zbirke/storitve/obrati-na-podrocju-zdravja-zivali/");
+    await source.scrollIntoViewIfNeeded();
+    await expect(source).toBeVisible();
+    expect(await source.evaluate(el => el.parentElement!.scrollWidth - el.parentElement!.clientWidth)).toBeLessThanOrEqual(1);
   });
 
   test(`${indexPath}: keyboard users can skip the register`, async ({ page }) => {
@@ -139,6 +178,8 @@ for (const indexPath of ["/zavetisca", "/en/shelters"]) {
     await page.keyboard.press("Tab");
     // The invitation now follows the directory alongside its permission note.
     await expect(page.locator('main a[href="mailto:info@posvoji.si"]')).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("link", { name: /UVHVVR/ })).toBeFocused();
     await page.keyboard.press("Tab");
     // Back to top is legitimately between the register and the footer.
     if (await page.locator('[data-slot="back-to-top"]:focus').count()) {

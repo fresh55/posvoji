@@ -121,6 +121,34 @@ describe("a registry the loader cannot read", () => {
     expect(load()[0]).toMatchObject({ id: "zonzani", city: "Dramlje" });
   });
 
+  it("reads the registry source and edition from metadata", async () => {
+    const { shelterRegisterDate, shelterRegisterUrl, shelterRegisterIndexUrl } = await registryOf(
+      'meta:\n  register_date: 2026-02-23\n  register_url: https://example.test/register.docx\n  register_index_url: https://example.test/register\n' + GOOD,
+    );
+    expect(shelterRegisterDate()).toBe("2026-02-23");
+    expect(shelterRegisterUrl()).toBe("https://example.test/register.docx");
+    expect(shelterRegisterIndexUrl()).toBe("https://example.test/register");
+  });
+
+  it("keeps unrecorded registry metadata absent", async () => {
+    const { shelterRegisterDate, shelterRegisterUrl, shelterRegisterIndexUrl } = await registryOf(GOOD);
+    expect(shelterRegisterDate()).toBeUndefined();
+    expect(shelterRegisterUrl()).toBeUndefined();
+    expect(shelterRegisterIndexUrl()).toBeUndefined();
+  });
+
+  it.each(["register_url", "register_index_url"].flatMap(field =>
+    ["javascript:alert(1)", "data:text/html,example", "not a URL", 42].map(url => ({ field, url })),
+  ))(
+    "rejects an unusable $field: $url",
+    async ({ field, url }) => {
+      const { loadShelters: load } = await registryOf(
+        `meta:\n  ${field}: ${JSON.stringify(url)}\n` + GOOD,
+      );
+      expect(load).toThrow(`meta.${field} is unusable`);
+    },
+  );
+
   it("keeps missing contact fields absent in a sparse registry", async () => {
     const { loadShelters: load } = await registryOf(
       "shelters:\n  - id: example\n    name: Example shelter\n    city: Example town\n",

@@ -71,7 +71,7 @@ const pageText: Record<Locale, PageText> = {
       {
         key: "ownership",
         title: "Vaše vsebine ostanejo vaše",
-        body: "Zavetišče določi, katere fotografije in koliko opisa smemo prikazati. Za logotip in fotografije ob deljenju povezav potrebujemo ustrezno dovoljenje. Objava pri nas drugim ne daje dovoljenja za ponovno uporabo fotografij in besedil.",
+        body: "Zavetišče določi, ali smemo prikazati fotografije in koliko opisa. Za logotip in fotografije ob deljenju povezav potrebujemo ustrezno dovoljenje. Objava pri nas drugim ne daje dovoljenja za ponovno uporabo fotografij in besedil.",
       },
       {
         key: "source",
@@ -105,7 +105,7 @@ const pageText: Record<Locale, PageText> = {
       {
         key: "ownership",
         title: "Your content stays yours",
-        body: "The shelter decides which photos and how much of a description we may show. Using its logo or photos in shared link previews also requires permission. Publication here does not give others permission to reuse the photos or text.",
+        body: "The shelter decides whether we may show photos and how much of a description we may display. Using its logo or photos in shared link previews also requires permission. Publication here does not give others permission to reuse the photos or text.",
       },
       {
         key: "source",

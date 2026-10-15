@@ -39,7 +39,7 @@ type AboutPoint = {
   body: string;
   /** primary marks the one thing a section's reader came to do, drawn as a
    *  button. Every other link stays a quiet text link under its row. */
-  link?: { label: string; href: string; primary?: true };
+  links?: { label: string; href: string; primary?: true }[];
 };
 
 /** One audience: its heading, and the facts addressed to it. The rows under
@@ -87,25 +87,25 @@ type PointKey = keyof typeof pointIcons;
 // docs/COPY-VOICE.md has the rule.
 const pageText: Record<Locale, PageText> = {
   sl: {
-    lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
+    lead: "Posvoji.si na enem mestu združuje objave sodelujočih slovenskih zavetišč, da živali lažje najdejo dom.",
     adopters: {
       title: "Za posvojitelje",
       points: [
         {
           key: "shelterDecides",
-          title: "Kako poteka posvojitev?",
-          body: "Ob vsaki objavi je navedeno zavetišče, ki za žival skrbi. Z njim se pogovori o njenih potrebah, svojem vsakdanu in spoznavanju. Zavetišče ti pojasni pogoje in morebitne stroške ter vodi posvojitev.",
-          link: { label: "Poišči žival, ki išče dom", href: "/", primary: true },
+          title: "Posvojitev poteka pri zavetišču",
+          body: "Za informacije o živali in spoznavanje se obrni na zavetišče, navedeno ob objavi. Tam ti pojasnijo potrebe živali, pogoje posvojitve in morebitne stroške.",
+          links: [{ label: "Poglej živali, ki iščejo dom", href: "/", primary: true }],
         },
         {
           key: "freshness",
-          title: "Ali žival še išče dom?",
-          body: "Objave se lahko spremenijo, preden se sprememba pokaže pri nas. Pred obiskom pri zavetišču preveri, ali je žival še na voljo, in se dogovori za termin. Naš seznam ne zajema vseh živali in zavetišč.",
+          title: "Pred obiskom preveri, ali žival še išče dom",
+          body: "Spremembe objav niso vedno takoj vidne pri nas. Pri zavetišču preveri, ali žival še išče dom, in se dogovori za obisk. Naš seznam ne zajema vseh živali in zavetišč.",
         },
         {
           key: "free",
-          title: "Brezplačna uporaba",
-          body: "Ogled živali in sodelovanje zavetišč sta brezplačna. Za ogled ne potrebuješ računa. Na strani ni oglasov ali plačanih prednostnih uvrstitev.",
+          title: "Brezplačen ogled, brez računa",
+          body: "Živali si lahko ogledaš brezplačno in brez računa. Na strani ni oglasov ali plačanih prednostnih uvrstitev.",
         },
       ],
     },
@@ -114,42 +114,45 @@ const pageText: Record<Locale, PageText> = {
       points: [
         {
           key: "shelterData",
-          title: "Zavetišča odločate o svojih vsebinah",
-          body: "Vaše objave vključimo z vašim dovoljenjem in obiskovalce usmerimo k vam. Sami določite, katere fotografije in opise smemo uporabiti; vir vedno navedemo. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
-          link: { label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl },
+          title: "Vi odločate o svojih vsebinah",
+          body: "Vaše objave vključimo s pisnim dovoljenjem. Sami določite, ali smemo prikazati fotografije in koliko opisa. Vir vedno navedemo. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
+          links: [{ label: "Vsebine in dovoljenja", href: DATA_POLICY_PATHS.sl }],
         },
         {
           key: "shelterJoin",
-          title: "Kako se zavetišče vključi?",
-          body: "Pišite nam na naslov pod Kontakt spodaj. Dogovorimo se o objavah z vaše spletne strani ali neposrednem vnosu pri nas, če svojega seznama živali nimate. Za ureditev dostopa do prijave nam prav tako pišite.",
-          link: { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
+          title: "Kako se vključite?",
+          body: "Sodelovanje je brezplačno. Pišite nam in dogovorimo se o vključitvi. Objave lahko prevzamemo z vaše spletne strani; če lastnega seznama živali nimate, jih lahko objavljate neposredno pri nas.",
+          links: [
+            { label: `Pišite na ${CONTACT_EMAIL}`, href: mailtoHref(CONTACT_EMAIL) },
+            { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
+          ],
         },
       ],
     },
     contact: "Kontakt",
     report:
-      "Si opazil napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti. Na isti naslov pišejo tudi zavetišča za sodelovanje, umik vsebin ali predlog.",
+      "Opaziš napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti.",
   },
   en: {
-    lead: "We want to help shelter animals find a home. Posvoji.si brings listings from participating Slovenian shelters together in one place.",
+    lead: "Posvoji.si brings listings from participating Slovenian shelters together in one place to help animals find a home.",
     adopters: {
       title: "For adopters",
       points: [
         {
           key: "shelterDecides",
-          title: "How does adoption work?",
-          body: "Each listing names the shelter caring for the animal. Talk to them about the animal’s needs, your daily routine and arranging a meeting. The shelter explains the requirements and any costs, and handles the adoption.",
-          link: { label: "Find an animal looking for a home", href: "/en", primary: true },
+          title: "Adoption goes through the shelter",
+          body: "Contact the shelter named in the listing to learn about the animal and arrange a meeting. They will explain the animal’s needs, adoption requirements and any costs.",
+          links: [{ label: "Browse animals looking for a home", href: "/en", primary: true }],
         },
         {
           key: "freshness",
-          title: "Is the animal still available?",
-          body: "Listings can change before the update appears here. Before visiting, check availability with the shelter and arrange a time to meet. Our list does not include every animal or shelter.",
+          title: "Before visiting, check whether the animal still needs a home",
+          body: "Changes to listings may not appear here immediately. Check with the shelter whether the animal still needs a home and arrange a visit. Our list does not include every animal or shelter.",
         },
         {
           key: "free",
-          title: "Free to use",
-          body: "Browsing and shelter participation are free. You do not need an account to browse. There are no ads or paid priority listings.",
+          title: "Free browsing, no account needed",
+          body: "You can browse animals for free without an account. There are no ads or paid priority listings.",
         },
       ],
     },
@@ -158,21 +161,24 @@ const pageText: Record<Locale, PageText> = {
       points: [
         {
           key: "shelterData",
-          title: "Shelters stay in control of their content",
-          body: "We include your listings with your permission and direct visitors to you. You decide which photos and descriptions we may use, and we always credit the source. You can request corrections, content removal or an end to your participation at any time.",
-          link: { label: "Content and permissions", href: DATA_POLICY_PATHS.en },
+          title: "You stay in control of your content",
+          body: "We include your listings with written permission. You decide whether we may show photos and how much of a description we may display. We always credit the source. You can request corrections, content removal or an end to your participation at any time.",
+          links: [{ label: "Content and permissions", href: DATA_POLICY_PATHS.en }],
         },
         {
           key: "shelterJoin",
-          title: "How can a shelter join?",
-          body: "Email us at the address under Contact below. We can arrange to use listings from your website, or help you list animals here if you do not have a catalogue of your own. Email us to arrange login access too.",
-          link: { label: "Already have access? Shelter login", href: "/portal/prijava" },
+          title: "How can you join?",
+          body: "Participation is free. Email us to arrange joining. We can include listings from your website; if you do not have a catalogue of your own, you can publish listings directly here.",
+          links: [
+            { label: `Email ${CONTACT_EMAIL}`, href: mailtoHref(CONTACT_EMAIL) },
+            { label: "Already have access? Shelter login", href: "/portal/prijava" },
+          ],
         },
       ],
     },
     contact: "Contact",
     report:
-      "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting. Use the same address to join, request content removal or share a suggestion.",
+      "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting.",
   },
 };
 
@@ -183,13 +189,13 @@ const pageText: Record<Locale, PageText> = {
 // tablet is a thumb and a 1024px laptop window is not.
 const THUMB_BUTTON = `${COARSE_ACTION} pointer-coarse:gap-1.5`;
 
-/** w-fit because this one sits in a flex column; the rest is the shared rule. */
-const POINT_LINK = `${QUIET_DOC_LINK} w-fit`;
+/** Fit the text while keeping wrapped links inside their content column. */
+const POINT_LINK = `${QUIET_DOC_LINK} w-fit max-w-full`;
 
 // A whole section: the heading and the rows it governs, so the two cannot be
 // written at odds. The rows are h3s under the section's h2, one style for
 // every row, which makes the ladder on a phone the 24px title, a 20px
-// section heading, a 16px row and its 14px body, and 24px from sm up. When
+// section heading, a 16px row and its 14px body, growing to 16px from sm. When
 // the adopter rows were h2s at 20px they outweighed the "Za zavetišča"
 // heading under them and the page read as one size again.
 //
@@ -219,6 +225,8 @@ function AboutSection({
       <div className="divide-y">
         {section.points.map((point) => {
           const Icon = pointIcons[point.key];
+          // Stacked links need real touch boxes so their tap-target overlays do not overlap.
+          const crowdedLinks = (point.links?.length ?? 0) > 1;
           return (
             <Item key={point.key} layout="row" className="px-0 py-4 last:pb-0">
               <ItemMedia className="mt-px">
@@ -228,25 +236,30 @@ function AboutSection({
                 <ItemTitle asChild className="text-base font-medium">
                   <h3>{point.title}</h3>
                 </ItemTitle>
-                <ItemDescription className="text-sm leading-relaxed">
+                <ItemDescription className="text-sm leading-relaxed sm:text-base sm:leading-relaxed">
                   {point.body}
                 </ItemDescription>
-                {point.link?.primary ? (
+                {point.links?.map((link) => link.primary ? (
                   <Button
+                    key={link.href}
                     asChild
                     size="wrap"
                     className={`${THUMB_BUTTON} mt-2 w-fit max-w-full`}
                   >
-                    <a href={point.link.href}>
-                      {point.link.label}
+                    <a href={link.href}>
+                      {link.label}
                       <ArrowRight aria-hidden data-icon="inline-end" />
                     </a>
                   </Button>
-                ) : point.link ? (
-                  <a href={point.link.href} className={POINT_LINK}>
-                    {point.link.label}
+                ) : (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className={`${POINT_LINK}${crowdedLinks ? " pointer-coarse:min-h-11" : ""}`}
+                  >
+                    {link.label}
                   </a>
-                ) : null}
+                ))}
               </ItemContent>
             </Item>
           );
@@ -307,9 +320,8 @@ export function AboutPage({ locale }: { locale: Locale }) {
         className="lg:col-start-1 lg:row-start-3"
       />
 
-      {/* The closing line is for everyone: a visitor reporting an animal that
-          has found a home writes to the same address a shelter does, so it
-          sits after both sections rather than inside the shelters' one.
+      {/* Visitors can report corrections here; shelters have their own email
+          link beside the participation guidance above.
 
           The sentence stays beside the button rather than inside it: it says
           what to write about, and a button label that is a full sentence stops
@@ -326,7 +338,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
         <h2 id="about-contact" className={SECTION_TITLE}>
           {text.contact}
         </h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className="text-sm leading-relaxed text-muted-foreground sm:text-base sm:leading-relaxed">
           {text.report}
         </p>
         {/* size="wrap" is the variant written for this case, and its comment

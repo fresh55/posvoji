@@ -94,7 +94,7 @@ export const portalText = {
   listErrorTitle: "Seznama živali ni bilo mogoče naložiti",
   animalsTitle: "Vaše živali",
   animalsLead:
-    "Popravki se shranijo takoj, na javni strani pa so vidni najpozneje v 12 urah.",
+    "Popravki se shranijo takoj. Na javni strani so vidni po naslednji uspešni osvežitvi.",
   // List tools. The counts double as filters; "Vse" turns them off.
   searchLabel: "Išči po imenu",
   searchPlaceholder: "Išči po imenu …",
@@ -194,7 +194,7 @@ export const portalText = {
   // public page still carries the old name and so does its address, so a link
   // built from the new one would land nowhere.
   publicRenamed:
-    "Povezava vodi na staro ime. Novo ime bo na javni strani najpozneje v 12 urah.",
+    "Povezava vodi na staro ime. Novo ime bo na javni strani vidno po naslednji uspešni osvežitvi.",
   fieldName: "Ime",
   nameHint: "Samo ime, brez pasme in starosti.",
   fieldBreed: "Pasma",
@@ -315,7 +315,7 @@ export const portalText = {
   // There is no Shrani on this page, so the one line under the title says
   // what a tap does instead, and when adopters see it.
   quickLead:
-    "Odgovor se shrani takoj, ko ga izberete. Na javni strani je viden najpozneje v 12 urah.",
+    "Odgovor se shrani takoj, ko ga izberete. Na javni strani je viden po naslednji uspešni osvežitvi.",
   quickProgress: "{index} od {count}",
   quickPrevious: "Nazaj",
   quickNext: "Naprej",
@@ -336,7 +336,7 @@ export const portalText = {
   quickUnknownPublic:
     "Ta odgovor je že na javni strani in ostane, dokler ne izberete drugega.",
   quickDoneTitle: "Vse živali imajo odgovore",
-  quickDoneLead: "Na javni strani bodo vidni najpozneje v 12 urah.",
+  quickDoneLead: "Na javni strani bodo vidni po naslednji uspešni osvežitvi.",
   // The round is over but some animals were skipped or left on Ne vem. The
   // same locative pair as the notice.
   quickEndTitle: "Prišli ste do konca",
@@ -359,12 +359,12 @@ export const portalText = {
   // The same action resumes an unfinished animal instead of starting over.
   listingResume: "Nadaljuj dodajanje živali",
   listingsEmptyLead:
-    "Vaše zavetišče živali objavlja tukaj. Dodajte prvo in v nekaj urah bo na Posvoji.si.",
+    "Vaše zavetišče živali objavlja tukaj. Dodajte prvo; na javni strani bo vidna po naslednji uspešni osvežitvi.",
   listingNewTitle: "Nova žival",
   listingNewLead:
-    "Ko shranite objavo, bo na javni strani vidna najpozneje v 12 urah.",
+    "Ko shranite objavo, bo na javni strani vidna po naslednji uspešni osvežitvi.",
   listingEditLead:
-    "Shranjeni popravki so na javni strani vidni najpozneje v 12 urah.",
+    "Shranjeni popravki so na javni strani vidni po naslednji uspešni osvežitvi.",
   fieldSpecies: "Vrsta",
   requiredField: "Obvezno",
   listingRequiredHint: "Za shranjevanje izberite vrsto in vpišite ime.",
@@ -406,7 +406,7 @@ export const portalText = {
   listingArchive: "Odstrani objavo",
   listingArchiveTitle: "Odstrani {name} s Posvoji.si?",
   listingArchiveLead:
-    "Objava bo z javne strani izginila ob naslednji osvežitvi, najpozneje v 12 urah. Tukaj tega ne morete razveljaviti.",
+    "Objava bo z javne strani izginila po naslednji uspešni osvežitvi. Tukaj tega ne morete razveljaviti.",
   listingArchiveCancel: "Obdrži objavo",
   listingArchiveError: "Objave ni bilo mogoče odstraniti. Poskusite znova.",
 } as const;

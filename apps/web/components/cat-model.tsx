@@ -49,7 +49,7 @@ const copy = {
     keyboard: "Smerne tipke obračajo mačka. H, C, B in T se dotaknejo glave, brade, hrbta in repa. Enter ali preslednica sprožita odziv.",
     loading: "Maček se še nalaga …",
     slow: "Nalaganje traja dlje kot običajno …",
-    unavailable: "3D-ogled ni uspel. Dotakni se ga za nov poskus.",
+    unavailable: "3D-ogled ni uspel.",
     start: "Zaženi 3D-ogled",
     retry: "Poskusi znova",
   },
@@ -58,7 +58,7 @@ const copy = {
     keyboard: "Arrow keys rotate the cat. H, C, B and T touch his head, chin, back and tail. Enter or Space invite a response.",
     loading: "The cat is still loading …",
     slow: "Loading is taking longer than usual …",
-    unavailable: "The 3D view couldn’t load. Tap or click to try again.",
+    unavailable: "The 3D view couldn’t load.",
     start: "Start 3D view",
     retry: "Try again",
   },
@@ -123,8 +123,8 @@ export const CatModel = memo(function CatModel({
   const [reached, setReached] = useState(false);
   // A press starts the idle stage or retries a failure. Once a request starts,
   // loading feedback owns the stage even if the connection setting changes.
-  const showStartButton = deferOnLimitedConnection && limitedConnection &&
-    (status === "idle" || status === "failed");
+  const showStartButton = status === "failed" ||
+    (deferOnLimitedConnection && limitedConnection && status === "idle");
   // Replay a touch received while the poster was loading.
   const touched = useRef(false);
   // Update the callback without restarting the WebGL effect.
@@ -368,6 +368,9 @@ export const CatModel = memo(function CatModel({
       }
     };
     const takeReach = (explicit = false) => {
+      // Hover and caption focus may start the first visit, but must not consume
+      // the retry action while someone is moving to it or tabbing onto it.
+      if (attempt > 0 && !explicit) return;
       if (deferOnLimitedConnection && limitedConnectionEnabled() && !explicit) return;
       explicitlyRequested ||= explicit;
       wanted = true;

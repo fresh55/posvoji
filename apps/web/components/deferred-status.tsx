@@ -7,7 +7,7 @@ import { useI18n } from "@/components/i18n-context";
 // lands well inside this, and a box that appears and vanishes in that time is
 // a flicker over whatever it sits on and, as a live region, an announcement
 // nobody has time to read.
-const PENDING_DELAY_MS = 400;
+export const PENDING_DELAY_MS = 400;
 
 export function DeferredStatus({
   error,

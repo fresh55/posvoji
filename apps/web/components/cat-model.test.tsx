@@ -34,6 +34,11 @@ const viewerModule = vi.hoisted(() => ({ fails: false }));
 
 vi.mock("@google/model-viewer", () => {
   class MockViewer extends HTMLElement {
+    constructor() {
+      super();
+      // The real element's focusable surface lives in its shadow root.
+      this.attachShadow({ mode: "open" }).innerHTML = '<div class="userInput" tabindex="0"></div>';
+    }
     // Enough of the animation API for the controller to start one reaction.
     availableAnimations: string[] = ["Companion", "Notice"];
     animationName: string | undefined;
@@ -95,6 +100,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** A stage whose first load failed, and the retry it draws. */
+async function failedStage() {
+  render(<CatModel sizes="100vw" locale="en" />);
+  const first = await loadViewer();
+  fireEvent(first, new Event("error"));
+  return { first, retry: screen.getByRole("button", { name: "Try again" }) };
+}
+
+/** Retries from the stage's button with focus on it, as a keyboard would. */
+async function retryFromButton(retry: HTMLElement) {
+  act(() => retry.focus());
+  fireEvent.click(retry);
+  await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+  return document.querySelector("model-viewer") as unknown as Viewer;
+}
+
 /** Mounts the viewer and loads it, with a chance to prepare it in between. */
 async function loadViewer(before?: (viewer: Viewer) => void, reveal = true) {
   act(() => intersect(true));
@@ -116,8 +137,15 @@ const cancelTransition = (element: Element, propertyName = "opacity") => fireEve
 );
 
 // The stage's label, and the two ways a visitor reaches for the poster. The
-// assertions stay in each test; only the reaching is shared.
-const shown = () => screen.getByRole("status").className.includes("opacity-100");
+// assertions stay in each test; only the reaching is shared. The live region
+// sits inside the row that fades, so the row is what is drawn or not.
+const row = () => screen.getByRole("status").parentElement!;
+const shown = () => row().className.includes("opacity-100");
+// Loading feedback waits a moment before it draws; a failure does not. The
+// tests that pass the wait run on fake timers, so it costs the suite nothing.
+const passGrace = () => act(async () => vi.advanceTimersByTime(1_000));
+// A model-viewer that exists now, for fake-timer tests that cannot poll.
+const currentViewer = () => document.querySelector("model-viewer") as unknown as Viewer | null;
 // What the stage has asked the browser to download, in the order it asked.
 const hints = () => [...document.head.querySelectorAll('link[rel="preload"]')]
   .map(link => link.getAttribute("href"));
@@ -356,7 +384,8 @@ describe("the cat model", () => {
     expect(second).not.toBe(first);
     expect(second.getAttribute("src")).toContain("retry=1");
     expect(document.querySelectorAll("model-viewer")).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: retryLabel })).toBeNull();
+    // On an ordinary connection the retry is the stage's own.
+    expect(retry.closest("figcaption")).toBeNull();
   });
 
   it("keeps the homepage's reach behavior under Save-Data", async () => {
@@ -369,15 +398,17 @@ describe("the cat model", () => {
   });
 
   it("holds a gated stage back until it is both reached for and on screen", async () => {
+    vi.useFakeTimers();
     render(<CatModel sizes="100vw" locale="en" startOnReach />);
     reachFor();
     await act(async () => {});
-    expect(document.querySelector("model-viewer")).toBeNull();
+    expect(currentViewer()).toBeNull();
     expect(screen.getByRole("status").textContent).toBe("");
     expect(shown()).toBe(false);
     await act(async () => intersect(true));
-    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    expect(currentViewer()).not.toBeNull();
     expect(screen.getByRole("status").textContent).toContain("still loading");
+    await passGrace();
     expect(shown()).toBe(true);
   });
 
@@ -386,6 +417,7 @@ describe("the cat model", () => {
     // on while he is still a picture. Nothing inside the stage is focusable
     // until the viewer exists, so without this a visitor on the keyboard
     // alone would never meet him.
+    vi.useFakeTimers();
     render(
       <>
         <a href="/elsewhere">Si našel žival?</a>
@@ -400,9 +432,10 @@ describe("the cat model", () => {
     await act(async () => {});
     expect(document.querySelector("model-viewer")).toBeNull();
 
-    act(() => screen.getByText("Spoznajte Srečka").focus());
-    await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
+    await act(async () => screen.getByText("Spoznajte Srečka").focus());
+    expect(currentViewer()).not.toBeNull();
     // He is loading, so the corner says so to whoever reached for him.
+    await passGrace();
     expect(shown()).toBe(true);
   });
 
@@ -591,16 +624,115 @@ describe("the cat model", () => {
   });
 
   it("retains an accessible still image when 3D fails", async () => {
-    render(<CatModel sizes="100vw" locale="en" />);
-    const viewer = await loadViewer();
-    fireEvent(viewer, new Event("error"));
-    expect(viewer.paused).toBe(true);
+    const { first, retry } = await failedStage();
+    expect(first.paused).toBe(true);
     expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load.");
     expect(screen.getByRole("img").getAttribute("alt")).toContain("white cat");
-    expect(screen.getByRole("button", { name: "Try again" }).tagName).toBe("BUTTON");
+    // The retry is a real button, so a keyboard can reach it, and it sits
+    // outside the live region, which only ever holds the sentence.
+    expect(screen.getByRole("status").contains(retry)).toBe(false);
+    expect(retry.getAttribute("aria-disabled")).toBeNull();
   });
 
-  it("retries a failed model only on a press, with one fresh viewer and matching hints", async () => {
+  it("keeps the retry and its focus while it runs, then hands focus to the cat", async () => {
+    const { retry } = await failedStage();
+    const second = await retryFromButton(retry);
+    expect(second.getAttribute("src")).toContain("retry=1");
+    // The same button, now pending, is the only thing drawn: the sentence
+    // goes to the live region alone.
+    expect(screen.getByRole("button", { name: "Try again" })).toBe(retry);
+    expect(retry.getAttribute("aria-disabled")).toBe("true");
+    expect(document.activeElement).toBe(retry);
+    expect(row().querySelector('[data-slot="badge"]')).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("still loading");
+    // Pressing the pending button starts nothing more.
+    fireEvent.click(retry);
+    expect(document.querySelectorAll("model-viewer")).toHaveLength(1);
+
+    fireEvent(second, new Event("load"));
+    finishReveal(second);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(second.shadowRoot!.activeElement?.className).toBe("userInput");
+    // He turns to the visitor who asked for him again.
+    expect(second.animationName).toBe("Notice");
+  });
+
+  it("takes a pointer press on the retry as the button's, not the poster's", async () => {
+    const { retry } = await failedStage();
+    // The press reaches the button first; were it the poster's, the button
+    // would unmount before its click and leave a plain loading chip.
+    fireEvent.pointerDown(retry);
+    fireEvent.click(retry);
+    await waitFor(() => expect(currentViewer()).not.toBeNull());
+    expect(screen.getByRole("button", { name: "Try again" })).toBe(retry);
+    expect(retry.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("puts the retry back in the visitor's hands if it fails again", async () => {
+    const { retry } = await failedStage();
+    const second = await retryFromButton(retry);
+    fireEvent(second, new Event("error"));
+    expect(screen.getByRole("button", { name: "Try again" })).toBe(retry);
+    expect(retry.getAttribute("aria-disabled")).toBeNull();
+    expect(document.activeElement).toBe(retry);
+    // The sentence is drawn again beside it (a small stage leaves it to the
+    // button, which jsdom cannot show: it has no container queries).
+    expect(row().querySelector('[data-slot="badge"]')?.textContent).toBe("The 3D view couldn’t load.");
+  });
+
+  it("gives up on a request that neither loads nor fails, and offers the retry", async () => {
+    vi.useFakeTimers();
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => intersect(true));
+    touchPoster();
+    expect(document.querySelector("model-viewer")).not.toBeNull();
+    await act(async () => vi.advanceTimersByTime(59_999));
+    expect(screen.getByRole("status").textContent).toContain("longer than usual");
+    expect(screen.queryByRole("button")).toBeNull();
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load.");
+    expect(document.querySelector("model-viewer")).toBeNull();
+    expect(hints()).toEqual([]);
+    expect(shown()).toBe(true);
+    // The stall clock starts again with the retry, under a fresh URL.
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Try again" })));
+    expect(document.querySelector("model-viewer")!.getAttribute("src")).toContain("retry=1");
+    await act(async () => vi.advanceTimersByTime(59_999));
+    expect(document.querySelector("model-viewer")).not.toBeNull();
+  });
+
+  // A press comes with the hover that carried the pointer there, and its own
+  // shorter wait replaces the hover's.
+  it.each([
+    { reach: "a hover", press: false, wait: 1_000 },
+    { reach: "a press", press: true, wait: 400 },
+  ])("waits $wait ms after $reach before drawing the chip", async ({ press, wait }) => {
+    vi.useFakeTimers();
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => intersect(true));
+    reachFor();
+    if (press) touchPoster();
+    await act(async () => vi.advanceTimersByTime(wait - 1));
+    expect(shown()).toBe(false);
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(shown()).toBe(true);
+  });
+
+  it("draws nothing for a cat who arrives inside the wait", async () => {
+    vi.useFakeTimers();
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => intersect(true));
+    touchPoster();
+    await act(async () => vi.advanceTimersByTime(300));
+    const viewer = document.querySelector("model-viewer") as unknown as Viewer;
+    fireEvent(viewer, new Event("load"));
+    finishReveal(viewer);
+    await act(async () => vi.advanceTimersByTime(1_000));
+    expect(shown()).toBe(false);
+    expect(screen.getByRole("status").textContent).toBe("");
+  });
+
+  it("retries a failed model only on another reach, with one fresh viewer and matching hints", async () => {
     render(<CatModel sizes="100vw" locale="en" />);
     const first = await loadViewer(undefined, false);
     const firstUrl = first.getAttribute("src");
@@ -631,13 +763,13 @@ describe("the cat model", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("can retry a renderer setup failure with the retry button", async () => {
+  it("can retry a renderer setup failure with a press on the still", async () => {
     viewerModule.fails = true;
     render(<CatModel sizes="100vw" locale="en" />);
     act(() => intersect(true));
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("The 3D view couldn’t load."));
     viewerModule.fails = false;
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    touchPoster();
     await waitFor(() => expect(document.querySelector("model-viewer")).not.toBeNull());
     expect(screen.getByRole("status").textContent).toContain("still loading");
   });
@@ -655,9 +787,10 @@ describe("the cat model", () => {
     expect(screen.getByRole("status").textContent).toContain("longer than usual");
     expect(shown()).toBe(false);
     reachFor();
+    await act(async () => vi.advanceTimersByTime(1_000));
     expect(shown()).toBe(true);
     fireEvent(viewer, new Event("error"));
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    touchPoster();
     await act(async () => {});
     expect(screen.getByRole("status").textContent).toBe("The cat is still loading …");
   });
@@ -675,6 +808,7 @@ describe("the cat model", () => {
   });
 
   it("keeps the loading label off screen until someone reaches for him", async () => {
+    vi.useFakeTimers();
     render(<CatModel sizes="100vw" locale="en" />);
     // Empty before a request, then announced while loading; drawn on a reach.
     expect(screen.getByRole("status").textContent).toBe("");
@@ -683,6 +817,7 @@ describe("the cat model", () => {
     expect(screen.getByRole("status").textContent).toContain("still loading");
     expect(shown()).toBe(false);
     reachFor();
+    await passGrace();
     expect(shown()).toBe(true);
     // It stays once shown: he is still not there.
     fireEvent.pointerLeave(screen.getByRole("img"));
@@ -699,17 +834,35 @@ describe("the cat model", () => {
     expect(spinner()).not.toBeNull();
   });
 
-  it("says so at once when the poster is touched, and says why when 3D fails", async () => {
+  it("says so when the poster is touched, and says why when 3D fails", async () => {
+    vi.useFakeTimers();
     render(<CatModel sizes="100vw" locale="sl" />);
-    act(() => intersect(true));
+    await act(async () => intersect(true));
     touchPoster();
+    await passGrace();
     expect(shown()).toBe(true);
     expect(screen.getByRole("status").textContent).toContain("nalaga");
-    const viewer = await loadViewer();
+    const viewer = currentViewer()!;
+    fireEvent(viewer, new Event("load"));
+    finishReveal(viewer);
     expect(shown()).toBe(false);
     fireEvent(viewer, new Event("error"));
     expect(shown()).toBe(true);
     expect(screen.getByRole("status").textContent).toBe("3D-ogled ni uspel.");
+    screen.getByRole("button", { name: "Poskusi znova" });
+  });
+
+  it("starts fading the chip as the canvas starts to show, not after", async () => {
+    vi.useFakeTimers();
+    render(<CatModel sizes="100vw" locale="en" />);
+    await act(async () => intersect(true));
+    touchPoster();
+    await passGrace();
+    expect(shown()).toBe(true);
+    fireEvent(currentViewer()!, new Event("load"));
+    // Revealing: the text is still the loading sentence, but the row has gone.
+    expect(screen.getByRole("status").textContent).toContain("still loading");
+    expect(shown()).toBe(false);
   });
 
   it("does not apologise for a failure to someone who never reached for him", async () => {

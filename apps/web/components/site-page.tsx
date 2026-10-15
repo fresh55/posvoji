@@ -71,21 +71,10 @@ export function SitePage({ locale }: { locale: Locale }) {
       // to duck under it. It is also the one page that already knows whether
       // the coverage table has anything in it, so it answers for the
       // found-animal link rather than taking the default.
-      //
-      // The freshness line as well as the hero's, and the two are not a
-      // duplication in any way a reader can see: the hero is at the top of a
-      // document that runs about 67,000px, and this is at the end of it. Both
-      // read the same timestamp, and this is the one that spends the words on
-      // it: the footer prints the minute and the timezone (verificationTime),
-      // the hero the date alone (verificationDate). The provenance with the
-      // hour in it belongs at the end of the document, where somebody is
-      // asking how the list is made; at the top the question is only whether
-      // it is current.
       footer={
         <SiteFooter
           locale={locale}
           showFoundAnimalLink={hasLookup}
-          updatedAt={dataset?.generatedAt}
           docked
         />
       }
@@ -150,14 +139,13 @@ export function SitePage({ locale }: { locale: Locale }) {
             used to sit here and dangled at the wrap. */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
           {dataset && shelters > 0 && (
-            // The date and not the minute. The hour and the timezone are the
-            // list's provenance and they are printed once, at the end of the
-            // document, by the footer that reads the same timestamp through
-            // verificationTime; up here the question is whether the list is
-            // current, which a date answers and ", 21:45 (Ljubljana)" only
-            // lengthens. Measured: the line went from 404px to 288px, so it
-            // fits one line from 360 up where it wrapped to two on every
-            // phone, which is 20px of the page above the fold.
+            // The date and not the minute: the question up here is whether the
+            // list is current, which a date answers and ", 21:45 (Ljubljana)"
+            // only lengthens. This is the only place the publication date is
+            // printed; each animal states its own check time. Measured: the
+            // line went from 404px to 288px, so it fits one line from 360 up
+            // where it wrapped to two on every phone, which is 20px of the
+            // page above the fold.
             <p>
               {shelterCount(shelters, locale)} · {messages.listPublished}{" "}
               {verificationDate(dataset.generatedAt, locale)}

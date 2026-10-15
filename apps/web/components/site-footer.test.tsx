@@ -4,7 +4,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages } from "@/lib/i18n";
-import { verificationTime } from "@/lib/source-freshness";
 import { CONTACT_EMAIL, POETIVO_NAME, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { ABOUT_PATHS } from "@/lib/site-links";
 import { SiteFooter } from "./site-footer";
@@ -79,35 +78,6 @@ describe("SiteFooter", () => {
       screen.getByRole("navigation", { name: messages.footerLinks }),
     ).toBeTruthy();
     expect(messages.footerLinks).not.toBe(messages.moreInformation);
-  });
-
-  // The date the dataset was written, on every page that holds one. The site
-  // printed it in the homepage hero and nowhere else, so a stranger who
-  // arrived on an animal page from a search engine could not tell a listing
-  // captured last night from one captured in March.
-  it("says how old the copy on the screen is, in both locales", () => {
-    const stamp = "2026-09-07T03:12:00.000Z";
-
-    const sl = render(<SiteFooter locale="sl" updatedAt={stamp} />);
-    expect(sl.container.textContent).toContain(verificationTime(stamp, "sl"));
-    // The placeholder is filled, not printed.
-    expect(sl.container.textContent).not.toContain("{date}");
-
-    cleanup();
-
-    // verificationTime and not toLocaleDateString, which is the pair that
-    // would drift: in Slovenian the two agree, and in English one says
-    // "7 September 2026" and the other "07/09/2026".
-    const en = render(<SiteFooter locale="en" updatedAt={stamp} />);
-    expect(en.container.textContent).toContain(verificationTime(stamp, "en"));
-  });
-
-  it("says nothing about a dataset on a page that has none", () => {
-    const messages = getMessages("sl");
-    const { container } = render(<SiteFooter locale="sl" />);
-
-    const [opening] = messages.footerUpdated.split("{date}");
-    expect(container.textContent).not.toContain(opening);
   });
 
   // The correction route and the code, on every page. Both are outside the
@@ -193,22 +163,14 @@ describe("SiteFooter", () => {
   });
 
   // The found-animal page is not about the listings. The provenance sentence
-  // is about adopting an animal, and the date under it is the animal export's,
-  // which below an answer that says the responsible shelter is not verified
-  // reads as the day somebody checked the responsibility.
-  it("drops the listings note and its date on a page about another task", () => {
+  // is about adopting an animal, which is not the task on that page.
+  it("drops the listings note on a page about another task", () => {
     const messages = getMessages("sl");
-    const stamp = "2026-09-07T03:12:00.000Z";
     const { container } = render(
-      <SiteFooter locale="sl" aboutListings={false} updatedAt={stamp} />,
+      <SiteFooter locale="sl" aboutListings={false} />,
     );
 
     expect(container.textContent).not.toContain(messages.footer);
-    const [opening] = messages.footerUpdated.split("{date}");
-    expect(container.textContent).not.toContain(opening);
-    expect(container.textContent).not.toContain(
-      verificationTime(stamp, "sl"),
-    );
 
     // What a reader is still owed: the way to the other pages, the address to
     // write a correction to, and the code.

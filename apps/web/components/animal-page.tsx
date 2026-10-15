@@ -71,7 +71,7 @@ export function AnimalPage({ locale, slug }: { locale: Locale; slug: string }) {
       // The page a shared link lands on, and the one where the freshness line
       // earns the most: a stranger reading it has nothing else on the screen
       // that says whether the listing was captured last night or in March.
-      footer={<SiteFooter locale={locale} updatedAt={dataset.generatedAt} />}
+      footer={<SiteFooter locale={locale} />}
     >
       {/* Three crumbs and not four. The URL runs /zival/{animal}/{city}/
           {shelter}, but /zival, /zival/{animal} and /zival/{animal}/{city}

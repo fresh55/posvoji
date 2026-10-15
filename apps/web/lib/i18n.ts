@@ -35,13 +35,6 @@ const sl = {
   updated: "osveženo",
   footer:
     "Podatke zagotavljajo zavetišča. Pri vsaki živali je naveden vir in povezava na izvorno objavo. Posvojitev vedno poteka pri zavetišču.",
-  // The same fact the homepage states beside the shelter count with `updated`,
-  // said as a sentence because the footer has no count to hang it on. It is
-  // the one place an animal page reached from a search engine says how old the
-  // listing is, which is this site's whole claim over a shelter's Facebook
-  // page. {date} comes from registerDateLabel, numeric in Slovenian, so there
-  // is no month name here to decline.
-  footerUpdated: "Seznam objavljen {date}. Čas preverjanja je naveden pri posamezni živali.",
   // One footnote line under the shelter box: the provider's own credit
   // ("Vir: Zavetišče X"), a dot, then this word and a date. The minute and
   // the "(Ljubljana)" suffix went with the time: nobody deciding whether to
@@ -825,7 +818,6 @@ const en: Messages = {
   updated: "updated",
   footer:
     "Data comes from shelters. Every animal includes its source and original listing. Adoptions always go through the shelter.",
-  footerUpdated: "List published {date}. Each animal shows when its source was checked.",
   sourceVerified: "Checked",
   listPublished: "List published",
   sourceVerificationUnknown: "Check time unknown",

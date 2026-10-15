@@ -94,7 +94,7 @@ describe("shelter directory context", () => {
   it.each([
     { locale: "sl" as const, edition: "izdaja 23. 2. 2026", supplement: "dopolnjeno s spletnimi stranmi zavetišč" },
     { locale: "en" as const, edition: "edition 23 February 2026", supplement: "supplemented with shelters’ websites" },
-  ])("distinguishes the linked registry edition from animal publication in $locale", ({ locale, edition, supplement }) => {
+  ])("states the linked registry edition and no animal publication time in $locale", ({ locale, edition, supplement }) => {
     const { container } = render(<SheltersPage locale={locale} />);
     const main = screen.getByRole("main");
     const source = within(main).getByRole("link", { name: /UVHVVR/ });
@@ -102,8 +102,9 @@ describe("shelter directory context", () => {
     expect(source.closest("p")?.textContent).toContain(edition);
     expect(source.closest("p")?.textContent).toContain(supplement);
     const publication = verificationTime("2026-10-15T12:00:00.000Z", locale);
-    expect(container.querySelector("footer")?.textContent).toContain(publication);
-    expect(main.textContent).not.toContain(publication);
+    // The publication time is the homepage hero's; here it would read as the
+    // registry's date.
+    expect(container.textContent).not.toContain(publication);
   });
 });
 // The phone step the five content pages were missing; resources-page's own

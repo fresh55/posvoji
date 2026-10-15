@@ -210,7 +210,7 @@ export function ShelterDetailPage({
       // whole of what decides whether the button appears. The pair has to
       // agree page-wide or the strip is missing on exactly the page that
       // needed it.
-      footer={<SiteFooter locale={locale} updatedAt={dataset?.generatedAt} docked />}
+      footer={<SiteFooter locale={locale} docked />}
     >
       {/* This page is where the shelter's own facts live, so the machine
           readable copy of them belongs here rather than on the index. */}

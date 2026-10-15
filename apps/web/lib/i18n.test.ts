@@ -30,18 +30,6 @@ describe("translations", () => {
     );
   });
 
-  // The footer takes the date as a prop and fills it here. The placeholder is
-  // the contract between the two locales and the component, and a renamed one
-  // fails silently: interpolate leaves an unmatched {name} in the sentence.
-  it("fills the footer's freshness line in both locales", () => {
-    expect(translate("sl", "footerUpdated", { date: "8. 9. 2026" })).toBe(
-      "Seznam objavljen 8. 9. 2026. Čas preverjanja je naveden pri posamezni živali.",
-    );
-    expect(translate("en", "footerUpdated", { date: "8 September 2026" })).toBe(
-      "List published 8 September 2026. Each animal shows when its source was checked.",
-    );
-  });
-
   it("agrees the shelter-absence sentence with the Slovenian dual", () => {
     // One zavetišče nima, two zavetišči nimata, three or more zavetišča
     // nimajo. Two is the count a singular/plural pair gets wrong.

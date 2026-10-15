@@ -10,6 +10,8 @@
 
 meta:
   register_source: "UVHVVR — Register zavetišč (gov.si)"
+  # Linked from https://www.gov.si/zbirke/storitve/obrati-na-podrocju-zdravja-zivali/
+  register_url: "https://www.gov.si/assets/organi-v-sestavi/UVHVVR/Bolezni-zivali/Seznam-obratov/Seznam-obratov-splosni/REG-zavetisc-2026-02-23.docx"
   register_date: 2026-02-23
   last_reviewed: 2026-08-20
   # hours and onCallPhone: read off each shelter's own website on the date

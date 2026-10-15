@@ -18,6 +18,7 @@ import { ShelterAnimalGrid } from "@/components/shelter-animal-grid";
 import { ShelterAvatar } from "@/components/shelter-avatar";
 import { ShelterHours } from "@/components/shelter-hours";
 import { ShelterLocationMap } from "@/components/shelter-location-map";
+import { ShelterRegistrySource } from "@/components/shelter-registry-source";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
@@ -30,13 +31,13 @@ import {
 import { animalsForClient, loadDataset, shelterAnimals } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { getMessages, translate, type Locale } from "@/lib/i18n";
-import { animalCount, META_DOT_CLASS, registerDateLabel } from "@/lib/labels";
+import { animalCount, META_DOT_CLASS } from "@/lib/labels";
 import { PAGE_TITLE, SECTION_TITLE } from "@/lib/link-styles";
 import { cn } from "@/lib/utils";
 import { shelterJsonLd } from "@/lib/shelter-jsonld";
 import { sheltersIndexPath } from "@/lib/shelter-path";
 import { getShelterLogos } from "@/lib/shelter-logos";
-import { getShelterBySlug, shelterRegisterDate } from "@/lib/shelters";
+import { getShelterBySlug } from "@/lib/shelters";
 
 // This page's own copy, and only its own. The three channel names are in the
 // catalogue (lib/i18n.ts) because the register card speaks them too, and one
@@ -49,8 +50,6 @@ const pageText = {
       "Za to zavetišče na Posvoji.si trenutno ni objav živali. To ne pomeni, da v zavetišču ni živali za posvojitev. Za več informacij se obrni neposredno na zavetišče.",
     mapLabel: "Lega zavetišča na zemljevidu Slovenije",
     filterAnimals: "Filtriraj živali tega zavetišča",
-    source: "Vir: UVHVVR — register zavetišč (gov.si)",
-    asOf: "stanje",
   },
   en: {
     animalsTitle: "Animals from this shelter",
@@ -58,8 +57,6 @@ const pageText = {
       "There are currently no animal listings from this shelter on Posvoji.si. This does not mean the shelter has no animals for adoption. Contact the shelter directly for more information.",
     mapLabel: "The shelter's location on a map of Slovenia",
     filterAnimals: "Filter this shelter’s animals",
-    source: "Source: UVHVVR — shelter registry (gov.si)",
-    asOf: "as of",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -164,10 +161,6 @@ export function ShelterDetailPage({
   const text = pageText[locale];
   const messages = getMessages(locale);
   const indexHref = sheltersIndexPath(locale);
-  const registerDate = shelterRegisterDate();
-  const asOf = registerDate
-    ? registerDateLabel(registerDate, locale)
-    : undefined;
   // Every one of the seventeen shelters holds a phone, an email or a site
   // today, so the empty case is unreachable from data/shelters.yaml as it
   // stands. The gate is here so a row added without one cannot print a 20px
@@ -453,9 +446,7 @@ export function ShelterDetailPage({
 
       {/* Where this entry came from, on the page that is about this one
           shelter. The index says the same thing for the whole list. */}
-      <p className="border-t pt-6 text-xs text-muted-foreground">
-        {asOf ? `${text.source}, ${text.asOf} ${asOf}.` : `${text.source}.`}
-      </p>
+      <ShelterRegistrySource locale={locale} className="border-t pt-6" />
     </SiteShell>
   );
 }

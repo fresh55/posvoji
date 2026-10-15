@@ -4,6 +4,7 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { JsonLd } from "@/components/json-ld";
 import type { ShelterCardData } from "@/components/shelter-card";
 import { SheltersAtlas } from "@/components/shelters-atlas";
+import { ShelterRegistrySource } from "@/components/shelter-registry-source";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
@@ -11,17 +12,13 @@ import { loadDataset } from "@/lib/dataset";
 import { shelterAnimalsPath } from "@/lib/filters";
 import { FOUND_ANIMAL_PATHS } from "@/lib/found-animal";
 import { getMessages, type Locale } from "@/lib/i18n";
-import {
-  animalCount,
-  registerDateLabel,
-  shelterCount,
-} from "@/lib/labels";
+import { animalCount, shelterCount } from "@/lib/labels";
 import { shelterCensus } from "@/lib/shelter-census";
 import { shelterListJsonLd } from "@/lib/shelter-jsonld";
 import { getShelterLogos } from "@/lib/shelter-logos";
 import { SHELTER_INDEX_PATHS, shelterPath } from "@/lib/shelter-path";
-import { loadShelters, shelterRegisterDate } from "@/lib/shelters";
-import { MUTED_LINK, PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
+import { loadShelters } from "@/lib/shelters";
+import { MUTED_SENTENCE_LINK, PAGE_LEAD, PAGE_TITLE } from "@/lib/link-styles";
 import { CONTACT_EMAIL } from "@/lib/site";
 import { mailtoHref } from "@/lib/contact-links";
 
@@ -33,7 +30,7 @@ const pageText = {
     // formatter prints, so no case or verb has to agree with it.
     lead: "iz registra, kontakti na enem mestu.",
     permissionNote: "Objave živali dodamo z dovoljenjem zavetišč.",
-    join: "Ste zavetišče in se želite vključiti? Pišite na",
+    join: "Ste zavetišče in se želite vključiti ali je podatek napačen? Pišite na",
     lookupLink: "Najdena žival? Poišči pomoč po občini",
     censusLabel: "Pregled zavetišč",
     withListings: "z objavami",
@@ -43,14 +40,12 @@ const pageText = {
     noAnimals: "Brez objav na Posvoji.si",
     heading: "Zavetišča",
     skip: "Preskoči seznam zavetišč",
-    source: "Vir: register zavetišč UVHVVR (gov.si)",
-    asOf: "stanje na dan",
   },
   en: {
     title: "Shelters across Slovenia",
     lead: "from the registry, contact details in one place.",
     permissionNote: "Animal listings are published with each shelter’s permission.",
-    join: "Would your shelter like to join? Email",
+    join: "Would your shelter like to join, or is a detail incorrect? Email",
     lookupLink: "Found an animal? Find help by municipality",
     censusLabel: "Shelter overview",
     withListings: "with listings",
@@ -60,8 +55,6 @@ const pageText = {
     noAnimals: "No listings on Posvoji.si",
     heading: "Shelters",
     skip: "Skip the list of shelters",
-    source: "Source: UVHVVR shelter registry (gov.si)",
-    asOf: "as of",
   },
 } satisfies Record<Locale, Record<string, string>>;
 
@@ -126,11 +119,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         collator.compare(a.city, b.city) || collator.compare(a.name, b.name),
     );
 
-  const registerDate = shelterRegisterDate();
-  const asOf = registerDate
-    ? registerDateLabel(registerDate, locale)
-    : undefined;
-
   return (
     <SiteShell
       locale={locale}
@@ -173,6 +161,7 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         <SiteFooter
           locale={locale}
           showSheltersLink={false}
+          showContact={false}
           updatedAt={dataset?.generatedAt}
           docked
         />
@@ -314,18 +303,16 @@ export function SheltersPage({ locale }: { locale: Locale }) {
         }}
       />
 
-      {/* For shelters: how listings get here and how to join. */}
+      {/* Permission, joining and corrections share one contact route. */}
       <div className="max-w-3xl space-y-2 text-sm leading-relaxed text-muted-foreground">
         <p>{text.permissionNote}</p>
         <p>
           {text.join}{" "}
-          <a href={mailtoHref(CONTACT_EMAIL)} className={MUTED_LINK}>
+          <a href={mailtoHref(CONTACT_EMAIL)} className={MUTED_SENTENCE_LINK}>
             {CONTACT_EMAIL}
           </a>.
         </p>
-        <p className="text-xs">
-          {asOf ? `${text.source}, ${text.asOf} ${asOf}.` : `${text.source}.`}
-        </p>
+        <ShelterRegistrySource locale={locale} />
       </div>
     </SiteShell>
   );

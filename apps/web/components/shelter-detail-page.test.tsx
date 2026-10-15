@@ -94,6 +94,7 @@ vi.mock("@/lib/shelters", async (importOriginal) => ({
   getShelterBySlug: (slug: string) =>
     [SHELTER, BARE, ON_CALL].find((shelter) => shelter.id === slug),
   shelterRegisterDate: () => "2026-01-01",
+  shelterRegisterUrl: () => "https://example.test/shelter-registry.docx",
 }));
 // shelterAnimals is mocked beside loadDataset rather than left to derive
 // itself from it: it calls loadDataset within its own module, where this mock
@@ -222,7 +223,12 @@ describe("what the shelter page explains", () => {
     );
 
     const provenance = container.querySelector("main > p:last-of-type");
-    expect(provenance?.textContent).toContain("Vir: UVHVVR");
+    expect(provenance?.textContent).toContain("UVHVVR");
+    expect(provenance?.textContent).toContain("izdaja 1. 1. 2026");
+    expect(provenance?.textContent).toContain("dopolnjeno s spletnimi stranmi zavetišč");
+    expect(provenance?.querySelector("a")?.getAttribute("href")).toBe(
+      "https://example.test/shelter-registry.docx",
+    );
     // messages.footer, one border below, already states that every animal
     // carries its source and a link to the original listing. The page does
     // not say it a second time above the cards.

@@ -3,6 +3,7 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SheltersPage } from "./shelters-page";
+import { verificationTime } from "@/lib/source-freshness";
 
 const fixtures = vi.hoisted(() => ({
   shelters: [
@@ -16,6 +17,7 @@ const fixtures = vi.hoisted(() => ({
 vi.mock("@/lib/shelters", () => ({
   loadShelters: () => fixtures.shelters,
   shelterRegisterDate: () => "2026-02-23",
+  shelterRegisterUrl: () => "https://example.test/shelter-registry.docx",
 }));
 vi.mock("@/lib/dataset", () => ({ loadDataset: fixtures.loadDataset }));
 vi.mock("@/lib/shelter-logos", () => ({ getShelterLogos: () => ({}) }));
@@ -32,6 +34,7 @@ Object.defineProperty(window, "matchMedia", {
 
 beforeEach(() => {
   fixtures.loadDataset.mockReturnValue({
+    generatedAt: "2026-10-15T12:00:00.000Z",
     animals: ["first", "first", "second"].map(id => ({ shelter: { id } })),
   });
 });
@@ -64,12 +67,12 @@ describe("shelter directory context", () => {
   });
 
   it.each([
-    { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti?", directory: "Zavetišča" },
-    { locale: "en" as const, invitation: "Would your shelter like to join?", directory: "Shelters" },
-  ])("offers one email invitation after the directory in $locale", ({ locale, invitation, directory }) => {
+    { locale: "sl" as const, invitation: "Ste zavetišče in se želite vključiti ali je podatek napačen?", directory: "Zavetišča" },
+    { locale: "en" as const, invitation: "Would your shelter like to join, or is a detail incorrect?", directory: "Shelters" },
+  ])("offers one contact for joining and corrections across the whole page in $locale", ({ locale, invitation, directory }) => {
     render(<SheltersPage locale={locale} />);
     const main = within(screen.getByRole("main"));
-    const links = main.getAllByRole("link", { name: "info@posvoji.si" });
+    const links = screen.getAllByRole("link", { name: "info@posvoji.si" });
     expect(links).toHaveLength(1);
     const link = links[0];
     expect(link.getAttribute("href")).toBe("mailto:info@posvoji.si");
@@ -86,6 +89,21 @@ describe("shelter directory context", () => {
       .toBe("3 zavetišča iz registra, kontakti na enem mestu.");
     expect(screen.getAllByText("Brez objav na Posvoji.si")).toHaveLength(3);
     expect(screen.getByRole("link", { name: "Prvo zavetišče" })).toBeTruthy();
+  });
+
+  it.each([
+    { locale: "sl" as const, edition: "izdaja 23. 2. 2026", supplement: "dopolnjeno s spletnimi stranmi zavetišč" },
+    { locale: "en" as const, edition: "edition 23 February 2026", supplement: "supplemented with shelters’ websites" },
+  ])("distinguishes the linked registry edition from animal publication in $locale", ({ locale, edition, supplement }) => {
+    const { container } = render(<SheltersPage locale={locale} />);
+    const main = screen.getByRole("main");
+    const source = within(main).getByRole("link", { name: /UVHVVR/ });
+    expect(source.getAttribute("href")).toBe("https://example.test/shelter-registry.docx");
+    expect(source.closest("p")?.textContent).toContain(edition);
+    expect(source.closest("p")?.textContent).toContain(supplement);
+    const publication = verificationTime("2026-10-15T12:00:00.000Z", locale);
+    expect(container.querySelector("footer")?.textContent).toContain(publication);
+    expect(main.textContent).not.toContain(publication);
   });
 });
 // The phone step the five content pages were missing; resources-page's own

@@ -32,8 +32,8 @@ describe("the about page", () => {
       "Za posvojitelje", "Za zavetišča", "Kontakt",
     ]);
     expect(screen.getAllByRole("heading", { level: 3 }).map(node => node.textContent)).toEqual([
-      "Posvojitev poteka pri zavetišču", "Pred obiskom preveri, ali žival še išče dom", "Brezplačen ogled, brez računa",
-      "Vi odločate o svojih vsebinah", "Kako se vključite?",
+      "Kako poteka posvojitev?", "Ali žival še išče dom?", "Brezplačna uporaba",
+      "O svojih vsebinah odločate sami", "Kako se zavetišče vključi?",
     ]);
     expect(screen.getByRole("link", { name: "posvoji.si" }).getAttribute("href")).toBe("/");
   });
@@ -83,7 +83,7 @@ describe("the about page", () => {
   // Shelter participation has its own contact action. The closing address
   // remains available to visitors reporting a correction.
   it.each([
-    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Pred obiskom preveri, ali žival še išče dom", shelters: "Za zavetišča", email: "Pišite na info@posvoji.si", login: "Že imate dostop? Prijava za zavetišča" },
+    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča", email: "Pišite na info@posvoji.si", login: "Že imate dostop? Prijava za zavetišča" },
     { locale: "en" as const, adopters: "For adopters", availability: "Before visiting, check whether the animal still needs a home", shelters: "For shelters", email: "Email info@posvoji.si", login: "Already have access? Shelter login" },
   ])("keeps each audience's guidance and contact actions together (%s)", ({ locale, adopters, availability, shelters, email, login }) => {
     render(<AboutPage locale={locale} />);
@@ -136,7 +136,7 @@ describe("the about page", () => {
   // The policy is a page of this site, and it used to be a markdown file on
   // github.com: the one link on this page a shelter has a reason to open.
   it.each<[Locale, string, string]>([
-    ["sl", "Vsebine in dovoljenja", "/o-nas/vsebine"],
+    ["sl", "O vsebinah in dovoljenjih", "/o-nas/vsebine"],
     ["en", "Content and permissions", "/en/about/content"],
   ])("links the policy on-site (%s)", (locale, label, href) => {
     render(<AboutPage locale={locale} />);
@@ -162,7 +162,7 @@ describe("the about page", () => {
     expect(action.getAttribute("href")).toBe(href);
     expect(action.getAttribute("data-slot")).toBe("button");
     expect(
-      screen.getByRole("link", { name: /Vsebine|Content and/ }).getAttribute("data-slot"),
+      screen.getByRole("link", { name: /O vsebinah|Content and/ }).getAttribute("data-slot"),
     ).toBeNull();
   });
 

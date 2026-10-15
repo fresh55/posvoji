@@ -87,25 +87,25 @@ type PointKey = keyof typeof pointIcons;
 // docs/COPY-VOICE.md has the rule.
 const pageText: Record<Locale, PageText> = {
   sl: {
-    lead: "Posvoji.si na enem mestu združuje objave sodelujočih slovenskih zavetišč, da živali lažje najdejo dom.",
+    lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
     adopters: {
       title: "Za posvojitelje",
       points: [
         {
           key: "shelterDecides",
-          title: "Posvojitev poteka pri zavetišču",
-          body: "Za informacije o živali in spoznavanje se obrni na zavetišče, navedeno ob objavi. Tam ti pojasnijo potrebe živali, pogoje posvojitve in morebitne stroške.",
+          title: "Kako poteka posvojitev?",
+          body: "Ob vsaki objavi je navedeno zavetišče, ki skrbi za žival. Z osebjem zavetišča se pogovori o njenih potrebah, svojem vsakdanu in tem, kako jo lahko spoznaš. Zavetišče ti pojasni pogoje in morebitne stroške ter vodi postopek posvojitve.",
           links: [{ label: "Poglej živali, ki iščejo dom", href: "/", primary: true }],
         },
         {
           key: "freshness",
-          title: "Pred obiskom preveri, ali žival še išče dom",
-          body: "Spremembe objav niso vedno takoj vidne pri nas. Pri zavetišču preveri, ali žival še išče dom, in se dogovori za obisk. Naš seznam ne zajema vseh živali in zavetišč.",
+          title: "Ali žival še išče dom?",
+          body: "Spremembe v objavah zavetišč se lahko pri nas prikažejo z zamikom. Pred obiskom preveri pri zavetišču, ali žival še išče dom, in se dogovori za termin. Naš seznam ne zajema vseh živali in zavetišč.",
         },
         {
           key: "free",
-          title: "Brezplačen ogled, brez računa",
-          body: "Živali si lahko ogledaš brezplačno in brez računa. Na strani ni oglasov ali plačanih prednostnih uvrstitev.",
+          title: "Brezplačna uporaba",
+          body: "Ogled objav in sodelovanje zavetišč sta brezplačna. Za ogled ne potrebuješ uporabniškega računa. Na spletni strani ni oglasov ali plačanih prednostnih uvrstitev.",
         },
       ],
     },
@@ -114,14 +114,14 @@ const pageText: Record<Locale, PageText> = {
       points: [
         {
           key: "shelterData",
-          title: "Vi odločate o svojih vsebinah",
-          body: "Vaše objave vključimo s pisnim dovoljenjem. Sami določite, ali smemo prikazati fotografije in koliko opisa. Vir vedno navedemo. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
-          links: [{ label: "Vsebine in dovoljenja", href: DATA_POLICY_PATHS.sl }],
+          title: "O svojih vsebinah odločate sami",
+          body: "Vaše objave vključimo z vašim dovoljenjem in obiskovalce usmerimo k vam. Sami določite, katere fotografije in opise smemo uporabiti; vir vedno navedemo. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
+          links: [{ label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl }],
         },
         {
           key: "shelterJoin",
-          title: "Kako se vključite?",
-          body: "Sodelovanje je brezplačno. Pišite nam in dogovorimo se o vključitvi. Objave lahko prevzamemo z vaše spletne strani; če lastnega seznama živali nimate, jih lahko objavljate neposredno pri nas.",
+          title: "Kako se zavetišče vključi?",
+          body: "Pišite nam na e-poštni naslov, naveden v razdelku Kontakt. Dogovorimo se o vključitvi objav z vaše spletne strani. Če svojega spletnega seznama živali nimate, se lahko dogovorimo za neposreden vnos objav pri nas. Pišite nam tudi, če potrebujete dostop do portala za zavetišča.",
           links: [
             { label: `Pišite na ${CONTACT_EMAIL}`, href: mailtoHref(CONTACT_EMAIL) },
             { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
@@ -131,7 +131,7 @@ const pageText: Record<Locale, PageText> = {
     },
     contact: "Kontakt",
     report:
-      "Opaziš napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti.",
+      "Si opazil napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti. Zavetišča nam lahko na isti naslov pišejo glede sodelovanja ali umika vsebin ter nam pošljejo svoje predloge.",
   },
   en: {
     lead: "Posvoji.si brings listings from participating Slovenian shelters together in one place to help animals find a home.",

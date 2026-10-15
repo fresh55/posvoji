@@ -1,6 +1,6 @@
 import type { Locale } from "@/lib/i18n";
 import { registerDateLabel } from "@/lib/date-label";
-import { QUIET_UNDERLINE, SOURCE_LINK } from "@/lib/link-styles";
+import { MUTED_SENTENCE_LINK } from "@/lib/link-styles";
 import { shelterRegisterDate, shelterRegisterUrl } from "@/lib/shelters";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,7 @@ export function ShelterRegistrySource({ locale, className }: { locale: Locale; c
     <p className={cn("text-xs text-muted-foreground", className)}>
       {copy.source}{" "}
       {url ? (
-        <a href={url} className={`${SOURCE_LINK} ${QUIET_UNDERLINE}`}>
+        <a href={url} className={MUTED_SENTENCE_LINK}>
           {copy.register}
         </a>
       ) : copy.register}

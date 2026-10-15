@@ -312,8 +312,8 @@ export function SheltersPage({ locale }: { locale: Locale }) {
             {CONTACT_EMAIL}
           </a>.
         </p>
-        {/* The 8px paragraph gap plus 16px padding clears both touch overlays. */}
-        <ShelterRegistrySource locale={locale} className="pointer-coarse:pt-4" />
+        {/* Browser hit tests need 32px between these two 44px touch overlays. */}
+        <ShelterRegistrySource locale={locale} className="pointer-coarse:pt-6" />
       </div>
     </SiteShell>
   );

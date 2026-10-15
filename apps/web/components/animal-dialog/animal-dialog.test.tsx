@@ -11,6 +11,7 @@ import {
   within,
 } from "@testing-library/react";
 import type { Animal } from "@posvoji/schema";
+import { spring } from "motion/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AnimalDialog } from "@/components/animal-dialog/animal-dialog";
 import {
@@ -3378,6 +3379,34 @@ describe("fan tempo", () => {
       balanced.spring.stiffness,
     );
     expect(fanTempo("lively").overshoot).toBeGreaterThan(balanced.overshoot);
+  });
+
+  // A walk commits when its spring comes to rest, and a burst of presses waits
+  // for each commit before it walks the next two seats. Motion's own rest for
+  // a value this small waits until the spring is all but still, long after
+  // the photo has stopped visibly moving.
+  it("lands a walk well before Motion's own rest", () => {
+    for (const energy of ["calm", "balanced", "lively"] as const) {
+      const { stiffness, damping, mass, restDelta, restSpeed } =
+        fanTempo(energy).spring;
+      // Asked every 50ms, which is how Motion works out when a spring ends.
+      const restsAt = (rest: { restDelta?: number; restSpeed?: number }) => {
+        const walk = spring({
+          keyframes: [0, 2],
+          stiffness,
+          damping,
+          mass,
+          ...rest,
+        });
+        let ms = 0;
+        while (!walk.next(ms).done) ms += 50;
+        return ms;
+      };
+
+      expect(restsAt({ restDelta, restSpeed })).toBeLessThan(
+        restsAt({}) - 100,
+      );
+    }
   });
 });
 

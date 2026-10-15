@@ -95,15 +95,44 @@ export function printBox(aspect: number) {
 
 /** How a fan settles, and how far a gesture may pull it past a step. */
 export type FanTempo = {
-  spring: { type: "spring"; stiffness: number; damping: number; mass: number };
+  spring: {
+    type: "spring";
+    stiffness: number;
+    damping: number;
+    mass: number;
+    restDelta: number;
+    restSpeed: number;
+  };
   /** The finger can pull a little past the next photo, and the spring brings
    *  it back: the give is what says "you are at the step", the way a notch
    *  does. */
   overshoot: number;
 };
 
+// When a walk counts as landed, which is when it commits: the window
+// re-seats, the keyboard moves on and the next queued press starts walking.
+// Motion's own thresholds for a value this small wait until the spring is all
+// but still, a hundredth of a seat a second, which held every walk 50 to 150ms
+// past the moment its photo stopped visibly moving, and a burst of presses
+// waited that long before each walk it had queued.
+//
+// A pixel instead. A seat is at most 287px of travel on any print's edge (the
+// desktop dialog, measured at 1440 and 3440 wide; 254 on a phone), so 0.0035
+// of a seat is a pixel left to go and 0.2 seats a second is a pixel a frame.
+// The spring stops on its target, so that pixel is the most a print jumps as
+// it lands, the lively overshoot included. The hover and the entrance run on
+// the same springs over 0 to 1, where both numbers are further under anything
+// visible.
+const LANDING = { restDelta: 0.0035, restSpeed: 0.2 };
+
 export const BALANCED_TEMPO: FanTempo = {
-  spring: { type: "spring", stiffness: 420, damping: 26, mass: 0.5 },
+  spring: {
+    type: "spring",
+    stiffness: 420,
+    damping: 26,
+    mass: 0.5,
+    ...LANDING,
+  },
   overshoot: 1.15,
 };
 
@@ -120,13 +149,25 @@ export const BALANCED_TEMPO: FanTempo = {
 export function fanTempo(energy: EnergyLevel | undefined): FanTempo {
   if (energy === "calm") {
     return {
-      spring: { type: "spring", stiffness: 300, damping: 30, mass: 0.6 },
+      spring: {
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+        mass: 0.6,
+        ...LANDING,
+      },
       overshoot: 1.08,
     };
   }
   if (energy === "lively") {
     return {
-      spring: { type: "spring", stiffness: 520, damping: 22, mass: 0.45 },
+      spring: {
+        type: "spring",
+        stiffness: 520,
+        damping: 22,
+        mass: 0.45,
+        ...LANDING,
+      },
       overshoot: 1.22,
     };
   }

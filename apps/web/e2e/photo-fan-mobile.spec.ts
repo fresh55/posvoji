@@ -498,7 +498,10 @@ test.describe("under real touch points", () => {
       Math.round(path.from + ((path.to - path.from) * step) / STEPS);
 
     await touch(cdp, "touchStart", [{ x: path.from, y: path.y, id: 1 }]);
-    for (let step = 1; step <= 6; step++) {
+    // Four steps of ten, about a third of a photo on the Pixel 7. A cancel
+    // settles on the nearest seat, so a gesture past half a photo walks on to
+    // the next one.
+    for (let step = 1; step <= 4; step++) {
       await page.waitForTimeout(STEP_MS);
       await touch(cdp, "touchMove", [{ x: at(step), y: path.y, id: 1 }]);
     }

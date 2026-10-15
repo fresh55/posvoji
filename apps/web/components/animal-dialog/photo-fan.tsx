@@ -1,13 +1,23 @@
+import {
+  COUNT_ROLL_DISTANCE,
+  rollOffset,
+} from "@/components/filters/filter-card";
 import { GALLERY_BUTTON_CLASS } from "@/components/photo-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PRINT_ASPECT, type PermittedPhoto } from "@/lib/animal-images";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence } from "motion/react";
-import { useEffect, useState, type DragEvent, type ReactNode } from "react";
+import { AnimatePresence, m } from "motion/react";
+import {
+  memo,
+  useEffect,
+  useState,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 import { frontPrintOf } from "./fan-focus";
-import { printBox } from "./fan-geometry";
+import { forwardsRound, printBox } from "./fan-geometry";
 import {
   ENTRANCE_LEAD,
   MOUNT_FADE,
@@ -54,6 +64,56 @@ export function FrontPrintBox({
   );
 }
 
+// The filter counts' roll, over about the time a step takes to bring its
+// photograph in on the standard tempo.
+const NUMBER_ROLL = { duration: 0.2, ease: "easeOut" } as const;
+const NUMBER_AT_REST = { transform: rollOffset(0) };
+
+/**
+ * The number in the fan's count. It rolls in the way the fan walks, from below
+ * for the next photo and from above for the one before, so the press, the
+ * photograph and the number move together.
+ *
+ * Only the new number is drawn. CountRoll crosses the old number out as the
+ * new one comes in, which suits a filter count that changes once per pick.
+ * Quick presses change this one every 80ms, and the numbers still leaving
+ * would pile up in one line.
+ */
+const FanCount = memo(function FanCount({
+  value,
+  count,
+  still,
+}: {
+  value: number;
+  count: number;
+  /** Reduced motion: the number changes in place. */
+  still: boolean;
+}) {
+  const [roll, setRoll] = useState({ value, from: 0 });
+  if (roll.value !== value) {
+    const way = forwardsRound(roll.value, value, count) ? 1 : -1;
+    setRoll({ value, from: way * COUNT_ROLL_DISTANCE });
+  }
+  return (
+    // A grid cell and not a plain span, because only a box can clip, and the
+    // clip is what makes the number roll through its own line.
+    <span className="inline-grid overflow-clip">
+      <m.span
+        key={value}
+        initial={
+          roll.from === 0 || still
+            ? false
+            : { transform: rollOffset(roll.from) }
+        }
+        animate={NUMBER_AT_REST}
+        transition={NUMBER_ROLL}
+      >
+        {value}
+      </m.span>
+    </span>
+  );
+});
+
 /**
  * The fan, in one of the two geometries. Which one is chosen from the
  * breakpoint above, so only that one is mounted. A gesture walks it live,
@@ -81,6 +141,7 @@ export function Fan(props: FanProps) {
     prints,
     printAt,
     spoken,
+    marked,
     factors,
     progress,
     selectPhoto,
@@ -342,7 +403,13 @@ export function Fan(props: FanProps) {
               className={PHOTO_BADGE_CLASS}
             >
               <span>{messages.photosShort}</span>{" "}
-              {activeIndex + 1} / {count}
+              <span>
+                <FanCount
+                  value={marked + 1}
+                  count={count}
+                  still={Boolean(shouldReduceMotion)}
+                /> / {count}
+              </span>
             </Badge>
           ) : (
             /* Its name leads with the mark. An aria-label of "Vse fotografije (13)"
@@ -398,7 +465,13 @@ export function Fan(props: FanProps) {
                 }}
               >
                 <span>{messages.photosShort}</span>{" "}
-                {activeIndex + 1} / {count}{" "}
+                <span>
+                  <FanCount
+                  value={marked + 1}
+                  count={count}
+                  still={Boolean(shouldReduceMotion)}
+                /> / {count}
+                </span>{" "}
                 {/* The rest of the name, carried as text so the drawn words lead
                   it. sr-only and not aria-hidden: this is the half a reader
                   needs and the half the photograph has no room for. */}

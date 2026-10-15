@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, RotateCcw } from "lucide-react";
 import { memo, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
+import { PENDING_DELAY_MS } from "@/components/deferred-status";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
 import type { CatReaction, createCatInteraction } from "@/lib/cat-interaction";
 import type { createViewerCatPicker } from "@/lib/cat-viewer-runtime";
@@ -22,6 +24,18 @@ const MODEL = "/models/our-cat/cat.glb?v=29";
 // The preload and viewer must use the same decoder URL.
 const DECODER = "/models/our-cat/meshopt-decoder.js";
 const SLOW_LOAD_MS = 10_000;
+// A request that has neither loaded nor failed by now is treated as failed,
+// so the visitor gets the retry instead of a sentence that never ends. A
+// working 2G link needs about 35s for the renderer and the model together.
+const STALLED_LOAD_MS = 60_000;
+// How long loading feedback waits before it draws. A cat who arrives inside
+// the wait never draws a chip. A press waits as long as any pending note on
+// the site; a hover waits longer, because the progress cursor answers it.
+const PRESS_GRACE_MS = PENDING_DELAY_MS;
+const HOVER_GRACE_MS = 1_000;
+// Below 16rem (the home corner) a status is one 24px round mark, not a
+// sentence. The badge and the retry button share it so they never drift.
+const SMALL_STAGE_MARK = "@max-3xs/cat:size-6 @max-3xs/cat:p-0";
 
 // Match the viewer request modes so preloads are reused.
 const HINTS = [
@@ -115,16 +129,41 @@ export const CatModel = memo(function CatModel({
   const [status, setStatus] = useState<Status>("idle");
   const [slow, setSlow] = useState(false);
   const ready = status === "ready";
+  const failed = status === "failed";
   const loading = status === "loading" || status === "revealing";
   const waiting = loading
     ? (slow ? text.slow : text.loading)
-    : (status === "failed" ? text.unavailable : "");
-  // Keep loading feedback visible after the first interaction until ready.
-  const [reached, setReached] = useState(false);
+    : (failed ? text.unavailable : "");
+  // Keep feedback visible after the first interaction until ready. A press
+  // is remembered apart from a hover because it is answered sooner.
+  const [reached, setReached] = useState<false | "near" | "press">(false);
   // A press starts the idle stage or retries a failure. Once a request starts,
   // loading feedback owns the stage even if the connection setting changes.
-  const showStartButton = status === "failed" ||
-    (deferOnLimitedConnection && limitedConnection && status === "idle");
+  // The caption holds the action only where the page defers the start, on a
+  // limited connection. Elsewhere the retry is drawn on the stage, because a
+  // row added under the home corner's bottom-anchored stage lifts the cat.
+  const showStartButton = deferOnLimitedConnection && limitedConnection &&
+    (status === "idle" || failed);
+  // The stage's own retry, unless the caption already holds one. A retry
+  // started from it keeps it in place as its pending state, so keyboard focus
+  // stays where the visitor left it until the cat arrives or fails again.
+  const retryButton = useRef<HTMLButtonElement>(null);
+  const [retrying, setRetrying] = useState(false);
+  const showRetry = failed ? !showStartButton : retrying && loading;
+  const pendingRetry = showRetry && !failed;
+  // Once the wait is over the chip stays drawable: a retry turns a failure
+  // back into loading, and the visitor who pressed must not wait again.
+  // A press restarts the wait a hover began.
+  const [graceOver, setGraceOver] = useState(false);
+  useEffect(() => {
+    if (!reached || graceOver) return;
+    const timer = setTimeout(() => setGraceOver(true),
+      reached === "press" ? PRESS_GRACE_MS : HOVER_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [reached, graceOver]);
+  // A failure is said at once. The chip goes as the still starts to cross
+  // into the canvas rather than after it.
+  const drawn = reached !== false && (failed || (status === "loading" && graceOver));
   // Replay a touch received while the poster was loading.
   const touched = useRef(false);
   // Update the callback without restarting the WebGL effect.
@@ -146,9 +185,17 @@ export const CatModel = memo(function CatModel({
     if (status === "ready") return;
     // Hover can be accidental. On a limited connection only a press opts in.
     if (deferOnLimitedConnection && limitedConnectionEnabled() && !touch) return;
-    setReached(true);
-    if (touch) touched.current = true;
+    setReached((current) => touch ? "press" : current || "near");
+    if (touch) {
+      touched.current = true;
+      setRetrying(false);
+    }
     wake.current(touch);
+  };
+  // The stage button's own press. It keeps the button as the pending state.
+  const retry = () => {
+    reach(true);
+    setRetrying(true);
   };
 
   useEffect(() => {
@@ -166,8 +213,15 @@ export const CatModel = memo(function CatModel({
     let visible = false;
     let ready = false;
     let loaded = false;
+    // Set when the retry button held focus as he arrived.
+    let focusOnArrival = false;
     let attempt = 0;
     let slowTimer: ReturnType<typeof setTimeout> | undefined;
+    let stallTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearTimers = () => {
+      clearTimeout(slowTimer);
+      clearTimeout(stallTimer);
+    };
     let revealFrame: number | undefined;
     let wanted = !startOnReach;
     let explicitlyRequested = false;
@@ -209,16 +263,25 @@ export const CatModel = memo(function CatModel({
         touched.current = false;
         controller?.react("Notice");
       }
+      // The button that held focus is gone with the still. model-viewer does
+      // not delegate focus from its element, so focus its own input surface.
+      if (focusOnArrival) {
+        focusOnArrival = false;
+        viewer?.shadowRoot?.querySelector<HTMLElement>(".userInput")?.focus();
+      }
     };
     const finishReveal = () => {
-      if (loaded && !ready && !disposed) setStatus("ready");
+      if (!loaded || ready || disposed) return;
+      focusOnArrival = !!retryButton.current &&
+        document.activeElement === retryButton.current;
+      setStatus("ready");
     };
     const onRevealEnd = (event: TransitionEvent) => {
       if (event.target === container && event.propertyName === "opacity") finishReveal();
     };
     const onLoad = () => {
       if (disposed || loaded || !viewer) return;
-      clearTimeout(slowTimer);
+      clearTimers();
       // Hold the matching first pose throughout the reveal. Animation, the
       // page's handle and a remembered touch all wait until the still leaves.
       viewer.pause();
@@ -253,7 +316,7 @@ export const CatModel = memo(function CatModel({
     };
     const onError = () => {
       if (disposed) return;
-      clearTimeout(slowTimer);
+      clearTimers();
       if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
       loaded = false;
       ready = false;
@@ -289,21 +352,27 @@ export const CatModel = memo(function CatModel({
       started = true;
       setStatus("loading");
       setSlow(false);
-      clearTimeout(slowTimer);
       slowTimer = setTimeout(() => setSlow(true), SLOW_LOAD_MS);
+      stallTimer = setTimeout(onError, STALLED_LOAD_MS);
       // model-viewer caches even failed loads by URL. Only an explicit reach
       // after failure changes the URL, so it makes a real request without
       // clearing other viewers' caches or retrying on scroll/tab changes.
-      const modelUrl = attempt ? `${MODEL}&retry=${attempt}` : MODEL;
+      const run = attempt;
+      const modelUrl = run ? `${MODEL}&retry=${run}` : MODEL;
       askForHim(modelUrl);
       try {
         const [{ ModelViewerElement: Viewer }, { createCatInteraction }] = await Promise.all([
           import("@google/model-viewer"),
           import("@/lib/cat-interaction"),
         ]);
-        if (disposed) return;
+        // A stalled request may have been given up on while the import ran.
+        if (disposed || run !== attempt) return;
         // Postpone WebGL setup if the viewport or tab changed during the import.
-        if (!visible || document.hidden) { started = false; return; }
+        if (!visible || document.hidden) {
+          started = false;
+          clearTimers();
+          return;
+        }
         askForPicker();
         Viewer.meshoptDecoderLocation = DECODER;
         viewer = document.createElement("model-viewer") as ModelViewerElement;
@@ -364,7 +433,7 @@ export const CatModel = memo(function CatModel({
         });
         container.append(viewer);
       } catch {
-        if (!disposed) onError();
+        if (run === attempt) onError();
       }
     };
     const takeReach = (explicit = false) => {
@@ -381,7 +450,7 @@ export const CatModel = memo(function CatModel({
     // Include caption focus: the stage has no focusable viewer until loading finishes.
     const corner = startOnReach ? stage.current?.parentElement : null;
     const onCornerFocus = () => {
-      setReached(true);
+      setReached((current) => current || "near");
       takeReach();
     };
     corner?.addEventListener("focusin", onCornerFocus);
@@ -418,7 +487,7 @@ export const CatModel = memo(function CatModel({
       activate.current = () => {};
       corner?.removeEventListener("focusin", onCornerFocus);
       observer?.disconnect();
-      clearTimeout(slowTimer);
+      clearTimers();
       if (revealFrame !== undefined) cancelAnimationFrame(revealFrame);
       container.removeEventListener("transitionend", onRevealEnd);
       container.removeEventListener("transitioncancel", onRevealEnd);
@@ -432,7 +501,7 @@ export const CatModel = memo(function CatModel({
 
   const startAction = showStartButton ? (
     <button type="button" className={QUIET_DOC_LINK} onClick={() => reach(true)}>
-      {status === "failed" ? text.retry : text.start}
+      {failed ? text.retry : text.start}
     </button>
   ) : null;
 
@@ -440,7 +509,7 @@ export const CatModel = memo(function CatModel({
     <>
       <div
         ref={stage}
-        className={cn("relative", loading && "cursor-progress", className)}
+        className={cn("@container/cat relative", loading && "cursor-progress", className)}
         onPointerEnter={() => reach(false)}
         onPointerDown={() => reach(true)}
       >
@@ -468,17 +537,53 @@ export const CatModel = memo(function CatModel({
         {/* Announce loading once requested; show visual feedback after interaction. */}
         <div
           data-slot="cat-status"
-          role="status"
           className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-2 flex justify-center transition-opacity duration-200 motion-reduce:transition-none",
-            reached && waiting ? "opacity-100" : "opacity-0",
+            "pointer-events-none absolute inset-x-0 bottom-2 flex flex-wrap items-center justify-center gap-1.5 px-2 transition-opacity duration-200 motion-reduce:transition-none",
+            drawn ? "opacity-100" : "opacity-0",
           )}
         >
-          {waiting && (
-            <Badge variant="overlay-quiet" className="h-auto max-w-full text-center whitespace-normal">
-              {reached && loading && <LoaderCircle className="animate-spin" aria-hidden />}
-              {waiting}
+          {/* The live region only speaks; what is drawn is hidden from it. */}
+          <div role="status" className="sr-only">{waiting}</div>
+          {/* On a small stage every state is one round mark in one place: the
+              spinner, then the retry arrow, then the retry spinning. A
+              pending retry is drawn by its own button alone. */}
+          {waiting && !pendingRetry && (
+            <Badge
+              variant="overlay-quiet"
+              aria-hidden
+              className={cn(
+                "h-auto max-w-full text-center whitespace-normal",
+                SMALL_STAGE_MARK,
+                showRetry && "@max-3xs/cat:hidden",
+              )}
+            >
+              {reached && loading && <LoaderCircle className="animate-spin" />}
+              <span className="@max-3xs/cat:hidden">{waiting}</span>
             </Badge>
+          )}
+          {showRetry && (
+            <Button
+              ref={retryButton}
+              type="button"
+              variant="outline"
+              size="xs"
+              aria-disabled={failed ? undefined : true}
+              title={text.unavailable}
+              // Opaque in both themes: it sits on the still, where a wash has
+              // nothing to tint but the cat.
+              className={cn(
+                "pointer-events-auto rounded-full aria-disabled:cursor-progress aria-disabled:text-muted-foreground dark:bg-background dark:hover:bg-muted pointer-coarse:tap-target",
+                SMALL_STAGE_MARK,
+              )}
+              // A Tab to it draws the chip it belongs to.
+              onFocus={() => setReached((current) => current || "near")}
+              // The press is the button's, not the poster's behind it.
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => { if (failed) retry(); }}
+            >
+              {failed ? <RotateCcw aria-hidden /> : <LoaderCircle className="animate-spin" aria-hidden />}
+              <span className="@max-3xs/cat:sr-only">{text.retry}</span>
+            </Button>
           )}
         </div>
       </div>

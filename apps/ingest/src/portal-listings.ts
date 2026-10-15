@@ -24,6 +24,8 @@ import type { ShelterEntry } from "./shelters";
 // itself, so the link is the shelter's own page on this site. The slug is the
 // providerId, which is also the shelter id: the same string the shelter page
 // route and the override join already depend on.
+// apps/web/lib/animal-source-action.ts recognizes manual sources by this
+// origin. An origin change must update that resolver and its tests too.
 const SITE_ORIGIN = "https://posvoji.si";
 
 export function listingSourceUrl(providerId: string): string {

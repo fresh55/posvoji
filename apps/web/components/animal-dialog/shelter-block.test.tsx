@@ -69,3 +69,54 @@ describe("ShelterBlock distance", () => {
     expect(screen.getByText("Maribor").className).toContain("truncate");
   });
 });
+
+describe("ShelterBlock source actions", () => {
+  it.each([
+    { locale: "sl" as const, status: "available" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar", sourceUrl: "https://posvoji.si/zavetisca/oskar" },
+    { locale: "en" as const, status: "available" as const, label: "Contact the shelter", href: "/en/shelters/oskar", sourceUrl: "https://posvoji.si/animals/luna?from=portal" },
+    { locale: "sl" as const, status: "adopted" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar", sourceUrl: "https://posvoji.si/en/shelters/oskar" },
+    { locale: "en" as const, status: "adopted" as const, label: "Contact the shelter", href: "/en/shelters/oskar", sourceUrl: "https://posvoji.si/zavetisca/oskar" },
+  ])("offers contact only for an available manual listing in $locale ($status)", ({ locale, status, label, href, sourceUrl }) => {
+    render(
+      <I18nProvider locale={locale}>
+        <ShelterBlock
+          animal={{
+            ...REX,
+            status,
+            shelter: { ...REX.shelter, id: "oskar" },
+            source: { ...REX.source!, sourceUrl },
+          }}
+          logos={{}}
+          reference={REFERENCE}
+        />
+      </I18nProvider>,
+    );
+
+    if (status === "adopted") {
+      expect(screen.queryByRole("link", { name: label })).toBeNull();
+      const [shelter] = screen.getAllByRole("link");
+      expect(shelter.getAttribute("href")).toBe(href);
+      expect(screen.getAllByRole("link")).toHaveLength(1);
+      expect(screen.getByText(locale === "sl" ? "Ta žival je že našla nov dom." : "This animal has already found a home.")).toBeTruthy();
+      return;
+    }
+    const link = screen.getByRole("link", { name: label });
+    expect(link.getAttribute("href")).toBe(href);
+    expect(link.getAttribute("target")).toBeNull();
+    expect(link.getAttribute("rel")).toBeNull();
+    expect(link.querySelector("svg")).toBeNull();
+  });
+
+  it.each(["available", "adopted"] as const)("keeps the external original listing for a %s animal", (status) => {
+    render(
+      <I18nProvider locale="sl">
+        <ShelterBlock animal={{ ...REX, status }} logos={{}} reference={REFERENCE} />
+      </I18nProvider>,
+    );
+    const link = screen.getByRole("link", { name: "Odpri objavo pri zavetišču" });
+    expect(link.getAttribute("href")).toBe(REX.source!.sourceUrl);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noreferrer");
+    expect(link.querySelector("svg")).not.toBeNull();
+  });
+});

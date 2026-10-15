@@ -40,6 +40,7 @@ import {
   FanTempo,
   fanShapes,
   fanSlots,
+  forwardsRound,
   shapeOf,
   walkSlots,
   type FanSlot,
@@ -382,6 +383,16 @@ export function useFanControls({
   } | null>(null);
   const spoken = withheld?.front === activeIndex ? withheld.say : activeIndex;
 
+  // Which photo the mark in the front print's corner names: the one the fan is
+  // going to, from the press that sends it there. The front itself changes
+  // only when a walk commits, which waits for its spring to come to rest, well
+  // after the photograph is in place, and quick presses commit two at a time.
+  //
+  // Held for the front it was aimed from, as the live line above holds its
+  // number, so a photo changed any other way is named at once. See syncAim.
+  const [aim, setAim] = useState<{ from: number; to: number } | null>(null);
+  const marked = aim?.from === activeIndex ? aim.to : activeIndex;
+
   const progress = useMotionValue(0);
   const snap = useRef<ReturnType<typeof animate> | null>(null);
   // A snap that outlives the fan would keep a frame loop alive. Dropped as
@@ -432,8 +443,29 @@ export function useFanControls({
     by: "pointer",
   });
 
+  // The photo the walk in flight lands on. The presses kept for after it count
+  // on from here.
+  const bound = useRef(activeIndex);
+
+  // Points the mark where the fan is going, read off the walk and the presses
+  // waiting their turn, and at nothing when neither is left. Called wherever
+  // either of them changes. `from` is the front the commit about to render
+  // stands on, which a landing passes in because that commit has not happened
+  // yet. An aim equal to the one held renders nothing, so a chain of walks
+  // keeps one number on the mark rather than rolling it in at every commit.
+  function syncAim(from = activeIndex) {
+    const going = heading.current !== 0 || surplus.current.steps !== 0;
+    const to = (((bound.current + surplus.current.steps) % count) + count) % count;
+    setAim((held) => {
+      if (!going) return null;
+      return held?.from === from && held.to === to ? held : { from, to };
+    });
+  }
+
   function dropSurplus() {
+    if (surplus.current.steps === 0) return;
     surplus.current.steps = 0;
+    syncAim();
   }
 
   // What is left to walk once a walk has landed. From the front the fan is
@@ -685,6 +717,8 @@ export function useFanControls({
     attachWheel.cancel();
     heading.current = delta;
     drivenBy.current = by;
+    bound.current = target;
+    syncAim();
     // A walk of two steps reaches a tier the window does not hold, so the
     // prints that should be walking in at the leading edge are mounted for the
     // length of the walk, seated where they stand now rather than where the
@@ -709,6 +743,9 @@ export function useFanControls({
       heading.current = 0;
       // Whatever the walk mounted is the window's now, or was never needed.
       setAhead(NO_PRINTS);
+      // The mark has been naming this photo since the press. Kept on whatever
+      // presses are still waiting, counted from the front this lands on.
+      syncAim(target);
       if (!reseats) {
         progress.jump(0);
         // No commit follows a walk that went nowhere, so what the commit would
@@ -827,6 +864,7 @@ export function useFanControls({
     if (surplus.current.steps !== 0 || Math.abs(wanted) > 2) {
       surplus.current.steps += direction;
       surplus.current.by = by;
+      syncAim();
       return;
     }
     if (wanted !== 0 && (activeIndex + wanted + count) % count === activeIndex) {
@@ -845,7 +883,10 @@ export function useFanControls({
       return;
     }
     const at = progress.get();
-    if (at === 0) return;
+    if (at === 0) {
+      syncAim();
+      return;
+    }
     walkBy(Math.round(at));
   }
 
@@ -864,14 +905,15 @@ export function useFanControls({
     // turn were going somewhere else.
     dropSurplus();
     if (target === activeIndex) return;
-    const forward = (target - activeIndex + count) % count;
-    walkTo(walkFor(target, 2 * forward <= count ? 1 : -1), target, by);
+    const way = forwardsRound(activeIndex, target, count) ? 1 : -1;
+    walkTo(walkFor(target, way), target, by);
   }
 
   // Not far, not fast: the fan goes back to where it stood.
   function springBack() {
     heading.current = 0;
     dropSurplus();
+    syncAim();
     // A walk that is not going anywhere brings nothing in.
     setAhead(NO_PRINTS);
     // The other half of what walkTo drops, for the walk that turned out to be
@@ -962,6 +1004,7 @@ export function useFanControls({
       if (swipeAxis.current === "x") {
         heading.current = 0;
         dropSurplus();
+        syncAim();
       }
       // The capture waits for the axis, and only a mouse ever gets one. Taken
       // on the press it would retarget the click the browser fires afterwards
@@ -1091,6 +1134,7 @@ export function useFanControls({
     prints,
     printAt,
     spoken,
+    marked,
     factors,
     progress,
     selectPhoto,

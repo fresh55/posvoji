@@ -271,11 +271,11 @@ export function countDirection(previous: number, next: number): -1 | 0 | 1 {
   return Math.sign(next - previous) as -1 | 0 | 1;
 }
 
-const COUNT_ROLL_DISTANCE = 6;
+export const COUNT_ROLL_DISTANCE = 6;
 const COUNT_ROLL = { duration: 0.24, ease: "easeOut" } as const;
 
 /** Where a number stands, as the transform string itself. */
-function rollOffset(px: number): string {
+export function rollOffset(px: number): string {
   return px === 0 ? "none" : `translateY(${px}px)`;
 }
 

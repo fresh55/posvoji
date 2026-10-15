@@ -137,6 +137,15 @@ export function lerp(from: number, to: number, t: number) {
   return from + (to - from) * t;
 }
 
+/**
+ * Whether the short way round a set of `count` photos from `from` to `to` is
+ * forwards. Halfway round an even set counts as forwards. Home and End walk
+ * this way, and the count in the corner rolls this way with them.
+ */
+export function forwardsRound(from: number, to: number, count: number) {
+  return 2 * ((((to - from) % count) + count) % count) <= count;
+}
+
 // Where a photo stands on a continuous offset from the front, in everything
 // but x: between the whole offsets the pose is read off the line between the
 // tiers, so a photo halfway through a drag stands halfway between its two

@@ -9,7 +9,7 @@ import {
   type MotionValue,
 } from "motion/react";
 import type { Animal } from "@posvoji/schema";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ENTRANCE_STAGGER,
   printEntrance,
@@ -693,6 +693,120 @@ describe("fan count control", () => {
     // The fan is a phone's gallery, and a title is a mouse and nothing else.
     // The name already says the same words, so the name is where it stays.
     expect(count.getAttribute("title")).toBeNull();
+  });
+
+  // The count names where the fan is going from the press, rather than waiting
+  // for the walk to commit. On fake time, so no walk lands before the test
+  // says so, and without waitFor, which polls on the timers faked here.
+  describe("while a walk is in flight", () => {
+    const mark = (stage: HTMLElement) =>
+      stage.querySelector('[data-slot="badge"]')?.textContent;
+    const chevron = (stage: HTMLElement, name: string) =>
+      within(stage).getByRole("button", { name });
+    const front = (stage: HTMLElement) => photoNumber(frontPrint(stage));
+    // The element the number rolls in, which a new number replaces.
+    const number = (stage: HTMLElement) =>
+      stage.querySelector<HTMLElement>('[data-slot="badge"] .inline-grid > span');
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /** Runs the walk in flight to rest and renders the commit it lands on. */
+    async function land() {
+      await drawAfter(1000);
+      await act(async () => {});
+    }
+
+    it("names the photo a press is walking to before it lands", async () => {
+      const { stage } = renderFan(gallery(7));
+      await act(async () => {
+        fireEvent.click(chevron(stage(), "Naslednja fotografija"));
+      });
+      expect(mark(stage())).toContain("Foto 2 / 7 ");
+      expect(front(stage())).toBe(1);
+
+      await land();
+      expect(front(stage())).toBe(2);
+      expect(mark(stage())).toContain("Foto 2 / 7 ");
+    });
+
+    it("counts every quick press, past the two a walk can take", async () => {
+      const { stage } = renderFan(gallery(14));
+      await act(async () => {
+        for (let press = 0; press < 5; press += 1) {
+          fireEvent.click(chevron(stage(), "Naslednja fotografija"));
+        }
+      });
+      expect(mark(stage())).toContain("Foto 6 / 14 ");
+
+      // A press back takes one of the kept presses away.
+      await act(async () => {
+        fireEvent.click(chevron(stage(), "Prejšnja fotografija"));
+      });
+      expect(mark(stage())).toContain("Foto 5 / 14 ");
+
+      // Two walks of two seats, the second setting off from the first one's
+      // commit. The count holds still through both, the same element and no
+      // second roll at the commit between them.
+      const held = number(stage());
+      await land();
+      expect(front(stage())).toBe(3);
+      expect(mark(stage())).toContain("Foto 5 / 14 ");
+      await land();
+      expect(front(stage())).toBe(5);
+      expect(mark(stage())).toContain("Foto 5 / 14 ");
+      expect(number(stage())).toBe(held);
+    });
+
+    it("names the next photo when a drag lets go past the step", async () => {
+      const { stage } = renderFan(gallery(7));
+      await dragBy(stage(), -200);
+      expect(mark(stage())).toContain("Foto 2 / 7 ");
+      expect(front(stage())).toBe(1);
+      await land();
+      expect(front(stage())).toBe(2);
+    });
+
+    // A finger that catches a walk and lets go short of a step puts the fan
+    // back on the photo it stood on, and the count goes back with it.
+    it("goes back when a caught walk springs back", async () => {
+      const { stage } = renderFan(gallery(7));
+      await act(async () => {
+        fireEvent.click(chevron(stage(), "Naslednja fotografija"));
+      });
+      expect(mark(stage())).toContain("Foto 2 / 7 ");
+
+      await dragBy(stage(), -40);
+      expect(mark(stage())).toContain("Foto 1 / 7 ");
+      await land();
+      expect(front(stage())).toBe(1);
+      expect(mark(stage())).toContain("Foto 1 / 7 ");
+    });
+
+    // Where each new number starts its roll, read before any frame has moved
+    // it: below for the next photo, above for the one before, and the short
+    // way round across the end of the set, which is the way the fan walks.
+    it("rolls the number in from the side the fan walks", async () => {
+      const { stage } = renderFan(gallery(7), { initialIndex: 6 });
+      // Nothing rolls on the way in.
+      expect(number(stage())?.style.transform).toBe("none");
+
+      await act(async () => {
+        fireEvent.click(chevron(stage(), "Naslednja fotografija"));
+      });
+      expect(number(stage())?.textContent).toBe("1");
+      expect(number(stage())?.style.transform).toBe("translateY(6px)");
+
+      await act(async () => {
+        fireEvent.click(chevron(stage(), "Prejšnja fotografija"));
+      });
+      expect(number(stage())?.textContent).toBe("7");
+      expect(number(stage())?.style.transform).toBe("translateY(-6px)");
+    });
   });
 });
 

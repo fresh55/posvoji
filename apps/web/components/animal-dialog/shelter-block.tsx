@@ -10,7 +10,7 @@ import { shelterPath } from "@/lib/shelter-path";
 import { stayStatement } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { animalPath } from "@/lib/animal-path";
+import { animalSourceAction } from "@/lib/animal-source-action";
 import { useAnimalSource } from "@/lib/animal-descriptions";
 import { SourceFreshness } from "@/components/source-freshness";
 
@@ -38,6 +38,7 @@ export function ShelterBlock({
   const { shelter } = animal;
   const deferredSource = useAnimalSource(animal.source ? undefined : animal.id);
   const source = animal.source ?? deferredSource;
+  const sourceAction = animalSourceAction(animal, source, locale);
 
   // The wait lives here, in the same box as the one button that can answer
   // it, and it lives here for every animal still in the shelter. It used to
@@ -179,13 +180,13 @@ export function ShelterBlock({
               {messages.foundHome}
             </p>
             <a
-              href={source?.sourceUrl ?? animalPath(animal, locale)}
-              target="_blank"
-              rel="noreferrer"
+              href={sourceAction.href}
+              target={sourceAction.external ? "_blank" : undefined}
+              rel={sourceAction.external ? "noreferrer" : undefined}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              {source ? messages.viewOriginalListing : messages.animalDetails}
-              <ExternalLink className="size-3" aria-hidden />
+              {messages[sourceAction.label]}
+              {sourceAction.external && <ExternalLink className="size-3" aria-hidden />}
             </a>
           </div>
         ) : (
@@ -221,12 +222,12 @@ export function ShelterBlock({
             )}
           >
             <a
-              href={source?.sourceUrl ?? animalPath(animal, locale)}
-              target="_blank"
-              rel="noreferrer"
+              href={sourceAction.href}
+              target={sourceAction.external ? "_blank" : undefined}
+              rel={sourceAction.external ? "noreferrer" : undefined}
             >
-              {source ? messages.viewOriginalListing : messages.animalDetails}
-              <ExternalLink aria-hidden />
+              {messages[sourceAction.label]}
+              {sourceAction.external && <ExternalLink aria-hidden />}
             </a>
           </Button>
         )}

@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/dialog";
 import { adoptableNow, type ClientAnimal } from "@/lib/animal";
 import { animalPath, photoFromSearch } from "@/lib/animal-path";
+import { animalSourceAction } from "@/lib/animal-source-action";
 import { animalSubtitle } from "@/lib/labels";
 import {
   getSearchSnapshot,
@@ -525,6 +526,7 @@ function OpenAnimalDialog({
 
   const deferredSource = useAnimalSource(lastAnimal.source ? undefined : lastAnimal.id);
   const source = lastAnimal.source ?? deferredSource;
+  const sourceAction = animalSourceAction(lastAnimal, source, locale);
   const name = lastAnimal.name ?? messages.unnamed;
   // The address this animal has of its own, which is also what the card behind
   // the dialog links to, so it is how that card is found.
@@ -1095,12 +1097,12 @@ function OpenAnimalDialog({
                 <div data-slot="sticky-cta" className={STICKY_CTA_CLASS}>
                   <Button asChild size="sm" className="h-11 w-full">
                     <a
-                      href={source?.sourceUrl ?? href}
-                      target="_blank"
-                      rel="noreferrer"
+                      href={sourceAction.href}
+                      target={sourceAction.external ? "_blank" : undefined}
+                      rel={sourceAction.external ? "noreferrer" : undefined}
                     >
-                      {source ? messages.viewOriginalListing : messages.animalDetails}
-                      <ExternalLink aria-hidden />
+                      {messages[sourceAction.label]}
+                      {sourceAction.external && <ExternalLink aria-hidden />}
                     </a>
                   </Button>
                 </div>

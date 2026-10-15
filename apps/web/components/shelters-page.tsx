@@ -162,7 +162,6 @@ export function SheltersPage({ locale }: { locale: Locale }) {
           locale={locale}
           showSheltersLink={false}
           showContact={false}
-          updatedAt={dataset?.generatedAt}
           docked
         />
       }

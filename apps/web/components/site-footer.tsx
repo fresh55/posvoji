@@ -2,9 +2,8 @@ import type { ReactNode } from "react";
 import { mailtoHref } from "@/lib/contact-links";
 import { PoetivoLockup } from "@/components/poetivo-lockup";
 import { GITHUB_MARK } from "@/lib/github-mark";
-import { getMessages, interpolate, type Locale } from "@/lib/i18n";
+import { getMessages, type Locale } from "@/lib/i18n";
 import { QUIET_UNDERLINE } from "@/lib/link-styles";
-import { verificationTime } from "@/lib/source-freshness";
 import { CONTACT_EMAIL, POETIVO_URL, REPO_URL } from "@/lib/site";
 import { siteLinks, type SiteLinkKey } from "@/lib/site-links";
 import { cn } from "@/lib/utils";
@@ -68,7 +67,6 @@ export function SiteFooter({
   showAboutLink = true,
   showContact = true,
   aboutListings = true,
-  updatedAt,
   docked = false,
   children,
 }: {
@@ -106,41 +104,15 @@ export function SiteFooter({
    * Whether this page is about the adoption listings. On by default, because
    * every page but one is.
    *
-   * The one is the found-animal lookup. Both halves of the provenance note
-   * are about the listings: the sentence says the animals' data comes from
-   * the shelters and that adoption goes through them, and the date says when
-   * that copy was taken. Neither is what the reader of that page is holding.
-   * Worse, the date is the animal export's, and under an answer that has just
-   * said the responsible shelter is not verified it reads as the day somebody
-   * checked the responsibility, which nobody did.
+   * The one is the found-animal lookup. The provenance note is about the
+   * listings: it says the animals' data comes from the shelters and that
+   * adoption goes through them, which is not what the reader of that page is
+   * holding.
    *
    * Off, the footer keeps everything a page still owes a reader: the way to
    * the other pages, the address to write a correction to, and the code.
    */
   aboutListings?: boolean;
-  /**
-   * When the dataset behind this page was written, as the ISO timestamp the
-   * export stamps on it. The sentence above says whose the data is; this says
-   * how old the copy on the screen is, which the site printed in exactly one
-   * place, the homepage hero. An animal page is where a shared link lands, and
-   * a stranger reading one had no way to tell a listing captured last night
-   * from one captured in March. For an index whose failure mode is a stale
-   * listing, that is the fact a colophon is for.
-   *
-   * Passed in rather than read here, and that is not a preference. PortalShell
-   * is a client component and imports this file, so every module reachable
-   * from here is compiled into the portal's client bundle, and lib/dataset.ts
-   * opens node:fs at module scope. The pages that hold a dataset already call
-   * loadDataset, so they answer for this the way site-page.tsx already answers
-   * for the found-animal link.
-   *
-   * Left off where there is no dataset: the about page and the cat's, the
-   * resources page, the 404, the error boundary and the portal. A date at the
-   * bottom of a page with no listing on it states a fact about nothing on the
-   * screen. The five that pass it are site-page.tsx, animal-page.tsx,
-   * shelter-detail-page.tsx, shelters-page.tsx and found-animal-page.tsx.
-   */
-  updatedAt?: string;
   /**
    * Set on a page that mounts BackToTop, which is what this reserves the strip
    * for. The grid carried this clearance, but the grid is not what ends the
@@ -278,19 +250,12 @@ export function SiteFooter({
             ))}
           </nav>
         )}
-        {/* The provenance note, then when it was last true, then the three
-            things about the site itself: the address, the code and who
-            builds it. */}
+        {/* The provenance note, then the three things about the site itself:
+            the address, the code and who builds it. No publication date: the
+            homepage hero states it, and each animal states when its own source
+            was checked. */}
         <div className="max-w-3xl space-y-2">
           {aboutListings && <p>{messages.footer}</p>}
-          {/* Publication time is distinct from the source check on each animal. */}
-          {aboutListings && updatedAt && (
-            <p>
-              {interpolate(messages.footerUpdated, {
-                date: verificationTime(updatedAt, locale),
-              })}
-            </p>
-          )}
           {/* The correction route is here rather than only on /o-nas for the
               reason showFoundAnimalLink records above: a flow that lives on
               one page is unreachable for the person who needs it, and the

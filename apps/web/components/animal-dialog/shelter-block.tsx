@@ -162,8 +162,8 @@ export function ShelterBlock({
         {/* An adopted animal has no listing worth sending anyone to, so the
             call to action gives way to the good news. */}
         {animal.status === "adopted" ? (
-          // The listing still has to be reachable: every animal here names
-          // its source and links back to it, adopted or not.
+          // Keep an external source reachable after adoption. A portal listing
+          // is already on this site; its shelter name remains the contact link.
           <div className="flex w-full flex-col items-start gap-1.5 sm:w-auto">
             {/* The same tokens the status badge on the title row wears for
                 this animal (the quiet badge variant), because the two print
@@ -179,15 +179,17 @@ export function ShelterBlock({
               <Heart className="size-4 shrink-0" aria-hidden />
               {messages.foundHome}
             </p>
-            <a
-              href={sourceAction.href}
-              target={sourceAction.external ? "_blank" : undefined}
-              rel={sourceAction.external ? "noreferrer" : undefined}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-            >
-              {messages[sourceAction.label]}
-              {sourceAction.external && <ExternalLink className="size-3" aria-hidden />}
-            </a>
+            {sourceAction.external && (
+              <a
+                href={sourceAction.href}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                {messages[sourceAction.label]}
+                <ExternalLink className="size-3" aria-hidden />
+              </a>
+            )}
           </div>
         ) : (
           // The mirror is the sticky bar's, and the bar is gated the same

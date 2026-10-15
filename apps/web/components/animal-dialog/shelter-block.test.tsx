@@ -72,11 +72,11 @@ describe("ShelterBlock distance", () => {
 
 describe("ShelterBlock source actions", () => {
   it.each([
-    { locale: "sl" as const, status: "available" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar" },
-    { locale: "en" as const, status: "available" as const, label: "Contact the shelter", href: "/en/shelters/oskar" },
-    { locale: "sl" as const, status: "adopted" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar" },
-    { locale: "en" as const, status: "adopted" as const, label: "Contact the shelter", href: "/en/shelters/oskar" },
-  ])("uses a local contact link for a $status manual listing in $locale", ({ locale, status, label, href }) => {
+    { locale: "sl" as const, status: "available" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar", sourceUrl: "https://posvoji.si/zavetisca/oskar" },
+    { locale: "en" as const, status: "available" as const, label: "Contact the shelter", href: "/en/shelters/oskar", sourceUrl: "https://posvoji.si/animals/luna?from=portal" },
+    { locale: "sl" as const, status: "adopted" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar", sourceUrl: "https://posvoji.si/en/shelters/oskar" },
+    { locale: "en" as const, status: "adopted" as const, label: "Contact the shelter", href: "/en/shelters/oskar", sourceUrl: "https://posvoji.si/zavetisca/oskar" },
+  ])("offers contact only for an available manual listing in $locale ($status)", ({ locale, status, label, href, sourceUrl }) => {
     render(
       <I18nProvider locale={locale}>
         <ShelterBlock
@@ -84,7 +84,7 @@ describe("ShelterBlock source actions", () => {
             ...REX,
             status,
             shelter: { ...REX.shelter, id: "oskar" },
-            source: { ...REX.source!, sourceUrl: "https://posvoji.si/zavetisca/oskar" },
+            source: { ...REX.source!, sourceUrl },
           }}
           logos={{}}
           reference={REFERENCE}
@@ -92,6 +92,14 @@ describe("ShelterBlock source actions", () => {
       </I18nProvider>,
     );
 
+    if (status === "adopted") {
+      expect(screen.queryByRole("link", { name: label })).toBeNull();
+      const [shelter] = screen.getAllByRole("link");
+      expect(shelter.getAttribute("href")).toBe(href);
+      expect(screen.getAllByRole("link")).toHaveLength(1);
+      expect(screen.getByText(locale === "sl" ? "Ta žival je že našla nov dom." : "This animal has already found a home.")).toBeTruthy();
+      return;
+    }
     const link = screen.getByRole("link", { name: label });
     expect(link.getAttribute("href")).toBe(href);
     expect(link.getAttribute("target")).toBeNull();

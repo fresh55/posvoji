@@ -3369,12 +3369,15 @@ describe("fan tempo", () => {
 
 describe("grid source details", () => {
   it.each([
-    { locale: "sl" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar" },
-    { locale: "en" as const, label: "Contact the shelter", href: "/en/shelters/oskar" },
-  ])("localizes both manual-listing actions after deferred source loading in $locale", async ({ locale, label, href }) => {
+    { locale: "sl" as const, status: "available" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar" },
+    { locale: "en" as const, status: "available" as const, label: "Contact the shelter", href: "/en/shelters/oskar" },
+    { locale: "sl" as const, status: "adopted" as const, label: "Kontakt zavetišča", href: "/zavetisca/oskar" },
+    { locale: "en" as const, status: "adopted" as const, label: "Contact the shelter", href: "/en/shelters/oskar" },
+  ])("resolves deferred manual-listing actions in $locale ($status)", async ({ locale, status, label, href }) => {
     const manual = animal("oskar:fixture", "Luna", {
+      status,
       shelter: { id: "oskar", name: "Zavetišče Oskar", city: "Vitovlje" },
-      source: { ...REX.source, sourceUrl: "https://posvoji.si/zavetisca/oskar" },
+      source: { ...REX.source, providerId: "oskar", sourceAnimalId: "fixture", sourceUrl: "https://posvoji.si/zavetisca/oskar" },
     });
     const [client] = projectAnimals([manual]);
     vi.stubGlobal("fetch", vi.fn(async () => ({
@@ -3394,6 +3397,12 @@ describe("grid source details", () => {
       </I18nProvider>,
     );
     const dialog = await screen.findByRole("dialog");
+    await act(async () => { await prefetchAnimalDescriptions(); });
+    if (status === "adopted") {
+      expect(within(dialog).queryByRole("link", { name: label })).toBeNull();
+      expect(dialog.querySelector('[data-slot="sticky-cta"]')).toBeNull();
+      return;
+    }
     await waitFor(() => {
       const links = within(dialog).getAllByRole("link", { name: label });
       expect(links).toHaveLength(2);
@@ -3476,7 +3485,6 @@ describe("grid source details", () => {
     openCard("Rex");
     const fallback = screen.getAllByRole("link", { name: "Podrobnosti o živali" });
     expect(fallback[0].getAttribute("href")).toBe(animalPath(REX, "sl"));
-    expect(fallback[0].getAttribute("target")).toBe("_blank");
     await act(async () => {
       finish({ rex: { description: REX.shortDescription, source: REX.source } });
     });

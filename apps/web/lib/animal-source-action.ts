@@ -4,9 +4,18 @@ import type { Locale } from "@/lib/i18n";
 import { shelterPath } from "@/lib/shelter-path";
 import { SITE_URL } from "@/lib/site";
 
-/** Manual listings use the canonical Slovenian shelter page as their source
- * (ingest/portal-listings.ts). Present that contact route in the reader's
- * language, with the same behavior in the shelter box and the sticky bar. */
+function onSiteSource(url: string | undefined): boolean {
+  if (url === undefined) return false;
+  try {
+    return new URL(url).origin === SITE_URL;
+  } catch {
+    return false;
+  }
+}
+
+/** Sources on our origin come from apps/ingest/src/portal-listings.ts.
+ * Recognize the origin independently of its persisted route, and present the
+ * contact action consistently in the shelter box and the sticky bar. */
 export function animalSourceAction(
   animal: AnimalFields,
   source: ClientAnimalSource | undefined,
@@ -16,7 +25,7 @@ export function animalSourceAction(
   label: "contactShelter" | "viewOriginalListing" | "animalDetails";
   external: boolean;
 } {
-  if (source?.sourceUrl === `${SITE_URL}${shelterPath(animal.shelter.id, "sl")}`) {
+  if (onSiteSource(source?.sourceUrl)) {
     return {
       href: shelterPath(animal.shelter.id, locale),
       label: "contactShelter",

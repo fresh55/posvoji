@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-16T14:25:09.463Z",
+  "reviewedAt": "2026-10-16T19:35:27.928Z",
   "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
   "fields": [
     "name",
@@ -109416,6 +109416,332 @@
           "reviewedAt": "2026-09-21T21:23:08.975Z"
         },
         "rule": "Major white areas map to true; absent or minor white markings map to false. Unclear and inconsistent shared listings remain unknown."
+      }
+    },
+    {
+      "animalId": "ljubljana:8c592f4d-567a-4e0d-b2e1-3a0a04f94899",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/fitona-26021146",
+      "descriptionSha256": "f852dde0b0976b885f3e177b41f3674682dbd7828c94cc951cb24a3657e32804",
+      "reviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
+      "batch": "ljubljana-new-cats-2026-10-16",
+      "reviewedAt": "2026-10-16T19:35:27.928Z",
+      "sourceCheckedAt": "2026-10-16T19:18:33.077Z",
+      "sourceFetchedAt": "2026-10-16T19:18:33.077Z",
+      "checkpointCheckedAt": "2026-10-16T19:17:25.674Z",
+      "sourceCheckpointId": "9cfaa636bd70e1f43532d7645364396ff67de4234092baab5d0eb6812c744850",
+      "sourceCheckpointCodeSha": "1afe430f5113ef60b899a6c047d0b13bf6b8243a",
+      "descriptionReviewed": true,
+      "textReview": {
+        "reviewedBy": [
+          "/root",
+          "/root/pipeline_audit"
+        ],
+        "status": "published-description-reviewed",
+        "claims": [],
+        "note": "Reviewed only the stored normalized shortDescription. Complete original CMS markup was not retained or reviewed. The description states black coat; it supports no temperament, compatibility, apartment or additional medical claim."
+      },
+      "photoReview": {
+        "reviewedBy": [
+          "/root",
+          "/root/photo_audit"
+        ],
+        "status": "reviewed",
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
+        "observation": "The source JPEG and current cached WebP master were independently inspected by both named photo reviewers; both support black palette/category and short coat.",
+        "images": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021146-1.jpg",
+            "sha256": "d82bfcd17953b3e238bd7834af8c593997c1fe51eca257647105315eb44082e0"
+          }
+        ],
+        "fieldReviewers": {
+          "coatColors": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "coatLength": [
+            "/root",
+            "/root/photo_audit"
+          ]
+        },
+        "independentObservation": {
+          "reviewer": "/root/photo_audit",
+          "reviewedAt": "2026-10-16T19:27:34.145Z",
+          "proposedFields": {
+            "coatColors": [
+              "black"
+            ],
+            "coatColor": "black",
+            "coatLength": "short"
+          },
+          "reason": "Entire visible head, trunk and front legs are black. A few pale whiskers/chest guard hairs do not form a distinct white patch. Warm indoor reflections are lighting, not brown coat areas. The body fur is compact and short; kitten fuzz does not establish medium or long feathering."
+        },
+        "uncertainFields": [],
+        "adjudications": [],
+        "originalSourceImages": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021146-1.jpg",
+            "sha256": "34794d73b1efaaa82d23f33508b0ce5758654df4998f3a51aa845b09f1b0066b"
+          }
+        ],
+        "cacheMasterReview": {
+          "reviewedAt": "2026-10-16T19:34:06.367Z",
+          "reviewedBy": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "evidenceKind": "cached-master-webp",
+          "classificationUnchanged": true,
+          "proposedFields": {
+            "coatColors": [
+              "black"
+            ],
+            "coatColor": "black",
+            "coatLength": "short"
+          },
+          "reason": "Independently viewed this cached master using tools.view_image. Same animal and same visible coat as the previously reviewed original JPEG: black overall, compact short fur; tiny pale guard hairs and lighting highlights do not add another coat area."
+        }
+      },
+      "knownFields": [
+        "name",
+        "species",
+        "sex",
+        "birthDate",
+        "status",
+        "intakeDate",
+        "medical.vaccinated",
+        "medical.neutered",
+        "medical.microchipped",
+        "coatColors",
+        "coatLength",
+        "coatColor"
+      ],
+      "unknownFields": [
+        "breed",
+        "approximateAgeMonths",
+        "size",
+        "energy",
+        "foundDate",
+        "originMunicipality",
+        "medical.fiv",
+        "medical.felv",
+        "goodWith.kids",
+        "goodWith.dogs",
+        "goodWith.cats",
+        "apartmentOk",
+        "specialNeeds",
+        "adoptionRequirements.indoorOnly",
+        "adoptionRequirements.bondedPair",
+        "adoptionRequirements.experiencedCarer",
+        "adoptionRequirements.ongoingCare",
+        "adoptionRequirements.onlyPet",
+        "substantialWhite",
+        "lifeStage",
+        "intakeBy",
+        "adoptionRequirements.noYoungKids"
+      ],
+      "updatedFields": [
+        "coatColors",
+        "coatColor",
+        "coatLength"
+      ],
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "Existing structured source facts are retained as observations; no additional traits are inferred from black colour or from the photograph.",
+      "rejectedClaims": [],
+      "sourceConflicts": [],
+      "resolutions": [],
+      "colourReview": {
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
+        "category": "black",
+        "reviewedBy": [
+          "/root",
+          "/root/photo_audit"
+        ],
+        "status": "confirmed",
+        "reason": "Entire visible head, trunk and front legs are black. A few pale whiskers/chest guard hairs do not form a distinct white patch. Warm indoor reflections are lighting, not brown coat areas. The body fur is compact and short; kitten fuzz does not establish medium or long feathering.",
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021146-1.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 1
+      },
+      "filterReview": {
+        "status": "pending-live-verification",
+        "note": "Awaiting the new host export and live filter verification; no passed result is claimed."
+      }
+    },
+    {
+      "animalId": "ljubljana:a9962bb2-2cda-420e-91fa-780b99f88aeb",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/triha-26021148",
+      "descriptionSha256": "f852dde0b0976b885f3e177b41f3674682dbd7828c94cc951cb24a3657e32804",
+      "reviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
+      "batch": "ljubljana-new-cats-2026-10-16",
+      "reviewedAt": "2026-10-16T19:35:27.928Z",
+      "sourceCheckedAt": "2026-10-16T19:18:36.166Z",
+      "sourceFetchedAt": "2026-10-16T19:18:36.166Z",
+      "checkpointCheckedAt": "2026-10-16T19:17:25.674Z",
+      "sourceCheckpointId": "9cfaa636bd70e1f43532d7645364396ff67de4234092baab5d0eb6812c744850",
+      "sourceCheckpointCodeSha": "1afe430f5113ef60b899a6c047d0b13bf6b8243a",
+      "descriptionReviewed": true,
+      "textReview": {
+        "reviewedBy": [
+          "/root",
+          "/root/pipeline_audit"
+        ],
+        "status": "published-description-reviewed",
+        "claims": [],
+        "note": "Reviewed only the stored normalized shortDescription. Complete original CMS markup was not retained or reviewed. The description states black coat; it supports no temperament, compatibility, apartment or additional medical claim."
+      },
+      "photoReview": {
+        "reviewedBy": [
+          "/root",
+          "/root/photo_audit"
+        ],
+        "status": "reviewed",
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
+        "observation": "The source JPEG and current cached WebP master were independently inspected by both named photo reviewers; both support black palette/category and short coat.",
+        "images": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021148-1.jpg",
+            "sha256": "d2c2d7676672c332d119023f54fa1c00af58bc3063a834d0e61fa347eab2691f"
+          }
+        ],
+        "fieldReviewers": {
+          "coatColors": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "coatLength": [
+            "/root",
+            "/root/photo_audit"
+          ]
+        },
+        "independentObservation": {
+          "reviewer": "/root/photo_audit",
+          "reviewedAt": "2026-10-16T19:27:34.145Z",
+          "proposedFields": {
+            "coatColors": [
+              "black"
+            ],
+            "coatColor": "black",
+            "coatLength": "short"
+          },
+          "reason": "Visible head, neck, whole flank and tail read black with slight warm reflected highlights. There is no substantial white or distinct brown coat area. Fur follows the body closely, without sustained long feathering, supporting short coat."
+        },
+        "uncertainFields": [],
+        "adjudications": [],
+        "originalSourceImages": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021148-1.jpg",
+            "sha256": "00c68ec1320ce21b69668afbedbc6c6ba2f060385ad6808f9322cd15eef7275c"
+          }
+        ],
+        "cacheMasterReview": {
+          "reviewedAt": "2026-10-16T19:34:06.367Z",
+          "reviewedBy": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "evidenceKind": "cached-master-webp",
+          "classificationUnchanged": true,
+          "proposedFields": {
+            "coatColors": [
+              "black"
+            ],
+            "coatColor": "black",
+            "coatLength": "short"
+          },
+          "reason": "Independently viewed this cached master using tools.view_image. Same animal and same visible coat as the previously reviewed original JPEG: black overall, compact short fur; tiny pale guard hairs and lighting highlights do not add another coat area."
+        }
+      },
+      "knownFields": [
+        "name",
+        "species",
+        "sex",
+        "birthDate",
+        "status",
+        "intakeDate",
+        "medical.vaccinated",
+        "medical.neutered",
+        "medical.microchipped",
+        "coatColors",
+        "coatLength",
+        "coatColor"
+      ],
+      "unknownFields": [
+        "breed",
+        "approximateAgeMonths",
+        "size",
+        "energy",
+        "foundDate",
+        "originMunicipality",
+        "medical.fiv",
+        "medical.felv",
+        "goodWith.kids",
+        "goodWith.dogs",
+        "goodWith.cats",
+        "apartmentOk",
+        "specialNeeds",
+        "adoptionRequirements.indoorOnly",
+        "adoptionRequirements.bondedPair",
+        "adoptionRequirements.experiencedCarer",
+        "adoptionRequirements.ongoingCare",
+        "adoptionRequirements.onlyPet",
+        "substantialWhite",
+        "lifeStage",
+        "intakeBy",
+        "adoptionRequirements.noYoungKids"
+      ],
+      "updatedFields": [
+        "coatColors",
+        "coatColor",
+        "coatLength"
+      ],
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "Existing structured source facts are retained as observations; no additional traits are inferred from black colour or from the photograph.",
+      "rejectedClaims": [],
+      "sourceConflicts": [],
+      "resolutions": [],
+      "colourReview": {
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
+        "category": "black",
+        "reviewedBy": [
+          "/root",
+          "/root/photo_audit"
+        ],
+        "status": "confirmed",
+        "reason": "Visible head, neck, whole flank and tail read black with slight warm reflected highlights. There is no substantial white or distinct brown coat area. Fur follows the body closely, without sustained long feathering, supporting short coat.",
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021148-1.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 1
+      },
+      "filterReview": {
+        "status": "pending-live-verification",
+        "note": "Awaiting the new host export and live filter verification; no passed result is claimed."
       }
     }
   ]

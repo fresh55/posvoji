@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-16T14:25:09.463Z",
+  "reviewedAt": "2026-10-16T19:35:27.928Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -21083,6 +21083,56 @@
       "reviewedBy": [
         "/root/october_review_a",
         "/root/october_review_b"
+      ]
+    },
+    {
+      "animalId": "ljubljana:8c592f4d-567a-4e0d-b2e1-3a0a04f94899",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/fitona-26021146",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021146-1.jpg",
+          "sha256": "d82bfcd17953b3e238bd7834af8c593997c1fe51eca257647105315eb44082e0"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:a9962bb2-2cda-420e-91fa-780b99f88aeb",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/triha-26021148",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021148-1.jpg",
+          "sha256": "d2c2d7676672c332d119023f54fa1c00af58bc3063a834d0e61fa347eab2691f"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     }
   ]

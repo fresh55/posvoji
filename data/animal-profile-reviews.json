@@ -17780,25 +17780,7 @@
             },
             "reason": "Black upper head/body and broad white blaze, chest and legs; short kitten coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black-white",
-          "reason": "White runs from lower face through the whole chest/underside and down a complete front leg; the full-size image shows more than a bib and socks. Black head/back and broad white front are two substantial areas.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021572-1.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -17868,7 +17850,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021572-1.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -17963,25 +17953,7 @@
             },
             "reason": "Brown and black tabby with compact short body fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Brown tabby base across face and body; black stripes are its pattern, rather than a separate broad colour area. No sizeable white patch.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021186-2.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -18051,7 +18023,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021186-2.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -18149,29 +18129,7 @@
             },
             "reason": "Orange tabby visible in both photographs, compact short body coat; no substantial white patch."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "orange",
-          "reason": "Both photos show orange over nearly the entire cat. Lighter muzzle and tabby lines do not form a substantial white area.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1811%282%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021528.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -18241,7 +18199,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1811%282%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021528.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -18339,29 +18309,7 @@
             },
             "reason": "White all over in both photographs, short compact fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "white",
-          "reason": "Both photos show an all-white cat; warm indoor cast does not introduce another coat colour.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -18431,7 +18379,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -18526,25 +18486,7 @@
             },
             "reason": "Grey tabby upper head/body and broad white face/chest/legs; short kitten coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "grey-white",
-          "reason": "Grey tabby upper head/back and white lower face, whole chest/underside and legs make two substantial areas, beyond a small bib and socks.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021518.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -18614,7 +18556,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021518.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -18726,29 +18676,7 @@
             },
             "reason": "Both enlarged originals conclusively show an all-white rabbit with upright ears. Full-size second image shows long wispy mane tufts behind ears and cheeks but short body fur, so uniform coatLength is omitted."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "white",
-          "reason": "Both rabbit photographs show white across the entire visible coat. Pink ears, eyes and shadows are not coat colours; retain source species other separately.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030023-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030023.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -18828,7 +18756,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030023-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030023.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -18922,25 +18862,7 @@
             },
             "reason": "Black all over; compact short body coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Whole face and body read black; reflected indoor light does not create another colour area.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021483-1.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -19010,7 +18932,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021483-1.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -19109,29 +19039,7 @@
             },
             "reason": "Brown and black tabby visible in both photographs; short compact fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Both photos show a brown tabby. Black striping is a pattern on the brown base; the pale chin is minor.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -19201,7 +19109,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -19297,25 +19217,7 @@
             },
             "reason": "Full-size original 51d57daede2ef338.webp confirms separate pale orange patches above both eyes and beside the ears, distinct from white face/chest/legs and black face/back patches. Calico/tricolour coat therefore uses multicolour category. Sheet-scale review initially missed the orange patches; short kitten coat unchanged."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "multicolour",
-          "reason": "Full-size original confirms orange patches above both eyes and beside the ears, together with black and broad white areas. This is a calico, which the documented rule always places in Multicolour.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021460.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -19385,7 +19287,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021460.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -19483,29 +19393,7 @@
             },
             "reason": "Orange tabby across head/body/legs; compact short kitten fur. Pale chin not a substantial white area."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "orange",
-          "reason": "Both photos show orange over head, trunk and legs. Pale chin is minor and does not justify orange-white.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021446-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021446-1.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -19575,7 +19463,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021446-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021446-1.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -19677,33 +19577,7 @@
             },
             "reason": "Pale cream tabby in all three views; shared photo3 shows clear paler cream kitten beside distinctly orange kitten under the same lighting. Short kitten coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "cream",
-          "reason": "Pale cream covers the kitten; shared photo3 shows this kitten distinctly paler than its orange companion under the same light. Stripes and light chin do not create a white pair. filterColour correctly displays this under Orange.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447-1.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -19773,7 +19647,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447-1.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -19871,29 +19761,7 @@
             },
             "reason": "Black body and face in both photos; short kitten coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Both photos show predominantly black face and body, with only lighting variations.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -19963,7 +19831,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -20048,28 +19928,6 @@
         },
         "uncertainFields": [],
         "adjudications": [],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Enlarged side view shows essentially all of the trunk/back black. Other photo confines white to muzzle/blaze, bib and paws. These are the documented minor markings example, so black-white overstates the white area.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365-%282%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 2
-        },
         "independentObservationHistory": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -20154,7 +20012,19 @@
             "status": "confirmed",
             "reason": "Enlarged whole-body photographs show a predominantly black trunk and back; white is confined to muzzle/blaze, bib and paws. These minor white markings retain the plain black filter category."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365-%282%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -20265,41 +20135,7 @@
             },
             "reason": "Predominantly white body and head, small black ear patch; dominant white and smooth very short coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "white",
-          "reason": "Five views consistently show a nearly all-white dog, with only a small dark ear patch. Black-white would overstate that minor patch.",
-          "inspectedPhotoCount": 5,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-6.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-5.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-4.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-2.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-3.jpg",
-              "photoIndex": 5
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -20369,7 +20205,31 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 5,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-6.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-5.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-4.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-2.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-3.jpg",
+            "photoIndex": 5
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -20472,33 +20332,7 @@
             },
             "reason": "Predominantly white body/head, small black ear patches; dominant white and close short coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "white",
-          "reason": "Three views show white over almost the whole dog with small dark ear patches. White plainly dominates, so a paired category is unnecessary.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-4.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-3.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-2.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -20568,7 +20402,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-4.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-3.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-2.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -20672,33 +20522,7 @@
             },
             "reason": "Brown and black tabby back, conspicuous white face, chest and underside; close body coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown-white",
-          "reason": "Brown tabby back/flanks and broad white face, chest and underside are substantial separate areas in all three views; black tabby striping does not make this Multicolour.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-1.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-2.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -20768,7 +20592,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-1.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-2.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -20866,29 +20706,7 @@
             },
             "reason": "Black face/body in both photographs, smooth short body coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Both photographs show black face and trunk; highlights do not form a second coat area.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284%282%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -20958,7 +20776,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284%282%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -21051,29 +20881,7 @@
             },
             "reason": "Black tabby stripes consistent, but first original appears grey under cool light and second distinctly brown under warm light. Omit coatColors and primary category rather than assert combined brown-grey coat; short fur is consistent."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": null,
-          "reason": "Enlarged first photo reads grey tabby, while second reads strongly brown tabby. The source only says tabby. Without a reliable stable grey-versus-brown decision, leave the filter category absent; combining them would invent a multicolour coat.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -21144,7 +20952,19 @@
             "status": "left-unknown",
             "reason": "Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -21244,29 +21064,7 @@
             },
             "reason": "Grey/black tabby patches with large white face, chest and legs; short compact kitten fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "grey-white",
-          "reason": "Grey tabby patches occupy head/back and broad white occupies face, chest and legs. The areas are substantial enough for the white pair; black stripes remain a tabby pattern.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207%281%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -21336,7 +21134,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207%281%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -21435,29 +21245,7 @@
             },
             "reason": "Brown and black tabby with compact tail and short close fur; enlarged originals resolve apparent puffiness in sheet."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Both images show a brown tabby overall. Black stripes are part of its pattern, and pale muzzle is minor.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -21527,7 +21315,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -21640,29 +21440,7 @@
             },
             "reason": "Brown and black tabby kitten; enlarged first image shows compact fur with kitten fuzz, no sustained long feathering. White chin too slight to make a white-pair filter."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Both photos show brown-tabby face/body with black stripes; black is the pattern and pale chin remains minor.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021187-2.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021187.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -21733,7 +21511,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021187-2.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021187.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -21837,33 +21627,7 @@
             },
             "reason": "Predominantly cream/fawn body and dark mask/ears; short close coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": null,
-          "reason": "Source says brown, while enlarged outdoor photograph is very pale fawn/cream with dark mask. One base colour clearly dominates, but the brown-versus-cream category boundary remains unresolved. Leave absent rather than quietly placing this dog in Orange through cream folding.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-2.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-1.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -21934,7 +21698,23 @@
             "status": "left-unknown",
             "reason": "Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-2.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-1.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -22072,41 +21852,7 @@
             },
             "reason": "Black body with small white chest patch, feathered ears and tail; warm cast in some frames is not reliable evidence of brown. Dominant black because white is a small chest badge."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Black covers head, trunk, limbs and tail. The small white chest badge is a minor marking; warm sun highlights do not make a brown coat or a white pair.",
-          "inspectedPhotoCount": 5,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%281%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%282%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-1.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-2.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194.jpg",
-              "photoIndex": 5
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -22193,7 +21939,31 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 5,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%281%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%282%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-1.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-2.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194.jpg",
+            "photoIndex": 5
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -22296,33 +22066,7 @@
             },
             "reason": "Large black and white patches across all three photographs; white face/chest/legs and black back, smooth short coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black-white",
-          "reason": "All three views show broad white lower face/chest/underside and legs beside broad black head/back areas. White is more extensive than a small bib and socks.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-2.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -22392,7 +22136,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-2.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -22535,33 +22295,7 @@
             },
             "reason": "Grey head/back and substantial white face, chest and legs; compact short fur in enlarged image."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "grey-white",
-          "reason": "Three photos consistently show grey upper areas and substantial white face, chest/underside and legs. Indoor warmth does not turn this into a brown/grey Multicolour coat.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-6.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-8.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -22645,7 +22379,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-6.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-8.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -22754,25 +22504,7 @@
             },
             "reason": "Long shaggy white head/chest with grey strands on body. Ear has a cream cast, omitted because staining/light cannot be excluded."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "grey-white",
-          "reason": "White head/chest and grey body strands form sizeable areas. Shade shifts the white cooler, but the body/head contrast remains visible; small cream casts are not a separate dominant colour.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010174.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -22843,7 +22575,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010174.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -22941,29 +22681,7 @@
             },
             "reason": "Black face/body in both photographs with no reliable additional coat color; short kitten coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Both photos show a black kitten with no sizeable second coat area.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-2.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -23033,7 +22751,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-2.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -23230,33 +22960,7 @@
             },
             "reason": "Black saddle, tan head/legs, large pale cream and white chest and feet; enlarged images show long chest and neck feathering."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "multicolour",
-          "reason": "Enlarged overhead/full-body views show a broad black saddle, tan head/limbs, and broad pale chest/underside. These are three substantial areas with no single colour plainly covering the whole animal.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%282%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%283%29.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -23333,7 +23037,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%282%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%283%29.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -23429,25 +23149,7 @@
             },
             "reason": "Black kitten, compact short coat; no sizeable other coat color visible."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Visible head, trunk and limbs are black; kitten fuzz and reflected light are not distinct colour areas.",
-          "inspectedPhotoCount": 1,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020803-1.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -23517,7 +23219,15 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 1,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020803-1.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -23620,33 +23330,7 @@
             },
             "reason": "Brown and black tabby with compact short fur. Pale chin is not a substantial white area."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Three photographs show brown-tabby body and face. Black stripes are its pattern and the pale chin is minor.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-2.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-1.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -23716,7 +23400,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-2.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-1.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -23833,33 +23533,7 @@
             },
             "reason": "Brown and black tabby, smooth short body fur and compact tail."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Three photographs consistently show a brown tabby; black stripes do not make two separate dominant colour areas.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-6.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-%285%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-1.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -23941,7 +23615,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-6.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-%285%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-1.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -24084,33 +23774,7 @@
             },
             "reason": "Tan/brown face, chest and legs with broad black saddle; root/secondary reconciled the primary category to dominant brown. Dense neck fur and fuller tail support medium coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Enlarged flank view shows a brown/sable coat with black strands overlaying it, plus brown face, chest and limbs. This reads brown overall rather than the sharply separate balanced saddle areas seen on Saj; a two-colour array alone is not grounds for Multicolour.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-%283%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-2.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -24183,7 +23847,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-%283%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-2.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -24332,37 +24012,7 @@
             },
             "reason": "Large black and white patches, white lower face/chest/legs and black back; smooth compact fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black-white",
-          "reason": "Four views show broad white lower face, whole chest/underside and much of the legs against black head/back. White is a substantial body area rather than a locket or small socks.",
-          "inspectedPhotoCount": 4,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-4.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-2.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-3.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222.jpg",
-              "photoIndex": 4
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -24441,7 +24091,27 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 4,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-4.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-2.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-3.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222.jpg",
+            "photoIndex": 4
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -24574,45 +24244,7 @@
             },
             "reason": "Large black and white patches across head/body and white legs/chest; short smooth fur in all six photographs."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black-white",
-          "reason": "Six views show large white lower face, chest, underside and legs, with broad black upper patches. The substantial white area supports the paired category.",
-          "inspectedPhotoCount": 6,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%285%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%284%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%282%29.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-2.jpg",
-              "photoIndex": 6
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -24683,7 +24315,35 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 6,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%285%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%284%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%282%29.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-2.jpg",
+            "photoIndex": 6
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -24841,33 +24501,7 @@
             },
             "reason": "Predominantly pale cream body with black mask and ears; short dense body coat without feathering."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "cream",
-          "reason": "Pale cream/fawn dominates almost all the trunk and limbs. Dark muzzle/ears are local mask markings, not a balanced second colour. The site intentionally folds cream into Orange.",
-          "inspectedPhotoCount": 3,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3846.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-2.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-3.jpg",
-              "photoIndex": 3
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -24941,7 +24575,23 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 3,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3846.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-2.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-3.jpg",
+            "photoIndex": 3
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -25090,37 +24740,7 @@
             },
             "reason": "Pale cream/fawn body, dark mask and ears; compact dense fur, no sustained long feathering in enlarged close image."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "cream",
-          "reason": "All four views show a pale cream body with a dark facial/ear mask. The mask is too small to make a balanced Multicolour coat. Cream appears under Orange in the controls.",
-          "inspectedPhotoCount": 4,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-%283%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-3.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-2.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-slika1.jpg",
-              "photoIndex": 4
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -25193,7 +24813,27 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 4,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-%283%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-3.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-2.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-slika1.jpg",
+            "photoIndex": 4
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -25341,49 +24981,7 @@
             },
             "reason": "Dark slate-grey close fur and a small white chest badge. Brown-looking sunlight highlights are not reliable separate brown patches; grey muzzle confirmed enlarged."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "grey",
-          "reason": "Seven photos show a dark slate-grey dog; brown sun casts vary with exposure. Tiny white chest patch does not justify a grey-white category.",
-          "inspectedPhotoCount": 7,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%285%296.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%285%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%283%29.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%282%29.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/ajsa-nova-slika.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-6.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -25455,7 +25053,39 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 7,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%285%296.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%285%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%283%29.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%282%29.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/ajsa-nova-slika.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-6.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -25609,29 +25239,7 @@
             },
             "reason": "Enlarged first photo shows tan/brown head/back and cream lower chest/legs, with small white toes and tail tip. White-pair vs dominant brown is ambiguous; omit primary category. Compact short coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": null,
-          "reason": "Tan/brown dominates, but two frontal photographs do not resolve how much of pale chest/legs is true white versus cream or gradual lightening. They also provide limited flank coverage. Keep absent rather than force the dominant-versus-paired-white boundary.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-1.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -25706,7 +25314,19 @@
             "status": "left-unknown",
             "reason": "Tan, cream and white areas are visible, but dominant brown versus a white-pair category was not established confidently."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-1.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -25877,37 +25497,7 @@
               "/root/pipeline_audit"
             ]
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Enlarged whole-body photo confirms black across nearly the whole trunk, back, upper chest and much of head. Tan face/limbs and white paws/lower chest are subordinate markings; counting three listed colours would overstate them as Multicolour.",
-          "inspectedPhotoCount": 4,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%285%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%2839.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/bruno-nova-slika.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%282%29.jpg",
-              "photoIndex": 4
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -26000,7 +25590,27 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 4,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%285%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%2839.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/bruno-nova-slika.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%282%29.jpg",
+            "photoIndex": 4
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -26181,53 +25791,7 @@
             },
             "reason": "Predominantly tan/brown body with black muzzle; smooth close fur. No sizeable white area visible."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Eight images consistently show brown/fawn body and limbs with local black muzzle. Brown plainly dominates, with no substantial white body area.",
-          "inspectedPhotoCount": 8,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%287%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%285%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-3.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%282%29.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%284%29.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%283%29.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-1.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-10.jpg",
-              "photoIndex": 1
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -26301,7 +25865,43 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 8,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%287%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%285%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-3.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%282%29.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%284%29.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%283%29.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-1.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-10.jpg",
+            "photoIndex": 1
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -26530,41 +26130,7 @@
               "/root/pipeline_audit"
             ]
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Enlarged rear/side photograph shows the entire trunk/back brown, while frontal view confines white to a chest bib, muzzle and toes. Brown plainly covers most of the dog; the striking bib alone does not justify brown-white.",
-          "inspectedPhotoCount": 5,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-4.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4598.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%282%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%283%29.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006.jpg",
-              "photoIndex": 5
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -26652,7 +26218,31 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 5,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-4.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4598.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%282%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%283%29.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006.jpg",
+            "photoIndex": 5
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -26798,41 +26388,7 @@
             },
             "reason": "Black back, sizeable white blaze/chest and tan face/legs; long feathering on ears, chest, underside and legs."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "multicolour",
-          "reason": "Full-size standing view shows broad black head/trunk, large white chest/lower neck/blaze and tan across most of each leg and cheeks. Those broad three areas, confirmed by source tricolour description, justify Multicolour rather than treating the front half as minor markings.",
-          "inspectedPhotoCount": 5,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-5.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-1.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-%282%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-dino.jpg",
-              "photoIndex": 5
-            }
-          ],
-          "enlargedOriginalCount": 1
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -26920,7 +26476,31 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 5,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-5.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-1.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-%282%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-dino.jpg",
+            "photoIndex": 5
+          }
+        ],
+        "enlargedOriginalCount": 1
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -27146,45 +26726,7 @@
             },
             "reason": "Brown/brindled body, dark muzzle/striping and small white chest badge; dominant brown, close smooth coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Brown/brindle covers head/body/legs; dark muzzle and small white chest badge are local markings. No balanced distinct body colours warrant Multicolour or a white pair.",
-          "inspectedPhotoCount": 6,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%293.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%283%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%282%29.png",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-1.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-2.jpg",
-              "photoIndex": 6
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -27262,7 +26804,35 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 6,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%293.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%283%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%282%29.png",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-1.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-2.jpg",
+            "photoIndex": 6
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -27465,61 +27035,7 @@
             },
             "reason": "Broad black back/body, tan eyebrows/cheeks/legs and small white chest markings; black dominant, short compact coat."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Ten views show black across most of the trunk, neck and head. Tan eyebrows/muzzle/legs and small pale chest marks are subordinate, so the dog still reads black overall.",
-          "inspectedPhotoCount": 10,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%282%29.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%286%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%285%29.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-7.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%283%29-1724263084.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%284%29.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240507_121156.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-1.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-2.jpg",
-              "photoIndex": 9
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072.jpg",
-              "photoIndex": 10
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -27594,7 +27110,51 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 10,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%282%29.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%286%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%285%29.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-7.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%283%29-1724263084.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%284%29.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240507_121156.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-1.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-2.jpg",
+            "photoIndex": 9
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072.jpg",
+            "photoIndex": 10
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -27791,57 +27351,7 @@
             },
             "reason": "Pale cream/fawn body with grey overlay and dark ears/mask. Body color varies enough across lights that primary cream/grey/white category is unresolved, so omit it. Compact dense body fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": null,
-          "reason": "Enlarged indoor and outdoor full-body views still vary between pale cream/tan body and grey-white overlay. The apparent boundaries are blended rather than clear two-tone patches; leave unknown until the stable base shade can be agreed.",
-          "inspectedPhotoCount": 9,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-%288%29.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-6.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-11.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-7.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-5.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1713631025.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-2-1710758619.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345.jpg",
-              "photoIndex": 9
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -27928,7 +27438,47 @@
             "status": "left-unknown",
             "reason": "Pale cream, grey overlay and dark mask change in prominence across lighting; the dominant filter category remains uncertain."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 9,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-%288%29.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-6.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-11.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-7.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-5.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1713631025.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-2-1710758619.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345.jpg",
+            "photoIndex": 9
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -28130,61 +27680,7 @@
             },
             "reason": "Black body and head with tan face/chest/legs and small white chest badge; short close coat, black dominant."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "black",
-          "reason": "Ten views consistently show black over most of trunk/neck/head. Tan eyebrow, muzzle, chest and legs plus small white chest badge remain subordinate markings, as in the documented black-dog example.",
-          "inspectedPhotoCount": 10,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-3.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-5.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-4.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-2.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.png",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%284%29.png",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%282%29.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%283%29.jpg",
-              "photoIndex": 9
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095.png",
-              "photoIndex": 10
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -28281,7 +27777,51 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 10,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-3.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-5.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-4.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-2.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.png",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%284%29.png",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%282%29.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%283%29.jpg",
+            "photoIndex": 9
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095.png",
+            "photoIndex": 10
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -28459,61 +27999,7 @@
             },
             "reason": "Predominantly tan/brown body, dark muzzle and small white chest/toe patches; short smooth fur, brown dominant."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Brown covers virtually all trunk/limbs/head. Black muzzle and small white chest/toes remain minor, so neither a white pair nor Multicolour is warranted.",
-          "inspectedPhotoCount": 10,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-1.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-2.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-3-1725981767.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-%284%29.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0290.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/goldi1000010824_720.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/goldi1000010823_720.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0269.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-%282%29.jpg",
-              "photoIndex": 9
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056.jpg",
-              "photoIndex": 10
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -28586,7 +28072,51 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 10,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-1.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-2.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-3-1725981767.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-%284%29.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0290.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/goldi1000010824_720.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/goldi1000010823_720.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0269.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-%282%29.jpg",
+            "photoIndex": 9
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056.jpg",
+            "photoIndex": 10
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -28761,61 +28291,7 @@
             },
             "reason": "Cream/fawn body and legs, grey/black saddle and dark mask; clearly extended dense neck/chest and tail fur, medium rather than close short."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": null,
-          "reason": "Enlarged outdoor flank/full-body views confirm a pale fawn/tan dominant coat and limited black saddle/mask. Dominance is clear but brown-versus-cream remains uncertain across lighting; leave absent rather than force a shade that changes Orange-versus-Brown filtering.",
-          "inspectedPhotoCount": 10,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240804_164154-1727174893.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1725983317.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1-1704101620.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1017.JPG",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-3.png",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0328.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-2.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1034.JPG",
-              "photoIndex": 9
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-%282%29.jpg",
-              "photoIndex": 10
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -28895,7 +28371,51 @@
             "status": "left-unknown",
             "reason": "Cream and dark areas are confirmed, but the primary and secondary reviewers did not establish the same dominant filter category."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 10,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240804_164154-1727174893.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1725983317.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1-1704101620.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1017.JPG",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-3.png",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0328.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-2.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1034.JPG",
+            "photoIndex": 9
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-%282%29.jpg",
+            "photoIndex": 10
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -29047,61 +28567,7 @@
             },
             "reason": "Broad black/sable back, sizeable tan/brown face/legs and pale cream chest; dense medium fur around neck, body and tail. Pale cream area not assumed pure white."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "multicolour",
-          "reason": "Enlarged side/body views show substantial dark/sable back and neck, tan head/limbs, and broad pale cream chest. Areas remain distinct across ten angles with no plainly dominant whole-animal colour; retain Multicolour.",
-          "inspectedPhotoCount": 10,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29-1716025548.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_2732.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/luluimg_8310.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/luluimg_8312.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/luluimg_8313.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29-1684419005.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/20230408_210216.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-1.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009%282%29.jpg",
-              "photoIndex": 9
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29.jpg",
-              "photoIndex": 10
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -29172,7 +28638,51 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 10,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29-1716025548.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_2732.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/luluimg_8310.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/luluimg_8312.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/luluimg_8313.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29-1684419005.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/20230408_210216.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-1.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009%282%29.jpg",
+            "photoIndex": 9
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29.jpg",
+            "photoIndex": 10
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -29400,61 +28910,7 @@
             },
             "reason": "Broad black saddle, tan head/legs and sizeable white chest/lower neck, short close fur."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "multicolour",
-          "reason": "Enlarged true side view shows a broad solid black saddle occupying much of trunk alongside tan head, whole limbs and tail, plus pale throat/chest. Black and tan areas are each substantial, so neither is a minor marking and there is no plain single dominant coat.",
-          "inspectedPhotoCount": 10,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1722147521.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3745.jpg",
-              "photoIndex": 2
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2-1722147549.jpg",
-              "photoIndex": 3
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3774.jpg",
-              "photoIndex": 4
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1704101365.jpg",
-              "photoIndex": 5
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-4.jpg",
-              "photoIndex": 6
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3764.jpg",
-              "photoIndex": 7
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-%282%29.jpg",
-              "photoIndex": 8
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0329_720.jpg",
-              "photoIndex": 9
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2.jpg",
-              "photoIndex": 10
-            }
-          ],
-          "enlargedOriginalCount": 2
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -29531,7 +28987,51 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 10,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1722147521.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3745.jpg",
+            "photoIndex": 2
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2-1722147549.jpg",
+            "photoIndex": 3
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3774.jpg",
+            "photoIndex": 4
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1704101365.jpg",
+            "photoIndex": 5
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-4.jpg",
+            "photoIndex": 6
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3764.jpg",
+            "photoIndex": 7
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-%282%29.jpg",
+            "photoIndex": 8
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0329_720.jpg",
+            "photoIndex": 9
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2.jpg",
+            "photoIndex": 10
+          }
+        ],
+        "enlargedOriginalCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -29636,29 +29136,7 @@
             },
             "reason": "Brown and black tabby in both photographs, compact short kitten fur; pale chin too small for a white-pair category."
           }
-        ],
-        "colourPass": {
-          "reviewedAt": "2026-10-16T14:25:09.463Z",
-          "reviewDate": "2026-10-16",
-          "reviewedBy": [
-            "/root",
-            "/root/photo_audit"
-          ],
-          "category": "brown",
-          "reason": "Both photographs show brown tabby head and body. Black stripes are the pattern and pale chin is minor; use Brown rather than Multicolour.",
-          "inspectedPhotoCount": 2,
-          "supportingPhotos": [
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4752.jpg",
-              "photoIndex": 1
-            },
-            {
-              "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021089.jpg",
-              "photoIndex": 2
-            }
-          ],
-          "enlargedOriginalCount": 0
-        }
+        ]
       },
       "knownFields": [
         "name",
@@ -29736,7 +29214,19 @@
             "status": "confirmed",
             "reason": "Final category independently agreed by the named field reviewers."
           }
-        ]
+        ],
+        "inspectedPhotoCount": 2,
+        "supportingPhotos": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4752.jpg",
+            "photoIndex": 1
+          },
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021089.jpg",
+            "photoIndex": 2
+          }
+        ],
+        "enlargedOriginalCount": 0
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",

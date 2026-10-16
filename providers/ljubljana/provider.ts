@@ -17,6 +17,12 @@ const BASE_URL = "https://www.zavetisce-ljubljana.si";
 const IMAGE_ORIGIN = "https://zavetisce.fra1.digitaloceanspaces.com";
 const PROVIDER_ID = "ljubljana";
 const DETAIL_PATH = /^\/zivali\/([a-z0-9-]+)$/;
+const CMS_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Ljubljana",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 type CmsOption = { label?: unknown; value?: unknown } | null;
 type CmsPhoto = { permalink?: unknown; is_image?: unknown };
@@ -72,8 +78,7 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function nextData(html: string): NextData | undefined {
-  const $ = cheerio.load(html);
+function nextData($: cheerio.CheerioAPI): NextData | undefined {
   const raw = $("script#__NEXT_DATA__[type='application/json']").first().text();
   if (!raw) return undefined;
   try {
@@ -89,7 +94,7 @@ function validSlug(value: unknown): string | undefined {
 }
 
 function cataloguePets(html: string): unknown[] | undefined {
-  const page = nextData(html)?.props?.pageProps?.page;
+  const page = nextData(cheerio.load(html))?.props?.pageProps?.page;
   // This guard is what keeps the similarly-shaped private-owner catalogue out.
   if (page?.list?.slug !== "za-oddajo" || !Array.isArray(page.pets)) return undefined;
   return page.pets;
@@ -141,12 +146,7 @@ export function parseCmsDate(value: string): string | undefined {
   if (Number.isNaN(instant.getTime()) || instant.toISOString().slice(0, 19) !== stamp) {
     return undefined;
   }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Ljubljana",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant);
+  const parts = CMS_DATE_FORMAT.formatToParts(instant);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((candidate) => candidate.type === type)?.value;
   const localYear = part("year");
@@ -220,11 +220,10 @@ const VACCINATED = new RegExp(
   "iu",
 );
 
-function parseMedical(html: string, species: Species): AnimalMedical | undefined {
+function parseMedical($: cheerio.CheerioAPI, species: Species): AnimalMedical | undefined {
   // The generic care bundle describes dogs and cats. "Ostali" also includes
   // animals such as turtles, for which these procedures cannot be assumed.
   if (species !== "cat" && species !== "dog") return undefined;
-  const $ = cheerio.load(html);
   $("script, style, template, noscript").remove();
   const text = $.root().text().replace(/\s+/g, " ");
   const complete =
@@ -268,7 +267,8 @@ export function parseDescription(descriptionHtml: string): string | undefined {
       const bledValue = labelText.replace(OPIS_LABEL, "");
       const remainder = paragraph.clone();
       remainder.children("strong").first().remove();
-      const rest = remainder.text()
+      const rest = remainder
+        .text()
         .replace(/\s+/g, " ")
         .replace(/^\s*:\s*/, "")
         .trim();
@@ -291,7 +291,8 @@ export function parseDescription(descriptionHtml: string): string | undefined {
 }
 
 export function parseDetail(html: string): DetailFacts {
-  const value = nextData(html)?.props?.pageProps?.pet;
+  const $ = cheerio.load(html);
+  const value = nextData($)?.props?.pageProps?.pet;
   // A maintenance page answers 200 without the pet payload. Read as an empty
   // record it would normalize into a schema-valid animal with no name, no
   // photos and species "other", overwriting everything the shelter published.
@@ -301,12 +302,15 @@ export function parseDetail(html: string): DetailFacts {
   const pet = value as CmsPet;
   // A shelter listing can move to the private-owner catalogue between
   // discovery and this fetch. Reject it before reading any description.
-  if (pet.contact != null ||
-    (pet.type_adoption != null && pet.type_adoption.slug !== "za-oddajo")) {
+  if (
+    pet.contact != null ||
+    (pet.type_adoption != null && pet.type_adoption.slug !== "za-oddajo")
+  ) {
     throw new Error(`${PROVIDER_ID}: detail page is not a shelter adoption listing`);
   }
   const birthRaw = stringValue(pet.date_of_birth);
   const intakeRaw = stringValue(pet.date);
+  const descriptionHtml = stringValue(pet.description);
   const birthDate = birthRaw ? parseCmsDate(birthRaw) : undefined;
   const intakeDate = intakeRaw ? parseCmsDate(intakeRaw) : undefined;
   const species = parseSpecies(pet);
@@ -329,11 +333,8 @@ export function parseDetail(html: string): DetailFacts {
     intakeDate: intakeDate && (!birthDate || intakeDate >= birthDate) ? intakeDate : undefined,
     size: parseSize(pet.size),
     status: parseStatus(pet),
-    medical: parseMedical(html, species),
-    description: (() => {
-      const raw = stringValue(pet.description);
-      return raw ? parseDescription(raw) : undefined;
-    })(),
+    medical: parseMedical($, species),
+    description: descriptionHtml ? parseDescription(descriptionHtml) : undefined,
     imageUrls,
   };
 }

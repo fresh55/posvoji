@@ -15,6 +15,17 @@ const policy = ProviderPolicy.parse(
 );
 const listHtml = loadFixture(import.meta.url, "list.html");
 const rabbitHtml = loadFixture(import.meta.url, "detail-rabbit.html");
+const dogHtml = rabbitHtml.replace('"slug":"ostali"', '"slug":"pes"');
+
+function cmsHtml(pageProps: Record<string, unknown>): string {
+  return '<script id="__NEXT_DATA__" type="application/json">' +
+    JSON.stringify({ props: { pageProps } }) + "</script>";
+}
+
+function mockClient(body: string) {
+  const get = vi.fn().mockResolvedValue({ status: 200, body });
+  return { get, client: { get } as unknown as PoliteClient };
+}
 
 describe("policy.yaml", () => {
   it("records the granted facts, photo and description permission", () => {
@@ -49,7 +60,7 @@ describe("parseList", () => {
   it("refuses a payload not marked as the shelter catalogue", () => {
     expect(
       parseList(
-        '<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"page":{"list":{"slug":"oddajo-lastniki"},"pets":[]}}}}</script>',
+        cmsHtml({ page: { list: { slug: "oddajo-lastniki" }, pets: [] } }),
       ),
     ).toEqual([]);
   });
@@ -59,6 +70,8 @@ describe("parseCmsDate", () => {
   it.each([
     ["2026-06-22 22:00:00", "2026-06-23"],
     ["2022-02-24 23:00:00", "2022-02-25"],
+    ["0202-02-15 22:34:56", undefined],
+    ["1899-12-31 23:00:00", undefined],
     ["not a date", undefined],
   ])("%s → %s", (input, expected) => {
     expect(parseCmsDate(input)).toBe(expected);
@@ -109,6 +122,14 @@ describe("parseDescription", () => {
     ).toBe("belo tigrasta");
   });
 
+  it("keeps bold words after the Opis label in the same paragraph", () => {
+    expect(
+      parseDescription(
+        "<p><strong>Opis: bel </strong>pes je <strong>zelo miren</strong> in <strong>prijazen</strong>.</p>",
+      ),
+    ).toBe("bel pes je zelo miren in prijazen.");
+  });
+
   it("keeps prose paragraphs the shelter tacks on after Opis and drops a trailing label", () => {
     expect(
       parseDescription(
@@ -139,13 +160,35 @@ describe("parseDetail", () => {
       ["cepljena proti", "necepljena proti"],
     ] as const;
     for (const [positive, negative] of negated) {
-      const html = rabbitHtml.replace(positive, negative);
-      expect(html).not.toBe(rabbitHtml);
+      const html = dogHtml.replace(positive, negative);
+      expect(html).not.toBe(dogHtml);
       expect(parseDetail(html).medical).toBeUndefined();
     }
   });
 
-  it("keeps the broad Ostali category and the complete-care medical bundle", () => {
+  it.each(["pes", "macka"])(
+    "reads visible complete-care evidence for %s",
+    (slug) => {
+      const html = rabbitHtml.replace('"slug":"ostali"', `"slug":"${slug}"`);
+      expect(parseDetail(html).medical).toEqual({
+        neutered: true,
+        microchipped: true,
+        vaccinated: true,
+      });
+    },
+  );
+
+  it.each(["script", "style", "template", "noscript"])(
+    "ignores care claims present only inside %s",
+    (tag) => {
+      const hidden = dogHtml
+        .replace("<section>", `<${tag}>`)
+        .replace("</section>", `</${tag}>`);
+      expect(parseDetail(hidden).medical).toBeUndefined();
+    },
+  );
+
+  it("keeps the broad Ostali category without assuming the generic medical bundle applies", () => {
     expect(parseDetail(rabbitHtml)).toEqual({
       sourceAnimalId: "rabbit-uuid",
       name: "Peter Z.",
@@ -157,11 +200,7 @@ describe("parseDetail", () => {
       size: undefined,
       status: "available",
       description: "Peter je miren in radoveden zajec.",
-      medical: {
-        neutered: true,
-        microchipped: true,
-        vaccinated: true,
-      },
+      medical: undefined,
       imageUrls: [
         "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030015.jpg",
       ],
@@ -169,21 +208,14 @@ describe("parseDetail", () => {
   });
 
   it("does not label an ornamental pigeon in Ostali as a rabbit", () => {
-    const html =
-      '<script id="__NEXT_DATA__" type="application/json">' +
-      JSON.stringify({
-        props: {
-          pageProps: {
-            pet: {
-              id: "pigeon-uuid",
-              title: "Oto",
-              type: { slug: "ostali", title: "Druga žival" },
-              breed: "okrasni golob",
-            },
-          },
-        },
-      }) +
-      "</script>";
+    const html = cmsHtml({
+      pet: {
+        id: "pigeon-uuid",
+        title: "Oto",
+        type: { slug: "ostali", title: "Druga žival" },
+        breed: "okrasni golob",
+      },
+    });
     expect(parseDetail(html)).toMatchObject({
       species: "other",
       breed: "okrasni golob",
@@ -205,39 +237,38 @@ describe("parseDetail", () => {
   });
 
   it("stays unknown for a CMS state it does not recognise, instead of guessing available", () => {
-    const html =
-      '<script id="__NEXT_DATA__" type="application/json">' +
-      JSON.stringify({
-        props: {
-          pageProps: {
-            pet: {
-              title: "Rex",
-              type: { slug: "pes" },
-              state: { slug: "posvojen-drugje" },
-            },
-          },
-        },
-      }) +
-      "</script>";
+    const html = cmsHtml({
+      pet: {
+        title: "Rex",
+        type: { slug: "pes" },
+        state: { slug: "posvojen-drugje" },
+      },
+    });
     expect(parseDetail(html)).toMatchObject({ status: "unknown" });
   });
 
   it("treats no state as normally listed and available", () => {
-    const html =
-      '<script id="__NEXT_DATA__" type="application/json">' +
-      JSON.stringify({
-        props: {
-          pageProps: {
-            pet: {
-              title: "Rex",
-              type: { slug: "pes" },
-              state: null,
-            },
-          },
-        },
-      }) +
-      "</script>";
+    const html = cmsHtml({
+      pet: { title: "Rex", type: { slug: "pes" }, state: null },
+    });
     expect(parseDetail(html)).toMatchObject({ status: "available" });
+  });
+
+  it.each([
+    ["2026-07-14 22:00:00", undefined],
+    ["2026-07-15 22:00:00", "2026-07-16"],
+  ])("does not publish an intake before the animal's birth", (date, intakeDate) => {
+    const html = cmsHtml({
+      pet: {
+        type: { slug: "macka" },
+        date,
+        date_of_birth: "2026-07-15 22:00:00",
+      },
+    });
+    expect(parseDetail(html)).toMatchObject({
+      birthDate: "2026-07-16",
+      intakeDate,
+    });
   });
 
   it("refuses a page that carries no __NEXT_DATA__ payload", () => {
@@ -247,12 +278,24 @@ describe("parseDetail", () => {
   });
 
   it("refuses a payload whose pet is missing", () => {
-    const html =
-      '<script id="__NEXT_DATA__" type="application/json">' +
-      JSON.stringify({ props: { pageProps: {} } }) +
-      "</script>";
+    const html = cmsHtml({});
     expect(() => parseDetail(html)).toThrow("detail page has no pet data");
   });
+
+  it.each([
+    ['"contact":null', '"contact":{"present":true}'],
+    ['"slug":"za-oddajo"', '"slug":"oddajo-lastniki"'],
+    ['"slug":"za-oddajo"', '"slug":"najdene-zivali"'],
+  ])(
+    "rejects private or non-adoption details before using their fields",
+    (original, replacement) => {
+      const html = rabbitHtml.replace(original, replacement);
+      expect(html).not.toBe(rabbitHtml);
+      expect(() => parseDetail(html)).toThrow(
+        "detail page is not a shelter adoption listing",
+      );
+    },
+  );
 });
 
 describe("provider", () => {
@@ -269,11 +312,6 @@ describe("provider", () => {
     expect(animal).toMatchObject({
       id: "ljubljana:rabbit-uuid",
       species: "other",
-      medical: {
-        neutered: true,
-        microchipped: true,
-        vaccinated: true,
-      },
       images: [
         {
           sourceUrl:
@@ -283,40 +321,89 @@ describe("provider", () => {
       ],
       attribution: "Vir: Zavetišče Ljubljana",
     });
+    expect(animal.medical).toBeUndefined();
     expect(animal.shortDescription).toBe("Peter je miren in radoveden zajec.");
   });
 
   it("discovers through the supplied polite client", async () => {
-    const get = vi.fn().mockResolvedValue({ status: 200, body: listHtml });
-    const refs = await provider.discover({
-      policy,
-      client: { get } as unknown as PoliteClient,
-    });
+    const { get, client } = mockClient(listHtml);
+    const refs = await provider.discover({ policy, client });
     expect(get).toHaveBeenCalledWith(policy.source);
     expect(refs).toHaveLength(3);
   });
 
+  it.each([
+    "<!doctype html><html><body>Vzdrževanje</body></html>",
+    '<script id="__NEXT_DATA__" type="application/json">{invalid}</script>',
+    cmsHtml({ page: { list: { slug: "za-oddajo" } } }),
+    cmsHtml({ page: { list: { slug: "za-oddajo" }, pets: {} } }),
+    cmsHtml({ page: { list: { slug: "oddajo-lastniki" }, pets: [] } }),
+  ])(
+    "fails discovery closed when the shelter catalogue is absent or malformed",
+    async (body) => {
+      const { client } = mockClient(body);
+      await expect(provider.discover({ policy, client })).rejects.toThrow(
+        "list page has no shelter catalogue data",
+      );
+    },
+  );
+
+  it("accepts an explicitly empty shelter catalogue", async () => {
+    const body = cmsHtml({ page: { list: { slug: "za-oddajo" }, pets: [] } });
+    const { client } = mockClient(body);
+    await expect(provider.discover({ policy, client })).resolves.toEqual([]);
+  });
+
   it("fetches the detail page the ref points at", async () => {
-    const get = vi.fn().mockResolvedValue({ status: 200, body: rabbitHtml });
-    const raw = await provider.fetch(
-      { policy, client: { get } as unknown as PoliteClient },
-      ref,
-    );
+    const { get, client } = mockClient(rabbitHtml);
+    const raw = await provider.fetch({ policy, client }, ref);
     expect(get).toHaveBeenCalledWith(ref.sourceUrl);
     expect(raw.data).toMatchObject({ sourceAnimalId: "rabbit-uuid" });
   });
 
-  it("refuses a detail page that answers with another animal", async () => {
-    const get = vi.fn().mockResolvedValue({
-      status: 200,
-      body: loadFixture(import.meta.url, "detail-dog-trial.html"),
+  it("keeps Remus when the source's intake year is mistyped, without inventing a date", async () => {
+    const ref = {
+      sourceAnimalId: "bfaab431-650a-4370-8596-c43a8faf7115",
+      sourceUrl: "https://www.zavetisce-ljubljana.si/zivali/remus-26021089",
+    };
+    const html = cmsHtml({
+      pet: {
+        id: ref.sourceAnimalId,
+        title: "Remus",
+        type: { slug: "macka" },
+        type_adoption: { slug: "za-oddajo" },
+        date: "0202-02-15 22:34:56",
+        date_of_birth: "2026-07-15 22:00:00",
+      },
     });
+    const { client } = mockClient(html);
+    const raw = await provider.fetch({ policy, client }, ref);
+    const animal = Animal.parse(await provider.normalize(ctx, raw));
+    expect(animal).toMatchObject({
+      id: `ljubljana:${ref.sourceAnimalId}`,
+      name: "Remus",
+      species: "cat",
+      birthDate: "2026-07-16",
+    });
+    expect(animal.intakeDate).toBeUndefined();
+  });
+
+  it("refuses a detail page that answers with another animal", async () => {
+    const { client } = mockClient(
+      loadFixture(import.meta.url, "detail-dog-trial.html"),
+    );
     await expect(
-      provider.fetch(
-        { policy, client: { get } as unknown as PoliteClient },
-        ref,
-      ),
+      provider.fetch({ policy, client }, ref),
     ).rejects.toThrow("detail page for rabbit-uuid returned dog-uuid");
+  });
+
+  it("refuses a same-id animal moved to a private-owner listing", async () => {
+    const { client } = mockClient(
+      rabbitHtml.replace('"slug":"za-oddajo"', '"slug":"oddajo-lastniki"'),
+    );
+    await expect(provider.fetch({ policy, client }, ref)).rejects.toThrow(
+      "detail page is not a shelter adoption listing",
+    );
   });
 
   it("drops photos when policy permission is absent", async () => {

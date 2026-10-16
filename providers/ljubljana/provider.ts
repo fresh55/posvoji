@@ -17,6 +17,12 @@ const BASE_URL = "https://www.zavetisce-ljubljana.si";
 const IMAGE_ORIGIN = "https://zavetisce.fra1.digitaloceanspaces.com";
 const PROVIDER_ID = "ljubljana";
 const DETAIL_PATH = /^\/zivali\/([a-z0-9-]+)$/;
+const CMS_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Ljubljana",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
 
 type CmsOption = { label?: unknown; value?: unknown } | null;
 type CmsPhoto = { permalink?: unknown; is_image?: unknown };
@@ -72,8 +78,7 @@ function stringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function nextData(html: string): NextData | undefined {
-  const $ = cheerio.load(html);
+function nextData($: cheerio.CheerioAPI): NextData | undefined {
   const raw = $("script#__NEXT_DATA__[type='application/json']").first().text();
   if (!raw) return undefined;
   try {
@@ -88,13 +93,16 @@ function validSlug(value: unknown): string | undefined {
   return slug && /^[a-z0-9-]+$/.test(slug) ? slug : undefined;
 }
 
-export function parseList(html: string): SourceAnimalRef[] {
-  const page = nextData(html)?.props?.pageProps?.page;
+function cataloguePets(html: string): unknown[] | undefined {
+  const page = nextData(cheerio.load(html))?.props?.pageProps?.page;
   // This guard is what keeps the similarly-shaped private-owner catalogue out.
-  if (page?.list?.slug !== "za-oddajo" || !Array.isArray(page.pets)) return [];
+  if (page?.list?.slug !== "za-oddajo" || !Array.isArray(page.pets)) return undefined;
+  return page.pets;
+}
 
+function listRefs(pets: unknown[]): SourceAnimalRef[] {
   const refs = new Map<string, SourceAnimalRef>();
-  for (const value of page.pets) {
+  for (const value of pets) {
     if (typeof value !== "object" || value === null) continue;
     const pet = value as CmsPet;
     const id = stringValue(pet.id);
@@ -117,12 +125,20 @@ export function parseList(html: string): SourceAnimalRef[] {
   return [...refs.values()];
 }
 
+export function parseList(html: string): SourceAnimalRef[] {
+  const pets = cataloguePets(html);
+  return pets ? listRefs(pets) : [];
+}
+
 // CMS timestamps are stored as UTC instants without a zone. Convert them to
 // the Ljubljana calendar date shown on the page instead of truncating at UTC.
 export function parseCmsDate(value: string): string | undefined {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
   if (!match) return undefined;
   const [, year, month, day, hour, minute, second] = match;
+  // A mistyped ancient year must not discard the entire animal when its
+  // dates are validated. There is no safe current date to infer from it.
+  if (Number(year) < 1900) return undefined;
   const stamp = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
   const instant = new Date(`${stamp}Z`);
   // V8 rolls impossible fields over ("02-30" becomes 2 March), so a stamp
@@ -130,12 +146,7 @@ export function parseCmsDate(value: string): string | undefined {
   if (Number.isNaN(instant.getTime()) || instant.toISOString().slice(0, 19) !== stamp) {
     return undefined;
   }
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Ljubljana",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant);
+  const parts = CMS_DATE_FORMAT.formatToParts(instant);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((candidate) => candidate.type === type)?.value;
   const localYear = part("year");
@@ -209,8 +220,12 @@ const VACCINATED = new RegExp(
   "iu",
 );
 
-function parseMedical(html: string): AnimalMedical | undefined {
-  const text = cheerio.load(html).root().text().replace(/\s+/g, " ");
+function parseMedical($: cheerio.CheerioAPI, species: Species): AnimalMedical | undefined {
+  // The generic care bundle describes dogs and cats. "Ostali" also includes
+  // animals such as turtles, for which these procedures cannot be assumed.
+  if (species !== "cat" && species !== "dog") return undefined;
+  $("script, style, template, noscript").remove();
+  const text = $.root().text().replace(/\s+/g, " ");
   const complete =
     text.includes("Žival je celovito oskrbljena") &&
     NEUTERED.test(text) &&
@@ -250,11 +265,9 @@ export function parseDescription(descriptionHtml: string): string | undefined {
       // Drop the label itself, keep whatever the shelter wrote after it,
       // including any value word that bled into the <strong> run.
       const bledValue = labelText.replace(OPIS_LABEL, "");
-      const rest = paragraph
-        .clone()
-        .children("strong")
-        .remove()
-        .end()
+      const remainder = paragraph.clone();
+      remainder.children("strong").first().remove();
+      const rest = remainder
         .text()
         .replace(/\s+/g, " ")
         .replace(/^\s*:\s*/, "")
@@ -278,7 +291,8 @@ export function parseDescription(descriptionHtml: string): string | undefined {
 }
 
 export function parseDetail(html: string): DetailFacts {
-  const value = nextData(html)?.props?.pageProps?.pet;
+  const $ = cheerio.load(html);
+  const value = nextData($)?.props?.pageProps?.pet;
   // A maintenance page answers 200 without the pet payload. Read as an empty
   // record it would normalize into a schema-valid animal with no name, no
   // photos and species "other", overwriting everything the shelter published.
@@ -286,8 +300,20 @@ export function parseDetail(html: string): DetailFacts {
     throw new Error(`${PROVIDER_ID}: detail page has no pet data`);
   }
   const pet = value as CmsPet;
+  // A shelter listing can move to the private-owner catalogue between
+  // discovery and this fetch. Reject it before reading any description.
+  if (
+    pet.contact != null ||
+    (pet.type_adoption != null && pet.type_adoption.slug !== "za-oddajo")
+  ) {
+    throw new Error(`${PROVIDER_ID}: detail page is not a shelter adoption listing`);
+  }
   const birthRaw = stringValue(pet.date_of_birth);
   const intakeRaw = stringValue(pet.date);
+  const descriptionHtml = stringValue(pet.description);
+  const birthDate = birthRaw ? parseCmsDate(birthRaw) : undefined;
+  const intakeDate = intakeRaw ? parseCmsDate(intakeRaw) : undefined;
+  const species = parseSpecies(pet);
   const imageUrls: string[] = [];
   if (Array.isArray(pet.photos)) {
     for (const value of pet.photos) {
@@ -300,18 +326,15 @@ export function parseDetail(html: string): DetailFacts {
   return {
     sourceAnimalId: stringValue(pet.id),
     name: stringValue(pet.title),
-    species: parseSpecies(pet),
+    species,
     sex: parseSex(pet.spol),
     breed: stringValue(pet.breed),
-    birthDate: birthRaw ? parseCmsDate(birthRaw) : undefined,
-    intakeDate: intakeRaw ? parseCmsDate(intakeRaw) : undefined,
+    birthDate,
+    intakeDate: intakeDate && (!birthDate || intakeDate >= birthDate) ? intakeDate : undefined,
     size: parseSize(pet.size),
     status: parseStatus(pet),
-    medical: parseMedical(html),
-    description: (() => {
-      const raw = stringValue(pet.description);
-      return raw ? parseDescription(raw) : undefined;
-    })(),
+    medical: parseMedical($, species),
+    description: descriptionHtml ? parseDescription(descriptionHtml) : undefined,
     imageUrls,
   };
 }
@@ -330,7 +353,10 @@ const provider: AdoptionProvider = {
     if (res.status !== 200 || res.body === null) {
       throw new Error(`${PROVIDER_ID}: list fetch failed with HTTP ${res.status}`);
     }
-    return parseList(res.body);
+    const pets = cataloguePets(res.body);
+    // A maintenance page or changed CMS response is not an empty shelter.
+    if (!pets) throw new Error(`${PROVIDER_ID}: list page has no shelter catalogue data`);
+    return listRefs(pets);
   },
 
   async fetch(ctx, ref) {

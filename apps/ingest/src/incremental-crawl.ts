@@ -31,7 +31,8 @@ import { datasetDir } from "./paths";
 // v2 = Ljubljana's broad Ostali category no longer implies rabbit.
 // v3 = age ranges stay unknown and Turk's negated neutering stays unset.
 // v4 = Mačji dol reads intakeBy from the month, season or year it names.
-export const CRAWL_GENERATION = 4;
+// v5 = Ljubljana rejects malformed dates and limits medical evidence to visible cat/dog care.
+export const CRAWL_GENERATION = 5;
 
 // Sidecar next to animals.json. Not a schema change, and not something the
 // site reads.

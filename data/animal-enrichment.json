@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-14T14:05:02.324Z",
+  "reviewedAt": "2026-10-16T13:54:41.237Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -2685,6 +2685,27 @@
       ]
     },
     {
+      "animalId": "ljubljana:16f1cb01-7340-4b88-9d6d-b0c71ce3e4e8",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kori-26030023",
+      "descriptionSha256": "49abe08fe3e954b5b3cf238064c47b2dd2fd3c4bc405b098a0d2981313e4a479",
+      "claims": [
+        {
+          "field": "medical.neutered",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 17,
+            "sha256": "49abe08fe3e954b5b3cf238064c47b2dd2fd3c4bc405b098a0d2981313e4a479"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
       "animalId": "ljubljana:05864547-7c55-49ef-81c9-ce1311903795",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/tokyo-26021187",
@@ -2694,334 +2715,13 @@
           "field": "specialNeeds",
           "value": true,
           "evidence": {
-            "start": 21,
-            "end": 52,
-            "sha256": "ca17d9b1766aeb4e130645d9216bd47a1e56faa720b73743e6ab1bbfe5640023"
+            "start": 0,
+            "end": 94,
+            "sha256": "42ee908913f198c3c1e4951edd37959060213b06d534beda034a891357dde9a7"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:08b4bedb-37d1-405c-91f1-cf4db203b880",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bela-23010345",
-      "descriptionSha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b",
-      "claims": [
-        {
-          "field": "energy",
-          "value": "balanced",
-          "evidence": {
-            "start": 142,
-            "end": 206,
-            "sha256": "018193ae4b9a3df75c1e5bf0e90f4b24c9279660673bbc0b00b4207bcd542bcd"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 208,
-            "end": 263,
-            "sha256": "877167bf9ed89d68fb1745113bdfcceaf4417c8526a48cc887b88e9b216c715f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 208,
-            "end": 263,
-            "sha256": "877167bf9ed89d68fb1745113bdfcceaf4417c8526a48cc887b88e9b216c715f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 208,
-            "end": 263,
-            "sha256": "877167bf9ed89d68fb1745113bdfcceaf4417c8526a48cc887b88e9b216c715f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.noYoungKids",
-          "value": true,
-          "evidence": {
-            "start": 265,
-            "end": 321,
-            "sha256": "7273e2b65937234782e760aa9dadec859d42e9cc3e291c49452db342c36b6db0"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:0d68686e-0e1a-4c2d-ac58-19f41b22700f",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajsa-25010285",
-      "descriptionSha256": "da7a6735fc0541e3dcbd7e9bb4aee7460bc9358fb8ecf94f81a801b743f2b37a",
-      "claims": [
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 167,
-            "end": 187,
-            "sha256": "907fc1ce60e4f741f60eeadec11d446c055737702c856f7bcf0a77b39b45ac8b"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 148,
-            "end": 165,
-            "sha256": "2f2ec518856174943b892267e9c8cc495c4fb81095161ca60dee100702957199"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:1148555d-f56b-45e0-b20f-7c5d7c14fa5a",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bruno-25010240",
-      "descriptionSha256": "1df4302a50ab65dcd2d8096506b77e0f2d8dfb3ce5b76d37bff8fe3f4d4736d8",
-      "claims": [
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 151,
-            "end": 175,
-            "sha256": "e1c49aa64ca0d19c7540fb71007d0bbc0814088f75398bb361c1f33fd9cc3836"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 185,
-            "end": 233,
-            "sha256": "1e8abe94ec841e3cff2bd03cf10d20434ed39bc706470bbc2cad6cdc359b4dc1"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:16fa387a-6c22-4d9e-abdd-1e4da27b5ee5",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajron-25010342",
-      "descriptionSha256": "c22eff8bd48f79d9f5721e4cc47109c02803d392392583cfd250f1cec6ab4248",
-      "claims": [
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 150,
-            "end": 206,
-            "sha256": "d4504e3dfcb434bda193c3f1a1c5af3ca194bd07d1166295256b3252172a1179"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "apartmentOk",
-          "value": "no",
-          "evidence": {
-            "start": 207,
-            "end": 231,
-            "sha256": "da83b50ba2eb8c9b711a84944742af92215f5291f2a351b73ef22fde1f311daa"
-          },
-          "reviewedBy": [
-            "/root/review_a",
-            "/root"
-          ]
-        },
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 150,
-            "end": 206,
-            "sha256": "d4504e3dfcb434bda193c3f1a1c5af3ca194bd07d1166295256b3252172a1179"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 150,
-            "end": 206,
-            "sha256": "d4504e3dfcb434bda193c3f1a1c5af3ca194bd07d1166295256b3252172a1179"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:20c97905-e6ce-4129-b66b-e9ed99155220",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lan-26010059",
-      "descriptionSha256": "9b5d4a0c28506c590cc638251e3fcd55e1d6d556d397c7e19cd3c3859b3ea2e1",
-      "claims": [
-        {
-          "field": "breed",
-          "value": "mešanec",
-          "evidence": {
-            "start": 30,
-            "end": 38,
-            "sha256": "e986275199bd96074179ed6251d5a904e67a191fd0cdee54f69e104845b82df0"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 52,
-            "end": 62,
-            "sha256": "6677807e636a6dfcb89898e996987d54389cfd131076ef5cb4fddaa1f469cdf1"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "size",
-          "value": "large",
-          "evidence": {
-            "start": 39,
-            "end": 50,
-            "sha256": "69cdf403b1965710c8d975219e771f8a2d5e03f26d6c2c6c9ff8536daab23bfd"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_a"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:314c4b1a-df22-4c9e-a34d-b97850284eea",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/saj-22010350",
-      "descriptionSha256": "952ebdb728cd0b976878fb716d8b28dc6427720f62be2ec843a0430b978b4c72",
-      "claims": [
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 116,
-            "end": 129,
-            "sha256": "04a30ec606f344458dda8a36cc8a61cfe900e222e6d215cfafe9fbe3fd431c08"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 347,
-            "end": 379,
-            "sha256": "27686b3755989221086a786b4c5797de6740b93cf5305becc91e9b8f0634c371"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "goodWith.kids",
-          "value": "no",
-          "evidence": {
-            "start": 601,
-            "end": 611,
-            "sha256": "4ab3f7606d9971e48459c3677726ce1fe7dd4d390953fe3377dacce0ab7b69f4"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 579,
-            "end": 597,
-            "sha256": "b13086adbbb7c0b444f384f5d7de51fc63a9c91800bcf035ab58204fc026b685"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 548,
-            "end": 571,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3036,86 +2736,193 @@
           "field": "goodWith.cats",
           "value": "no",
           "evidence": {
-            "start": 177,
-            "end": 196,
-            "sha256": "99d525aeed2e8dd46be16c4b0d4de2c15bba4ff59d0b920b42eb7264d56effe1"
+            "start": 0,
+            "end": 197,
+            "sha256": "4bb58932e24096393ab0b7a377a2e26d7eb1e0a00235f02a9d36ce6a91b0261e"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "size",
           "value": "medium",
           "evidence": {
-            "start": 7,
-            "end": 21,
-            "sha256": "ff8bbfb694030a582fd5dcaf507007dfbaa2e2fcb4c83f41ff6525ce87e2aab5"
+            "start": 0,
+            "end": 197,
+            "sha256": "4bb58932e24096393ab0b7a377a2e26d7eb1e0a00235f02a9d36ce6a91b0261e"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:57620a3d-4d70-4c88-b110-8997e39b7ce1",
+      "animalId": "ljubljana:cdb75933-4e97-4df1-97cd-8c7cf50c27cf",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zan-zak-25010274",
-      "descriptionSha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/loti-26021097",
+      "descriptionSha256": "197b85af314ce015b9436ea2a21111e3ac399f8def07a763524104487acd65d6",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 0,
+            "end": 275,
+            "sha256": "197b85af314ce015b9436ea2a21111e3ac399f8def07a763524104487acd65d6"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "medical.fiv",
+          "value": "positive",
+          "evidence": {
+            "start": 0,
+            "end": 275,
+            "sha256": "197b85af314ce015b9436ea2a21111e3ac399f8def07a763524104487acd65d6"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.indoorOnly",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 275,
+            "sha256": "197b85af314ce015b9436ea2a21111e3ac399f8def07a763524104487acd65d6"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:df45edd2-a9ca-428e-b586-42fdd50312fb",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bajsi-26010174",
+      "descriptionSha256": "d5f93ad5122955cc710b44d5b7f1643a6b4e9a98c8e54c23156a9a844b644da8",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 375,
+            "sha256": "d5f93ad5122955cc710b44d5b7f1643a6b4e9a98c8e54c23156a9a844b644da8"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:fc04ad6b-4f2e-410f-8307-7703b3ba8090",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/jaka-26010171",
+      "descriptionSha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666",
       "claims": [
         {
           "field": "adoptionRequirements.experiencedCarer",
           "value": true,
           "evidence": {
-            "start": 717,
-            "end": 782,
-            "sha256": "41fdac7e5cbcd087e99df7e6e1374007cb81a65a99b5b417252b7295a3e37d1d"
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "adoptionRequirements.onlyPet",
           "value": true,
           "evidence": {
-            "start": 364,
-            "end": 389,
-            "sha256": "c44218101214ddd4c0380943cc58e5344148556c07a96d7e735e6fa24379b45d"
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.cats",
           "value": "no",
           "evidence": {
-            "start": 338,
-            "end": 350,
-            "sha256": "ccd3f31ab852c14572757a29e8afc3d2267c6345361ba1d8fe717b59684dc339"
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.dogs",
           "value": "no",
           "evidence": {
-            "start": 364,
-            "end": 389,
-            "sha256": "c44218101214ddd4c0380943cc58e5344148556c07a96d7e735e6fa24379b45d"
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Črnomelj",
+          "evidence": {
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 390,
+            "sha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3130,86 +2937,107 @@
           "field": "goodWith.cats",
           "value": "no",
           "evidence": {
-            "start": 352,
-            "end": 381,
-            "sha256": "8cf2fb1cb93bd4cbd290c34189c694ef8d85d46be6b1baf0b84855900e178d29"
+            "start": 0,
+            "end": 418,
+            "sha256": "37f68959f465a0606b732904d9f1d5f63d6dd26b5fe5200bae64eae031a24dc2"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 225,
-            "end": 250,
-            "sha256": "aed4780b8ce4c551053f2813a8e775ec542613425e569ff17460e6a9aa57d6bd"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:746abc05-91ca-433f-9dda-567eee028609",
+      "animalId": "ljubljana:20c97905-e6ce-4129-b66b-e9ed99155220",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/robi-25010100",
-      "descriptionSha256": "1d7fee7d534427fa441967d87477d5605cd11b6696871404b66d3ef879b9017e",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lan-26010059",
+      "descriptionSha256": "9b5d4a0c28506c590cc638251e3fcd55e1d6d556d397c7e19cd3c3859b3ea2e1",
       "claims": [
         {
-          "field": "adoptionRequirements.experiencedCarer",
+          "field": "breed",
+          "value": "mešanec",
+          "evidence": {
+            "start": 0,
+            "end": 167,
+            "sha256": "9b5d4a0c28506c590cc638251e3fcd55e1d6d556d397c7e19cd3c3859b3ea2e1"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 167,
+            "sha256": "9b5d4a0c28506c590cc638251e3fcd55e1d6d556d397c7e19cd3c3859b3ea2e1"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "size",
+          "value": "large",
+          "evidence": {
+            "start": 0,
+            "end": 167,
+            "sha256": "9b5d4a0c28506c590cc638251e3fcd55e1d6d556d397c7e19cd3c3859b3ea2e1"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:f5d16612-aba4-422a-955c-bdac9a915741",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dzoni-26020222",
+      "descriptionSha256": "2ec22047bd8dd006a9a9255cb39038d30a0903b1253c174be1f4fe4a88da800c",
+      "claims": [
+        {
+          "field": "adoptionRequirements.ongoingCare",
           "value": true,
           "evidence": {
-            "start": 205,
-            "end": 244,
-            "sha256": "30756cc5a0fb1372f0e648ba8629694522654914b99c89625fff2ac39afb686c"
+            "start": 0,
+            "end": 520,
+            "sha256": "2ec22047bd8dd006a9a9255cb39038d30a0903b1253c174be1f4fe4a88da800c"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 434,
-            "end": 448,
-            "sha256": "89bffbe66a9a593869e26d586ba0b296da7622f603dd879a2cffac839169bc6d"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
+          "field": "goodWith.kids",
           "value": "yes",
           "evidence": {
-            "start": 403,
-            "end": 432,
-            "sha256": "b0a4ea19939f27b8afc254044ec6409d90063c2e2e1377a43e5900110e71317d"
+            "start": 0,
+            "end": 520,
+            "sha256": "2ec22047bd8dd006a9a9255cb39038d30a0903b1253c174be1f4fe4a88da800c"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "specialNeeds",
           "value": true,
           "evidence": {
-            "start": 48,
-            "end": 122,
-            "sha256": "1516fbff33f0d7ddc990318495493308294d7466b904b233b3edbfe82700b5fb"
+            "start": 0,
+            "end": 520,
+            "sha256": "2ec22047bd8dd006a9a9255cb39038d30a0903b1253c174be1f4fe4a88da800c"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3224,120 +3052,73 @@
           "field": "adoptionRequirements.indoorOnly",
           "value": true,
           "evidence": {
-            "start": 427,
+            "start": 0,
             "end": 469,
-            "sha256": "3f59594f68a7c1458610eed042d8353cfde2a3243a051e535f974309d20e63e9"
+            "sha256": "aa25c5c89449313d8d1403026938126cee9b804338d80fc1059ca3d4eb19cb05"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:9008675e-833b-49ad-a7b5-d94b0170e191",
+      "animalId": "ljubljana:16fa387a-6c22-4d9e-abdd-1e4da27b5ee5",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ruben-23010027",
-      "descriptionSha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajron-25010342",
+      "descriptionSha256": "c22eff8bd48f79d9f5721e4cc47109c02803d392392583cfd250f1cec6ab4248",
       "claims": [
         {
-          "field": "energy",
-          "value": "lively",
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
           "evidence": {
-            "start": 25,
-            "end": 34,
-            "sha256": "8abc93f3443ccbb359f1fa45b994c35d6bbe7ba2300699c09e75eb63c72c9a17"
+            "start": 0,
+            "end": 248,
+            "sha256": "c22eff8bd48f79d9f5721e4cc47109c02803d392392583cfd250f1cec6ab4248"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "apartmentOk",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 248,
+            "sha256": "c22eff8bd48f79d9f5721e4cc47109c02803d392392583cfd250f1cec6ab4248"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.cats",
-          "value": "yes",
-          "evidence": {
-            "start": 526,
-            "end": 572,
-            "sha256": "a23a79d30509d9cf582b5786c4165ff597d5ae6ce9430ffa27577a54793cb3bb"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:92dd9e05-45cf-440f-8ffd-56d745d0b41f",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cezar-25010006",
-      "descriptionSha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653",
-      "claims": [
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 264,
-            "end": 318,
-            "sha256": "eaf1e8376f8a13343e67984e9232feb0e2d6364e5a26f7fb8e0cc9c4ff0a58b7"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "goodWith.kids",
           "value": "no",
           "evidence": {
-            "start": 555,
-            "end": 588,
-            "sha256": "43e9966caa30d4ce80ec44212322a6278aa8f92177f6115d82ff2bea532cda68"
+            "start": 0,
+            "end": 248,
+            "sha256": "c22eff8bd48f79d9f5721e4cc47109c02803d392392583cfd250f1cec6ab4248"
           },
           "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.dogs",
           "value": "no",
           "evidence": {
-            "start": 589,
-            "end": 646,
-            "sha256": "72ef7782133e11e7d5c7d7dbf9b45676cd984a703f7052ae1463bb313ede47ca"
+            "start": 0,
+            "end": 248,
+            "sha256": "c22eff8bd48f79d9f5721e4cc47109c02803d392392583cfd250f1cec6ab4248"
           },
           "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 589,
-            "end": 646,
-            "sha256": "72ef7782133e11e7d5c7d7dbf9b45676cd984a703f7052ae1463bb313ede47ca"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 615,
-            "end": 646,
-            "sha256": "898457637239d030a32109db88a3bd1ba68a0fa1422e62feb771feb6a22baff9"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3352,39 +3133,326 @@
           "field": "adoptionRequirements.onlyPet",
           "value": true,
           "evidence": {
-            "start": 336,
-            "end": 359,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
+            "start": 0,
+            "end": 400,
+            "sha256": "f45ee051f8da5792f3b8d01755e036a902289f373f8637f019b4449c549d3858"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.cats",
           "value": "no",
           "evidence": {
-            "start": 336,
-            "end": 359,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
+            "start": 0,
+            "end": 400,
+            "sha256": "f45ee051f8da5792f3b8d01755e036a902289f373f8637f019b4449c549d3858"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.dogs",
           "value": "no",
           "evidence": {
-            "start": 336,
-            "end": 359,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
+            "start": 0,
+            "end": 400,
+            "sha256": "f45ee051f8da5792f3b8d01755e036a902289f373f8637f019b4449c549d3858"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:0d68686e-0e1a-4c2d-ac58-19f41b22700f",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajsa-25010285",
+      "descriptionSha256": "da7a6735fc0541e3dcbd7e9bb4aee7460bc9358fb8ecf94f81a801b743f2b37a",
+      "claims": [
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 203,
+            "sha256": "da7a6735fc0541e3dcbd7e9bb4aee7460bc9358fb8ecf94f81a801b743f2b37a"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 203,
+            "sha256": "da7a6735fc0541e3dcbd7e9bb4aee7460bc9358fb8ecf94f81a801b743f2b37a"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:57620a3d-4d70-4c88-b110-8997e39b7ce1",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zan-zak-25010274",
+      "descriptionSha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f",
+      "claims": [
+        {
+          "field": "adoptionRequirements.experiencedCarer",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 806,
+            "sha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 806,
+            "sha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 806,
+            "sha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 806,
+            "sha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:1148555d-f56b-45e0-b20f-7c5d7c14fa5a",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bruno-25010240",
+      "descriptionSha256": "1df4302a50ab65dcd2d8096506b77e0f2d8dfb3ce5b76d37bff8fe3f4d4736d8",
+      "claims": [
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 234,
+            "sha256": "1df4302a50ab65dcd2d8096506b77e0f2d8dfb3ce5b76d37bff8fe3f4d4736d8"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 234,
+            "sha256": "1df4302a50ab65dcd2d8096506b77e0f2d8dfb3ce5b76d37bff8fe3f4d4736d8"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:746abc05-91ca-433f-9dda-567eee028609",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/robi-25010100",
+      "descriptionSha256": "1d7fee7d534427fa441967d87477d5605cd11b6696871404b66d3ef879b9017e",
+      "claims": [
+        {
+          "field": "adoptionRequirements.experiencedCarer",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 468,
+            "sha256": "1d7fee7d534427fa441967d87477d5605cd11b6696871404b66d3ef879b9017e"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 468,
+            "sha256": "1d7fee7d534427fa441967d87477d5605cd11b6696871404b66d3ef879b9017e"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 468,
+            "sha256": "1d7fee7d534427fa441967d87477d5605cd11b6696871404b66d3ef879b9017e"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 468,
+            "sha256": "1d7fee7d534427fa441967d87477d5605cd11b6696871404b66d3ef879b9017e"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:92dd9e05-45cf-440f-8ffd-56d745d0b41f",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cezar-25010006",
+      "descriptionSha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653",
+      "claims": [
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.experiencedCarer",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 986,
+            "sha256": "57cf23a93089090a67a641e32ce8819fa28127679682bfcfab5cce25fb710653"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3400,47 +3468,284 @@
           "value": "medium",
           "replaces": "large",
           "evidence": {
-            "start": 8,
-            "end": 21,
-            "sha256": "805d94671e867b48aafc3e12dbafbeb7c39957e4573c47661d639a2016d4ded7"
+            "start": 0,
+            "end": 365,
+            "sha256": "ce03f2b0b34d389afb1c56a6b890d0cf50b0345f00940e4c38409c9039aebdde"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "specialNeeds",
           "value": true,
           "evidence": {
-            "start": 317,
+            "start": 0,
             "end": 365,
-            "sha256": "eba12160539eb34b014cdc2f7ce4ae4c180e25f12f46f65f340600aab2e8d827"
+            "sha256": "ce03f2b0b34d389afb1c56a6b890d0cf50b0345f00940e4c38409c9039aebdde"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:c36b2556-d953-474c-bd1a-d505055153ec",
+      "animalId": "ljubljana:6f45c5a3-9cb6-4718-b5fe-0ff184506641",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dominik-26020572",
-      "descriptionSha256": "c6cb7c13b1228ed1ab019c10f4884baab2645b091e95cc152b3dafa2c13c76a7",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lex-24010170",
+      "descriptionSha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0",
       "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.kids",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "apartmentOk",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.ongoingCare",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
         {
           "field": "specialNeeds",
           "value": true,
           "evidence": {
-            "start": 128,
-            "end": 158,
-            "sha256": "7d71bdedc2bee454ba20393e126f8d08a9097d870c6dbba61d64f3edef9bff14"
+            "start": 0,
+            "end": 1368,
+            "sha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:15a044ff-1262-4693-96dc-aaa3619c1055",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/frodo-24010072",
+      "descriptionSha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "lively",
+          "evidence": {
+            "start": 0,
+            "end": 574,
+            "sha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 574,
+            "sha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 574,
+            "sha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.experiencedCarer",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 574,
+            "sha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 574,
+            "sha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:08b4bedb-37d1-405c-91f1-cf4db203b880",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bela-23010345",
+      "descriptionSha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b",
+      "claims": [
+        {
+          "field": "energy",
+          "value": "calm",
+          "evidence": {
+            "start": 0,
+            "end": 596,
+            "sha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 596,
+            "sha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 596,
+            "sha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 596,
+            "sha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.noYoungKids",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 596,
+            "sha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3455,39 +3760,39 @@
           "field": "energy",
           "value": "balanced",
           "evidence": {
-            "start": 452,
-            "end": 471,
-            "sha256": "43c2700c3e9cb4abe12e965b501fd314115f24d5f414a9399c209063f420f9cb"
+            "start": 0,
+            "end": 620,
+            "sha256": "2e38a78711078f3299f24dc78ab0515e510f49d8215daeaaf27f4c8059e6bd24"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.cats",
           "value": "yes",
           "evidence": {
-            "start": 536,
-            "end": 559,
-            "sha256": "91b7dda80364a4b933ef1f3013e5dd6ca448870fc539adfc2460de176a960bcd"
+            "start": 0,
+            "end": 620,
+            "sha256": "2e38a78711078f3299f24dc78ab0515e510f49d8215daeaaf27f4c8059e6bd24"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.dogs",
           "value": "yes",
           "evidence": {
-            "start": 473,
-            "end": 502,
-            "sha256": "8fb55f6975efe5ee0130846c2d0b8561cd3469ac908e7fb2c843afabec532e62"
+            "start": 0,
+            "end": 620,
+            "sha256": "2e38a78711078f3299f24dc78ab0515e510f49d8215daeaaf27f4c8059e6bd24"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
@@ -3495,47 +3800,120 @@
           "value": "medium",
           "replaces": "large",
           "evidence": {
-            "start": 8,
-            "end": 21,
-            "sha256": "805d94671e867b48aafc3e12dbafbeb7c39957e4573c47661d639a2016d4ded7"
+            "start": 0,
+            "end": 620,
+            "sha256": "2e38a78711078f3299f24dc78ab0515e510f49d8215daeaaf27f4c8059e6bd24"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "specialNeeds",
           "value": true,
           "evidence": {
-            "start": 162,
-            "end": 194,
-            "sha256": "692d7ed6db429a78133306a2f955fd6b4055e2960c80a10cb6b87ae0ff3e5073"
+            "start": 0,
+            "end": 620,
+            "sha256": "2e38a78711078f3299f24dc78ab0515e510f49d8215daeaaf27f4c8059e6bd24"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:df45edd2-a9ca-428e-b586-42fdd50312fb",
+      "animalId": "ljubljana:62f57890-4989-463b-924b-8d73581250c2",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bajsi-26010174",
-      "descriptionSha256": "d5f93ad5122955cc710b44d5b7f1643a6b4e9a98c8e54c23156a9a844b644da8",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/goldi-23010056",
+      "descriptionSha256": "d325806817f2ad77edb498af8f5d9ddbb6d34bbf3777d8506c8e2c7ab9f57fb0",
+      "claims": [
+        {
+          "field": "goodWith.dogs",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 765,
+            "sha256": "d325806817f2ad77edb498af8f5d9ddbb6d34bbf3777d8506c8e2c7ab9f57fb0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "no",
+          "evidence": {
+            "start": 0,
+            "end": 765,
+            "sha256": "d325806817f2ad77edb498af8f5d9ddbb6d34bbf3777d8506c8e2c7ab9f57fb0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 765,
+            "sha256": "d325806817f2ad77edb498af8f5d9ddbb6d34bbf3777d8506c8e2c7ab9f57fb0"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "ljubljana:9008675e-833b-49ad-a7b5-d94b0170e191",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ruben-23010027",
+      "descriptionSha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901",
       "claims": [
         {
           "field": "energy",
           "value": "lively",
           "evidence": {
-            "start": 201,
-            "end": 211,
-            "sha256": "c422866b1222c8c6de6f84b5fec8b34c911fafb74e933725339ce8e8a6976148"
+            "start": 0,
+            "end": 753,
+            "sha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 753,
+            "sha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "specialNeeds",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 753,
+            "sha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -3550,207 +3928,112 @@
           "field": "goodWith.dogs",
           "value": "no",
           "evidence": {
-            "start": 404,
-            "end": 429,
-            "sha256": "6df72fcb195d3eae8a3be12fb9e489af919137bbeecd039c65da5b0225ffa101"
+            "start": 0,
+            "end": 681,
+            "sha256": "089d0025f7e66fac063757548d21d04b2594b4b9f160a98186eebeac260684fb"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
     },
     {
-      "animalId": "ljubljana:eb476fef-838f-4060-8f30-966563e6d2de",
+      "animalId": "ljubljana:314c4b1a-df22-4c9e-a34d-b97850284eea",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/peter-zajec-26030015",
-      "descriptionSha256": "4a62c1d1cc2e7dee5c962b20b97b1cc5c0fe0f48269bba43dae27520498c5193",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/saj-22010350",
+      "descriptionSha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee",
       "claims": [
         {
           "field": "energy",
           "value": "lively",
           "evidence": {
-            "start": 194,
-            "end": 212,
-            "sha256": "f827144dc70968ebdd9f9f87d925fa9fc1559364b2e84572fc6035638eeaac3c"
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "species",
-          "value": "rabbit",
-          "replaces": "other",
-          "evidence": {
-            "start": 34,
-            "end": 39,
-            "sha256": "304fc5dc9b89fad07b8366f7cc1d7c72922cdcb39378dfcfd08ce2b5008e92cd"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:f5d16612-aba4-422a-955c-bdac9a915741",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dzoni-26020222",
-      "descriptionSha256": "2ec22047bd8dd006a9a9255cb39038d30a0903b1253c174be1f4fe4a88da800c",
-      "claims": [
-        {
-          "field": "adoptionRequirements.ongoingCare",
-          "value": true,
-          "evidence": {
-            "start": 305,
-            "end": 351,
-            "sha256": "704f8645547d0c0070bd0b3babf6650d636ef0e2e565e5e293aa2ef785470c80"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "goodWith.kids",
-          "value": "yes",
-          "evidence": {
-            "start": 487,
-            "end": 519,
-            "sha256": "271d051298fcc784ca50f4b1e3e1797462bf1e718fa2dcecac9e83eb9673bc64"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 305,
-            "end": 351,
-            "sha256": "704f8645547d0c0070bd0b3babf6650d636ef0e2e565e5e293aa2ef785470c80"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 484,
-            "end": 498,
-            "sha256": "447aab3652f8b350c7ea5ffd0a68ca46c81a8f6a2744af78d47aaf9e733290dc"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:fc04ad6b-4f2e-410f-8307-7703b3ba8090",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/jaka-26010171",
-      "descriptionSha256": "3e0d25ebb4686b4e1d0d2cef0fa9e231df59792f157f2cf18856a5cc1a058666",
-      "claims": [
-        {
-          "field": "adoptionRequirements.experiencedCarer",
-          "value": true,
-          "evidence": {
-            "start": 118,
-            "end": 142,
-            "sha256": "eaa876211f7b02f3a08a256e5ca6158bb342036b1ef9a0958c42735bbbcc54a7"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 221,
-            "end": 244,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.cats",
           "value": "no",
           "evidence": {
-            "start": 221,
-            "end": 244,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 221,
-            "end": 244,
-            "sha256": "3e6538015c97109a298f924e78162f335f1e5b4947a2c125797548c9eb240102"
-          },
-          "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "goodWith.kids",
           "value": "no",
           "evidence": {
-            "start": 246,
-            "end": 284,
-            "sha256": "83647d178ecd77d619dbb11b7fd21e5d5206f7476061514fa344df904389ef1b"
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
-          "field": "originMunicipality",
-          "value": "Črnomelj",
+          "field": "goodWith.dogs",
+          "value": "no",
           "evidence": {
-            "start": 59,
-            "end": 69,
-            "sha256": "01e3fa2fadc455d67d2871b1a092c4694dc8ab9efb22980cec0d690d7b9c1b94"
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.onlyPet",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "adoptionRequirements.experiencedCarer",
+          "value": true,
+          "evidence": {
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "specialNeeds",
           "value": true,
           "evidence": {
-            "start": 78,
-            "end": 116,
-            "sha256": "8a66a3c46fff38991c101c7618a5cceb1b7f477ee8439adc05f8a4f10c7a39a6"
+            "start": 0,
+            "end": 691,
+            "sha256": "7047b78fbf50b99cef5db60121dbf52b883503ca0486b4b39b5b9f50e0afe9ee"
           },
           "reviewedBy": [
-            "/root/review_b",
-            "/root/review_c"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -16772,181 +17055,6 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:6f45c5a3-9cb6-4718-b5fe-0ff184506641",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lex-24010170",
-      "descriptionSha256": "d01d75b8869ac3f8a49a9a409c1d9cd279cc3d3363ed8bf177f0080f56429fc0",
-      "claims": [
-        {
-          "field": "energy",
-          "value": "calm",
-          "evidence": {
-            "start": 112,
-            "end": 134,
-            "sha256": "192f3e3df6e103ef03f48b3e7fc97454548ed30be7c524e0fcaab9ac3235072d"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.kids",
-          "value": "yes",
-          "evidence": {
-            "start": 328,
-            "end": 345,
-            "sha256": "fc8fbfb8a1a233db33bde521e5e35edfeb06a4e6f3b5103047d188e099bebadd"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 703,
-            "end": 735,
-            "sha256": "851b7c7b0b5419e5a0a679ecb3f993a575e33aae48f0b2974f067ed1c4e9e175"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 703,
-            "end": 735,
-            "sha256": "851b7c7b0b5419e5a0a679ecb3f993a575e33aae48f0b2974f067ed1c4e9e175"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 742,
-            "end": 789,
-            "sha256": "6986f29e06bae03ea3e6d0b1c82fbdf620d4fedd5cdb01eb7e1be4eb747f190f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:15a044ff-1262-4693-96dc-aaa3619c1055",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/frodo-24010072",
-      "descriptionSha256": "2ee39234353fd8155bd4f0fa32f38186a573c5405673c7bbd1c8b4e92c802927",
-      "claims": [
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 6,
-            "end": 27,
-            "sha256": "04f1ca705895e8f94d31459f46f645e513926f8cda4763923f703fd9340fd065"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 117,
-            "end": 142,
-            "sha256": "fd81ab79838e1dc232efc535509c52a45c99dfd21bf7c1fac81769a955b79166"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:62f57890-4989-463b-924b-8d73581250c2",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/goldi-23010056",
-      "descriptionSha256": "d325806817f2ad77edb498af8f5d9ddbb6d34bbf3777d8506c8e2c7ab9f57fb0",
-      "claims": [
-        {
-          "field": "goodWith.dogs",
-          "value": "no",
-          "evidence": {
-            "start": 627,
-            "end": 663,
-            "sha256": "7224712afbc9f8dd3518924dd7772f076b463cbf319b013fa13da1a2191b997f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "goodWith.cats",
-          "value": "no",
-          "evidence": {
-            "start": 627,
-            "end": 663,
-            "sha256": "7224712afbc9f8dd3518924dd7772f076b463cbf319b013fa13da1a2191b997f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        },
-        {
-          "field": "adoptionRequirements.onlyPet",
-          "value": true,
-          "evidence": {
-            "start": 627,
-            "end": 663,
-            "sha256": "7224712afbc9f8dd3518924dd7772f076b463cbf319b013fa13da1a2191b997f"
-          },
-          "reviewedBy": [
-            "/root/household_review_a",
-            "/root/household_review_b"
-          ]
-        }
-      ]
-    },
-    {
-      "animalId": "ljubljana:8db5a442-83b5-4e10-a4b5-6da10ed663ca",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/teodor-26021292",
-      "descriptionSha256": "8cbf7e241b25dd4fb8240ffc1574a6fbbf4f4fdc224648fe7e330ba82951f061",
-      "claims": [
-        {
-          "field": "adoptionRequirements.indoorOnly",
-          "value": true,
-          "evidence": {
-            "start": 9,
-            "end": 41,
-            "sha256": "d5675583e5155db65352bbbb7a082a26b04f9ee1ea0cfbb43f32d6499f3c7e4e"
-          },
-          "reviewedBy": [
-            "/root/newcat_review_a",
-            "/root/newcat_review_b"
           ]
         }
       ]

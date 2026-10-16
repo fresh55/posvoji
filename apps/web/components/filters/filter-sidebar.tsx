@@ -115,6 +115,17 @@ export const FilterSidebar = memo(function FilterSidebar({
       // The negative margin and padding give focus rings room inside the
       // overflow clip. Hairlines between sections read the stack as one list.
       //
+      // The first of those hairlines is a different line: it is the header
+      // rule, the left half of the one the toolbar band draws under the
+      // species tabs across the gutter (animal-filters.tsx). It is drawn in
+      // the band's tone, full --border, where the dividers below it keep the
+      // quieter /60; at /60 the two halves met in two greys. And it is drawn
+      // by rail-header-rule (globals.css) as this box's background, which
+      // reaches the box's edge and runs under the scrollbar, where a border
+      // stopped at the content edge and left a notch at the join. The first
+      // section keeps its border for the 1px it takes in the layout, in
+      // transparent, so nothing below it moves.
+      //
       // pb-1 is the vertical half of that same arithmetic, and it pays for a
       // bleed rather than for a ring. A folding section's trigger is -my-1 over
       // py-1 (filter-section-header.tsx), so its border box stands 4px taller
@@ -135,7 +146,7 @@ export const FilterSidebar = memo(function FilterSidebar({
       // silently cut its last sections off on a short screen. It keeps the
       // same edge mask and adds a thin scrollbar (globals.css).
       className={cn(
-        "fade-scroll-thin -mx-1 space-y-3 px-1 pb-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3",
+        "fade-scroll-thin -mx-1 space-y-3 px-1 pb-1 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-3 [&>section:first-of-type]:border-t-transparent rail-header-rule",
         className,
       )}
     >
@@ -152,6 +163,13 @@ export const FilterSidebar = memo(function FilterSidebar({
             stuck, and the hairline over the first section below lands on the
             toolbar's border-b rather than 16px above it.
 
+            mb-rail-pad for the same reason, over the 12px space-y-3 would give
+            anyway: the band's rule sits a --rail-pad under its row, so this
+            one does too, by the same token rather than by a number that
+            happens to match. The rule over the first section is drawn at
+            that height from the same two tokens (rail-header-rule in
+            globals.css), so heading, rule and band agree by construction.
+
             The height is on the heading and not on a box around it. There were
             two children here until the clear went, and one child that is itself
             a flex row does not need a flex row around it.
@@ -164,7 +182,7 @@ export const FilterSidebar = memo(function FilterSidebar({
         <h2
           id={FILTERS_ID}
           tabIndex={-1}
-          className="flex h-toolbar-row items-center gap-2 text-sm font-medium"
+          className="mb-rail-pad flex h-toolbar-row items-center gap-2 text-sm font-medium"
         >
           {messages.filters}
           {/* The same badge the phone's dock shows next to "Filtri". */}

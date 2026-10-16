@@ -113,6 +113,19 @@
   --page-y: 2rem;
   --section-gap: 1.5rem;
   --column-gap: 1.5rem;
+  /* The gutter between the filter rail and the grid on the results page, from
+     lg. The page's own column gap up to xl, and from xl the cards' column gap,
+     which makes the rail one more column of the card row (lib/card-grid.ts
+     says why it is 1.25rem and not more).
+     A token rather than classes because four things have to agree on it: the
+     results grid's gap and the rail's share of the row (RESULTS_COLUMNS), the
+     card grid's own column gap from xl (CARD_GRID), and the toolbar band,
+     which reaches back across exactly this gutter so the rule under the
+     species tabs runs on into the one under "Filtri" (animal-filters.tsx).
+     Spelled in each of them, a reach written for lg is 12px too long from xl.
+     Declared beside --column-gap, so it reads that token's lg value on the
+     same element and needs no lg block of its own. */
+  --results-gap: var(--column-gap);
   /* The air above and below the sticky results bar, and the one place that
      distance is written. Two elements have to agree on it and they live in
      different files: the bar pads itself with it (animal-filters.tsx), and
@@ -146,9 +159,11 @@
        z-30  floating page furniture that a visitor can scroll past: the phone
              filter dock.
        z-40  page chrome that must stay legible over the page: the sticky
-             toolbar band, the back-to-top control. These two never overlap,
-             and animal-filters.tsx says what happens when the band and the
-             dock do.
+             toolbar band, the filter rail beside it, the back-to-top control.
+             The band reaches 4px under the rail, and the rail is later in the
+             document, so the rail draws on top there (animal-grid.tsx). The
+             back-to-top control never meets either, and animal-filters.tsx
+             says what happens when the band and the dock do.
        z-50  a layer that takes the page away: dialog, drawer, popover, the
              overlays under them.
 
@@ -232,6 +247,12 @@
   }
 }
 
+@media (width >= 80rem) {
+  :root {
+    --results-gap: 1.25rem;
+  }
+}
+
 /* Keep the first cards within reach on shorter laptops. The cat corner uses
    the same height band so its caption and stage still fit above the toolbar. */
 @media (width >= 64rem) and (32rem < height < 50rem) {
@@ -281,6 +302,7 @@
   --spacing-page-y: var(--page-y);
   --spacing-section-gap: var(--section-gap);
   --spacing-column-gap: var(--column-gap);
+  --spacing-results-gap: var(--results-gap);
   --spacing-rail-pad: var(--rail-pad);
   --spacing-toolbar-row: var(--toolbar-row);
   --color-background: var(--background);
@@ -856,6 +878,53 @@
    grounds. */
 @utility fade-scroll-thin {
   @apply fade-scroll-mask scrollbar-thin;
+}
+
+/* The filter rail's half of the header rule: the line under "Filtri" that
+   runs on into the toolbar band's rule under the species tabs, across the
+   gutter (animal-filters.tsx). The rail draws it as background rather than as
+   its first section's border, because of its scrollbar.
+
+   Where the rail scrolls and the platform draws a classic scrollbar, 10px on
+   Windows Chrome with scrollbar-width: thin, the rail's right edge is that
+   scrollbar, and nothing inside the rail paints under it. A section border
+   stopped at the bar's left edge and the rule broke there, for the width of
+   the bar. The rail's own background is the one thing drawn under a
+   scrollbar, so the line is three layers over its opaque background colour:
+     - the line in the content, which scrolls with it (local attachment), so
+       the rule leaves with "Filtri" when the rail is scrolled;
+     - under it, a cover of the page colour that scrolls the same way and so
+       stops where the content stops, at the scrollbar's left edge;
+     - under that, the same line fixed to the rail's box (scroll attachment),
+       which the cover hides everywhere but under the bar.
+   Each pixel of the rule is drawn once. That matters in dark mode, where
+   --border is white at 10% and two lines over each other read brighter:
+   drawn as a section border, the line came out one device pixel past the
+   cover's edge and left a bright dot on the join.
+
+   Both lines stand the heading's row and --rail-pad under the content's top
+   edge, which is where the heading and its mb-rail-pad put the first section
+   (filter-sidebar.tsx) and where the band, padded by the same token, draws
+   its rule. Wider than the box and clipped by it, so they reach its right
+   edge whatever the scrollbar takes. With no scrollbar the cover is the whole
+   box and the fixed line draws nothing; a browser that paints a local layer
+   under the bar too loses only the piece under the bar. */
+@utility rail-header-rule {
+  background-image:
+    linear-gradient(var(--border), var(--border)),
+    linear-gradient(var(--background), var(--background)),
+    linear-gradient(var(--border), var(--border));
+  background-attachment: local, local, scroll;
+  background-origin: content-box, padding-box, content-box;
+  background-position:
+    0 calc(var(--toolbar-row) + var(--rail-pad)),
+    0 0,
+    0 calc(var(--toolbar-row) + var(--rail-pad));
+  background-size:
+    calc(100% + 2rem) 1px,
+    auto,
+    calc(100% + 2rem) 1px;
+  background-repeat: no-repeat;
 }
 
 /* The thin bar on its own, for a box that scrolls and wants to say so without

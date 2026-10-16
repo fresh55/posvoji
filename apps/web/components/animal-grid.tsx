@@ -1018,9 +1018,19 @@ export function AnimalGrid({
             // against the other, so which one the browser lays out first
             // decides nothing about where either comes to rest. The track is
             // what puts the panel back in the left column (lib/card-grid.ts).
+            //
+            // lg:z-40 because the toolbar band reaches back across the gutter
+            // to the rail's track (animal-filters.tsx), and this box stands
+            // 4px past the track for its focus rings. On the band's rung and
+            // later in the document, the panel draws over the band in those
+            // 4px, so nothing of the panel, the scrollbar included, can be
+            // covered by the band's background. The panel draws the rule
+            // through that strip itself, to its own edge and under its
+            // scrollbar (rail-header-rule in globals.css), so the band's half
+            // picks up exactly where the panel's ends.
             className={cn(
               RESULTS_RAIL_TRACK,
-              "hidden lg:sticky lg:top-0 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad",
+              "hidden lg:sticky lg:top-0 lg:z-40 lg:block lg:max-h-[calc(100dvh-var(--rail-pad)*2)] lg:overflow-x-hidden lg:overflow-y-auto lg:bg-background lg:pt-rail-pad",
             )}
             filters={filters}
             groups={groups}

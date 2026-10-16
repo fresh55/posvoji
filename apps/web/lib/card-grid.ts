@@ -22,8 +22,9 @@
 //
 // From xl the column gap is 20px, and the filter rail stands the same 20px off
 // the grid (RESULTS_COLUMNS below), which makes the rail one more column of the
-// row. 16px between two squares this size read as a contact sheet, the
-// pictures all but touching. 24px would be better still and is not available:
+// row. Both read it from --results-gap (globals.css), so they cannot part.
+// 16px between two squares this size read as a contact sheet, the pictures all
+// but touching. 24px would be better still and is not available:
 // at 1536 with Chrome's 15px scrollbar, a rail of one fifth and four 17rem
 // columns at 24px leave 0.8px to spare, where 20px leaves 13.6px.
 //
@@ -58,7 +59,7 @@
 // without one on the 100rem frame, 1536px wide, where 15rem columns come
 // within 4px of a sixth.
 export const CARD_GRID =
-  "grid grid-cols-[repeat(auto-fill,minmax(max(8rem,calc(50%_-_0.5rem)),1fr))] gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-5" +
+  "grid grid-cols-[repeat(auto-fill,minmax(max(8rem,calc(50%_-_0.5rem)),1fr))] gap-x-4 gap-y-6 sm:gap-y-8 xl:gap-x-results-gap" +
   " sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]" +
   " xl:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))]" +
   " 2xl:grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]";
@@ -246,10 +247,17 @@ export const CARD_GRID_PAGE_MAX = "2xl:[--page-max:100rem]";
 // the share with it, and the rail stays a card wide. With a stylesheet's
 // doubled root the share is the smaller of the two and the cap decides, as it
 // did before: 324px of a 1297px section at 1440, and 444px of 1777px at 1920.
+//
+// The gap between the two tracks, and the gaps the rail's share subtracts,
+// are --results-gap (globals.css): 2rem at lg and 1.25rem from xl. The toolbar
+// band reaches back across the same gutter to join its rule to the rail's
+// (animal-filters.tsx), which is why the width is a token and not a pair of
+// classes here. The row gap stays --column-gap; it only spaces the skip
+// target in the second row.
 export const RESULTS_COLUMNS =
-  "lg:grid lg:grid-cols-[clamp(224px,14rem,25%)_minmax(0,1fr)] lg:items-start lg:gap-column-gap" +
-  " xl:grid-cols-[clamp(224px,max(14rem,calc((100%_-_3_*_1.25rem)/4)),25%)_minmax(0,1fr)] xl:gap-x-5" +
-  " 2xl:grid-cols-[clamp(224px,max(14rem,calc((100%_-_4_*_1.25rem)/5)),25%)_minmax(0,1fr)]";
+  "lg:grid lg:grid-cols-[clamp(224px,14rem,25%)_minmax(0,1fr)] lg:items-start lg:gap-column-gap lg:gap-x-results-gap" +
+  " xl:grid-cols-[clamp(224px,max(14rem,calc((100%_-_3_*_var(--results-gap))/4)),25%)_minmax(0,1fr)]" +
+  " 2xl:grid-cols-[clamp(224px,max(14rem,calc((100%_-_4_*_var(--results-gap))/5)),25%)_minmax(0,1fr)]";
 
 // Which of those two tracks a block stands in, stated rather than left to
 // auto-placement, because the results now come first in the document: the

@@ -359,7 +359,50 @@ export function AnimalFilters({
           while the dock is fixed to the bottom and comes clear of it the
           moment the page moves at all. Nothing changes at 100% text, where
           the two never meet. */}
-      <div className={cn(TOOLBAR_BAND, "sticky top-0 z-40 bg-background short:static")}>
+      {/* With the filter rail beside it, the band reaches back across the
+          gutter at lg and pads the same amount back in, so the tabs stay where
+          they were and its rule runs on into the rail's rule under "Filtri".
+          "Filtri" and the tabs are one header row, on one baseline and pinned
+          to one edge, and a rule broken at the gutter read as two rows that
+          nearly lined up. The reach is --results-gap, the grid's own gap, so
+          it ends on the rail's edge at every width; the rail stands 4px past
+          that edge for its focus rings, and it draws over the band there and
+          carries the rule itself (animal-grid.tsx). Not on the stand-in in
+          animal-grid.tsx: it draws no rail, and the reach would leave a stub
+          of rule in an empty gutter.
+
+          The rule belongs under the header row, not under the band, and the
+          two differ once filters are on: the chips row below grows inside
+          this band, and the band's border-b went down with it, 36px under the
+          rail's rule. So from lg the header rule is a line of its own, drawn
+          a --rail-pad under the row from the same tokens the rail draws its
+          half from (rail-header-rule in globals.css), and the chips row opens
+          a --rail-pad under it. With no chips the line lies exactly in the
+          band's border, which is transparent from lg here, so every pixel of
+          it is drawn once and the band keeps its height.
+
+          With chips the band needs its bottom edge back, the line the grid
+          scrolls under, and that one is drawn in the same transparent border
+          but over the results column only. Across the reach it ran into the
+          side of the rail 53px under the header rule, a second rule meeting
+          the rail at a step.
+
+          lg:short:relative because both lines are positioned against the band,
+          and short:static would hand them to whatever ancestor is positioned
+          next. Relative and not sticky, so a short screen still lets the band
+          scroll away. Only from lg, where the lines are drawn, so a phone
+          held sideways, the case short:static is for, keeps it as it was. */}
+      <div
+        className={cn(
+          TOOLBAR_BAND,
+          "sticky top-0 z-40 bg-background short:static",
+          hasSidebar &&
+            "lg:-ml-results-gap lg:border-b-transparent lg:pl-results-gap lg:short:relative lg:before:absolute lg:before:inset-x-0 lg:before:top-[calc(var(--rail-pad)*2+var(--toolbar-row))] lg:before:h-px lg:before:bg-border",
+          hasSidebar &&
+            showChips &&
+            "lg:after:absolute lg:after:-bottom-px lg:after:left-results-gap lg:after:right-0 lg:after:h-px lg:after:bg-border",
+        )}
+      >
         {/* --toolbar-row states the row's height rather than leaving it to
             whichever control happens to be tallest: the sort trigger stands
             down at zero results, and the row would otherwise fall to the tabs'
@@ -491,7 +534,15 @@ export function AnimalFilters({
             that shifts the grid by its full height in one frame reads as the
             page jumping. */}
         <ChipsRowPresence show={showChips} className="min-w-0 max-lg:hidden">
-          <FilterChips {...chipProps} className="mt-2" />
+          {/* Beside the rail the header rule runs between the tabs and this
+              row (the band above says why), so the row stands clear of it by
+              the band's own padding on both sides of the line. */}
+          <FilterChips
+            {...chipProps}
+            className={
+              hasSidebar ? "mt-[calc(var(--rail-pad)*2+1px)]" : "mt-2"
+            }
+          />
         </ChipsRowPresence>
       </div>
 

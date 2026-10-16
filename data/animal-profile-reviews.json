@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-16T19:29:36.431Z",
+  "reviewedAt": "2026-10-16T19:35:27.928Z",
   "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
   "fields": [
     "name",
@@ -109428,7 +109428,7 @@
         "/root/pipeline_audit"
       ],
       "batch": "ljubljana-new-cats-2026-10-16",
-      "reviewedAt": "2026-10-16T19:29:36.431Z",
+      "reviewedAt": "2026-10-16T19:35:27.928Z",
       "sourceCheckedAt": "2026-10-16T19:18:33.077Z",
       "sourceFetchedAt": "2026-10-16T19:18:33.077Z",
       "checkpointCheckedAt": "2026-10-16T19:17:25.674Z",
@@ -109450,12 +109450,12 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T19:29:36.431Z",
-        "observation": "Both actual reviewers independently agreed on black palette/category and short coat after inspecting the single current original photo.",
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
+        "observation": "The source JPEG and current cached WebP master were independently inspected by both named photo reviewers; both support black palette/category and short coat.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021146-1.jpg",
-            "sha256": "34794d73b1efaaa82d23f33508b0ce5758654df4998f3a51aa845b09f1b0066b"
+            "sha256": "d82bfcd17953b3e238bd7834af8c593997c1fe51eca257647105315eb44082e0"
           }
         ],
         "fieldReviewers": {
@@ -109485,7 +109485,30 @@
           "reason": "Entire visible head, trunk and front legs are black. A few pale whiskers/chest guard hairs do not form a distinct white patch. Warm indoor reflections are lighting, not brown coat areas. The body fur is compact and short; kitten fuzz does not establish medium or long feathering."
         },
         "uncertainFields": [],
-        "adjudications": []
+        "adjudications": [],
+        "originalSourceImages": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021146-1.jpg",
+            "sha256": "34794d73b1efaaa82d23f33508b0ce5758654df4998f3a51aa845b09f1b0066b"
+          }
+        ],
+        "cacheMasterReview": {
+          "reviewedAt": "2026-10-16T19:34:06.367Z",
+          "reviewedBy": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "evidenceKind": "cached-master-webp",
+          "classificationUnchanged": true,
+          "proposedFields": {
+            "coatColors": [
+              "black"
+            ],
+            "coatColor": "black",
+            "coatLength": "short"
+          },
+          "reason": "Independently viewed this cached master using tools.view_image. Same animal and same visible coat as the previously reviewed original JPEG: black overall, compact short fur; tiny pale guard hairs and lighting highlights do not add another coat area."
+        }
       },
       "knownFields": [
         "name",
@@ -109536,7 +109559,7 @@
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T19:29:36.431Z",
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
         "category": "black",
         "reviewedBy": [
           "/root",
@@ -109568,7 +109591,7 @@
         "/root/pipeline_audit"
       ],
       "batch": "ljubljana-new-cats-2026-10-16",
-      "reviewedAt": "2026-10-16T19:29:36.431Z",
+      "reviewedAt": "2026-10-16T19:35:27.928Z",
       "sourceCheckedAt": "2026-10-16T19:18:36.166Z",
       "sourceFetchedAt": "2026-10-16T19:18:36.166Z",
       "checkpointCheckedAt": "2026-10-16T19:17:25.674Z",
@@ -109590,12 +109613,12 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T19:29:36.431Z",
-        "observation": "Both actual reviewers independently agreed on black palette/category and short coat after inspecting the single current original photo.",
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
+        "observation": "The source JPEG and current cached WebP master were independently inspected by both named photo reviewers; both support black palette/category and short coat.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021148-1.jpg",
-            "sha256": "00c68ec1320ce21b69668afbedbc6c6ba2f060385ad6808f9322cd15eef7275c"
+            "sha256": "d2c2d7676672c332d119023f54fa1c00af58bc3063a834d0e61fa347eab2691f"
           }
         ],
         "fieldReviewers": {
@@ -109625,7 +109648,30 @@
           "reason": "Visible head, neck, whole flank and tail read black with slight warm reflected highlights. There is no substantial white or distinct brown coat area. Fur follows the body closely, without sustained long feathering, supporting short coat."
         },
         "uncertainFields": [],
-        "adjudications": []
+        "adjudications": [],
+        "originalSourceImages": [
+          {
+            "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021148-1.jpg",
+            "sha256": "00c68ec1320ce21b69668afbedbc6c6ba2f060385ad6808f9322cd15eef7275c"
+          }
+        ],
+        "cacheMasterReview": {
+          "reviewedAt": "2026-10-16T19:34:06.367Z",
+          "reviewedBy": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "evidenceKind": "cached-master-webp",
+          "classificationUnchanged": true,
+          "proposedFields": {
+            "coatColors": [
+              "black"
+            ],
+            "coatColor": "black",
+            "coatLength": "short"
+          },
+          "reason": "Independently viewed this cached master using tools.view_image. Same animal and same visible coat as the previously reviewed original JPEG: black overall, compact short fur; tiny pale guard hairs and lighting highlights do not add another coat area."
+        }
       },
       "knownFields": [
         "name",
@@ -109676,7 +109722,7 @@
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T19:29:36.431Z",
+        "reviewedAt": "2026-10-16T19:35:27.928Z",
         "category": "black",
         "reviewedBy": [
           "/root",

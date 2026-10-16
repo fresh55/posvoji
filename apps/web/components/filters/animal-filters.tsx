@@ -385,7 +385,11 @@ export function AnimalFilters({
           scrolls under, and that one is drawn in the same transparent border
           but over the results column only. Across the reach it ran into the
           side of the rail 53px under the header rule, a second rule meeting
-          the rail at a step.
+          the rail at a step. It is drawn in the quiet tone the rail uses
+          between its sections, border/60: in the full tone the two lines read
+          as two equal rules, and the lower one stopping at the gutter read as
+          the near miss again. The strong line marks the header row across the
+          whole width, the quiet one marks a strip inside the results column.
 
           lg:short:relative because both lines are positioned against the band,
           and short:static would hand them to whatever ancestor is positioned
@@ -400,7 +404,7 @@ export function AnimalFilters({
             "lg:-ml-results-gap lg:border-b-transparent lg:pl-results-gap lg:short:relative lg:before:absolute lg:before:inset-x-0 lg:before:top-[calc(var(--rail-pad)*2+var(--toolbar-row))] lg:before:h-px lg:before:bg-border",
           hasSidebar &&
             showChips &&
-            "lg:after:absolute lg:after:-bottom-px lg:after:left-results-gap lg:after:right-0 lg:after:h-px lg:after:bg-border",
+            "lg:after:absolute lg:after:-bottom-px lg:after:left-results-gap lg:after:right-0 lg:after:h-px lg:after:bg-border/60",
         )}
       >
         {/* --toolbar-row states the row's height rather than leaving it to

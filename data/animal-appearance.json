@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-14T14:05:02.323Z",
+  "reviewedAt": "2026-10-16T14:25:09.463Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -3399,25 +3399,609 @@
       ]
     },
     {
+      "animalId": "ljubljana:63f74946-5980-4488-a800-7081eefc5395",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cabi-26021572",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021572-1.jpg",
+          "sha256": "6bfd10144690bfaad1fe43330e88f025e5e34343a6ce547437641acab67890e5"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:5700eb10-9b21-47e9-9ec8-b5b14f29c6a9",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/silla-26021186",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021186-2.jpg",
+          "sha256": "3e1f72a4411813e79eb6e86ad6d48ecb6fc62d2666b00608bdfc44b3a676f119"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:c2c93448-b72e-4e3d-9f00-f36c96d7aeae",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/claudy-26021528",
+      "species": "cat",
+      "coatColors": [
+        "orange"
+      ],
+      "coatColor": "orange",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1811%282%29.jpg",
+          "sha256": "4f80cefcc78c8ca6ca7f1a673dae341c54015272ca490dcc0cd3c72e48937eb6"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021528.jpg",
+          "sha256": "b0c5ee644ece4ad50a116d1f516ce198eed2a6474795a3ae3e4cf5262bacafef"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:afdab9b0-40ba-46f1-b23a-680cba2bae55",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/yuki-26021527",
+      "species": "cat",
+      "coatColors": [
+        "white"
+      ],
+      "coatColor": "white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527-1.jpg",
+          "sha256": "0a0e5e85f3cb06d8be8b0a96274d70ed0925a2a67e76cfa1407facf9c5362011"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527.jpg",
+          "sha256": "10e7eb8a1f8f4ccd7b7c3771e1ffec06b8a56b03722b56f2a73d78621d3c83f2"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:76faa797-17eb-42de-a434-3a8b64b1ce8e",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cetixy-26021518",
+      "species": "cat",
+      "coatColors": [
+        "grey",
+        "white"
+      ],
+      "coatColor": "grey-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021518.jpg",
+          "sha256": "32455af0754bb5630eee1a635ca29f3a63145d1c35d558b933cf557c0b64b094"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:16f1cb01-7340-4b88-9d6d-b0c71ce3e4e8",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kori-26030023",
+      "species": "other",
+      "coatColors": [
+        "white"
+      ],
+      "coatColor": "white",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030023-1.jpg",
+          "sha256": "234dac66efb4b05943a9f820b8fd346ef7a6b99871d2a9ac1c4e53752cb056bf"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030023.jpg",
+          "sha256": "001f09ab31e39f38c2e7585520f8aa925d8c7de65d60952e3fd80435b985f239"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:553c2d2b-deff-4650-bf13-cd1453853452",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/loki-26021483",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021483-1.jpg",
+          "sha256": "394cdebddc4730effc90630017ae5c6ba5189a93909fa11a11e81526815c8210"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:04191355-e899-4ce3-aad4-fc7713cc9349",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/mila-26021462",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462-1.jpg",
+          "sha256": "61c324a9530f9bb32594d7f126895b6eeaa653797e8684c8d31580b77d2f0c9d"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462.jpg",
+          "sha256": "f02a418c8b3e5ac93cd6ffa33905fdace0e4b90b60d4426dbbffe751693a4abf"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:1d280d82-5392-44e2-a4d9-e0e6ad29916d",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/breda-26021460",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "orange",
+        "white"
+      ],
+      "coatColor": "multicolour",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021460.jpg",
+          "sha256": "51d57daede2ef3380b1e425da347f84bd397c8877834efcf5b0efe2f75fc4234"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:e9e0c727-4f69-457b-b471-fc66f3400540",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/tonko-26021446",
+      "species": "cat",
+      "coatColors": [
+        "orange"
+      ],
+      "coatColor": "orange",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021446-3.jpg",
+          "sha256": "dcf529a932d232a690cbf2e9d9009051821cf6811bdef24772e9c3b1a559b80b"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021446-1.jpg",
+          "sha256": "db23fb92063292b9d3314b57703988820937aafbf75c94c2da80e85c9bb4438f"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:4e26d12e-436a-4210-b97d-997113d194b4",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/janko-26021447",
+      "species": "cat",
+      "coatColors": [
+        "cream"
+      ],
+      "coatColor": "cream",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447-3.jpg",
+          "sha256": "88f6704203a98f00bb205e75152fee9b9c5996802c7ee9f4470daaf13567d327"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447-1.jpg",
+          "sha256": "dbddb4962de2b977cad5f453cf6b626f82be54d2cc4983c5e7a696af401de82a"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021447.jpg",
+          "sha256": "569a72c77ce8135e418225849f52c86162c047e27e719289ce429df6d6acf009"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:946c4b66-b1f9-4ff1-8f9e-efa645d95c8f",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/eliza-26021361",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361-1.jpg",
+          "sha256": "fef984bede931dcdfe330b3f07e4e6bf2b106a061d6dda3ad73d2ec778ac0e89"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361.jpg",
+          "sha256": "9c2cb532fb37c9b9c15cf23a7e232ac858c6e288356e56a886f6c54c5f4188d0"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:4494534d-72b6-4ec3-bd69-fe5d56c3ead2",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/pavel-26021365",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365-%282%29.jpg",
+          "sha256": "0e74830526f7a071843b894fd6318eb7f53d10cd5ffc342efba956b43dc6c208"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365.jpg",
+          "sha256": "4db597d4f1539707a41fabe5e4a4643f8c9468e27c12eec112a464cfa574c45b"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:d8f7a9b8-7979-4207-936e-1a9f7e747461",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/hulk-26010212",
+      "species": "dog",
+      "coatColors": [
+        "white",
+        "black"
+      ],
+      "coatColor": "white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-6.jpg",
+          "sha256": "200c56872cba090f76113df44911b270d010e1cba88e94a40c1f2dff907181da"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-5.jpg",
+          "sha256": "d5bcfb6aea8d1f321e71ad12ec775d942b1cd5b3f930a060f5f02c236a6bb714"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-4.jpg",
+          "sha256": "cbee53ef3dcddb27658a72c88f2e7e495e85cb8a6bfd42a2ce2ff29d103dbd69"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-2.jpg",
+          "sha256": "13832616a5232088c8076aa0afc25004d5a3cd6308806ca51e96035d2959e919"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010212-3.jpg",
+          "sha256": "1bce483f7f787460e68b6d7a415726159f792d4dd3385a7287aa044315f510ad"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:9b2a3d8c-dd64-495f-aa2c-aa12d7804c98",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/sparta-26010211",
+      "species": "dog",
+      "coatColors": [
+        "white",
+        "black"
+      ],
+      "coatColor": "white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-4.jpg",
+          "sha256": "6af30ecc755c213bfe48466f22e2abbbb377e273e571e85d81b7b9870d6d8aad"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-3.jpg",
+          "sha256": "716a8f7996d93cf27cf6a6df1216d1356496db0b0b69bc52f0895a15abce26bc"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010211-2.jpg",
+          "sha256": "cec2ac7852563651efc87640e9519b30dfdc51bd43afb1ee21cc09869aa11c19"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:b01fe943-d5b0-4255-af66-e05b46f1706e",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kenzo-26021298",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black",
+        "white"
+      ],
+      "coatColor": "brown-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-2.jpg",
+          "sha256": "0d4e1bb58f332e4679b7ec0d774f8a58e457e12950cc84e80c9d87a41d36f721"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-1.jpg",
+          "sha256": "b5c8753da38d8f34faef48b548c11174f83fba44055d5faad6da8836ebf1d599"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298.jpg",
+          "sha256": "4486be5f6138e3c9ea69157f857108f668c15cba8948a6ba83000b1f2a9ddfa4"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:1e423c01-d014-4411-bbb3-4a8abdc1a977",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/oki-26021284",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284%282%29.jpg",
+          "sha256": "8d51dc004227cd4fd615c49e79feac0d07b9923d6d243255f981e5eb2de666d6"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284.jpg",
+          "sha256": "bb3fd6ed1c8c998d7a574706e7c371967bea926494af898f810a8362b9f410ac"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:756cc2f1-5374-4336-ae42-b42b803e8c4e",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/onni-26021209",
+      "species": "cat",
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
+          "sha256": "debd63032dad728432f9d48b27dbd64da3282cb5362832dd97be4f7fce76c723"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209.jpg",
+          "sha256": "90387632ff3e1baa26e6a295bdc00f0a756408a64be9f9b099eeda81823d2b82"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:af48cd2d-d437-4336-948c-87f25574a53f",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/franjo-26021207",
+      "species": "cat",
+      "coatColors": [
+        "white",
+        "grey",
+        "black"
+      ],
+      "coatColor": "grey-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207%281%29.jpg",
+          "sha256": "9a19276c3b7d65f0caeb41a121a819b18e577adcd450c63859f831238282508b"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207.jpg",
+          "sha256": "f8de87375016e9c094779bf443f115a53a64221fda8f2fc25aa02f9ccefb683b"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:530a4e37-b0ce-4028-b2d4-87dcd0040e90",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/albina-26021192",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192-1.jpg",
+          "sha256": "57a9cb57134a2dd95ec2cffe82a3fa08bd2220787708d5dd37dc061f0075c4a1"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192.jpg",
+          "sha256": "140b770494c077486d01ef7c77e4e61e83af0024be26a24efb4b47b8ad0ce92b"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
       "animalId": "ljubljana:05864547-7c55-49ef-81c9-ce1311903795",
       "providerId": "ljubljana",
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/tokyo-26021187",
       "species": "cat",
       "coatColors": [
-        "black",
-        "brown"
+        "brown",
+        "black"
       ],
       "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
       "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021187-2.jpg",
@@ -3429,109 +4013,517 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
-      "animalId": "ljubljana:0800b534-d761-460d-b089-c8cd7e30e65a",
+      "animalId": "ljubljana:a6ffc760-6a4b-459a-8686-cdb5eaeac5a4",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/marjana-26020681",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white",
-        "orange"
-      ],
-      "coatColor": "multicolour",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020681-3.jpg",
-          "sha256": "eedb753fceaa0e23b259a37c0b9a56a0d2fd31a070cab1d47587d8d4bfea7029"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020681-2.jpg",
-          "sha256": "2440e2f87a791675aa71d2d5ac8461ae366b394ad013389595f64ec94efd0aa7"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020681.jpg",
-          "sha256": "a8b3332cba9eaba12ac6711cf17259d483364b4b5b0524d2e54e3f2686906904"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
-      ]
-    },
-    {
-      "animalId": "ljubljana:08b4bedb-37d1-405c-91f1-cf4db203b880",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bela-23010345",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/don-26010199",
       "species": "dog",
-      "coatColors": [
-        "black",
-        "white",
-        "grey",
-        "brown",
-        "cream"
-      ],
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
       "coatLength": "short",
       "evidence": [
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
-          "sha256": "cfee482aa8493f7ee24b94a129d219e5b0ddbc246d93dc95ef95f559ff58f5d0"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
+          "sha256": "b77f960bf4fc2bb4989ef117f5b123312500288be063f11d9fef27355a1d8185"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-%288%29.jpg",
-          "sha256": "0cc0e21e9e5c1ce511e754630ba7189dc10ae8cbabb169e4b7977bd08a90ef88"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-2.jpg",
+          "sha256": "7eba962475f83bc129286db8e4421d6ed100b2b4b9d0f3c1ad5c67288fee179e"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-6.jpg",
-          "sha256": "38a69feb8c3929528bf801fc339722797430bfe8d27b18dcca1f7af3ec9e5121"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-11.jpg",
-          "sha256": "cebfc2a52b02ea648935f9d801e1931962ab9eea2b6950c600aa6ccf90453558"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-7.jpg",
-          "sha256": "00bc482b4cc0ed56c83be857091c921cb4353357d630cd2a68111179f34e00f8"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-5.jpg",
-          "sha256": "4656368f1e60731d15ab063dc76cf5d050b9ab1afc67053406c36f9b88de06f1"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1713631025.jpg",
-          "sha256": "3642b05a2ecf5dbbd346d9f3d590f0db7a133e07bf0302c0013a162ac80acd7a"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-2-1710758619.jpg",
-          "sha256": "f0c2a94630e5143ce3c9995b95651366c9a9e618ab927bb0df173f1b7569a669"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345.jpg",
-          "sha256": "37748b358e06baa37c3f07155820bfc83c8c67c49f902b6fcfbc5b3d6b673b10"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-1.jpg",
+          "sha256": "0d6ebcd6027c56f4e638efeefc65c5556a0509a06f871e821ec4c7f7a0af9203"
         }
       ],
       "reviewedBy": [
         "/root",
-        "/root/review_b"
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:46276fa7-03f5-45e1-b807-f8d1cc5aacce",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ora-26010194",
+      "species": "dog",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black",
+      "coatLength": "medium",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%281%29.jpg",
+          "sha256": "03964da201ec94ca5a1d5cde3cf004e33695bbc61e80327cf5c8d908195940b5"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%282%29.jpg",
+          "sha256": "9a3302fa9d0ec487e15682445b4d751bb1004acf4a7cc51f873e4e9c2e78e355"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-1.jpg",
+          "sha256": "5c97d5c33547d402d1ed6744cb2ce22900da4c2f28d452709a7ae2615a4d57cf"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-2.jpg",
+          "sha256": "83fb8f7d717dc7c7eca341b70fd6630bd4c524a3479855f5c9925cc5b16aeec4"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194.jpg",
+          "sha256": "e8c18bbb7e935e1341d1f630f1ea1d4de36c71568bffaedab55fbd189995d783"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:89fe01e2-c206-4ba7-94f3-6b0c0ba6b792",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zelda-26021122",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-3.jpg",
+          "sha256": "8c52bca6cc35ec9ff61411420dac7d8c0f3ebc4d3f8ff370e977f3e3e03621cb"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-2.jpg",
+          "sha256": "ed844f3c3255f046c5eedbac1e8f7b6510f5b414d9c9fe77f452644a58f3036e"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122.jpg",
+          "sha256": "fc93947c5dc10ecbb9f78ff17a492716f8407c03e6da5d78890e3fe4eca435a3"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:cdb75933-4e97-4df1-97cd-8c7cf50c27cf",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/loti-26021097",
+      "species": "cat",
+      "coatColors": [
+        "grey",
+        "white"
+      ],
+      "coatColor": "grey-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-8.jpg",
+          "sha256": "e7d15ac4d7e466ff2c3940c6b4d75ac54626d993087008a98af6778b9b2f2602"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-6.jpg",
+          "sha256": "d2ef818077cb5df60de14709baad4c36431375d1271604138d2e0905a5db4469"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097.jpg",
+          "sha256": "ba693d3260740dfddf9d8f77dd2096944fc5edd007f33e27242f9d06e61bdfb6"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:df45edd2-a9ca-428e-b586-42fdd50312fb",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bajsi-26010174",
+      "species": "dog",
+      "coatColors": [
+        "white",
+        "grey"
+      ],
+      "coatColor": "grey-white",
+      "coatLength": "long",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010174.jpg",
+          "sha256": "fd5f05c73496b65977bfa25d9b8cb5da62af94ef67c5ca4e5eac581e30018020"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:6303322d-bbc0-4e6b-aa70-7277c30dc8ca",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/hera-26021006",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-3.jpg",
+          "sha256": "b4eb9a614b878552696c8635b189ed88c356d81e27734c2f9196d69ce568833f"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-2.jpg",
+          "sha256": "c2c240e3c0177d1b8adb27de7fa3d18d221a63816d422c07c48f1d3f5688c064"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:fc04ad6b-4f2e-410f-8307-7703b3ba8090",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/jaka-26010171",
+      "species": "dog",
+      "coatColors": [
+        "brown",
+        "black",
+        "cream",
+        "white"
+      ],
+      "coatColor": "multicolour",
+      "coatLength": "long",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-1.jpg",
+          "sha256": "e56e8daae52514018cb335fd5a1d3a087cd796071d6320d18dce461731c48f9a"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%282%29.jpg",
+          "sha256": "14a02bebc616b3f9fa15ac8b1f8823c5bdb9f0e0b0cfae5af16bec8a0008f472"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%283%29.jpg",
+          "sha256": "b204cdc88742d45f932377abfa218615df85cbee61e4448166fd17a7778d66e5"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:125ac6ee-fe40-40b3-b28b-434ef1ccab74",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/vicko-26020803",
+      "species": "cat",
+      "coatColors": [
+        "black"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020803-1.jpg",
+          "sha256": "a58eac9fdd341748286bf125e8f241f18d11ee752c1691036703d92c43df51cc"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:b211e5df-1ae3-447e-a154-7ed935acdbd6",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/april-26020623",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-2.jpg",
+          "sha256": "badacca873a865657b7cdcea9acebbfa32ee49eae45ff517366800e1db1014db"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-1.jpg",
+          "sha256": "cc0ba09b410db4d5aa93f30d13ad15a04668a7eb49df9f797cc06aa817294f2d"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623.jpg",
+          "sha256": "ffcd860ad457e91bb8b0ecdbd6b5bdeb133c91420bd691a84123199c61094893"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:70c611bc-1d0d-47e2-9dcd-a76876dbd292",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ricardo-26020525",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-6.jpg",
+          "sha256": "032a1a3f1e8b0f975b6f46c46eaa78bfda445d215909f505b634e9e36d7a384f"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-%285%29.jpg",
+          "sha256": "6a147bb4241141b8f7288aa46378c619671ea66e7255b1b1f96188614536b3d6"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-1.jpg",
+          "sha256": "4c6eb76f3153b2c9a778f6fae65760910dd623ba53261721d854efd321e8eaf7"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:20c97905-e6ce-4129-b66b-e9ed99155220",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lan-26010059",
+      "species": "dog",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "medium",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-3.jpg",
+          "sha256": "4ff2097994220879819800ec384f180d2e8c9363c1ea903c2d1e4ef0a132b6d0"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-%283%29.jpg",
+          "sha256": "168a49aeb0a72bf2f26b2be23e5aeab4eb257b6fb0c9916175d3ba75d728d829"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-2.jpg",
+          "sha256": "9b695ef35c2b855597ec69703359e0a51816d2aa4234d5bd0cbc8f8260eb6a6b"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:f5d16612-aba4-422a-955c-bdac9a915741",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dzoni-26020222",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-4.jpg",
+          "sha256": "e63e74797b3f4633454def0d7903297c0cdb5b35fa816d1d01112236a4aa6a97"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-2.jpg",
+          "sha256": "ab5ca87a96602282033859cbaaa53e1d0e770f97c9c1449e010b48dce2650e39"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-3.jpg",
+          "sha256": "9a070ac1737c4125b40bf855422670d97f661fcf905175ac93a80f2d1de66142"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222.jpg",
+          "sha256": "d4ef106bb2ae7d89909d9b7fbb5e0e4cf38e6be1a2793fc56453d06a829427b1"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:77f194ef-73d8-49bc-b5f9-ad44e92590c3",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/nadia-26020185",
+      "species": "cat",
+      "coatColors": [
+        "black",
+        "white"
+      ],
+      "coatColor": "black-white",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-1.jpg",
+          "sha256": "8bfc5c56d10c46cca36922dcdb07c8eb79324f8f86ce599c7de0d42af3a886c3"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%285%29.jpg",
+          "sha256": "0a6fd44d60483139cc23c545c7ceb18684e08d3f7e241914e15f37c29fe4aba9"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%284%29.jpg",
+          "sha256": "881e21787f81eca58927f5ce6a9d73d93d116db1b728fa7d98dbc2a913e2525e"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%282%29.jpg",
+          "sha256": "12266fec218b0dde4e8352f4eb881b48138c2503d6feef565442bf2ee270fbf4"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185.jpg",
+          "sha256": "0837096fcf87ee77af33b5f24922662db226f67745b46b6d591d6891bbb3f32f"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-2.jpg",
+          "sha256": "f3d21bf0823db7cbf54ef50ac951cbb11ae519867f661bcac97fcde45b4f74aa"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:16fa387a-6c22-4d9e-abdd-1e4da27b5ee5",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajron-25010342",
+      "species": "dog",
+      "coatColors": [
+        "cream",
+        "black"
+      ],
+      "coatColor": "cream",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3846.jpg",
+          "sha256": "3fe003b9d9d89dad410d7242b0c41db509635565de387d08a351bf4fc56a0d26"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-2.jpg",
+          "sha256": "fcc57ca34537c9a169b3221fbfe6126f5f5112eba6863d4c04bc58fbf4b476fb"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-3.jpg",
+          "sha256": "ad3a804f3a4ec03c039733118b03e58ea217d6bb0f889fe1e53fb004fd319f49"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:ac5e20c4-7e3e-46fd-b5bc-84ea3f51f348",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/stela-25010343",
+      "species": "dog",
+      "coatColors": [
+        "cream",
+        "black"
+      ],
+      "coatColor": "cream",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-%283%29.jpg",
+          "sha256": "6c1f40bdcdbd3516b16b8737493a456c3d137e85f9e25640616d75dc3c97440c"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-3.jpg",
+          "sha256": "465cb0c84fd69bbb4474186f75577346fba71a5353c3ebb73378d5853386cfe2"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-2.jpg",
+          "sha256": "0bc15df6e8de8aeb1818c87af5ed61e46c0b82f89baa2412a87be7b61b89c56c"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-slika1.jpg",
+          "sha256": "af2dfc5fbd0fff803869c5cb472c54a05e3a0882a5e0e058ec1310519ba18402"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -3540,20 +4532,20 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajsa-25010285",
       "species": "dog",
       "coatColors": [
-        "black"
+        "grey",
+        "white"
       ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
+      "coatColor": "grey",
       "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
       "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-6.jpg",
+          "sha256": "41ec729fd45419df8cf56ca316a0158aa5b59c430f9e2939679ade23c92f1267"
+        },
         {
           "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010285-%285%296.jpg",
           "sha256": "dd6f17f0d3e888221b472874b8887a4b2d5ad08fc09693576b9bbf1f13d98cc8"
@@ -3580,8 +4572,34 @@
         }
       ],
       "reviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:57620a3d-4d70-4c88-b110-8997e39b7ce1",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zan-zak-25010274",
+      "species": "dog",
+      "coatColors": [
+        "brown",
+        "cream",
+        "white"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
+          "sha256": "e25d1570a1e869d1e1bdf1bdb99cb15b0cc624a1d52ec2907b954ef9a964710e"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-1.jpg",
+          "sha256": "ac1df2492dd215f3f72960080d13588c1d751599a3aec16f48274a6598ffb24d"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -3594,17 +4612,12 @@
         "white",
         "brown"
       ],
-      "coatColor": "multicolour",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
+      "coatColor": "black",
       "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010240-%285%29.jpg",
@@ -3624,8 +4637,194 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root",
+        "/root/pipeline_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:746abc05-91ca-433f-9dda-567eee028609",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/robi-25010100",
+      "species": "dog",
+      "coatColors": [
+        "brown",
+        "black"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-10.jpg",
+          "sha256": "af0367ee0fdd28ee5ce5c5dffb7c0e5598070a0a7457a768c1c13df6981b42c7"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%287%29.jpg",
+          "sha256": "b01642a594e7080881de02eaa3eb1ed3f71b65116232c8d02ec315181fb8e797"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%285%29.jpg",
+          "sha256": "031ca7796bd6245ca39f7385663f00f54a9a355e29bc37059c34fae071e34da7"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-3.jpg",
+          "sha256": "b7b68f33cbfbae736f77c5ec322e84a588668c9bf3dc8f89f970168d10342755"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%282%29.jpg",
+          "sha256": "1284a2e52f1bfd1eed09d7335c793056a02169ca1f1d7892a23e2091c77103fa"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%284%29.jpg",
+          "sha256": "5edcaf7d723d32620d3b93b95a1b197d7a3f960c5b35bc5714f2a68875cf5a9e"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%283%29.jpg",
+          "sha256": "2f2ca61b2bbb01efb099931082186a50eb0b7700f4a6bb4e3767733a7ea65b8a"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-1.jpg",
+          "sha256": "c0d60a393f215f9058de8886cde1c3c65b56fbf7d73cb930d7b78c74fbffeac2"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:92dd9e05-45cf-440f-8ffd-56d745d0b41f",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cezar-25010006",
+      "species": "dog",
+      "coatColors": [
+        "brown",
+        "white"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-4.jpg",
+          "sha256": "f885281cac2f94c25eda348f122e0d4500bce301f1000e13cf8459ff24db365b"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4598.jpg",
+          "sha256": "645e808eb3d46895b79613067ec81a1cb6e5f5a4fb8341a4bb59520fa6213523"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%282%29.jpg",
+          "sha256": "7204ec4ad43bebf432190ab41979704cbfcbd2ee4e8b49e23dee1ff52301d387"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%283%29.jpg",
+          "sha256": "9bc6a3c5feb013dc7a6d6880beadcb14f47660ce2a3298be17401908aa561695"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006.jpg",
+          "sha256": "c618a6d87250759511ddf79316a14a381da25a16b95b194a1c998103c8b40fc7"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:acbec86c-59d9-4863-9cb5-08fd29af477d",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dino-24010332",
+      "species": "dog",
+      "coatColors": [
+        "black",
+        "white",
+        "brown"
+      ],
+      "coatColor": "multicolour",
+      "coatLength": "long",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-5.jpg",
+          "sha256": "e139a103d60e92876979c3ad5d8541aa79bc800d261f475cf5eee8fec9af707e"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-1.jpg",
+          "sha256": "3b8676f8f58e59d0e1db27e4914de21f2c335e29917304a463bae50c38fd877b"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-%282%29.jpg",
+          "sha256": "93ee1c65bfc9b77848c99ad6dc965d4fcc606f2a45660c7061147a89cc912a5f"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332.jpg",
+          "sha256": "4902656abf98cf90e8eed28ee04c3077ba6b11a5477ffc497abb44b5bf0644db"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-dino.jpg",
+          "sha256": "66975e2daded0d3af99fcc099b4947a485c14c2d1849b2fb7cc26a07648d084f"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:6f45c5a3-9cb6-4718-b5fe-0ff184506641",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lex-24010170",
+      "species": "dog",
+      "coatColors": [
+        "brown",
+        "black",
+        "white"
+      ],
+      "coatColor": "brown",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%293.jpg",
+          "sha256": "5a6df35d1ea3958f7de0efd9fddffe1bde58d15ed098ef1cc7bc8a1aea64b240"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%283%29.jpg",
+          "sha256": "df0e8d829539421a4aa596d5b8a36e5ca9dda8c7fe2c5dd8e1cd3d37ca579beb"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%29.jpg",
+          "sha256": "16736ad2088822c5e04c2cb3fb978fa0133a8be2bc5aa418d7b3ab7b4bc6a8e3"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%282%29.png",
+          "sha256": "8c850db113340704ec122c6d3a0fa9f9bd3130f0f1db121a55fc14671fa25f7d"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-1.jpg",
+          "sha256": "7d73f2660f3b2b08cbef71a12035b0620ab4500eb2b6937ce833e975f2460387"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-2.jpg",
+          "sha256": "0000048428281665dffcb56a9b00661755e4527a4d46c8d370ff7e947eda9a08"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -3635,20 +4834,15 @@
       "species": "dog",
       "coatColors": [
         "black",
-        "white",
-        "brown"
+        "brown",
+        "white"
       ],
       "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
       "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010072-%282%29.jpg",
@@ -3692,476 +4886,125 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
-      "animalId": "ljubljana:16fa387a-6c22-4d9e-abdd-1e4da27b5ee5",
+      "animalId": "ljubljana:08b4bedb-37d1-405c-91f1-cf4db203b880",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ajron-25010342",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bela-23010345",
       "species": "dog",
       "coatColors": [
-        "black",
-        "cream"
-      ],
-      "coatColor": "cream",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3846.jpg",
-          "sha256": "3fe003b9d9d89dad410d7242b0c41db509635565de387d08a351bf4fc56a0d26"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-2.jpg",
-          "sha256": "fcc57ca34537c9a169b3221fbfe6126f5f5112eba6863d4c04bc58fbf4b476fb"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010342-3.jpg",
-          "sha256": "ad3a804f3a4ec03c039733118b03e58ea217d6bb0f889fe1e53fb004fd319f49"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
-      ]
-    },
-    {
-      "animalId": "ljubljana:1898db25-6262-4266-b7da-5cb146f9fb7b",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lionel-26021306",
-      "species": "cat",
-      "coatColors": [
-        "black"
-      ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021306-1.jpg",
-          "sha256": "0b71a9ea428776aae49aa220f426b9d553170444c93bb55c8079b841b2063b3b"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021306.jpg",
-          "sha256": "f1f94eee0d4bc7fabc112ea01af8b7f621b7dd47f5436c912696df0ae44613cf"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
-      ]
-    },
-    {
-      "animalId": "ljubljana:1c280301-2557-4f4a-8417-c4c3a850d8aa",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/maister-26020979",
-      "species": "cat",
-      "coatColors": [
-        "black",
+        "cream",
         "grey",
-        "brown"
-      ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020979-2.jpg",
-          "sha256": "d2eaee60ac7078637ca94af5ddf422b417e8004979f728e88feb89b959c55708"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020979.jpg",
-          "sha256": "b7e23c51a1d40b7997094d548774d85254d7beb0be112b299e2532c250770828"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
-      ]
-    },
-    {
-      "animalId": "ljubljana:20c97905-e6ce-4129-b66b-e9ed99155220",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lan-26010059",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "medium",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-3.jpg",
-          "sha256": "4ff2097994220879819800ec384f180d2e8c9363c1ea903c2d1e4ef0a132b6d0"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-%283%29.jpg",
-          "sha256": "168a49aeb0a72bf2f26b2be23e5aeab4eb257b6fb0c9916175d3ba75d728d829"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010059-2.jpg",
-          "sha256": "9b695ef35c2b855597ec69703359e0a51816d2aa4234d5bd0cbc8f8260eb6a6b"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_a"
-      ]
-    },
-    {
-      "animalId": "ljubljana:2f405313-154d-4c92-872c-2bf9ed99409c",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/blaz-26021268",
-      "species": "cat",
-      "coatColors": [
-        "white",
-        "orange"
-      ],
-      "coatColor": "orange-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021268.jpg",
-          "sha256": "31c197700f67c61445abfca6a7681f399df6404096cc98ce6faaa0654d1ed702"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:314c4b1a-df22-4c9e-a34d-b97850284eea",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/saj-22010350",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "white",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_b",
-        "/root/category_review_c"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1722147521.jpg",
-          "sha256": "a61f3eee8330ef3b8196f4d1bd938c574b7d6fec5f235c1f103a15ed93528e63"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3745.jpg",
-          "sha256": "569c6bebf23c83ebd9e01d8c89d9ee23118245624242b584c9272f81ddcb8988"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2-1722147549.jpg",
-          "sha256": "7131f0f490f8f44d83ca4a72fd3435c0690a31128e39c11649925c2356d8eb38"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3774.jpg",
-          "sha256": "559c2b903d7721c00100178629668c3ca11194086b416c4006de8656910c577e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1704101365.jpg",
-          "sha256": "6d1266ac6670cc0d43b16dad0d9b927167cb83622515b091f5f3114d8fca88e1"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-4.jpg",
-          "sha256": "05ca2952e36136d3f548fe7195049a1a4d1763fd7f24dd2ee7fc85b7e59848b2"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3764.jpg",
-          "sha256": "bb8d53acb62492ea1cb94a5be575fb01a806c17530dd4925398b5dd57a2772e3"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-%282%29.jpg",
-          "sha256": "7468b44af5ba024a3816ce6fae36287b78f36b4e738cd4a7dde91f629fd0fd64"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0329_720.jpg",
-          "sha256": "3f58d8af082751b912bec20226fff7bbd15ae5b6175deb3c47508af318c2d852"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2.jpg",
-          "sha256": "5d940ef23a55d724fadad2c1e505f7027fa36e2d1ebc48c18b91911099355c02"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:46276fa7-03f5-45e1-b807-f8d1cc5aacce",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ora-26010194",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "white",
-        "brown"
-      ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "medium",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%281%29.jpg",
-          "sha256": "03964da201ec94ca5a1d5cde3cf004e33695bbc61e80327cf5c8d908195940b5"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194%282%29.jpg",
-          "sha256": "9a3302fa9d0ec487e15682445b4d751bb1004acf4a7cc51f873e4e9c2e78e355"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-1.jpg",
-          "sha256": "5c97d5c33547d402d1ed6744cb2ce22900da4c2f28d452709a7ae2615a4d57cf"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194-2.jpg",
-          "sha256": "83fb8f7d717dc7c7eca341b70fd6630bd4c524a3479855f5c9925cc5b16aeec4"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010194.jpg",
-          "sha256": "e8c18bbb7e935e1341d1f630f1ea1d4de36c71568bffaedab55fbd189995d783"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:4cc1ca88-03eb-4377-9932-52bf664b52c9",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/hopsi-26021005",
-      "species": "cat",
-      "coatColors": [
         "black"
       ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
       "coatLength": "short",
       "evidence": [
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021005-3.jpg",
-          "sha256": "23c1d207b38308412b58a395dc76ca98400d88b24422a9a41da9da8405a8125d"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
+          "sha256": "cfee482aa8493f7ee24b94a129d219e5b0ddbc246d93dc95ef95f559ff58f5d0"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021005-2.jpg",
-          "sha256": "3d648a848f3358e82159357e822df975782bdcbfb3791c40ee0ed6caaf5a44c8"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:530a4e37-b0ce-4028-b2d4-87dcd0040e90",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/albina-26021192",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192-1.jpg",
-          "sha256": "57a9cb57134a2dd95ec2cffe82a3fa08bd2220787708d5dd37dc061f0075c4a1"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-%288%29.jpg",
+          "sha256": "0cc0e21e9e5c1ce511e754630ba7189dc10ae8cbabb169e4b7977bd08a90ef88"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021192.jpg",
-          "sha256": "140b770494c077486d01ef7c77e4e61e83af0024be26a24efb4b47b8ad0ce92b"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:53de0389-067d-4a82-bd41-1c61cac97381",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/orhideja-26021081",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021081-2.jpg",
-          "sha256": "db35a821523aa434bf8d7c5a9995a6498c2176253f7ddcccfaf6290eb765002f"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-6.jpg",
+          "sha256": "38a69feb8c3929528bf801fc339722797430bfe8d27b18dcca1f7af3ec9e5121"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021081.jpg",
-          "sha256": "8e82da8555a9e5a1b85b6c813c4c0b52b97b5a885175ed72cfbcd9b57e7783b4"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:53f0d74a-2c48-46db-9615-f3929ef3e14a",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lin-26020970",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white",
-        "grey"
-      ],
-      "coatColor": "grey-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020970.jpg",
-          "sha256": "ee722db02a87a25ed30b853761e1a78270218e61357dcb6df60499a7e6a04c7b"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:57620a3d-4d70-4c88-b110-8997e39b7ce1",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zan-zak-25010274",
-      "species": "dog",
-      "coatColors": [
-        "white",
-        "brown",
-        "cream"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c",
-        "/root/review_b"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
-          "sha256": "e25d1570a1e869d1e1bdf1bdb99cb15b0cc624a1d52ec2907b954ef9a964710e"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-11.jpg",
+          "sha256": "cebfc2a52b02ea648935f9d801e1931962ab9eea2b6950c600aa6ccf90453558"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-1.jpg",
-          "sha256": "ac1df2492dd215f3f72960080d13588c1d751599a3aec16f48274a6598ffb24d"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-7.jpg",
+          "sha256": "00bc482b4cc0ed56c83be857091c921cb4353357d630cd2a68111179f34e00f8"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-5.jpg",
+          "sha256": "4656368f1e60731d15ab063dc76cf5d050b9ab1afc67053406c36f9b88de06f1"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1713631025.jpg",
+          "sha256": "3642b05a2ecf5dbbd346d9f3d590f0db7a133e07bf0302c0013a162ac80acd7a"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-2-1710758619.jpg",
+          "sha256": "f0c2a94630e5143ce3c9995b95651366c9a9e618ab927bb0df173f1b7569a669"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345.jpg",
+          "sha256": "37748b358e06baa37c3f07155820bfc83c8c67c49f902b6fcfbc5b3d6b673b10"
         }
       ],
       "reviewedBy": [
         "/root",
-        "/root/review_b"
+        "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "ljubljana:de568a52-3183-49f0-90a0-99160d4e078d",
+      "providerId": "ljubljana",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zoro-23010095",
+      "species": "dog",
+      "coatColors": [
+        "black",
+        "brown",
+        "white"
+      ],
+      "coatColor": "black",
+      "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "evidence": [
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-3.jpg",
+          "sha256": "1c78fcb7faca5dc37a5ed1ca6ebd8453d000e6dfba767bf84cc4c448bfb8a02a"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-5.jpg",
+          "sha256": "7b65c0c12c440d20485b518d5b23b10baa8c208c17a73215ec4f9bb42568c6b7"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-4.jpg",
+          "sha256": "1f60bf03db5a1ed84bc99f9e00c5c320c822a4e2802f0febd2fa10f8de0f2319"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.jpg",
+          "sha256": "9d25c37ee24ccf663b5487feb6a010b2ccc11feb9a60a9937d0ddc22a4aee448"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-2.jpg",
+          "sha256": "a2426e3590f1e85830f36b17f70665167a1cdf8592be5a36cdefcd1e471c3443"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.png",
+          "sha256": "194327090854bd2a50728502a405a44c28827cab8880b45cbe29c78df4ed6584"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%284%29.png",
+          "sha256": "6061bde54931913dca79c708d0d608c72e7084e58c38280911642603832c2bd7"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%282%29.jpg",
+          "sha256": "4e8b9485ed07ace9c6676d6c7bdfdd8ee9e1d84ccaeee89920faed8ec9393c13"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%283%29.jpg",
+          "sha256": "d1b98c2f6f768261856871ae32ee8502c1924354521afa414db925965dc41272"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095.png",
+          "sha256": "606bc9eacf922f33ad38ffc63d18b1d25883f87a48db5ec3d227707bead7e7d8"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -4170,21 +5013,16 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/goldi-23010056",
       "species": "dog",
       "coatColors": [
+        "brown",
         "black",
-        "white",
-        "brown"
+        "white"
       ],
       "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
       "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010056-1.jpg",
@@ -4228,314 +5066,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:639c9614-e993-4ca3-b95d-efdfeb23afde",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zdravko-26020680",
-      "species": "cat",
-      "coatColors": [
-        "white",
-        "grey"
-      ],
-      "coatColor": "grey-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020680-2.jpg",
-          "sha256": "b4f8b79ac06ffc22202e6a1be48c2f2ae4ff97c62befad08b27507fd90558558"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020680-3.jpg",
-          "sha256": "6ed60e96cdd6b85982e1375e81ff3ffbcd83e0d2ea308f2bb63bb01a42026590"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020680.jpg",
-          "sha256": "2c61002e6365927aaa9582f6127e292088db5a29a0d7aaca0fede7591ee14afb"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:6f45c5a3-9cb6-4718-b5fe-0ff184506641",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lex-24010170",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "white",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%293.jpg",
-          "sha256": "5a6df35d1ea3958f7de0efd9fddffe1bde58d15ed098ef1cc7bc8a1aea64b240"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%283%29.jpg",
-          "sha256": "df0e8d829539421a4aa596d5b8a36e5ca9dda8c7fe2c5dd8e1cd3d37ca579beb"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%284%29.jpg",
-          "sha256": "16736ad2088822c5e04c2cb3fb978fa0133a8be2bc5aa418d7b3ab7b4bc6a8e3"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-%282%29.png",
-          "sha256": "8c850db113340704ec122c6d3a0fa9f9bd3130f0f1db121a55fc14671fa25f7d"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-1.jpg",
-          "sha256": "7d73f2660f3b2b08cbef71a12035b0620ab4500eb2b6937ce833e975f2460387"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010170-2.jpg",
-          "sha256": "0000048428281665dffcb56a9b00661755e4527a4d46c8d370ff7e947eda9a08"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:70c611bc-1d0d-47e2-9dcd-a76876dbd292",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ricardo-26020525",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-6.jpg",
-          "sha256": "032a1a3f1e8b0f975b6f46c46eaa78bfda445d215909f505b634e9e36d7a384f"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-%285%29.jpg",
-          "sha256": "6a147bb4241141b8f7288aa46378c619671ea66e7255b1b1f96188614536b3d6"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020525-1.jpg",
-          "sha256": "4c6eb76f3153b2c9a778f6fae65760910dd623ba53261721d854efd321e8eaf7"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:7424e8d4-fc59-43fc-96fa-694eaac1a27d",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ziva-26021077",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatColor": "black-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021077-2.jpg",
-          "sha256": "288352615b359fbec411b426755b59a52357c73292851c6aab9d6a3b3e41ad55"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021077-1.jpg",
-          "sha256": "710ab0f0a531afce7e5f0c71f73524ac7097d947c99519fd117311990d5f4ab5"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:746abc05-91ca-433f-9dda-567eee028609",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/robi-25010100",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%287%29.jpg",
-          "sha256": "b01642a594e7080881de02eaa3eb1ed3f71b65116232c8d02ec315181fb8e797"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%285%29.jpg",
-          "sha256": "031ca7796bd6245ca39f7385663f00f54a9a355e29bc37059c34fae071e34da7"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-3.jpg",
-          "sha256": "b7b68f33cbfbae736f77c5ec322e84a588668c9bf3dc8f89f970168d10342755"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%282%29.jpg",
-          "sha256": "1284a2e52f1bfd1eed09d7335c793056a02169ca1f1d7892a23e2091c77103fa"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%284%29.jpg",
-          "sha256": "5edcaf7d723d32620d3b93b95a1b197d7a3f960c5b35bc5714f2a68875cf5a9e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-%283%29.jpg",
-          "sha256": "2f2ca61b2bbb01efb099931082186a50eb0b7700f4a6bb4e3767733a7ea65b8a"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010100-1.jpg",
-          "sha256": "c0d60a393f215f9058de8886cde1c3c65b56fbf7d73cb930d7b78c74fbffeac2"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:77f194ef-73d8-49bc-b5f9-ad44e92590c3",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/nadia-26020185",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatColor": "black-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-1.jpg",
-          "sha256": "8bfc5c56d10c46cca36922dcdb07c8eb79324f8f86ce599c7de0d42af3a886c3"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%285%29.jpg",
-          "sha256": "0a6fd44d60483139cc23c545c7ceb18684e08d3f7e241914e15f37c29fe4aba9"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%284%29.jpg",
-          "sha256": "881e21787f81eca58927f5ce6a9d73d93d116db1b728fa7d98dbc2a913e2525e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-%282%29.jpg",
-          "sha256": "12266fec218b0dde4e8352f4eb881b48138c2503d6feef565442bf2ee270fbf4"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185.jpg",
-          "sha256": "0837096fcf87ee77af33b5f24922662db226f67745b46b6d591d6891bbb3f32f"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020185-2.jpg",
-          "sha256": "f3d21bf0823db7cbf54ef50ac951cbb11ae519867f661bcac97fcde45b4f74aa"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:8f12eb55-4c2c-4098-a64b-69d7e53b4eeb",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lady-26030021",
-      "species": "other",
-      "coatColors": [
-        "white",
-        "grey"
-      ],
-      "coatColor": "grey-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030021-3.jpg",
-          "sha256": "52ec58d880fd9859ba647700b81155fc300fd1bebab7d26cd7167c38fcbfd272"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030021-2.jpg",
-          "sha256": "addad5b65c1464096ef6c06e8cac125a070fc1ac2b82e6f45e3aed56a7fc39cb"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -4544,19 +5076,8 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ruben-23010027",
       "species": "dog",
       "coatColors": [
-        "black",
-        "brown",
-        "cream"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_c"
+        "cream",
+        "black"
       ],
       "coatLength": "medium",
       "evidence": [
@@ -4602,594 +5123,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:9278e2ca-a0d7-4a10-a7b2-07862f4db9ad",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lulu",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white",
-        "grey",
-        "brown"
-      ],
-      "coatColor": "grey-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_b",
-        "/root/category_review_c"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020969.jpg",
-          "sha256": "e3a85f0536e94dbbe480998c12dccfe3d3505f19c161d5083d44c8446b9b974e"
-        }
-      ],
-      "reviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:92dd9e05-45cf-440f-8ffd-56d745d0b41f",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cezar-25010006",
-      "species": "dog",
-      "coatColors": [
-        "white",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-4.jpg",
-          "sha256": "f885281cac2f94c25eda348f122e0d4500bce301f1000e13cf8459ff24db365b"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4598.jpg",
-          "sha256": "645e808eb3d46895b79613067ec81a1cb6e5f5a4fb8341a4bb59520fa6213523"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%282%29.jpg",
-          "sha256": "7204ec4ad43bebf432190ab41979704cbfcbd2ee4e8b49e23dee1ff52301d387"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006-%283%29.jpg",
-          "sha256": "9bc6a3c5feb013dc7a6d6880beadcb14f47660ce2a3298be17401908aa561695"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010006.jpg",
-          "sha256": "c618a6d87250759511ddf79316a14a381da25a16b95b194a1c998103c8b40fc7"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:9e0e7bce-dcf5-4ef3-aefb-9f809ab4ea11",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kaja-26010213",
-      "species": "dog",
-      "coatColors": [
-        "brown",
-        "cream"
-      ],
-      "coatColor": "cream",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010213-1.jpg",
-          "sha256": "a786ae0e894758186ada06b0c5b7f8c7309425c216d52f64b964ab8712d9fdfe"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010213%282%29.jpg",
-          "sha256": "266be23d2e3941057a3bb8f49ad2094324f3e794b20900f0870e862281bcdb01"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010213.jpg",
-          "sha256": "dcc940f3c5e11a55f508e9d890a4be108e09b78897419f92d5c65f948bf79370"
-        }
-      ],
-      "reviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:a3a0a2ad-988a-47a5-ac0b-3908ae55551e",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/maj-26021343",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/1000045950%281%29.jpg",
-          "sha256": "d552cc6d0fbca830de81e2657edaf150bd41c5a47b217c9b33b428c81bff2e8e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021343.jpg",
-          "sha256": "13ad67cb619bec837e08a8a533a9ab14c76f7991cd8226f9cc9a9d003c584cce"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:a6ffc760-6a4b-459a-8686-cdb5eaeac5a4",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/don-26010199",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "grey",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
-          "sha256": "b77f960bf4fc2bb4989ef117f5b123312500288be063f11d9fef27355a1d8185"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-2.jpg",
-          "sha256": "7eba962475f83bc129286db8e4421d6ed100b2b4b9d0f3c1ad5c67288fee179e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-1.jpg",
-          "sha256": "0d6ebcd6027c56f4e638efeefc65c5556a0509a06f871e821ec4c7f7a0af9203"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:ac5e20c4-7e3e-46fd-b5bc-84ea3f51f348",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/stela-25010343",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "grey",
-        "cream"
-      ],
-      "coatColor": "cream",
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-%283%29.jpg",
-          "sha256": "6c1f40bdcdbd3516b16b8737493a456c3d137e85f9e25640616d75dc3c97440c"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-3.jpg",
-          "sha256": "465cb0c84fd69bbb4474186f75577346fba71a5353c3ebb73378d5853386cfe2"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-2.jpg",
-          "sha256": "0bc15df6e8de8aeb1818c87af5ed61e46c0b82f89baa2412a87be7b61b89c56c"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010343-slika1.jpg",
-          "sha256": "af2dfc5fbd0fff803869c5cb472c54a05e3a0882a5e0e058ec1310519ba18402"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:acbec86c-59d9-4863-9cb5-08fd29af477d",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dino-24010332",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "white",
-        "brown"
-      ],
-      "coatColor": "multicolour",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "medium",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-5.jpg",
-          "sha256": "e139a103d60e92876979c3ad5d8541aa79bc800d261f475cf5eee8fec9af707e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-1.jpg",
-          "sha256": "3b8676f8f58e59d0e1db27e4914de21f2c335e29917304a463bae50c38fd877b"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-%282%29.jpg",
-          "sha256": "93ee1c65bfc9b77848c99ad6dc965d4fcc606f2a45660c7061147a89cc912a5f"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332.jpg",
-          "sha256": "4902656abf98cf90e8eed28ee04c3077ba6b11a5477ffc497abb44b5bf0644db"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/24010332-dino.jpg",
-          "sha256": "66975e2daded0d3af99fcc099b4947a485c14c2d1849b2fb7cc26a07648d084f"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:b01fe943-d5b0-4255-af66-e05b46f1706e",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kenzo-26021298",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white",
-        "brown"
-      ],
-      "coatColor": "brown-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298-1.jpg",
-          "sha256": "b5c8753da38d8f34faef48b548c11174f83fba44055d5faad6da8836ebf1d599"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021298.jpg",
-          "sha256": "4486be5f6138e3c9ea69157f857108f668c15cba8948a6ba83000b1f2a9ddfa4"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:b14cc8b1-271a-4096-bae8-2a16521214f0",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/kokosy-26021059",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "grey",
-        "orange"
-      ],
-      "coatColor": "multicolour",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021059.jpg",
-          "sha256": "f271fcf28c6dde24c680a8a6c4de376b429b8d7b3938dcc49d6d03fad00eb6c4"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:b211e5df-1ae3-447e-a154-7ed935acdbd6",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/april-26020623",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-2.jpg",
-          "sha256": "badacca873a865657b7cdcea9acebbfa32ee49eae45ff517366800e1db1014db"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623-1.jpg",
-          "sha256": "cc0ba09b410db4d5aa93f30d13ad15a04668a7eb49df9f797cc06aa817294f2d"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020623.jpg",
-          "sha256": "ffcd860ad457e91bb8b0ecdbd6b5bdeb133c91420bd691a84123199c61094893"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:bd541718-c6c6-4542-b9f9-f50fb9a8eaf7",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/blanco-26021269",
-      "species": "cat",
-      "coatColors": [
-        "white"
-      ],
-      "coatColor": "white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021269.jpg",
-          "sha256": "8c0a3c89d8dacaf82e66ccd8f96b0b0607723eb4185c710842a7484ae845bde3"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:c36b2556-d953-474c-bd1a-d505055153ec",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dominik-26020572",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "brown"
-      ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020572-3.jpg",
-          "sha256": "89ca813729c62cebed3f81aa9a7d5c61da7c7b4ebf3de2f7700ae3d7f74b4756"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020572-2.jpg",
-          "sha256": "10dbb163d5b3507f2f434794fb894f347341e9253d155c32e3280107cdbde4d2"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020572.jpg",
-          "sha256": "184c327c35babff5ab45071e50bb7dd307fb87bf22edba5dd63885e1aecbbe4d"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:cdb75933-4e97-4df1-97cd-8c7cf50c27cf",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/loti-26021097",
-      "species": "cat",
-      "coatColors": [
-        "white",
-        "grey"
-      ],
-      "coatColor": "grey-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097-6.jpg",
-          "sha256": "d2ef818077cb5df60de14709baad4c36431375d1271604138d2e0905a5db4469"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021097.jpg",
-          "sha256": "ba693d3260740dfddf9d8f77dd2096944fc5edd007f33e27242f9d06e61bdfb6"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:de568a52-3183-49f0-90a0-99160d4e078d",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zoro-23010095",
-      "species": "dog",
-      "coatColors": [
-        "black",
-        "white",
-        "brown"
-      ],
-      "coatColor": "black",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-3.jpg",
-          "sha256": "1c78fcb7faca5dc37a5ed1ca6ebd8453d000e6dfba767bf84cc4c448bfb8a02a"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-5.jpg",
-          "sha256": "7b65c0c12c440d20485b518d5b23b10baa8c208c17a73215ec4f9bb42568c6b7"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-4.jpg",
-          "sha256": "1f60bf03db5a1ed84bc99f9e00c5c320c822a4e2802f0febd2fa10f8de0f2319"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.jpg",
-          "sha256": "9d25c37ee24ccf663b5487feb6a010b2ccc11feb9a60a9937d0ddc22a4aee448"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-2.jpg",
-          "sha256": "a2426e3590f1e85830f36b17f70665167a1cdf8592be5a36cdefcd1e471c3443"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-1.png",
-          "sha256": "194327090854bd2a50728502a405a44c28827cab8880b45cbe29c78df4ed6584"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%284%29.png",
-          "sha256": "6061bde54931913dca79c708d0d608c72e7084e58c38280911642603832c2bd7"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%282%29.jpg",
-          "sha256": "4e8b9485ed07ace9c6676d6c7bdfdd8ee9e1d84ccaeee89920faed8ec9393c13"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095-%283%29.jpg",
-          "sha256": "d1b98c2f6f768261856871ae32ee8502c1924354521afa414db925965dc41272"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010095.png",
-          "sha256": "606bc9eacf922f33ad38ffc63d18b1d25883f87a48db5ec3d227707bead7e7d8"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:df45edd2-a9ca-428e-b586-42fdd50312fb",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bajsi-26010174",
-      "species": "dog",
-      "coatColors": [
-        "white",
-        "grey"
-      ],
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatLength": "long",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010174.jpg",
-          "sha256": "fd5f05c73496b65977bfa25d9b8cb5da62af94ef67c5ca4e5eac581e30018020"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -5198,21 +5133,16 @@
       "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lulu-23010009",
       "species": "dog",
       "coatColors": [
-        "black",
         "brown",
+        "black",
         "cream"
       ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
+      "coatColor": "multicolour",
       "coatLength": "medium",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
       "evidence": [
         {
           "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010009-%282%29-1716025548.jpg",
@@ -5256,256 +5186,101 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
-      "animalId": "ljubljana:eb476fef-838f-4060-8f30-966563e6d2de",
+      "animalId": "ljubljana:314c4b1a-df22-4c9e-a34d-b97850284eea",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/peter-zajec-26030015",
-      "species": "rabbit",
-      "coatColors": [
-        "black",
-        "grey"
-      ],
-      "coatColor": "grey",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ],
-      "coatLength": "long",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030015.jpg",
-          "sha256": "14c59f9a7e1662295fa6fc527a4e62e7bf983582fac0f31ec47c1e69209fe0fe"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26030015-2.jpg",
-          "sha256": "ec9d0f25d8e8104bb4a55de6b4ec50b8b877e7ee947afb71ff3bb51216019f37"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_c",
-        "/root"
-      ]
-    },
-    {
-      "animalId": "ljubljana:f5d16612-aba4-422a-955c-bdac9a915741",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dzoni-26020222",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatColor": "black-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-4.jpg",
-          "sha256": "e63e74797b3f4633454def0d7903297c0cdb5b35fa816d1d01112236a4aa6a97"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-2.jpg",
-          "sha256": "ab5ca87a96602282033859cbaaa53e1d0e770f97c9c1449e010b48dce2650e39"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222-3.jpg",
-          "sha256": "9a070ac1737c4125b40bf855422670d97f661fcf905175ac93a80f2d1de66142"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26020222.jpg",
-          "sha256": "d4ef106bb2ae7d89909d9b7fbb5e0e4cf38e6be1a2793fc56453d06a829427b1"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:f65d17cc-d905-49e7-8740-fa8e51a21296",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/hans-26021003",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatColor": "black-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021003-3.jpg",
-          "sha256": "a1ac7c98266f7eb4bd2793cc6ecd14f2f9ec3d5c94242a32b06f18aa2faa2b63"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021003-2.jpg",
-          "sha256": "3c01fb398091657de177b95dd99dc8ab8923985c65c31003e2a46f7423a2b02e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021003.jpg",
-          "sha256": "0e764cac64d4886988c51029c6fd223d1d7ade54b049e47a434c4bb337ab3fe3"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:f7b1eeed-7b8c-4f2b-a9bd-4b02616d4d62",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/cory-26021355",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatColor": "black-white",
-      "substantialWhite": true,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021355-2.jpg",
-          "sha256": "f33e753b0beac8c4b569dbdac22821aba1356ecfd392ff34e23332c5e57bd3ff"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021355.jpg",
-          "sha256": "e627fdb942776313499036487027411b2cf59e7bc87977675dca17314b3212a2"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:f7f72d66-7a96-48af-9e1e-8862e26df6a8",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/nina-26021116",
-      "species": "cat",
-      "coatColors": [
-        "black",
-        "orange"
-      ],
-      "coatColor": "multicolour",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021116.jpg",
-          "sha256": "46d376c5da79f396214e824ad25d1008f549d4116bf324e0f7f2c23b6a29745a"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
-      ]
-    },
-    {
-      "animalId": "ljubljana:fc04ad6b-4f2e-410f-8307-7703b3ba8090",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/jaka-26010171",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/saj-22010350",
       "species": "dog",
       "coatColors": [
+        "brown",
         "black",
-        "brown"
+        "white"
       ],
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
+      "coatColor": "multicolour",
+      "coatLength": "short",
       "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
+        "/root",
+        "/root/photo_audit"
       ],
-      "coatLength": "medium",
       "evidence": [
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-1.jpg",
-          "sha256": "e56e8daae52514018cb335fd5a1d3a087cd796071d6320d18dce461731c48f9a"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1722147521.jpg",
+          "sha256": "a61f3eee8330ef3b8196f4d1bd938c574b7d6fec5f235c1f103a15ed93528e63"
         },
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010171-%282%29.jpg",
-          "sha256": "14a02bebc616b3f9fa15ac8b1f8823c5bdb9f0e0b0cfae5af16bec8a0008f472"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3745.jpg",
+          "sha256": "569c6bebf23c83ebd9e01d8c89d9ee23118245624242b584c9272f81ddcb8988"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2-1722147549.jpg",
+          "sha256": "7131f0f490f8f44d83ca4a72fd3435c0690a31128e39c11649925c2356d8eb38"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3774.jpg",
+          "sha256": "559c2b903d7721c00100178629668c3ca11194086b416c4006de8656910c577e"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-1-1704101365.jpg",
+          "sha256": "6d1266ac6670cc0d43b16dad0d9b927167cb83622515b091f5f3114d8fca88e1"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-4.jpg",
+          "sha256": "05ca2952e36136d3f548fe7195049a1a4d1763fd7f24dd2ee7fc85b7e59848b2"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_3764.jpg",
+          "sha256": "bb8d53acb62492ea1cb94a5be575fb01a806c17530dd4925398b5dd57a2772e3"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-%282%29.jpg",
+          "sha256": "7468b44af5ba024a3816ce6fae36287b78f36b4e738cd4a7dde91f629fd0fd64"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0329_720.jpg",
+          "sha256": "3f58d8af082751b912bec20226fff7bbd15ae5b6175deb3c47508af318c2d852"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/22010350-2.jpg",
+          "sha256": "5d940ef23a55d724fadad2c1e505f7027fa36e2d1ebc48c18b91911099355c02"
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
-      "animalId": "ljubljana:ff336f00-7f93-45fc-bde5-d042477af0fb",
+      "animalId": "ljubljana:bfaab431-650a-4370-8596-c43a8faf7115",
       "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/sivka-26021286",
+      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/remus-26021089",
       "species": "cat",
       "coatColors": [
-        "grey"
+        "brown",
+        "black"
       ],
-      "coatColor": "grey",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
+      "coatColor": "brown",
       "coatLength": "short",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
       "evidence": [
         {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021286.jpg",
-          "sha256": "311137e44d02323c4725072710995df375b2cad237e9058bb705c22a182aa81c"
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_4752.jpg",
+          "sha256": "c0b77a24d2243f69ef2966e3702f03c1de3089a4300e1c95578e154e320f8d49"
+        },
+        {
+          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021089.jpg",
+          "sha256": "eee54e7a01cfd50899ce9b06d3e4817d37034bb5d4c7440535841faee2138f71"
         }
       ],
       "reviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -20204,584 +19979,6 @@
       ]
     },
     {
-      "animalId": "ljubljana:e9c89563-91aa-49e6-b66a-05ab49e65811",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ziva-26070019",
-      "species": "other",
-      "coatColor": "brown",
-      "substantialWhite": false,
-      "substantialWhiteReviewedBy": [
-        "/root/review_a",
-        "/root/review_c"
-      ],
-      "coatColorReviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26070019.jpg",
-          "sha256": "06658d04b5fccbc3050a719e055f13dea442a2c695f3c01a2ce69a0c1a88ec77"
-        }
-      ],
-      "reviewedBy": [
-        "/root/review_a",
-        "/root/review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:04191355-e899-4ce3-aad4-fc7713cc9349",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/mila-26021462",
-      "species": "cat",
-      "coatColor": "brown",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "brown",
-        "black"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462-1.jpg",
-          "sha256": "61c324a9530f9bb32594d7f126895b6eeaa653797e8684c8d31580b77d2f0c9d"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021462.jpg",
-          "sha256": "f02a418c8b3e5ac93cd6ffa33905fdace0e4b90b60d4426dbbffe751693a4abf"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:1e423c01-d014-4411-bbb3-4a8abdc1a977",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/oki-26021284",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284%282%29.jpg",
-          "sha256": "8d51dc004227cd4fd615c49e79feac0d07b9923d6d243255f981e5eb2de666d6"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021284.jpg",
-          "sha256": "bb3fd6ed1c8c998d7a574706e7c371967bea926494af898f810a8362b9f410ac"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:1f2fde0b-e68a-4d97-9e3a-621b078a2f74",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/nala-26021357",
-      "species": "cat",
-      "coatColor": "grey-white",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "grey",
-        "white"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021357-1.jpg",
-          "sha256": "c58ce7b94a0f1efa2d0998231a74ff2e954f74f012d9e0ce42b4891ab40af7e5"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/260213572.jpg",
-          "sha256": "7f5d6c594172fcd026e5e5dc40702c0e94c69e42a17af71b49a5fde4c5bb0174"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:2a577344-501c-4bef-a0c2-3d83365c58a5",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/gusar-26021051",
-      "species": "cat",
-      "coatColor": "brown",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "brown",
-        "black"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021051-1.jpg",
-          "sha256": "7addd4ee3df52178663e43bf6778006b7ab77f03c3e75e1a5d03e4f12cd655c6"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021051.jpg",
-          "sha256": "f0cd7f00bb17b06bad3c6ccd76f68a83b47cfc4d138475bebd824bb90ecf74fb"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:2b63f735-f57d-4228-ae58-c2e363ad4464",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/ruta-26021282",
-      "species": "cat",
-      "coatColor": "multicolour",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black",
-        "orange"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021282-%282%29.jpg",
-          "sha256": "fa7ce3891f90c60bda10c32794ab78acaa751d125d194c067504965ec6f32ad1"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021282.jpg",
-          "sha256": "3fa047c6c55ef0ca01a1a96f6d3d27c8b55317854e63f9b1ca70eb750d47dc7a"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:4494534d-72b6-4ec3-bd69-fe5d56c3ead2",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/pavel-26021365",
-      "species": "cat",
-      "coatColor": "black-white",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365-%282%29.jpg",
-          "sha256": "0e74830526f7a071843b894fd6318eb7f53d10cd5ffc342efba956b43dc6c208"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021365.jpg",
-          "sha256": "4db597d4f1539707a41fabe5e4a4643f8c9468e27c12eec112a464cfa574c45b"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:553c2d2b-deff-4650-bf13-cd1453853452",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/loki-26021483",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021483-1.jpg",
-          "sha256": "394cdebddc4730effc90630017ae5c6ba5189a93909fa11a11e81526815c8210"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:5700eb10-9b21-47e9-9ec8-b5b14f29c6a9",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/silla-26021186",
-      "species": "cat",
-      "coatColor": "brown",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "brown",
-        "black"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021186-2.jpg",
-          "sha256": "3e1f72a4411813e79eb6e86ad6d48ecb6fc62d2666b00608bdfc44b3a676f119"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:6303322d-bbc0-4e6b-aa70-7277c30dc8ca",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/hera-26021006",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-3.jpg",
-          "sha256": "b4eb9a614b878552696c8635b189ed88c356d81e27734c2f9196d69ce568833f"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021006-2.jpg",
-          "sha256": "c2c240e3c0177d1b8adb27de7fa3d18d221a63816d422c07c48f1d3f5688c064"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:667a044e-4156-4fd4-ae88-09cfb24f0c2d",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/hajdi-26021004",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021004-3.jpg",
-          "sha256": "668e6bdbc83daa7c03b2efc4f1be1d7b3c617a17b79dd370972e818ac713f7fa"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021004-2.jpg",
-          "sha256": "f1338f3a1f3debb934b63d35ae8de6c2c586504522c098c1f69c8b1265a39c7e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021004.jpg",
-          "sha256": "897928d0e09bf9b44796a1259cfba0e327562894c918dee88a196645fa0be02e"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:6d00d681-e76f-48f7-83bb-d2b994cc96e6",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/gargi-26021373",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021373%283%29.jpg",
-          "sha256": "cca6abae73d888126fbee528f4aa2a5ce7af8caaecee08059aa59e6f0dcc3e01"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021373%282%29.jpg",
-          "sha256": "e489980e2de1596d6efb6d728df7f80f13131f7a00a71c56dc3b99d980aaf896"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021373.jpg",
-          "sha256": "e48e272d65b281ecfec379701680d1c12dd499d59133623bab1622cd9107e830"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:756cc2f1-5374-4336-ae42-b42b803e8c4e",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/onni-26021209",
-      "species": "cat",
-      "coatColor": "brown",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "brown"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
-          "sha256": "debd63032dad728432f9d48b27dbd64da3282cb5362832dd97be4f7fce76c723"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209.jpg",
-          "sha256": "90387632ff3e1baa26e6a295bdc00f0a756408a64be9f9b099eeda81823d2b82"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:89fe01e2-c206-4ba7-94f3-6b0c0ba6b792",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/zelda-26021122",
-      "species": "cat",
-      "coatColor": "black-white",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black",
-        "white"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-3.jpg",
-          "sha256": "8c52bca6cc35ec9ff61411420dac7d8c0f3ebc4d3f8ff370e977f3e3e03621cb"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122-2.jpg",
-          "sha256": "ed844f3c3255f046c5eedbac1e8f7b6510f5b414d9c9fe77f452644a58f3036e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021122.jpg",
-          "sha256": "fc93947c5dc10ecbb9f78ff17a492716f8407c03e6da5d78890e3fe4eca435a3"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:8b4a130d-c12e-45ad-9668-70016fac9438",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/lucka-26021311",
-      "species": "cat",
-      "coatColor": "brown",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "brown"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021311-3.jpg",
-          "sha256": "8cf25f6c18d61b60a45b190828a1759bb7b62170605a014f5a89aab312dd760f"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021311-1.jpg",
-          "sha256": "6dcc4fe6d2afb4358fc85a9d1174e505bb9a9839564734b93164782299d52d5e"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021311.jpg",
-          "sha256": "5b909a09e72333d57fbe3c486730c678b40b488a607fc7386c0e59c4aae186c0"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:8db5a442-83b5-4e10-a4b5-6da10ed663ca",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/teodor-26021292",
-      "species": "cat",
-      "coatColor": "brown",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "brown"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021292%281%29.jpg",
-          "sha256": "5e42a2c4bd12d841637b27dba32c9dec77fc8bf8d1d4c2e9e932824705b9535a"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021292.jpg",
-          "sha256": "a49d71d5994158be2bf22e12b1bf498d3401570da98f9536df8b81780aa7b450"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:946c4b66-b1f9-4ff1-8f9e-efa645d95c8f",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/eliza-26021361",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361-1.jpg",
-          "sha256": "fef984bede931dcdfe330b3f07e4e6bf2b106a061d6dda3ad73d2ec778ac0e89"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021361.jpg",
-          "sha256": "9c2cb532fb37c9b9c15cf23a7e232ac858c6e288356e56a886f6c54c5f4188d0"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:ae98545d-1d8f-4a7d-a309-248d6ca8266e",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/bolt-26021124",
-      "species": "cat",
-      "coatColor": "orange",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "orange"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021124.jpg",
-          "sha256": "de0b113d10d547a0d22be15a89e928e32cef3a31fb1278ab3b7f2a146334ef71"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:c5dc4f10-9042-4eda-8f1d-d3cd72a938ef",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/dalia-26021345",
-      "species": "cat",
-      "coatColor": "white",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatLength": "medium",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021345-2.jpg",
-          "sha256": "bfa2aca1ed0ba0f9a70c74e94a11725c4e60a1ba5a3b068d16bb4c45487caf33"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021345.jpg",
-          "sha256": "4502908382c5b4a6d5830bc818470c7739c79f3b99981e108c632f510be457e0"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:e9c0201e-e5c9-488e-b282-13ac32d72c74",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/vinny-26021115",
-      "species": "cat",
-      "coatColor": "black",
-      "coatColorReviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ],
-      "coatColors": [
-        "black"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021115-1.jpg",
-          "sha256": "cfc830583bef8f68db94f27473a033f37bc9f66fe8352839ac01c0f2723d9d72"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021115.jpg",
-          "sha256": "5a12d6491309e26aa192707542189847c2a7128faad9c125c0ef2ea55ead5c08"
-        }
-      ],
-      "reviewedBy": [
-        "/root/newcat_review_a",
-        "/root/newcat_review_b"
-      ]
-    },
-    {
       "animalId": "macja-hisa:4988",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4988",
@@ -21846,64 +21043,6 @@
       ]
     },
     {
-      "animalId": "ljubljana:afdab9b0-40ba-46f1-b23a-680cba2bae55",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/yuki-26021527",
-      "species": "cat",
-      "coatColors": [
-        "white"
-      ],
-      "coatColor": "white",
-      "coatColorReviewedBy": [
-        "/root/october_review_a",
-        "/root/october_review_b"
-      ],
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527-1.jpg",
-          "sha256": "0a0e5e85f3cb06d8be8b0a96274d70ed0925a2a67e76cfa1407facf9c5362011"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021527.jpg",
-          "sha256": "10e7eb8a1f8f4ccd7b7c3771e1ffec06b8a56b03722b56f2a73d78621d3c83f2"
-        }
-      ],
-      "reviewedBy": [
-        "/root/october_review_a",
-        "/root/october_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:c2c93448-b72e-4e3d-9f00-f36c96d7aeae",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/claudy-26021528",
-      "species": "cat",
-      "coatColors": [
-        "orange",
-        "white"
-      ],
-      "coatColor": "orange",
-      "coatColorReviewedBy": [
-        "/root/october_review_a",
-        "/root/october_review_b"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1811%282%29.jpg",
-          "sha256": "4f80cefcc78c8ca6ca7f1a673dae341c54015272ca490dcc0cd3c72e48937eb6"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021528.jpg",
-          "sha256": "b0c5ee644ece4ad50a116d1f516ce198eed2a6474795a3ae3e4cf5262bacafef"
-        }
-      ],
-      "reviewedBy": [
-        "/root/october_review_a",
-        "/root/october_review_b"
-      ]
-    },
-    {
       "animalId": "horjul:9612",
       "providerId": "horjul",
       "sourceUrl": "https://www.zavetisce-horjul.net/rozinka/",
@@ -21939,32 +21078,6 @@
         {
           "sourceUrl": "https://www.zavetisce-horjul.net/wp-content/uploads/2026/10/Rozinka04.jpg",
           "sha256": "e2bde582c9db2d0cb44ad5dfe0cec5698106717931c502088d7e02dd68336441"
-        }
-      ],
-      "reviewedBy": [
-        "/root/october_review_a",
-        "/root/october_review_b"
-      ]
-    },
-    {
-      "animalId": "ljubljana:af48cd2d-d437-4336-948c-87f25574a53f",
-      "providerId": "ljubljana",
-      "sourceUrl": "https://www.zavetisce-ljubljana.si/zivali/franjo-26021207",
-      "species": "cat",
-      "coatColors": [
-        "white",
-        "grey",
-        "brown"
-      ],
-      "coatLength": "short",
-      "evidence": [
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207%281%29.jpg",
-          "sha256": "9a19276c3b7d65f0caeb41a121a819b18e577adcd450c63859f831238282508b"
-        },
-        {
-          "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021207.jpg",
-          "sha256": "f8de87375016e9c094779bf443f115a53a64221fda8f2fc25aa02f9ccefb683b"
         }
       ],
       "reviewedBy": [

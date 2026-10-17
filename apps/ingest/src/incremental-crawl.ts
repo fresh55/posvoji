@@ -32,7 +32,8 @@ import { datasetDir } from "./paths";
 // v3 = age ranges stay unknown and Turk's negated neutering stays unset.
 // v4 = Mačji dol reads intakeBy from the month, season or year it names.
 // v5 = Ljubljana rejects malformed dates and limits medical evidence to visible cat/dog care.
-export const CRAWL_GENERATION = 5;
+// v6 = Mačja hiša recognises explicit dog headings and keeps feline tests off dogs.
+export const CRAWL_GENERATION = 6;
 
 // Sidecar next to animals.json. Not a schema change, and not something the
 // site reads.

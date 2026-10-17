@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { loadFixture, PoliteClient } from "@posvoji/provider-sdk";
 import { Animal, ProviderPolicy } from "@posvoji/schema";
@@ -15,6 +15,12 @@ const policy = ProviderPolicy.parse(
 );
 
 const detailHtml = loadFixture(import.meta.url, "detail.html");
+const listHtml = loadFixture(import.meta.url, "list.html");
+
+function mockClient(body: string) {
+  const get = vi.fn().mockResolvedValue({ status: 200, body });
+  return { get, client: { get } as unknown as PoliteClient };
+}
 
 // A listing page always carries the "Osnovni podatki" card; parseDetail
 // refuses a page without it. Synthetic headings are wrapped in an empty one.
@@ -42,7 +48,7 @@ describe("policy.yaml", () => {
 
 describe("parseList", () => {
   it("extracts animal refs and skips duplicates, off-site links and non-detail hrefs", () => {
-    const refs = parseList(loadFixture(import.meta.url, "list.html"));
+    const refs = parseList(listHtml);
     expect(refs).toEqual([
       {
         sourceAnimalId: "4304",
@@ -56,6 +62,28 @@ describe("parseList", () => {
   });
 });
 
+describe("discover", () => {
+  it("discovers through the supplied polite client", async () => {
+    const { client, get } = mockClient(listHtml);
+    expect(await provider.discover({ client, policy })).toEqual(parseList(listHtml));
+    expect(get).toHaveBeenCalledOnce();
+    expect(get).toHaveBeenCalledWith(policy.source);
+  });
+
+  it.each([
+    "<h1>Vzdrževanje</h1>",
+    '<div class="seznam-muc-list"><a class="seznam-muc-list-item" href="#">Muca</a></div>',
+  ])("refuses an absent or malformed catalogue", async (html) => {
+    const { client } = mockClient(html);
+    await expect(provider.discover({ client, policy })).rejects.toThrow("catalogue is absent or malformed");
+  });
+
+  it("distinguishes a genuinely empty list wrapper from a missing catalogue", async () => {
+    const { client } = mockClient('<div class="seznam-muc-list"></div>');
+    await expect(provider.discover({ client, policy })).resolves.toEqual([]);
+  });
+});
+
 describe("parseAgeMonths", () => {
   it.each([
     ["3 leta", 36],
@@ -65,6 +93,16 @@ describe("parseAgeMonths", () => {
     ["7 let in 1 mesec", 85],
     ["1,5 leta", undefined],
     ["2-3 leta", undefined],
+    ["2 - 3 leta", undefined],
+    ["2–3 leta", undefined],
+    ["2 — 3 leta", undefined],
+    ["2 do 3 leta", undefined],
+    ["med 2 in 3 leta", undefined],
+    ["2 leti ali 3 leta", undefined],
+    ["1 leto in 2-3 mesece", undefined],
+    ["1 leto in 2,5 meseca", undefined],
+    ["1 leto in pol", undefined],
+    ["2/3 leta", undefined],
     ["neznana", undefined],
   ])("%s → %s", (input, expected) => {
     expect(parseAgeMonths(input)).toBe(expected);
@@ -139,6 +177,8 @@ describe("parseDetail", () => {
     ["Pes: Medo"],
     ["PES - Medo"],
     ["pes Medo"],
+    ["psička: Medo"],
+    ["PSIČKA - Medo"],
   ])("recognises the dog prefix in %s", (heading) => {
     expect(parseDetail(listing(`<h1>${heading}</h1>`))).toMatchObject({
       name: "Medo",
@@ -151,6 +191,49 @@ describe("parseDetail", () => {
       name: undefined,
       species: "dog",
     });
+  });
+
+  it("recognises the current psička heading without inferring from prose", () => {
+    expect(parseDetail(listing("<h1>psička Nutella</h1>"))).toMatchObject({
+      name: "Nutella",
+      species: "dog",
+    });
+    expect(parseDetail(listing("<h1>Peska</h1>"))).toMatchObject({
+      name: "Peska",
+      species: "cat",
+    });
+  });
+
+  it("keeps an explicit species label ahead of a heading prefix", () => {
+    const facts = parseDetail(listing(
+      '<h1>psička Nutella</h1><p><strong>Vrsta</strong>: mačka</p>',
+    ));
+    expect(facts.species).toBe("cat");
+  });
+
+  it("keeps dog procedures but does not read feline tests from their template", () => {
+    const facts = parseDetail(detailHtml.replace("Dimitri</h1>", "psička Nutella</h1>"));
+    expect(facts.species).toBe("dog");
+    expect(facts.medical).toEqual({
+      neutered: true,
+      microchipped: true,
+      vaccinated: true,
+    });
+  });
+
+  it("does not assume a positive feline result from an unconfirmed icon", () => {
+    const facts = parseDetail(detailHtml.replace(/fa-minus/g, "fa-plus"));
+    expect(facts.medical).toMatchObject({ fiv: "unknown", felv: "unknown" });
+  });
+
+  it("keeps visible paragraphs while excluding non-visible description content", () => {
+    const facts = parseDetail(listing(
+      '<div class="content-body"><p>Prijazen muc.</p>' +
+      '<script>script text</script><style>style text</style>' +
+      '<template>template text</template><noscript>fallback text</noscript>' +
+      '<p>Išče dom.</p></div>',
+    ));
+    expect(facts.description).toBe("Prijazen muc.\n\nIšče dom.");
   });
 
   it("refuses a page that is not a listing", () => {

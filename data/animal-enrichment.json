@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-16T13:54:41.237Z",
+  "reviewedAt": "2026-10-17T15:53:04.477Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -5832,19 +5832,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 0,
-            "end": 23,
-            "sha256": "e29fcc2325712e972c8d8c85998e4b5a971390a7b5d4a1f3c344efc44a70468c"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
         }
       ]
     },
@@ -5913,19 +5900,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 255,
-            "end": 279,
-            "sha256": "c817ec315ef1f1acad6ec0d696d1597ddb988c74f87fdf793b8077f6fda03c20"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
         }
       ]
     },
@@ -5942,19 +5916,6 @@
             "start": 170,
             "end": 179,
             "sha256": "9ad32558871ab137dc11cf4a4eaa33c24cbd0ca851e11af2efa57016be8ac97d"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 74,
-            "end": 138,
-            "sha256": "c360e194e33a62f7a10f2e2351b4f4f66516ba8206ce27489325c504e70c2683"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -6023,19 +5984,6 @@
             "start": 221,
             "end": 229,
             "sha256": "34ca90b7201a10474d56b06b3af01c15e7cc2e43cb358b00487f35b6d6ec7719"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 38,
-            "end": 51,
-            "sha256": "fd4c862f82e20007ab08a8718b3433f88d87c95e658b4da1f9cf524eb9db86b9"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -6501,19 +6449,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 10,
-            "end": 34,
-            "sha256": "49d66ce83b01ac53e2fb6482a28ed6768d7ef1545eaa192c4b376ab9db850a71"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
         }
       ]
     },
@@ -6723,6 +6658,19 @@
             "/root/household_review_a",
             "/root/household_review_b"
           ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 726,
+            "sha256": "48ba6e12cd7f2b4699e6d79c3764429cafc29e3c01c2c2f991e7fcbc60698916"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
         }
       ]
     },
@@ -6833,19 +6781,6 @@
             "start": 249,
             "end": 260,
             "sha256": "ef3c324a2eb3ab374364889c50a8b61332584f456f9869d02fcb4ccf50540d71"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 98,
-            "end": 171,
-            "sha256": "c61ae44390e35bd4d654663e840439b4ab76ffe46017d0da6b0ae573495aece2"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -7042,19 +6977,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 35,
-            "end": 100,
-            "sha256": "3c93339de7aa72524531f90dc0c73eea2933e93cf0bc40b1706e8a2c0fd55818"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
         }
       ]
     },
@@ -7238,19 +7160,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 34,
-            "end": 95,
-            "sha256": "3181f9c430db678e42ef0f1daea3e96a5d24bc7af92c93547a9d12f675890055"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
         }
       ]
     },
@@ -7293,19 +7202,6 @@
             "start": 19,
             "end": 31,
             "sha256": "13e7f20bbab2630bed25d307aef28f34d17e05132a82a253f1a54952f5ba2606"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 53,
-            "end": 98,
-            "sha256": "8831284639e712c7af0b97ae94d297ee57249cb692aed2c6b4577b396192c29d"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -7399,19 +7295,6 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 9,
-            "end": 34,
-            "sha256": "1de81153b548f4db702e5669f5daff135bc618115580c6673c7eb7abf934ea78"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
           ]
         }
       ]
@@ -7515,19 +7398,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 0,
-            "end": 15,
-            "sha256": "f77d61add5a4e8ddb62dac7843caff9e6197e676674ebe0f41a6a8fa27230f9d"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
         }
       ]
     },
@@ -7591,19 +7461,6 @@
             "start": 184,
             "end": 191,
             "sha256": "e8df7d35d51b8ebec0b840c162235aac4f5ff1df5449cb37de1c087883ed75e2"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 33,
-            "end": 99,
-            "sha256": "b8e09dc0d8f6625333d9b11d60b5c6b3e4cbb433e6e9cdc504d4b1475a54edeb"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -7740,19 +7597,6 @@
             "start": 244,
             "end": 252,
             "sha256": "34ca90b7201a10474d56b06b3af01c15e7cc2e43cb358b00487f35b6d6ec7719"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 84,
-            "end": 154,
-            "sha256": "3962913861c1332b481c03eac357ad97822fe078d08778ad79278e5e2c5e3188"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -8203,19 +8047,6 @@
             "/root/review_c",
             "/root/review_a"
           ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 51,
-            "end": 69,
-            "sha256": "9d249098fc21cafd487248fca147c20a355b04113862c1569d5f78826c6a1c5f"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
         }
       ]
     },
@@ -8245,19 +8076,6 @@
             "start": 196,
             "end": 203,
             "sha256": "e8df7d35d51b8ebec0b840c162235aac4f5ff1df5449cb37de1c087883ed75e2"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 34,
-            "end": 53,
-            "sha256": "bd863757b809e228a8abb1442d372b2428a848f94c44f19cf873bb38e5159db9"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -8326,19 +8144,6 @@
             "start": 155,
             "end": 162,
             "sha256": "082d583c07132c5d31d4b5de9728f1f192ed8f2807e1296a05d3c491aa62d4fa"
-          },
-          "reviewedBy": [
-            "/root/review_c",
-            "/root/review_a"
-          ]
-        },
-        {
-          "field": "specialNeeds",
-          "value": true,
-          "evidence": {
-            "start": 25,
-            "end": 87,
-            "sha256": "57f94e581de8503ac0112527a4839827fd3dd0352a0ec9e1fd418ce988d456be"
           },
           "reviewedBy": [
             "/root/review_c",
@@ -8432,19 +8237,6 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 8,
-            "end": 31,
-            "sha256": "b328d1f4a0e811f0eb8cf0010a82ee15d778c8908d3cbf4018a9bd95af77baae"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
           ]
         }
       ]
@@ -8702,19 +8494,6 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_a"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 9,
-            "end": 41,
-            "sha256": "ac5d4b6004565738883fa7f17317f3d1282e2dc592934b688dc22ae0c50767cb"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
           ]
         }
       ]
@@ -9218,6 +8997,19 @@
             "/root/review_c",
             "/root/review_b"
           ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 801,
+            "sha256": "1b2d455fb3c85e7e3409d1e3907cf19435d8bab22011d1ccb137be53978fe2c6"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
         }
       ]
     },
@@ -9238,19 +9030,6 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 10,
-            "end": 45,
-            "sha256": "342c1c418b492deee4cc5f190f75849eea725971c77cafe91f8dd9b5434174db"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
           ]
         }
       ]
@@ -9395,19 +9174,6 @@
           "reviewedBy": [
             "/root/review_c",
             "/root/review_b"
-          ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 8,
-            "end": 28,
-            "sha256": "7308057dfdad425bfd4dbdd0fddf5efc3f608bed25ff901027830ac6dee33e5d"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
           ]
         }
       ]
@@ -10486,19 +10252,6 @@
             "/root/review_c",
             "/root/review_b"
           ]
-        },
-        {
-          "field": "energy",
-          "value": "lively",
-          "evidence": {
-            "start": 9,
-            "end": 40,
-            "sha256": "b88d02ff7121fb5832ac86dfaa25a9e02ef6684fd0b078e471b0108b1e53b1b4"
-          },
-          "reviewedBy": [
-            "/root/energy_review_a",
-            "/root/energy_review_b"
-          ]
         }
       ]
     },
@@ -11416,32 +11169,32 @@
       "animalId": "macja-hisa:4946",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4946",
-      "descriptionSha256": "fc13e8de3f4024e8ba0081914a3d3dc10c0bd9f2a103edb5af456fea6b0b41cf",
+      "descriptionSha256": "896af95a91a43617fae60bbee8178502e6864c34225c29f6f8706dd919f5fb4e",
       "claims": [
         {
           "field": "goodWith.cats",
           "value": "yes",
           "evidence": {
-            "start": 30,
-            "end": 50,
-            "sha256": "cff760bd0719d3db758a5a9812148d65f9e213d8bc3e9f3435b5d77c4f191789"
+            "start": 0,
+            "end": 135,
+            "sha256": "896af95a91a43617fae60bbee8178502e6864c34225c29f6f8706dd919f5fb4e"
           },
           "reviewedBy": [
-            "/root/review_c",
-            "/root/review_b"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "originMunicipality",
           "value": "Ljubečna",
           "evidence": {
-            "start": 79,
-            "end": 90,
-            "sha256": "005b061c4086325722c3f654c95e54f2d83628fe4aff6b051b2c62e56238c9e9"
+            "start": 0,
+            "end": 135,
+            "sha256": "896af95a91a43617fae60bbee8178502e6864c34225c29f6f8706dd919f5fb4e"
           },
           "reviewedBy": [
-            "/root/review_c",
-            "/root/review_b"
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -11471,32 +11224,45 @@
       "animalId": "macja-hisa:4949",
       "providerId": "macja-hisa",
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4949",
-      "descriptionSha256": "2ec030070cb06d8507f66c60b476d0c4c3ee4c3ddc32b05fda1d2446c107a26c",
+      "descriptionSha256": "53718292124e96dd9329ad0dad2a795f27a99dccedb6777aea12a85ba0820e19",
       "claims": [
         {
           "field": "energy",
           "value": "lively",
           "evidence": {
             "start": 0,
-            "end": 27,
-            "sha256": "fcc4f1012296d8f9e672b1c6be9d871547bd8531cfeb0d6f94b664382c6f66da"
+            "end": 204,
+            "sha256": "53718292124e96dd9329ad0dad2a795f27a99dccedb6777aea12a85ba0820e19"
           },
           "reviewedBy": [
-            "/root/review_c",
-            "/root/review_b"
+            "/root",
+            "/root/filter_audit"
           ]
         },
         {
           "field": "originMunicipality",
           "value": "Šmartno v Rožni dolini",
           "evidence": {
-            "start": 142,
-            "end": 167,
-            "sha256": "b792fa69beee96ea8bad6a04e18f810c1ed3b389b6104a8db9458556a7ab5f5c"
+            "start": 0,
+            "end": 204,
+            "sha256": "53718292124e96dd9329ad0dad2a795f27a99dccedb6777aea12a85ba0820e19"
           },
           "reviewedBy": [
-            "/root/review_c",
-            "/root/review_b"
+            "/root",
+            "/root/filter_audit"
+          ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 204,
+            "sha256": "53718292124e96dd9329ad0dad2a795f27a99dccedb6777aea12a85ba0820e19"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -17077,6 +16843,19 @@
             "/root/newcat_review_a",
             "/root/newcat_review_b"
           ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Trebnje",
+          "evidence": {
+            "start": 0,
+            "end": 699,
+            "sha256": "4d607050d2c9fda16846a23d2c7b1e71ae678c884e2c05042cab6bf6fdaacef4"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
         }
       ]
     },
@@ -17140,6 +16919,19 @@
             "/root/october_review_a",
             "/root/october_review_b"
           ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Žepina",
+          "evidence": {
+            "start": 0,
+            "end": 90,
+            "sha256": "326d59c6f4192faa55cc5a90c376397f413e81f4c7b42fc9039c45cec6bb9d80"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
         }
       ]
     },
@@ -17160,6 +16952,19 @@
           "reviewedBy": [
             "/root/october_review_a",
             "/root/october_review_b"
+          ]
+        },
+        {
+          "field": "originMunicipality",
+          "value": "Čemšenik",
+          "evidence": {
+            "start": 0,
+            "end": 128,
+            "sha256": "3074a8516f6f8cf8a3a9762e4ffb31a896efcb98e565bd319dd07a2f23628f3f"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]
@@ -17386,6 +17191,19 @@
             "/root/october_review_a",
             "/root/october_review_b"
           ]
+        },
+        {
+          "field": "goodWith.cats",
+          "value": "yes",
+          "evidence": {
+            "start": 0,
+            "end": 240,
+            "sha256": "95919e3ca02e363051811c013352661f6363e33fc7f6eae96350e8a262665943"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
         }
       ]
     },
@@ -17495,6 +17313,174 @@
           "reviewedBy": [
             "/root/october_review_a",
             "/root/october_review_b"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5012",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5012",
+      "descriptionSha256": "efe8efb5fc515f441a3892569676036100c40cef015dc5560098a292e39f194b",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Čemšenik",
+          "evidence": {
+            "start": 0,
+            "end": 130,
+            "sha256": "efe8efb5fc515f441a3892569676036100c40cef015dc5560098a292e39f194b"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5003",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5003",
+      "descriptionSha256": "32d1f53cbc433a3d55679f0df4f0e145b4fceb5812f1eb682d7432d9c490ccc7",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 0,
+            "end": 137,
+            "sha256": "32d1f53cbc433a3d55679f0df4f0e145b4fceb5812f1eb682d7432d9c490ccc7"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5004",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5004",
+      "descriptionSha256": "cc7d28aa78b4ba5bea754b4b8b30af8d1539306963e0305b887b617611b84ddc",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 0,
+            "end": 212,
+            "sha256": "cc7d28aa78b4ba5bea754b4b8b30af8d1539306963e0305b887b617611b84ddc"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4999",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4999",
+      "descriptionSha256": "e4cecf95c3d2766d5e952431f3f0d1e63a0fe8b4bcc721411be1c2770d35e5b1",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Zagrad",
+          "evidence": {
+            "start": 0,
+            "end": 194,
+            "sha256": "e4cecf95c3d2766d5e952431f3f0d1e63a0fe8b4bcc721411be1c2770d35e5b1"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4995",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4995",
+      "descriptionSha256": "33a4b7e60a5df941ed84ea0846c902f0cc8223f66fe56474eb2c3ae68be48a8a",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Žalec",
+          "evidence": {
+            "start": 0,
+            "end": 126,
+            "sha256": "33a4b7e60a5df941ed84ea0846c902f0cc8223f66fe56474eb2c3ae68be48a8a"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4996",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4996",
+      "descriptionSha256": "4304694b3f8ad17e61ec3882db3fc543bec3aa5ecc04a6a21260219454142adc",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 0,
+            "end": 104,
+            "sha256": "4304694b3f8ad17e61ec3882db3fc543bec3aa5ecc04a6a21260219454142adc"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4998",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4998",
+      "descriptionSha256": "a18e18227047093e9536ae9f15f55f37f5ec1fc694db028c9adb08b03a2f8861",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Celje",
+          "evidence": {
+            "start": 0,
+            "end": 181,
+            "sha256": "a18e18227047093e9536ae9f15f55f37f5ec1fc694db028c9adb08b03a2f8861"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
+          ]
+        }
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4988",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4988",
+      "descriptionSha256": "3b806b6cc3202ab5e477743e405b70432ab4d93efca6e859b60b3595be2246ac",
+      "claims": [
+        {
+          "field": "originMunicipality",
+          "value": "Ljubečna",
+          "evidence": {
+            "start": 0,
+            "end": 115,
+            "sha256": "3b806b6cc3202ab5e477743e405b70432ab4d93efca6e859b60b3595be2246ac"
+          },
+          "reviewedBy": [
+            "/root",
+            "/root/filter_audit"
           ]
         }
       ]

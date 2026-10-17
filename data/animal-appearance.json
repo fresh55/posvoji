@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-17T11:33:52Z",
+  "reviewedAt": "2026-10-17T15:56:54.251Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -7831,15 +7831,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8090,15 +8090,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8676,15 +8676,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -8720,15 +8720,15 @@
         "white",
         "grey"
       ],
-      "coatColor": "grey-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_c"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9739,15 +9739,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/pipeline_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -9757,7 +9757,7 @@
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4258__2_large.jpeg",
-          "sha256": "4cb67f9023f69592ce74d9f7d242bfcdcb1b6e3108309d8c90d7b6c6ccd81384"
+          "sha256": "169bb5dcb454235ca5ef13bc3584b641f81a7fbc47bc4facf914da3e6a15cb75"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4258__3_large.jpeg",
@@ -9769,8 +9769,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_a"
+        "/root",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -9907,16 +9907,15 @@
         "grey",
         "brown"
       ],
-      "coatColor": "grey-white",
+      "coatColor": "brown-white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b",
-        "/root"
+        "/root",
+        "/root/pipeline_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -10956,15 +10955,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/pipeline_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -11309,7 +11308,8 @@
       "species": "cat",
       "coatColors": [
         "black",
-        "brown"
+        "brown",
+        "white"
       ],
       "coatColor": "brown",
       "substantialWhite": false,
@@ -11341,8 +11341,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/photo_audit",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -11352,7 +11352,8 @@
       "species": "cat",
       "coatColors": [
         "black",
-        "brown"
+        "brown",
+        "white"
       ],
       "coatColor": "brown",
       "substantialWhite": false,
@@ -11380,8 +11381,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/photo_audit",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -12030,23 +12031,22 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_c",
-        "/root"
+        "/root",
+        "/root/pipeline_audit"
       ],
       "coatLength": "short",
       "evidence": [
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4657__1_large.jpeg",
-          "sha256": "79c4f1648c3d3dca65e95dec4a2ee839553f983f79218a3c47b40509e7684697"
+          "sha256": "2ab2b2caa5c4f47cb703a1130787589e55de2f60de2e9a1e094ef35d835d000a"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4657__2_large.jpeg",
-          "sha256": "07a1484e48123ecbb76425b53c7c95c5957b48824bee85e93f459db5e628a634"
+          "sha256": "09821404eb58773dd1cc8a74b86d35687427d196e20465d971ae906c94d372e9"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4657__3_large.jpeg",
-          "sha256": "20dc75855b201d317357b1cce349019ff50fcda928882aebe6bb146edbd446f1"
+          "sha256": "741130f1e4f6896e28ead1176301d1c117956b57a59bfe84364e703418dc871b"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4657__4_large.jpeg",
@@ -12054,8 +12054,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -12148,17 +12148,18 @@
       "coatColors": [
         "black",
         "white",
-        "brown"
+        "brown",
+        "orange"
       ],
-      "coatColor": "brown-white",
+      "coatColor": "multicolour",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -12176,8 +12177,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -12360,15 +12361,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_c"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13061,15 +13062,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_c"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -13441,27 +13442,27 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/pipeline_audit"
       ],
       "coatLength": "short",
       "evidence": [
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4927__1_large.jpeg",
-          "sha256": "7d20ae6f7ba8e6404c0dab533ca99367b4c8384d17f8dd4f97a12fc388771e3b"
+          "sha256": "ad7b87531b7b0cb7fc05d438e4df845d0ba24fca2b46979268b173e814a923a5"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4927__2_large.jpeg",
-          "sha256": "70abc70cdcb33ba3a82d7f7eb56c22917aac73ced2c2bbd30d0cfda84a3dd942"
+          "sha256": "3ccf2f4321fe27ea005c7d09b14439d934fdcc11d157c8ae5a2b14ccd687272e"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4927__3_large.jpeg",
-          "sha256": "280803b620e89b0feb4dde22d0efdf7ec710ed23dcd6994eb13b154f3feac822"
+          "sha256": "110317940987b7e437c7297814ef3f101a9b034f57a52711af74c7f58688f9da"
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -13683,7 +13684,8 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4941",
       "species": "cat",
       "coatColors": [
-        "black"
+        "black",
+        "white"
       ],
       "coatColor": "black",
       "substantialWhite": false,
@@ -13715,8 +13717,8 @@
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root/photo_audit",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -13892,41 +13894,42 @@
       "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4949",
       "species": "cat",
       "coatColors": [
+        "grey",
         "black",
         "brown"
       ],
-      "coatColor": "brown",
+      "coatColor": "grey",
       "substantialWhite": false,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4949__1_large.jpeg",
-          "sha256": "12d89cc3ca2fa4a08104a989caf108167fbf34f0d3d6013844135d2b72bde7cd"
+          "sha256": "715d99165f8d66941426f698268d4ca4eb10afa407c0d0180a474faa7e1d51d0"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4949__2_large.jpeg",
-          "sha256": "883f5f5987682d9945532bd4afd6ff93bf66498d0560ffdcbc552139733b7a5f"
+          "sha256": "4b50b43cd299bb4c43ea0e35b40554baed24977d63e03c15182af9ad6293542e"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4949__3_large.jpeg",
-          "sha256": "07de5d16d596205f8a74d0e5ef24b89d87515f1fa27db3719927ecdb56ab7c32"
+          "sha256": "8765193021447ece78d6ad7f70a9e47f48dd72bb308c14f027996cb37158bd7c"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4949__4_large.jpeg",
-          "sha256": "366a53002ec339c8f833d42e8ad7f06dff8ae2336a60c43e891f43d01b0cb9ff"
+          "sha256": "6e366a7d7559d5e77397124ead15dd7565e00723e367784fb82575bee50bf858"
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -13988,31 +13991,31 @@
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/review_b",
-        "/root/review_c"
+        "/root",
+        "/root/pipeline_audit"
       ],
-      "coatLength": "long",
+      "coatLength": "medium",
       "evidence": [
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4953__1_large.jpeg",
-          "sha256": "d6b3c9ecf5b0891fbe82356382880cfce225fbd58eb4a853d86b2cfb1fc5176c"
+          "sha256": "2f73c49f391839666663ac0b2e7509131ea5e8ea1aade5f64fa994f010c64279"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4953__2_large.jpeg",
-          "sha256": "1440e8a3fd304d72ac86e981e0a6ea8981f56daba946c3e6b4f9b29850e56633"
+          "sha256": "9fa4055c33b388ea0243453ded913723cef7610063926aff99de9b5eaf981dd9"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4953__3_large.jpeg",
-          "sha256": "03563ecb6afd208e4493e4038a0d4171a262cbd6a1082056b9b31e7833dce258"
+          "sha256": "2f6e0e08ef15171e7619ee36020dbc62d3c277f2d4f536057899856039a07721"
         },
         {
           "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4953__4_large.jpeg",
-          "sha256": "f1f8fd1ea34f0e6fd3019b70b3493a63e87c22ad726b0ac21554626d6c0a957f"
+          "sha256": "ea3c9683179e462dd728196a7feb0dc2c8e1ed95c83cdb689511b18b43f33bb6"
         }
       ],
       "reviewedBy": [
-        "/root/review_c",
-        "/root/review_b"
+        "/root",
+        "/root/pipeline_audit"
       ]
     },
     {
@@ -14025,15 +14028,15 @@
         "white",
         "brown"
       ],
-      "coatColor": "brown-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_c"
+        "/root",
+        "/root/photo_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -14537,6 +14540,11 @@
       "reviewedBy": [
         "/root/review_c",
         "/root/review_b"
+      ],
+      "coatColor": "black-white",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -14590,15 +14598,15 @@
         "black",
         "white"
       ],
-      "coatColor": "black-white",
+      "coatColor": "white",
       "substantialWhite": true,
       "substantialWhiteReviewedBy": [
         "/root/review_b",
         "/root/review_a"
       ],
       "coatColorReviewedBy": [
-        "/root/category_review_a",
-        "/root/category_review_b"
+        "/root",
+        "/root/pipeline_audit"
       ],
       "coatLength": "short",
       "evidence": [
@@ -21167,6 +21175,113 @@
       "reviewedBy": [
         "/root",
         "/root/photo_audit"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5003",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5003",
+      "species": "cat",
+      "coatColors": [
+        "white",
+        "black",
+        "brown"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5003__1_large.jpeg",
+          "sha256": "e84a81f1515250fde2e7812f56444182ea1fd50459840525dc52d8baceaafce4"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5003__2_large.jpeg",
+          "sha256": "07fc46973b9b17194e68f512b6a7dad71045392ba7fa32f265946918c3d0874e"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5003__3_large.jpeg",
+          "sha256": "375b2a4809140489a3cffc37d885aeac5bde7316266131e6af41ca69f05db8b9"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
+      "coatColor": "white",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:4999",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/4999",
+      "species": "cat",
+      "coatColors": [
+        "white",
+        "grey",
+        "black",
+        "brown"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4999__1_large.jpeg",
+          "sha256": "33e1e1e3f5b18b2bc0ec07b3e4490aa2e7b0d9d6a91d9affbec2a0fdb8850aaa"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4999__2_large.jpeg",
+          "sha256": "b1f5fe6699f8e6012fdfc0725a08b66313123417ea496973e564fe31565aa969"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/4999__3_large.jpeg",
+          "sha256": "adfda2e840688fc7c8a1325b355540682907d3aae5c4f4a6927ed8629b3cac68"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
+      "coatColor": "brown-white",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ]
+    },
+    {
+      "animalId": "macja-hisa:5004",
+      "providerId": "macja-hisa",
+      "sourceUrl": "https://www.macjahisa.si/posvojitev/muce/5004",
+      "species": "cat",
+      "coatColors": [
+        "brown",
+        "black",
+        "cream",
+        "orange"
+      ],
+      "coatLength": "short",
+      "evidence": [
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5004__1_large.jpeg",
+          "sha256": "eea601be77eb5f604846cacc8ced24f3974f978f3e5c71e0855f65d05c8f6f31"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5004__2_large.jpeg",
+          "sha256": "3647443b8d4c1eade53986dbfc3aa0fa9c0afdaec0bf1705a0c582884e333154"
+        },
+        {
+          "sourceUrl": "https://www.macjahisa.si/files/oglasi_muce/5004__3_large.jpeg",
+          "sha256": "10bf4c9388ab71af16754019a4a23befbfb8d99cfca097a77b3f89a50360d643"
+        }
+      ],
+      "reviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
+      ],
+      "coatColor": "multicolour",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/pipeline_audit"
       ]
     }
   ]

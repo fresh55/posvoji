@@ -111,30 +111,29 @@ function parseIdentity($: cheerio.CheerioAPI): {
   }
 
   // Mačja hiša occasionally publishes a dog on its /muce/ list. In that
-  // case both the list card and detail heading carry an explicit "pes"
-  // prefix; the URL and /files/oglasi_muce/ photo path remain cat-shaped.
-  // The prefix has shown up as "Pes: Medo", "PES - Medo" and with a
-  // non-breaking space ("pes\u00a0Medo"), so match the leading word loosely:
+  // case the detail heading carries an explicit "pes" or "psička" prefix;
+  // the URL and /files/oglasi_muce/ photo path remain cat-shaped.
+  // The prefixes include "Pes: Medo", "PES - Medo", "psička Nutella" and
+  // non-breaking spaces ("pes\u00a0Medo"), so match the leading word loosely:
   // case-insensitive, optionally followed by punctuation and/or whitespace
   // before the name.
-  const dog = heading.match(/^pes\b[\s:\-/\u00a0]*(.*)$/iu);
+  const dog = heading.match(/^(?:pes|psička)\b[\s:\-/\u00a0]*(.*)$/iu);
   return dog
     ? { name: dog[1]!.trim() || undefined, species: "dog" }
     : { name: heading || undefined, species: "cat" };
 }
 
-// "3 leta", "1 leto", "10 mesecev", "7 let in 1 mesec". The lookbehind keeps
-// fractional or ranged ages ("1,5 leta", "2-3 leta") out: better no age than a
-// wrong one.
+// "3 leta", "1 leto", "10 mesecev", "7 let in 1 mesec". Reject uncertain
+// values before reading either unit: better no age than a partial one.
 export function parseAgeMonths(value: string): number | undefined {
-  return wholeMonths(readAgeMonths(value));
-}
-
-function readAgeMonths(value: string): number | undefined {
+  // A range of months beside an integer year must not become that year alone.
+  if (/[-–—−/]|\d[.,]\d|\b(?:do|ali|med|pol)\b/iu.test(value)) {
+    return undefined;
+  }
   const years = value.match(/(?<![\d,.-])(\d+)\s*let/i);
   const months = value.match(/(?<![\d,.-])(\d+)\s*mesec/i);
   if (!years && !months) return undefined;
-  return (
+  return wholeMonths(
     (years ? Number(years[1]) * 12 : 0) + (months ? Number(months[1]) : 0)
   );
 }
@@ -161,7 +160,10 @@ function cardByTitle($: cheerio.CheerioAPI, title: RegExp) {
     .first();
 }
 
-function parseMedical($: cheerio.CheerioAPI): AnimalMedical | undefined {
+function parseMedical(
+  $: cheerio.CheerioAPI,
+  species: Species,
+): AnimalMedical | undefined {
   // Vet facts only come from the "Veterinarski status" card; without it there
   // is nothing trustworthy to read.
   const card = cardByTitle($, /veterinarski status/i);
@@ -204,8 +206,12 @@ function parseMedical($: cheerio.CheerioAPI): AnimalMedical | undefined {
     neutered: done(/sterilizacija|kastracija/i),
     microchipped: done(/čipiranje/i),
     vaccinated: done(/cepljenje/i),
-    felv: test(/\bfelv\b/i),
-    fiv: test(/\bfiv\b/i),
+    // The same template appears on the site's dog listings too. Feline test
+    // icons there do not establish a meaningful test result for that species.
+    ...(species === "cat" ? {
+      felv: test(/\bfelv\b/i),
+      fiv: test(/\bfiv\b/i),
+    } : {}),
   }).filter(([, value]) => value !== undefined);
   return found.length > 0
     ? (Object.fromEntries(found) as AnimalMedical)
@@ -216,6 +222,7 @@ function parseDescription($: cheerio.CheerioAPI): string | undefined {
   // clone(): the paragraph rewriting below must not leak into other parsers.
   const body = $(".content-body").first().clone();
   if (body.length === 0) return undefined;
+  body.find("script, style, template, noscript").remove();
   body.find("br").replaceWith("\n");
   body.find("p").each((_, el) => {
     $(el).append("\n\n");
@@ -262,7 +269,7 @@ export function parseDetail(html: string): DetailFacts {
     approximateAgeMonths: ageRaw ? parseAgeMonths(ageRaw) : undefined,
     intakeDate: intakeRaw ? parseSlovenianDate(intakeRaw) : undefined,
     description: parseDescription($),
-    medical: parseMedical($),
+    medical: parseMedical($, identity.species),
     imageUrls,
   };
 }
@@ -281,7 +288,17 @@ const provider: AdoptionProvider = {
     if (res.status !== 200 || res.body === null) {
       throw new Error(`${PROVIDER_ID}: list fetch failed with HTTP ${res.status}`);
     }
-    return parseList(res.body);
+    const refs = parseList(res.body);
+    if (refs.length === 0) {
+      const $ = cheerio.load(res.body);
+      // The documented list fixture has a .seznam-muc-list wrapper even if
+      // its animal cards are empty. A maintenance page lacks that marker;
+      // cards with no valid detail refs are malformed, rather than empty.
+      if ($(".seznam-muc-list").length === 0 || $(".seznam-muc-list-item").length > 0) {
+        throw new Error(`${PROVIDER_ID}: catalogue is absent or malformed`);
+      }
+    }
+    return refs;
   },
 
   async fetch(ctx, ref) {

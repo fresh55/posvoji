@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-16T19:35:27.928Z",
+  "reviewedAt": "2026-10-17T11:33:52Z",
   "records": [
     {
       "animalId": "horjul:1017",
@@ -3924,6 +3924,15 @@
       "reviewedBy": [
         "/root",
         "/root/photo_audit"
+      ],
+      "coatColor": "brown",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "coatColors": [
+        "brown",
+        "black"
       ]
     },
     {
@@ -4039,7 +4048,17 @@
       ],
       "reviewedBy": [
         "/root",
-        "/root/photo_audit"
+        "/root/filter_audit"
+      ],
+      "coatColor": "brown",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/filter_audit"
+      ],
+      "coatColors": [
+        "brown",
+        "black",
+        "white"
       ]
     },
     {
@@ -4600,6 +4619,11 @@
       "reviewedBy": [
         "/root",
         "/root/photo_audit"
+      ],
+      "coatColor": "brown",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -4942,6 +4966,11 @@
       "reviewedBy": [
         "/root",
         "/root/photo_audit"
+      ],
+      "coatColor": "cream",
+      "coatColorReviewedBy": [
+        "/root",
+        "/root/photo_audit"
       ]
     },
     {
@@ -5123,6 +5152,11 @@
         }
       ],
       "reviewedBy": [
+        "/root",
+        "/root/photo_audit"
+      ],
+      "coatColor": "cream",
+      "coatColorReviewedBy": [
         "/root",
         "/root/photo_audit"
       ]

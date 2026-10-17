@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-10-16T19:35:27.928Z",
+  "reviewedAt": "2026-10-17T11:33:52Z",
   "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
   "fields": [
     "name",
@@ -20817,9 +20817,9 @@
         "/root/filter_audit"
       ],
       "batch": "ljubljana-2026-10-16",
-      "reviewedAt": "2026-10-16T14:25:09.463Z",
-      "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
-      "sourceCheckedAt": "2026-10-16T13:50:34.222Z",
+      "reviewedAt": "2026-10-17T11:33:52Z",
+      "snapshotGeneratedAt": "2026-10-17T11:13:39.598Z",
+      "sourceCheckedAt": "2026-10-17T08:15:17.943Z",
       "descriptionReviewed": true,
       "textReview": {
         "reviewedBy": [
@@ -20836,8 +20836,8 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T14:07:44.161Z",
-        "observation": "Reviewed all 2 current photos. Published palette: unanswered; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+        "reviewedAt": "2026-10-17T11:32:11.077Z",
+        "observation": "Reviewed all 2 current cached master photos. Approved palette: brown, black; main category: brown. Existing coat length short and its earlier reviewers are preserved. Dedicated colour review: 2026-10-17.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
@@ -20852,25 +20852,31 @@
           "coatLength": [
             "/root",
             "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/photo_audit"
+          ],
+          "coatColors": [
+            "/root",
+            "/root/photo_audit"
           ]
         },
         "independentObservation": {
           "reviewer": "/root/photo_audit",
-          "reviewDate": "2026-10-16",
-          "scope": "coatColor-only",
-          "proposedFields": {},
-          "reason": "Enlarged first photo reads grey tabby, while second reads strongly brown tabby. The source only says tabby. Without a reliable stable grey-versus-brown decision, leave the filter category absent; combining them would invent a multicolour coat."
-        },
-        "uncertainFields": [
-          {
-            "field": "coatColor",
-            "reason": "Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed."
+          "reviewedAt": "2026-10-17T11:32:11.077Z",
+          "reviewDate": "2026-10-17",
+          "scope": "coatColor-and-coatColors",
+          "proposedFields": {
+            "coatColor": "brown",
+            "coatColors": [
+              "brown",
+              "black"
+            ]
           },
-          {
-            "field": "coatColors",
-            "reason": "Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed."
-          }
-        ],
+          "reason": "The full curled side-body view shows a brown tabby base through the flank, face and ears with black stripes. The cooler frontal view makes its pale undercoat look grey, but still has warm base fur at the nose/cheeks/back; it does not establish a separate grey body area. Brown is the best overall tabby category, and striping does not make Multicolour."
+        },
+        "uncertainFields": [],
         "adjudications": [],
         "independentObservationHistory": [
           {
@@ -20880,6 +20886,13 @@
               "coatLength": "short"
             },
             "reason": "Black tabby stripes consistent, but first original appears grey under cool light and second distinctly brown under warm light. Omit coatColors and primary category rather than assert combined brown-grey coat; short fur is consistent."
+          },
+          {
+            "reviewer": "/root/photo_audit",
+            "reviewDate": "2026-10-16",
+            "scope": "coatColor-only",
+            "proposedFields": {},
+            "reason": "Enlarged first photo reads grey tabby, while second reads strongly brown tabby. The source only says tabby. Without a reliable stable grey-versus-brown decision, leave the filter category absent; combining them would invent a multicolour coat."
           }
         ]
       },
@@ -20893,7 +20906,9 @@
         "coatLength",
         "medical.vaccinated",
         "medical.neutered",
-        "medical.microchipped"
+        "medical.microchipped",
+        "coatColor",
+        "coatColors"
       ],
       "unknownFields": [
         "breed",
@@ -20904,8 +20919,6 @@
         "foundDate",
         "intakeBy",
         "originMunicipality",
-        "coatColors",
-        "coatColor",
         "medical.fiv",
         "medical.felv",
         "goodWith.kids",
@@ -20921,26 +20934,25 @@
         "adoptionRequirements.noYoungKids"
       ],
       "updatedFields": [
-        "coatLength"
-      ],
-      "unresolvedFields": [
+        "coatLength",
         "coatColor",
         "coatColors"
       ],
-      "secondaryReviewNotes": "coatColor: Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed. coatColors: Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed.",
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "",
       "rejectedClaims": [],
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T14:25:09.463Z",
-        "reviewDate": "2026-10-16",
-        "category": null,
+        "reviewedAt": "2026-10-17T11:33:52Z",
+        "reviewDate": "2026-10-17",
+        "category": "brown",
         "reviewedBy": [
           "/root",
           "/root/photo_audit"
         ],
-        "status": "left-unknown",
-        "reason": "Enlarged first photo reads grey tabby, while second reads strongly brown tabby. The source only says tabby. Without a reliable stable grey-versus-brown decision, leave the filter category absent; combining them would invent a multicolour coat.",
+        "status": "confirmed",
+        "reason": "The full side-body view shows a brown tabby base with black stripes. The cooler frontal photo changes the apparent shade, not the underlying main coat. Striping does not require Multicolour.",
         "previousReviews": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -20951,20 +20963,70 @@
             ],
             "status": "left-unknown",
             "reason": "Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed."
+          },
+          {
+            "reviewedAt": "2026-10-16T14:25:09.463Z",
+            "reviewDate": "2026-10-16",
+            "category": null,
+            "reviewedBy": [
+              "/root",
+              "/root/photo_audit"
+            ],
+            "status": "left-unknown",
+            "reason": "Enlarged first photo reads grey tabby, while second reads strongly brown tabby. The source only says tabby. Without a reliable stable grey-versus-brown decision, leave the filter category absent; combining them would invent a multicolour coat.",
+            "inspectedPhotoCount": 2,
+            "supportingPhotos": [
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
+                "photoIndex": 1
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209.jpg",
+                "photoIndex": 2
+              }
+            ],
+            "enlargedOriginalCount": 2,
+            "secondaryReviewNotes": "coatColor: Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed. coatColors: Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed.",
+            "photoReviewedAt": "2026-10-16T14:07:44.161Z",
+            "photoObservation": "Reviewed all 2 current photos. Published palette: unanswered; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+            "uncertainFields": [
+              {
+                "field": "coatColor",
+                "reason": "Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed."
+              },
+              {
+                "field": "coatColors",
+                "reason": "Cool and warm lighting change the apparent tabby base between grey and brown; no stable palette or filter category was independently confirmed."
+              }
+            ]
           }
         ],
         "inspectedPhotoCount": 2,
         "supportingPhotos": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209-1.jpg",
-            "photoIndex": 1
+            "photoIndex": 1,
+            "sha256": "debd63032dad728432f9d48b27dbd64da3282cb5362832dd97be4f7fce76c723",
+            "cacheMaster": "debd63032dad7284.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26021209.jpg",
-            "photoIndex": 2
+            "photoIndex": 2,
+            "sha256": "90387632ff3e1baa26e6a295bdc00f0a756408a64be9f9b099eeda81823d2b82",
+            "cacheMaster": "90387632ff3e1baa.webp"
           }
         ],
-        "enlargedOriginalCount": 2
+        "enlargedOriginalCount": 0,
+        "sourceBinding": {
+          "releaseId": "a87a481f2998-20261017T111344Z-a8bac9650fd33766",
+          "datasetGeneratedAt": "2026-10-17T11:13:39.598Z",
+          "sourceFetchedAt": "2026-10-17T08:15:17.943Z",
+          "descriptionSha256": "e8fff251a821eb85c36e30bf24f29ccd4f46428ec047fbae63c7d5e27f7ce475",
+          "cacheSha256": "3764f9e2950874cffd995dd69107110fb9b1663d28454f24cd7a68e49a684a8b",
+          "cacheCanonicalSha256": "95c6cf5cb2b16e202ca98bca04e3bd5b1b060cabebab4768cdd703903bf6a1bb",
+          "manifestSha256": "fe97251d99355bd598c0ab3a9a8d20e5dcfd84b35c9c7c85e80e8bdd8f1888fe"
+        },
+        "cachedMasterCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -21554,9 +21616,9 @@
         "/root/filter_audit"
       ],
       "batch": "ljubljana-2026-10-16",
-      "reviewedAt": "2026-10-16T14:25:09.463Z",
-      "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
-      "sourceCheckedAt": "2026-10-16T13:50:46.734Z",
+      "reviewedAt": "2026-10-17T11:33:52Z",
+      "snapshotGeneratedAt": "2026-10-17T11:13:39.598Z",
+      "sourceCheckedAt": "2026-10-17T08:15:30.199Z",
       "descriptionReviewed": true,
       "textReview": {
         "reviewedBy": [
@@ -21573,8 +21635,8 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T14:07:44.161Z",
-        "observation": "Reviewed all 3 current photos. Published palette: unanswered; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+        "reviewedAt": "2026-10-17T11:32:11.077Z",
+        "observation": "Viewed all 3 current cached master photos. The independent photo assessment is pale cream/fawn with a dark mask and small white chest bib. The final broad Brown category and source-backed palette are approved separately in the source-priority adjudication; this is not photo-only Brown agreement. Existing short coat and its earlier reviewers are preserved.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
@@ -21593,26 +21655,60 @@
           "coatLength": [
             "/root",
             "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/filter_audit"
+          ],
+          "coatColors": [
+            "/root",
+            "/root/filter_audit"
           ]
         },
         "independentObservation": {
           "reviewer": "/root/photo_audit",
-          "reviewDate": "2026-10-16",
-          "scope": "coatColor-only",
-          "proposedFields": {},
-          "reason": "Source says brown, while enlarged outdoor photograph is very pale fawn/cream with dark mask. One base colour clearly dominates, but the brown-versus-cream category boundary remains unresolved. Leave absent rather than quietly placing this dog in Orange through cream folding."
-        },
-        "uncertainFields": [
-          {
-            "field": "coatColor",
-            "reason": "Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered."
+          "reviewedAt": "2026-10-17T11:32:11.077Z",
+          "reviewDate": "2026-10-17",
+          "scope": "coatColor-and-coatColors",
+          "proposedFields": {
+            "coatColor": "cream",
+            "coatColors": [
+              "cream",
+              "black",
+              "white"
+            ]
           },
+          "reason": "Both outdoor views consistently show a very pale sandy/fawn coat over the whole trunk, head and limbs. In the closest permitted palette, Cream describes that pale base; the black muzzle/ears and small white chest patch/toes are subordinate markings. The dim indoor view darkens the same pale coat and does not show a separate broad brown patch. Neither a white pair nor Multicolour is justified."
+        },
+        "uncertainFields": [],
+        "adjudications": [
           {
-            "field": "coatColors",
-            "reason": "Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered."
+            "reviewedAt": "2026-10-17T11:33:52Z",
+            "reviewedBy": [
+              "/root",
+              "/root/filter_audit"
+            ],
+            "fields": [
+              "coatColor",
+              "coatColors"
+            ],
+            "resolution": "source-priority",
+            "approvedFields": {
+              "coatColor": "brown",
+              "coatColors": [
+                "brown",
+                "black",
+                "white"
+              ]
+            },
+            "sourceEvidence": {
+              "description": "rjav",
+              "descriptionSha256": "8532a72a12995c903e31b004d6920c2df2f1204b821fafbc6a230d762cb0bec7",
+              "fetchedAt": "2026-10-17T08:15:30.199Z"
+            },
+            "reason": "The current shelter description explicitly states rjav (brown). Photos show a pale fawn-looking variant with a dark mask and a small white chest bib. Retain the source-backed broad Brown category rather than override it with the narrower photo-only Cream interpretation; preserve that independent visual observation as dissent."
           }
         ],
-        "adjudications": [],
         "independentObservationHistory": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -21626,6 +21722,13 @@
               "coatLength": "short"
             },
             "reason": "Predominantly cream/fawn body and dark mask/ears; short close coat."
+          },
+          {
+            "reviewer": "/root/photo_audit",
+            "reviewDate": "2026-10-16",
+            "scope": "coatColor-only",
+            "proposedFields": {},
+            "reason": "Source says brown, while enlarged outdoor photograph is very pale fawn/cream with dark mask. One base colour clearly dominates, but the brown-versus-cream category boundary remains unresolved. Leave absent rather than quietly placing this dog in Orange through cream folding."
           }
         ]
       },
@@ -21639,7 +21742,9 @@
         "coatLength",
         "medical.vaccinated",
         "medical.neutered",
-        "medical.microchipped"
+        "medical.microchipped",
+        "coatColor",
+        "coatColors"
       ],
       "unknownFields": [
         "breed",
@@ -21650,8 +21755,6 @@
         "foundDate",
         "intakeBy",
         "originMunicipality",
-        "coatColors",
-        "coatColor",
         "medical.fiv",
         "medical.felv",
         "goodWith.kids",
@@ -21667,26 +21770,25 @@
         "adoptionRequirements.noYoungKids"
       ],
       "updatedFields": [
-        "coatLength"
-      ],
-      "unresolvedFields": [
+        "coatLength",
         "coatColor",
         "coatColors"
       ],
-      "secondaryReviewNotes": "coatColor: Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered. coatColors: Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered.",
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "",
       "rejectedClaims": [],
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T14:25:09.463Z",
-        "reviewDate": "2026-10-16",
-        "category": null,
+        "reviewedAt": "2026-10-17T11:33:52Z",
+        "reviewDate": "2026-10-17",
+        "category": "brown",
         "reviewedBy": [
           "/root",
-          "/root/photo_audit"
+          "/root/filter_audit"
         ],
-        "status": "left-unknown",
-        "reason": "Source says brown, while enlarged outdoor photograph is very pale fawn/cream with dark mask. One base colour clearly dominates, but the brown-versus-cream category boundary remains unresolved. Leave absent rather than quietly placing this dog in Orange through cream folding.",
+        "status": "confirmed",
+        "reason": "The current shelter description explicitly states rjav (brown). Photos show a pale fawn-looking variant with a dark mask and a small white chest bib. Retain the source-backed broad Brown category rather than override it with the narrower photo-only Cream interpretation; preserve that independent visual observation as dissent.",
         "previousReviews": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -21697,24 +21799,85 @@
             ],
             "status": "left-unknown",
             "reason": "Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered."
+          },
+          {
+            "reviewedAt": "2026-10-16T14:25:09.463Z",
+            "reviewDate": "2026-10-16",
+            "category": null,
+            "reviewedBy": [
+              "/root",
+              "/root/photo_audit"
+            ],
+            "status": "left-unknown",
+            "reason": "Source says brown, while enlarged outdoor photograph is very pale fawn/cream with dark mask. One base colour clearly dominates, but the brown-versus-cream category boundary remains unresolved. Leave absent rather than quietly placing this dog in Orange through cream folding.",
+            "inspectedPhotoCount": 3,
+            "supportingPhotos": [
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
+                "photoIndex": 1
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-2.jpg",
+                "photoIndex": 2
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-1.jpg",
+                "photoIndex": 3
+              }
+            ],
+            "enlargedOriginalCount": 1,
+            "secondaryReviewNotes": "coatColor: Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered. coatColors: Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered.",
+            "photoReviewedAt": "2026-10-16T14:07:44.161Z",
+            "photoObservation": "Reviewed all 3 current photos. Published palette: unanswered; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+            "uncertainFields": [
+              {
+                "field": "coatColor",
+                "reason": "Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered."
+              },
+              {
+                "field": "coatColors",
+                "reason": "Primary and secondary reviewers did not confirm the same dominant colour category; the palette and category remain unanswered."
+              }
+            ]
           }
         ],
         "inspectedPhotoCount": 3,
         "supportingPhotos": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-3.jpg",
-            "photoIndex": 1
+            "photoIndex": 1,
+            "sha256": "b77f960bf4fc2bb4989ef117f5b123312500288be063f11d9fef27355a1d8185",
+            "cacheMaster": "b77f960bf4fc2bb4.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-2.jpg",
-            "photoIndex": 2
+            "photoIndex": 2,
+            "sha256": "7eba962475f83bc129286db8e4421d6ed100b2b4b9d0f3c1ad5c67288fee179e",
+            "cacheMaster": "7eba962475f83bc1.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/26010199-1.jpg",
-            "photoIndex": 3
+            "photoIndex": 3,
+            "sha256": "0d6ebcd6027c56f4e638efeefc65c5556a0509a06f871e821ec4c7f7a0af9203",
+            "cacheMaster": "0d6ebcd6027c56f4.webp"
           }
         ],
-        "enlargedOriginalCount": 1
+        "enlargedOriginalCount": 0,
+        "sourceBinding": {
+          "releaseId": "a87a481f2998-20261017T111344Z-a8bac9650fd33766",
+          "datasetGeneratedAt": "2026-10-17T11:13:39.598Z",
+          "sourceFetchedAt": "2026-10-17T08:15:30.199Z",
+          "descriptionSha256": "8532a72a12995c903e31b004d6920c2df2f1204b821fafbc6a230d762cb0bec7",
+          "cacheSha256": "3764f9e2950874cffd995dd69107110fb9b1663d28454f24cd7a68e49a684a8b",
+          "cacheCanonicalSha256": "95c6cf5cb2b16e202ca98bca04e3bd5b1b060cabebab4768cdd703903bf6a1bb",
+          "manifestSha256": "fe97251d99355bd598c0ab3a9a8d20e5dcfd84b35c9c7c85e80e8bdd8f1888fe"
+        },
+        "sourceEvidence": {
+          "description": "rjav",
+          "descriptionSha256": "8532a72a12995c903e31b004d6920c2df2f1204b821fafbc6a230d762cb0bec7",
+          "fetchedAt": "2026-10-17T08:15:30.199Z"
+        },
+        "cachedMasterCount": 3
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -25117,9 +25280,9 @@
         "/root/filter_audit"
       ],
       "batch": "ljubljana-2026-10-16",
-      "reviewedAt": "2026-10-16T14:25:09.463Z",
-      "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
-      "sourceCheckedAt": "2026-10-16T13:51:36.315Z",
+      "reviewedAt": "2026-10-17T11:33:52Z",
+      "snapshotGeneratedAt": "2026-10-17T11:13:39.598Z",
+      "sourceCheckedAt": "2026-10-17T08:16:25.759Z",
       "descriptionReviewed": true,
       "textReview": {
         "reviewedBy": [
@@ -25189,8 +25352,8 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T14:07:44.161Z",
-        "observation": "Reviewed all 2 current photos. Published palette: brown, cream, white; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+        "reviewedAt": "2026-10-17T11:32:11.077Z",
+        "observation": "Reviewed all 2 current cached master photos. Approved palette: brown, cream, white; main category: brown. Existing coat length short and its earlier reviewers are preserved. Dedicated colour review: 2026-10-17.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
@@ -25209,21 +25372,28 @@
           "coatLength": [
             "/root",
             "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/photo_audit"
           ]
         },
         "independentObservation": {
           "reviewer": "/root/photo_audit",
-          "reviewDate": "2026-10-16",
-          "scope": "coatColor-only",
-          "proposedFields": {},
-          "reason": "Tan/brown dominates, but two frontal photographs do not resolve how much of pale chest/legs is true white versus cream or gradual lightening. They also provide limited flank coverage. Keep absent rather than force the dominant-versus-paired-white boundary."
+          "reviewedAt": "2026-10-17T11:32:11.077Z",
+          "reviewDate": "2026-10-17",
+          "scope": "coatColor-and-coatColors",
+          "proposedFields": {
+            "coatColor": "brown",
+            "coatColors": [
+              "brown",
+              "cream",
+              "white"
+            ]
+          },
+          "reason": "Both full-size poses show a consistently tan/brown head, shoulder and trunk, with lighter cream chest/underside and small white feet/tail-tip markings. Brown reads as the main coat. The pale extremities do not turn the whole animal into a white pair, and a complete flank-only pose is not a prerequisite for recognising this dominant tan/brown body."
         },
-        "uncertainFields": [
-          {
-            "field": "coatColor",
-            "reason": "Tan, cream and white areas are visible, but dominant brown versus a white-pair category was not established confidently."
-          }
-        ],
+        "uncertainFields": [],
         "adjudications": [],
         "independentObservationHistory": [
           {
@@ -25238,6 +25408,13 @@
               "coatLength": "short"
             },
             "reason": "Enlarged first photo shows tan/brown head/back and cream lower chest/legs, with small white toes and tail tip. White-pair vs dominant brown is ambiguous; omit primary category. Compact short coat."
+          },
+          {
+            "reviewer": "/root/photo_audit",
+            "reviewDate": "2026-10-16",
+            "scope": "coatColor-only",
+            "proposedFields": {},
+            "reason": "Tan/brown dominates, but two frontal photographs do not resolve how much of pale chest/legs is true white versus cream or gradual lightening. They also provide limited flank coverage. Keep absent rather than force the dominant-versus-paired-white boundary."
           }
         ]
       },
@@ -25257,7 +25434,8 @@
         "goodWith.dogs",
         "goodWith.cats",
         "adoptionRequirements.experiencedCarer",
-        "adoptionRequirements.onlyPet"
+        "adoptionRequirements.onlyPet",
+        "coatColor"
       ],
       "unknownFields": [
         "breed",
@@ -25267,7 +25445,6 @@
         "foundDate",
         "intakeBy",
         "originMunicipality",
-        "coatColor",
         "medical.fiv",
         "medical.felv",
         "goodWith.kids",
@@ -25284,25 +25461,24 @@
         "goodWith.dogs",
         "goodWith.cats",
         "adoptionRequirements.experiencedCarer",
-        "adoptionRequirements.onlyPet"
-      ],
-      "unresolvedFields": [
+        "adoptionRequirements.onlyPet",
         "coatColor"
       ],
-      "secondaryReviewNotes": "coatColor: Tan, cream and white areas are visible, but dominant brown versus a white-pair category was not established confidently.",
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "",
       "rejectedClaims": [],
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T14:25:09.463Z",
-        "reviewDate": "2026-10-16",
-        "category": null,
+        "reviewedAt": "2026-10-17T11:33:52Z",
+        "reviewDate": "2026-10-17",
+        "category": "brown",
         "reviewedBy": [
           "/root",
           "/root/photo_audit"
         ],
-        "status": "left-unknown",
-        "reason": "Tan/brown dominates, but two frontal photographs do not resolve how much of pale chest/legs is true white versus cream or gradual lightening. They also provide limited flank coverage. Keep absent rather than force the dominant-versus-paired-white boundary.",
+        "status": "confirmed",
+        "reason": "Golden-tan/brown fur dominates both photographs. The pale chest, toes and tail tip are secondary markings; a side-on photograph is not required to establish this visible broad base.",
         "previousReviews": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -25313,20 +25489,66 @@
             ],
             "status": "left-unknown",
             "reason": "Tan, cream and white areas are visible, but dominant brown versus a white-pair category was not established confidently."
+          },
+          {
+            "reviewedAt": "2026-10-16T14:25:09.463Z",
+            "reviewDate": "2026-10-16",
+            "category": null,
+            "reviewedBy": [
+              "/root",
+              "/root/photo_audit"
+            ],
+            "status": "left-unknown",
+            "reason": "Tan/brown dominates, but two frontal photographs do not resolve how much of pale chest/legs is true white versus cream or gradual lightening. They also provide limited flank coverage. Keep absent rather than force the dominant-versus-paired-white boundary.",
+            "inspectedPhotoCount": 2,
+            "supportingPhotos": [
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
+                "photoIndex": 1
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-1.jpg",
+                "photoIndex": 2
+              }
+            ],
+            "enlargedOriginalCount": 1,
+            "secondaryReviewNotes": "coatColor: Tan, cream and white areas are visible, but dominant brown versus a white-pair category was not established confidently.",
+            "photoReviewedAt": "2026-10-16T14:07:44.161Z",
+            "photoObservation": "Reviewed all 2 current photos. Published palette: brown, cream, white; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+            "uncertainFields": [
+              {
+                "field": "coatColor",
+                "reason": "Tan, cream and white areas are visible, but dominant brown versus a white-pair category was not established confidently."
+              }
+            ]
           }
         ],
         "inspectedPhotoCount": 2,
         "supportingPhotos": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-%282%29.jpg",
-            "photoIndex": 1
+            "photoIndex": 1,
+            "sha256": "e25d1570a1e869d1e1bdf1bdb99cb15b0cc624a1d52ec2907b954ef9a964710e",
+            "cacheMaster": "e25d1570a1e869d1.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/25010274-1.jpg",
-            "photoIndex": 2
+            "photoIndex": 2,
+            "sha256": "ac1df2492dd215f3f72960080d13588c1d751599a3aec16f48274a6598ffb24d",
+            "cacheMaster": "ac1df2492dd215f3.webp"
           }
         ],
-        "enlargedOriginalCount": 1
+        "enlargedOriginalCount": 0,
+        "sourceBinding": {
+          "releaseId": "a87a481f2998-20261017T111344Z-a8bac9650fd33766",
+          "datasetGeneratedAt": "2026-10-17T11:13:39.598Z",
+          "sourceFetchedAt": "2026-10-17T08:16:25.759Z",
+          "descriptionSha256": "603326e1c3cf8490e8771b0d9673dfe4b050780914a7ea4093484abe73cfd14f",
+          "cacheSha256": "3764f9e2950874cffd995dd69107110fb9b1663d28454f24cd7a68e49a684a8b",
+          "cacheCanonicalSha256": "95c6cf5cb2b16e202ca98bca04e3bd5b1b060cabebab4768cdd703903bf6a1bb",
+          "manifestSha256": "fe97251d99355bd598c0ab3a9a8d20e5dcfd84b35c9c7c85e80e8bdd8f1888fe"
+        },
+        "cachedMasterCount": 2
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -27188,9 +27410,9 @@
         "/root/filter_audit"
       ],
       "batch": "ljubljana-2026-10-16",
-      "reviewedAt": "2026-10-16T14:25:09.463Z",
-      "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
-      "sourceCheckedAt": "2026-10-16T13:51:58.135Z",
+      "reviewedAt": "2026-10-17T11:33:52Z",
+      "snapshotGeneratedAt": "2026-10-17T11:13:39.598Z",
+      "sourceCheckedAt": "2026-10-17T08:16:47.360Z",
       "descriptionReviewed": true,
       "textReview": {
         "reviewedBy": [
@@ -27273,8 +27495,8 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T14:07:44.161Z",
-        "observation": "Reviewed all 9 current photos. Published palette: cream, grey, black; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+        "reviewedAt": "2026-10-17T11:32:11.077Z",
+        "observation": "Reviewed all 9 current cached master photos. Approved palette: cream, grey, black; main category: cream. Existing coat length short and its earlier reviewers are preserved. Dedicated colour review: 2026-10-17.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
@@ -27321,21 +27543,28 @@
           "coatLength": [
             "/root",
             "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/photo_audit"
           ]
         },
         "independentObservation": {
           "reviewer": "/root/photo_audit",
-          "reviewDate": "2026-10-16",
-          "scope": "coatColor-only",
-          "proposedFields": {},
-          "reason": "Enlarged indoor and outdoor full-body views still vary between pale cream/tan body and grey-white overlay. The apparent boundaries are blended rather than clear two-tone patches; leave unknown until the stable base shade can be agreed."
+          "reviewedAt": "2026-10-17T11:32:11.077Z",
+          "reviewDate": "2026-10-17",
+          "scope": "coatColor-and-coatColors",
+          "proposedFields": {
+            "coatColor": "cream",
+            "coatColors": [
+              "cream",
+              "grey",
+              "black"
+            ]
+          },
+          "reason": "Across nine full masters, especially the indoor standing side-body view and outdoor full-body poses, the broad trunk and limbs have a pale cream/fawn base. Grey-tipped hairs and the dark muzzle/ear mask produce a cooler face and neck, but do not replace that dominant pale body base. Cream is the closest main-colour option; the diffuse grey overlay is descriptive rather than a balanced distinct-colour coat."
         },
-        "uncertainFields": [
-          {
-            "field": "coatColor",
-            "reason": "Pale cream, grey overlay and dark mask change in prominence across lighting; the dominant filter category remains uncertain."
-          }
-        ],
+        "uncertainFields": [],
         "adjudications": [],
         "independentObservationHistory": [
           {
@@ -27350,6 +27579,13 @@
               "coatLength": "short"
             },
             "reason": "Pale cream/fawn body with grey overlay and dark ears/mask. Body color varies enough across lights that primary cream/grey/white category is unresolved, so omit it. Compact dense body fur."
+          },
+          {
+            "reviewer": "/root/photo_audit",
+            "reviewDate": "2026-10-16",
+            "scope": "coatColor-only",
+            "proposedFields": {},
+            "reason": "Enlarged indoor and outdoor full-body views still vary between pale cream/tan body and grey-white overlay. The apparent boundaries are blended rather than clear two-tone patches; leave unknown until the stable base shade can be agreed."
           }
         ]
       },
@@ -27371,7 +27607,8 @@
         "goodWith.dogs",
         "goodWith.cats",
         "adoptionRequirements.onlyPet",
-        "adoptionRequirements.noYoungKids"
+        "adoptionRequirements.noYoungKids",
+        "coatColor"
       ],
       "unknownFields": [
         "approximateAgeMonths",
@@ -27379,7 +27616,6 @@
         "foundDate",
         "intakeBy",
         "originMunicipality",
-        "coatColor",
         "medical.fiv",
         "medical.felv",
         "goodWith.kids",
@@ -27397,12 +27633,11 @@
         "goodWith.dogs",
         "goodWith.cats",
         "adoptionRequirements.onlyPet",
-        "adoptionRequirements.noYoungKids"
-      ],
-      "unresolvedFields": [
+        "adoptionRequirements.noYoungKids",
         "coatColor"
       ],
-      "secondaryReviewNotes": "coatColor: Pale cream, grey overlay and dark mask change in prominence across lighting; the dominant filter category remains uncertain.",
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "",
       "rejectedClaims": [
         {
           "field": "adoptionRequirements.ongoingCare",
@@ -27418,15 +27653,15 @@
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T14:25:09.463Z",
-        "reviewDate": "2026-10-16",
-        "category": null,
+        "reviewedAt": "2026-10-17T11:33:52Z",
+        "reviewDate": "2026-10-17",
+        "category": "cream",
         "reviewedBy": [
           "/root",
           "/root/photo_audit"
         ],
-        "status": "left-unknown",
-        "reason": "Enlarged indoor and outdoor full-body views still vary between pale cream/tan body and grey-white overlay. The apparent boundaries are blended rather than clear two-tone patches; leave unknown until the stable base shade can be agreed.",
+        "status": "confirmed",
+        "reason": "Whole-body studio and outdoor views show a continuous pale fawn/cream trunk and legs, with grey sable shading and a dark mask. Portraits emphasise the grey head and neck. The closest stable broad base is Cream; these overlays do not require a white-pair or Multicolour category.",
         "previousReviews": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -27437,48 +27672,136 @@
             ],
             "status": "left-unknown",
             "reason": "Pale cream, grey overlay and dark mask change in prominence across lighting; the dominant filter category remains uncertain."
+          },
+          {
+            "reviewedAt": "2026-10-16T14:25:09.463Z",
+            "reviewDate": "2026-10-16",
+            "category": null,
+            "reviewedBy": [
+              "/root",
+              "/root/photo_audit"
+            ],
+            "status": "left-unknown",
+            "reason": "Enlarged indoor and outdoor full-body views still vary between pale cream/tan body and grey-white overlay. The apparent boundaries are blended rather than clear two-tone patches; leave unknown until the stable base shade can be agreed.",
+            "inspectedPhotoCount": 9,
+            "supportingPhotos": [
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
+                "photoIndex": 1
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-%288%29.jpg",
+                "photoIndex": 2
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-6.jpg",
+                "photoIndex": 3
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-11.jpg",
+                "photoIndex": 4
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-7.jpg",
+                "photoIndex": 5
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-5.jpg",
+                "photoIndex": 6
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1713631025.jpg",
+                "photoIndex": 7
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-2-1710758619.jpg",
+                "photoIndex": 8
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345.jpg",
+                "photoIndex": 9
+              }
+            ],
+            "enlargedOriginalCount": 2,
+            "secondaryReviewNotes": "coatColor: Pale cream, grey overlay and dark mask change in prominence across lighting; the dominant filter category remains uncertain.",
+            "photoReviewedAt": "2026-10-16T14:07:44.161Z",
+            "photoObservation": "Reviewed all 9 current photos. Published palette: cream, grey, black; filter category: unanswered; coat length: short. Latest dedicated colour pass: 2026-10-16.",
+            "uncertainFields": [
+              {
+                "field": "coatColor",
+                "reason": "Pale cream, grey overlay and dark mask change in prominence across lighting; the dominant filter category remains uncertain."
+              }
+            ]
           }
         ],
         "inspectedPhotoCount": 9,
         "supportingPhotos": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1710758625.jpg",
-            "photoIndex": 1
+            "photoIndex": 1,
+            "sha256": "cfee482aa8493f7ee24b94a129d219e5b0ddbc246d93dc95ef95f559ff58f5d0",
+            "cacheMaster": "cfee482aa8493f7e.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-%288%29.jpg",
-            "photoIndex": 2
+            "photoIndex": 2,
+            "sha256": "0cc0e21e9e5c1ce511e754630ba7189dc10ae8cbabb169e4b7977bd08a90ef88",
+            "cacheMaster": "0cc0e21e9e5c1ce5.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-6.jpg",
-            "photoIndex": 3
+            "photoIndex": 3,
+            "sha256": "38a69feb8c3929528bf801fc339722797430bfe8d27b18dcca1f7af3ec9e5121",
+            "cacheMaster": "38a69feb8c392952.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-11.jpg",
-            "photoIndex": 4
+            "photoIndex": 4,
+            "sha256": "cebfc2a52b02ea648935f9d801e1931962ab9eea2b6950c600aa6ccf90453558",
+            "cacheMaster": "cebfc2a52b02ea64.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/rotchildova-zirafa-2-avtorica-petra-hrovatin-7.jpg",
-            "photoIndex": 5
+            "photoIndex": 5,
+            "sha256": "00bc482b4cc0ed56c83be857091c921cb4353357d630cd2a68111179f34e00f8",
+            "cacheMaster": "00bc482b4cc0ed56.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-5.jpg",
-            "photoIndex": 6
+            "photoIndex": 6,
+            "sha256": "4656368f1e60731d15ab063dc76cf5d050b9ab1afc67053406c36f9b88de06f1",
+            "cacheMaster": "4656368f1e60731d.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-1-1713631025.jpg",
-            "photoIndex": 7
+            "photoIndex": 7,
+            "sha256": "3642b05a2ecf5dbbd346d9f3d590f0db7a133e07bf0302c0013a162ac80acd7a",
+            "cacheMaster": "3642b05a2ecf5dbb.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345-2-1710758619.jpg",
-            "photoIndex": 8
+            "photoIndex": 8,
+            "sha256": "f0c2a94630e5143ce3c9995b95651366c9a9e618ab927bb0df173f1b7569a669",
+            "cacheMaster": "f0c2a94630e5143c.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010345.jpg",
-            "photoIndex": 9
+            "photoIndex": 9,
+            "sha256": "37748b358e06baa37c3f07155820bfc83c8c67c49f902b6fcfbc5b3d6b673b10",
+            "cacheMaster": "37748b358e06baa3.webp"
           }
         ],
-        "enlargedOriginalCount": 2
+        "enlargedOriginalCount": 0,
+        "sourceBinding": {
+          "releaseId": "a87a481f2998-20261017T111344Z-a8bac9650fd33766",
+          "datasetGeneratedAt": "2026-10-17T11:13:39.598Z",
+          "sourceFetchedAt": "2026-10-17T08:16:47.360Z",
+          "descriptionSha256": "0c7c08b7a9761c9801da0652093e973ba8e70fd4240ba35983293a7f325a769b",
+          "cacheSha256": "3764f9e2950874cffd995dd69107110fb9b1663d28454f24cd7a68e49a684a8b",
+          "cacheCanonicalSha256": "95c6cf5cb2b16e202ca98bca04e3bd5b1b060cabebab4768cdd703903bf6a1bb",
+          "manifestSha256": "fe97251d99355bd598c0ab3a9a8d20e5dcfd84b35c9c7c85e80e8bdd8f1888fe"
+        },
+        "cachedMasterCount": 9
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",
@@ -28149,9 +28472,9 @@
         "/root/filter_audit"
       ],
       "batch": "ljubljana-2026-10-16",
-      "reviewedAt": "2026-10-16T14:25:09.463Z",
-      "snapshotGeneratedAt": "2026-10-16T14:08:10.161Z",
-      "sourceCheckedAt": "2026-10-16T13:52:07.505Z",
+      "reviewedAt": "2026-10-17T11:33:52Z",
+      "snapshotGeneratedAt": "2026-10-17T11:13:39.598Z",
+      "sourceCheckedAt": "2026-10-17T08:16:56.629Z",
       "descriptionReviewed": true,
       "textReview": {
         "reviewedBy": [
@@ -28208,8 +28531,8 @@
           "/root/photo_audit"
         ],
         "status": "reviewed",
-        "reviewedAt": "2026-10-16T14:07:44.161Z",
-        "observation": "Reviewed all 10 current photos. Published palette: cream, black; filter category: unanswered; coat length: medium. Latest dedicated colour pass: 2026-10-16.",
+        "reviewedAt": "2026-10-17T11:32:11.077Z",
+        "observation": "Reviewed all 10 current cached master photos. Approved palette: cream, black; main category: cream. Existing coat length medium and its earlier reviewers are preserved. Dedicated colour review: 2026-10-17.",
         "images": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240804_164154-1727174893.jpg",
@@ -28260,21 +28583,27 @@
           "coatLength": [
             "/root",
             "/root/photo_audit"
+          ],
+          "coatColor": [
+            "/root",
+            "/root/photo_audit"
           ]
         },
         "independentObservation": {
           "reviewer": "/root/photo_audit",
-          "reviewDate": "2026-10-16",
-          "scope": "coatColor-only",
-          "proposedFields": {},
-          "reason": "Enlarged outdoor flank/full-body views confirm a pale fawn/tan dominant coat and limited black saddle/mask. Dominance is clear but brown-versus-cream remains uncertain across lighting; leave absent rather than force a shade that changes Orange-versus-Brown filtering."
+          "reviewedAt": "2026-10-17T11:32:11.077Z",
+          "reviewDate": "2026-10-17",
+          "scope": "coatColor-and-coatColors",
+          "proposedFields": {
+            "coatColor": "cream",
+            "coatColors": [
+              "cream",
+              "black"
+            ]
+          },
+          "reason": "Ten full masters show a pale fawn/cream main coat over the chest, legs, head base and most visible body. The broad side-body and standing outdoor images show the same pale base warmed toward tan in direct sun; black remains a local face/ear mask and limited dorsal shading. Cream is the closest stored overall shade, rather than leaving an obvious dominant pale coat unanswered or counting lighting shifts as separate colour blocks."
         },
-        "uncertainFields": [
-          {
-            "field": "coatColor",
-            "reason": "Cream and dark areas are confirmed, but the primary and secondary reviewers did not establish the same dominant filter category."
-          }
-        ],
+        "uncertainFields": [],
         "adjudications": [],
         "independentObservationHistory": [
           {
@@ -28290,6 +28619,13 @@
               "coatLength": "medium"
             },
             "reason": "Cream/fawn body and legs, grey/black saddle and dark mask; clearly extended dense neck/chest and tail fur, medium rather than close short."
+          },
+          {
+            "reviewer": "/root/photo_audit",
+            "reviewDate": "2026-10-16",
+            "scope": "coatColor-only",
+            "proposedFields": {},
+            "reason": "Enlarged outdoor flank/full-body views confirm a pale fawn/tan dominant coat and limited black saddle/mask. Dominance is clear but brown-versus-cream remains uncertain across lighting; leave absent rather than force a shade that changes Orange-versus-Brown filtering."
           }
         ]
       },
@@ -28308,7 +28644,8 @@
         "medical.neutered",
         "medical.microchipped",
         "goodWith.cats",
-        "specialNeeds"
+        "specialNeeds",
+        "coatColor"
       ],
       "unknownFields": [
         "breed",
@@ -28317,7 +28654,6 @@
         "foundDate",
         "intakeBy",
         "originMunicipality",
-        "coatColor",
         "medical.fiv",
         "medical.felv",
         "goodWith.kids",
@@ -28335,12 +28671,11 @@
         "coatLength",
         "energy",
         "goodWith.cats",
-        "specialNeeds"
-      ],
-      "unresolvedFields": [
+        "specialNeeds",
         "coatColor"
       ],
-      "secondaryReviewNotes": "coatColor: Cream and dark areas are confirmed, but the primary and secondary reviewers did not establish the same dominant filter category.",
+      "unresolvedFields": [],
+      "secondaryReviewNotes": "",
       "rejectedClaims": [
         {
           "field": "adoptionRequirements.experiencedCarer",
@@ -28351,15 +28686,15 @@
       "sourceConflicts": [],
       "resolutions": [],
       "colourReview": {
-        "reviewedAt": "2026-10-16T14:25:09.463Z",
-        "reviewDate": "2026-10-16",
-        "category": null,
+        "reviewedAt": "2026-10-17T11:33:52Z",
+        "reviewDate": "2026-10-17",
+        "category": "cream",
         "reviewedBy": [
           "/root",
           "/root/photo_audit"
         ],
-        "status": "left-unknown",
-        "reason": "Enlarged outdoor flank/full-body views confirm a pale fawn/tan dominant coat and limited black saddle/mask. Dominance is clear but brown-versus-cream remains uncertain across lighting; leave absent rather than force a shade that changes Orange-versus-Brown filtering.",
+        "status": "confirmed",
+        "reason": "Across the full-body and flank views, pale cream/fawn covers the trunk and limbs. The dark mask and smaller saddle are secondary, and warm sunlight makes the same pale base look more golden. Cream is the closest stable main category.",
         "previousReviews": [
           {
             "reviewedAt": "2026-10-16T14:07:44.161Z",
@@ -28370,52 +28705,146 @@
             ],
             "status": "left-unknown",
             "reason": "Cream and dark areas are confirmed, but the primary and secondary reviewers did not establish the same dominant filter category."
+          },
+          {
+            "reviewedAt": "2026-10-16T14:25:09.463Z",
+            "reviewDate": "2026-10-16",
+            "category": null,
+            "reviewedBy": [
+              "/root",
+              "/root/photo_audit"
+            ],
+            "status": "left-unknown",
+            "reason": "Enlarged outdoor flank/full-body views confirm a pale fawn/tan dominant coat and limited black saddle/mask. Dominance is clear but brown-versus-cream remains uncertain across lighting; leave absent rather than force a shade that changes Orange-versus-Brown filtering.",
+            "inspectedPhotoCount": 10,
+            "supportingPhotos": [
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240804_164154-1727174893.jpg",
+                "photoIndex": 1
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1725983317.jpg",
+                "photoIndex": 2
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1-1704101620.jpg",
+                "photoIndex": 3
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1017.JPG",
+                "photoIndex": 4
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1.jpg",
+                "photoIndex": 5
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-3.png",
+                "photoIndex": 6
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0328.jpg",
+                "photoIndex": 7
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-2.jpg",
+                "photoIndex": 8
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1034.JPG",
+                "photoIndex": 9
+              },
+              {
+                "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-%282%29.jpg",
+                "photoIndex": 10
+              }
+            ],
+            "enlargedOriginalCount": 2,
+            "secondaryReviewNotes": "coatColor: Cream and dark areas are confirmed, but the primary and secondary reviewers did not establish the same dominant filter category.",
+            "photoReviewedAt": "2026-10-16T14:07:44.161Z",
+            "photoObservation": "Reviewed all 10 current photos. Published palette: cream, black; filter category: unanswered; coat length: medium. Latest dedicated colour pass: 2026-10-16.",
+            "uncertainFields": [
+              {
+                "field": "coatColor",
+                "reason": "Cream and dark areas are confirmed, but the primary and secondary reviewers did not establish the same dominant filter category."
+              }
+            ]
           }
         ],
         "inspectedPhotoCount": 10,
         "supportingPhotos": [
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_20240804_164154-1727174893.jpg",
-            "photoIndex": 1
+            "photoIndex": 1,
+            "sha256": "27266daa37ad8061db97a6c27d043fdec665fd1a300eab0bd5438cc0193cc4b8",
+            "cacheMaster": "27266daa37ad8061.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1725983317.jpg",
-            "photoIndex": 2
+            "photoIndex": 2,
+            "sha256": "eb96da2057ae500d5297de6eea045068de6d98de6f4b73bf432c14b73dcf1d46",
+            "cacheMaster": "eb96da2057ae500d.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1-1704101620.jpg",
-            "photoIndex": 3
+            "photoIndex": 3,
+            "sha256": "67c1a53ee84f0d519856f646a556216e77a340c880357003eeb59334c9e8be3b",
+            "cacheMaster": "67c1a53ee84f0d51.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1017.JPG",
-            "photoIndex": 4
+            "photoIndex": 4,
+            "sha256": "af9926de14352c8c407a0118837ad923a9a77232f581ac79f5354cdbc832883e",
+            "cacheMaster": "af9926de14352c8c.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-1.jpg",
-            "photoIndex": 5
+            "photoIndex": 5,
+            "sha256": "71c3f9f1e05d21c75e1f49bc5adfd9774a85f305f186f5583d7a1b3db2c5311e",
+            "cacheMaster": "71c3f9f1e05d21c7.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-3.png",
-            "photoIndex": 6
+            "photoIndex": 6,
+            "sha256": "632e1aefb581f3143fab862c733502ef9796488b83332429382a9d85a51ad58c",
+            "cacheMaster": "632e1aefb581f314.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/dsc_0328.jpg",
-            "photoIndex": 7
+            "photoIndex": 7,
+            "sha256": "7b6f02df150a515d8588f5791aa46d9a596a3f20c5222e7156274e945ec36382",
+            "cacheMaster": "7b6f02df150a515d.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-2.jpg",
-            "photoIndex": 8
+            "photoIndex": 8,
+            "sha256": "bc87573b076d65913817fc1373c14e1fa30dc1a2fc674f278c0bb73cde0e94c0",
+            "cacheMaster": "bc87573b076d6591.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/img_1034.JPG",
-            "photoIndex": 9
+            "photoIndex": 9,
+            "sha256": "1042d1b281562ab112da4620848bdd53b3fd76b804cddbb3b22a3e7b66d3d749",
+            "cacheMaster": "1042d1b281562ab1.webp"
           },
           {
             "sourceUrl": "https://zavetisce.fra1.digitaloceanspaces.com/zivali/23010027-%282%29.jpg",
-            "photoIndex": 10
+            "photoIndex": 10,
+            "sha256": "124e4fbdfc3ff7677a6692c0bc4bb7feea824a07e962397e74541d33cafcccb4",
+            "cacheMaster": "124e4fbdfc3ff767.webp"
           }
         ],
-        "enlargedOriginalCount": 2
+        "enlargedOriginalCount": 0,
+        "sourceBinding": {
+          "releaseId": "a87a481f2998-20261017T111344Z-a8bac9650fd33766",
+          "datasetGeneratedAt": "2026-10-17T11:13:39.598Z",
+          "sourceFetchedAt": "2026-10-17T08:16:56.629Z",
+          "descriptionSha256": "af8576c5d40d43aa725be6692a2bcd2316d6058ae8d23e5b85013c5bf12f2901",
+          "cacheSha256": "3764f9e2950874cffd995dd69107110fb9b1663d28454f24cd7a68e49a684a8b",
+          "cacheCanonicalSha256": "95c6cf5cb2b16e202ca98bca04e3bd5b1b060cabebab4768cdd703903bf6a1bb",
+          "manifestSha256": "fe97251d99355bd598c0ab3a9a8d20e5dcfd84b35c9c7c85e80e8bdd8f1888fe"
+        },
+        "cachedMasterCount": 10
       },
       "filterReview": {
         "verifiedAt": "2026-10-16T14:09:04.898Z",

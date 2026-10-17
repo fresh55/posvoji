@@ -253,7 +253,7 @@ describe("animal grid empty state", () => {
     window.history.replaceState(null, "", "/?zavetisce=brezice");
     renderGrid(ANIMALS, "en", [{ value: "brezice", label: "Zavetišče Brežice" }]);
 
-    expect(screen.getByText("The selected shelter has no animals listed right now.")).toBeTruthy();
+    expect(screen.getByText("The selected shelter has no animals listed that match these filters.")).toBeTruthy();
     const remove = within(phoneRow()).getByRole("button", { name: /Remove filter Brežice/ });
     expect(within(phoneRow()).queryByRole("button", { name: /Remove filter brezice/ })).toBeNull();
     fireEvent.click(remove);
@@ -267,7 +267,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     expect(
-      screen.getByText("Izbrano zavetišče trenutno nima objavljenih drugih živali."),
+      screen.getByText("Izbrano zavetišče trenutno nima objavljenih drugih živali, ki ustrezajo izbranim filtrom."),
     ).toBeTruthy();
     // The blunt "poskusi z manj filtri" line is only for the generic case.
     expect(screen.queryByText("Poskusi z manj filtri.")).toBeNull();
@@ -284,6 +284,34 @@ describe("animal grid empty state", () => {
     expect(screen.getByRole("link", { name: /Shelter druga/ })).toBeTruthy();
   });
 
+  it.each([
+    ["sl", "Izbrano zavetišče trenutno nima objavljenih psov, ki ustrezajo izbranim filtrom.", "Pokaži 1 psa brez podatka", "Pokaži iz vseh zavetišč"],
+    ["en", "The selected shelter has no dogs listed that match these filters.", "Show 1 dog with no data", "Show from all shelters"],
+  ] as const)("qualifies shelter matches when size excludes its dogs in %s", (locale, message, offer, widen) => {
+    const unsized = animal("dog-unsized", "dog", "muri");
+    delete unsized.size;
+    window.history.replaceState(null, "", "/?vrsta=pes&velikost=majhna&zavetisce=muri");
+    renderGrid([
+      animal("dog-medium", "dog", "muri"),
+      unsized,
+      { ...animal("dog-small-elsewhere", "dog", "druga"), size: "small" },
+    ], locale);
+
+    // The shelter has dogs, but neither is a confirmed small dog. Keep its
+    // unknown-size dog an offer, rather than calling the roster empty.
+    expect(screen.getByText(message)).toBeTruthy();
+    expect(screen.queryByRole("article")).toBeNull();
+    expect(screen.getByRole("button", { name: offer })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: widen }));
+
+    expect(query()).toBe("?vrsta=pes&velikost=majhna");
+    expect(screen.getAllByRole("article")).toHaveLength(1);
+    expect(screen.getByRole("article", { name: "dog-small-elsewhere" })).toBeTruthy();
+    expect(screen.queryByRole("article", { name: "dog-medium" })).toBeNull();
+    expect(screen.queryByRole("article", { name: "dog-unsized" })).toBeNull();
+  });
+
   it("uses the dual shelter form for exactly two selected shelters", () => {
     // Slovenian counts a dual, and two is the count a singular/plural pair
     // gets wrong: "izbrana zavetišča nimajo" is three or more shelters.
@@ -295,7 +323,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS);
 
     expect(
-      screen.getByText("Izbrani zavetišči trenutno nimata objavljenih drugih živali."),
+      screen.getByText("Izbrani zavetišči trenutno nimata objavljenih drugih živali, ki ustrezajo izbranim filtrom."),
     ).toBeTruthy();
   });
 
@@ -311,7 +339,7 @@ describe("animal grid empty state", () => {
     renderGrid([...ANIMALS, animal("dog-cetrto", "dog", "cetrto")]);
 
     expect(
-      screen.getByText("Izbrana zavetišča trenutno nimajo objavljenih drugih živali."),
+      screen.getByText("Izbrana zavetišča trenutno nimajo objavljenih drugih živali, ki ustrezajo izbranim filtrom."),
     ).toBeTruthy();
   });
 
@@ -603,7 +631,7 @@ describe("animal grid empty state", () => {
     renderGrid(ANIMALS, "en");
 
     expect(
-      screen.getByText("The selected shelter has no other animals listed right now."),
+      screen.getByText("The selected shelter has no other animals listed that match these filters."),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Show from all shelters" }),

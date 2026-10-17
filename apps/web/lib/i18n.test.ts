@@ -30,23 +30,23 @@ describe("translations", () => {
     );
   });
 
-  it("agrees the shelter-absence sentence with the Slovenian dual", () => {
+  it("qualifies shelter matches and agrees with the Slovenian dual", () => {
     // One zavetišče nima, two zavetišči nimata, three or more zavetišča
     // nimajo. Two is the count a singular/plural pair gets wrong.
     expect(
       translate("sl", "noResultsShelterSingular", { species: "psov" }),
-    ).toBe("Izbrano zavetišče trenutno nima objavljenih psov.");
+    ).toBe("Izbrano zavetišče trenutno nima objavljenih psov, ki ustrezajo izbranim filtrom.");
     expect(translate("sl", "noResultsShelterDual", { species: "psov" })).toBe(
-      "Izbrani zavetišči trenutno nimata objavljenih psov.",
+      "Izbrani zavetišči trenutno nimata objavljenih psov, ki ustrezajo izbranim filtrom.",
     );
     expect(translate("sl", "noResultsShelterPlural", { species: "psov" })).toBe(
-      "Izbrana zavetišča trenutno nimajo objavljenih psov.",
+      "Izbrana zavetišča trenutno nimajo objavljenih psov, ki ustrezajo izbranim filtrom.",
     );
     expect(translate("en", "noResultsShelterSingular", { species: "dogs" })).toBe(
-      "The selected shelter has no dogs listed right now.",
+      "The selected shelter has no dogs listed that match these filters.",
     );
     expect(translate("en", "noResultsShelterPlural", { species: "dogs" })).toBe(
-      "The selected shelters have no dogs listed right now.",
+      "The selected shelters have no dogs listed that match these filters.",
     );
     // English inflects nothing past one, so the dual reads as the plural
     // rather than as a form of its own.

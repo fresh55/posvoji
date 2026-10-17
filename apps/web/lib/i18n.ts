@@ -269,17 +269,17 @@ const sl = {
     "Brez JavaScripta seznam ostane pri prvih živalih, filtri in razvrstitev iz povezave pa se ne upoštevajo. Vse živali posameznega zavetišča so na njegovi strani v registru.",
   tryFewerFilters: "Poskusi z manj filtri.",
   clearFilters: "Počisti filtre",
-  // The zero state gets specific when a shelter selection is the whole
-  // reason for it: dropping only the shelter filter would show results.
+  // Dropping only the shelter filter would show results. Other filters may
+  // still be active, so this describes matching listings, not the full roster.
   // {species} takes one of the speciesAbsence* forms below.
   //
   // Three forms, because the noun and the verb agree with how many shelters
   // are selected and Slovenian's dual is not optional: one zavetišče nima, two
   // zavetišči nimata, three or more zavetišča nimajo. English inflects nothing
   // past one, so its dual and its plural read alike.
-  noResultsShelterSingular: "Izbrano zavetišče trenutno nima objavljenih {species}.",
-  noResultsShelterDual: "Izbrani zavetišči trenutno nimata objavljenih {species}.",
-  noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo objavljenih {species}.",
+  noResultsShelterSingular: "Izbrano zavetišče trenutno nima objavljenih {species}, ki ustrezajo izbranim filtrom.",
+  noResultsShelterDual: "Izbrani zavetišči trenutno nimata objavljenih {species}, ki ustrezajo izbranim filtrom.",
+  noResultsShelterPlural: "Izbrana zavetišča trenutno nimajo objavljenih {species}, ki ustrezajo izbranim filtrom.",
   showFromAllShelters: "Pokaži iz vseh zavetišč",
   showAllSpecies: "Pokaži vse živali",
   showAllSpeciesCount: "Pokaži vse vrste ({count})",
@@ -912,9 +912,9 @@ const en: Messages = {
     "Without JavaScript the list stops at the first animals, and filters or sorting from a link are not applied. Every animal of a single shelter is on that shelter’s own page in the register.",
   tryFewerFilters: "Try using fewer filters.",
   clearFilters: "Clear filters",
-  noResultsShelterSingular: "The selected shelter has no {species} listed right now.",
-  noResultsShelterDual: "The selected shelters have no {species} listed right now.",
-  noResultsShelterPlural: "The selected shelters have no {species} listed right now.",
+  noResultsShelterSingular: "The selected shelter has no {species} listed that match these filters.",
+  noResultsShelterDual: "The selected shelters have no {species} listed that match these filters.",
+  noResultsShelterPlural: "The selected shelters have no {species} listed that match these filters.",
   showFromAllShelters: "Show from all shelters",
   showAllSpecies: "Show all animals",
   showAllSpeciesCount: "Show all species ({count})",

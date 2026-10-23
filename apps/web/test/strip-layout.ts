@@ -82,6 +82,17 @@ export function fakeStripLayout({
       return isStrip(this) ? boxWidth : 0;
     },
   });
+  define(HTMLElement.prototype, "offsetLeft", {
+    get(this: HTMLElement) {
+      const slot = slotOf(this);
+      return slot < 0 ? 0 : slot * itemWidth;
+    },
+  });
+  define(HTMLElement.prototype, "offsetWidth", {
+    get(this: HTMLElement) {
+      return slotOf(this) < 0 ? 0 : itemWidth;
+    },
+  });
   define(Element.prototype, "scrollWidth", {
     get(this: Element) {
       return isStrip(this)

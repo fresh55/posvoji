@@ -22,8 +22,8 @@ const copy = {
 
 /**
  * The 3D cat on the about page is a modified third-party model. This keeps
- * its credit and license one press away in the footer, closed by default so
- * it does not compete with the links beside it.
+ * its credit and license available in a disclosure, closed by default. The
+ * content and permissions page carries it through the About page's policy link.
  *
  * A native disclosure, and it has to stay one. CC BY 4.0 asks for the credit
  * to be carried with the work, so the credit belongs in the HTML whether or
@@ -35,23 +35,13 @@ const copy = {
 export function ModelCredit({ locale }: { locale: Locale }) {
   const text = copy[locale];
   // Both links below leave the site, and target="_blank" announces that to
-  // nobody. The rule is the site's own and is kept word for word from the
-  // catalogue: the footer's repository link a few pixels above these two says
-  // it, and so does the technical link on /o-nas/vsebine. These were the only
-  // two on that screen that did not, which is the site contradicting itself
-  // inside one footer.
+  // nobody, so use the site's shared accessible label for a new window.
   const { newWindow } = getMessages(locale);
 
   return (
     <details className="group/credit">
-      {/* The footer's own small-link grammar, down to the 6px icon gap: this
-          renders under the footer's action row, which ends in the repository
-          link, and two icon-and-text lines that close to each other with
-          different gaps read as a mistake. The overlay stays rather than
-          becoming a drawn box: the footer now keeps 24px above this, which is
-          clear of the overhang, so this is the isolated control globals.css
-          says to overlay. No focus colour here, because globals.css sets
-          outline-ring on everything. */}
+      {/* Match the site's small-link grammar. Hosts leave at least 24px above
+          this isolated control to clear the mobile touch-target overlay. */}
       <summary className="inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-sm underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 max-lg:tap-target">
         {text.trigger}
         <ChevronDown

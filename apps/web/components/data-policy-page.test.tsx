@@ -36,6 +36,17 @@ describe("the content and permissions page", () => {
     );
   });
 
+  it.each<Locale>(["sl", "en"])("retains the model attribution with content permissions (%s)", (locale) => {
+    const { container } = render(<DataPolicyPage locale={locale} />);
+    const credit = container.querySelector("main details")!;
+
+    expect(credit.hasAttribute("open")).toBe(false);
+    expect(credit.textContent).toContain("mark2580");
+    expect(credit.querySelector('a[href="https://sketchfab.com/models/836312def1b84e588866500a2bf79f0f"]')).not.toBeNull();
+    expect(credit.querySelector('a[href="https://creativecommons.org/licenses/by/4.0/"]')).not.toBeNull();
+    expect(container.querySelector("footer details")).toBeNull();
+  });
+
   // The two claims that were wrong when this page first shipped, pinned as
   // absences so they cannot come back by a copy edit. The source of a portal
   // listing is the shelter's public page (apps/ingest/src/portal-listings.ts),

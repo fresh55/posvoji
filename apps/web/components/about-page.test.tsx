@@ -78,15 +78,14 @@ describe("the about page", () => {
     );
     expect(footerHrefs.length).toBeGreaterThan(0);
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
-    expect(document.querySelector("footer details")).toBeNull();
   });
 
   // Keep the availability warning and shelter login with their audiences.
   // Both audiences use the one closing contact address.
   it.each([
-    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča", login: "Že imate dostop? Prijava za zavetišča" },
-    { locale: "en" as const, adopters: "For adopters", availability: "Is the animal still available?", shelters: "For shelters", login: "Already have access? Shelter login" },
-  ])("keeps each audience's guidance and login together (%s)", ({ locale, adopters, availability, shelters, login }) => {
+    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča", login: "Že imate dostop? Prijava za zavetišča", participation: "Sodelovanje je brezplačno.", contact: "Na isti naslov pišejo tudi zavetišča." },
+    { locale: "en" as const, adopters: "For adopters", availability: "Before visiting, check whether the animal still needs a home", shelters: "For shelters", login: "Already have access? Shelter login", participation: "Participation is free.", contact: "Shelters use the same address." },
+  ])("keeps each audience's guidance and login together (%s)", ({ locale, adopters, availability, shelters, login, participation, contact }) => {
     render(<AboutPage locale={locale} />);
     const adopterSection = screen.getByRole("region", { name: adopters });
     const shelterSection = screen.getByRole("region", { name: shelters });
@@ -97,6 +96,8 @@ describe("the about page", () => {
       .toBeTruthy();
     expect(within(shelterSection).getByRole("link", { name: login }).getAttribute("href"))
       .toBe("/portal/prijava");
+    expect(shelterSection.textContent).toContain(participation);
+    expect(screen.getByRole("region", { name: locale === "sl" ? "Kontakt" : "Contact" }).textContent).toContain(contact);
     // Where the address sits, not what it points at: the test below owns the
     // href. queryByRole is the load-bearing half of the pair under it, because
     // compareDocumentPosition reports FOLLOWING for a descendant too, so the
@@ -105,6 +106,15 @@ describe("the about page", () => {
     expect(within(shelterSection).queryByRole("link", { name: "info@posvoji.si" })).toBeNull();
     expect(shelterSection.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
+  });
+
+  it.each<Locale>(["sl", "en"])("keeps the model credit on the About page (%s)", (locale) => {
+    const { container } = render(<AboutPage locale={locale} />);
+    const credit = container.querySelector("footer details");
+    expect(credit).not.toBeNull();
+    expect(credit?.hasAttribute("open")).toBe(false);
+    expect(credit?.querySelector('a[href*="sketchfab.com"]')).not.toBeNull();
+    expect(credit?.querySelector('a[href="https://creativecommons.org/licenses/by/4.0/"]')).not.toBeNull();
   });
 
   // One button under the closing line: the address, printed as itself so it

@@ -430,7 +430,7 @@ The supplied source archive records **Cat [Murdered: Soul Suspect]**, by **mark2
 - https://sketchfab.com/models/836312def1b84e588866500a2bf79f0f
 - https://creativecommons.org/licenses/by/4.0/
 
-Adaptations: coat markings, facial geometry, closed right eye, olive left eye, whiskers, fur strands, proportions, seated animations, grooming composition and interactive reactions. Credit is available in the model-credit disclosure on the Content and permissions page, linked from the About page, and embedded in the GLB.
+Adaptations: coat markings, facial geometry, closed right eye, olive left eye, whiskers, fur strands, proportions, seated animations, grooming composition and interactive reactions. Credit is available in the page footer's model-credit disclosure and embedded in the GLB.
 
 Runtime animation API reference: https://modelviewer.dev/docs/index.html#entrydocs-animation-methods-appendAnimation
 

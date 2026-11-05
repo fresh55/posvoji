@@ -1,5 +1,6 @@
 import { ArrowRight, Mail } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
+import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
@@ -23,10 +24,9 @@ import { CONTACT_EMAIL } from "@/lib/site";
 import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
 type AboutPoint = {
-  key: "free" | "shelterData" | "shelterDecides" | "freshness" | "shelterJoin";
   title: string;
   body: string;
-  links?: { label: string; href: string }[];
+  link?: { label: string; href: string };
 };
 
 /** One audience: its heading, and the facts addressed to it. The rows under
@@ -63,19 +63,16 @@ const pageText: Record<Locale, PageText> = {
       title: "Za posvojitelje",
       points: [
         {
-          key: "shelterDecides",
           title: "Kako poteka posvojitev?",
           body: "Posvojitev vodi zavetišče, navedeno ob objavi. Z njim se pogovori o potrebah živali, svojem vsakdanu, pogojih, morebitnih stroških in spoznavanju.",
         },
         {
-          key: "freshness",
           title: "Ali žival še išče dom?",
           body: "Objave lahko zaostajajo za spremembami. Pred obiskom pri zavetišču preveri, ali žival še išče dom, in se dogovori za termin. Seznam ne zajema vseh živali in zavetišč.",
         },
         {
-          key: "free",
           title: "Brezplačna uporaba",
-          body: "Ogled brez računa in sodelovanje zavetišč sta brezplačna. Ni oglasov ali plačanih prednostnih uvrstitev.",
+          body: "Za ogled ne potrebuješ računa. Ni oglasov ali plačanih prednostnih uvrstitev.",
         },
       ],
     },
@@ -83,24 +80,20 @@ const pageText: Record<Locale, PageText> = {
       title: "Za zavetišča",
       points: [
         {
-          key: "shelterData",
           title: "O svojih vsebinah odločate sami",
-          body: "Sami določite, katere fotografije in opise smemo uporabiti. Objave vključimo z vašim pisnim dovoljenjem in navedemo vir. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
-          links: [{ label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl }],
+          body: "Objave vključimo z vašim pisnim dovoljenjem, navedemo vir in obiskovalce usmerimo k vam. Sami določite, ali smemo prikazati fotografije in koliko opisa. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
+          link: { label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl },
         },
         {
-          key: "shelterJoin",
           title: "Kako se zavetišče vključi?",
-          body: "Vključimo objave z vaše spletne strani ali omogočimo neposreden vnos, če svojega seznama živali nimate. Za sodelovanje in dostop do portala nam pišite.",
-          links: [
-            { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
-          ],
+          body: "Sodelovanje je brezplačno. Vključimo objave z vaše spletne strani ali omogočimo neposreden vnos, če svojega seznama živali nimate. Za sodelovanje in dostop do portala nam pišite.",
+          link: { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
         },
       ],
     },
     contact: "Kontakt",
     report:
-      "Si opazil napako ali je žival že našla dom? Pošlji povezavo do objave in povej, kaj je treba popraviti.",
+      "Si opazil napako ali je žival že našla dom? Pošlji povezavo do objave in povej, kaj je treba popraviti. Na isti naslov pišejo tudi zavetišča.",
   },
   en: {
     lead: "We bring participating Slovenian shelters’ listings together to help animals find homes.",
@@ -109,19 +102,16 @@ const pageText: Record<Locale, PageText> = {
       title: "For adopters",
       points: [
         {
-          key: "shelterDecides",
           title: "Adoption goes through the shelter",
-          body: "The named shelter handles adoption and explains the animal’s needs, requirements and any costs.",
+          body: "Contact the shelter listed with the animal about its needs, adoption requirements and any costs. The shelter handles adoption.",
         },
         {
-          key: "freshness",
-          title: "Is the animal still available?",
+          title: "Before visiting, check whether the animal still needs a home",
           body: "Listings may lag behind changes. Before visiting, confirm availability and arrange a time with the shelter. We do not list every animal or shelter.",
         },
         {
-          key: "free",
-          title: "Free to use",
-          body: "Browsing and shelter participation are free. No account is needed to browse. No ads or paid priority listings.",
+          title: "Free browsing, no account needed",
+          body: "There are no ads or paid priority listings.",
         },
       ],
     },
@@ -129,24 +119,20 @@ const pageText: Record<Locale, PageText> = {
       title: "For shelters",
       points: [
         {
-          key: "shelterData",
           title: "You stay in control of your content",
-          body: "You decide which photos and descriptions we may use. We need your written permission and always credit the source. You can request corrections, removal or an end to participation anytime.",
-          links: [{ label: "Content and permissions", href: DATA_POLICY_PATHS.en }],
+          body: "We need your written permission, credit the source and direct visitors to you. You decide whether we may show photos and how much of a description we display. You can request corrections or removal, or end participation at any time.",
+          link: { label: "Content and permissions", href: DATA_POLICY_PATHS.en },
         },
         {
-          key: "shelterJoin",
           title: "How can you join?",
-          body: "We can include your website’s listings or offer direct entry if you have no catalogue. Email us for participation or portal access.",
-          links: [
-            { label: "Already have access? Shelter login", href: "/portal/prijava" },
-          ],
+          body: "Participation is free. We can include your website’s listings or offer direct entry if you have no catalogue. Email us to join or arrange portal access.",
+          link: { label: "Already have access? Shelter login", href: "/portal/prijava" },
         },
       ],
     },
     contact: "Contact",
     report:
-      "Spotted a mistake or an animal already home? Send the listing link and correction.",
+      "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting. Shelters use the same address.",
   },
 };
 
@@ -178,7 +164,7 @@ function AboutSection({
       <div className="space-y-6">
         {section.points.map((point) => {
           return (
-            <Item key={point.key} layout="row" className="p-0">
+            <Item key={point.title} layout="row" className="p-0">
               <ItemContent className="break-words">
                 <ItemTitle asChild className="text-base font-medium">
                   <h3>{point.title}</h3>
@@ -186,15 +172,14 @@ function AboutSection({
                 <ItemDescription className="text-sm leading-relaxed sm:text-base sm:leading-relaxed">
                   {point.body}
                 </ItemDescription>
-                {point.links?.map((link) => (
+                {point.link && (
                   <a
-                    key={link.href}
-                    href={link.href}
+                    href={point.link.href}
                     className={POINT_LINK}
                   >
-                    {link.label}
+                    {point.link.label}
                   </a>
-                ))}
+                )}
               </ItemContent>
             </Item>
           );
@@ -221,7 +206,9 @@ export function AboutPage({ locale }: { locale: Locale }) {
       // block above prints the address already, and a second copy of it two
       // hundred pixels lower says nothing new.
       footer={
-        <SiteFooter locale={locale} showAboutLink={false} showContact={false} />
+        <SiteFooter locale={locale} showAboutLink={false} showContact={false}>
+          <ModelCredit locale={locale} />
+        </SiteFooter>
       }
     >
       <div className="space-y-5">

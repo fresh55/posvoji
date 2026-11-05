@@ -40,8 +40,8 @@ const FOOTER_LINK =
  * A drawn box below lg rather than the tap-target overlay, which is the branch
  * globals.css names on that utility: overlay an isolated control, grow a
  * crowded one. These are crowded twice over. They sit beside each other in a
- * row, and pages using a rendered portrait can add a model credit wearing an
- * overlay of its own. A 19.5px line under a 44px overlay overhangs 12.25px per side,
+ * row, and on the about page the model credit follows them wearing an overlay
+ * of its own. A 19.5px line under a 44px overlay overhangs 12.25px per side,
  * so the model credit was reaching into the row above it and, being later in
  * the DOM with neither carrying a z-index, taking the presses meant for the
  * repository link. The row's own wrap is the same collision in waiting: below

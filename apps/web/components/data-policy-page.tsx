@@ -6,7 +6,6 @@ import {
   type LucideIcon,
   ShieldCheck,
 } from "lucide-react";
-import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteShell } from "@/components/site-shell";
@@ -181,7 +180,9 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
         </div>
       </div>
 
-      {/* Align each rule's icon with the first line of its heading. */}
+      {/* The about page's row layout, mt-px and all. That pixel is measured,
+          and the measurement lives in about-page.tsx rather than here: two
+          copies of one number is how the number drifts. */}
       <div className="divide-y border-y">
         {text.rules.map((rule) => {
           const Icon = ruleIcons[rule.key];
@@ -223,9 +224,6 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
             </Item>
           );
         })}
-      </div>
-      <div className="text-xs leading-relaxed text-muted-foreground">
-        <ModelCredit locale={locale} />
       </div>
     </SiteShell>
   );

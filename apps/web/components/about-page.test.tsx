@@ -80,12 +80,12 @@ describe("the about page", () => {
     expect(footerHrefs).not.toContain(ABOUT_PATHS.sl);
   });
 
-  // Shelter participation has its own contact action. The closing address
-  // remains available to visitors reporting a correction.
+  // Keep the availability warning and shelter login with their audiences.
+  // Both audiences use the one closing contact address.
   it.each([
-    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča", email: "Pišite na info@posvoji.si", login: "Že imate dostop? Prijava za zavetišča" },
-    { locale: "en" as const, adopters: "For adopters", availability: "Before visiting, check whether the animal still needs a home", shelters: "For shelters", email: "Email info@posvoji.si", login: "Already have access? Shelter login" },
-  ])("keeps each audience's guidance and contact actions together (%s)", ({ locale, adopters, availability, shelters, email, login }) => {
+    { locale: "sl" as const, adopters: "Za posvojitelje", availability: "Ali žival še išče dom?", shelters: "Za zavetišča", login: "Že imate dostop? Prijava za zavetišča", participation: "Sodelovanje je brezplačno.", contact: "Na isti naslov pišejo tudi zavetišča." },
+    { locale: "en" as const, adopters: "For adopters", availability: "Before visiting, check whether the animal still needs a home", shelters: "For shelters", login: "Already have access? Shelter login", participation: "Participation is free.", contact: "Shelters use the same address." },
+  ])("keeps each audience's guidance and login together (%s)", ({ locale, adopters, availability, shelters, login, participation, contact }) => {
     render(<AboutPage locale={locale} />);
     const adopterSection = screen.getByRole("region", { name: adopters });
     const shelterSection = screen.getByRole("region", { name: shelters });
@@ -94,11 +94,10 @@ describe("the about page", () => {
     expect(within(shelterSection).getAllByRole("heading", { level: 3 })).toHaveLength(2);
     expect(adopterSection.compareDocumentPosition(shelterSection) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
-    const join = within(shelterSection).getByRole("link", { name: email });
-    expect(join.getAttribute("href")).toBe("mailto:info@posvoji.si");
-    expect(join.getAttribute("data-slot")).toBeNull();
     expect(within(shelterSection).getByRole("link", { name: login }).getAttribute("href"))
       .toBe("/portal/prijava");
+    expect(shelterSection.textContent).toContain(participation);
+    expect(screen.getByRole("region", { name: locale === "sl" ? "Kontakt" : "Contact" }).textContent).toContain(contact);
     // Where the address sits, not what it points at: the test below owns the
     // href. queryByRole is the load-bearing half of the pair under it, because
     // compareDocumentPosition reports FOLLOWING for a descendant too, so the
@@ -107,6 +106,15 @@ describe("the about page", () => {
     expect(within(shelterSection).queryByRole("link", { name: "info@posvoji.si" })).toBeNull();
     expect(shelterSection.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING)
       .toBeTruthy();
+  });
+
+  it.each<Locale>(["sl", "en"])("keeps the model credit on the About page (%s)", (locale) => {
+    const { container } = render(<AboutPage locale={locale} />);
+    const credit = container.querySelector("footer details");
+    expect(credit).not.toBeNull();
+    expect(credit?.hasAttribute("open")).toBe(false);
+    expect(credit?.querySelector('a[href*="sketchfab.com"]')).not.toBeNull();
+    expect(credit?.querySelector('a[href="https://creativecommons.org/licenses/by/4.0/"]')).not.toBeNull();
   });
 
   // One button under the closing line: the address, printed as itself so it
@@ -121,6 +129,7 @@ describe("the about page", () => {
           .getByRole("link", { name: "info@posvoji.si" })
           .getAttribute("href"),
       ).toBe("mailto:info@posvoji.si");
+      expect(container.querySelectorAll('main a[href="mailto:info@posvoji.si"]')).toHaveLength(1);
       // The repository used to sit beside the address as a second button of
       // the same size, under a sentence addressed to shelters. It is the
       // footer's now and only the footer's, so the one inside `main` is gone.
@@ -153,14 +162,20 @@ describe("the about page", () => {
   // row links stay quiet: a primary action styled like a footnote was the
   // hierarchy fault this pins.
   it.each<[Locale, string, string]>([
-    ["sl", "Poglej živali, ki iščejo dom", "/"],
-    ["en", "Browse animals looking for a home", "/en"],
-  ])("draws the adopter's action as a button (%s)", (locale, label, href) => {
-    render(<AboutPage locale={locale} />);
+    ["sl", "Poglej živali", "/"],
+    ["en", "Browse animals", "/en"],
+  ])("offers one browse button after the intro and before the guidance (%s)", (locale, label, href) => {
+    const { container } = render(<AboutPage locale={locale} />);
 
-    const action = screen.getByRole("link", { name: label });
+    const actions = screen.getAllByRole("link", { name: label });
+    expect(actions).toHaveLength(1);
+    const action = actions[0];
     expect(action.getAttribute("href")).toBe(href);
     expect(action.getAttribute("data-slot")).toBe("button");
+    const lead = container.querySelector("main p")!;
+    const guidance = container.querySelector("#about-adopters")!;
+    expect(lead.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(action.compareDocumentPosition(guidance) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(
       screen.getByRole("link", { name: /O vsebinah|Content and/ }).getAttribute("data-slot"),
     ).toBeNull();

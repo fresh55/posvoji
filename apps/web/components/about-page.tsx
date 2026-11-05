@@ -1,13 +1,4 @@
-import {
-  ArrowRight,
-  Building2,
-  Clock3,
-  HeartHandshake,
-  type LucideIcon,
-  Mail,
-  PawPrint,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import { AboutCat } from "@/components/about-cat";
 import { ModelCredit } from "@/components/model-credit";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
@@ -18,7 +9,6 @@ import {
   Item,
   ItemContent,
   ItemDescription,
-  ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
 import { mailtoHref } from "@/lib/contact-links";
@@ -34,12 +24,9 @@ import { CONTACT_EMAIL } from "@/lib/site";
 import { ABOUT_PATHS, DATA_POLICY_PATHS } from "@/lib/site-links";
 
 type AboutPoint = {
-  key: PointKey;
   title: string;
   body: string;
-  /** primary marks the one thing a section's reader came to do, drawn as a
-   *  button. Every other link stays a quiet text link under its row. */
-  links?: { label: string; href: string; primary?: true }[];
+  link?: { label: string; href: string };
 };
 
 /** One audience: its heading, and the facts addressed to it. The rows under
@@ -51,6 +38,7 @@ type AboutSectionText = { title: string; points: AboutPoint[] };
 
 type PageText = {
   lead: string;
+  browse: { label: string; href: string };
   adopters: AboutSectionText;
   shelters: AboutSectionText;
   /** The closing section's heading and line. The address follows the line
@@ -58,24 +46,6 @@ type PageText = {
   contact: string;
   report: string;
 };
-
-// One glyph per fact, keyed rather than stored in each locale so the two
-// records carry text only and cannot pick different marks for one fact.
-// ShieldCheck is what the shelters page marks a data-sharing shelter with,
-// which is the same fact.
-//
-// The keys are the source of the union below rather than a copy of it: a
-// fact renamed here is a type error at both locale records, where a
-// hand-written union only caught the direction that loses an icon.
-const pointIcons = {
-  free: HeartHandshake,
-  shelterData: ShieldCheck,
-  shelterDecides: PawPrint,
-  freshness: Clock3,
-  shelterJoin: Building2,
-} satisfies Record<string, LucideIcon>;
-
-type PointKey = keyof typeof pointIcons;
 
 // Practical guidance for adopters and shelters, grounded in DATA-POLICY.md.
 // Do not promise live availability or a refresh interval: sources can lag.
@@ -87,25 +57,22 @@ type PointKey = keyof typeof pointIcons;
 // docs/COPY-VOICE.md has the rule.
 const pageText: Record<Locale, PageText> = {
   sl: {
-    lead: "Želimo, da bi živali iz zavetišč lažje našle dom. Zato na enem mestu zbiramo objave sodelujočih slovenskih zavetišč.",
+    lead: "Na enem mestu zbiramo objave sodelujočih slovenskih zavetišč in živalim pomagamo najti dom.",
+    browse: { label: "Poglej živali", href: "/" },
     adopters: {
       title: "Za posvojitelje",
       points: [
         {
-          key: "shelterDecides",
           title: "Kako poteka posvojitev?",
-          body: "Ob vsaki objavi je navedeno zavetišče, ki skrbi za žival. Z osebjem zavetišča se pogovori o njenih potrebah, svojem vsakdanu in tem, kako jo lahko spoznaš. Zavetišče ti pojasni pogoje in morebitne stroške ter vodi postopek posvojitve.",
-          links: [{ label: "Poglej živali, ki iščejo dom", href: "/", primary: true }],
+          body: "Posvojitev vodi zavetišče, navedeno ob objavi. Z njim se pogovori o potrebah živali, svojem vsakdanu, pogojih, morebitnih stroških in spoznavanju.",
         },
         {
-          key: "freshness",
           title: "Ali žival še išče dom?",
-          body: "Spremembe v objavah zavetišč se lahko pri nas prikažejo z zamikom. Pred obiskom preveri pri zavetišču, ali žival še išče dom, in se dogovori za termin. Naš seznam ne zajema vseh živali in zavetišč.",
+          body: "Objave lahko zaostajajo za spremembami. Pred obiskom pri zavetišču preveri, ali žival še išče dom, in se dogovori za termin. Seznam ne zajema vseh živali in zavetišč.",
         },
         {
-          key: "free",
           title: "Brezplačna uporaba",
-          body: "Ogled objav in sodelovanje zavetišč sta brezplačna. Za ogled ne potrebuješ uporabniškega računa. Na spletni strani ni oglasov ali plačanih prednostnih uvrstitev.",
+          body: "Za ogled ne potrebuješ računa. Ni oglasov ali plačanih prednostnih uvrstitev.",
         },
       ],
     },
@@ -113,46 +80,38 @@ const pageText: Record<Locale, PageText> = {
       title: "Za zavetišča",
       points: [
         {
-          key: "shelterData",
           title: "O svojih vsebinah odločate sami",
-          body: "Vaše objave vključimo z vašim dovoljenjem in obiskovalce usmerimo k vam. Sami določite, katere fotografije in opise smemo uporabiti; vir vedno navedemo. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
-          links: [{ label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl }],
+          body: "Objave vključimo z vašim pisnim dovoljenjem, navedemo vir in obiskovalce usmerimo k vam. Sami določite, ali smemo prikazati fotografije in koliko opisa. Kadarkoli lahko zahtevate popravek, umik vsebin ali prenehanje sodelovanja.",
+          link: { label: "O vsebinah in dovoljenjih", href: DATA_POLICY_PATHS.sl },
         },
         {
-          key: "shelterJoin",
           title: "Kako se zavetišče vključi?",
-          body: "Pišite nam na e-poštni naslov, naveden v razdelku Kontakt. Dogovorimo se o vključitvi objav z vaše spletne strani. Če svojega spletnega seznama živali nimate, se lahko dogovorimo za neposreden vnos objav pri nas. Pišite nam tudi, če potrebujete dostop do portala za zavetišča.",
-          links: [
-            { label: `Pišite na ${CONTACT_EMAIL}`, href: mailtoHref(CONTACT_EMAIL) },
-            { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
-          ],
+          body: "Sodelovanje je brezplačno. Vključimo objave z vaše spletne strani ali omogočimo neposreden vnos, če svojega seznama živali nimate. Za sodelovanje in dostop do portala nam pišite.",
+          link: { label: "Že imate dostop? Prijava za zavetišča", href: "/portal/prijava" },
         },
       ],
     },
     contact: "Kontakt",
     report:
-      "Si opazil napako ali je žival že našla dom? Pošlji nam povezavo do objave in povej, kaj je treba popraviti. Zavetišča nam lahko na isti naslov pišejo glede sodelovanja ali umika vsebin ter nam pošljejo svoje predloge.",
+      "Si opazil napako ali je žival že našla dom? Pošlji povezavo do objave in povej, kaj je treba popraviti. Na isti naslov pišejo tudi zavetišča.",
   },
   en: {
-    lead: "Posvoji.si brings listings from participating Slovenian shelters together in one place to help animals find a home.",
+    lead: "We bring participating Slovenian shelters’ listings together to help animals find homes.",
+    browse: { label: "Browse animals", href: "/en" },
     adopters: {
       title: "For adopters",
       points: [
         {
-          key: "shelterDecides",
           title: "Adoption goes through the shelter",
-          body: "Contact the shelter named in the listing to learn about the animal and arrange a meeting. They will explain the animal’s needs, adoption requirements and any costs.",
-          links: [{ label: "Browse animals looking for a home", href: "/en", primary: true }],
+          body: "Contact the shelter listed with the animal about its needs, adoption requirements and any costs. The shelter handles adoption.",
         },
         {
-          key: "freshness",
           title: "Before visiting, check whether the animal still needs a home",
-          body: "Changes to listings may not appear here immediately. Check with the shelter whether the animal still needs a home and arrange a visit. Our list does not include every animal or shelter.",
+          body: "Listings may lag behind changes. Confirm availability and arrange a time with the shelter. We do not list every animal or shelter.",
         },
         {
-          key: "free",
           title: "Free browsing, no account needed",
-          body: "You can browse animals for free without an account. There are no ads or paid priority listings.",
+          body: "There are no ads or paid priority listings.",
         },
       ],
     },
@@ -160,25 +119,20 @@ const pageText: Record<Locale, PageText> = {
       title: "For shelters",
       points: [
         {
-          key: "shelterData",
           title: "You stay in control of your content",
-          body: "We include your listings with written permission. You decide whether we may show photos and how much of a description we may display. We always credit the source. You can request corrections, content removal or an end to your participation at any time.",
-          links: [{ label: "Content and permissions", href: DATA_POLICY_PATHS.en }],
+          body: "We need your written permission, credit the source and direct visitors to you. You decide whether we may show photos and how much of a description we display. You can request corrections or removal, or end participation at any time.",
+          link: { label: "Content and permissions", href: DATA_POLICY_PATHS.en },
         },
         {
-          key: "shelterJoin",
           title: "How can you join?",
-          body: "Participation is free. Email us to arrange joining. We can include listings from your website; if you do not have a catalogue of your own, you can publish listings directly here.",
-          links: [
-            { label: `Email ${CONTACT_EMAIL}`, href: mailtoHref(CONTACT_EMAIL) },
-            { label: "Already have access? Shelter login", href: "/portal/prijava" },
-          ],
+          body: "Participation is free. We can include your website’s listings or offer direct entry if you have no catalogue. Email us to join or arrange portal access.",
+          link: { label: "Already have access? Shelter login", href: "/portal/prijava" },
         },
       ],
     },
     contact: "Contact",
     report:
-      "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting.",
+      "Spotted a mistake, or has an animal already found a home? Send us the listing link and tell us what needs correcting. Shelters use the same address.",
   },
 };
 
@@ -192,22 +146,7 @@ const THUMB_BUTTON = `${COARSE_ACTION} pointer-coarse:gap-1.5`;
 /** Fit the text while keeping wrapped links inside their content column. */
 const POINT_LINK = `${QUIET_DOC_LINK} w-fit max-w-full`;
 
-// A whole section: the heading and the rows it governs, so the two cannot be
-// written at odds. The rows are h3s under the section's h2, one style for
-// every row, which makes the ladder on a phone the 24px title, a 20px
-// section heading, a 16px row and its 14px body, growing to 16px from sm. When
-// the adopter rows were h2s at 20px they outweighed the "Za zavetišča"
-// heading under them and the page read as one size again.
-//
-// Rules between rows only. A rule under the last row looked exactly like the
-// rules between rows, so the break between sections was carried by a little
-// extra air alone. Now the heading and the gap mark the section, and the
-// rules only separate facts inside it.
-//
-// mt-px on the media: text-base carries its own 24px line-height and beats
-// ItemTitle's leading-snug, so the line box is 24px against a 20px glyph
-// and the true centre is 2px. A pixel high reads better than a glyph on the
-// baseline, measured at -1.00px on every row here and on /o-nas/vsebine.
+// Preserve the heading hierarchy and use spacing to separate the facts.
 function AboutSection({
   id,
   section,
@@ -218,20 +157,14 @@ function AboutSection({
   className: string;
 }) {
   return (
-    <section aria-labelledby={id} className={`space-y-3 ${className}`}>
+    <section aria-labelledby={id} className={`space-y-4 ${className}`}>
       <h2 id={id} className={SECTION_TITLE}>
         {section.title}
       </h2>
-      <div className="divide-y">
+      <div className="space-y-6">
         {section.points.map((point) => {
-          const Icon = pointIcons[point.key];
-          // Stacked links need real touch boxes so their tap-target overlays do not overlap.
-          const crowdedLinks = (point.links?.length ?? 0) > 1;
           return (
-            <Item key={point.key} layout="row" className="px-0 py-4 last:pb-0">
-              <ItemMedia className="mt-px">
-                <Icon className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-              </ItemMedia>
+            <Item key={point.title} layout="row" className="p-0">
               <ItemContent className="break-words">
                 <ItemTitle asChild className="text-base font-medium">
                   <h3>{point.title}</h3>
@@ -239,27 +172,14 @@ function AboutSection({
                 <ItemDescription className="text-sm leading-relaxed sm:text-base sm:leading-relaxed">
                   {point.body}
                 </ItemDescription>
-                {point.links?.map((link) => link.primary ? (
-                  <Button
-                    key={link.href}
-                    asChild
-                    size="wrap"
-                    className={`${THUMB_BUTTON} mt-2 w-fit max-w-full`}
-                  >
-                    <a href={link.href}>
-                      {link.label}
-                      <ArrowRight aria-hidden data-icon="inline-end" />
-                    </a>
-                  </Button>
-                ) : (
+                {point.link && (
                   <a
-                    key={link.href}
-                    href={link.href}
-                    className={`${POINT_LINK}${crowdedLinks ? " pointer-coarse:min-h-11" : ""}`}
+                    href={point.link.href}
+                    className={POINT_LINK}
                   >
-                    {link.label}
+                    {point.link.label}
                   </a>
-                ))}
+                )}
               </ItemContent>
             </Item>
           );
@@ -304,6 +224,16 @@ export function AboutPage({ locale }: { locale: Locale }) {
             {text.lead}
           </p>
         </div>
+        <Button
+          asChild
+          size="wrap"
+          className={`${THUMB_BUTTON} w-fit max-w-full`}
+        >
+          <a href={text.browse.href}>
+            {text.browse.label}
+            <ArrowRight aria-hidden data-icon="inline-end" />
+          </a>
+        </Button>
       </div>
 
       {/* One call per audience, so the heading, its rows and its place in
@@ -320,8 +250,7 @@ export function AboutPage({ locale }: { locale: Locale }) {
         className="lg:col-start-1 lg:row-start-3"
       />
 
-      {/* Visitors can report corrections here; shelters have their own email
-          link beside the participation guidance above.
+      {/* One contact address serves visitors and shelters.
 
           The sentence stays beside the button rather than inside it: it says
           what to write about, and a button label that is a full sentence stops

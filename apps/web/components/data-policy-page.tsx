@@ -140,11 +140,8 @@ export function dataPolicyTitle(locale: Locale): string {
 }
 
 /**
- * The long form of the one fact on /o-nas that a shelter has a reason to open.
- *
- * Its rows wear the about page's layout deliberately: this is that page's
- * "Vsebine z dovoljenjem" row written out, and a reader who follows the link
- * should land somewhere that looks like where they came from.
+ * Content permissions and removal commitments, each with an icon beside its
+ * heading and explanation.
  */
 export function DataPolicyPage({ locale }: { locale: Locale }) {
   const messages = getMessages(locale);
@@ -180,9 +177,8 @@ export function DataPolicyPage({ locale }: { locale: Locale }) {
         </div>
       </div>
 
-      {/* The about page's row layout, mt-px and all. That pixel is measured,
-          and the measurement lives in about-page.tsx rather than here: two
-          copies of one number is how the number drifts. */}
+      {/* Top-align each rule's icon with its heading; mt-px nudges the icon
+          into place beside the first line. */}
       <div className="divide-y border-y">
         {text.rules.map((rule) => {
           const Icon = ruleIcons[rule.key];

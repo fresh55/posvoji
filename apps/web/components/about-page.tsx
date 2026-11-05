@@ -107,7 +107,7 @@ const pageText: Record<Locale, PageText> = {
         },
         {
           title: "Before visiting, check whether the animal still needs a home",
-          body: "Listings may lag behind changes. Before visiting, confirm availability and arrange a time with the shelter. We do not list every animal or shelter.",
+          body: "Listings may lag behind changes. Confirm availability and arrange a time with the shelter. We do not list every animal or shelter.",
         },
         {
           title: "Free browsing, no account needed",

@@ -37,18 +37,9 @@ const ITEM_LAYOUTS = {
   /** A flex column. Each slot is as tall as its own contents. */
   stack: "flex flex-col gap-4",
   /**
-   * The media beside the content rather than above it, both aligned to their
-   * first line.
-   *
-   * The about page's facts are a glyph and a paragraph, which is a row, and
-   * saying so here is what stops the call site spelling `flex-row` to undo
-   * the column this file otherwise picks. An override that exists only to
-   * cancel a default is a layout the primitive does not have yet, and
-   * ITEM_LAYOUTS is where the ones it does have are written down.
-   *
-   * items-start rather than items-center: the content is a title over a
-   * description, so centring the pair would hang the glyph somewhere in the
-   * middle of the paragraph instead of beside the name of the thing.
+   * Media beside a heading and description, as in the content-permission
+   * rule rows. Top alignment keeps the icon beside the heading when the
+   * description wraps.
    */
   row: "flex flex-row items-start gap-4",
   /**

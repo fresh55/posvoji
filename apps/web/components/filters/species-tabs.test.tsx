@@ -374,6 +374,19 @@ describe("SpeciesTabs", () => {
     }
   });
 
+  it("reveals an overflowing full-width row without a second rectangle measurement", () => {
+    const layout = fakeLayout();
+    const readRect = vi.spyOn(Element.prototype, "getBoundingClientRect");
+    try {
+      renderTabs({ value: "other", fullWidth: true });
+      expect(layout.writes).toEqual([180]);
+      expect(readRect).not.toHaveBeenCalled();
+    } finally {
+      readRect.mockRestore();
+      layout.restore();
+    }
+  });
+
   it("leaves the row where it is when the pressed tab is already in view", () => {
     const layout = fakeLayout();
 

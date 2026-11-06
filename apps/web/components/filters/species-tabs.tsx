@@ -19,7 +19,7 @@ import {
 import { useHydrated } from "@/hooks/use-hydrated";
 import { type SpeciesFilter } from "@/lib/filters";
 import { SPECIES_TAB_ORDER, type SpeciesTab } from "@/lib/species";
-import { SCROLL_STRIP_MARK, scrollChildIntoViewX } from "@/lib/scroll-strip";
+import { SCROLL_STRIP_MARK } from "@/lib/scroll-strip";
 import { useI18n } from "@/components/i18n-context";
 import { CountRoll } from "@/components/filters/filter-card";
 import {
@@ -285,19 +285,6 @@ export function SpeciesTabs({
 
   const activeRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    // A deep link (?vrsta=ostale) can mount straight into the active tab, and
-    // if that tab sits past the fold of a scrolled 320px row the visitor never
-    // sees what is selected. So the row brings the pressed tab into view
-    // whenever the selection changes, on mount for the deep-link case and
-    // again for a later or programmatic one. Why it is this helper and not
-    // scrollIntoView, which would otherwise do the job in one line, is on the
-    // helper: the API decides where the page's first Tab press goes, and this
-    // effect runs on every load. No smooth behaviour, as before: the row lands
-    // where it belongs in one frame rather than animating a scroll nobody
-    // asked for.
-    scrollChildIntoViewX(activeRef.current);
-  }, [value]);
 
   // Where the fill is, as four motion values rather than as state. A slide is
   // a new position every frame, and state would be a render of the whole row
@@ -345,6 +332,27 @@ export function SpeciesTabs({
         width: button.offsetWidth,
         height: button.offsetHeight,
       };
+      // This positioned strip has no horizontal scroll padding. Reuse the
+      // fill's offsets to reveal a deep link or a later selection by its
+      // nearest edge, instead of reading rectangles and computed style in a
+      // second effect. scrollLeft leaves sequential keyboard focus alone.
+      const strip = scrollRef.current;
+      if (strip && strip.clientWidth > 0) {
+        const start = strip.scrollLeft;
+        const end = start + strip.clientWidth;
+        const next =
+          box.left < start
+            ? box.left
+            : box.left + box.width > end
+              ? box.left + box.width - strip.clientWidth
+              : start;
+        if (next !== start) {
+          strip.scrollLeft = Math.max(
+            0,
+            Math.min(next, strip.scrollWidth - strip.clientWidth),
+          );
+        }
+      }
       // Most renders through here move nothing: a scroll repaints the edge
       // fade, a beat's state clears, a count comes back the same width. The
       // write would be cheap, but writing mid-slide is not, because jumping
